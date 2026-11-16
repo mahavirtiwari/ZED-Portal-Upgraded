@@ -236,7 +236,7 @@ public sealed class MasterSheetsTests : IDisposable
     }
 
     [Fact]
-    public async Task Incentives_are_matched_by_type_and_title_and_existing_levels_are_kept()
+    public async Task Incentives_are_matched_by_type_and_title_and_their_levels_zedx_and_activity_applied()
     {
         _host.Sql.Procs["SP_MASTER_GET_INCENTIVES"] = args => FakeSql.Arg(args, "IncentiveType") == "Common"
             ? FakeSql.Sets([new
@@ -250,19 +250,23 @@ public sealed class MasterSheetsTests : IDisposable
         var export = await Sheet(await admin.GetAsync("/api/staff/schemes/incentive-master/excel"));
         Assert.Equal(["Common", "Scheme A"], export[1][..2]);
         Assert.Equal("Stakeholder card", export[1][13]);
+        Assert.Equal(["No", "Both"], export[1][15..17]);
 
         var columns = IncentiveMasterController.Sheet.Columns.Select(c => c.Name).ToList();
-        string?[] Incentive(string type, string title, string bronze, string status = "Active", string silver = "Yes") =>
-            [type, title, "Support", "MoMSME", "Desk", "desk@msme.gov.in", "011-2306", "https://msme.gov.in", "", bronze, silver, "No", status, "", ""];
+        string?[] Incentive(string type, string title, string bronze, string status = "Active", string silver = "Yes", string zedx = "", string activity = "") =>
+            [type, title, "Support", "MoMSME", "Desk", "desk@msme.gov.in", "011-2306", "https://msme.gov.in", "", bronze, silver, "No", status, "", "", zedx, activity];
         var r = await admin.PostAsync("/api/staff/schemes/incentive-master/excel/apply", Xlsx(columns,
-            Incentive("common", "scheme a", "Yes", "Inactive"), Incentive("UTTAR PRADESH", "State scheme", "Yes"), Incentive("Mars", "X", "Yes"), Incentive("Other", "No levels", "No", silver: "No")));
+            Incentive("common", "scheme a", "Yes", "Inactive", zedx: "yes", activity: "services"), Incentive("UTTAR PRADESH", "State scheme", "Yes"), Incentive("Mars", "X", "Yes"),
+            Incentive("Other", "No levels", "No", silver: "No")));
         var applied = await r.Content.ReadFromJsonAsync<JsonElement>();
         var rows = applied.GetProperty("rows");
         Assert.Equal((1, 1, 2), (applied.GetProperty("added").GetInt32(), applied.GetProperty("updated").GetInt32(), applied.GetProperty("failed").GetInt32()));
-        Assert.StartsWith("The levels of an existing incentive stay as they are", rows[0].GetProperty("notes")[0].GetString());
-        Assert.Equal("No", rows[0].GetProperty("values")[10].GetString());
+        // 2026-11-16: the levels of a saved incentive are applied too, with ZED-X and Applies to (the last two columns).
+        Assert.Equal(["Yes", "Yes", "Services"], new[] { 10, 15, 16 }.Select(i => rows[0].GetProperty("values")[i].GetString()));
+        var scope = Calls(IncentiveMasterController.ScopeSql).First(c => FakeSql.Arg(c.Args, "Id") == "41");
+        Assert.Equal(("True", "True", "Services"), (FakeSql.Arg(scope.Args, "Silver"), FakeSql.Arg(scope.Args, "Zedx"), FakeSql.Arg(scope.Args, "Activity")));
         Assert.StartsWith("Type must be", rows[2].GetProperty("errors")[0].GetString());
-        Assert.Equal("A new incentive needs at least one level: Bronze, Silver or Gold.", rows[3].GetProperty("errors")[0].GetString());
+        Assert.Equal("Please select the certification levels the incentive applies to.", rows[3].GetProperty("errors")[0].GetString());
         var update = Assert.Single(Calls("SP_MASTER_UPDATE_INCENTIVE"));
         Assert.Equal(("41", "False"), (FakeSql.Arg(update.Args, "Id"), FakeSql.Arg(update.Args, "ActiveStatus")));
         Assert.Equal("UTTAR PRADESH", FakeSql.Arg(Assert.Single(Calls("SP_MASTER_INSERT_INCENTIVE")).Args, "IncentiveType"));

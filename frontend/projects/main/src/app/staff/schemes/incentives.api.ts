@@ -40,6 +40,18 @@ export interface CatalogueItem {
   hasDocument2: boolean;
 }
 
+export type IncentiveActivity = 'Manufacturing' | 'Services' | 'Both';
+
+export const INCENTIVE_ACTIVITIES: { value: IncentiveActivity; label: string }[] = [
+  { value: 'Manufacturing', label: 'Manufacturing' }, { value: 'Services', label: 'Services' }, { value: 'Both', label: 'Both' },
+];
+
+/** The activity saved on an incentive (NULL = both). */
+export function incentiveActivity(value: unknown): IncentiveActivity {
+  const v = String(value ?? '').trim().toLowerCase();
+  return v.startsWith('manu') ? 'Manufacturing' : v.startsWith('serv') ? 'Services' : 'Both';
+}
+
 export interface IncentiveForm {
   incentiveType: string;
   incentive: string;
@@ -53,6 +65,10 @@ export interface IncentiveForm {
   applicableForBronze: boolean;
   applicableForSilver: boolean;
   applicableForGold: boolean;
+  /** 2026-11-16 (migration 0091): ZED-X (Export) certified units. */
+  applicableForZEDX: boolean;
+  /** 2026-11-16 (migration 0091): Manufacturing, Services or Both (the MSMEs by their Udyam activity). */
+  applicableActivity: IncentiveActivity;
   activeStatus: boolean;
   /** Where it appears: its own card on the MSME dashboard, or inside its stakeholder card (the default). */
   displayOn: IncentiveDisplay;
@@ -82,6 +98,8 @@ export interface DashboardIncentive {
   applicableForBronze: boolean;
   applicableForSilver: boolean;
   applicableForGold: boolean;
+  applicableForZEDX?: boolean;
+  applicableActivity?: string | null;
 }
 
 export interface DashboardCards {

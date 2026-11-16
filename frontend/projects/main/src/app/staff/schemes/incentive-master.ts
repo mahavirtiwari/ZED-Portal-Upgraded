@@ -4,17 +4,17 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom } from 'rxjs';
-import { CatalogueItem, INCENTIVE_GROUPS, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
+import { CatalogueItem, INCENTIVE_GROUPS, IncentiveActivity, IncentiveGroup, IncentivesApi, STATES, incentiveActivity } from './incentives.api';
 import { PagedView, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 
 export const MAX_INCENTIVE_DOC_BYTES = 2 * 1024 * 1024;
 
 type StatusFilter = 'all' | 'active' | 'inactive';
-type LevelFilter = 'all' | 'bronze' | 'silver' | 'gold';
+type LevelFilter = 'all' | 'bronze' | 'silver' | 'gold' | 'zedx';
 
 const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, string> = {
-  bronze: 'ApplicableForBronze', silver: 'ApplicableForSilver', gold: 'ApplicableForGold',
+  bronze: 'ApplicableForBronze', silver: 'ApplicableForSilver', gold: 'ApplicableForGold', zedx: 'ApplicableForZEDX',
 };
 
 /** The dashboard card that lists a group's incentives. */
@@ -132,8 +132,9 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
               }
 
               <div class="inc-tags">
-                @for (l of levelsOf(item); track l) { <span class="lv-chip" [class]="'lv-' + l.toLowerCase()">{{ l }}</span> }
+                @for (l of levelsOf(item); track l) { <span class="lv-chip" [class]="'lv-' + l.toLowerCase().replace('-', '')">{{ l }}</span> }
                 @if (!levelsOf(item).length) { <span class="muted">No level</span> }
+                @if (activityOf(item) !== 'Both') { <span class="act-chip" data-activity>{{ activityOf(item) }} only</span> }
                 <span class="inc-where" [class.on-dashboard]="item.incentive['DisplayOn'] === 'Dashboard'">
                   {{ item.incentive['DisplayOn'] === 'Dashboard' ? 'Main dashboard' : 'In the ' + groupCard() + ' card' }}
                 </span>
@@ -226,6 +227,7 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .lv-dot.lv-bronze { background: #d07b5c; }
     .lv-dot.lv-silver { background: #9aa5ab; }
     .lv-dot.lv-gold { background: #c9a227; }
+    .lv-dot.lv-zedx { background: #2f7c83; }
 
     .inc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; margin-bottom: 8px; }
     .inc-grid > .no-data { grid-column: 1 / -1; }
@@ -247,6 +249,8 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .lv-chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 2px 10px; }
     .lv-chip.lv-bronze { background: #fbeee8; color: #8a4a33; }
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
+    .lv-chip.lv-zedx { background: #e3f1f2; color: #1f5f64; }
+    .act-chip { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 12px; padding: 2px 10px; background: #f2f4f4; color: #3f4754; }
     .lv-chip.lv-gold { background: #fbf3d9; color: #7a6110; }
     .inc-where { margin-left: auto; font-size: 12px; font-weight: 600; border-radius: 12px; padding: 2px 10px; background: #f4f8f8; color: #5f6f70; }
     .inc-where.on-dashboard { background: #f1f0fb; color: #3f3a7a; }
@@ -280,7 +284,7 @@ export class IncentiveMasterPage {
     { value: 'all', label: 'All' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' },
   ];
   protected readonly levelFilters: { value: LevelFilter; label: string }[] = [
-    { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' },
+    { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' }, { value: 'zedx', label: 'ZED-X' },
   ];
 
   protected readonly group = signal<IncentiveGroup>(INCENTIVE_GROUPS[0]);
@@ -380,7 +384,13 @@ export class IncentiveMasterPage {
   }
 
   protected levelsOf(item: CatalogueItem): string[] {
-    return (['Bronze', 'Silver', 'Gold'] as const).filter((l) => !!item.incentive[`ApplicableFor${l}`]);
+    return ([['Bronze', 'Bronze'], ['Silver', 'Silver'], ['Gold', 'Gold'], ['ZEDX', 'ZED-X']] as const)
+      .filter(([code]) => !!item.incentive[`ApplicableFor${code}`]).map(([, label]) => label);
+  }
+
+  /** Manufacturing, Services or Both (2026-11-16, migration 0091). */
+  protected activityOf(item: CatalogueItem): IncentiveActivity {
+    return incentiveActivity(item.incentive['ApplicableActivity']);
   }
 
   protected groupCard(): string {

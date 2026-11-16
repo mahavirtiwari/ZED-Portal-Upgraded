@@ -86,6 +86,42 @@ public sealed class MsmeSchemesIncentiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ZedX_lists_come_from_v4_and_the_activity_leaves_out_the_other_kind()
+    {
+        // 2026-11-16 (migration 0091): SP_GET_INCENTIVES has no ZED-X branch; V4 groups the ZED-X incentives itself.
+        Dictionary<string, object?> Z(long id, string type, string ministry, string? activity)
+        {
+            var r = Row(id, ministry, $"Scheme {id}", "https://msme.gov.in/z");
+            r["IncentiveType"] = type;
+            r["ApplicableActivity"] = activity;
+            return r;
+        }
+        _host.Sql.Queries[Zed.Portal.Features.Msme.Schemes.PublicIncentivesController.ZedXSql] = _ =>
+        [
+            Z(1, "Common", "MoMSME", null), Z(2, "Common", "MoMSME", "Services"), Z(3, "UTTAR PRADESH", "UP", "Manufacturing"),
+            Z(4, "MAHARASHTRA", "MH", null), Z(5, "Financial", "SIDBI", "Manufacturing"), Z(6, "Financial", "NABARD", "Services"), Z(7, "Other", "Dept", null),
+        ];
+        var client = await _host.CreateBrowserAsync();
+        var all = await client.GetFromJsonAsync<JsonElement>("/api/public/incentives?ct=ZED-X&id=9");
+        string Ids(JsonElement j, string list) => string.Join(",", j.GetProperty(list).EnumerateArray().Select(e => e.GetProperty("id").GetInt64()));
+        Assert.Equal("ZEDX", all.GetProperty("certification").GetString());
+        Assert.Equal(("1,2", "3", "7", "5,6"), (Ids(all, "common"), Ids(all, "states"), Ids(all, "other"), Ids(all, "financial")));
+        Assert.Equal(["NABARD", "SIDBI"], all.GetProperty("financialDepartments").EnumerateArray().Select(e => e.GetString()));
+        Assert.Empty(MsmeSchemesTestSupport.CallsTo(_host, "SP_GET_INCENTIVES"));
+
+        var manufacturing = await client.GetFromJsonAsync<JsonElement>("/api/public/incentives?ct=ZEDX&act=Manufacturing");
+        Assert.Equal(("1", "3,4", "5"), (Ids(manufacturing, "common"), Ids(manufacturing, "states"), Ids(manufacturing, "financial")));
+        Assert.Equal(["SIDBI"], manufacturing.GetProperty("financialDepartments").EnumerateArray().Select(e => e.GetString()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/public/incentives?ct=ZEDX&act=Trading")).StatusCode);
+
+        // A signed-in MSME sees the incentives of its own activity without choosing.
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ActivitySql] = _ => [new { MajorActivityName = "Services" }];
+        var msme = await MsmeSchemesTestSupport.MsmeAsync(_host);
+        var own = await msme.GetFromJsonAsync<JsonElement>("/api/public/incentives?ct=ZEDX");
+        Assert.Equal(("1,2", "6"), (Ids(own, "common"), Ids(own, "financial")));
+    }
+
+    [Fact]
     public async Task Details_reject_invalid_filters()
     {
         var client = await _host.CreateBrowserAsync();

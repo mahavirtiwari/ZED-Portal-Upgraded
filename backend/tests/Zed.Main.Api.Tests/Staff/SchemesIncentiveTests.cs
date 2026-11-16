@@ -333,6 +333,51 @@ public sealed class SchemesIncentiveTests : IDisposable
     }
 
     [Fact]
+    public async Task ZedX_and_the_activity_are_saved_with_the_levels_also_on_an_update()
+    {
+        var admin = await SignIn("ADMIN1");
+        _host.Sql.Procs["SP_MASTER_GET_INCENTIVES"] = _ => FakeSql.Sets([new { Id = 57L, IncentiveType = "Common", Incentive = "Scheme B" }]);
+        Dictionary<string, object?> Body(Action<Dictionary<string, object?>> change)
+        {
+            var b = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(System.Text.Json.JsonSerializer.Serialize(Incentive()))!;
+            change(b);
+            return b;
+        }
+        // ZED-X only, for Manufacturing units.
+        var zedxOnly = Body(b => { b["applicableForBronze"] = false; b["applicableForSilver"] = false; b["applicableForGold"] = false;
+            b["applicableForZEDX"] = true; b["applicableActivity"] = "manufacturing"; });
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master", zedxOnly)).StatusCode);
+        var scope = Assert.Single(_host.Sql.Calls, c => c.Name == IncentiveMasterController.ScopeSql);
+        Assert.Equal(("57", "False", "True", "Manufacturing"),
+            (FakeSql.Arg(scope.Args, "Id"), FakeSql.Arg(scope.Args, "Gold"), FakeSql.Arg(scope.Args, "Zedx"), FakeSql.Arg(scope.Args, "Activity")));
+
+        // An update saves the levels too (the legacy procedure keeps them); Both is stored as NULL.
+        var both = Body(b => { b["applicableForGold"] = true; b["applicableActivity"] = "Both"; });
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/57", both)).StatusCode);
+        var updated = _host.Sql.Calls.Last(c => c.Name == IncentiveMasterController.ScopeSql);
+        Assert.Equal(("True", "False", null), (FakeSql.Arg(updated.Args, "Gold"), FakeSql.Arg(updated.Args, "Zedx"), FakeSql.Arg(updated.Args, "Activity")));
+
+        // No level at all, or an unknown activity: refused before anything is saved.
+        var calls = _host.Sql.Calls.Count;
+        var noLevel = Body(b => { b["applicableForBronze"] = false; b["applicableForSilver"] = false; b["applicableForGold"] = false; });
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/57", noLevel)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master", Body(b => b["applicableActivity"] = "Trading"))).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls.Skip(calls), c => c.Name is "SP_MASTER_INSERT_INCENTIVE" or "SP_MASTER_UPDATE_INCENTIVE");
+    }
+
+    [Theory]
+    [InlineData(null, "Manufacturing", true)]
+    [InlineData("Both", "Services", true)]
+    [InlineData("Manufacturing", "Manufacturing", true)]
+    [InlineData("Manufacturing", "Services", false)]
+    [InlineData("Services", "Services ", true)]
+    [InlineData("Services", "Manufacturing", false)]
+    [InlineData("Services", null, true)]
+    [InlineData("Services", "Trading", true)]
+    public void An_incentive_reaches_the_MSMEs_of_its_activity(string? applicable, string? msme, bool shown) =>
+        Assert.Equal(shown, IncentiveMasterController.AppliesToActivity(applicable, msme));
+
+    [Fact]
     public async Task Where_an_incentive_appears_is_saved_with_it()
     {
         var admin = await SignIn("ADMIN1");

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Core.Security;
 using Zed.Portal.Features.Staff.Schemes;
 
 namespace Zed.Portal.Features.Msme.Schemes;
@@ -42,30 +43,84 @@ public sealed class PublicIncentivesController(
         string? Certification, int? State, IReadOnlyList<IncentiveDto> Common, IReadOnlyList<IncentiveDto> States,
         IReadOnlyList<IncentiveDto> Other, IReadOnlyList<IncentiveDto> Financial, IReadOnlyList<string> FinancialDepartments);
 
-    /// <summary>GET api/public/incentives?ct=Bronze&amp;id=9 — SP_GET_INCENTIVES (no level = nothing, as the procedure).</summary>
-    [HttpGet]
-    public async Task<ActionResult<DetailsResponse>> Details([FromQuery] string? ct, [FromQuery] int? id, CancellationToken cancel)
+    /// <summary>ZED-X (Export), which SP_GET_INCENTIVES does not know (2026-11-16, Incentives.ApplicableForZEDX, migration 0091).</summary>
+    public const string ZedX = "ZEDX";
+
+    /// <summary>Bronze, Silver, Gold or ZEDX ("ZED-X" too), else null.</summary>
+    public static string? CanonicalLevel(string? ct) =>
+        FaApplications.Canonical(ct) ?? (ct?.Trim().Replace("-", "") is { } c && c.Equals(ZedX, StringComparison.OrdinalIgnoreCase) ? ZedX : null);
+
+    internal const string ZedXSql = "SELECT * FROM dbo.Incentives WHERE ApplicableForZEDX = 1 AND ActiveStatus = 1 ORDER BY OrderNo;";
+
+    /// <summary>
+    /// The five lists of SP_GET_INCENTIVES (Ministry of MSME, states, others, financial institutions, the financial
+    /// departments) for a level. ZED-X: the same lists from V4's own query (the procedure returns none for it).
+    /// </summary>
+    private async Task<ResultSets> ListsAsync(string? level, int? state, CancellationToken cancel)
     {
-        var level = FaApplications.Canonical(ct);
+        if (level != ZedX)
+            // State 0 was offered as "Common incentives" once; the procedure treats it as no state match, as before.
+            return await db.QueryProcMultipleAsync("SP_GET_INCENTIVES", new { State = state?.ToString(CultureInfo.InvariantCulture), CertificationType = level }, cancel);
+        IReadOnlyList<IDictionary<string, object?>> rows;
+        try
+        {
+            rows = (await db.QuerySqlAsync<object>(ZedXSql, null, cancel)).Select(AsRow).OfType<IDictionary<string, object?>>().ToList();
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "ZED-X incentives not readable (is migration 0091 applied?)");
+            rows = [];
+        }
+        string Type(IDictionary<string, object?> r) => r.Text("IncentiveType").Trim();
+        var stateNames = Staff.Masters.StateMaster.All
+            .Where(s => state is null || (int.TryParse(s.Code, NumberStyles.None, CultureInfo.InvariantCulture, out var c) && c == state))
+            .Select(s => s.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var financial = rows.Where(r => Type(r) == "Financial").ToList();
+        return new ResultSets(new List<IReadOnlyList<IDictionary<string, object?>>>
+        {
+            rows.Where(r => Type(r) == "Common").ToList(),
+            rows.Where(r => stateNames.Contains(Type(r))).ToList(),
+            rows.Where(r => Type(r) == "Other").ToList(),
+            financial,
+            financial.Select(r => r.Text("MinistryOrDepartment").Trim()).Where(d => d.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase).Select(d => (IDictionary<string, object?>)new Dictionary<string, object?> { ["MinistryOrDepartment"] = d }).ToList(),
+        });
+    }
+
+    /// <summary>
+    /// GET api/public/incentives?ct=Bronze&amp;id=9&amp;act=Manufacturing — SP_GET_INCENTIVES (no level = nothing, as the
+    /// procedure); ct=ZEDX from V4's own query. act (2026-11-16): an incentive for the other activity only is left out;
+    /// without act, a signed-in MSME sees the incentives of its own activity (its Udyam major activity), anyone else all.
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<DetailsResponse>> Details([FromQuery] string? ct, [FromQuery] int? id, [FromQuery] string? act, CancellationToken cancel)
+    {
+        var level = CanonicalLevel(ct);
         if (!string.IsNullOrEmpty(ct) && level is null) return this.Problem400("Invalid certification level.");
         if (id is < 0 or > 99) return this.Problem400("Invalid state.");
-        // State 0 was offered as "Common incentives" once; the procedure treats it as no state match, as before.
-        var sets = await db.QueryProcMultipleAsync("SP_GET_INCENTIVES",
-            new { State = id?.ToString(CultureInfo.InvariantCulture), CertificationType = level }, cancel);
+        if (IncentiveMasterController.CanonicalActivity(act) is not { } activity) return this.Problem400("Invalid activity.");
+        if (string.IsNullOrWhiteSpace(act) && User.IsInRole(nameof(UserRole.Msme)) && ZedUser.FromPrincipal(User)?.UserId is { Length: > 0 } zedId
+            && IncentiveMasterController.CanonicalActivity(await MsmeDashboardController.ActivityAsync(db, zedId, log, cancel)) is { } own)
+            activity = own;
+        var sets = await ListsAsync(level, id, cancel);
         // An incentive the Admin put on the MSME dashboard has its own card there, not in the stakeholder lists (migration 0026).
         IReadOnlyList<IncentiveDto> Map(int i) => sets[i]
             .Where(r => !string.Equals(r.Text("DisplayOn"), IncentiveMasterController.OnDashboard, StringComparison.OrdinalIgnoreCase))
+            .Where(r => activity == IncentiveMasterController.Both || IncentiveMasterController.AppliesToActivity(r.Text("ApplicableActivity"), activity))
             .Select(r => ToDto(r, level)).Where(d => d.Id > 0).ToList();
-        return new DetailsResponse(level, id, Map(0), Map(1), Map(2), Map(3),
-            sets[4].Select(r => r.Text("MinistryOrDepartment")).Where(s => s.Length > 0).ToList());
+        var financial = Map(3);
+        return new DetailsResponse(level, id, Map(0), Map(1), Map(2), financial,
+            sets[4].Select(r => r.Text("MinistryOrDepartment")).Where(s => s.Length > 0)
+                .Where(d => activity == IncentiveMasterController.Both || financial.Any(f => string.Equals(f.MinistryOrDepartment?.Trim(), d.Trim(), StringComparison.OrdinalIgnoreCase)))
+                .ToList());
     }
 
     /// <summary>GET api/public/incentives/{id}/documents/{n}?ct=Bronze — Uploads/Incentives/{Id}File{n}.pdf of a listed incentive.</summary>
     [HttpGet("{id:long}/documents/{n:int}")]
     public async Task<IActionResult> Document(long id, int n, [FromQuery] string? ct, CancellationToken cancel)
     {
-        if (n is not (1 or 2) || FaApplications.Canonical(ct) is not { } level) return NotFound();
-        var sets = await db.QueryProcMultipleAsync("SP_GET_INCENTIVES", new { State = (string?)null, CertificationType = level }, cancel);
+        if (n is not (1 or 2) || CanonicalLevel(ct) is not { } level) return NotFound();
+        var sets = await ListsAsync(level, null, cancel);
         var key = id.ToString(CultureInfo.InvariantCulture);
         if (!Enumerable.Range(0, 4).Any(i => sets[i].Any(r => r.Text("Id") == key))) return NotFound();
         var path = DocumentPath(key, n);
@@ -106,6 +161,21 @@ public sealed class PublicIncentivesController(
         return new IncentiveDto(id, Text(r, "MinistryOrDepartment"), Text(r, "Incentive"), Text(r, "Details"), Text(r, "ContactPerson"),
             Text(r, "Email"), Text(r, "MobileNo"), Link(r.Text("WebLink")), Link(r.Text("VideoLink")), Doc(1), Doc(2));
     }
+
+    /// <summary>A row of an inline SELECT * (Dapper's rows are dictionaries; a JSON object as a test double gives).</summary>
+    private static IDictionary<string, object?>? AsRow(object? row) => row switch
+    {
+        IDictionary<string, object?> d => d,
+        System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } e => e.EnumerateObject().ToDictionary(
+            p => p.Name, p => p.Value.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.Null => null,
+                System.Text.Json.JsonValueKind.True => true,
+                System.Text.Json.JsonValueKind.False => false,
+                _ => (object?)p.Value.ToString(),
+            }),
+        _ => null,
+    };
 
     private static string? Text(IDictionary<string, object?> r, string column) => r.Text(column) is { Length: > 0 } s ? s : null;
 

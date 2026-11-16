@@ -94,7 +94,14 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     /// <summary>An incentive the Admin put on the dashboard ("Where it appears": Main dashboard), active ones only.</summary>
     public sealed record IncentiveCard(long Id, string? Title, string? Highlight, string? Details, string? Department,
         string? ContactPerson, string? Email, string? MobileNo, string? WebLink, string? VideoLink,
-        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold);
+        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold)
+    {
+        /// <summary>2026-11-16 (migration 0091): ZED-X (Export) certified units too.</summary>
+        public bool ApplicableForZEDX { get; init; }
+
+        /// <summary>2026-11-16 (migration 0091): Manufacturing or Services; null = both.</summary>
+        public string? ApplicableActivity { get; init; }
+    }
 
     public sealed record IncentiveCardsResponse(IReadOnlyList<BuiltInCard> BuiltIn, IReadOnlyList<IncentiveCard> Incentives);
 
@@ -106,7 +113,8 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     internal const string IncentiveCardsSql =
         "SELECT Id, Incentive AS Title, CardHighlight AS Highlight, Details, MinistryOrDepartment AS Department, ContactPerson, Email, MobileNo, " +
         "WebLink, VideoLink, CAST(ISNULL(ApplicableForBronze, 0) AS bit) AS ApplicableForBronze, " +
-        "CAST(ISNULL(ApplicableForSilver, 0) AS bit) AS ApplicableForSilver, CAST(ISNULL(ApplicableForGold, 0) AS bit) AS ApplicableForGold " +
+        "CAST(ISNULL(ApplicableForSilver, 0) AS bit) AS ApplicableForSilver, CAST(ISNULL(ApplicableForGold, 0) AS bit) AS ApplicableForGold, " +
+        "CAST(ISNULL(ApplicableForZEDX, 0) AS bit) AS ApplicableForZEDX, ApplicableActivity " +
         "FROM dbo.Incentives WHERE DisplayOn = 'Dashboard' AND DashboardCard IS NULL AND ActiveStatus = 1 " +
         "ORDER BY CASE IncentiveType WHEN 'Common' THEN 0 WHEN 'Financial' THEN 2 WHEN 'Other' THEN 3 ELSE 1 END, OrderNo, Id;";
 
@@ -140,7 +148,31 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     /// error) the lists are empty and the dashboard shows its built-in cards as they were.
     /// </summary>
     [HttpGet("incentives")]
-    public Task<IncentiveCardsResponse> Incentives(CancellationToken ct) => IncentiveCardsAsync(db, log, ct);
+    public async Task<IncentiveCardsResponse> Incentives(CancellationToken ct)
+    {
+        var all = await IncentiveCardsAsync(db, log, ct);
+        // 2026-11-16 (the user): an incentive for Manufacturing or Services only is not shown to an MSME of the other activity.
+        var activity = await ActivityAsync(db, ZedId, log, ct);
+        return all with { Incentives = all.Incentives.Where(c => IncentiveMasterController.AppliesToActivity(c.ApplicableActivity, activity)).ToList() };
+    }
+
+    public sealed record ActivityRow(string? MajorActivityName);
+
+    internal const string ActivitySql = "SELECT TOP 1 MajorActivityName FROM dbo.MsmeBasicInformation WHERE ZedId = @ZedId ORDER BY Id DESC;";
+
+    /// <summary>The unit's Udyam major activity (Manufacturing / Services), or null when not known (it then sees every incentive).</summary>
+    public static async Task<string?> ActivityAsync(ISqlExecutor db, string zedId, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            return (await db.QuerySqlAsync<ActivityRow>(ActivitySql, new { ZedId = zedId }, ct)).FirstOrDefault()?.MajorActivityName;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Activity of {ZedId} not readable", zedId);
+            return null;
+        }
+    }
 
     /// <summary>The cards of "My Incentives" (the dashboard, and since 2026-11-08 the ZED MSME app through api/public/incentive-cards).</summary>
     public static async Task<IncentiveCardsResponse> IncentiveCardsAsync(ISqlExecutor db, ILogger log, CancellationToken ct)

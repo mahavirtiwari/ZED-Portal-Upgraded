@@ -63,6 +63,9 @@ export interface IncentiveCard {
   applicableForBronze: boolean;
   applicableForSilver: boolean;
   applicableForGold: boolean;
+  /** 2026-11-16 (migration 0091): ZED-X (Export) certified units too. The server leaves out the incentives of the other activity. */
+  applicableForZEDX?: boolean;
+  applicableActivity?: string | null;
 }
 
 /** The built-in cards' wording before V4 (until the server answers, or before migration 0026). */
@@ -312,7 +315,8 @@ export class DashboardPage {
 
   /** True once any level is certified; unlocks most incentives. */
   protected readonly anyCertified = computed(() =>
-    this.num('BronzeStatus') === 6 || this.num('SilverStatus') === 16 || this.num('GoldStatus') === 16,
+    this.num('BronzeStatus') === 6 || this.num('SilverStatus') === 16 || this.num('GoldStatus') === 16
+      || this.status('ZEDX') === completedStatus('ZEDX'),
   );
 
   constructor() {
@@ -361,11 +365,13 @@ export class DashboardPage {
   protected eligibleFor(c: IncentiveCard): boolean {
     return (c.applicableForBronze && this.num('BronzeStatus') === 6)
       || (c.applicableForSilver && this.num('SilverStatus') === 16)
-      || (c.applicableForGold && this.num('GoldStatus') === 16);
+      || (c.applicableForGold && this.num('GoldStatus') === 16)
+      || (!!c.applicableForZEDX && this.status('ZEDX') === completedStatus('ZEDX'));
   }
 
   protected levelsOf(c: IncentiveCard, separator = ', '): string {
-    return [c.applicableForBronze && 'Bronze', c.applicableForSilver && 'Silver', c.applicableForGold && 'Gold'].filter(Boolean).join(separator);
+    return [c.applicableForBronze && 'Bronze', c.applicableForSilver && 'Silver', c.applicableForGold && 'Gold', c.applicableForZEDX && 'ZED-X']
+      .filter(Boolean).join(separator);
   }
 
   protected async load(): Promise<void> {

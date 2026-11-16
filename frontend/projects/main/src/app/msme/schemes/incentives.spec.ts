@@ -74,6 +74,18 @@ describe('Public incentive pages', () => {
     expect(el.querySelector('header')).not.toBeNull();
   });
 
+  it('offers ZED-X and, to a visitor, the activity; act goes to the server (2026-11-16)', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/incentives?ct=ZEDX&act=Services');
+    const req = http.expectOne((r) => r.url === '/api/public/incentives');
+    expect([req.request.params.get('ct'), req.request.params.get('act')]).toEqual(['ZEDX', 'Services']);
+    req.flush({ ...details, certification: 'ZEDX' });
+    await settle(harness);
+    const el = harness.routeNativeElement!;
+    expect([...el.querySelectorAll('#incLevel option')].map((o) => o.textContent!.trim())).toContain('ZED-X (Export)');
+    expect([...el.querySelectorAll('#incActivity option')].map((o) => o.textContent!.trim())).toEqual(['All', 'Manufacturing', 'Services']);
+  });
+
   it('shows one section when it= is given and no header on the mobile page', async () => {
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/incentives/mobile?ct=Gold&it=Financial');

@@ -8,8 +8,8 @@ namespace Zed.Portal.Features.Staff.Schemes;
 
 /// <summary>
 /// Excel export, template and upload of the incentive catalogue, every group in one sheet (V4; see <see cref="MasterSheet"/>).
-/// Rows are saved through the page's own Create and Update, so they follow the same rules. The legacy update procedure
-/// keeps an incentive's levels, so the levels of an existing incentive are left as they are (the check says so).
+/// Rows are saved through the page's own Create and Update, so they follow the same rules (since 2026-11-16 the levels of a
+/// saved incentive are applied too, with ZED-X and Applies to: Manufacturing / Services / Both, the last two columns).
 /// Documents are attached on the page.
 /// </summary>
 public sealed partial class IncentiveMasterController
@@ -34,6 +34,8 @@ public sealed partial class IncentiveMasterController
         new("Status", "Active or Inactive (empty = Active)."),
         new("Appears on", $"Dashboard (its own card on the MSME dashboard) or {StakeholderCard} (inside its group's card). Empty = {StakeholderCard}."),
         new("Card highlight", "The coloured line of its dashboard card (up to 300 characters). Optional."),
+        new("ZED-X", "Yes if it applies to ZED-X (Export) certified units (empty = No).", MayBeAbsent: true),
+        new("Applies to", "Manufacturing, Services or Both: the MSMEs by their Udyam activity (empty = Both).", MayBeAbsent: true),
     ], 2, "Rows are matched by Type + Title: a new title is added to its type, an existing one is updated. Nothing is deleted; to hide an " +
         "incentive, set Status to Inactive. The levels of an existing incentive stay as they are.",
         (column, value) => column == 0 ? CanonicalType(value) ?? value : value);
@@ -83,6 +85,7 @@ public sealed partial class IncentiveMasterController
                     StaffUserRules.Bool(r, "ActiveStatus") ? "Active" : "Inactive",
                     string.Equals(r.Text("DisplayOn"), OnDashboard, StringComparison.OrdinalIgnoreCase) ? OnDashboard : StakeholderCard,
                     r.Text("CardHighlight").Trim(),
+                    YesNo(r, "ApplicableForZEDX"), CanonicalActivity(r.Text("ApplicableActivity")) ?? Both,
                 ]));
             }
         return all;
@@ -109,17 +112,18 @@ public sealed partial class IncentiveMasterController
                 _ => "",
             };
             if (row.Cell(13).Length == 0) row.Errors.Add($"Appears on must be Dashboard or {StakeholderCard}.");
+            // Empty (or a file exported before the two columns): a saved incentive keeps its own; a new one No / Both.
+            if (row.Cell(15).Length == 0) row.Cells[15] = row.Current is { Length: > 15 } c15 && c15[15].Length > 0 ? c15[15] : "No";
+            else if (MasterSheet.YesNo(row.Cell(15)) is { } zedx) row.Cells[15] = zedx;
+            else row.Errors.Add("ZED-X must be Yes or No.");
+            if (row.Cell(16).Length == 0) row.Cells[16] = row.Current is { Length: > 16 } c16 && c16[16].Length > 0 ? c16[16] : Both;
+            else if (CanonicalActivity(row.Cell(16)) is { } activity) row.Cells[16] = activity;
+            else row.Errors.Add("Applies to must be Manufacturing, Services or Both.");
             if (row.Errors.Count > 0) return;
-            if (row.Current is not null && !row.Cells[9..12].SequenceEqual(row.Current[9..12]))
-            {
-                row.Notes.Add("The levels of an existing incentive stay as they are (Bronze, Silver and Gold of this row are not applied).");
-                Array.Copy(row.Current, 9, row.Cells, 9, 3);
-            }
             if (Check(SheetRequest(row.Cells)) is { } error) row.Errors.Add(error);
-            else if (row.Current is null && row.Cells[9..12].All(v => v == "No")) row.Errors.Add("A new incentive needs at least one level: Bronze, Silver or Gold.");
         });
 
     private static IncentiveRequest SheetRequest(string[] c) => new(
         c[0], c[1], c[2], c[3], c[4], c[7], c[5], c[6], c[8], c[9] == "Yes", c[10] == "Yes", c[11] == "Yes", c[12] == "Active",
-        c[13] == OnDashboard ? OnDashboard : InStakeholderCard, c[14]);
+        c[13] == OnDashboard ? OnDashboard : InStakeholderCard, c[14], c.Length > 15 && c[15] == "Yes", c.Length > 16 ? c[16] : null);
 }

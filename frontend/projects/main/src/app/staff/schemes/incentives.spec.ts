@@ -325,4 +325,31 @@ describe('incentive pages', () => {
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/staff/incentives', 'ministry'], { queryParams: null, state: { message: 'Incentive updated.' } });
   });
+
+  it('sets Applies to and ZED-X, also on a saved incentive (2026-11-16)', async () => {
+    await create(IncentiveFormPage, {}, { group: 'ministry', id: '41' });
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    http.expectOne((r) => r.params.get('type') === 'Common').flush([
+      { incentive: { Id: 41, Incentive: 'Scheme A', Details: 'd', MinistryOrDepartment: 'm', ContactPerson: 'c', Email: 'a@b.in', MobileNo: '011',
+        WebLink: 'https://x.in', ApplicableForGold: true, ApplicableActivity: 'Services', ActiveStatus: true }, hasDocument1: false, hasDocument2: false },
+    ]);
+    await settle();
+    // Four level cards; the levels of a saved incentive can be changed now.
+    expect([...el.querySelectorAll('.level-option .level-name')].map((n) => n.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X (Export)']);
+    expect((el.querySelector('#inc-applicableForZEDX') as HTMLInputElement).disabled).toBe(false);
+    expect(el.querySelector('[data-activity="Services"]')!.classList).toContain('active');
+    expect(el.querySelector('[data-pv-activity]')!.textContent).toContain('Services only');
+
+    (el.querySelector('#inc-applicableForZEDX') as HTMLInputElement).click();
+    (el.querySelector('#inc-applicableForGold') as HTMLInputElement).click();
+    (el.querySelector('[data-activity="Manufacturing"]') as HTMLButtonElement).click();
+    await settle();
+    expect([...el.querySelectorAll('.pv-facts .lv-chip')].map((n) => n.textContent!.trim())).toEqual(['ZED-X']);
+    button('Save Incentive').click();
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master/41');
+    expect(post.request.body).toEqual(expect.objectContaining({ applicableForGold: false, applicableForZEDX: true, applicableActivity: 'Manufacturing' }));
+    post.flush({ message: 'Incentive updated.' });
+    await settle();
+  });
 });

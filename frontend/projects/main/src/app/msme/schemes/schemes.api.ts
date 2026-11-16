@@ -180,10 +180,11 @@ export class SchemesApi {
     return this.http.post<MessageResponse>('/api/msme/schemes/tu', body);
   }
 
-  incentives(ct: string, state: string): Observable<IncentiveDetails> {
+  incentives(ct: string, state: string, act = ''): Observable<IncentiveDetails> {
     let params = new HttpParams();
     if (ct) params = params.set('ct', ct);
     if (state) params = params.set('id', state);
+    if (act) params = params.set('act', act);
     return this.http.get<IncentiveDetails>('/api/public/incentives', { params });
   }
 

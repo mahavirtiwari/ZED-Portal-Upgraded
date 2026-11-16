@@ -163,6 +163,22 @@ describe('DashboardPage', () => {
     expect(dialog.querySelector('a[href="https://scheme.example.org"]')).not.toBeNull();
   });
 
+  it('unlocks a ZED-X incentive for a ZED-X certified unit (2026-11-16)', async () => {
+    await render({ ZEDXStatus: 16 }, {}, 0, {
+      builtIn: [],
+      incentives: [
+        { id: 58, title: 'Export Shield', highlight: null, details: 'D', department: 'MoMSME', contactPerson: 'Officer', email: 'o@msme.gov.in',
+          mobileNo: '011', webLink: 'https://scheme.example.org', videoLink: null, applicableForBronze: false, applicableForSilver: false,
+          applicableForGold: false, applicableForZEDX: true },
+      ],
+    });
+    const card = [...el.querySelectorAll('.panel-incen-block')].find((p) => p.textContent!.includes('Export Shield')) as HTMLElement;
+    expect(card.classList).not.toContain('plant-activity-disabled');
+    (card.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.modal-content')!.textContent).toContain('ZED-X certified MSMEs');
+  });
+
   it('shows ZED-X once the Admin enables it, with its own name, logo and text, greyed out while another level is in progress', async () => {
     const zedx = { code: 'ZEDX', name: 'ZED-X', description: 'Open to every MSME', comment: 'ZED-X: the sector-wise certification.', logoUrl: null,
       assessmentMode: 'Site', validityMonths: 36, fee: 75000 };

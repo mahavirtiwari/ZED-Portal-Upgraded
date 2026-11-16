@@ -53,7 +53,9 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
 /**
  * Incentives a ZED-certified unit can avail. Port of Frontend/Incentive/Details.cshtml (and DetailsMobile.cshtml,
  * the same page without header for the mobile app: route data `mobile`). Public, as before. Query parameters as
- * the old page: ct (level), id (state code), it (Common / States / Financial / Other; none = all sections).
+ * the old page: ct (level), id (state code), it (Common / States / Financial / Other; none = all sections). 2026-11-16: ct
+ * can be ZEDX (ZED-X), and act (Manufacturing / Services) leaves out the incentives of the other activity; a signed-in
+ * MSME gets its own activity from the server (no choice shown).
  */
 @Component({
   selector: 'zed-public-incentives',
@@ -73,8 +75,19 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
                       <option value="Bronze">Bronze</option>
                       <option value="Silver">Silver</option>
                       <option value="Gold">Gold</option>
+                      <option value="ZEDX">ZED-X (Export)</option>
                     </select>
                   </div>
+                  @if (!msmeSignedIn()) {
+                    <div class="col-sm-3">
+                      <label for="incActivity"><p>Activity</p></label>
+                      <select id="incActivity" class="form-select" [value]="act()" (change)="filter({ act: value($event) })">
+                        <option value="">All</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Services">Services</option>
+                      </select>
+                    </div>
+                  }
                   @if (show('States')) {
                     <div class="col-sm-4">
                       <label for="incState"><p>State</p></label>
@@ -161,6 +174,10 @@ export class PublicIncentivesPage {
   protected readonly states = STATES;
   protected readonly ct = computed(() => this.query().get('ct') ?? '');
   protected readonly state = computed(() => this.query().get('id') ?? '');
+  protected readonly act = computed(() => this.query().get('act') ?? '');
+  /** A signed-in MSME: the server uses its own activity. */
+  protected readonly msmeSignedIn = computed(() => this.auth.currentUser()?.roleId === 5);
+  private readonly auth = inject(AuthService);
   protected readonly section = computed(() => (this.query().get('it') ?? '') as Section | '');
   protected readonly data = signal<IncentiveDetails | null>(null);
   protected readonly error = signal('');
@@ -169,7 +186,8 @@ export class PublicIncentivesPage {
     effect(() => {
       const ct = this.ct();
       const state = this.state();
-      void this.load(ct, state);
+      const act = this.act();
+      void this.load(ct, state, act);
     });
   }
 
@@ -185,14 +203,14 @@ export class PublicIncentivesPage {
     return (e.target as HTMLSelectElement).value;
   }
 
-  protected filter(change: { ct?: string; id?: string }): void {
+  protected filter(change: { ct?: string; id?: string; act?: string }): void {
     void this.router.navigate([], { relativeTo: this.route, queryParams: change, queryParamsHandling: 'merge' });
   }
 
-  private async load(ct: string, state: string): Promise<void> {
+  private async load(ct: string, state: string, act: string): Promise<void> {
     this.error.set('');
     try {
-      this.data.set(await firstValueFrom(this.api.incentives(ct, state)));
+      this.data.set(await firstValueFrom(this.api.incentives(ct, state, act)));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }

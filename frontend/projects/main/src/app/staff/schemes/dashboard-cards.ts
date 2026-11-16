@@ -28,10 +28,10 @@ const STAKEHOLDER_CARDS = INCENTIVE_GROUPS.map((g) => ({
   image: { ministry: '/Images/Dashboard/dash-msme.PNG', state: '/Images/Dashboard/stateUts.png', financial: '/Images/Dashboard/financial-Institution.png', others: '/Images/Dashboard/incentive.png' }[g.key],
 }));
 
-type LevelFilter = 'all' | 'bronze' | 'silver' | 'gold';
+type LevelFilter = 'all' | 'bronze' | 'silver' | 'gold' | 'zedx';
 
-const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold'> = {
-  bronze: 'applicableForBronze', silver: 'applicableForSilver', gold: 'applicableForGold',
+const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold' | 'applicableForZEDX'> = {
+  bronze: 'applicableForBronze', silver: 'applicableForSilver', gold: 'applicableForGold', zedx: 'applicableForZEDX',
 };
 
 /**
@@ -140,6 +140,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                 @if (i.applicableForBronze) { <span class="lv-chip lv-bronze">Bronze</span> }
                 @if (i.applicableForSilver) { <span class="lv-chip lv-silver">Silver</span> }
                 @if (i.applicableForGold) { <span class="lv-chip lv-gold">Gold</span> }
+                @if (i.applicableForZEDX) { <span class="lv-chip lv-zedx">ZED-X</span> }
               </div>
               <div class="dc-actions">
                 <a class="btn btn-outline-primary btn-sm" [routerLink]="['/staff/incentives', groupKey(i), i.id, 'edit']" [queryParams]="stateParams(i)">Edit</a>
@@ -277,6 +278,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .lv-chip.lv-bronze { background: #fbeee8; color: #8a4a33; }
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
     .lv-chip.lv-gold { background: #fbf3d9; color: #7a6110; }
+    .lv-chip.lv-zedx { background: #e3f1f2; color: #1f5f64; }
 
     .dc-stake-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .dc-stake-card { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #dfe9ea; border-radius: 10px; background: #fff;
@@ -304,7 +306,7 @@ export class DashboardCardsPage {
 
   protected readonly stakeholderCards = STAKEHOLDER_CARDS;
   protected readonly levelFilters: { value: LevelFilter; label: string }[] = [
-    { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' },
+    { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' }, { value: 'zedx', label: 'ZED-X' },
   ];
 
   protected readonly cards = signal<{ builtIn: BuiltInCard[]; incentives: DashboardIncentive[] } | null>(null);

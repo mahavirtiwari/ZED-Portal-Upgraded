@@ -3,16 +3,17 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { INCENTIVE_GROUPS, IncentiveDisplay, IncentiveForm, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
+import { INCENTIVE_ACTIVITIES, INCENTIVE_GROUPS, IncentiveActivity, IncentiveDisplay, IncentiveForm, IncentiveGroup, IncentivesApi, STATES, incentiveActivity } from './incentives.api';
 import { GROUP_CARD, MAX_INCENTIVE_DOC_BYTES } from './incentive-master';
 
 type TextKey = 'incentive' | 'details' | 'ministryOrDepartment' | 'contactPerson' | 'mobileNo' | 'email' | 'videoLink' | 'webLink' | 'cardHighlight';
-type LevelKey = 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold';
+type LevelKey = 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold' | 'applicableForZEDX';
 
 function emptyForm(): IncentiveForm {
   return {
     incentiveType: '', incentive: '', details: '', ministryOrDepartment: '', contactPerson: '', webLink: '', email: '',
-    mobileNo: '', videoLink: '', applicableForBronze: false, applicableForSilver: false, applicableForGold: false, activeStatus: true,
+    mobileNo: '', videoLink: '', applicableForBronze: false, applicableForSilver: false, applicableForGold: false, applicableForZEDX: false,
+    applicableActivity: 'Both', activeStatus: true,
     displayOn: 'Card', cardHighlight: '',
   };
 }
@@ -28,8 +29,9 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
 /**
  * Create New Incentive / Edit Incentive (V4, as the LEAN portal's incentive form): the incentive's details, its
  * nodal contact and its resources (links and the two PDF documents, uploaded once the incentive is saved), with the
- * wording of its group. A saved incentive keeps its group, state and levels (SP_MASTER_UPDATE_INCENTIVE does not
- * change them), so they are shown but not editable. "Where it appears" (V4): its own card in "My Incentives" of the MSME
+ * wording of its group. A saved incentive keeps its group and state (SP_MASTER_UPDATE_INCENTIVE does not change them), so
+ * they are shown but not editable; its levels are (2026-11-16: V4 saves them, with ZED-X and Applies to: Manufacturing /
+ * Services / Both, migration 0091). "Where it appears" (V4): its own card in "My Incentives" of the MSME
  * dashboard, or listed inside its stakeholder card (Ministry of MSME, States/UTs, ...), as before. V4 layout: numbered
  * sections (details, levels as choice cards, nodal contact, resources, where it appears and status) beside a live
  * preview of the card as the MSME dashboard shows it, and a save bar that says when there are unsaved changes.
@@ -80,21 +82,32 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
               <input class="form-control" id="inc-ministryOrDepartment" name="ministryOrDepartment" maxlength="4000" [placeholder]="group().departmentHint" [ngModel]="form().ministryOrDepartment" (ngModelChange)="patch('ministryOrDepartment', $event)" />
             </section>
 
+            <section class="zed-card" aria-labelledby="inc-activity-h">
+              <h5 class="inc-h" id="inc-activity-h"><span class="inc-step">2</span> Applies to<span class="req">*</span></h5>
+              <div class="seg act-seg" role="radiogroup" aria-labelledby="inc-activity-h">
+                @for (a of activities; track a.value) {
+                  <button type="button" role="radio" [attr.data-activity]="a.value" [class.active]="form().applicableActivity === a.value"
+                          [attr.aria-checked]="form().applicableActivity === a.value" (click)="patchActivity(a.value)">{{ a.label }}</button>
+                }
+              </div>
+              <small class="muted d-block mt-2">The MSMEs whose Udyam activity is this see the incentive. Both: every MSME.</small>
+            </section>
+
             <section class="zed-card" aria-labelledby="inc-levels-h">
-              <h5 class="inc-h" id="inc-levels-h"><span class="inc-step">2</span> Activation level<span class="req">*</span></h5>
+              <h5 class="inc-h" id="inc-levels-h"><span class="inc-step">3</span> Activation level<span class="req">*</span></h5>
               <div class="level-options" role="group" aria-label="Activation level">
                 @for (l of levels; track l.key) {
-                  <label class="level-option" [class]="'lv-' + l.label.toLowerCase()" [class.is-on]="form()[l.key]" [class.is-locked]="!!editId()">
-                    <input type="checkbox" class="form-check-input" [id]="'inc-' + l.key" [name]="l.key" [disabled]="!!editId()" [ngModel]="form()[l.key]" (ngModelChange)="patchLevel(l.key, $event)" />
-                    <span class="level-body"><span class="level-name">{{ l.label }}</span><span class="level-help">Units with {{ l.label }} certification</span></span>
+                  <label class="level-option" [class]="'lv-' + l.css" [class.is-on]="form()[l.key]">
+                    <input type="checkbox" class="form-check-input" [id]="'inc-' + l.key" [name]="l.key" [ngModel]="form()[l.key]" (ngModelChange)="patchLevel(l.key, $event)" />
+                    <span class="level-body"><span class="level-name">{{ l.label }}</span><span class="level-help">Units with {{ l.short }} certification</span></span>
                   </label>
                 }
               </div>
-              <small class="muted d-block mt-2">{{ editId() ? 'The stakeholder, state and levels of a saved incentive stay as they are.' : 'Tick every level this incentive applies to.' }}</small>
+              <small class="muted d-block mt-2">Tick every level this incentive applies to.{{ editId() ? ' The stakeholder and state of a saved incentive stay as they are.' : '' }}</small>
             </section>
 
             <section class="zed-card" aria-labelledby="inc-contact-h">
-              <h5 class="inc-h" id="inc-contact-h"><span class="inc-step">3</span> Nodal contact</h5>
+              <h5 class="inc-h" id="inc-contact-h"><span class="inc-step">4</span> Nodal contact</h5>
               <label class="form-label" for="inc-contactPerson">Contact person with designation<span class="req">*</span></label>
               <input class="form-control" id="inc-contactPerson" name="contactPerson" maxlength="2000" placeholder="e.g. Shri A. Kumar, Deputy Director" [ngModel]="form().contactPerson" (ngModelChange)="patch('contactPerson', $event)" />
               <div class="inc-pair">
@@ -110,7 +123,7 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
             </section>
 
             <section class="zed-card" aria-labelledby="inc-res-h">
-              <h5 class="inc-h" id="inc-res-h"><span class="inc-step">4</span> Attach resources</h5>
+              <h5 class="inc-h" id="inc-res-h"><span class="inc-step">5</span> Attach resources</h5>
               <div class="inc-pair">
                 <div>
                   <label class="form-label" for="inc-webLink">Portal / scheme link<span class="req">*</span></label>
@@ -138,7 +151,7 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
             </section>
 
             <section class="zed-card" aria-labelledby="inc-where-h">
-              <h5 class="inc-h" id="inc-where-h"><span class="inc-step">5</span> Where it appears</h5>
+              <h5 class="inc-h" id="inc-where-h"><span class="inc-step">6</span> Where it appears</h5>
               <div class="where-options" role="radiogroup" aria-labelledby="inc-where-h">
                 @for (o of places; track o.value) {
                   <label class="where-option" [class.is-on]="form().displayOn === o.value" [for]="'inc-where-' + o.value">
@@ -200,15 +213,16 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
             }
 
             <dl class="pv-facts">
-              <div><dt>Applies to</dt><dd>
-                @for (l of chosenLevels(); track l) { <span class="lv-chip" [class]="'lv-' + l.toLowerCase()">{{ l }}</span> }
+              <div><dt>Applies to</dt><dd data-pv-activity>{{ form().applicableActivity === 'Both' ? 'Manufacturing and Services' : form().applicableActivity + ' only' }}</dd></div>
+              <div><dt>Levels</dt><dd>
+                @for (l of chosenLevels(); track l.key) { <span class="lv-chip" [class]="'lv-' + l.css">{{ l.label }}</span> }
                 @if (!chosenLevels().length) { <span class="pv-missing">No level ticked yet</span> }
               </dd></div>
               <div><dt>Status</dt><dd>
                 <span class="status-badge" [class.is-active]="form().activeStatus" [class.is-inactive]="!form().activeStatus">{{ form().activeStatus ? 'Active' : 'Inactive' }}</span>
               </dd></div>
             </dl>
-            <small class="muted d-block">MSMEs not certified at these levels see the card faded.</small>
+            <small class="muted d-block">MSMEs not certified at these levels see the card faded{{ form().applicableActivity === 'Both' ? '' : '; MSMEs of the other activity do not see it' }}.</small>
           </aside>
         </div>
         <div class="form-actions save-bar" [class.is-dirty]="dirty()">
@@ -236,15 +250,19 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .doc-row { display: flex; align-items: center; gap: 8px; }
     .doc-row .form-control { min-width: 0; }
 
-    .level-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .level-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .act-seg { margin-top: 10px; display: inline-flex; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
+    .act-seg button { min-width: 130px; border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13.5px; font-weight: 600; padding: 8px 16px; }
+    .act-seg button + button { border-left: 1px solid #cbd9da; }
+    .act-seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .level-option { --accent: #45a5ad; display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea;
       border-left: 4px solid var(--accent); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 400; }
     .level-option.lv-bronze { --accent: #d07b5c; }
     .level-option.lv-silver { --accent: #9aa5ab; }
     .level-option.lv-gold { --accent: #c9a227; }
+    .level-option.lv-zedx { --accent: #2f7c83; }
     .level-option:hover { border-color: var(--accent); }
     .level-option.is-on { background: #f4fafa; box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
-    .level-option.is-locked { cursor: default; opacity: .85; }
     .level-option .form-check-input { flex: none; margin: 3px 0 0; float: none; }
     .level-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .level-name { font-weight: 700; color: #23474a; }
@@ -287,12 +305,14 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .lv-chip.lv-bronze { background: #fbeee8; color: #8a4a33; }
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
     .lv-chip.lv-gold { background: #fbf3d9; color: #7a6110; }
+    .lv-chip.lv-zedx { background: #e3f1f2; color: #1f5f64; }
 
     /* Save bar: stays at the bottom of the window. */
     .save-bar { position: sticky; bottom: 0; z-index: 5; align-items: center; margin-top: 16px; padding: 12px 16px; background: #fff;
       border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
     .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
     .unsaved { font-weight: 600; color: #8a6100; }
+    @media (max-width: 1300px) { .level-options { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 1100px) {
       .inc-form { grid-template-columns: minmax(0, 1fr); }
       .inc-preview { position: static; }
@@ -309,9 +329,13 @@ export class IncentiveFormPage {
 
   protected readonly groups = INCENTIVE_GROUPS;
   protected readonly states = STATES;
-  protected readonly levels: { key: LevelKey; label: string }[] = [
-    { key: 'applicableForBronze', label: 'Bronze' }, { key: 'applicableForSilver', label: 'Silver' }, { key: 'applicableForGold', label: 'Gold' },
+  protected readonly levels: { key: LevelKey; label: string; short: string; css: string }[] = [
+    { key: 'applicableForBronze', label: 'Bronze', short: 'Bronze', css: 'bronze' },
+    { key: 'applicableForSilver', label: 'Silver', short: 'Silver', css: 'silver' },
+    { key: 'applicableForGold', label: 'Gold', short: 'Gold', css: 'gold' },
+    { key: 'applicableForZEDX', label: 'ZED-X (Export)', short: 'ZED-X', css: 'zedx' },
   ];
+  protected readonly activities = INCENTIVE_ACTIVITIES;
 
   protected readonly places: { value: IncentiveDisplay; title: string; help: string }[] = [
     { value: 'Dashboard', title: 'Main dashboard', help: 'Its own card in "My Incentives" on every MSME\'s dashboard.' },
@@ -328,7 +352,7 @@ export class IncentiveFormPage {
   private readonly files: [File | null, File | null] = [null, null];
   private readonly filesChosen = signal(0);
   protected readonly dirty = computed(() => this.filesChosen() > 0 || JSON.stringify(this.form()) !== this.initial());
-  protected readonly chosenLevels = computed(() => this.levels.filter((l) => this.form()[l.key]).map((l) => l.label));
+  protected readonly chosenLevels = computed(() => this.levels.filter((l) => this.form()[l.key]).map((l) => ({ key: l.key, label: l.short, css: l.css })));
   protected readonly stakeholderCard = computed(() => STAKEHOLDER_CARD[this.group().key]);
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
@@ -353,6 +377,10 @@ export class IncentiveFormPage {
 
   protected patchLevel(key: LevelKey, value: boolean): void {
     this.form.update((f) => ({ ...f, [key]: !!value }));
+  }
+
+  protected patchActivity(value: IncentiveActivity): void {
+    this.form.update((f) => ({ ...f, applicableActivity: value }));
   }
 
   protected patchDisplay(value: IncentiveDisplay): void {
@@ -445,7 +473,7 @@ export class IncentiveFormPage {
     ];
     const empty = required.find(([k]) => !String(f[k] ?? '').trim());
     if (empty) return `${empty[1]} required.`;
-    if (!f.applicableForBronze && !f.applicableForSilver && !f.applicableForGold) return 'Please tick the levels the incentive applies to.';
+    if (!f.applicableForBronze && !f.applicableForSilver && !f.applicableForGold && !f.applicableForZEDX) return 'Please tick the levels the incentive applies to.';
     return null;
   }
 
@@ -464,6 +492,7 @@ export class IncentiveFormPage {
         incentiveType: type, incentive: s('Incentive'), details: s('Details'), ministryOrDepartment: s('MinistryOrDepartment'),
         contactPerson: s('ContactPerson'), webLink: s('WebLink'), email: s('Email'), mobileNo: s('MobileNo'), videoLink: s('VideoLink'),
         applicableForBronze: !!r['ApplicableForBronze'], applicableForSilver: !!r['ApplicableForSilver'], applicableForGold: !!r['ApplicableForGold'],
+        applicableForZEDX: !!r['ApplicableForZEDX'], applicableActivity: incentiveActivity(r['ApplicableActivity']),
         activeStatus: !!r['ActiveStatus'],
         displayOn: s('DisplayOn') === 'Dashboard' ? 'Dashboard' : 'Card', cardHighlight: s('CardHighlight'),
       });

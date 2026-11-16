@@ -42,8 +42,39 @@ public sealed partial class IncentiveMasterController(
     [
         "Id", "IncentiveType", "Incentive", "Details", "MinistryOrDepartment", "ContactPerson", "WebLink", "Email", "MobileNo",
         "VideoLink", "ApplicableForBronze", "ApplicableForSilver", "ApplicableForGold", "ActiveStatus", "OrderNo",
-        "DisplayOn", "CardHighlight",
+        "DisplayOn", "CardHighlight", "ApplicableForZEDX", "ApplicableActivity",
     ];
+
+    /// <summary>
+    /// Who an incentive applies to by the MSME's Udyam major activity (Incentives.ApplicableActivity, migration 0091):
+    /// Manufacturing or Services; NULL (every incentive before 2026-11-16) = both.
+    /// </summary>
+    public const string Both = "Both";
+
+    public static string? CanonicalActivity(string? value) => value?.Trim() switch
+    {
+        null or "" => Both,
+        var v when v.Equals(Both, StringComparison.OrdinalIgnoreCase) => Both,
+        var v when v.Equals(Users.LoginScope.Manufacturing, StringComparison.OrdinalIgnoreCase) => Users.LoginScope.Manufacturing,
+        var v when v.Equals(Users.LoginScope.Services, StringComparison.OrdinalIgnoreCase) || v.Equals("Service", StringComparison.OrdinalIgnoreCase) => Users.LoginScope.Services,
+        _ => null,
+    };
+
+    /// <summary>
+    /// An incentive for <paramref name="applicable"/> (Manufacturing / Services / null = both) is shown to an MSME of
+    /// <paramref name="msmeActivity"/> (its MajorActivityName, e.g. "Manufacturing" or "Services"). An MSME whose activity
+    /// is not known sees every incentive, as the staff scopes treat an unknown category.
+    /// </summary>
+    public static bool AppliesToActivity(string? applicable, string? msmeActivity)
+    {
+        var a = CanonicalActivity(applicable);
+        if (a is null or Both || string.IsNullOrWhiteSpace(msmeActivity)) return true;
+        var m = msmeActivity.Trim();
+        var isService = m.StartsWith("Serv", StringComparison.OrdinalIgnoreCase);
+        var isManufacturing = m.StartsWith("Manu", StringComparison.OrdinalIgnoreCase);
+        if (!isService && !isManufacturing) return true;
+        return a == Users.LoginScope.Services ? isService : isManufacturing;
+    }
 
     /// <summary>Where an incentive appears (Incentives.DisplayOn, migration 0026): its own card on the MSME dashboard, or inside its stakeholder card.</summary>
     public const string OnDashboard = "Dashboard";
@@ -67,7 +98,7 @@ public sealed partial class IncentiveMasterController(
         string? IncentiveType, string? Incentive, string? Details, string? MinistryOrDepartment, string? ContactPerson,
         string? WebLink, string? Email, string? MobileNo, string? VideoLink,
         bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ActiveStatus,
-        string? DisplayOn = null, string? CardHighlight = null);
+        string? DisplayOn = null, string? CardHighlight = null, bool ApplicableForZEDX = false, string? ApplicableActivity = null);
 
     /// <summary>The new incentive's Id (V4: the page attaches its documents next), when it could be found again.</summary>
     public sealed record IncentiveSaved(string Message, long? Id);
@@ -80,8 +111,6 @@ public sealed partial class IncentiveMasterController(
     public async Task<ActionResult<IncentiveSaved>> Create(IncentiveRequest req, CancellationToken ct)
     {
         if (Check(req) is { } error) return this.Problem400(error);
-        if (!req.ApplicableForBronze && !req.ApplicableForSilver && !req.ApplicableForGold)
-            return this.Problem400("Please select the certification levels the incentive applies to.");
         var saved = await Save("SP_MASTER_INSERT_INCENTIVE", Args(req, id: null), "Incentive saved.", ct);
         if (saved.Result is { } refused) return refused;
         var title = req.Incentive!.Trim();
@@ -90,10 +119,14 @@ public sealed partial class IncentiveMasterController(
             .Select(r => long.TryParse(r.Text("Id"), NumberStyles.None, CultureInfo.InvariantCulture, out var i) ? i : 0)
             .DefaultIfEmpty(0).Max();
         if (id > 0 && await SavePlacement(id, req, ct) is { } placementError) return placementError;
+        if (id > 0 && await SaveScope(id, req, ct) is { } scopeError) return scopeError;
         return new IncentiveSaved(saved.Value!.Message, id > 0 ? id : null);
     }
 
-    /// <summary>POST api/staff/schemes/incentive-master/{id} — SP_MASTER_UPDATE_INCENTIVE (the procedure keeps type and levels).</summary>
+    /// <summary>
+    /// POST api/staff/schemes/incentive-master/{id} — SP_MASTER_UPDATE_INCENTIVE (the procedure keeps type and levels); since
+    /// 2026-11-16 the levels, ZED-X and the activity are saved by V4's own UPDATE (<see cref="ScopeSql"/>).
+    /// </summary>
     [HttpPost("{id:long}")]
     public async Task<ActionResult<MessageResponse>> Update(long id, IncentiveRequest req, CancellationToken ct)
     {
@@ -102,7 +135,32 @@ public sealed partial class IncentiveMasterController(
         if (!(await Load(type, ct)).Any(r => r.Text("Id") == id.ToString(CultureInfo.InvariantCulture))) return NotFound();
         var saved = await Save("SP_MASTER_UPDATE_INCENTIVE", Args(req, id), "Incentive updated.", ct);
         if (saved.Result is not null) return saved;
-        return await SavePlacement(id, req, ct) is { } placementError ? placementError : saved;
+        if (await SavePlacement(id, req, ct) is { } placementError) return placementError;
+        return await SaveScope(id, req, ct) is { } scopeError ? scopeError : saved;
+    }
+
+    internal const string ScopeSql =
+        "UPDATE dbo.Incentives SET ApplicableForBronze = @Bronze, ApplicableForSilver = @Silver, ApplicableForGold = @Gold, " +
+        "ApplicableForZEDX = @Zedx, ApplicableActivity = @Activity WHERE Id = @Id AND DashboardCard IS NULL;";
+
+    /// <summary>The levels (ZED-X too) and the activity it applies to (columns of migration 0091; the legacy procedures keep the levels of a saved incentive).</summary>
+    private async Task<ActionResult?> SaveScope(long id, IncentiveRequest req, CancellationToken ct)
+    {
+        var activity = CanonicalActivity(req.ApplicableActivity);
+        try
+        {
+            await db.ExecuteSqlAsync(ScopeSql, new
+            {
+                Id = id, Bronze = req.ApplicableForBronze, Silver = req.ApplicableForSilver, Gold = req.ApplicableForGold,
+                Zedx = req.ApplicableForZEDX, Activity = activity == Both ? null : activity,
+            }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogError(ex, "Could not save the levels and activity of incentive {Id} (is migration 0091 applied?)", id);
+            return this.Problem400("The incentive was saved, but not its ZED-X level and activity. Please ask the administrator to apply database migration 0091.");
+        }
+        return null;
     }
 
     internal const string PlacementSql =
@@ -139,7 +197,7 @@ public sealed partial class IncentiveMasterController(
 
     /// <summary>An incentive of a stakeholder group that has its own card on the dashboard.</summary>
     public sealed record DashboardIncentive(long Id, string IncentiveType, string? Title, string? Highlight, bool Active,
-        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold);
+        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ApplicableForZEDX = false, string? ApplicableActivity = null);
 
     public sealed record DashboardCards(IReadOnlyList<BuiltInCard> BuiltIn, IReadOnlyList<DashboardIncentive> Incentives);
 
@@ -150,7 +208,7 @@ public sealed partial class IncentiveMasterController(
     internal const string DashboardIncentivesSql =
         "SELECT Id, IncentiveType, Incentive AS Title, CardHighlight AS Highlight, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active, " +
         "CAST(ISNULL(ApplicableForBronze, 0) AS bit) AS ApplicableForBronze, CAST(ISNULL(ApplicableForSilver, 0) AS bit) AS ApplicableForSilver, " +
-        "CAST(ISNULL(ApplicableForGold, 0) AS bit) AS ApplicableForGold " +
+        "CAST(ISNULL(ApplicableForGold, 0) AS bit) AS ApplicableForGold, CAST(ISNULL(ApplicableForZEDX, 0) AS bit) AS ApplicableForZEDX, ApplicableActivity " +
         "FROM dbo.Incentives WHERE DisplayOn = 'Dashboard' AND DashboardCard IS NULL ORDER BY IncentiveType, OrderNo, Id;";
 
     /// <summary>GET api/staff/schemes/incentive-master/dashboard — what "My Incentives" of the MSME dashboard shows.</summary>
@@ -247,6 +305,9 @@ public sealed partial class IncentiveMasterController(
     public static string? Check(IncentiveRequest r)
     {
         if (CanonicalType(r.IncentiveType) is null) return "Invalid incentive type.";
+        if (CanonicalActivity(r.ApplicableActivity) is null) return "Applies to must be Manufacturing, Services or Both.";
+        if (!r.ApplicableForBronze && !r.ApplicableForSilver && !r.ApplicableForGold && !r.ApplicableForZEDX)
+            return "Please select the certification levels the incentive applies to.";
         (string? Value, string Label, int Max, bool Required)[] fields =
         [
             (r.Incentive, "Incentive", 4000, true), (r.Details, "Details", 4000, true),

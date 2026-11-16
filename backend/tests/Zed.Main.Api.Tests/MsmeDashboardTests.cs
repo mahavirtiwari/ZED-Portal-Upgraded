@@ -77,6 +77,30 @@ public sealed class MsmeDashboardTests : IDisposable
     }
 
     [Fact]
+    public async Task Incentive_cards_of_the_other_activity_are_left_out_and_zedx_is_given()
+    {
+        // 2026-11-16 (migration 0091): a Manufacturing unit does not see a Services-only incentive.
+        object Card(long id, string? activity, bool zedx = false) => new
+        {
+            Id = id, Title = $"Scheme {id}", Highlight = (string?)null, Details = "D", Department = "MoMSME", ContactPerson = "Officer", Email = "o@msme.gov.in",
+            MobileNo = "011", WebLink = "https://msme.gov.in", VideoLink = (string?)null, ApplicableForBronze = !zedx, ApplicableForSilver = false,
+            ApplicableForGold = false, ApplicableForZEDX = zedx, ApplicableActivity = activity,
+        };
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql] = _ => [];
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.IncentiveCardsSql] = _ =>
+            [Card(1, null), Card(2, "Services"), Card(3, "Manufacturing", zedx: true)];
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ActivitySql] = _ => [new { MajorActivityName = "Manufacturing" }];
+        var json = await (await SignedInAsync()).GetFromJsonAsync<JsonElement>("/api/msme/dashboard/incentives");
+        var cards = json.GetProperty("incentives").EnumerateArray().ToList();
+        Assert.Equal([1L, 3L], cards.Select(c => c.GetProperty("id").GetInt64()));
+        Assert.True(cards[1].GetProperty("applicableForZEDX").GetBoolean());
+
+        // The ZED MSME app's public list keeps every card (it has no unit to filter by).
+        var app = await (await _host.CreateBrowserAsync()).GetFromJsonAsync<JsonElement>("/api/public/incentive-cards");
+        Assert.Equal(3, app.GetProperty("incentives").GetArrayLength());
+    }
+
+    [Fact]
     public async Task Dashboard_gives_the_zedx_flag_and_status()
     {
         var client = await SignedInAsync();
