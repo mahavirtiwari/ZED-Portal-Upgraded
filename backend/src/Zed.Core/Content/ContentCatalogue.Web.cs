@@ -194,19 +194,19 @@ public static partial class ContentCatalogue
         // 2026-11-16 (approved option A): "Apnaenge ZED!" and four benefits of ZED in place of the four steps.
         Web("msme.login.hero.tagline", "Login: left side, banner tagline", Registration, Main, "Apnaenge ZED!"),
         Web("msme.login.hero.taglineText", "Login: left side, banner line under the tagline", Registration, Main,
-            "Zero Defect, Zero Effect: better quality, less waste, more business"),
+            "Zero Defect, Zero Effect — better quality, less waste, more business."),
         Web("msme.login.hero.benefitsHeading", "Login: left side, heading of the benefits", Registration, Main, "Benefits of ZED"),
         Web("msme.login.hero.benefit1.title", "Login: left side, benefit 1 title", Registration, Main, "Up to 80% subsidy"),
         Web("msme.login.hero.benefit1.text", "Login: left side, benefit 1 text", Registration, Main, "On certification cost: micro 80%, small 60%, medium 50%"),
-        Web("msme.login.hero.benefit2.title", "Login: left side, benefit 2 title", Registration, Main, "Joining reward"),
-        Web("msme.login.hero.benefit2.text", "Login: left side, benefit 2 text", Registration, Main, "Rs 10,000 on Bronze certification"),
+        Web("msme.login.hero.benefit2.title", "Login: left side, benefit 2 title", Registration, Main, "₹10,000 joining reward"),
+        Web("msme.login.hero.benefit2.text", "Login: left side, benefit 2 text", Registration, Main, "On Bronze certification"),
         Web("msme.login.hero.benefit3.title", "Login: left side, benefit 3 title", Registration, Main, "Handholding"),
         Web("msme.login.hero.benefit3.text", "Login: left side, benefit 3 text", Registration, Main, "Expert support to reach the next level"),
         Web("msme.login.hero.benefit4.title", "Login: left side, benefit 4 title", Registration, Main, "Incentives"),
         Web("msme.login.hero.benefit4.text", "Login: left side, benefit 4 text", Registration, Main, "Technology upgradation, state and bank benefits"),
         Web("msme.login.hero.levelsHeading", "Login: left side, heading of the certification levels", Registration, Main, "Certification levels"),
         Web("msme.login.newUserEligibility", "Login: new user eligibility", Registration, Main, """
-            <p>If you are a first time user, click below on “Register Now”.<br>(Applicable only for manufacturing sector: Section C, NIC 2008)</p>
+            <p>Register your enterprise. Manufacturing sector only — Section C, NIC 2008.</p>
             """),
         Web("msme.registration.welcome", "Registration: welcome", Registration, Main, """
             <p class="info-heading">To proceed, please keep the following ready:</p>

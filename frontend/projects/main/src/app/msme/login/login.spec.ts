@@ -45,17 +45,26 @@ describe('LoginPage', () => {
     expect(el.querySelector('.ml-new [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
   });
 
+  it('2026-11-17 (the design): New to ZED? in the band at the foot of the right side, the levels as coloured bars, the footer band', () => {
+    expect(el.querySelector('.ml-side > .ml-new')).not.toBeNull();
+    expect(el.querySelector('.ml-card .ml-new')).toBeNull();
+    const steps = [...el.querySelectorAll('.ml-lv-box:not(.ml-lv-x) .ml-level')].map((l) => [l.querySelector('b')!.textContent, l.querySelector('small')!.textContent]);
+    expect(steps).toEqual([['Bronze', '01'], ['Silver', '02'], ['Gold', '03']]);
+    expect(el.querySelector('.ml-lv-x .ml-level')!.textContent).toContain('Export');
+    expect(el.querySelector('.ml-footer')!.textContent).toContain('Ministry of MSME, Government of India');
+  });
+
   it('shows Apnaenge ZED! and the four benefits of ZED (2026-11-16, option A), each an Admin text', () => {
     expect(el.querySelector('[data-apnaenge]')!.textContent).toContain('Apnaenge ZED!');
-    expect([...el.querySelectorAll('.ml-benefits strong')].map((s) => s.textContent!.trim())).toEqual(['Up to 80% subsidy', 'Joining reward', 'Handholding', 'Incentives']);
+    expect([...el.querySelectorAll('.ml-benefits strong')].map((s) => s.textContent!.trim())).toEqual(['Up to 80% subsidy', '₹10,000 joining reward', 'Handholding', 'Incentives']);
     expect(el.querySelector('[data-key="msme.login.hero.benefit4.text"]')).not.toBeNull();
   });
 
   it('forgot password: finds the units of a PAN, sends the link for the chosen one and shows the hidden e-mail', async () => {
     const buttons = () => Array.from(el.querySelectorAll('button')) as HTMLButtonElement[];
-    // 2026-11-16: LOGIN and FORGOT PASSWORD? side by side.
-    expect([...el.querySelectorAll('.ml-two .btn')].map((b) => b.textContent!.trim())).toEqual(['LOGIN', 'FORGOT PASSWORD?']);
-    buttons().find((b) => b.textContent?.trim() === 'FORGOT PASSWORD?')!.click();
+    // 2026-11-17 (the design): Login and Forgot password? side by side.
+    expect([...el.querySelectorAll('.ml-two .btn')].map((b) => b.textContent!.trim())).toEqual(['Login', 'Forgot password?']);
+    buttons().find((b) => b.textContent?.trim() === 'Forgot password?')!.click();
     await settle();
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '' });
     await settle();

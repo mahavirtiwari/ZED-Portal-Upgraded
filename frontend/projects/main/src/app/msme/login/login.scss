@@ -1,10 +1,10 @@
 .find-by { display: flex; gap: 8px; }
 .find-by-option {
-  flex: 1; padding: 8px 0; border: 1px solid #d6d6d6; border-radius: 6px; background: #fff; color: #3a3c3e; font-weight: 500;
+  flex: 1; padding: 8px 0; border: 1px solid #d6d6d6; border-radius: 0; background: #fff; color: #3a3c3e; font-weight: 500;
 }
 .find-by-option.active { border: 2px solid #2f8a92; background: rgba(47, 138, 146, 0.1); color: var(--zt-dark, #23656b); font-weight: 700; }
 .found-unit {
-  display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px;
+  display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 0; padding: 10px 12px;
   margin-bottom: 8px; cursor: pointer;
 }
 .found-unit input { margin-top: 4px; }
@@ -13,87 +13,55 @@
 .forgot-sent { text-align: center; }
 .masked-email { font-size: 1.15rem; font-weight: 700; color: var(--zt-dark, #23656b); }
 
-/* 2026-11-07 redesign (option A). */
-.login-login .login-form h2, .login-login h2 { font-size: 24px; font-weight: 700; color: #1d2b2c; margin: 0; }
-.ml-heading { font-size: 26px !important; }
-.ml-lead { color: #5f6b6c; font-size: 14px; margin: 2px 0 14px; }
-.login-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-.login-form .form-control { height: 46px; border-radius: 10px; border-color: #cfd9da; }
-.login-form .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
+/* 2026-11-17 (the user's design "ZED Login 3a"): flat, square, no card; 2 px light borders. */
+.login-login { --ml-line: #cfe0dc; }
+.login-login .login-form h2, .login-login h2 { font-size: 26px; font-weight: 800; color: #1c2b2d; margin: 0; }
+.ml-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
+.login-login .login-form .ml-heading { font-size: 40px; letter-spacing: -0.4px; line-height: 1.1; }
+.ml-lead { color: #4d5f61; font-size: 15px; margin: 8px 0 26px; }
+.login-form label { color: #1c2b2d; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.login-form .form-control { height: 50px; border-radius: 0; border: 2px solid var(--ml-line, #cfe0dc); background: #fff; font-size: 16px; color: #1c2b2d; }
+.login-form .form-control::placeholder { color: #8a9a9c; }
+.login-form .form-control:focus { border-color: var(--zt-mid2, #2a8a8c); box-shadow: 0 0 0 3px rgb(42 138 140 / 20%); }
 .in-field { position: relative; }
-.in-field .form-control { padding-left: 40px; }
-.in-field .form-control.has-toggle { padding-right: 64px; }
-.in-icon { position: absolute; left: 12px; top: 23px; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; z-index: 1; }
-.in-icon svg { width: 18px; height: 18px; fill: var(--zt-dark, #23656b); display: block; }
+.in-field .form-control { padding-left: 44px; }
+.in-field .form-control.has-toggle { padding-right: 76px; }
+.in-icon, .in-toggle { position: absolute; top: 25px; transform: translateY(-50%); z-index: 1; }
+.in-icon { left: 14px; width: 18px; height: 18px; pointer-events: none; }
+svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.in-icon svg { width: 18px; height: 18px; color: #4d5f61; }
 .in-toggle {
-  position: absolute; right: 6px; top: 23px; transform: translateY(-50%); border: 0; background: none; color: var(--zt-dark, #23656b);
-  font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px; z-index: 1;
+  right: 2px; height: 46px; border: 0; border-left: 2px solid var(--ml-line, #cfe0dc); background: none; color: var(--zt-dark, #1f5c61);
+  font-size: 13px; font-weight: 600; padding: 0 16px;
 }
-.in-toggle:hover { background: #e6f2f3; }
-.ml-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.ml-login {
-  flex: 0 0 auto; min-width: 160px; padding: 0 28px; height: 48px; border-radius: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
-  display: flex; align-items: center; justify-content: center; background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff;
-}
-.ml-login:hover, .ml-login:focus-visible { background: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); color: #fff; }
-.ml-forgot { margin: 0; padding: 0; white-space: nowrap; border: 0; background: none; color: var(--zt-dark, #23656b); font-weight: 600; font-size: 14px; }
-.ml-forgot:hover { text-decoration: underline; }
-.register-btn { display: flex; gap: 10px; flex-wrap: wrap; }
-.login-login .register-btn .btn { flex: 1 1 140px; height: 44px; border-radius: 10px; font-weight: 600; }
-.login-login .register-btn .btn { display: inline-flex; align-items: center; justify-content: center; }
-.login-login .register-btn .btn.btn-primary { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); }
-.login-login .register-btn .btn.ml-secondary { background: var(--zt-soft, #d9eef0); border: 1.5px solid var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); }
-.ml-or { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; color: #8a9596; font-size: 13px; }
-.ml-or::before, .ml-or::after { content: ''; flex: 1; height: 1px; background: #e5e9e9; }
-.ml-new { background: #f1f8f8; border: 1px solid #d3e7e9; border-radius: 14px; padding: 12px 16px; color: #41575a; font-size: 13px; line-height: 1.45; }
-.ml-new h2 { font-size: 16px !important; font-weight: 700 !important; color: #1b2a2c !important; margin: 0 0 4px !important; }
-/* 2026-11-08: the text centred both ways (it sat high: 42 px with a 28 px line height). */
-.ml-register {
-  display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 44px; padding: 0 16px;
-  border-radius: 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.6px; line-height: 1;
-  /* 2026-11-12: filled with the teal gradient of the page's left panel (the solid teal is LOGIN's). */
-  background: linear-gradient(135deg, #1d5a5f 0%, var(--zt-dark, #23656b) 45%, #2f8a92 100%); border: 0; color: #fff;
-  box-shadow: 0 4px 12px rgba(35, 101, 107, 0.25);
-}
-.ml-register:hover, .ml-register:focus-visible { background: linear-gradient(135deg, var(--zt-ink, #174a4e) 0%, #1d5a5f 50%, var(--zt-dark, #23656b) 100%); color: #fff; }
-
-/* 2026-11-13 (design 1, approved): the sign-in box in a card with a teal top edge; New user stays under it. */
-.login-login {
-  /* 2026-11-15: smaller corners, so that the teal top line bends less at its ends. */
-  background: #fff; border: 1px solid #e3ecee; border-top: 4px solid var(--zt-dark, #23656b); border-radius: 8px; padding: 20px 26px 18px;
-  box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08);
-}
-.login-form .form-control { background-color: #f7fafa; }
-.login-form .form-control:focus { background-color: #fff; }
-@media (max-width: 900px) {
-  .login-login { padding: 16px 16px 14px; box-shadow: none; }
-}
-
-/* 2026-11-14 (approved): as the staff sign-in — a tag, "Sign in", Forgot beside the password label, a full-width button,
-   and "New to ZED?" in a dashed box with Register now beside the text. */
-.ml-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); margin-bottom: 10px; }
-.ml-pw-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.ml-pw-label .ml-forgot { font-size: 13px; }
-/* 2026-11-16: LOGIN and FORGOT PASSWORD? side by side (the staff login's buttons). */
-.ml-two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.ml-two .btn {
-  height: 46px; border-radius: 5px; border: 0; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
-  text-transform: uppercase; display: flex; align-items: center; justify-content: center; white-space: nowrap; padding: 0 10px;
-}
-.ml-btn-login { background-color: var(--zt-mid2, #2b8a8e); }
-.ml-btn-login:hover, .ml-btn-login:focus-visible { background-color: var(--zt-dark, #23656b); color: #fff; }
-.ml-btn-forgot { background-color: #7a7a7a; }
-.ml-btn-forgot:hover, .ml-btn-forgot:focus-visible { background-color: #5f5f5f; color: #fff; }
+.in-toggle:hover { background: #eef6f4; }
+.ml-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 6px; }
+.ml-two .btn { height: 54px; border-radius: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; white-space: nowrap; padding: 0 18px; }
+.ml-btn-login { justify-content: space-between; background: var(--zt-mid2, #2a8a8c); border: 2px solid var(--zt-mid2, #2a8a8c); color: #fff; }
+.ml-btn-login svg { width: 20px; height: 20px; }
+.ml-btn-login:hover, .ml-btn-login:focus-visible { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; }
+.ml-btn-forgot { justify-content: center; background: #fff; border: 2px solid var(--zt-dark, #1f5c61); color: var(--zt-dark, #1f5c61); font-size: 15px !important; }
+.ml-btn-forgot:hover, .ml-btn-forgot:focus-visible { background: #eef6f4; color: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); }
 @media (max-width: 359.98px) { .ml-two { grid-template-columns: 1fr; } }
+.register-btn { display: flex; gap: 12px; flex-wrap: wrap; }
+.login-login .register-btn .btn { flex: 1 1 140px; height: 50px; border-radius: 0; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+.login-login .register-btn .btn.btn-primary { background: var(--zt-mid2, #2a8a8c); border-color: var(--zt-mid2, #2a8a8c); }
+.login-login .register-btn .btn.ml-secondary { background: #fff; border: 2px solid var(--zt-dark, #1f5c61); color: var(--zt-dark, #1f5c61); }
+.login-login .alert { border-radius: 0; }
+
+/* New to ZED? — the light band at the foot of the right side. */
 .ml-new {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px;
-  background: #f8fcfc; border: 1px dashed #9cc8cc; border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 45%, #fff); border-top: 2px solid #cfe0dc; padding: 26px 56px 28px;
+  color: #4d5f61; font-size: 13px; line-height: 1.4;
 }
 .ml-new-text { min-width: 0; }
-.ml-new .ml-register {
-  width: auto; flex: none; margin: 0; height: 40px; padding: 0 16px; border-radius: 8px; font-size: 14px; letter-spacing: 0;
-  /* 2026-11-15 (the user): dark, as Sign in. */
-  background: var(--zt-ink, #174a4e); color: #fff; box-shadow: none; border: 0;
+.ml-new h2 { font-size: 17px; font-weight: 800; color: #1c2b2d; margin: 0 0 4px; }
+.ml-new-text ::ng-deep p { margin: 0; }
+.ml-register {
+  flex: none; display: flex; align-items: center; height: 46px; padding: 0 18px; border-radius: 0; border: 0;
+  background: var(--zt-ink, #173f44); color: #fff; font-size: 15px; font-weight: 600;
 }
-.ml-new .ml-register:hover, .ml-new .ml-register:focus-visible { background: var(--zt-dark, #23656b); color: #fff; }
-@media (max-width: 480px) { .ml-new { flex-direction: column; align-items: stretch; } .ml-new .ml-register { width: 100%; } }
+.ml-register:hover, .ml-register:focus-visible { background: var(--zt-dark, #1f5c61); color: #fff; }
+@media (max-width: 900px) { .ml-new { padding: 18px 20px; } .login-login .login-form .ml-heading { font-size: 30px; } .ml-lead { margin-bottom: 18px; } }
+@media (max-width: 480px) { .ml-new { flex-direction: column; align-items: stretch; } .ml-register { justify-content: center; } }

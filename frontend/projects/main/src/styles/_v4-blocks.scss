@@ -222,3 +222,7 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .req-chip { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 1px 8px; background: #eef1f1; color: #7a8a8b; }
 .req-chip.is-yes { background: #e5eefb; color: #2b5aa8; }
 .type-name { display: inline-block; background: #eef6f6; border-radius: 10px; padding: 1px 9px; }
+/* App Forms (staff/settings/app-forms): the columns of a repeating-entries field and "all" in the scope (the component style budget). */
+.fields-table tr.column td { background: #f8fbfb; }
+.fields-table .column-cell { padding-left: 28px !important; border-left: 3px solid #cfe5e6; font-size: 14px; color: #232527; }
+.fields-table .scope-all { font-size: 11px; color: #5f6f70; border: 1px dashed #cbd9da; border-radius: 10px; padding: 0 8px; margin: 2px 4px 2px 0; }

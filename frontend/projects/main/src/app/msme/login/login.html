@@ -3,24 +3,24 @@
     @if (mode() === 'login') {
       <!-- 2026-11-07 redesign (option A): icons in the fields, Show / Hide, a full-width LOGIN and Forgot as a link. -->
       <form class="login-form" (ngSubmit)="login()" novalidate>
-        <!-- 2026-11-14 (approved): Sign in; Forgot beside the password; Register under the card. -->
+        <!-- 2026-11-17 (the user's design "ZED Login 3a"): flat and square; Login and Forgot password? side by side. -->
         <span class="ml-tag">Registered MSMEs</span>
         <h2 class="ml-heading">Sign in</h2>
-        <p class="ml-lead">Use your ZED ID and password</p>
+        <p class="ml-lead">Use your ZED ID and password.</p>
         @if (expired()) {
           <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
         }
 
         <label for="userId">ZED ID</label>
         <div class="mb-3 in-field">
-          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2.2c-3.3 0-9 1.7-9 5V21h18v-1.8c0-3.3-5.7-5-9-5Z" /></svg></span>
+          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></span>
           <input id="userId" name="userId" class="form-control" placeholder="ZED ID" autocomplete="username"
                  [(ngModel)]="userId" required maxlength="100" />
         </div>
 
         <label for="password">Password</label>
         <div class="mb-3 in-field">
-          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
+          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>
           <input id="password" name="password" class="form-control has-toggle" placeholder="Password" autocomplete="current-password"
                  [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" required maxlength="50" />
           <button type="button" class="in-toggle toggle-password"
@@ -32,10 +32,10 @@
           <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
         </div>
 
-        <!-- 2026-11-16 (the user's design, as the staff login): LOGIN and FORGOT PASSWORD? side by side. -->
         <div class="ml-actions ml-two">
-          <button type="submit" class="btn ml-btn-login" [disabled]="busy()">LOGIN</button>
-          <button type="button" class="btn ml-btn-forgot" title="Forgot password or ZED ID" (click)="switchMode('reset')">FORGOT PASSWORD?</button>
+          <button type="submit" class="btn ml-btn-login" [disabled]="busy()">Login
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg></button>
+          <button type="button" class="btn ml-btn-forgot" title="Forgot password or ZED ID" (click)="switchMode('reset')">Forgot password?</button>
         </div>
       </form>
     } @else {
@@ -111,7 +111,7 @@
     }
   </div>
 
-  <div class="ml-new">
+  <div class="ml-new" mlBottom>
     <div class="ml-new-text">
       <h2>New to ZED?</h2>
       <zed-text key="msme.login.newUserEligibility" />

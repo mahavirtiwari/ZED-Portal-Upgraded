@@ -532,11 +532,8 @@ const TYPE_GLYPHS: Record<string, string> = {
     .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-top: 6px; }
     .scope .zed-chip { font-size: 11px; padding: 1px 8px; }
     .scope .zed-chip.sector { background: #f1f0fb; color: #3f3a7a; }
-    .scope-all { font-size: 11px; color: #5f6f70; border: 1px dashed #cbd9da; border-radius: 10px; padding: 0 8px; margin: 2px 4px 2px 0; }
     .type-name { font-size: 13px; color: #3b4b4c; }
     .status-badge.wrap { white-space: normal; }
-    tr.column td { background: #f8fbfb; }
-    .column-cell { padding-left: 28px !important; border-left: 3px solid #cfe5e6; font-size: 14px; color: #232527; }
     /* The row controls (af-*, req-chip): styles/_v4-blocks.scss (the component style budget). */
 
     /* The pop-up: the field and who is asked on the left; the preview and the settings on the right. */
