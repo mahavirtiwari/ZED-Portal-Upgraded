@@ -373,8 +373,8 @@ export class SiteTourSectionsPage {
 
   constructor() {
     void this.load();
-    firstValueFrom(this.http.get<{ code: string; name: string }[]>('/api/staff/masters/sectors'))
-      .then((list) => this.sectorOptions.set(list.map((x) => ({ value: x.code, label: `${x.code} - ${x.name}` }))))
+    firstValueFrom(this.http.get<{ code: string; name: string; disabled?: boolean }[]>('/api/staff/masters/sectors'))
+      .then((list) => this.sectorOptions.set(list.filter((x) => !x.disabled).map((x) => ({ value: x.code, label: `${x.code} - ${x.name}` }))))
       .catch(() => undefined);
   }
 

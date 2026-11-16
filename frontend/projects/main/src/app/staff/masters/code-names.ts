@@ -69,6 +69,7 @@ interface OtherList {
         <div class="stat"><span class="stat-value">{{ stats().manufacturing }}</span><span class="stat-label">Manufacturing</span></div>
         <div class="stat"><span class="stat-value">{{ stats().services }}</span><span class="stat-label">Services</span></div>
         <div class="stat" [class.stat-warn]="stats().unset > 0"><span class="stat-value">{{ stats().unset }}</span><span class="stat-label">Type not set</span></div>
+        <div class="stat stat-off"><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">Disabled</span></div>
       </div>
     }
 
@@ -117,14 +118,14 @@ interface OtherList {
               <th>{{ labels.one }} Name</th>
               @if (isSectors) { <th style="width: 170px">Sector Type</th> }
               @if (syncing()) { <th style="width: 210px">Other portals</th> }
-              <th class="text-center" style="width: 140px">Actions</th>
+              <th class="text-center" [style.width.px]="isSectors ? 220 : 140">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (s of pager.page(); track s.id) {
-              <tr>
+              <tr [class.row-off]="s.disabled">
                 <td class="text-center code-cell"><span class="code-badge">{{ s.code }}</span></td>
-                <td class="name-cell"><strong>{{ s.name }}</strong></td>
+                <td class="name-cell"><strong>{{ s.name }}</strong>@if (s.disabled) { <span class="off-badge">Disabled</span> }</td>
                 @if (isSectors) {
                   <td class="type-cell">
                     @if (s.activity) { <span class="activity-badge" [class.services]="s.activity === 'Services'">{{ s.activity }}</span> }
@@ -146,6 +147,11 @@ interface OtherList {
                 <td class="actions-cell">
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Edit ' + s.code" (click)="edit(s)">Edit</button>
+                    @if (isSectors) {
+                      <!-- 2026-11-16 (approved): a disabled sector leaves the pick-lists; units and records keep it. -->
+                      <button type="button" class="btn" [class.btn-outline-danger]="!s.disabled" [class.btn-outline-success]="s.disabled" [disabled]="saving()"
+                              [attr.aria-label]="(s.disabled ? 'Enable ' : 'Disable ') + s.code" (click)="toggleDisabled(s)">{{ s.disabled ? 'Enable' : 'Disable' }}</button>
+                    }
                   </div>
                 </td>
               </tr>
@@ -255,7 +261,11 @@ interface OtherList {
     .label-like.top { align-self: start; padding-top: 10px; }
 
     /* The counts (sectors). */
-    .cn-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .cn-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat.stat-off .stat-value { color: #6b7280; }
+    .row-off td { background: #f6f7f7; }
+    .row-off .name-cell strong { color: #6b7280; }
+    .off-badge { display: inline-block; margin-left: 8px; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #e5e7eb; color: #4b5563; vertical-align: middle; }
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-label { font-size: 13px; color: #5f6f70; }
@@ -333,6 +343,7 @@ export class CodeNamesPage {
       manufacturing: rows.filter((r) => r.activity === 'Manufacturing').length,
       services: rows.filter((r) => r.activity === 'Services').length,
       unset: rows.filter((r) => !r.activity).length,
+      disabled: rows.filter((r) => r.disabled).length,
     };
   });
   /** "Not set" is offered only while some sector has no type. */
@@ -417,7 +428,8 @@ export class CodeNamesPage {
     if (!this.others()[portal].rows) return 'unknown';
     const there = this.find(portal, row.code);
     if (!there) return 'missing';
-    return there.name.trim() === row.name.trim() && (there.activity ?? null) === (row.activity ?? null) ? 'same' : 'differs';
+    return there.name.trim() === row.name.trim() && (there.activity ?? null) === (row.activity ?? null) && !!there.disabled === !!row.disabled
+      ? 'same' : 'differs';
   }
 
   /** Codes another portal has that main does not. */
@@ -427,7 +439,7 @@ export class CodeNamesPage {
   }
 
   /** Saves main's sector on the other portals that lack it or differ; returns what failed ("Consultancy: ..."). */
-  private async pushToOthers(code: string, name: string, activity: SectorActivity | null): Promise<string[]> {
+  private async pushToOthers(code: string, name: string, activity: SectorActivity | null, disabled = false): Promise<string[]> {
     if (!this.syncing() || !activity) return [];
     const failed: string[] = [];
     for (const o of OTHER_PORTALS) {
@@ -435,15 +447,38 @@ export class CodeNamesPage {
         failed.push(`${o.name}: not reached`);
         continue;
       }
-      const there = this.find(o.key, code);
-      if (there && there.name.trim() === name && there.activity === activity) continue;
+      let there = this.find(o.key, code);
       try {
-        await firstValueFrom(there ? this.api.rename('sectors', there.id, name, activity, o.key) : this.api.add('sectors', code, name, activity, o.key));
+        if (!there || there.name.trim() !== name || there.activity !== activity) {
+          await firstValueFrom(there ? this.api.rename('sectors', there.id, name, activity, o.key) : this.api.add('sectors', code, name, activity, o.key));
+        }
+        // 2026-11-16: the same disabled state there (a sector just added there: read its id first).
+        if (!!there?.disabled !== disabled && (there || disabled)) {
+          there ??= (await firstValueFrom(this.api.list('sectors', o.key))).find((r) => r.code.trim().toLowerCase() === code.trim().toLowerCase());
+          if (there && !!there.disabled !== disabled) await firstValueFrom(this.api.setSectorDisabled(there.id, disabled, o.key));
+        }
       } catch (err) {
         failed.push(`${o.name}: ${apiErrorMessage(err)}`);
       }
     }
     return failed;
+  }
+
+  /** 2026-11-16 (approved): Disable / Enable a sector here and, on the main portal, on the other portals too. */
+  protected async toggleDisabled(row: CodeName): Promise<void> {
+    const disabled = !row.disabled;
+    this.error.set('');
+    this.success.set('');
+    this.saving.set(true);
+    try {
+      const message = (await firstValueFrom(this.api.setSectorDisabled(row.id, disabled))).message;
+      this.success.set(this.withOthers(message, await this.pushToOthers(row.code, row.name.trim(), row.activity ?? null, disabled)));
+      await this.load();
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   private withOthers(message: string, failed: string[]): string {
@@ -465,7 +500,7 @@ export class CodeNamesPage {
           failed.push(`${row.code}: set its type here first`);
           continue;
         }
-        const f = await this.pushToOthers(row.code, row.name.trim(), row.activity);
+        const f = await this.pushToOthers(row.code, row.name.trim(), row.activity, !!row.disabled);
         if (f.length) failed.push(...f.map((x) => `${row.code} ${x}`));
         else done++;
       }
@@ -530,7 +565,7 @@ export class CodeNamesPage {
     this.saving.set(true);
     try {
       const message = (await firstValueFrom(this.api.rename(this.kind, e.id, e.name.trim(), e.activity))).message;
-      this.success.set(this.withOthers(message, await this.pushToOthers(e.code, e.name.trim(), e.activity ?? null)));
+      this.success.set(this.withOthers(message, await this.pushToOthers(e.code, e.name.trim(), e.activity ?? null, !!e.disabled)));
       this.editing.set(null);
       await this.load();
     } catch (err) {

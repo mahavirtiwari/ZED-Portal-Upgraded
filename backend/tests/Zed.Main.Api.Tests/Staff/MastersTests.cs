@@ -117,6 +117,35 @@ public sealed class MastersTests : IDisposable
     }
 
     [Fact]
+    public async Task A_disabled_sector_is_listed_with_its_flag_and_left_out_of_the_pick_lists()
+    {
+        // 2026-11-16 (migration 0090): Disable / Enable; the pick-lists leave a disabled sector out, saved codes stay valid.
+        _host.Sql.Procs["SP_MASTER_GET_SECTORS"] = _ => FakeSql.Sets(
+            [new { Id = 1, SectorCode = "24", SectorName = "Basic metals", OrderNo = 1, SectorType = "Manufacturing", IsDisabled = (bool?)null },
+             new { Id = 2, SectorCode = "12", SectorName = "Tobacco products", OrderNo = 2, SectorType = "Manufacturing", IsDisabled = (bool?)true }]);
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/sectors");
+        Assert.False(list[0].GetProperty("disabled").GetBoolean());
+        Assert.True(list[1].GetProperty("disabled").GetBoolean());
+
+        var options = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/technologies/options");
+        Assert.Equal(["24-Basic metals"], options.GetProperty("sectors").EnumerateArray().Select(e => e.GetString()));
+        var bad = await client.PostAsJsonAsync("/api/staff/masters/technologies",
+            new { technologyCode = "T2", technologyName = "Wind", sectors = new[] { "12-Tobacco products" }, categories = Array.Empty<string>() });
+        Assert.Equal("Please select valid NIC sectors.", await bad.ProblemTitle());
+
+        Assert.Equal("Sector 12 enabled.", (await (await client.PostAsync("/api/staff/masters/sectors/2/enable", null)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        var saved = _host.Sql.Calls.Last(c => c.Name == Zed.Portal.Features.Staff.Masters.StaffMastersController.SectorDisableSql);
+        Assert.Null(FakeSql.Arg(saved.Args, "Disabled"));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/staff/masters/sectors/1/disable", null)).StatusCode);
+        saved = _host.Sql.Calls.Last(c => c.Name == Zed.Portal.Features.Staff.Masters.StaffMastersController.SectorDisableSql);
+        Assert.Equal(("True", "1"), (FakeSql.Arg(saved.Args, "Disabled"), FakeSql.Arg(saved.Args, "Id")));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/staff/masters/sectors/99/disable", null)).StatusCode);
+        var dfo = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.NotEqual(HttpStatusCode.OK, (await dfo.PostAsync("/api/staff/masters/sectors/1/disable", null)).StatusCode);
+    }
+
+    [Fact]
     public async Task Technologies_only_accept_listed_sectors_and_categories()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

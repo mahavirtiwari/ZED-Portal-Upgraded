@@ -369,7 +369,8 @@ export class ParametersPage {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
     firstValueFrom(this.api.parameterLevels()).then((l) => this.levels.set(l)).catch(() => undefined);
     firstValueFrom(this.api.list('sectors'))
-      .then((list) => this.sectorOptions.set(list.map((s) => ({ value: s.code, label: `${s.code} - ${s.name}` }))))
+      // 2026-11-16: a disabled sector is not offered (a parameter that has it keeps it).
+      .then((list) => this.sectorOptions.set(list.filter((s) => !s.disabled).map((s) => ({ value: s.code, label: `${s.code} - ${s.name}` }))))
       .catch(() => undefined);
     inject(ActivatedRoute).paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.sectionType.set(params.get('sectionType') ?? 'Bronze');

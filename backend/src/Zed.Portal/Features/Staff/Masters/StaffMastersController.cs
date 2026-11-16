@@ -32,7 +32,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     public sealed record NameRequest(string? Name);
 
     /// <summary>A sector with its type, Manufacturing or Services (dbo.Sectors.SectorType, migration 0025); null = not set.</summary>
-    public sealed record Sector(int Id, string Code, string Name, string? Activity);
+    /// <param name="Disabled">2026-11-16 (migration 0090): left out of the pick-lists; units and records keep it.</param>
+    public sealed record Sector(int Id, string Code, string Name, string? Activity, bool Disabled = false);
     public sealed record SectorRequest(string? Code, string? Name, string? Activity);
     public sealed record SectorUpdateRequest(string? Name, string? Activity);
 
@@ -44,8 +45,40 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     [HttpGet("sectors")]
     public async Task<IReadOnlyList<Sector>> Sectors(CancellationToken ct) =>
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct))[0]
-            .Select(r => new Sector(Id(r), r.Text("SectorCode"), r.Text("SectorName"), Activity(r.Text("SectorType"))))
+            .Select(r => new Sector(Id(r), r.Text("SectorCode"), r.Text("SectorName"), Activity(r.Text("SectorType")), SectorDisabled(r)))
             .Where(s => s.Id > 0).ToList();
+
+    /// <summary>
+    /// 2026-11-16 (approved): disable / enable a sector (dbo.Sectors.IsDisabled, migration 0090). A disabled sector is left
+    /// out of the pick-lists (technologies, user and agency sectors, the MSME profile's sector change); the units and records
+    /// that have it keep it and registration is not blocked. The main Admin's page does the same on the other portals.
+    /// </summary>
+    [HttpPost("sectors/{id:int}/disable")]
+    public Task<ActionResult<MessageResponse>> DisableSector(int id, CancellationToken ct) => SetSectorDisabledAsync(id, true, ct);
+
+    [HttpPost("sectors/{id:int}/enable")]
+    public Task<ActionResult<MessageResponse>> EnableSector(int id, CancellationToken ct) => SetSectorDisabledAsync(id, false, ct);
+
+    internal const string SectorDisableSql = "UPDATE dbo.Sectors SET IsDisabled = @Disabled WHERE Id = @Id;";
+
+    private async Task<ActionResult<MessageResponse>> SetSectorDisabledAsync(int id, bool disabled, CancellationToken ct)
+    {
+        var sector = (await LoadSectorsAsync(ct, includeDisabled: true)).FirstOrDefault(s => s.Id == id);
+        if (sector is null) return NotFound();
+        try
+        {
+            await db.ExecuteSqlAsync(SectorDisableSql, new { Disabled = disabled ? (bool?)true : null, Id = id }, ct);
+        }
+        catch (System.Data.Common.DbException ex) when (ex.Message.Contains("IsDisabled", StringComparison.OrdinalIgnoreCase))
+        {
+            return this.Problem400("Sectors cannot be disabled yet: please ask the administrator to apply database migration 0090.");
+        }
+        log.LogInformation("Sector {Code} {Action} by {Actor}", sector.Code, disabled ? "disabled" : "enabled", UserId);
+        return new MessageResponse(disabled ? $"Sector {sector.Code} disabled." : $"Sector {sector.Code} enabled.");
+    }
+
+    /// <summary>dbo.Sectors.IsDisabled = 1 (migration 0090; absent before it: in use).</summary>
+    internal static bool SectorDisabled(IDictionary<string, object?> r) => r.Text("IsDisabled") is "1" or "True" or "true";
 
     [HttpPost("sectors")]
     public async Task<ActionResult<MessageResponse>> AddSector(SectorRequest req, CancellationToken ct)
@@ -53,7 +86,7 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         var (code, name, error) = ValidateCodeName(new CodeNameRequest(req.Code, req.Name), "Sector");
         if (error is not null) return this.Problem400(error);
         if (Activity(req.Activity) is not { } activity) return this.Problem400("Please select whether the sector is Manufacturing or Services.");
-        if ((await LoadSectorsAsync(ct)).Any(s => string.Equals(s.Code, code, StringComparison.OrdinalIgnoreCase)))
+        if ((await LoadSectorsAsync(ct, includeDisabled: true)).Any(s => string.Equals(s.Code, code, StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A sector with this code already exists.");
         await db.ExecuteProcAsync("SP_MASTER_INSERT_SECTOR", new { SectorCode = code, SectorName = name }, ct);
         // The legacy procedure is left as it is; the type goes into the new column of the row it added.
@@ -66,7 +99,7 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     [HttpPut("sectors/{id:int}")]
     public async Task<ActionResult<MessageResponse>> UpdateSector(int id, SectorUpdateRequest req, CancellationToken ct)
     {
-        var sector = (await LoadSectorsAsync(ct)).FirstOrDefault(s => s.Id == id);
+        var sector = (await LoadSectorsAsync(ct, includeDisabled: true)).FirstOrDefault(s => s.Id == id);
         if (sector is null) return NotFound();
         if (!StaffUserRules.TryText(req.Name, 200, true, false, out var name)) return this.Problem400("Sector Name required (up to 200 characters).");
         if (Activity(req.Activity) is not { } activity) return this.Problem400("Please select whether the sector is Manufacturing or Services.");
@@ -327,7 +360,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     {
         var codes = (chosen ?? []).Select(c => c?.Trim() ?? "").Where(c => c.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (codes.Count == 0) return (null, null);
-        var known = (await LoadSectorsAsync(ct)).Select(s => s.Code.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Saved codes of a disabled sector stay valid (2026-11-16): only the pick-lists leave it out.
+        var known = (await LoadSectorsAsync(ct, includeDisabled: true)).Select(s => s.Code.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (codes.FirstOrDefault(c => !known.Contains(c)) is { } unknown) return (null, $"NIC sector {unknown} is not in the Sectors master.");
         var stored = string.Join(",", codes.OrderBy(c => c, StringComparer.Ordinal));
         return stored.Length > 2000 ? (null, "Too many NIC sectors chosen.") : (stored, null);
@@ -358,8 +392,10 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
 
     private static int Id(IDictionary<string, object?> r) => int.TryParse(r.Text("Id"), out var i) ? i : 0;
 
-    private async Task<List<CodeName>> LoadSectorsAsync(CancellationToken ct) =>
+    /// <summary>The sectors to pick from (not the disabled ones, 2026-11-16); <paramref name="includeDisabled"/> for checks of saved codes.</summary>
+    private async Task<List<CodeName>> LoadSectorsAsync(CancellationToken ct, bool includeDisabled = false) =>
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct))[0]
+            .Where(r => includeDisabled || !SectorDisabled(r))
             .Select(r => new CodeName(Id(r), r.Text("SectorCode"), r.Text("SectorName"))).Where(s => s.Id > 0).ToList();
 
     private async Task<List<CodeName>> LoadCategoriesAsync(CancellationToken ct) =>

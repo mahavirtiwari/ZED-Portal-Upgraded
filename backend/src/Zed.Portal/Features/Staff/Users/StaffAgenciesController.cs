@@ -396,7 +396,9 @@ public sealed class StaffAgenciesController(
     }
 
     private static List<Sector> Sectors(ResultSets sets) =>
-        sets[0].Select(r => new Sector(r.Text("SectorCode"), r.Text("SectorName"))).Where(s => s.SectorCode.Length > 0).ToList();
+        // 2026-11-16: a disabled sector (Masters → Sectors) is not offered.
+        sets[0].Where(r => !Masters.StaffMastersController.SectorDisabled(r))
+            .Select(r => new Sector(r.Text("SectorCode"), r.Text("SectorName"))).Where(s => s.SectorCode.Length > 0).ToList();
 
     private static List<OrgPartner> Partners(IReadOnlyList<IDictionary<string, object?>> set) =>
         set.Select(r => new OrgPartner(r.Text("UserId"), r.Text("FirstName"))).Where(p => p.UserId.Length > 0).ToList();

@@ -10,6 +10,8 @@ export interface CodeName {
   name: string;
   /** Sectors only (V4): Manufacturing or Services; null when not set yet. */
   activity?: SectorActivity | null;
+  /** Sectors only (2026-11-16, migration 0090): left out of the pick-lists; units and records keep it. */
+  disabled?: boolean;
 }
 
 export type SectorActivity = 'Manufacturing' | 'Services';
@@ -129,6 +131,11 @@ export class MastersApi {
 
   rename(kind: CodeNameKind, id: number, name: string, activity?: SectorActivity | null, portal?: AdminPortal): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`${this.base}/${kind}/${id}`, kind === 'sectors' ? { name, activity } : { name }, { context: on(portal) });
+  }
+
+  /** 2026-11-16: disable / enable a sector (on <paramref name="portal"/> for the main Admin keeping the portals the same). */
+  setSectorDisabled(id: number, disabled: boolean, portal?: AdminPortal): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/sectors/${id}/${disabled ? 'disable' : 'enable'}`, null, { context: on(portal) });
   }
 
   technologies(): Observable<Technology[]> {

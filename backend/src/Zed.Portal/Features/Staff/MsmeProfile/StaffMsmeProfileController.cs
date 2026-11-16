@@ -171,7 +171,9 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
     }
 
     private async Task<List<string>> LoadSectorsAsync(CancellationToken ct) =>
+        // 2026-11-16: a disabled sector (Masters → Sectors) is not offered; a unit that has it keeps it (only a change is checked).
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct))[0]
+            .Where(r => !Masters.StaffMastersController.SectorDisabled(r))
             .Select(r => r.Text("SectorCode") + "-" + r.Text("SectorName")).Where(s => s.Length > 1).ToList();
 
     private enum Access { None, Procedure, CoConsultant }

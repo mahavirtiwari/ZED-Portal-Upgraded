@@ -517,8 +517,8 @@ describe('CodeNamesPage (sectors)', () => {
       { id: 4, code: '22', name: 'Rubber products', activity: null },
     ]);
     await settle(fixture);
-    // All, Manufacturing, Services, type not set.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['4', '2', '1', '1']);
+    // All, Manufacturing, Services, type not set, disabled.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['4', '2', '1', '1', '0']);
     expect(el.querySelector('.stat-warn .stat-label')!.textContent).toBe('Type not set');
     const codes = () => [...el.querySelectorAll('tbody .code-badge')].map((c) => c.textContent);
     const seg = (label: string) => [...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
@@ -540,6 +540,37 @@ describe('CodeNamesPage (sectors)', () => {
     seg('All').click();
     await settle(fixture);
     expect(codes()).toEqual(['10']);
+    http.verify();
+  });
+
+  it('disables a sector here and on the other portals, and shows it greyed with Enable (2026-11-16)', async () => {
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    const on = (portal: string | null) => (r: { url: string; method: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) =>
+      r.method === 'GET' && r.url === '/api/staff/masters/sectors' && r.context.get(ADMIN_PORTAL) === portal;
+    const row = { id: 1, code: '12', name: 'Tobacco products', activity: 'Manufacturing' };
+    http.expectOne(on(null)).flush([row]);
+    http.expectOne(on('consultancy')).flush([{ ...row, id: 7 }]);
+    http.expectOne(on('surveillance')).flush([{ ...row, id: 9 }]);
+    await settle(fixture);
+    (el.querySelector('button[aria-label="Disable 12"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors/1/disable').flush({ message: 'Sector 12 disabled.' });
+    await settle(fixture);
+    const cons = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors/7/disable');
+    expect(cons.request.context.get(ADMIN_PORTAL)).toBe('consultancy');
+    cons.flush({ message: 'ok' });
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors/9/disable').flush({ message: 'ok' });
+    await settle(fixture);
+    http.expectOne(on(null)).flush([{ ...row, disabled: true }]);
+    http.expectOne(on('consultancy')).flush([{ ...row, id: 7, disabled: true }]);
+    http.expectOne(on('surveillance')).flush([{ ...row, id: 9, disabled: true }]);
+    await settle(fixture);
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Sector 12 disabled. Saved on all three portals.');
+    expect(el.querySelector('tbody tr')!.classList).toContain('row-off');
+    expect(el.querySelector('.off-badge')!.textContent).toBe('Disabled');
+    expect(el.querySelector('button[aria-label="Enable 12"]')).not.toBeNull();
+    expect(el.querySelector('.stat-off .stat-value')!.textContent!.trim()).toBe('1');
     http.verify();
   });
 
