@@ -79,6 +79,12 @@ export function allLevels(): readonly LevelInfo[] {
   return all();
 }
 
+/**
+ * The levels handholding (the consultancy portal) is towards: Silver, Gold and (2026-11-16, approved) ZED-X for
+ * Gold-certified units (Zed.Core LevelRegistry.Handholding).
+ */
+export const HANDHOLDING_LEVEL_CODES: readonly string[] = ['Silver', 'Gold', 'ZEDX'];
+
 /** The codes of every level (or of the enabled ones), in the Admin's order. */
 export function levelCodes(enabledOnly = false): string[] {
   return all().filter((l) => !enabledOnly || l.isEnabled).map((l) => l.code);

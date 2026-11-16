@@ -15,6 +15,7 @@ import { RequirementVideo } from '../../../msme/shared/requirement-video';
 import { ParameterNav } from '../../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../../msme/shared/page-head';
+import { levelName } from '../../../msme/shared/levels';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
 import { QoTarget } from '../../quality/quality.api';
@@ -280,6 +281,8 @@ export class MilestoneDetailsPage {
   private request = 0;
 
   protected readonly level = computed(() => milestoneLevel(this.certification()));
+  /** The level as shown (ZED-X for ZEDX). */
+  protected readonly levelName = levelName;
   protected readonly milestone = computed(() => this.data()?.milestone ?? 0);
   /** 2026-11-14 (frame A): "Pump Engineers · Silver handholding" (the ZED ID until loaded). */
   protected readonly headTitle = computed(() => {

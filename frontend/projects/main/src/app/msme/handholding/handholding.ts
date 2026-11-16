@@ -15,6 +15,7 @@ import {
   Row,
   completionColumn,
   handholdingLevel,
+  handholdingLevelName,
 } from './handholding.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
 import { Crumb, PageHead } from '../shared/page-head';
@@ -98,6 +99,12 @@ export class HandholdingPage {
   readonly levelParam = input('', { alias: 'level' });
 
   protected readonly levels = HANDHOLDING_LEVELS;
+  protected readonly levelName = handholdingLevelName;
+
+  /** The level's picture (ZED-X has an SVG). */
+  protected logo(level: HandholdingLevel): string {
+    return level === 'ZEDX' ? '/Images/Dashboard/zedx.svg' : `/Images/Dashboard/${level.toLowerCase()}.png`;
+  }
   protected readonly data = signal<HandholdingSummary | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -109,7 +116,7 @@ export class HandholdingPage {
   protected readonly crumbs = computed<Crumb[]>(() => {
     const level = this.selected();
     return level
-      ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }, { label: level }]
+      ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }, { label: handholdingLevelName(level) }]
       : [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }];
   });
   protected readonly info = signal<InfoTopic | null>(null);
@@ -189,7 +196,7 @@ export class HandholdingPage {
     return labels;
   }
 
-  /** The four stepper dots of a level card (old ng-class expressions; Gold milestones complete above 5). */
+  /** The four stepper dots of a level card (old ng-class expressions; Gold milestones complete above 5, ZED-X's as Silver's). */
   protected steps(level: HandholdingLevel): Step[] {
     const done = level === 'Gold' ? 5 : 3;
     const s1 = this.num(`${level}Status`);

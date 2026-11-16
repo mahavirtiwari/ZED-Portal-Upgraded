@@ -27,7 +27,7 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
         "ZedId", "EnterpriseName", "EnterpriseType", "EnterpriseTypee", "RegistrationType",
         "PUnitName", "PAddress", "PDistrictName", "PStateName", "PPin",
         "Activity", "TwoDigitActivity", "FourDigitActivity", "FiveDigitActivity", "PledgeOn",
-        "IsSilverPaymentDone", "IsGoldPaymentDone", "IsCouponUsed",
+        "IsSilverPaymentDone", "IsGoldPaymentDone", "IsZEDXPaymentDone", "IsCouponUsed",
     ];
 
     private static readonly string[] BasicInfoFields = ["UdyogAadharNo"];
@@ -35,12 +35,14 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
     /// <summary>The status columns the page binds to (steppers, milestone panels, accept buttons).</summary>
     public static readonly string[] StatusFields =
     [
-        "EnableSilver", "EnableGold",
-        "SilverStatus", "SilverStatus2", "SilverStatus3", "GoldStatus", "GoldStatus2", "GoldStatus3",
-        "SilverStatusOfNc", "GoldStatusOfNc",
+        "EnableSilver", "EnableGold", "EnableZEDX",
+        "SilverStatus", "SilverStatus2", "SilverStatus3", "GoldStatus", "GoldStatus2", "GoldStatus3", "ZEDXStatus", "ZEDXStatus2", "ZEDXStatus3",
+        "SilverStatusOfNc", "GoldStatusOfNc", "ZEDXStatusOfNc",
         "SilverStatusOfNc1", "SilverStatusOfNc2", "SilverStatusOfNc3", "GoldStatusOfNc1", "GoldStatusOfNc2", "GoldStatusOfNc3",
+        "ZEDXStatusOfNc1", "ZEDXStatusOfNc2", "ZEDXStatusOfNc3",
         "MilestoneCompletionStatus1", "MilestoneCompletionStatus2", "MilestoneCompletionStatus3",
         "MilestoneCompletionStatusGold1", "MilestoneCompletionStatusGold2", "MilestoneCompletionStatusGold3",
+        "MilestoneCompletionStatusZEDX1", "MilestoneCompletionStatusZEDX2", "MilestoneCompletionStatusZEDX3",
     ];
 
     public sealed record SummaryResponse(
@@ -57,8 +59,13 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
             return Problem(title: "Handholding Support details are not available for this unit.", statusCode: StatusCodes.Status404NotFound);
 
         var status = await StatusAsync(ct);
+        // ZED-X's payment mark is not a column of the legacy Msme row: from the status (ZED-X payments made).
+        var msmeRow = new Dictionary<string, object?>(msme, StringComparer.OrdinalIgnoreCase)
+        {
+            ["IsZEDXPaymentDone"] = status is not null && status.TryGetValue("IsZEDXPaymentDone", out var z) ? z : 0,
+        };
         return new SummaryResponse(
-            Pick(msme, MsmeFields),
+            Pick(msmeRow, MsmeFields),
             Pick(details[1].FirstOrDefault(), BasicInfoFields),
             Pick(status, StatusFields),
             HandholdingEligibility.Levels.Select(l => HandholdingEligibility.Evaluate(status, l)).ToList());
@@ -97,7 +104,7 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
     }
 
     private async Task<IDictionary<string, object?>?> StatusAsync(CancellationToken ct) =>
-        (await db.QueryProcMultipleAsync("SP_CONSULTANCY_APP_MSME_STATUS", new { ZedId, CertificationType = (string?)null }, ct))[0].FirstOrDefault();
+        await HandholdingEligibility.StatusAsync(db, ZedId, log, ct);
 
     private static Dictionary<string, object?> Pick(IDictionary<string, object?>? row, string[] fields) =>
         fields.ToDictionary(f => f, f => row is not null && row.TryGetValue(f, out var v) && v is not DBNull ? v : null);

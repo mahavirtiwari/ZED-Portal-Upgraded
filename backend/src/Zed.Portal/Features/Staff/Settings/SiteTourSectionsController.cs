@@ -31,13 +31,14 @@ public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExe
     public async Task<SectionsResponse> Get(CancellationToken ct)
     {
         // Bronze has a site tour only when its flow has a visit (2026-11-15, Administration → Certification Levels: its mode
-        // is then Site); handholding (Consultancy) is towards Silver or Gold only.
-        var levels = (await CertLevels.CertificationLevels.AllAsync(db, log, ct))
-            .Where(l => host.System == PortalSystem.Consultancy
-                ? l.Code is "Silver" or "Gold"
-                : !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase)
-                  || string.Equals(l.AssessmentMode, CertLevels.CertificationLevels.Site, StringComparison.OrdinalIgnoreCase))
-            .Select(l => new LevelOption(l.Code, l.Name)).ToList();
+        // is then Site); handholding (Consultancy) is towards Silver, Gold or (2026-11-16) ZED-X, whose row ZED_CONSULTANT's
+        // level table does not have.
+        var levels = host.System == PortalSystem.Consultancy
+            ? Zed.Core.Data.LevelRegistry.Handholding.Select(l => new LevelOption(l, Zed.Core.Data.LevelRegistry.NameOf(l))).ToList()
+            : (await CertLevels.CertificationLevels.AllAsync(db, log, ct))
+                .Where(l => !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(l.AssessmentMode, CertLevels.CertificationLevels.Site, StringComparison.OrdinalIgnoreCase))
+                .Select(l => new LevelOption(l.Code, l.Name)).ToList();
         return new SectionsResponse(await SiteTourSections.LoadAsync(settings, ct), levels, !string.IsNullOrWhiteSpace(await settings.GetAsync(SiteTourSections.Key, ct)));
     }
 

@@ -1684,6 +1684,10 @@ p {
     background: rgba(204, 177, 96, 1);
     outline: 6px solid rgba(204, 177, 96, 0.2);
 }
+.modal-certification .modal-footer.footer-zedx div::before {
+    background: rgba(63, 143, 150, 1);
+    outline: 6px solid rgba(63, 143, 150, 0.2);
+}
 .modal-info p {
         padding: 10px 20px;
         border-radius: 10px;

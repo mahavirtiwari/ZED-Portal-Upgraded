@@ -435,7 +435,7 @@ internal static class ReportPageAccess
     public static async Task<ActionResult<ReportPageView>> MilestoneAsync(ControllerBase c, ReportPages pages, DocumentStorage storage, ISqlExecutor db,
         CertificationRecord? record, string zedId, string level, int milestone, bool staff, string storedPdfUrl, CancellationToken ct)
     {
-        if (record is null || level is not ("Silver" or "Gold") || milestone < 1 || milestone > record.Nc) return c.NotFound();
+        if (record is null || Zed.Core.Data.LevelRegistry.HandholdingLevel(level) is null || milestone < 1 || milestone > record.Nc) return c.NotFound();
         if (milestone < record.Nc)
         {
             NoStore(c);

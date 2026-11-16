@@ -211,12 +211,19 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     }
 
     private string GroupName(string group, IReadOnlyList<string>? levels = null) =>
-        ByMilestone ? (levels is { Count: > 0 } ? string.Join(" and ", levels) + " " : "") + "milestone " + group : Zed.Core.Data.LevelRegistry.NameOf(group);
+        ByMilestone ? (levels is { Count: > 0 } ? NameList(levels) + " " : "") + "milestone " + group : Zed.Core.Data.LevelRegistry.NameOf(group);
+
+    /// <summary>"Silver", "Silver and Gold", "Silver, Gold and ZED-X".</summary>
+    private static string NameList(IReadOnlyList<string> levels)
+    {
+        var names = levels.Select(Zed.Core.Data.LevelRegistry.NameOf).ToList();
+        return names.Count < 2 ? string.Concat(names) : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1];
+    }
 
     /// <summary>Consultancy's handholding levels (the order the page lists them in).</summary>
-    public static readonly string[] HandholdingLevels = ["Silver", "Gold"];
+    public static readonly string[] HandholdingLevels = [.. Zed.Core.Data.LevelRegistry.Handholding];
 
-    /// <summary>The levels a new milestone's fees are added for: Consultancy the chosen handholding levels (default both), else the level.</summary>
+    /// <summary>The levels a new milestone's fees are added for: Consultancy the chosen handholding levels (default all three), else the level.</summary>
     public static (List<string>? Levels, string? Error) AddLevels(AddRequest req, PortalSystem system, string group)
     {
         if (system != PortalSystem.Consultancy) return ([group], null);
@@ -224,7 +231,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var levels = new List<string>();
         foreach (var l in req.Levels)
         {
-            if (HandholdingLevels.FirstOrDefault(h => Same(l, h)) is not { } level) return (null, "Please select Silver or Gold.");
+            if (HandholdingLevels.FirstOrDefault(h => Same(l, h)) is not { } level) return (null, "Please select Silver, Gold or ZED-X.");
             if (!levels.Contains(level)) levels.Add(level);
         }
         return ([.. HandholdingLevels.Where(levels.Contains)], null);
@@ -537,7 +544,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             if (level is null || milestone is null) return (null, "Please select a valid milestone.");
             string? handholding = null;
             if (level.Level is not null && (handholding = HandholdingLevels.FirstOrDefault(h => Same(level.Level, h))) is null)
-                return (null, "Please select Silver or Gold.");
+                return (null, "Please select Silver, Gold or ZED-X.");
             // A milestone once per level; one for both levels excludes that milestone of either level.
             var key = milestone + "|" + (handholding ?? "*");
             if (!seen.Add(key) || (handholding is null
@@ -595,7 +602,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
 
         string? only = null;
         if (byMilestone && req.Level is not null && (only = HandholdingLevels.FirstOrDefault(h => Same(req.Level, h))) is null)
-            return (null, "Please select Silver or Gold.");
+            return (null, "Please select Silver, Gold or ZED-X.");
         var result = current.ToList();
         foreach (var (group, level) in groups.SelectMany(g => current.Where(r => Same(groupOf(r), g)).Select(r => r.Certification?.Trim() ?? "")
                      .Distinct(StringComparer.OrdinalIgnoreCase).Where(l => only is null || Same(l, only)).Select(l => (g, l))))

@@ -6,7 +6,7 @@
 </zed-page-head>
 @if (milestoneRow(1); as m1) {
   <zed-unit-facts [msme]="m1" [udyam]="t(m1, 'UdyogAadharNo')"
-                  [extra]="[{ label: 'Desired level', value: t(m1, 'Certification') || certification() }, { label: 'Current milestone', value: milestone() ? milestone() + ' of 3' : '' }]" />
+                  [extra]="[{ label: 'Desired level', value: levelName(t(m1, 'Certification') || certification()) }, { label: 'Current milestone', value: milestone() ? milestone() + ' of 3' : '' }]" />
 }
 
 @if (error()) {

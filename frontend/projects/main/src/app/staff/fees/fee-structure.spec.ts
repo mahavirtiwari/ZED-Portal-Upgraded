@@ -494,9 +494,9 @@ describe('FeeStructurePage on Consultancy', () => {
     button('Gold', el.querySelector('[aria-label="Handholding level"]')!).click();
     await settle();
     const add = () => el.querySelector('section[aria-labelledby="fs-add"]')!;
-    // Silver has milestone 2: only Gold's rows are made.
-    expect(add().textContent).toContain('Creates 18 rows for Micro Gold Milestone 2');
-    expect(el.querySelector('#fs-add-level')).toBeNull();
+    // Silver has milestone 2: Gold's rows are made, and ZED-X's (2026-11-16), which has none either.
+    expect(add().textContent).toContain('Creates 36 rows for Micro Gold and ZED-X Milestone 2');
+    expect(el.querySelector('label[for="fs-add-level"]')!.textContent).toContain('Also add ZED-X milestone 2');
     (el.querySelector('#fs-add-fee') as HTMLInputElement).value = '50000';
     el.querySelector('#fs-add-fee')!.dispatchEvent(new Event('input'));
     (el.querySelector('#fs-add-general') as HTMLInputElement).value = '80';
@@ -505,7 +505,7 @@ describe('FeeStructurePage on Consultancy', () => {
     button('Add Fees', add()).click();
     await settle();
     const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/fees/Micro/add');
-    expect(req.request.body).toMatchObject({ certification: '2', assessmentFee: 50000, levels: ['Gold'] });
+    expect(req.request.body).toMatchObject({ certification: '2', assessmentFee: 50000, levels: ['Gold', 'ZEDX'] });
     req.flush({ message: 'Fees added for Micro Gold milestone 2.' });
     await settle();
     http.expectOne('/api/staff/fees/Micro').flush(handholding);

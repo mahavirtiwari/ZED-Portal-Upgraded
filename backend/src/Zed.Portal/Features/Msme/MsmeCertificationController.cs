@@ -26,6 +26,7 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
             [
                 "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
                 "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
+                "ZEDXMilestone1", "ZEDXMilestone2", "ZEDXMilestone3",
             ]).Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);
 
     // Only the columns the two pages show. The legacy action sent every result set with SELECT * rows

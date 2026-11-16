@@ -18,10 +18,10 @@ public sealed class UserManagementTests : IDisposable
         var admin = await _staff.SignInAsync("ADMIN1", 1);
         var body = await admin.GetFromJsonAsync<JsonElement>("/api/staff/accounts");
         Assert.Equal(["Master Admin", "Ministry", "MSME DFO", "Dashboard Admin"], Strings(body.GetProperty("types"), "label"));
-        // The Master Admin's scope is as on main, for handholding only: Silver and Gold (2026-11-07).
+        // The Master Admin's scope is as on main, for handholding only: Silver, Gold and (2026-11-16) ZED-X.
         var master = body.GetProperty("types")[0];
         Assert.True(master.GetProperty("hasScope").GetBoolean() && master.GetProperty("hasStateScope").GetBoolean());
-        Assert.Equal(["Silver", "Gold"], Strings(body.GetProperty("levels"), "code"));
+        Assert.Equal(["Silver", "Gold", "ZEDX"], Strings(body.GetProperty("levels"), "code"));
         var bronze = await admin.PostAsJsonAsync("/api/staff/accounts", new
         {
             userId = "MASTERC1", roleId = 7, userName = "Master", email = "m@zed.test", mobileNo = "9876543210",

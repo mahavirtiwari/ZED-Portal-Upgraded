@@ -55,7 +55,7 @@ describe('assessment pages per system', () => {
     expect(el.textContent).toContain('Allocated to CO');
     expect(el.querySelector('a[href^="/staff/assessment/"]')).toBeNull();
     const levels = [...el.querySelectorAll<HTMLOptionElement>('#allotLevel option')].map((o) => o.value);
-    expect(levels).toEqual(['', 'Silver', 'Gold']);
+    expect(levels).toEqual(['', 'Silver', 'Gold', 'ZEDX']);
   });
 
   it('surveillance Allot: Surveillance No and auto-allotment date', async () => {

@@ -292,7 +292,7 @@ public static class ConsultancyAppData
     public const int Milestones = 3;
 
     /// <summary>The handholding levels (as the consultant calls' upload paths).</summary>
-    private const string Levels = "'Bronze', 'Silver', 'Gold'";
+    private const string Levels = "'Bronze', 'Silver', 'Gold', 'ZEDX'";
 
     /// <summary>
     /// The milestone rows the consultant is on: the lead (SiteAssessorId) or a co-consultant of that milestone
@@ -571,7 +571,7 @@ public static class ConsultancyAppData
         // As the portal's milestone report (MilestoneDownloads): Silver / Gold, a milestone completed, accepted or rejected.
         var level = Clean(r.Certification);
         var available = (IsDone(r.Status) || r.Status == 99) && Clean(r.ZedId) is not null && r.Milestone is >= 1 and <= Milestones
-                        && (Same(level, "Silver") || Same(level, "Gold"));
+                        && (Same(level, "Silver") || Same(level, "Gold") || Same(level, "ZEDX"));
         return new ConsultantReport
         {
             zedId = Clean(r.ZedId),

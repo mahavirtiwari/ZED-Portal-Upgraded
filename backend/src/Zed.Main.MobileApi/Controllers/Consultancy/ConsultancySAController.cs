@@ -88,7 +88,7 @@ public sealed partial class ConsultancySAController(
 
     /// <summary>Certifications that handholding is done for; used in upload paths.</summary>
     internal static readonly IReadOnlySet<string> Certifications =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold" };
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold", "ZEDX" };
 
     /// <summary>Who may make a call.</summary>
     private enum Role

@@ -33,7 +33,7 @@ public sealed class MsmeAppReportController(ISqlExecutor db, AppTokens tokens, R
 
         if (milestone is not null)
         {
-            if (surveillanceLevel is not null || level is not ("Silver" or "Gold") || milestone is < 1 or > DocumentLevels.Milestones) return Fail("Invalid milestone.");
+            if (surveillanceLevel is not null || Zed.Core.Data.LevelRegistry.HandholdingLevel(level) is null || milestone is < 1 or > DocumentLevels.Milestones) return Fail("Invalid milestone.");
             if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Consultancy) is not { } consultancyDb) return Fail(NotReady);
             var record = await AssessmentRecords.CertificationAsync(consultancyDb, zedId, level, ct);
             var ready = record is not null && milestone <= record.Nc &&

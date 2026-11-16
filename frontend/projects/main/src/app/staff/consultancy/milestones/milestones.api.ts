@@ -99,7 +99,7 @@ export interface MilestoneDetails {
   sentBack?: { remarks: string; sentOn: string | null } | null;
 }
 
-export const MILESTONE_LEVELS = ['Silver', 'Gold'] as const;
+export const MILESTONE_LEVELS = ['Silver', 'Gold', 'ZEDX'] as const;
 
 export function milestoneLevel(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();

@@ -239,7 +239,7 @@ public sealed class ConsultantAppTests : IDisposable
         var admin = await StaffTestSignIn.BrowserAsync(_app, "ADMIN1", (int)UserRole.Admin);
         var r = (await admin.GetFromJsonAsync<SiteTourSectionsController.SectionsResponse>(SectionsUrl))!;
         Assert.Equal(10, r.Sections.Count);
-        Assert.Equal(["Silver", "Gold"], r.Levels.Select(l => l.Code));
+        Assert.Equal(["Silver", "Gold", "ZEDX"], r.Levels.Select(l => l.Code));   // 2026-11-16: ZED-X handholding
 
         var section = new { id = "forge", title = "Forge shop", hint = "Furnaces", min = 2, max = 4, levels = new[] { "Gold" }, nicSectors = new[] { "24" }, active = true };
         (await admin.PutAsJsonAsync(SectionsUrl, new { sections = new[] { section } })).EnsureSuccessStatusCode();

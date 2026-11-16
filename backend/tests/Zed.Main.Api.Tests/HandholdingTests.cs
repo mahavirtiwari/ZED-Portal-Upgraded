@@ -138,6 +138,69 @@ public sealed class HandholdingTests : IDisposable
         Assert.Equal(refusal, state.Refusal);
     }
 
+    // 2026-11-16 (approved): the levels a unit may take follow its latest certified main level; a started level stays open.
+    [Theory]
+    [InlineData("Bronze", 0, 0, 0, "Silver,Gold")]
+    [InlineData("Bronze", 0, 1, 0, "Gold")]            // Gold started: Silver closes (as the legacy rule)
+    [InlineData("Silver", 0, 0, 0, "Gold")]
+    [InlineData("Gold", 0, 0, 0, "ZEDX")]
+    [InlineData("ZEDX", 0, 0, 0, "")]                // no handholding after ZED-X
+    [InlineData(null, 0, 0, 0, "")]                  // not certified
+    [InlineData("Gold", 2, 0, 0, "Silver,ZEDX")]     // Silver started before Gold came: it goes on
+    [InlineData("ZEDX", 0, 0, 1, "ZEDX")]            // ZED-X handholding started before ZED-X came: it goes on
+    public void The_levels_follow_the_certified_level(string? certified, int silverStarted, int goldStarted, int zedxStarted, string open)
+    {
+        var row = HandholdingEligibility.Apply(Status(enableSilver: 0, enableGold: 0, silverStarted: silverStarted, goldStarted: goldStarted),
+            new HandholdingEligibility.Extra(certified, zedxStarted, zedxStarted > 0 ? 9 : null, null, null, zedxStarted));
+        var enabled = HandholdingEligibility.Levels.Where(l => HandholdingEligibility.Int(row, "Enable" + l) == 1);
+        Assert.Equal(open, string.Join(",", enabled));
+    }
+
+    [Fact]
+    public void A_finished_level_no_longer_counts_as_started()
+    {
+        // Silver's three milestones accepted, the unit is Silver-certified: Gold opens, Silver does not.
+        var row = HandholdingEligibility.Apply(Status(silverStarted: 3, silverCompletion: [100, 100, 100]),
+            new HandholdingEligibility.Extra("Silver", 0, null, null, null, 0));
+        Assert.Equal((0, 1, 0), (HandholdingEligibility.Int(row, "EnableSilver"), HandholdingEligibility.Int(row, "EnableGold"), HandholdingEligibility.Int(row, "EnableZEDX")));
+        // Not readable: the procedure's Silver / Gold stay, ZED-X is closed.
+        row = HandholdingEligibility.Apply(Status(enableSilver: 1, enableGold: 1), null);
+        Assert.Equal((1, 1, 0), (HandholdingEligibility.Int(row, "EnableSilver"), HandholdingEligibility.Int(row, "EnableGold"), HandholdingEligibility.Int(row, "EnableZEDX")));
+    }
+
+    [Fact]
+    public async Task A_gold_certified_unit_can_take_zedx_handholding()
+    {
+        _status = Status(enableSilver: 1, enableGold: 1);
+        _host.Sql.Queries[HandholdingEligibility.ExtraSql] = args => FakeSql.Arg(args, "ZedId") == Me
+            ? [new { CertifiedLevel = "Gold", ZEDXStatusOfNc = 1, ZEDX1 = 100, ZEDX2 = (int?)null, ZEDX3 = (int?)null, ZEDXPayments = 1 }]
+            : [];
+        var client = await SignedInAsync();
+
+        var json = await client.GetFromJsonAsync<JsonElement>(Api);
+
+        var status = json.GetProperty("status");
+        Assert.Equal((0, 0, 1), (status.GetProperty("EnableSilver").GetInt32(), status.GetProperty("EnableGold").GetInt32(), status.GetProperty("EnableZEDX").GetInt32()));
+        Assert.Equal(100, status.GetProperty("MilestoneCompletionStatusZEDX1").GetInt32());
+        Assert.Equal(4, status.GetProperty("ZEDXStatus").GetInt32());
+        Assert.Equal(1, status.GetProperty("ZEDXStatusOfNc1").GetInt32());
+        Assert.Equal(1, json.GetProperty("msme").GetProperty("IsZEDXPaymentDone").GetInt32());
+        var levels = json.GetProperty("levels").EnumerateArray().ToList();
+        Assert.Equal(["Silver", "Gold", "ZEDX"], levels.Select(l => l.GetProperty("certification").GetString()));
+        var zedx = levels.Single(l => l.GetProperty("certification").GetString() == "ZEDX");
+        Assert.True(zedx.GetProperty("canPay").GetBoolean());
+        Assert.Equal(2, zedx.GetProperty("nextMilestone").GetInt32());
+        Assert.False(levels.Single(l => l.GetProperty("certification").GetString() == "Silver").GetProperty("canPay").GetBoolean());
+    }
+
+    [Fact]
+    public void Zedx_uses_its_own_completion_columns()
+    {
+        Assert.Equal("MilestoneCompletionStatusZEDX2", HandholdingEligibility.CompletionColumn("ZEDX", 2));
+        Assert.Equal("ZEDX", HandholdingEligibility.Canonical("zedx"));
+        Assert.Equal("ZED-X", HandholdingEligibility.Display("ZEDX"));
+    }
+
     [Fact]
     public void Gold_uses_its_own_completion_columns()
     {

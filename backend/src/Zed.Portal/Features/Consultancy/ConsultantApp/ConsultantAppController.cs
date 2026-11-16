@@ -70,8 +70,8 @@ public sealed class ConsultantAppController(
         if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
             return Unauthorized();
 
-        // Handholding is towards Silver or Gold, in milestones 1 to 3.
-        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not ("Silver" or "Gold") || milestone is < 1 or > DocumentLevels.Milestones)
+        // Handholding is towards Silver, Gold or ZED-X, in milestones 1 to 3.
+        if (!AssessmentInput.IsId(zedId) || Zed.Core.Data.LevelRegistry.HandholdingLevel(DocumentLevels.Level(certificationType)) is null || milestone is < 1 or > DocumentLevels.Milestones)
             return NotFound();
         var level = DocumentLevels.Level(certificationType)!;
         // The unit's current milestone (the highest), whose report is drawn; an earlier one is served from storage.
@@ -104,7 +104,7 @@ public sealed class ConsultantAppController(
         if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
             return Unauthorized();
 
-        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not ("Silver" or "Gold") || milestone is < 1 or > DocumentLevels.Milestones)
+        if (!AssessmentInput.IsId(zedId) || Zed.Core.Data.LevelRegistry.HandholdingLevel(DocumentLevels.Level(certificationType)) is null || milestone is < 1 or > DocumentLevels.Milestones)
             return NotFound();
         var level = DocumentLevels.Level(certificationType)!;
         var record = (await db.QuerySqlAsync<CertificationRecord>(MilestoneContext.RecordSql, new { ZedId = Ansi(zedId), Certification = Ansi(level) }, ct))

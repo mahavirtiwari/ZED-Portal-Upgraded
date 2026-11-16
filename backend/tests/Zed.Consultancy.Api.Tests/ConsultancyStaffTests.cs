@@ -398,7 +398,7 @@ public sealed class ConsultancyStaffTests : IDisposable
     {
         _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets([FeeRow(1, "Silver", "1", null)]);
         var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
-        Assert.Equal("Micro Silver and Gold milestone 1 already has fees: change them on this page instead.",
+        Assert.Equal("Micro Silver, Gold and ZED-X milestone 1 already has fees: change them on this page instead.",
             await (await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "1", assessmentFee = 1000m, generalShare = 80m })).ProblemTitle());
         Assert.Equal("Micro Silver milestone 1 already has fees: change them on this page instead.",
             await (await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "1", assessmentFee = 1000m, generalShare = 80m, levels = new[] { "silver" } })).ProblemTitle());
@@ -409,15 +409,16 @@ public sealed class ConsultancyStaffTests : IDisposable
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var batch = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal));
-        // Nine categories x Silver and Gold x without and with the reward (migration 0041: the general row is 0 here too).
-        Assert.Equal(36, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
+        // Nine categories x Silver, Gold and ZED-X x without and with the reward (migration 0041: the general row is 0 here too).
+        Assert.Equal(54, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
         Assert.Contains(", MileStone)", batch.Name);
         Assert.Equal("0", FakeSql.Arg(batch.Args, "SpecialCategory0"));
         Assert.Equal("Silver", FakeSql.Arg(batch.Args, "Certification0"));
         Assert.Equal("Gold", FakeSql.Arg(batch.Args, "Certification2"));
+        Assert.Equal("ZEDX", FakeSql.Arg(batch.Args, "Certification4"));
         Assert.Equal("2", FakeSql.Arg(batch.Args, "MileStone0"));
-        Assert.Equal("1", FakeSql.Arg(batch.Args, "SpecialCategory4"));
-        Assert.Equal(95m, decimal.Parse(FakeSql.Arg(batch.Args, "SubsidyPercentage4")!, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal("1", FakeSql.Arg(batch.Args, "SpecialCategory6"));
+        Assert.Equal(95m, decimal.Parse(FakeSql.Arg(batch.Args, "SubsidyPercentage6")!, System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -438,7 +439,7 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.Equal(new[] { "2", "3" }, _host.Sql.Calls.Where(c => c.Name.Contains("SET SubsidyPercentage", StringComparison.Ordinal))
             .Select(c => FakeSql.Arg(c.Args, "Id") ?? "").OrderBy(x => x).ToArray());
 
-        Assert.Equal("Please select Silver or Gold.", await (await client.PutAsJsonAsync("/api/staff/fees/Micro",
+        Assert.Equal("Please select Silver, Gold or ZED-X.", await (await client.PutAsJsonAsync("/api/staff/fees/Micro",
             new { levels = new[] { new { certification = "1", assessmentFee = 3000m, level = "Bronze" } } })).ProblemTitle());
         Assert.Equal("Silver has no fees for milestone 2: add them first.", await (await client.PutAsJsonAsync("/api/staff/fees/Micro",
             new { levels = new[] { new { certification = "2", assessmentFee = 3000m, level = "Silver" } } })).ProblemTitle());

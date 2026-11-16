@@ -38,8 +38,8 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     certifications: [...CERTIFICATIONS, 'ZEDX'], certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
   },
   consultancy: {
-    kpis: ['Registered units', 'Handholding completed', 'Applications', 'Silver applications', 'Gold applications'],
-    certifications: ['Silver', 'Gold'], certLabel: 'Level', completedDate: 'Handholding completion', completed: 'Handholding completed',
+    kpis: ['Registered units', 'Handholding completed', 'Applications', 'Silver applications', 'Gold applications', 'ZED-X applications'],
+    certifications: ['Silver', 'Gold', 'ZEDX'], certLabel: 'Level', completedDate: 'Handholding completion', completed: 'Handholding completed',
     completedShort: 'Completed',
   },
   surveillance: {

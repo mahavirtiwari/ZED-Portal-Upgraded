@@ -62,8 +62,8 @@ public sealed class AssessmentDocuments(
     {
         if (!AssessmentInput.IsId(zedId)) throw new ArgumentException("Invalid ZED ID.", nameof(zedId));
         if (DocumentLevels.TryMilestone(certification, out var level, out var milestone)) return (level, milestone);
-        return DocumentLevels.Level(certification) is "Silver" or "Gold"
-            ? (DocumentLevels.Level(certification)!, null)
+        return Zed.Core.Data.LevelRegistry.HandholdingLevel(DocumentLevels.Level(certification)) is { } handholding
+            ? (handholding, null)
             : throw new ArgumentException("Invalid certification.", nameof(certification));
     }
 }
@@ -392,7 +392,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         CancellationToken ct)
     {
         if (!AssessmentInput.IsId(zedId)) throw new ArgumentException("Invalid ZED ID.", nameof(zedId));
-        if (DocumentLevels.Level(level) is not ("Silver" or "Gold") || milestone is < 1 or > DocumentLevels.Milestones)
+        if (Zed.Core.Data.LevelRegistry.HandholdingLevel(DocumentLevels.Level(level)) is null || milestone is < 1 or > DocumentLevels.Milestones)
             throw new ArgumentException("Invalid milestone.", nameof(milestone));
         level = DocumentLevels.Level(level)!;
 

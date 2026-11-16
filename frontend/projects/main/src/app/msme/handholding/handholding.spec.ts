@@ -7,7 +7,7 @@ import { HandholdingSummary, LevelState } from './handholding.api';
 
 const API = '/api/msme/handholding';
 
-function level(certification: 'Silver' | 'Gold', overrides: Partial<LevelState> = {}): LevelState {
+function level(certification: 'Silver' | 'Gold' | 'ZEDX', overrides: Partial<LevelState> = {}): LevelState {
   return { certification, enabled: true, milestonesStarted: 0, nextMilestone: 1, canPay: true, refusal: null, awaitingAcceptance: null, ...overrides };
 }
 
@@ -99,6 +99,26 @@ describe('HandholdingPage', () => {
     expect(items[0]).toContain('Completed');
     expect(items[0]).not.toContain('Applied');
     expect(items[1]).toContain('Applied');
+  });
+
+  it('2026-11-16: a Gold-certified unit takes ZED-X handholding, the other cards greyed out', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await open(summary(
+      { EnableSilver: 0, EnableGold: 0, EnableZEDX: 1, ZEDXStatus: 4, ZEDXStatusOfNc: 1, ZEDXStatusOfNc1: 1, MilestoneCompletionStatusZEDX1: 100 },
+      [level('Silver', { enabled: false, canPay: false }), level('Gold', { enabled: false, canPay: false }), level('ZEDX', { milestonesStarted: 1, nextMilestone: 2 })]));
+    expect(el.textContent).toContain('HANDHOLDING FOR ZED-X LEVEL');
+    const cards = [...el.querySelectorAll('.panel-cert-block')];
+    expect(cards.map((c) => c.classList.contains('plant-activity-disabled'))).toEqual([true, true, false]);
+    expect(cards[2].classList).toContain('panel-zedx');
+    expect(cards[2].querySelector('.inner2 img')!.getAttribute('src')).toBe('/Images/Dashboard/zedx.svg');
+
+    ([...cards[2].querySelectorAll('p')].find((p) => p.textContent!.trim() === 'APPLY') as HTMLElement).click();
+    await settled();
+    expect(el.textContent).toContain('Milestone 1: BASIC DIAGNOSTIC STUDY AND HANDHOLDING');
+    expect(find('a', 'VIEW')!.getAttribute('href')).toBe('/msme/certification/ZEDXMilestone1');
+    const applies = [...el.querySelectorAll('button')].filter((b) => b.textContent!.trim() === 'APPLY') as HTMLButtonElement[];
+    applies[0].click();
+    expect(navigate).toHaveBeenCalledWith(['/msme/handholding', 'ZEDX', 'payment']);
   });
 
   it('opens the milestones of the level in ?level= (BACK of the payment page)', async () => {

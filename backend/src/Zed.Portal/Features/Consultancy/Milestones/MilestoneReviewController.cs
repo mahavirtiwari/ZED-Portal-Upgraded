@@ -44,7 +44,7 @@ public sealed class MilestoneReviewController(
     /// <summary>One decision at a time: the procedures read and write the status without locks.</summary>
     private static readonly SemaphoreSlim Decisions = new(1, 1);
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
-    private static readonly string[] Levels = ["Silver", "Gold"];
+    private static readonly string[] Levels = [.. Zed.Core.Data.LevelRegistry.Handholding];
 
     // ------------------------------------------------------------------ columns shown
 

@@ -41,7 +41,7 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
     /// <summary>Consultancy tabs: not started, in progress, quality check.</summary>
     private static readonly int[] ConsultancyStatuses = [2, 3, 5];
 
-    private static readonly string[] ConsultancyLevels = ["Silver", "Gold"];
+    private static readonly string[] ConsultancyLevels = [.. Zed.Core.Data.LevelRegistry.Handholding];
 
     private bool Consultancy => host.System == PortalSystem.Consultancy;
 

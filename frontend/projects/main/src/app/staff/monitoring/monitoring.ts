@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
 import { ClientPager, PagerComponent } from '../pager';
-import { levelCodes, levelName } from '../../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 
@@ -60,7 +60,7 @@ export class MonitoringPage {
 
   // V4: ZED-X is assessed on the main portal only.
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
-  protected readonly levels = computed(() => (this.consultancy ? ['Silver', 'Gold'] : levelCodes()));
+  protected readonly levels = computed(() => (this.consultancy ? [...HANDHOLDING_LEVEL_CODES] : levelCodes()));
   protected readonly levelName = levelName;
   protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
     ? [

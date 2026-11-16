@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ASSESSMENT_SYSTEM, Expanded, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
-import { levelCodes, levelName } from '../../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 
 /**
  * Master admin: allot MSMEs to assessment agencies. Port of Views/Assessment/Allot.cshtml
@@ -245,9 +245,8 @@ export class AllotPage {
     : 'Allot the MSMEs to Certification Bodies, or re-allot the rejected and overdue ones.';
   /** Who the record is allotted to, in the status column. */
   protected readonly party = this.consultancy ? 'CO' : 'Agency';
-  /** Handholding is for Silver and Gold only. */
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
-  protected readonly levels = computed(() => (this.consultancy ? ['Silver', 'Gold'] : levelCodes()));
+  protected readonly levels = computed(() => (this.consultancy ? [...HANDHOLDING_LEVEL_CODES] : levelCodes()));
   protected readonly levelName = levelName;
 
   protected filter: Required<ListFilter> = { state: '', certification: '', size: '', gender: '', allotmentType: '' };

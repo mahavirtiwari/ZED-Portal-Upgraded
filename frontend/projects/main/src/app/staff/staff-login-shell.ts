@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
 import { PORTAL_SYSTEM } from '../portal-system';
-import { PublicLevels } from '../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password).
@@ -179,9 +179,9 @@ export class StaffLoginShell {
   /** Consultancy: handholding of Silver and Gold; otherwise the enabled levels as the Admin named them, with their badges. */
   protected readonly levels = computed(() => {
     const all = this.publicLevels.levels() ?? [];
-    const pick = PORTAL_SYSTEM === 'consultancy' ? all.filter((l) => l.code === 'Silver' || l.code === 'Gold') : all;
+    const pick = PORTAL_SYSTEM === 'consultancy' ? all.filter((l) => HANDHOLDING_LEVEL_CODES.includes(l.code)) : all;
     return pick.length
       ? pick.map((l) => ({ name: l.name, logoUrl: l.logoUrl }))
-      : (PORTAL_SYSTEM === 'consultancy' ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZED-X']).map((name) => ({ name, logoUrl: null as string | null }));
+      : (PORTAL_SYSTEM === 'consultancy' ? ['Silver', 'Gold', 'ZED-X'] : ['Bronze', 'Silver', 'Gold', 'ZED-X']).map((name) => ({ name, logoUrl: null as string | null }));
   });
 }

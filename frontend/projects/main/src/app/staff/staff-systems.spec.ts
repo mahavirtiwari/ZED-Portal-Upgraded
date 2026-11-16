@@ -60,7 +60,7 @@ describe('staff pages per system', () => {
 
     const tiles = [...el.querySelectorAll('.dash-tile')].map((t) => `${t.querySelector('h5')!.textContent!.trim()}${t.querySelector('.dash-count')!.textContent!.trim()}`);
     expect(tiles).toEqual(['Empanelled Consultant Organisations12', 'Consultants340']);
-    expect(el.querySelectorAll('.app-card').length).toBe(3);
+    expect(el.querySelectorAll('.app-card').length).toBe(4);   // Silver, Gold, ZED-X (2026-11-16), Technology Intervention
     expect(el.textContent).toContain('Technology Intervention');
     expect(el.querySelector('.registered')).toBeNull();
   });

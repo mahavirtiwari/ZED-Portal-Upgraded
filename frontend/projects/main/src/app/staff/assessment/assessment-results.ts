@@ -8,7 +8,7 @@ import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, reportPageHref, tex
 import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
-import { levelCodes, levelName } from '../../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCounts } from '../list-counts';
 
@@ -340,7 +340,7 @@ export class AssessmentResultsPage {
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
-  protected readonly levels = computed(() => (this.consultancy ? ['Silver', 'Gold'] : levelCodes()));
+  protected readonly levels = computed(() => (this.consultancy ? [...HANDHOLDING_LEVEL_CODES] : levelCodes()));
   protected readonly levelName = levelName;
   /**
    * Consultancy "View Details": the milestone review page (the old SaDetails). The route of the consultancy milestone

@@ -31,13 +31,15 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
     ];
 
     /// <summary>
-    /// Consultancy's cards (ZEDCS_CONSULTANCY Views/Dashboard/Index.cshtml): Silver and Gold handholding by milestone
+    /// Consultancy's cards (ZEDCS_CONSULTANCY Views/Dashboard/Index.cshtml): Silver, Gold and ZED-X handholding by milestone
     /// (payments received and completed per milestone) and Technology Intervention (the Fa* columns).
     /// </summary>
     public static readonly string[] ConsultancySummaryColumns =
     [
         "SilverTotal", "SilverM1PaymentDone", "SilverCompleted", "SilverM2PaymentDone", "SilverPending", "SilverM3PaymentDone", "SaSilverCompleted",
         "GoldTotal", "GoldM1PaymentDone", "GoldCompleted", "GoldM2PaymentDone", "GoldPending", "GoldM3PaymentDone", "SaGoldCompleted",
+        // 2026-11-16: ZED-X handholding (migration 0089).
+        "ZEDXTotal", "ZEDXM1PaymentDone", "ZEDXCompleted", "ZEDXM2PaymentDone", "ZEDXPending", "ZEDXM3PaymentDone", "SaZEDXCompleted",
         "FaTotal", "FaCompleted", "FaPending",
     ];
 
@@ -180,7 +182,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         "ZedxTotal", "SaZedxPending", "ZedxNcRaised", "SaZedxCompleted", "ZedxRejected",
     ];
 
-    private static readonly string[] HandholdingLevels = ["Silver", "Gold"];
+    private static readonly string[] HandholdingLevels = [.. Zed.Core.Data.LevelRegistry.Handholding];
 
     /// <summary>The status cards of this portal (the main ones; Consultancy's milestones and TI; Surveillance's).</summary>
     private string[] CardColumns => host.System switch
@@ -214,7 +216,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         if (!DashboardScreens.Has(CurrentUser, host.System, "dash-" + viewValue))
             return Problem(title: "You do not have access to this dashboard tab.", statusCode: StatusCodes.Status403Forbidden);
         var stateName = DashboardFilters.Pick(state, DashboardFilters.StateNames, ref invalid);
-        // Consultancy (handholding) has Silver and Gold only.
+        // Consultancy (handholding) has Silver, Gold and ZED-X (2026-11-16).
         var cert = DashboardFilters.Pick(certification, host.System == PortalSystem.Consultancy ? HandholdingLevels : DashboardFilters.Certifications, ref invalid);
         // Others includes the units without a gender (no separate "not given").
         var genderValue = DashboardFilters.Pick(gender, ["male", "female", "OTHERS"], ref invalid);

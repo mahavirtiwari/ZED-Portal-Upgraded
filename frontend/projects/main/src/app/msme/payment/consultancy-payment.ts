@@ -6,7 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
-import { handholdingLevel } from '../handholding/handholding.api';
+import { handholdingLevel, handholdingLevelName } from '../handholding/handholding.api';
 import { ConsultancyOptions, ConsultancyPaymentApi } from './consultancy-payment.api';
 import { FeeRow, postToGateway } from './payment.api';
 import { PageHead } from '../shared/page-head';
@@ -46,6 +46,8 @@ export class ConsultancyPaymentPage implements OnInit {
   readonly certification = input<string>('');
 
   protected readonly level = computed(() => handholdingLevel(this.certification()));
+  /** The level as shown (ZED-X for ZEDX). */
+  protected readonly levelLabel = computed(() => { const l = this.level(); return l ? handholdingLevelName(l) : ''; });
   protected readonly step = signal<Step | null>(null);
   protected readonly milestone = signal(0);
   protected readonly options = signal<ConsultancyOptions | null>(null);

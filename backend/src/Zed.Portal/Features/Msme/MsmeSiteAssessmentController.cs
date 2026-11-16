@@ -39,6 +39,7 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
             {
                 ["SilverMilestone1"] = "SilverMilestone1", ["SilverMilestone2"] = "SilverMilestone2", ["SilverMilestone3"] = "SilverMilestone3",
                 ["GoldMilestone1"] = "GoldMilestone1", ["GoldMilestone2"] = "GoldMilestone2", ["GoldMilestone3"] = "GoldMilestone3",
+                ["ZEDXMilestone1"] = "ZEDXMilestone1", ["ZEDXMilestone2"] = "ZEDXMilestone2", ["ZEDXMilestone3"] = "ZEDXMilestone3",
             };
             foreach (var level in Zed.Core.Data.LevelRegistry.Codes.Where(c => !Zed.Core.Data.LevelRegistry.IsDesktop(c)))
             {

@@ -122,12 +122,12 @@ public static class DocumentLevels
     /// <summary>Handholding milestones of ZED_CONSULTANT (MsmeCertifications.NcCount).</summary>
     public const int Milestones = 3;
 
-    /// <summary>"SilverMilestone2" → ("Silver", 2). Handholding is towards Silver or Gold only.</summary>
+    /// <summary>"SilverMilestone2" → ("Silver", 2). Handholding is towards Silver, Gold or ZED-X (ZEDXMilestone1).</summary>
     public static bool TryMilestone(string? certification, out string level, out int milestone)
     {
         level = "";
         milestone = 0;
-        var m = System.Text.RegularExpressions.Regex.Match(certification ?? "", "^(Silver|Gold)Milestone([1-3])$",
+        var m = System.Text.RegularExpressions.Regex.Match(certification ?? "", "^(Silver|Gold|ZEDX)Milestone([1-3])$",
             System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
         if (!m.Success) return false;
         level = Level(m.Groups[1].Value)!;

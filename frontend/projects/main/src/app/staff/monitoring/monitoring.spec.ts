@@ -203,10 +203,10 @@ describe('MonitoringPage per system', () => {
 
   afterEach(() => http.verify());
 
-  it('consultancy: Silver/Gold, three tabs, milestone columns and no admin actions', async () => {
+  it('consultancy: Silver/Gold/ZED-X, three tabs, milestone columns and no admin actions', async () => {
     const { el, settle, select } = await create('consultancy');
     expect(el.textContent).toContain('Consultancy Monitoring');
-    expect([...select.options].map((o) => o.text.trim()).filter((t) => t !== 'Select')).toEqual(['Silver', 'Gold']);
+    expect([...select.options].map((o) => o.text.trim()).filter((t) => t !== 'Select')).toEqual(['Silver', 'Gold', 'ZED-X']);
     expect(el.textContent).toContain('CONSULTANCY IN-PROGRESS');
     expect(el.textContent).not.toContain('NON-CONFORMANCE');
     select.value = 'Silver';
@@ -321,7 +321,7 @@ describe('MonitoringPage per system', () => {
   it('consultancy: "Certification Level" with "Select" first, open NC rows in btn-warning', async () => {
     const { el, settle, select } = await create('consultancy');
     expect(el.querySelector('label[for=certification]')!.textContent!.trim()).toBe('Certification Level');
-    expect([...select.options].map((o) => o.text.trim())).toEqual(['Select', 'Silver', 'Gold']);
+    expect([...select.options].map((o) => o.text.trim())).toEqual(['Select', 'Silver', 'Gold', 'ZED-X']);
     select.value = 'Gold';
     select.dispatchEvent(new Event('change'));
     await settle();
@@ -332,6 +332,6 @@ describe('MonitoringPage per system', () => {
     });
     await settle();
     expect(el.querySelector('tbody tr')!.classList).toContain('btn-warning');
-    expect([...select.options].map((o) => o.text.trim())).toEqual(['Select', 'Silver', 'Gold']);
+    expect([...select.options].map((o) => o.text.trim())).toEqual(['Select', 'Silver', 'Gold', 'ZED-X']);
   });
 });

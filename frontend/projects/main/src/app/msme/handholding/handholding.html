@@ -12,7 +12,7 @@
 
     @if (data()) {
       <!-- 2026-11-14 (approved): the shared header; the levels or the milestones on the left, the unit and the steps on the right. -->
-      <zed-page-head [crumbs]="crumbs()" [title]="selected() ? 'Handholding support · ' + selected() : 'Handholding support'">
+      <zed-page-head [crumbs]="crumbs()" [title]="selected() ? 'Handholding support · ' + levelName(selected()!) : 'Handholding support'">
         @if (selected()) {
           <button type="button" class="btn btn-outline-secondary btn-sm back-link" (click)="selected.set(null)"><img src="/Images/svgicons/back.svg" alt="" /> Back</button>
         } @else {
@@ -39,10 +39,10 @@
                 <div class="level-grid">
                   @for (level of levels; track level) {
                     <div class="panel-handhold">
-                      <div class="panel panel-default panel-cert-block" [class.panel-silver]="level === 'Silver'" [class.panel-gold]="level === 'Gold'" [class.plant-activity-disabled]="cardDisabled(level)">
+                      <div class="panel panel-default panel-cert-block" [class.panel-silver]="level === 'Silver'" [class.panel-gold]="level === 'Gold'" [class.panel-zedx]="level === 'ZEDX'" [class.plant-activity-disabled]="cardDisabled(level)">
                         <div class="panel-heading">
-                          <h5>HANDHOLDING FOR {{ level.toUpperCase() }} LEVEL</h5>
-                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About Handholding for ' + level + ' Level'" (click)="info.set(level)"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
+                          <h5>HANDHOLDING FOR {{ levelName(level).toUpperCase() }} LEVEL</h5>
+                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About Handholding for ' + levelName(level) + ' Level'" (click)="info.set(level)"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
                         </div>
                         <div class="panel-body">
                           <div class="cert-inner-block">
@@ -64,10 +64,10 @@
                               </div>
                               <h5 class="clickable" role="button" tabindex="0" (click)="viewDetails(level)" (keydown.enter)="viewDetails(level)">VIEW DETAILS</h5>
                             </div>
-                            <div class="inner2"><img [src]="'/Images/Dashboard/' + level.toLowerCase() + '.png'" alt="" /></div>
+                            <div class="inner2"><img [src]="logo(level)" alt="" /></div>
                             <div class="inner3">
                               @if (paid(level)) {
-                                <p class="dash-text-clr clickable" role="button" tabindex="0" [attr.aria-label]="'Open ' + level + ' milestones'" (click)="openLevel(level)" (keydown.enter)="openLevel(level)"><img src="/Images/svgicons/arrow-right-black.svg" alt="->" /></p>
+                                <p class="dash-text-clr clickable" role="button" tabindex="0" [attr.aria-label]="'Open ' + levelName(level) + ' milestones'" (click)="openLevel(level)" (keydown.enter)="openLevel(level)"><img src="/Images/svgicons/arrow-right-black.svg" alt="->" /></p>
                               } @else {
                                 <p class="dash-text-clr clickable" role="button" tabindex="0" (click)="openLevel(level)" (keydown.enter)="openLevel(level)">APPLY</p>
                               }
@@ -152,7 +152,7 @@
     <div class="modal-dialog modal-sm modal-popup modal-certification-info modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="registration-title modal-title" id="infoTitle">{{ topic === 'My' ? 'Handholding Support' : 'Handholding for ' + topic + ' Level' }}</h3>
+          <h3 class="registration-title modal-title" id="infoTitle">{{ topic === 'My' ? 'Handholding Support' : 'Handholding for ' + levelName(topic) + ' Level' }}</h3>
           <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="info.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
@@ -170,14 +170,14 @@
     <div class="modal-dialog modal-popup modal-certification modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="registration-title modal-title" id="detailsTitle">{{ level }} LEVEL</h3>
+          <h3 class="registration-title modal-title" id="detailsTitle">{{ levelName(level).toUpperCase() }} LEVEL</h3>
           <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="detailsOf.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
           <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
         </div>
-        <div class="modal-footer" [class.footer-silver]="level === 'Silver'" [class.footer-gold]="level === 'Gold'">
-          <div><span class="img-bg"></span><img [src]="'/Images/Dashboard/' + level + '.png'" alt="" /></div>
+        <div class="modal-footer" [class.footer-silver]="level === 'Silver'" [class.footer-gold]="level === 'Gold'" [class.footer-zedx]="level === 'ZEDX'">
+          <div><span class="img-bg"></span><img [src]="logo(level)" alt="" /></div>
         </div>
       </div>
     </div>

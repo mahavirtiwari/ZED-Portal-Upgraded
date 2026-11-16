@@ -185,9 +185,9 @@ public sealed class StaffAccountsController(
     private static IReadOnlyList<LevelOption> AllLevelOptions =>
         [.. Zed.Core.Data.LevelRegistry.All.Select(l => new LevelOption(l.Code, l.Name))];
 
-    /// <summary>This portal's levels: the Consultancy portal's handholding is for Silver and Gold (2026-11-07).</summary>
+    /// <summary>This portal's levels: the Consultancy portal's handholding is for Silver, Gold and (2026-11-16) ZED-X.</summary>
     private IReadOnlyList<LevelOption> LevelOptions =>
-        host.System == PortalSystem.Consultancy ? [.. AllLevelOptions.Where(l => l.Code is "Silver" or "Gold")] : AllLevelOptions;
+        host.System == PortalSystem.Consultancy ? [.. AllLevelOptions.Where(l => Zed.Core.Data.LevelRegistry.HandholdingLevel(l.Code) is not null)] : AllLevelOptions;
 
     // ---- MSME DFO districts and NEFT lists (2026-11-07) -------------------------------------------
 

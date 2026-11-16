@@ -2,7 +2,7 @@ import { Component, InjectionToken, OnInit, inject, input, signal } from '@angul
 import { Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { PORTAL_API_BASE } from '../staff/admin-portal';
-import { canonicalLevelCode } from '../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, canonicalLevelCode } from '../msme/shared/levels';
 import { reportRoute } from '../report/report.api';
 
 /** Leaves the Angular app for a file address (replaced in tests). */
@@ -14,7 +14,7 @@ export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', 
 /** The old e-mails' levels; 2026-11-08: every level of Administration → Certification Levels (consultancy: Silver and Gold). */
 const levelOf = (value: string, system: LegacyReportSystem): string | undefined => {
   const code = canonicalLevelCode(value) ?? undefined;
-  return system === 'consultancy' && code !== 'Silver' && code !== 'Gold' && code !== 'Bronze' ? undefined : code;
+  return system === 'consultancy' && code !== 'Bronze' && !HANDHOLDING_LEVEL_CODES.includes(code ?? '') ? undefined : code;
 };
 const MSME_ROLE = 5;
 

@@ -75,6 +75,15 @@ const CONSULTANCY_CARDS: Card[] = [
       { label: 'Milestone 3 Payment Received', field: 'GoldM3PaymentDone' }, { label: 'Milestone 3 Completed', field: 'SaGoldCompleted' },
     ],
   },
+  // 2026-11-16 (approved): handholding towards ZED-X for Gold-certified units (migration 0089).
+  {
+    css: 'panel-zedx', title: 'ZED-X Level', milestones: true, lines: [
+      { label: 'Total Applications', field: 'ZEDXTotal' },
+      { label: 'Milestone 1 Payment Received', field: 'ZEDXM1PaymentDone' }, { label: 'Milestone 1 Completed', field: 'ZEDXCompleted' },
+      { label: 'Milestone 2 Payment Received', field: 'ZEDXM2PaymentDone' }, { label: 'Milestone 2 Completed', field: 'ZEDXPending' },
+      { label: 'Milestone 3 Payment Received', field: 'ZEDXM3PaymentDone' }, { label: 'Milestone 3 Completed', field: 'SaZEDXCompleted' },
+    ],
+  },
   {
     css: 'panel-finance', title: 'Technology Intervention', lines: [
       { label: 'Total Application', field: 'FaTotal' }, { label: 'Approved', field: 'FaCompleted' }, { label: 'Pending', field: 'FaPending' },

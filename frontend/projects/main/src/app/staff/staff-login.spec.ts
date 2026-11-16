@@ -114,7 +114,7 @@ describe('FeesHostPage', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Silver, Milestone 1');
     expect([...el.querySelectorAll('.lv-name')].map((n) => n.textContent!.trim())).toEqual(['Milestone 1', 'Milestone 2', 'Milestone 3']);
     expect([...el.querySelectorAll('[aria-label="Enterprise type"] button')].map((b) => b.textContent!.trim())).toEqual(['Micro', 'Small', 'Medium']);
-    expect([...el.querySelectorAll('[aria-label="Handholding level"] button')].map((b) => b.textContent!.trim())).toEqual(['Silver', 'Gold']);
+    expect([...el.querySelectorAll('[aria-label="Handholding level"] button')].map((b) => b.textContent!.trim())).toEqual(['Silver', 'Gold', 'ZED-X']);
     expect(el.querySelector('.ps-tab.on')!.textContent!.trim()).toBe('Consultancy');
     sessionStorage.clear();
   });

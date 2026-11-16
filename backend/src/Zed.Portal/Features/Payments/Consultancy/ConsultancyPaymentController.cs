@@ -261,9 +261,9 @@ public sealed class ConsultancyPaymentController(
 
     private string GstinKey(string gstin) => $"consultancy-gstin-ok:{ZedId}:{gstin}";
 
-    /// <summary>SP_CONSULTANCY_APP_MSME_STATUS for a unit.</summary>
+    /// <summary>SP_CONSULTANCY_APP_MSME_STATUS for a unit, with ZED-X and the levels' rule (<see cref="HandholdingEligibility.Apply"/>).</summary>
     internal static async Task<IDictionary<string, object?>?> StatusRowAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
-        (await db.QueryProcMultipleAsync("SP_CONSULTANCY_APP_MSME_STATUS", new { ZedId = zedId, CertificationType = (string?)null }, ct))[0].FirstOrDefault();
+        await HandholdingEligibility.StatusAsync(db, zedId, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, ct);
 
     /// <summary>
     /// SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS (ZED_CONSULTANT SP_MSME_ZERO_PAYMENT_DETAILS) for a state-subsidy

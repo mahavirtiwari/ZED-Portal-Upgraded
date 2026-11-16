@@ -28,6 +28,16 @@ public static partial class LevelRegistry
     public const string Site = "Site";
     public const string ZedX = "ZEDX";
 
+    /// <summary>
+    /// The levels handholding (the consultancy portal) is towards, in order: Silver, Gold and (2026-11-16, approved) ZED-X
+    /// for Gold-certified units.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Handholding = ["Silver", "Gold", ZedX];
+
+    /// <summary>The handholding level of a code (any case), else null.</summary>
+    public static string? HandholdingLevel(string? code) =>
+        Handholding.FirstOrDefault(l => string.Equals(l, code?.Trim(), StringComparison.OrdinalIgnoreCase));
+
     /// <summary>The levels of the legacy procedures (Is{Level}PaymentDone of the legacy payment procedures, the legacy jobs).</summary>
     public static readonly IReadOnlyList<string> Legacy = ["Bronze", "Silver", "Gold"];
 
