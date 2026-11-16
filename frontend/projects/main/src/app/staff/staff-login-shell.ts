@@ -4,157 +4,109 @@ import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
+import { ContentTextComponent } from '../content/content-text';
+import { loginLevels } from '../msme/login-shell/login-shell';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password).
- * 2026-11-14 redesign (option A, approved): a light hero on the left — the ministry and ZED logos, the portal's title and
- * purpose, the enabled certification levels with their badges and, on the main portal, quick links for MSMEs (MSME login,
- * registration) — and on the right the page's form in a card (a teal top edge, who signs in here, an "authorised users
- * only" line) with "Need help?" above it. On a phone the hero becomes a short band above the form.
+ * 2026-11-17 (approved): the MSME login's frame (the user's design "ZED Login 3a", login-frame.scss): the logos over a rule,
+ * the portal's title and purpose, "Apnaenge ZED!", on the main portal the MSME links (MSME login, registration) and the
+ * levels as coloured bars; on the right "Need help?", who signs in here and the page's form, "Authorised users only" in the
+ * light band at the foot, and the dark footer band. On a phone the hero becomes a short band above the form.
  */
 @Component({
   selector: 'zed-staff-login-shell',
   host: { class: 'zed-login d-block' },
-  imports: [RouterLink],
+  imports: [RouterLink, ContentTextComponent],
   template: `
-    <div class="zl-page">
-      <aside class="zl-hero" aria-label="About the portal">
-        <div class="zl-logos">
-          @if (links.url('ministry'); as u) {
-            <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="zl-ministry" /></a>
-          } @else {
-            <img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="zl-ministry" />
-          }
-          <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" class="zl-zed" />
-        </div>
-        <div class="zl-hero-body">
-          <p class="zl-kicker">{{ kicker }}</p>
-          <h2 class="zl-title">{{ title }}</h2>
-          <span class="zl-rule" aria-hidden="true"></span>
-          <p class="zl-lead">{{ lead }}</p>
-
-          <p class="zl-label">Certification levels</p>
-          <ul class="zl-levels">
-            @for (l of levels(); track l.name) {
-              <li class="zl-level">
-                @if (l.logoUrl) { <img [src]="l.logoUrl" alt="" /> } @else { <span class="zl-level-dot" aria-hidden="true"></span> }
-                <span>{{ l.name }}</span>
-              </li>
+    <div class="ml-page">
+      <div class="ml-cols">
+        <aside class="ml-hero" aria-label="About the portal">
+          <div class="ml-logos">
+            @if (links.url('ministry'); as u) {
+              <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" /></a>
+            } @else {
+              <img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" />
             }
-          </ul>
-
-          @if (msmeLinks) {
-            <p class="zl-label">Are you an MSME?</p>
-            <a class="zl-quick" routerLink="/msme/login">
-              <span><strong>MSME login</strong><small>Apply for and track your certification</small></span><span class="zl-go" aria-hidden="true">›</span>
-            </a>
-            <a class="zl-quick" routerLink="/msme/register">
-              <span><strong>Register your enterprise</strong><small>With your Udyam registration number</small></span><span class="zl-go" aria-hidden="true">›</span>
-            </a>
-          }
-        </div>
-        <!-- 2026-11-15 (the user): the copyright at the bottom of the left column. -->
-        <footer class="zl-foot zl-foot-wide">
-          <small>ZED © {{ year }} All Rights Reserved</small>
-        </footer>
-      </aside>
-      <main class="zl-side">
-        <div class="zl-side-top">
-          @if (links.url('contact'); as c) {
-            <a class="zl-help" [href]="c" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 17h-2v-2h2v2Zm2.1-7.7-.9.9c-.7.7-1.2 1.3-1.2 2.8h-2v-.5c0-1.1.4-2.1 1.2-2.8l1.2-1.3a1.9 1.9 0 0 0 .6-1.4 2 2 0 0 0-4 0H8a4 4 0 0 1 8 0 3.2 3.2 0 0 1-.9 2.3Z" /></svg>
-              Need help?
-            </a>
-          }
-        </div>
-        <div class="zl-form">
-          <div class="zl-card">
-            <span class="zl-tag">{{ audience }}</span>
-            <ng-content />
-            <p class="zl-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7Z" /></svg>Authorised users only · sign-ins are recorded</p>
+            <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" class="ml-zed" />
           </div>
-        </div>
-        <footer class="zl-foot zl-foot-phone">
-          <small>ZED © {{ year }} All Rights Reserved</small>
-        </footer>
-      </main>
+          <div class="ml-hero-body">
+            <p class="ml-kicker">{{ kicker }}</p>
+            <h2 class="ml-title">{{ title }}</h2>
+            <p class="ml-sub">{{ lead }}</p>
+
+            <div class="ml-banner" data-apnaenge>
+              <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
+              <p class="ml-apna-sub"><zed-text key="msme.login.hero.taglineText" [inline]="true">Zero Defect, Zero Effect — better quality, less waste, more business.</zed-text></p>
+            </div>
+
+            @if (msmeLinks) {
+              <p class="ml-label ml-label-rule">Are you an MSME?</p>
+              <ul class="ml-benefits ml-quick">
+                <li>
+                  <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></svg></span>
+                  <a routerLink="/msme/login"><strong>MSME login →</strong><small>Apply for and track your certification</small></a>
+                </li>
+                <li>
+                  <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 20h20M4 20V10l5 3V10l5 3V6l6-3v17" /></svg></span>
+                  <a routerLink="/msme/register"><strong>Register your enterprise →</strong><small>With your Udyam registration number</small></a>
+                </li>
+              </ul>
+            }
+
+            <p class="ml-label">Certification levels</p>
+            <div class="ml-levels">
+              @if (levels().steps.length) {
+                <ul class="ml-lv-box">
+                  @for (l of levels().steps; track l.name; let i = $index) {
+                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
+                  }
+                </ul>
+              }
+              @for (l of levels().export; track l.name) {
+                <ul class="ml-lv-box ml-lv-x">
+                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>Export</small></li>
+                </ul>
+              }
+            </div>
+          </div>
+        </aside>
+        <main class="ml-side">
+          <div class="ml-side-top">
+            @if (links.url('contact'); as c) {
+              <a class="ml-help" [href]="c" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" /></svg>
+                Need help?
+              </a>
+            }
+          </div>
+          <section class="ml-card">
+            <span class="ml-tag">{{ audience }}</span>
+            <ng-content />
+          </section>
+          <div class="ml-secure">
+            <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg></span>
+            <p><strong>Authorised users only</strong><small>Sign-ins are recorded.</small></p>
+          </div>
+        </main>
+      </div>
+      <footer class="ml-footer">
+        <small>© {{ year }} Ministry of MSME, Government of India</small>
+        <small>Best viewed in the latest Chrome, Edge or Firefox</small>
+      </footer>
     </div>
   `,
+  styleUrl: '../msme/login-shell/login-frame.scss',
   styles: `
-    :host { min-height: 100vh; font-family: 'Work Sans', sans-serif; background: #fff; }
-    .zl-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
-    .zl-hero {
-      position: relative; padding: 28px 48px 32px; display: flex; flex-direction: column; border-right: 1px solid #e3ecee;
-      background-color: #f1f8f8; background-image: radial-gradient(#d3e6e8 1px, transparent 1px); background-size: 22px 22px;
-    }
-    .zl-logos { display: flex; align-items: center; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid #d9e7e8; }
-    /* 2026-11-15 (the user): bigger logos. */
-    .zl-ministry { height: 84px; display: block; }
-    .zl-zed { height: 76px; display: block; margin-left: auto; }
-    .zl-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 8px; }
-    .zl-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--zt-dark, #23656b); margin: 0 0 8px; }
-    .zl-title { font-size: 36px; font-weight: 700; color: #16302f; line-height: 1.15; margin: 0; }
-    .zl-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: var(--zt-dark, #23656b); margin: 16px 0; }
-    .zl-lead { font-size: 15.5px; color: #4f6062; line-height: 1.6; margin: 0 0 24px; }
-    .zl-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
-    .zl-levels { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
-    .zl-level {
-      display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 14px;
-      font-weight: 700; color: #1d2b2c; font-size: 14px;
-    }
-    .zl-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
-    .zl-level-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--zt-soft, #d9eef0); flex: none; }
-    .zl-quick {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid #dbe8e9;
-      border-left: 4px solid var(--zt-dark, #23656b); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; text-decoration: none; color: #1d2b2c;
-    }
-    .zl-quick:hover { border-color: var(--zt-dark, #23656b); background: #f8fcfc; }
-    .zl-quick strong { display: block; font-size: 14.5px; }
-    .zl-quick small { display: block; color: #5f6f70; font-size: 12.5px; }
-    .zl-go {
-      width: 28px; height: 28px; border-radius: 50%; border: 1px solid #cfe0e2; display: inline-flex; align-items: center; justify-content: center;
-      color: var(--zt-dark, #23656b); font-size: 18px; flex: none;
-    }
-    .zl-side { display: flex; flex-direction: column; padding: 24px 40px 16px; min-width: 0; }
-    .zl-side-top { display: flex; justify-content: flex-end; min-height: 32px; }
-    .zl-help { display: inline-flex; align-items: center; gap: 6px; color: var(--zt-dark, #23656b); font-weight: 600; font-size: 14px; text-decoration: none; }
-    .zl-help svg { width: 16px; height: 16px; fill: currentColor; }
-    /* min-width 0: a long sentence (Forgot Password) wraps instead of widening the form. */
-    .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 460px; margin: 0 auto; padding: 24px 0; min-width: 0; }
-    .zl-card {
-      /* 2026-11-15: smaller corners, so that the teal top line bends less at its ends. */
-      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid var(--zt-dark, #23656b); border-radius: 8px; padding: 26px 30px 16px;
-      box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08); min-width: 0;
-    }
-    .zl-tag {
-      display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); margin-bottom: 12px;
-    }
-    .zl-secure {
-      display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px 0 0; padding-top: 12px; border-top: 1px solid #e3ecee;
-      font-size: 12.5px; color: #6b7a7c;
-    }
-    .zl-secure svg { width: 14px; height: 14px; fill: var(--zt-dark, #23656b); flex: none; }
-    .zl-foot {
-      display: flex; justify-content: center; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
-      padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
-    }
-    .zl-foot-wide { justify-content: flex-start; border-top-color: #d9e7e8; margin-top: 16px; }
-    .zl-foot-phone { display: none; }
-    @media (max-width: 900px) {
-      .zl-foot-wide { display: none; }
-      .zl-foot-phone { display: flex; }
-      .zl-page { grid-template-columns: 1fr; }
-      .zl-hero { padding: 14px 20px 16px; border-right: 0; border-bottom: 1px solid #e3ecee; }
-      .zl-logos { padding-bottom: 10px; }
-      .zl-ministry { height: 40px; }
-      .zl-zed { height: 42px; }
-      .zl-hero-body { padding: 12px 0 0; }
-      .zl-title { font-size: 22px; }
-      .zl-rule, .zl-lead, .zl-label, .zl-levels, .zl-quick { display: none; }
-      .zl-side { padding: 8px 20px 14px; }
-      .zl-form { padding: 16px 0 20px; }
-      .zl-card { padding: 20px 18px 12px; box-shadow: none; }
-    }
+    .ml-tag { align-self: flex-start; display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
+    .ml-quick li { border-bottom: 0 !important; }
+    .ml-quick a { text-decoration: none; min-width: 0; }
+    .ml-quick a strong { color: var(--zt-dark, #1f5c61); }
+    .ml-quick a:hover strong { text-decoration: underline; }
+    .ml-secure { display: flex; align-items: center; gap: 14px; background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 45%, #fff); border-top: 2px solid var(--ml-line); padding: 22px 56px 24px; }
+    .ml-secure strong { display: block; font-size: 15px; font-weight: 800; color: var(--ml-ink); }
+    .ml-secure small { display: block; font-size: 13px; color: var(--ml-muted); }
+    @media (max-width: 900px) { .ml-secure { padding: 14px 20px; } }
   `,
 })
 export class StaffLoginShell {
@@ -172,16 +124,18 @@ export class StaffLoginShell {
       ? 'Handholding of MSMEs towards ZED Silver and Gold: milestones, reviews and reports for organisations and consultants.'
       : PORTAL_SYSTEM === 'surveillance'
         ? 'Surveillance of ZED certified MSMEs: assessments, reviews and reports for agencies and assessors.'
-        : 'Zero Defect, Zero Effect: desktop and site assessments, reviews and reports for the staff, agencies and assessors of ZED.';
+        : 'Desktop and site assessments, reviews and reports for the staff, agencies and assessors of ZED.';
   /** MSMEs sign in and register on the main portal. */
   protected readonly msmeLinks = PORTAL_SYSTEM === 'main';
   private readonly publicLevels = inject(PublicLevels);
-  /** Consultancy: handholding of Silver and Gold; otherwise the enabled levels as the Admin named them, with their badges. */
+  /** Consultancy: handholding of Silver, Gold and ZED-X; otherwise the enabled levels as the Admin named them, coloured as the design. */
   protected readonly levels = computed(() => {
     const all = this.publicLevels.levels() ?? [];
     const pick = PORTAL_SYSTEM === 'consultancy' ? all.filter((l) => HANDHOLDING_LEVEL_CODES.includes(l.code)) : all;
-    return pick.length
-      ? pick.map((l) => ({ name: l.name, logoUrl: l.logoUrl }))
-      : (PORTAL_SYSTEM === 'consultancy' ? ['Silver', 'Gold', 'ZED-X'] : ['Bronze', 'Silver', 'Gold', 'ZED-X']).map((name) => ({ name, logoUrl: null as string | null }));
+    const list = pick.length
+      ? pick.map((l) => ({ code: l.code, name: l.name }))
+      : (PORTAL_SYSTEM === 'consultancy' ? [['Silver', 'Silver'], ['Gold', 'Gold'], ['ZEDX', 'ZED-X']] : [['Bronze', 'Bronze'], ['Silver', 'Silver'], ['Gold', 'Gold'], ['ZEDX', 'ZED-X']])
+          .map(([code, name]) => ({ code, name }));
+    return loginLevels(list);
   });
 }

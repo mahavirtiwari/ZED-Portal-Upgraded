@@ -19,79 +19,45 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
   imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
     <zed-staff-login-shell>
-      <h1 class="login-title">Sign in</h1>
-      <p class="login-sub">Use your ZED user ID and password{{ systemName ? ' · ' + systemName : '' }}</p>
-      @if (expired) {
-        <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
-      }
-      <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
-        <div class="mb-3">
+      <!-- 2026-11-17 (approved): the MSME login's form (login.scss): flat, square, Login and Forgot password? side by side. -->
+      <div class="login-login">
+        <h1 class="ml-heading">Sign in</h1>
+        <p class="ml-lead">Use your ZED user ID and password{{ systemName ? ' · ' + systemName : '' }}.</p>
+        @if (expired) {
+          <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
+        }
+        <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
           <label for="userId">User ID</label>
-          <div class="field">
-            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2.2c-3.3 0-9 1.7-9 5V21h18v-1.8c0-3.3-5.7-5-9-5Z" /></svg></span>
+          <div class="mb-3 in-field">
+            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></span>
             <input id="userId" name="userId" class="form-control" placeholder="Username" autocomplete="username" [(ngModel)]="userId" required maxlength="100" />
           </div>
-        </div>
-        <div class="mb-3">
           <label for="password">Password</label>
-          <div class="field">
-            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
+          <div class="mb-3 in-field">
+            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>
             <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" class="form-control has-toggle" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
-            <button type="button" class="toggle" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword()">
-              {{ showPassword() ? 'Hide' : 'Show' }}
-            </button>
+            <button type="button" class="in-toggle toggle" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword()">{{ showPassword() ? 'Hide' : 'Show' }}</button>
           </div>
-        </div>
-        <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-        <!-- 2026-11-16 (as the user's design): LOGIN and FORGOT PASSWORD? side by side. -->
-        <div class="login-actions">
-          <button type="submit" class="btn btn-login" [disabled]="busy()">LOGIN</button>
-          <a class="btn btn-forgot" routerLink="/forgot-password">FORGOT PASSWORD?</a>
-        </div>
-        @if (error()) {
-          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
-        }
-        @if (adminMoved()) {
-          <!-- One Admin (V4): the Admin of this portal signs in on the main portal and chooses this portal there. -->
-          <div class="d-grid mt-2">
-            <a class="btn btn-primary" href="/login" (click)="toMainAdmin()">Go to the Admin on the main portal</a>
+          <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
+          <div class="ml-actions ml-two">
+            <button type="submit" class="btn ml-btn-login" [disabled]="busy()">Login
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg></button>
+            <a class="btn ml-btn-forgot" routerLink="/forgot-password">Forgot password?</a>
           </div>
-        }
-      </form>
+          @if (error()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
+          }
+          @if (adminMoved()) {
+            <!-- One Admin (V4): the Admin of this portal signs in on the main portal and chooses this portal there. -->
+            <div class="register-btn mt-3">
+              <a class="btn btn-primary" href="/login" (click)="toMainAdmin()">Go to the Admin on the main portal</a>
+            </div>
+          }
+        </form>
+      </div>
     </zed-staff-login-shell>
   `,
-  styles: `
-    .login-title { font-size: 26px; font-weight: 700; color: #1d2b2c; margin: 0; }
-    .login-sub { color: #5f6b6c; font-size: 14px; margin: 4px 0 22px; }
-    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-    .field { position: relative; }
-    .in-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
-    .in-icon svg { width: 18px; height: 18px; fill: var(--zt-dark, #23656b); display: block; }
-    .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; background-color: #f7fafa; }
-    .field .form-control:focus { background-color: #fff; }
-    .field .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
-    .field .form-control.has-toggle { padding-right: 64px; }
-    .toggle {
-      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--zt-dark, #23656b);
-      font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px;
-    }
-    .toggle:hover { background: #e6f2f3; }
-    .btn-primary, .btn-primary:hover {
-      color: #fff; background-color: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
-      text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
-    }
-    .btn-primary:hover, .btn-primary:focus-visible { background-color: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); filter: none; }
-    .login-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .login-actions .btn {
-      height: 46px; border-radius: 5px; border: 0; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
-      text-transform: uppercase; display: flex; align-items: center; justify-content: center; white-space: nowrap; padding: 0 10px;
-    }
-    .btn-login { background-color: var(--zt-mid2, #2b8a8e); }
-    .btn-login:hover, .btn-login:focus-visible { background-color: var(--zt-dark, #23656b); color: #fff; }
-    .btn-forgot { background-color: #7a7a7a; }
-    .btn-forgot:hover, .btn-forgot:focus-visible { background-color: #5f5f5f; color: #fff; }
-    @media (max-width: 359.98px) { .login-actions { grid-template-columns: 1fr; } }
-  `,
+  styleUrl: '../msme/login/login.scss',
 })
 export class StaffLoginPage {
   private readonly http = inject(HttpClient);

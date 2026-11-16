@@ -17,7 +17,7 @@
 .login-login { --ml-line: #cfe0dc; }
 .login-login .login-form h2, .login-login h2 { font-size: 26px; font-weight: 800; color: #1c2b2d; margin: 0; }
 .ml-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
-.login-login .login-form .ml-heading { font-size: 40px; letter-spacing: -0.4px; line-height: 1.1; }
+.login-login .login-form .ml-heading, .login-login h1.ml-heading { font-size: 40px; font-weight: 800; color: #1c2b2d; margin: 0; letter-spacing: -0.4px; line-height: 1.1; }
 .ml-lead { color: #4d5f61; font-size: 15px; margin: 8px 0 26px; }
 .login-form label { color: #1c2b2d; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .login-form .form-control { height: 50px; border-radius: 0; border: 2px solid var(--ml-line, #cfe0dc); background: #fff; font-size: 16px; color: #1c2b2d; }
@@ -63,5 +63,5 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   background: var(--zt-ink, #173f44); color: #fff; font-size: 15px; font-weight: 600;
 }
 .ml-register:hover, .ml-register:focus-visible { background: var(--zt-dark, #1f5c61); color: #fff; }
-@media (max-width: 900px) { .ml-new { padding: 18px 20px; } .login-login .login-form .ml-heading { font-size: 30px; } .ml-lead { margin-bottom: 18px; } }
+@media (max-width: 900px) { .ml-new { padding: 18px 20px; } .login-login .login-form .ml-heading, .login-login h1.ml-heading { font-size: 30px; } .ml-lead { margin-bottom: 18px; } }
 @media (max-width: 480px) { .ml-new { flex-direction: column; align-items: stretch; } .ml-register { justify-content: center; } }

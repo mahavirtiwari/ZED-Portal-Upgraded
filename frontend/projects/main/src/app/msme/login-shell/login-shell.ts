@@ -8,6 +8,12 @@ import { ContentTextComponent } from '../../content/content-text';
 /** 2026-11-17 (the design): the bar colour of each level by code. */
 const LEVEL_COLOURS: Readonly<Record<string, string>> = { BRONZE: '#b0683a', SILVER: '#9aa3a8', GOLD: '#d4a12a', ZEDX: '#3d8fa6' };
 
+/** The levels of the login hero: the numbered steps (Bronze, Silver, Gold and any other) and ZED-X (Export) apart, coloured. */
+export function loginLevels(list: readonly { code: string; name: string }[]) {
+  const shown = list.map((l) => ({ ...l, color: LEVEL_COLOURS[l.code.toUpperCase()] ?? 'var(--zt-mid2, #2a8a8c)' }));
+  return { steps: shown.filter((l) => l.code.toUpperCase() !== 'ZEDX'), export: shown.filter((l) => l.code.toUpperCase() === 'ZEDX') };
+}
+
 export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
 
 /**
@@ -105,65 +111,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       </footer>
     </div>
   `,
-  styles: `
-    :host { font-family: 'Archivo', 'Work Sans', Arial, sans-serif; background: #fff; --ml-line: #cfe0dc; --ml-ink: #1c2b2d; --ml-muted: #4d5f61; }
-    p { margin: 0; }
-    .ml-page { min-height: 100vh; display: flex; flex-direction: column; }
-    .ml-cols { flex: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); }
-    .ml-hero { display: flex; flex-direction: column; min-width: 0; border-right: 2px solid var(--ml-line); background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 45%, #fff); }
-    .ml-logos { display: flex; align-items: center; gap: 18px; padding: 12px 48px; border-bottom: 2px solid var(--ml-line); }
-    .ml-ministry { height: 92px; display: block; }
-    .ml-zed { height: 88px; display: block; margin-left: auto; }
-    .ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 32px 48px; }
-    .ml-kicker, .ml-label { font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ml-muted); }
-    .ml-kicker { color: var(--zt-dark, #1f5c61); }
-    .ml-title { font-size: clamp(34px, 3.6vw, 50px); font-weight: 800; letter-spacing: -1px; line-height: 1; color: var(--ml-ink); margin: 14px 0 16px; }
-    .ml-sub { font-size: 17px; color: var(--ml-muted); line-height: 1.5; }
-    .ml-banner { display: flex; align-items: center; background: var(--zt-dark, #1f5c61); margin: 26px 0 36px; min-height: 72px; }
-    .ml-apna { flex: none; font-size: 32px; font-weight: 800; letter-spacing: -0.3px; color: #fff; padding: 10px 24px; border-right: 2px solid rgb(255 255 255 / 30%); }
-    .ml-apna-sub { font-size: 15px; color: #eef6f4; padding: 10px 24px; line-height: 1.4; }
-    .ml-label-rule { padding-bottom: 10px; border-bottom: 2px solid var(--zt-dark, #1f5c61); }
-    .ml-benefits { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: 1fr 1fr; }
-    .ml-benefits li { display: flex; gap: 12px; padding: 16px 16px 16px 0; min-width: 0; }
-    .ml-benefits li:nth-child(odd) { border-right: 2px solid var(--ml-line); }
-    .ml-benefits li:nth-child(even) { padding-left: 20px; }
-    .ml-benefits li:nth-child(-n + 2) { border-bottom: 2px solid var(--ml-line); }
-    .ml-ic { flex: none; width: 40px; height: 40px; background: var(--zt-soft, #d4ebe6); display: flex; align-items: center; justify-content: center; }
-    svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .ml-ic svg { color: var(--zt-dark, #1f5c61); }
-    .ml-benefits strong { display: block; font-size: 16px; font-weight: 800; color: var(--ml-ink); }
-    .ml-benefits small { display: block; font-size: 13px; color: var(--ml-muted); line-height: 1.4; margin-top: 3px; }
-    .ml-levels { display: flex; gap: 24px; margin-top: 12px; }
-    .ml-lv-box { list-style: none; margin: 0; padding: 0; display: flex; flex: 3; background: #fff; border: 2px solid var(--ml-line); }
-    .ml-lv-x { flex: 1; }
-    .ml-level { flex: 1; min-width: 0; padding: 14px 14px 16px; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px; }
-    .ml-level + .ml-level { border-left: 2px solid var(--ml-line); }
-    .ml-bar { flex: 0 0 100%; height: 6px; margin-bottom: 20px; }
-    .ml-level b { font-size: 16px; font-weight: 800; color: var(--ml-ink); }
-    .ml-level small { font-size: 12px; color: var(--ml-muted); }
-    .ml-side { display: flex; flex-direction: column; min-width: 0; }
-    .ml-side-top { display: flex; justify-content: flex-end; align-items: center; min-height: 116px; padding: 0 56px; border-bottom: 2px solid var(--ml-line); }
-    .ml-help { display: inline-flex; align-items: center; gap: 8px; color: var(--zt-dark, #1f5c61); font-weight: 600; font-size: 14px; text-decoration: none; }
-    .ml-help svg { width: 16px; height: 16px; }
-    .ml-card { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 480px; margin: 0 auto; padding: 32px 56px; min-width: 0; }
-    .ml-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--zt-ink, #173f44); color: #d4ebe6; padding: 18px 48px; }
-    .ml-footer small { font-size: 13px; }
-    @media (max-width: 900px) {
-      .ml-cols { grid-template-columns: 1fr; }
-      .ml-hero { border-right: 0; border-bottom: 2px solid var(--ml-line); }
-      .ml-logos { padding: 10px 20px; }
-      .ml-ministry, .ml-zed { height: 54px; }
-      .ml-hero-body { padding: 14px 20px 16px; }
-      .ml-title { font-size: 24px; letter-spacing: -0.4px; margin: 6px 0 0; }
-      .ml-sub, .ml-label, .ml-benefits, .ml-levels { display: none; }
-      .ml-banner { margin: 12px 0 0; min-height: 0; }
-      .ml-apna { font-size: 22px; padding: 8px 14px; }
-      .ml-apna-sub { font-size: 13px; padding: 8px 14px; }
-      .ml-side-top { min-height: 48px; padding: 0 20px; }
-      .ml-card { padding: 22px 20px 26px; }
-      .ml-footer { padding: 14px 20px; justify-content: center; text-align: center; }
-    }
-  `,
+  styleUrl: './login-frame.scss',
 })
 export class LoginShell {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
@@ -188,7 +136,6 @@ export class LoginShell {
     const list = all.length
       ? all.map((l) => ({ code: l.code, name: l.name }))
       : [['Bronze', 'Bronze'], ['Silver', 'Silver'], ['Gold', 'Gold'], ['ZEDX', 'ZED-X']].map(([code, name]) => ({ code, name }));
-    const shown = list.map((l) => ({ ...l, color: LEVEL_COLOURS[l.code.toUpperCase()] ?? 'var(--zt-mid2, #2a8a8c)' }));
-    return { steps: shown.filter((l) => l.code.toUpperCase() !== 'ZEDX'), export: shown.filter((l) => l.code.toUpperCase() === 'ZEDX') };
+    return loginLevels(list);
   });
 }
