@@ -21,6 +21,22 @@ import type { Attendance, AssessmentDetails, BaseServiceRequest, BasicInformatio
 
 export type SaSystem = 'main' | 'surveillance';
 
+/** 2026-11-16: an answer of the site assessor's Basic Information the agency sent back, with its remark. */
+export type FormCorrection = {
+  zedId: string;
+  certificationType: string;
+  form: string;
+  key: string;
+  label: string;
+  type: string;
+  help?: string | null;
+  options?: string[] | null;
+  remarks?: string | null;
+  value?: string | null;
+};
+
+export type FormCorrectionsResponse = BaseServiceResponse & { corrections?: FormCorrection[] | null };
+
 /** RestHelper: 300 s connect and read timeouts (whole meetings with base64 photos). */
 const REST_TIMEOUT_MS = 300_000;
 
@@ -72,6 +88,16 @@ export class SaApi {
   /** New (redesign): the Login answer for one unit, without the password. */
   assessment(request: { saId: string; zedId: string; certificationType?: string | null }) {
     return this.rest.postJson<AssessmentDetails>(this.base + 'Assessment', this.body(request));
+  }
+
+  /** 2026-11-16: the Basic Information answers the agency found Not valid (no zedId: every unit under its review). */
+  formCorrections(request: { saId: string; zedId?: string; certificationType?: string }) {
+    return this.retrofit.postJson<FormCorrectionsResponse>(this.base + 'FormCorrections', this.body(request));
+  }
+
+  /** 2026-11-16: the corrected answer; the agency checks it again. */
+  submitFormCorrection(request: { saId: string; zedId: string; certificationType: string; form: string; key: string; value: unknown }) {
+    return this.retrofit.postJson<BaseServiceResponse>(this.base + 'SubmitFormCorrection', this.body(request));
   }
 
   notifications(saId: string) {

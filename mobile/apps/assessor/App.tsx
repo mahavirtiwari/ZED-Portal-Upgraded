@@ -12,6 +12,7 @@ import { AttendanceLogScreen, AttendanceScreen, PunchInScreen } from './src/scre
 import { BasicDetailsDisplayScreen, BasicInfoRowScreen, BasicInformationScreen } from './src/screens/BasicInfoScreens';
 import { NewEvidenceScreen, NewSitePhotoScreen, SiteTourScreen } from './src/screens/EvidenceScreens';
 import { FinalCommentsScreen } from './src/screens/FinalCommentsScreen';
+import { CorrectionsScreen } from './src/screens/CorrectionsScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { AboutScreen, HelpScreen, NotificationsScreen, ViewProfileScreen } from './src/screens/InfoScreens';
 import { ForgotPasswordScreen, LoginScreen, SplashScreen } from './src/screens/LoginScreen';
@@ -46,6 +47,8 @@ export const SCREENS: ScreenMap = {
   Home: withAssessor(HomeScreen),
   Notifications: withAssessor(NotificationsScreen),
   ViewProfile: withAssessor(ViewProfileScreen),
+  // 2026-11-16: the Basic Information answers the agency sent back for correction.
+  Corrections: withAssessor(CorrectionsScreen),
   Help: HelpScreen,
   About: AboutScreen,
   // The company profile and the steps are one page in the redesign (07 Assessment Detail); both legacy names lead there.

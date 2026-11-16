@@ -178,6 +178,7 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
         </View>
       </View>
       <ZScroll contentContainerStyle={z.screenPad} refreshControl={refreshControl}>
+        <CorrectionsCard />
         {list.length === 0 ? (
           <EmptyState
             icon="clipboard"
@@ -206,6 +207,38 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
       </ZScroll>
       {team ? <TeamPopup a={team} onClose={() => setTeam(null)} /> : null}
     </View>
+  );
+}
+
+/**
+ * 2026-11-16: answers of the assessor's Basic Information the agency sent back for correction (Admin → App Forms →
+ * Validation required on the site assessment form); nothing when none.
+ */
+function CorrectionsCard() {
+  const app = useSa();
+  const nav = useNavigation();
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    isNetworkAvailable()
+      .then(online => (online ? app.formCorrections() : []))
+      .then(list => alive && setCount(list.length))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [app]);
+  if (!count) return null;
+  return (
+    <Card onPress={() => nav.push('Corrections')} testID="corrections-card" style={{ marginBottom: 12, borderColor: C.danger, borderWidth: 1 }}>
+      <View style={z.rowBetween}>
+        <Text style={z.title}>Corrections from the agency</Text>
+        <Badge label={String(count)} tone="danger" small testID="corrections-count" />
+      </View>
+      <Text style={[z.muted, { marginTop: 4 }]}>
+        {count === 1 ? '1 Basic Information answer was sent back. Tap to correct it.' : `${count} Basic Information answers were sent back. Tap to correct them.`}
+      </Text>
+    </Card>
   );
 }
 

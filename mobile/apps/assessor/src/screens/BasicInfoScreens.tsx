@@ -313,7 +313,7 @@ const asList = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : typ
  * list, check boxes). Values: text as typed, Yes/No, the chosen option(s) (a list for multi-select and check boxes),
  * dates as `yyyy-MM-dd`.
  */
-function FormFieldControl({
+export function FormFieldControl({
   field,
   value,
   onChange,

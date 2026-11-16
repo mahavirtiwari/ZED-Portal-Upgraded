@@ -17,7 +17,7 @@ import {
   type Environment,
   type SqlDb,
 } from '@zed/shared';
-import { SaApi, type SaSystem } from '../api';
+import { SaApi, type FormCorrection, type SaSystem } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
 import { ASSESSOR_BASIC_INFO, BUILT_IN_BASIC_INFO } from '../forms';
@@ -248,6 +248,22 @@ export class SaApp {
   }
 
   /** SA/Assessments: a failure keeps the last list. */
+  /** 2026-11-16: the answers the agency sent back to this assessor (every unit under its review; main portal only). */
+  async formCorrections(): Promise<FormCorrection[]> {
+    const id = this._assessor?.assessorId;
+    if (!id) return [];
+    const r = await this.mainApi.formCorrections({ saId: id });
+    return r && String(r.status ?? '') === '1' && Array.isArray(r.corrections) ? r.corrections : [];
+  }
+
+  /** 2026-11-16: the corrected answer to one of them; the server's refusal, or null. */
+  async submitFormCorrection(c: FormCorrection, value: unknown): Promise<string | null> {
+    const id = this._assessor?.assessorId;
+    if (!id) return 'Please sign in again.';
+    const r = await this.mainApi.submitFormCorrection({ saId: id, zedId: c.zedId, certificationType: c.certificationType, form: c.form, key: c.key, value });
+    return r && String(r.status ?? '') === '1' ? null : (r?.errorMessage || 'The answer could not be sent. Please try again.');
+  }
+
   async refreshAssessments(): Promise<void> {
     const a = this._assessor;
     if (!a) return;
