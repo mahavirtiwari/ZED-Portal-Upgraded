@@ -40,6 +40,7 @@
       }
     </ul>
 
+    <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
     <div class="tab-content">
       <div class="tab-title">
         <div class="numberCircle">{{ tabNumber(tab()) }}</div>
@@ -364,6 +365,7 @@
                         <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
                         <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
                         <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                        @if (qoMaster()) { <button type="button" class="btn btn-link btn-sm p-0 qo-add" (click)="observe(r)">+ Observation</button> }
                       </div>
 
                       <!-- 2026-11-14 (approved): each checkpoint with its answer and its own evidences under it; evidences not tied

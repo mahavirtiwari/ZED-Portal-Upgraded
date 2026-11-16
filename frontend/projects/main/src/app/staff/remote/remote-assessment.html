@@ -67,6 +67,7 @@
         }
       </ul>
 
+      <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
       <div class="tab-content">
         <div class="tab-title">
           <div class="numberCircle">{{ currentTab().no }}</div>

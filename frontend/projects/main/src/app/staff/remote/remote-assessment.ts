@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
+import { AuthService as QoAuth } from '@zed/shared';
 import { Observable, firstValueFrom, tap } from 'rxjs';
 import { ContentService, ContentTextComponent, fillText, textParts } from '../../content/content-text';
 import { DETAILS_STYLES, num, reportPageHref, text } from '../assessment/assessment-shared';
@@ -16,6 +17,8 @@ import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread'
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
 import { UnitFacts } from '../../msme/shared/unit-facts';
+import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { QoTarget } from '../quality/quality.api';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -110,7 +113,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel],
+  imports: [QualityObservationsPanel, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -145,6 +148,23 @@ export class RemoteAssessmentPage {
   protected readonly basicInfo = BASIC_INFO;
 
   protected readonly data = signal<RemoteDetails | null>(null);
+
+  // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
+  protected readonly qoAbouts = ['Lead', 'Co', 'Agency'];
+  protected readonly qoTarget = signal<QoTarget | null>(null);
+  private readonly qoAuth = inject(QoAuth);
+  /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
+  protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);
+  protected readonly qoTargets = computed<QoTarget[]>(() =>
+    (this.data()?.requirements ?? []).map((r) => ({
+      type: 'Requirement' as const,
+      id: String(r['Id'] ?? ''),
+      label: `${r['SectionCode'] ?? ''}.${r['RequirementCode'] ?? ''} ${(r['RequirementName'] as string | undefined) ?? ''}`.trim(),
+    })));
+
+  protected observe(r: Record<string, unknown>): void {
+    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+  }
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');

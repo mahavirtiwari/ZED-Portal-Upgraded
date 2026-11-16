@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
+import { AuthService as QoAuth } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, isZedId } from '../assessment/assessment.api';
@@ -12,6 +13,8 @@ import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, Sa
 import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterNav } from '../../msme/shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
+import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { QoTarget } from '../quality/quality.api';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -43,7 +46,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo],
+  imports: [QualityObservationsPanel, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
@@ -61,6 +64,23 @@ export class SaDetailsPage {
   protected readonly tabTitles = SA_TAB_TITLES;
 
   protected readonly data = signal<SaDetails | null>(null);
+
+  // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
+  protected readonly qoAbouts = ['Lead', 'Co', 'Desktop', 'Agency'];
+  protected readonly qoTarget = signal<QoTarget | null>(null);
+  private readonly qoAuth = inject(QoAuth);
+  /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
+  protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);
+  protected readonly qoTargets = computed<QoTarget[]>(() =>
+    (this.data()?.requirements ?? []).map((r) => ({
+      type: 'Requirement' as const,
+      id: String(r['Id'] ?? ''),
+      label: `${r['SectionCode'] ?? ''}.${r['RequirementCode'] ?? ''} ${(r['RequirementName'] as string | undefined) ?? ''}`.trim(),
+    })));
+
+  protected observe(r: Record<string, unknown>): void {
+    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+  }
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);

@@ -545,6 +545,10 @@ public sealed class MilestoneReviewController(
     public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, ConfirmRequest req, CancellationToken ct)
     {
         if (!req.Confirmed) return this.Problem400("Please confirm the review of the milestone before final submit.");
+        // 2026-11-16 (approved): the ZED team's open major / critical observations wait for the CO's reply.
+        if (AssessmentInput.IsId(zedId) && Level(certification) is { } qoLevel
+            && await Staff.Quality.QualityObservations.BlockingAsync(db, zedId, qoLevel, log, ct) is > 0 and var open)
+            return this.Problem400(Staff.Quality.QualityObservations.BlockingMessage(open));
         MilestoneContext ctx;
         await Decisions.WaitAsync(ct);
         try

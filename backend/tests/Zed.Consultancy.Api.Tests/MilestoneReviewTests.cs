@@ -525,6 +525,19 @@ public sealed class MilestoneReviewTests : IDisposable
         Assert.DoesNotContain(mail.Bcc ?? [], b => b.Contains("geostat", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>2026-11-16 (approved): the ZED team's open major / critical observations hold the CO's final submit; handholding has its own categories.</summary>
+    [Fact]
+    public async Task Open_major_quality_observations_hold_the_COs_final_submit()
+    {
+        _status = 15;
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Quality.QualityObservations.BlockingSql] = _ => [1];
+        var co = await As(Co, UserRole.Agency);
+        var r = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true });
+        Assert.Equal(global::Zed.Portal.Features.Staff.Quality.QualityObservations.BlockingMessage(1), await r.ProblemTitle());
+        Assert.Empty(CallsTo("SP_MONITORING_RA_FINAL_SUBMIT"));
+        Assert.Contains("Action plan not adequate", global::Zed.Portal.Features.Staff.Quality.QualityObservations.CategoriesFor(handholding: true));
+    }
+
     /// <summary>2026-11-16 (approved): the CO's send-back remark is shown on the page while the milestone is back with the consultants.</summary>
     [Fact]
     public async Task The_page_shows_the_COs_send_back_remark()

@@ -101,6 +101,13 @@ const MAIN_STAFF_CHILDREN: Routes = [
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
   { path: 'user-management', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.USER_MANAGEMENT_ROUTES) },
   { path: 'sub-users', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.SUB_USERS_ROUTES) },
+  // 2026-11-16: the ZED team's quality observations (Master Admin, operation admins, agencies).
+  {
+    path: 'quality-observations',
+    title: 'ZED | Quality Observations',
+    canActivate: [authGuard('/staff', [R.MasterAdmin, R.Agency])],
+    loadComponent: () => import('./staff/quality/quality-observations-page').then((m) => m.QualityObservationsPage),
+  },
   { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
   {
     path: 'neft/new',
@@ -420,6 +427,13 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
   { path: 'user-management', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.USER_MANAGEMENT_ROUTES) },
   { path: 'sub-users', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.SUB_USERS_ROUTES) },
+  // 2026-11-16: the ZED team's quality observations (Master Admin, operation admins, agencies).
+  {
+    path: 'quality-observations',
+    title: 'ZED | Quality Observations',
+    canActivate: [authGuard('/staff', [R.MasterAdmin, R.Agency])],
+    loadComponent: () => import('./staff/quality/quality-observations-page').then((m) => m.QualityObservationsPage),
+  },
   {
     path: 'change-password',
     title: 'ZED | Change Password',

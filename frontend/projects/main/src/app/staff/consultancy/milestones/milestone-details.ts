@@ -4,6 +4,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
+import { AuthService as QoAuth } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
 import { num, text } from '../../assessment/assessment-shared';
@@ -15,6 +16,8 @@ import { ParameterNav } from '../../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../../msme/shared/page-head';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
+import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
+import { QoTarget } from '../../quality/quality.api';
 
 /** Tabs of the old consultancy SaDetails page. */
 export const MILESTONE_TABS: Record<number, string> = {
@@ -169,7 +172,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
+  imports: [QualityObservationsPanel, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -232,6 +235,23 @@ export class MilestoneDetailsPage {
   protected readonly basicInfoSections = BASIC_INFO_SECTIONS;
 
   protected readonly data = signal<MilestoneDetails | null>(null);
+
+  // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
+  protected readonly qoAbouts = ['Lead', 'Co', 'Agency'];
+  protected readonly qoTarget = signal<QoTarget | null>(null);
+  private readonly qoAuth = inject(QoAuth);
+  /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
+  protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);
+  protected readonly qoTargets = computed<QoTarget[]>(() =>
+    (this.data()?.requirements ?? []).map((r) => ({
+      type: 'Requirement' as const,
+      id: String(r['Id'] ?? ''),
+      label: `${r['SectionCode'] ?? ''}.${r['RequirementCode'] ?? ''} ${(r['RequirementName'] as string | undefined) ?? ''}`.trim(),
+    })));
+
+  protected observe(r: Record<string, unknown>): void {
+    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+  }
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);

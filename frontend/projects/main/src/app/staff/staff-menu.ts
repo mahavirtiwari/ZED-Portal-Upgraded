@@ -197,6 +197,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
+  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
@@ -265,6 +267,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
+  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
@@ -331,6 +335,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Surveillance Assessments (Site)', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
+  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
   // 2026-11-08: the documents and videos the Admin gives to Surveillance accounts.

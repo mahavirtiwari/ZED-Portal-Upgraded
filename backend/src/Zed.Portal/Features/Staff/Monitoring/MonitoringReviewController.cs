@@ -54,8 +54,10 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         "SELECT TOP 1 CAST(Id AS bigint) AS Id FROM Meetings WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
     public const string SaPhotoSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM SaPhotos WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification";
+    // 2026-11-16: never a quality observation's row (migration 0088: they live on AssessorComments too).
     public const string AssessorCommentSql =
-        "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM AssessorComments WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification";
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM AssessorComments WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification " +
+        "AND ISNULL(AssessmentType, '') NOT IN ('QualityObs', 'QualityEvt')";
     public const string AnyPhotoSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmePhotos WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification";
 
@@ -154,6 +156,9 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         var desktop = stage == ReviewStage.Desktop;
         if (!req.QualityChecked || (desktop && !req.ExemptionsReviewed))
             return this.Problem400("Please confirm the review of the assessment before final submit.");
+        // 2026-11-16 (approved): the ZED team's open major / critical observations wait for the agency's reply.
+        if (await Quality.QualityObservations.BlockingAsync(db, zedId, level!, log, ct) is > 0 and var open)
+            return this.Problem400(Quality.QualityObservations.BlockingMessage(open));
 
         await Decisions.WaitAsync(ct);
         try

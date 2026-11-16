@@ -4,6 +4,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
+import { AuthService as QoAuth } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { ReviewActionsBar, ReviewRemarksDialog, RemarksTarget } from '../monitoring/review-actions';
@@ -18,6 +19,8 @@ import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread'
 import { ParameterChip, ParameterNav, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
+import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { QoTarget } from '../quality/quality.api';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -56,7 +59,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead],
+  imports: [QualityObservationsPanel, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './da-details.css',
@@ -77,6 +80,23 @@ export class DaDetailsPage {
   protected readonly tabNumber = (id: number) => (this.surveillanceSystem ? SURVEILLANCE_TAB_NUMBERS[id] ?? id : id);
 
   protected readonly data = signal<DaDetails | null>(null);
+
+  // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
+  protected readonly qoAbouts = ['Desktop', 'Agency'];
+  protected readonly qoTarget = signal<QoTarget | null>(null);
+  private readonly qoAuth = inject(QoAuth);
+  /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
+  protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);
+  protected readonly qoTargets = computed<QoTarget[]>(() =>
+    (this.data()?.requirements ?? []).map((r) => ({
+      type: 'Requirement' as const,
+      id: String(r['Id'] ?? ''),
+      label: `${r['SectionCode'] ?? ''}.${r['RequirementCode'] ?? ''} ${(r['RequirementName'] as string | undefined) ?? ''}`.trim(),
+    })));
+
+  protected observe(r: Record<string, unknown>): void {
+    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+  }
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);

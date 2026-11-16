@@ -32,6 +32,9 @@ public static class SubUserPermissions
     /// <summary>A handholding milestone page (Consultancy), opened from monitoring and the result lists.</summary>
     private const string Milestones = "/api/consultancy/milestones/";
 
+    /// <summary>2026-11-16: the ZED team's quality observations (an agency sub-user on Monitoring or the results replies to them).</summary>
+    private const string QualityObservations = "/api/staff/quality-observations";
+
     /// <summary>The API roots whose calls a sub-user needs a permission for (<see cref="SubUserAccessFilter"/>).</summary>
     public static readonly string[] CheckedRoots = ["/api/staff", "/api/consultancy"];
 
@@ -55,6 +58,9 @@ public static class SubUserPermissions
             ["/staff/history"], ["/api/staff/history"]),
         new("financial-assistance", "Financial Assistance", UserRole.MasterAdmin, Main, None,
             ["/staff/financial-assistance"], ["/api/staff/schemes/fa"]),
+        // 2026-11-16 (approved): raise, close and reopen the ZED team's quality observations, and their dashboard.
+        new("quality-observations", "Quality observations", UserRole.MasterAdmin, All, None,
+            ["/staff/quality-observations"], ["/api/staff/quality-observations"]),
         new("incentive-upload", "Upload API Incentives", UserRole.MasterAdmin, Main, None,
             ["/staff/incentives/upload"], ["/api/staff/schemes/incentives/upload", "/api/staff/schemes/incentives/template"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
@@ -62,7 +68,7 @@ public static class SubUserPermissions
 
         // Agencies, consultant organisations and surveillance agencies
         new("monitoring", "Monitoring", UserRole.Agency, All, SiteOrDesktop,
-            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails, Milestones]),
+            ["/staff/monitoring", "/staff/quality-observations"], ["/api/staff/monitoring", DaDetails, Milestones, QualityObservations]),
         new("assessors", "Assessors / consultants", UserRole.Agency, All, None,
             ["/staff/users/my-assessors", "/staff/users/assessors", "/staff/users/surveillance-assessors"],
             ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors"]),
@@ -72,7 +78,8 @@ public static class SubUserPermissions
             ["/staff/sa-allotment", "/staff/site-assessment/co-allotment"],
             ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments"]),
         new("results", "Completed and rejected", UserRole.Agency, All, SiteOrDesktop,
-            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones]),
+            ["/staff/assessment/completed", "/staff/assessment/rejected", "/staff/quality-observations"],
+            ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones, QualityObservations]),
         new("reports", "Reports", UserRole.Agency, All, None,
             ["/staff/reports"], ["/api/staff/reports"]),
         new("financial-assistance", "Financial Assistance verification", UserRole.Agency, Main, [SubRoles.FinancialVerification],

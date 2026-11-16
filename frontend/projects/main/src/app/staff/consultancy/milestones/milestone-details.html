@@ -46,6 +46,7 @@
       }
     </ul>
 
+    <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
     <div class="tab-content">
       <!-- ================================================= overview -->
       @if (tab() === 1) {

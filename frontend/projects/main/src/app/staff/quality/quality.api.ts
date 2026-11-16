@@ -1,0 +1,149 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { MessageResponse } from '@zed/shared';
+import { Observable } from 'rxjs';
+
+/** 2026-11-16 (approved): the ZED team's quality observations (api/staff/quality-observations, QualityObservationsController). */
+
+export type QoStatus = 'Open' | 'Responded' | 'Closed';
+
+export interface QoStep {
+  kind: 'Raised' | 'Responded' | 'Closed' | 'Reopened';
+  text: string | null;
+  at: string | null;
+  by: string | null;
+  byName: string | null;
+}
+
+export interface QoObservation {
+  id: number;
+  zedId: string;
+  certification: string;
+  status: QoStatus;
+  text: string | null;
+  raisedOn: string | null;
+  raisedBy: string | null;
+  raisedByName: string | null;
+  round: number;
+  stage: string | null;
+  refType: string | null;
+  refId: string | null;
+  refLabel: string | null;
+  category: string | null;
+  severity: 'Minor' | 'Major' | 'Critical' | null;
+  about: 'Desktop' | 'Lead' | 'Co' | 'Agency' | null;
+  aboutUserId: string | null;
+  aboutName: string | null;
+  agencyId: string | null;
+  agencyName: string | null;
+  history: QoStep[];
+  replyHours: number | null;
+  closeHours: number | null;
+  reopens: number;
+}
+
+export interface QoUnitView {
+  canRaise: boolean;
+  canRespond: boolean;
+  canClose: boolean;
+  items: QoObservation[];
+  categories: string[];
+  severities: string[];
+}
+
+/** Something on the page an observation can be about. */
+export interface QoTarget {
+  type: 'Overall' | 'Requirement' | 'Product' | 'Photo' | 'Meeting' | 'Attendance';
+  id: string | null;
+  label: string;
+}
+
+export interface QoRaise {
+  refType: string;
+  refId: string | null;
+  refLabel: string | null;
+  category: string;
+  severity: string;
+  about: string;
+  text: string;
+}
+
+export interface QoStanding {
+  kind: 'Agency' | 'Assessor';
+  userId: string;
+  name: string | null;
+  agencyId: string | null;
+  assessments: number;
+  total: number;
+  open: number;
+  responded: number;
+  closed: number;
+  minor: number;
+  major: number;
+  critical: number;
+  reopens: number;
+  avgReplyHours: number | null;
+  avgCloseHours: number | null;
+  score: number;
+  rank: number;
+}
+
+export interface QoDashboard {
+  agencies: QoStanding[];
+  assessors: QoStanding[];
+  total: number;
+  open: number;
+  responded: number;
+  closed: number;
+  avgReplyHours: number | null;
+  avgCloseHours: number | null;
+  categories: { category: string; total: number; major: number }[];
+}
+
+const API = '/api/staff/quality-observations';
+
+@Injectable({ providedIn: 'root' })
+export class QualityApi {
+  private readonly http = inject(HttpClient);
+
+  unit(zedId: string, certification: string): Observable<QoUnitView> {
+    return this.http.get<QoUnitView>(`${API}/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`);
+  }
+
+  raise(zedId: string, certification: string, body: QoRaise): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API}/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`, body);
+  }
+
+  respond(id: number, text: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API}/items/${id}/respond`, { text });
+  }
+
+  close(id: number, text: string | null): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API}/items/${id}/close`, { text });
+  }
+
+  reopen(id: number, text: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${API}/items/${id}/reopen`, { text });
+  }
+
+  list(status: QoStatus | '' = '', days?: number): Observable<{ items: QoObservation[]; canClose: boolean }> {
+    const q = new URLSearchParams();
+    if (status) q.set('status', status);
+    if (days) q.set('days', String(days));
+    const qs = q.toString();
+    return this.http.get<{ items: QoObservation[]; canClose: boolean }>(qs ? `${API}?${qs}` : API);
+  }
+
+  dashboard(days?: number): Observable<QoDashboard> {
+    return this.http.get<QoDashboard>(days ? `${API}/dashboard?days=${days}` : `${API}/dashboard`);
+  }
+}
+
+export const ABOUT_LABELS: Record<string, string> = { Desktop: 'Desktop assessor', Lead: 'Lead assessor', Co: 'Co-assessor', Agency: 'The agency' };
+
+/** Handholding (consultancy portal): consultants and the Consultant Organisation. */
+export const HANDHOLDING_ABOUT_LABELS: Record<string, string> = { Desktop: 'Consultant', Lead: 'Lead consultant', Co: 'Co-consultant', Agency: 'The consultant organisation' };
+
+export function aboutLabels(system: string): Record<string, string> {
+  return system === 'consultancy' ? HANDHOLDING_ABOUT_LABELS : ABOUT_LABELS;
+}

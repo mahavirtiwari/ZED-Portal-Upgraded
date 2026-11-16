@@ -13,10 +13,10 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0087 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0088 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
-  2026-11-15 release: migrations 0077-0087 (invoice setup, level flows, certified-by-record rule, App Forms validation,
-  reports / surveillance certificate / partner API by record, PENDING phase fix, AP state handholding fee by level, NC rounds and days by level, sub-user states and agencies).
+  2026-11-15 release: migrations 0077-0088 (invoice setup, level flows, certified-by-record rule, App Forms validation,
+  reports / surveillance certificate / partner API by record, PENDING phase fix, AP state handholding fee by level, NC rounds and days by level, sub-user states and agencies, quality observations).
   They go together: never 0078-0083 without 0084. Zed.Jobs did not change (no -IncludeJobs needed).
   Everything is written to a transcript in <InstallRoot>\logs\deploy-<time>.log.
 
@@ -128,7 +128,7 @@ try {
         @{ Db = 'ZED_SURVEILLANCE'; Name = '0075 onsite surveillance visit';      Sql = "SELECT CASE WHEN COL_LENGTH('dbo.MsmeCertifications','AssessmentVisit') IS NOT NULL AND OBJECT_ID('dbo.SP_V4_SURVEILLANCE_ACCEPT_ONSITE','P') IS NOT NULL THEN 1 ELSE 0 END" },
         @{ Db = 'ZED_SURVEILLANCE'; Name = '0076 attendance and ESG checklist report'; Sql = "SELECT CASE WHEN OBJECT_ID('dbo.ZedDailyAttendance','U') IS NOT NULL AND OBJECT_ID('dbo.SP_APP_SA_INSERT_DAILY_ATTENDANCE','P') IS NOT NULL AND OBJECT_ID('dbo.CheckListReport','U') IS NOT NULL THEN 1 ELSE 0 END" }
     )
-    # 2026-11-15 release (0077-0087): the same markers Invoke-ZedDatabaseScripts.ps1 checks after applying each one.
+    # 2026-11-15 release (0077-0088): the same markers Invoke-ZedDatabaseScripts.ps1 checks after applying each one.
     function Has-Text([string]$proc, [string]$text) {
         "CHARINDEX('" + $text.Replace("'", "''") + "', ISNULL(OBJECT_DEFINITION(OBJECT_ID('$proc')), '')) > 0"
     }
@@ -147,7 +147,8 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0085 AP state handholding fee by level'; Test = (Has-Text 'dbo.SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS' 'L.Certification = @Certification), Certification)') },
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0086 NC rounds and days by level'; Test = (Has-Col 'dbo.SectionTypes' 'NcDays') + ' AND ' + (Has-Text 'dbo.SP_ASSESSMENT_RA_FINAL_SUBMIT' 'FN_V4_NC_DAYS') + ' AND ' + (Has-Text 'dbo.SP_ASSESSMENT_DA_AUTO_REJECT' 'V4 0086') },
         @{ Dbs = @('ZED_SURVEILLANCE'); Name = '0086 NC rounds and days by level'; Test = (Has-Col 'dbo.SectionTypes' 'NcDays') + ' AND ' + (Has-Text 'dbo.SP_ASSESSMENT_RA_FINAL_SUBMIT' 'FN_V4_NC_DAYS') },
-        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0087 sub-user states and agencies'; Test = (Has-Col 'dbo.V4SubUsers' 'ScopeStates') + ' AND ' + (Has-Col 'dbo.V4SubUsers' 'ScopeAgencies') }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0087 sub-user states and agencies'; Test = (Has-Col 'dbo.V4SubUsers' 'ScopeStates') + ' AND ' + (Has-Col 'dbo.V4SubUsers' 'ScopeAgencies') },
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0088 quality observations'; Test = (Has-Col 'dbo.AssessorComments' 'QoStatus') + ' AND ' + (Has-Col 'dbo.AssessorComments' 'QoParentId') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }
