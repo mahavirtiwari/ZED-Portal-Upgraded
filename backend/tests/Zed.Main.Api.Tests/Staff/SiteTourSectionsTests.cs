@@ -48,10 +48,10 @@ public sealed class SiteTourSectionsTests : IDisposable
     }
 
     [Theory]
-    // 2026-11-15: Bronze is offered once its flow has a visit (its mode Site), never at the desktop only.
-    [InlineData("Desktop", new[] { "Silver", "Gold" })]
+    // 2026-11-16 (the user): Bronze is always offered (a Bronze flow can have a visit whatever the level's mode).
+    [InlineData("Desktop", new[] { "Bronze", "Silver", "Gold" })]
     [InlineData("Site", new[] { "Bronze", "Silver", "Gold" })]
-    public async Task Offers_Bronze_only_when_its_flow_has_a_visit(string bronzeMode, string[] expected)
+    public async Task Offers_every_level_with_Bronze(string bronzeMode, string[] expected)
     {
         _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ => new[] { ("Bronze", bronzeMode, 10), ("Silver", "Site", 20), ("Gold", "Site", 30) }
             .Select(l => (object?)new { Code = l.Item1, Name = l.Item1, OrderNo = l.Item3, IsEnabled = true, AssessmentMode = l.Item2, ValidityMonths = 36,

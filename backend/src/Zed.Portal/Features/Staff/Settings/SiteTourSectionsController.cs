@@ -30,15 +30,12 @@ public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExe
     [HttpGet]
     public async Task<SectionsResponse> Get(CancellationToken ct)
     {
-        // Bronze has a site tour only when its flow has a visit (2026-11-15, Administration → Certification Levels: its mode
-        // is then Site); handholding (Consultancy) is towards Silver, Gold or (2026-11-16) ZED-X, whose row ZED_CONSULTANT's
-        // level table does not have.
+        // Every level, Bronze too (2026-11-16, the user: a Bronze flow can have an onsite visit, whatever the level's mode; a
+        // section limited to Bronze is asked only on such a visit). Handholding (Consultancy) is towards Silver, Gold or
+        // (2026-11-16) ZED-X, whose row ZED_CONSULTANT's level table does not have.
         var levels = host.System == PortalSystem.Consultancy
             ? Zed.Core.Data.LevelRegistry.Handholding.Select(l => new LevelOption(l, Zed.Core.Data.LevelRegistry.NameOf(l))).ToList()
-            : (await CertLevels.CertificationLevels.AllAsync(db, log, ct))
-                .Where(l => !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(l.AssessmentMode, CertLevels.CertificationLevels.Site, StringComparison.OrdinalIgnoreCase))
-                .Select(l => new LevelOption(l.Code, l.Name)).ToList();
+            : (await CertLevels.CertificationLevels.AllAsync(db, log, ct)).Select(l => new LevelOption(l.Code, l.Name)).ToList();
         return new SectionsResponse(await SiteTourSections.LoadAsync(settings, ct), levels, !string.IsNullOrWhiteSpace(await settings.GetAsync(SiteTourSections.Key, ct)));
     }
 
