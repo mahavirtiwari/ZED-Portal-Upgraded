@@ -12,7 +12,7 @@ import { PORTAL_SYSTEM } from '../../portal-system';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 
 /** Which parameters the list shows (the buttons beside the search box). */
-type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors';
+type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors' | 'disabled';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
@@ -64,6 +64,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
         <div class="stat"><span class="stat-value">{{ stats().consultancy }}</span><span class="stat-label">Used in consultancy</span></div>
       }
       <div class="stat"><span class="stat-value">{{ stats().sectorSpecific }}</span><span class="stat-label">Limited to NIC sectors</span></div>
+      <div class="stat stat-off" data-disabled-count><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">Disabled (left out of new applications)</span></div>
     </div>
 
     @if (error()) {
@@ -105,10 +106,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
           </thead>
           <tbody>
             @for (s of pager.page(); track s.id) {
-              <tr>
+              <tr [class.row-off]="s.disabled">
                 <td class="text-center code-cell" data-label="Code"><span class="code-badge">{{ s.sectionCode }}</span></td>
                 <td data-label="Parameter">
-                  <div class="param-name">{{ s.sectionName }}</div>
+                  <div class="param-name">{{ s.sectionName }} @if (s.disabled) { <span class="off-badge" title="Left out of new applications; the ones already paid keep it">Disabled</span> }</div>
                   @if (s.description) {
                     <pre [class.clamp-2]="!expanded().has(s.id)" [title]="s.description">{{ s.description }}</pre>
                     @if (isLong(s.description)) {
@@ -135,6 +136,8 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
                     <a class="btn btn-primary" [href]="requirementsUrl(s)">Requirements</a>
+                    <button type="button" class="btn btn-outline-secondary btn-toggle-off" [disabled]="toggling() === s.id"
+                            [attr.aria-label]="(s.disabled ? 'Enable ' : 'Disable ') + s.sectionCode" (click)="toggleDisabled(s)">{{ s.disabled ? 'Enable' : 'Disable' }}</button>
                   </div>
                 </td>
               </tr>
@@ -270,6 +273,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     /* The level's counts. */
     .param-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; }
+    .stat-off .stat-value { color: #7a7a7a; }
+    tr.row-off > td { background: #f6f7f7; }
+    tr.row-off .param-name, tr.row-off pre { color: #8a9496; }
+    .off-badge { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #e7eaeb; color: #5f6f70; vertical-align: middle; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-label { font-size: 13px; color: #5f6f70; }
 
@@ -332,6 +339,7 @@ export class ParametersPage {
     { key: 'notSurveillance', label: 'Not in surveillance' },
     ...(PORTAL_SYSTEM === 'main' ? [{ key: 'notConsultancy' as const, label: 'Not in consultancy' }] : []),
     { key: 'sectors', label: 'Sector-specific' },
+    { key: 'disabled', label: 'Disabled' },
   ];
   protected readonly filter = signal<ParameterFilter>('all');
   protected readonly stats = computed(() => {
@@ -341,6 +349,7 @@ export class ParametersPage {
       surveillance: rows.filter((r) => r.inSurveillance).length,
       consultancy: rows.filter((r) => r.inConsultancy !== false).length,
       sectorSpecific: rows.filter((r) => r.nicSectors?.length).length,
+      disabled: rows.filter((r) => r.disabled).length,
     };
   });
   protected readonly pager = new ClientPager<Parameter>(10);
@@ -404,6 +413,7 @@ export class ParametersPage {
       case 'notSurveillance': return rows.filter((r) => !r.inSurveillance);
       case 'notConsultancy': return rows.filter((r) => r.inConsultancy === false);
       case 'sectors': return rows.filter((r) => r.nicSectors?.length);
+      case 'disabled': return rows.filter((r) => r.disabled);
       default: return rows;
     }
   }
@@ -480,6 +490,24 @@ export class ParametersPage {
     this.editError.set('');
     this.success.set('');
     this.editing.set({ id: p.id, code: p.sectionCode, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance, inConsultancy: p.inConsultancy !== false });
+  }
+
+  /** The parameter whose Disable / Enable is being saved. */
+  protected readonly toggling = signal<number | null>(null);
+
+  /** 2026-11-16: Disable (left out of the applications paid from now on) or Enable a parameter. */
+  protected async toggleDisabled(s: Parameter): Promise<void> {
+    this.error.set('');
+    this.success.set('');
+    this.toggling.set(s.id);
+    try {
+      this.success.set((await firstValueFrom(this.api.setParameterDisabled(this.sectionType(), s.id, !s.disabled))).message);
+      await this.load();
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.toggling.set(null);
+    }
   }
 
   protected async update(): Promise<void> {

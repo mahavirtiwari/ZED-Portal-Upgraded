@@ -66,10 +66,13 @@ public static class LevelSurveillance
 
     internal const string PaidSql ="EXEC ZED_SURVEILLANCE.dbo.SP_V4_SURVEILLANCE_PAID @ZedId = @ZedId, @Certification = @Certification;";
 
-    /// <summary>After a recorded surveillance payment of a V4 level; a failure is logged and does not undo the payment.</summary>
+    /// <summary>
+    /// After a recorded surveillance payment; a failure is logged and does not undo the payment. Every level since
+    /// 2026-11-16 (migration 0093): Bronze, Silver and Gold rounds leave out the parameters the Admin disabled; the V4
+    /// levels also get their flags and NIC sector-wise questionnaire (0033).
+    /// </summary>
     public static async Task PaidAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)
     {
-        if (!IsV4(level)) return;
         try
         {
             await db.ExecuteSqlAsync(PaidSql, new { ZedId = zedId, Certification = level }, ct);

@@ -105,6 +105,8 @@ export interface Parameter {
   inConsultancy?: boolean;
   /** NIC 2-digit sectors it applies to (V4); empty = all sectors. */
   nicSectors?: string[] | null;
+  /** 2026-11-16 (migrations 0092 / 0093): left out of new applications when they are paid; the ones already paid keep it. */
+  disabled?: boolean;
 }
 
 /** The request context that sends a call to the given portal's API (none: the switch decides). */
@@ -212,5 +214,9 @@ export class MastersApi {
   updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean,
     inConsultancy?: boolean): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors, inSurveillance, inConsultancy });
+  }
+
+  setParameterDisabled(sectionType: string, id: number, disabled: boolean): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}/${disabled ? 'disable' : 'enable'}`, null);
   }
 }

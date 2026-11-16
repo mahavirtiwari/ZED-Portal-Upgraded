@@ -96,14 +96,15 @@ public sealed class LevelSurveillanceTests : IDisposable
         var call = Assert.Single(_host.Sql.Calls, c => c.Name == LevelSurveillance.PaidSql);
         Assert.Equal((Me, "ZEDX"), (FakeSql.Arg(call.Args, "ZedId"), FakeSql.Arg(call.Args, "Certification")));
 
-        // Bronze / Silver / Gold: the legacy payment procedures do it all.
+        // Bronze / Silver / Gold too since 2026-11-16 (migration 0093): the procedure leaves out the disabled parameters only;
+        // the legacy payment procedures still do the rest.
         await LevelSurveillance.PaidAsync(_host.Sql, Me, "Gold", NullLogger.Instance, default);
-        Assert.Single(_host.Sql.Calls, c => c.Name == LevelSurveillance.PaidSql);
+        Assert.Equal("Gold", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == LevelSurveillance.PaidSql).Args, "Certification"));
 
         // Every completed surveillance payment goes through it (zero path, gateway, mobile).
         using var scope = _host.Services.CreateScope();
         await scope.ServiceProvider.GetRequiredService<SurveillancePaymentCompletion>().CompleteAsync(Me, "ZEDX", postToErp: false, default);
-        Assert.Equal(2, _host.Sql.Calls.Count(c => c.Name == LevelSurveillance.PaidSql));
+        Assert.Equal(3, _host.Sql.Calls.Count(c => c.Name == LevelSurveillance.PaidSql));
     }
 
     [Fact]

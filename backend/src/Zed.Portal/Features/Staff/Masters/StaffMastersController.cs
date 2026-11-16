@@ -226,8 +226,10 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     /// payment copies only these parameters of the unit's certification (ZED_SURVEILLANCE SP_MSME_PAYMENT_GATEWAY_DETAILS).</param>
     /// <param name="InConsultancy">Used in consultancy / handholding (V4 one Admin, Sections.InConsultancy, migration 0035; NULL or
     /// 'Yes' = used): the others are taken out of a unit's handholding questionnaire after its milestone payment.</param>
+    /// <param name="Disabled">2026-11-16 (Sections.IsDisabled, migrations 0092 / 0093): left out of new applications (or surveillance
+    /// rounds) when they are paid; the ones already paid keep it.</param>
     public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description, IReadOnlyList<string>? NicSectors = null,
-        bool InSurveillance = false, bool InConsultancy = true);
+        bool InSurveillance = false, bool InConsultancy = true, bool Disabled = false);
 
     public sealed record LevelOption(string Code, string Name, bool IsEnabled);
 
@@ -277,6 +279,41 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
             || await SaveConsultancyAsync(ConsultancyByCodeSql, new { SectionType = type, SectionCode = code, InConsultancy = "No" }, ct);
         log.LogInformation("Parameter {Type}/{Code} added by {Actor}", type, code, UserId);
         return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved) + (consultancySaved ? "" : ConsultancyNotSaved));
+    }
+
+    /// <summary>
+    /// 2026-11-16 (the user): disable / enable a parameter (dbo.Sections.IsDisabled; migration 0092 on the main portal, 0093
+    /// on surveillance). A disabled parameter is left out of the applications (surveillance rounds) paid from now on; the
+    /// ones already paid keep it, with their answers and scores. The legacy procedures read SELECT *, so nothing else changes.
+    /// </summary>
+    [HttpPost("parameters/{sectionType}/{id:int}/disable")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    public Task<ActionResult<MessageResponse>> DisableParameter(string sectionType, int id, CancellationToken ct) => SetParameterDisabledAsync(sectionType, id, true, ct);
+
+    [HttpPost("parameters/{sectionType}/{id:int}/enable")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    public Task<ActionResult<MessageResponse>> EnableParameter(string sectionType, int id, CancellationToken ct) => SetParameterDisabledAsync(sectionType, id, false, ct);
+
+    internal const string ParameterDisableSql = "UPDATE dbo.Sections SET IsDisabled = @Disabled WHERE Id = @Id AND SectionType = @SectionType;";
+
+    private async Task<ActionResult<MessageResponse>> SetParameterDisabledAsync(string sectionType, int id, bool disabled, CancellationToken ct)
+    {
+        var type = await SectionTypeAsync(sectionType, ct);
+        if (type is null) return NotFound();
+        var parameter = (await LoadParametersAsync(type, ct)).FirstOrDefault(p => p.Id == id);
+        if (parameter is null) return NotFound();
+        try
+        {
+            await db.ExecuteSqlAsync(ParameterDisableSql, new { Disabled = disabled ? (bool?)true : null, Id = id, SectionType = type }, ct);
+        }
+        catch (System.Data.Common.DbException ex) when (ex.Message.Contains("IsDisabled", StringComparison.OrdinalIgnoreCase))
+        {
+            return this.Problem400("Parameters cannot be disabled yet: please ask the administrator to apply database migrations 0092 and 0093.");
+        }
+        log.LogInformation("Parameter {Type}/{Code} {Action} by {Actor}", type, parameter.SectionCode, disabled ? "disabled" : "enabled", UserId);
+        return new MessageResponse(disabled
+            ? $"Parameter {parameter.SectionCode} disabled. New applications leave it out; the ones already paid keep it."
+            : $"Parameter {parameter.SectionCode} enabled. New applications get it again.");
     }
 
     public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null,
@@ -417,7 +454,7 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
             .Select(r => new Parameter(Id(r), r.Text("SectionType"), r.Text("SectionCode"), r.Text("SectionName"),
                 r.Text("iButton") is { Length: > 0 } d ? d : null, SplitList(r.Text("NicSectors")),
                 string.Equals(r.Text("SurveMandatories").Trim(), "Yes", StringComparison.OrdinalIgnoreCase),
-                !string.Equals(r.Text("InConsultancy").Trim(), "No", StringComparison.OrdinalIgnoreCase)))
+                !string.Equals(r.Text("InConsultancy").Trim(), "No", StringComparison.OrdinalIgnoreCase), SectorDisabled(r)))
             .Where(p => p.Id > 0);
 
     private static (string? Code, string? Name, string? Error) ValidateCodeName(CodeNameRequest req, string label)

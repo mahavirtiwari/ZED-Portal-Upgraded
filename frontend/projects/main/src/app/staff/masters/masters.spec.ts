@@ -637,7 +637,7 @@ describe('ParametersPage', () => {
     expect(el.querySelector('.level-tab.active')!.textContent).toContain('ZED-X');
     expect(el.querySelector('.level-tab.active .tab-note')!.textContent).toContain('Not open to MSMEs yet');
     // The level's counts: 2 parameters, 1 in surveillance, 2 used in consultancy (not set = used), 1 limited to NIC sectors.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '2', '1']);
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '2', '1', '0']);
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
     expect(rows[0]).toContain('62');
     expect(rows[1]).toContain('All sectors');
@@ -705,6 +705,32 @@ describe('ParametersPage', () => {
     expect(el.querySelector('pre')!.textContent).toBe('<img src=x onerror=alert(1)>');
     expect(el.querySelector('pre img')).toBeNull();
     expect(el.querySelector('a.btn')!.getAttribute('href')).toBe('/staff/questionnaire/Bronze/P1');
+    http.verify();
+  });
+
+  it('disables a parameter for new applications and shows it greyed with Enable (2026-11-16)', async () => {
+    const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
+    http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    flushLevels(http);
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush([
+      { id: 3, sectionType: 'Bronze', sectionCode: 'P1', sectionName: 'Leadership', description: '', disabled: true },
+      { id: 4, sectionType: 'Bronze', sectionCode: 'P2', sectionName: 'Safety', description: '' },
+    ]);
+    await settle(fixture);
+    expect(el.querySelector('[data-disabled-count] .stat-value')!.textContent!.trim()).toBe('1');
+    const rows = [...el.querySelectorAll('tbody tr')];
+    expect(rows[0].classList).toContain('row-off');
+    expect(rows[0].querySelector('.off-badge')!.textContent).toContain('Disabled');
+    expect(el.querySelector('button[aria-label="Enable P1"]')).not.toBeNull();
+
+    (el.querySelector('button[aria-label="Disable P2"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/Bronze/4/disable')
+      .flush({ message: 'Parameter P2 disabled. New applications leave it out; the ones already paid keep it.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush([]);
+    await settle(fixture);
+    expect(el.querySelector('.alert-success')!.textContent).toContain('New applications leave it out');
     http.verify();
   });
 

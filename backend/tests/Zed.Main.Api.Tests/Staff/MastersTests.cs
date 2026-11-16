@@ -146,6 +146,29 @@ public sealed class MastersTests : IDisposable
     }
 
     [Fact]
+    public async Task A_parameter_is_disabled_and_enabled_with_its_flag_listed()
+    {
+        // 2026-11-16 (migrations 0092 / 0093): left out of the applications paid from now on.
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets(
+            [new { Id = 3, SectionType = "Bronze", SectionCode = "P1", SectionName = "Leadership", iButton = "x", IsDisabled = (bool?)true },
+             new { Id = 4, SectionType = "Bronze", SectionCode = "P2", SectionName = "Safety", iButton = "y", IsDisabled = (bool?)null }]);
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/parameters/Bronze");
+        Assert.Equal([true, false], list.EnumerateArray().Select(p => p.GetProperty("disabled").GetBoolean()));
+
+        var disabled = await client.PostAsync("/api/staff/masters/parameters/bronze/4/disable", null);
+        Assert.StartsWith("Parameter P2 disabled. New applications leave it out", (await disabled.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        var saved = _host.Sql.Calls.Last(c => c.Name == Zed.Portal.Features.Staff.Masters.StaffMastersController.ParameterDisableSql);
+        Assert.Equal(("True", "4", "Bronze"), (FakeSql.Arg(saved.Args, "Disabled"), FakeSql.Arg(saved.Args, "Id"), FakeSql.Arg(saved.Args, "SectionType")));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/staff/masters/parameters/Bronze/3/enable", null)).StatusCode);
+        Assert.Null(FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == Zed.Portal.Features.Staff.Masters.StaffMastersController.ParameterDisableSql).Args, "Disabled"));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/staff/masters/parameters/Bronze/99/disable", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync("/api/staff/masters/parameters/Hotel/3/disable", null)).StatusCode);
+        var dfo = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.NotEqual(HttpStatusCode.OK, (await dfo.PostAsync("/api/staff/masters/parameters/Bronze/3/disable", null)).StatusCode);
+    }
+
+    [Fact]
     public async Task Technologies_only_accept_listed_sectors_and_categories()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
