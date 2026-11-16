@@ -153,6 +153,18 @@ export class RemoteAssessmentPage {
   protected readonly tab = signal<RemoteTab>('overview');
   protected readonly preview = signal<string | null>(null);
 
+  /**
+   * 2026-11-16 (approved): "Join meeting" by the lead assessor starts the remote assessment, so the unit's PROCEED in the app
+   * opens. The link opens as before; the call is sent alongside it, once per page, and a refusal is not shown.
+   */
+  private joinSent = false;
+  protected joined(): void {
+    const d = this.data();
+    if (!d || this.joinSent || !d.permissions.canAssess) return;
+    this.joinSent = true;
+    this.api.joined(d.zedId, d.certification).subscribe({ error: () => (this.joinSent = false) });
+  }
+
   /** 2026-11-16: an assessor's days of the Attendance tab (ids compared trimmed, ignoring case). */
   protected attendanceOf(assessor: Row): Row[] {
     const id = String(assessor['ConsultantId'] ?? '').trim().toUpperCase();

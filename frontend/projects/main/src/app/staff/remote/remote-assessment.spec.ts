@@ -81,6 +81,25 @@ describe('RemoteAssessmentPage', () => {
     vi.restoreAllMocks();
   });
 
+  it('starts the assessment when the lead assessor clicks Join meeting, once (2026-11-16)', async () => {
+    await create({ ...details(), meetingLink: 'https://meet.example.test/abc' });
+    const link = el.querySelector<HTMLAnchorElement>('a.top-join')!;
+    link.addEventListener('click', (e) => e.preventDefault());
+    link.click();
+    link.click();
+    const req = http.expectOne(BASE + '/joined');
+    expect(req.request.method).toBe('POST');
+    req.flush({ message: 'Remote assessment started.' });
+  });
+
+  it('sends nothing when the read-only co-assessor clicks Join meeting', async () => {
+    await create({ ...details(false), meetingLink: 'https://meet.example.test/abc' });
+    const link = el.querySelector<HTMLAnchorElement>('a.top-join')!;
+    link.addEventListener('click', (e) => e.preventDefault());
+    link.click();
+    http.expectNone(BASE + '/joined');
+  });
+
   it('shows the overview as text and a map link', async () => {
     await create(details());
     expect(el.textContent).toContain('Acme <b>Steel</b>');

@@ -107,6 +107,11 @@ export class RemoteApi {
     return this.http.get<RemoteDetails>(this.base(zedId, certification));
   }
 
+  /** 2026-11-16: the lead assessor joined the meeting: starts the remote assessment (the unit's PROCEED in the app). */
+  joined(zedId: string, certification: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/joined`, {});
+  }
+
   basicInfo(zedId: string, certification: string, column: string, value: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/basic-info`, { column, value });
   }

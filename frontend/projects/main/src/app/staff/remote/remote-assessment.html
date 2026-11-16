@@ -33,7 +33,7 @@
     <div class="meet-card" role="status" id="remoteMeeting">
       @if (d.meetingLink) {
         <span>This {{ meetingMode() ? 'surveillance' : 'assessment' }} is held on the agency's meeting link.</span>
-        <a class="btn btn-primary btn-sm join-meeting top-join" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Join meeting</a>
+        <a class="btn btn-primary btn-sm join-meeting top-join" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">Join meeting</a>
       } @else {
         <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
       }
@@ -105,7 +105,7 @@
                       <th>Meeting link</th>
                       <td colspan="2">
                         @if (d.meetingLink) {
-                          <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Click here to Join</a>
+                          <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">Click here to Join</a>
                         } @else {
                           <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
                         }

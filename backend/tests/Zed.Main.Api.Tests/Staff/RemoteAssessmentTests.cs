@@ -303,6 +303,17 @@ public sealed class RemoteAssessmentTests : IDisposable
         Assert.Equal(before, _host.Sql.Calls.Count(c => c.Name == "SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
 
+    /// <summary>2026-11-16 (approved): "Join meeting" by the lead assessor starts the assessment, so the unit's PROCEED opens.</summary>
+    [Fact]
+    public async Task Joining_the_meeting_starts_the_assessment_for_the_lead_only()
+    {
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await As("ASSESSOR2")).PostAsync(Base + "/joined", null)).StatusCode);
+        Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
+
+        Assert.Equal(HttpStatusCode.OK, (await (await As("ASSESSOR1")).PostAsync(Base + "/joined", null)).StatusCode);
+        Assert.Equal(Zed, FakeSql.Arg(Call("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS").Args, "ZedId"));
+    }
+
     [Fact]
     public async Task The_lead_assessor_answers_the_checkpoints_and_the_site_conformance_follows()
     {

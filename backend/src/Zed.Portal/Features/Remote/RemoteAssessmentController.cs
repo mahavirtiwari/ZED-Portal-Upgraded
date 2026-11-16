@@ -385,6 +385,19 @@ public sealed partial class RemoteAssessmentController(
 
     // ======================================================================== video
 
+    /// <summary>
+    /// 2026-11-16 (approved): the lead assessor clicked "Join meeting". It starts the remote assessment as the first change
+    /// does (<see cref="ForAssessor"/>: SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS), so the unit's PROCEED in the ZED MSME app
+    /// opens without the assessor having to change anything on the page first.
+    /// </summary>
+    [HttpPost("joined")]
+    public async Task<ActionResult<MessageResponse>> Joined(string zedId, string certification, CancellationToken ct)
+    {
+        var (_, _, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
+        if (error is not null) return error;
+        return new MessageResponse("Remote assessment started.");
+    }
+
     // ======================================================================== assessor actions
 
     public sealed record BasicInfoRequest(string? Column, string? Value);
