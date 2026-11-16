@@ -66,6 +66,34 @@ function state(over: Partial<EntryState> = {}): EntryState {
 }
 
 describe('ZED-X data entry: form logic', () => {
+  it('shows the saved repeating entries of the Admin with their photos, and sends them back as they are (2026-11-16)', () => {
+    const machines = field('cf_machines', 'Machines', 'rows', 160, {
+      custom: true, columns: [
+        field('c_name', 'Machine name', 'text', 10, { custom: true }),
+        field('c_kind', 'Kind', 'multiselect', 20, { custom: true, required: false, options: ['CNC', 'Lathe'] }),
+        field('c_photo', 'Photo', 'photo', 30, { custom: true, required: false, maxItems: 2 }),
+      ],
+    });
+    const base = state();
+    const s = state({
+      form: { ...base.form, fields: [...base.form.fields, machines] },
+      saved: {
+        answers: {}, products: [], rawMaterials: [], siteExteriorPhotos: [],
+        custom: { cf_machines: '[{"c_name":"Press","c_kind":["CNC"],"c_photo":["p1","gone"]},{"c_name":"Lathe"}]' },
+        customPhotos: { p1: { id: 'p1', url: '/api/msme/entry/ZEDX/files/BasicInfo/p1.jpg', isPdf: false } },
+      },
+    });
+    const form = initialValues(s);
+    const rows = form.rows['cf_machines'];
+    expect(rows.map((r) => r['c_name'])).toEqual(['Press', 'Lathe']);
+    expect(rows[0]['c_kind']).toEqual(['CNC']);
+    expect(rows[0]['c_photo']).toEqual([{ saved: { id: 'p1', url: '/api/msme/entry/ZEDX/files/BasicInfo/p1.jpg', isPdf: false } }]);
+    expect(rows[1]['c_photo']).toEqual([]);
+
+    const data = JSON.parse(toRequest(s.form, form, null).get('data') as string);
+    expect(data.customFields.cf_machines).toEqual([{ c_name: 'Press', c_kind: ['CNC'], c_photo: ['p1'] }, { c_name: 'Lathe' }]);
+  });
+
   it('shows a column condition when any row has the answer, and checks required answers', () => {
     const s = state();
     const form = initialValues(s);

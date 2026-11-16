@@ -39,6 +39,30 @@ function customValue(field: FormField, stored: string | null | undefined): CellV
   }
 }
 
+/** 2026-11-16: the saved entries of the Admin's repeating entries (a JSON list), each column in the form's shape. */
+function customRows(field: FormField, stored: string | null | undefined, photos: Record<string, EntryFile>): RowValues[] {
+  let parsed: unknown;
+  try {
+    parsed = stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object' && !Array.isArray(e))
+    .map((e) => {
+      const row = emptyRow(field);
+      for (const c of field.columns ?? []) {
+        const v = e[c.key];
+        const list = Array.isArray(v) ? v.map(String) : v === null || v === undefined ? [] : [String(v)];
+        if (c.type === 'photo') row[c.key] = list.map((id) => photos[id]).filter((f): f is EntryFile => !!f).map((f) => ({ saved: f }));
+        else if (MULTIPLE.includes(c.type)) row[c.key] = list;
+        else row[c.key] = list[0] ?? null;
+      }
+      return row;
+    });
+}
+
 /** The form filled with what is saved (empty rows to start with when nothing is). */
 export function initialValues(state: EntryState): FormValues {
   const values: Record<string, CellValue> = {};
@@ -64,7 +88,7 @@ export function initialValues(state: EntryState): FormValues {
   }));
   const rows: Record<string, RowValues[]> = {};
   for (const f of state.form.fields.filter((x) => x.type === 'rows')) {
-    rows[f.key] = f.key === PRODUCTS ? products : f.key === RAW_MATERIALS ? raw : [];
+    rows[f.key] = f.custom ? customRows(f, saved.custom[f.key], saved.customPhotos ?? {}) : f.key === PRODUCTS ? products : f.key === RAW_MATERIALS ? raw : [];
     if (rows[f.key].length === 0) rows[f.key] = [emptyRow(f)];
   }
   return { values, rows };
@@ -131,6 +155,25 @@ export function toRequest(def: FormDefinition, form: FormValues, position: { lat
   const answers: Record<string, CellValue> = {};
   const customFields: Record<string, CellValue> = {};
   for (const f of def.fields) {
+    if (f.custom && f.type === 'rows') {
+      // 2026-11-16: the Admin's repeating entries: each filled entry's columns, a photo column as its saved photo ids
+      // (new photos of these entries are taken in the ZED MSME app).
+      const entries = isShown(f, form)
+        ? filled(f.key).map((r) => {
+          const entry: Record<string, unknown> = {};
+          for (const c of f.columns ?? []) {
+            const v = r[c.key];
+            if (c.type === 'photo') {
+              const ids = (Array.isArray(v) ? (v as PhotoSlot[]) : []).map((s) => s.saved?.id).filter((id): id is string => !!id);
+              if (ids.length) entry[c.key] = ids;
+            } else if (isFilled(v)) entry[c.key] = v;
+          }
+          return entry;
+        }).filter((e) => Object.keys(e).length > 0)
+        : [];
+      customFields[f.key] = (entries.length ? entries : null) as unknown as CellValue;
+      continue;
+    }
     if (f.type === 'rows' || f.type === 'photo') continue;
     const v = isShown(f, form) ? form.values[f.key] ?? null : null;
     if (f.custom) customFields[f.key] = v;

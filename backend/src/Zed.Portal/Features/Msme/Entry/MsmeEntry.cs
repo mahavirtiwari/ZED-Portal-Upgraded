@@ -118,7 +118,11 @@ public sealed record EntrySaved(
     IReadOnlyList<EntryProduct> Products,
     IReadOnlyList<EntryRawMaterial> RawMaterials,
     IReadOnlyList<EntryFile> SiteExteriorPhotos,
-    IReadOnlyDictionary<string, string?> Custom);
+    IReadOnlyDictionary<string, string?> Custom)
+{
+    /// <summary>2026-11-16: the photos of the Admin's repeating entries by photo id (uploaded with the Basic Information photos).</summary>
+    public IReadOnlyDictionary<string, EntryFile> CustomPhotos { get; init; } = new Dictionary<string, EntryFile>();
+}
 
 /// <param name="Form">The Admin's Basic Information form for this unit and level (Admin → App Forms), as the app gets it.</param>
 public sealed record EntryState(

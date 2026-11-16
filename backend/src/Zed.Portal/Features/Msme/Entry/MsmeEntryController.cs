@@ -106,7 +106,17 @@ public sealed partial class MsmeEntryController(
             raw.Select(m => new EntryRawMaterial(m.RawMaterialName, m.Percentage, m.CountryName)).ToList(),
             site.Select(p => File(level, MsmeEntry.SiteExteriorFolder, $"{p.PhotoId}.{(p.PhotoExtension == "pdf" ? "pdf" : "jpg")}"))
                 .OfType<EntryFile>().ToList(),
-            custom);
+            custom)
+        {
+            // 2026-11-16: the photos of the Admin's repeating entries, in the Basic Information folder as the app uploads them.
+            CustomPhotos = form.Fields.Where(f => f.Custom && f.Type == AppFieldTypes.Rows)
+                .SelectMany(f => AppFormRules.Entries(f, custom.GetValueOrDefault(f.Key)))
+                .SelectMany(entry => entry.SelectMany(c => c.Photos))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(id => (Id: id, File: File(level, MsmeEntry.BasicInfoFolder, $"{id}.jpg")))
+                .Where(x => x.File is not null)
+                .ToDictionary(x => x.Id, x => x.File!, StringComparer.OrdinalIgnoreCase),
+        };
 
         var synced = (await db.QuerySqlAsync<EvidenceIdRow>(SyncedSql, key, ct)).Select(r => r.EvidenceId).ToHashSet();
         var sections = await SectionsAsync(level, synced, ct);

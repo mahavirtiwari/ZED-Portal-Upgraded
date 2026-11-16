@@ -153,6 +153,31 @@ public sealed class MsmeEntryTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/entry/ZEDX/files/Evidences/..%2F..%2Fx.pdf")).StatusCode);
     }
 
+    /// <summary>2026-11-16: the saved repeating entries of the Admin come with the addresses of their photos.</summary>
+    [Fact]
+    public async Task The_page_gets_the_photos_of_the_admins_repeating_entries()
+    {
+        _status = 1;
+        _basicSaved = true;
+        const string Form = global::Zed.Core.Forms.AppFormCatalogue.MsmeBasicInfo;
+        _host.Sql.Queries[global::Zed.Core.Forms.SqlAppFormStore.FieldsSql] = args => FakeSql.Arg(args, "FormKey") != Form ? [] :
+        [
+            new global::Zed.Core.Forms.AppFormFieldRow(Form, "cf_machines", true, "Machines", null, "rows", false, true, 200, "basic", null, "ADMIN1", null),
+            new global::Zed.Core.Forms.AppFormFieldRow(Form, "cf_machines/c_name", true, "Machine name", null, "text", true, true, 10, "basic", null, "ADMIN1", null),
+            new global::Zed.Core.Forms.AppFormFieldRow(Form, "cf_machines/c_photo", true, "Photo", null, "photo", false, true, 20, "basic", null, "ADMIN1", null, null, null, null, 2),
+        ];
+        _host.Sql.Queries[global::Zed.Core.Forms.SqlAppFormStore.ValuesSql] = _ =>
+            [new global::Zed.Core.Forms.AppFormValueRow(Form, Me, "ZEDX", "cf_machines", "[{\"c_name\":\"Press\",\"c_photo\":[\"p1\",\"gone\"]}]", Me, null)];
+        MsmeSchemesTestSupport.WriteFile(_host, $"mobileapi/Photos/{Me}/ZEDX/BasicInfo/p1.jpg", Image());
+        var client = await MsmeSchemesTestSupport.MsmeAsync(_host);
+
+        var saved = (await client.GetFromJsonAsync<JsonElement>(Url)).GetProperty("saved");
+        var photos = saved.GetProperty("customPhotos");
+        Assert.Equal("/api/msme/entry/ZEDX/files/BasicInfo/p1.jpg", photos.GetProperty("p1").GetProperty("url").GetString());
+        Assert.False(photos.TryGetProperty("gone", out _));
+        Assert.Contains("Press", saved.GetProperty("custom").GetProperty("cf_machines").GetString());
+    }
+
     [Fact]
     public async Task Basic_information_is_saved_with_the_apps_procedure_and_folders()
     {

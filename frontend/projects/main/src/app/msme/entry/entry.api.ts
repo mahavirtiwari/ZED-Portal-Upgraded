@@ -93,8 +93,10 @@ export interface EntryState {
     products: EntryProduct[];
     rawMaterials: EntryRawMaterial[];
     siteExteriorPhotos: EntryFile[];
-    /** The Admin's own fields; several choices as a JSON array text. */
+    /** The Admin's own fields; several choices as a JSON array text; repeating entries as a JSON list of entries. */
     custom: Record<string, string | null>;
+    /** 2026-11-16: the photos of the Admin's repeating entries, by photo id. */
+    customPhotos?: Record<string, EntryFile>;
   };
   sections: EntrySection[];
   /** The open non-conformance (null when none is open). */
