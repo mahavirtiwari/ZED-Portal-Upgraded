@@ -37,7 +37,10 @@
               </div>
               <div class="panel-body">
                 <div class="level-grid">
-                  @for (level of levels; track level) {
+                  @if (data() && !shownLevels().length) {
+                    <p class="text-muted mb-0" data-no-handholding>No handholding is available for your unit's certification level now.</p>
+                  }
+                  @for (level of shownLevels(); track level) {
                     <div class="panel-handhold">
                       <div class="panel panel-default panel-cert-block" [class.panel-silver]="level === 'Silver'" [class.panel-gold]="level === 'Gold'" [class.panel-zedx]="level === 'ZEDX'" [class.plant-activity-disabled]="cardDisabled(level)">
                         <div class="panel-heading">

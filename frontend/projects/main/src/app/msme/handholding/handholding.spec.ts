@@ -58,15 +58,15 @@ describe('HandholdingPage', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the unit and both level cards, the disabled level greyed out', async () => {
+  it('2026-11-17: shows the unit and only the level open to it (no greyed-out cards)', async () => {
     await open();
     expect(el.textContent).toContain('Acme');
     expect(el.textContent).toContain('UDYAM-UP-29-0003915');
     expect(el.textContent).toContain('HANDHOLDING FOR SILVER LEVEL');
-    expect(el.textContent).toContain('HANDHOLDING FOR GOLD LEVEL');
+    expect(el.textContent).not.toContain('HANDHOLDING FOR GOLD LEVEL');
     expect(el.textContent).toContain('Get started');
-    const gold = [...el.querySelectorAll('.panel-cert-block')].find((p) => p.textContent!.includes('GOLD'))!;
-    expect(gold.classList).toContain('plant-activity-disabled');
+    expect(el.querySelectorAll('.panel-cert-block').length).toBe(1);
+    expect(el.querySelector('.plant-activity-disabled')).toBeNull();
     // 2026-11-14: the short unit card (no pledge row) in the right column.
     expect(el.querySelector('zed-msme-unit-summary .us-card')).not.toBeNull();
   });
@@ -101,18 +101,21 @@ describe('HandholdingPage', () => {
     expect(items[1]).toContain('Applied');
   });
 
-  it('2026-11-16: a Gold-certified unit takes ZED-X handholding, the other cards greyed out', async () => {
+  it('2026-11-16: a Gold-certified unit takes ZED-X handholding, only its card shown', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     await open(summary(
       { EnableSilver: 0, EnableGold: 0, EnableZEDX: 1, ZEDXStatus: 4, ZEDXStatusOfNc: 1, ZEDXStatusOfNc1: 1, MilestoneCompletionStatusZEDX1: 100 },
       [level('Silver', { enabled: false, canPay: false }), level('Gold', { enabled: false, canPay: false }), level('ZEDX', { milestonesStarted: 1, nextMilestone: 2 })]));
     expect(el.textContent).toContain('HANDHOLDING FOR ZED-X LEVEL');
     const cards = [...el.querySelectorAll('.panel-cert-block')];
-    expect(cards.map((c) => c.classList.contains('plant-activity-disabled'))).toEqual([true, true, false]);
-    expect(cards[2].classList).toContain('panel-zedx');
-    expect(cards[2].querySelector('.inner2 img')!.getAttribute('src')).toBe('/Images/Dashboard/zedx.svg');
+    expect(cards.length).toBe(1);
+    expect(el.textContent).not.toContain('HANDHOLDING FOR SILVER LEVEL');
+    expect(el.textContent).not.toContain('HANDHOLDING FOR GOLD LEVEL');
+    expect(cards[0].classList).toContain('panel-zedx');
+    expect(cards[0].classList).not.toContain('plant-activity-disabled');
+    expect(cards[0].querySelector('.inner2 img')!.getAttribute('src')).toBe('/Images/Dashboard/zedx.svg');
 
-    ([...cards[2].querySelectorAll('p')].find((p) => p.textContent!.trim() === 'APPLY') as HTMLElement).click();
+    ([...cards[0].querySelectorAll('p')].find((p) => p.textContent!.trim() === 'APPLY') as HTMLElement).click();
     await settled();
     expect(el.textContent).toContain('Milestone 1: BASIC DIAGNOSTIC STUDY AND HANDHOLDING');
     expect(find('a', 'VIEW')!.getAttribute('href')).toBe('/msme/certification/ZEDXMilestone1');
@@ -129,7 +132,20 @@ describe('HandholdingPage', () => {
 
   it('ignores ?level= for a disabled level', async () => {
     await open(summary(), 'Gold');
+    expect(el.textContent).toContain('HANDHOLDING FOR SILVER LEVEL');
+    expect(el.textContent).not.toContain('Milestone 1');
+  });
+
+  it('keeps a disabled level the unit already started (paid or in progress)', async () => {
+    await open(summary({ EnableSilver: 0, EnableGold: 1, SilverStatus: 2 }, [level('Silver', { enabled: false, canPay: false }), level('Gold')]));
+    expect(el.textContent).toContain('HANDHOLDING FOR SILVER LEVEL');
     expect(el.textContent).toContain('HANDHOLDING FOR GOLD LEVEL');
+  });
+
+  it('says so when no level is open to the unit', async () => {
+    await open(summary({ EnableSilver: 0, EnableGold: 0 }, [level('Silver', { enabled: false, canPay: false }), level('Gold', { enabled: false, canPay: false })]));
+    expect(el.querySelectorAll('.panel-cert-block').length).toBe(0);
+    expect(el.querySelector('[data-no-handholding]')!.textContent).toContain('No handholding is available');
   });
 
   it('shows the details pop-up for an unpaid level and the information pop-ups', async () => {

@@ -99,6 +99,15 @@ export class HandholdingPage {
   readonly levelParam = input('', { alias: 'level' });
 
   protected readonly levels = HANDHOLDING_LEVELS;
+
+  /**
+   * 2026-11-17 (the user): only the levels open to the unit (Bronze: Silver or Gold; Silver: Gold; Gold: ZED-X; the
+   * server's Enable{Level}), and a level it has already paid for or started, so that work in progress stays shown.
+   */
+  protected readonly shownLevels = computed(() => {
+    if (!this.data()) return [];
+    return this.levels.filter((l) => !this.cardDisabled(l) || this.paid(l) || this.num(`${l}StatusOfNc`) > 0 || this.num(`${l}Status`) > 0);
+  });
   protected readonly levelName = handholdingLevelName;
 
   /** The level's picture (ZED-X has an SVG). */
