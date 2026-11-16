@@ -1,8 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using Zed.Core.Data;
 using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Msme;
 
 namespace Zed.Portal.Features.Staff.Assessment;
 
@@ -15,9 +19,18 @@ namespace Zed.Portal.Features.Staff.Assessment;
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [Route("api/staff/app-form-values/{zedId}/{certification}")]
 [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
-public sealed class AppFormValuesController(ISqlExecutor db, AppForms forms, PortalHost host) : StaffApiController
+public sealed class AppFormValuesController(ISqlExecutor db, AppForms forms, PortalHost host, IWebHostEnvironment env, IOptions<PortalOptions> portal,
+    ILogger<AppFormValuesController> log) : StaffApiController
 {
-    public sealed record ValueItem(string Key, string Label, string Type, string Value, bool Enabled, string? SubmittedBy, DateTime? UpdatedOn);
+    public sealed record ValueItem(string Key, string Label, string Type, string Value, bool Enabled, string? SubmittedBy, DateTime? UpdatedOn)
+    {
+        /// <summary>2026-11-16: repeating entries of the Admin's own: each entry's columns (photos as addresses of this controller).</summary>
+        public IReadOnlyList<IReadOnlyList<EntryItem>>? Entries { get; init; }
+    }
+
+    public sealed record EntryItem(string Label, string Type, string Text, IReadOnlyList<string> PhotoUrls);
+
+    private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     /// <summary>One form's answers (forms without answers are left out).</summary>
     public sealed record FormValues(string Form, string Name, string App, IReadOnlyList<ValueItem> Values);
@@ -44,10 +57,50 @@ public sealed class AppFormValuesController(ISqlExecutor db, AppForms forms, Por
                 .OrderBy(x => x.Field is null ? int.MaxValue : form.Fields.ToList().IndexOf(x.Field))
                 .ThenBy(x => x.Row.FieldKey, StringComparer.Ordinal)
                 .Select(x => new ValueItem(x.Row.FieldKey, x.Field?.Label ?? x.Row.FieldKey, x.Field?.Type ?? AppFieldTypes.Text,
-                    AppFormRules.Display(x.Field?.Type ?? AppFieldTypes.Text, x.Row.Value), x.Field?.Enabled ?? false, x.Row.SubmittedBy, x.Row.UpdatedOn))
+                    AppFormRules.Display(x.Field?.Type ?? AppFieldTypes.Text, x.Row.Value), x.Field?.Enabled ?? false, x.Row.SubmittedBy, x.Row.UpdatedOn)
+                {
+                    Entries = x.Field is { Type: AppFieldTypes.Rows } rows
+                        ? AppFormRules.Entries(rows, x.Row.Value).Select(e => (IReadOnlyList<EntryItem>)e.Select(c => new EntryItem(c.Label, c.Type, c.Text,
+                            c.Photos.Select(id => PhotoUrl(zedId, level, spec.Key, id)).ToList())).ToList()).ToList()
+                        : null,
+                })
                 .ToList();
             result.Add(new FormValues(spec.Key, spec.Name, spec.App, values));
         }
         return result;
+    }
+
+    private static string PhotoUrl(string zedId, string level, string form, string photoId) =>
+        $"/api/staff/app-form-values/{Uri.EscapeDataString(zedId)}/{Uri.EscapeDataString(level)}/photos/{Uri.EscapeDataString(form)}/{Uri.EscapeDataString(photoId)}";
+
+    /// <summary>
+    /// 2026-11-16: a photo of the Admin's repeating entries: uploaded with the app's Basic Information photos (the ZED MSME
+    /// app: Photos/{ZedId}/{level}/BasicInfo; the site assessment app: SaPhotos/{ZedId}/{level}/BasicInfo).
+    /// </summary>
+    [HttpGet("photos/{form}/{photoId}")]
+    public async Task<IActionResult> Photo(string zedId, string certification, string form, string photoId, CancellationToken ct)
+    {
+        var level = AssessmentInput.Level(certification);
+        if (!AssessmentInput.IsId(zedId) || level is null || !AppFormRules.PhotoId().IsMatch(photoId) || AppFormCatalogue.Find(host.System, form) is not { } spec)
+            return NotFound();
+        var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (record is null || !record.CanView(CurrentUser)) return NotFound();
+        var app = host.System == PortalSystem.Surveillance ? "surveillancemobileapi" : "mobileapi";
+        IEnumerable<string> candidates = spec.Key == AppFormCatalogue.AssessorBasicInfo
+            ? [$"{app}/SaPhotos/{zedId}/{level}/BasicInfo/{photoId}.jpg"]
+            : DaFiles.StorageCandidates($"{app}/Photos/{zedId}/{level}/BasicInfo/{photoId}.jpg", zedId, host.System);
+        var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
+            .SelectMany(root => candidates.SelectMany(MsmeFilePaths.AppLayoutCandidates).Select(c => MsmeFilePaths.Resolve(root, c)))
+            .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
+        if (fullPath is null)
+        {
+            log.LogInformation("App form photo {Form}/{PhotoId} of {ZedId} is missing from storage", spec.Key, photoId, zedId);
+            return NotFound();
+        }
+        var fileName = Path.GetFileName(fullPath);
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.CacheControl = "private, no-store";
+        Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("inline") { FileNameStar = fileName }.ToString();
+        return PhysicalFile(fullPath, ContentTypes.TryGetContentType(fileName, out var t) ? t : "image/jpeg");
     }
 }

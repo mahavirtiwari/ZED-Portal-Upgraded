@@ -8,8 +8,17 @@ public static class AppFieldTypes
     public const string Text = "text", Number = "number", Decimal = "decimal", Date = "date", YesNo = "yesno", Dropdown = "dropdown",
         MultiSelect = "multiselect", Checkboxes = "checkboxes", Photo = "photo", Rows = "rows";
 
-    /// <summary>Types an Admin can give a field of their own.</summary>
-    public static readonly IReadOnlyList<string> Custom = [Text, Number, Decimal, Date, YesNo, Dropdown, MultiSelect, Checkboxes];
+    /// <summary>Types an Admin can give a field of their own (2026-11-16: repeating entries too, "Add more").</summary>
+    public static readonly IReadOnlyList<string> Custom = [Text, Number, Decimal, Date, YesNo, Dropdown, MultiSelect, Checkboxes, Rows];
+
+    /// <summary>2026-11-16: types of a column of the Admin's repeating entries (every own type and photo).</summary>
+    public static readonly IReadOnlyList<string> CustomColumn = [Text, Number, Decimal, Date, YesNo, Dropdown, MultiSelect, Checkboxes, Photo];
+
+    /// <summary>The Admin's repeating entries: most entries by default and at most; most columns.</summary>
+    public const int DefaultRows = 20, MaxRows = 50, MaxColumns = 15;
+
+    /// <summary>A photo column: most photos of one entry by default and at most.</summary>
+    public const int DefaultPhotos = 1, MaxPhotos = 5;
 
     /// <summary>Types whose answer is picked from <see cref="AppFormFieldSpec.Options"/>.</summary>
     public static readonly IReadOnlyList<string> Choice = [Dropdown, MultiSelect, Checkboxes];

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Forms;
 using Zed.Portal.Features.Staff.Assessment;
 using Zed.Portal.Features.Staff.Settings;
@@ -229,5 +230,99 @@ public sealed class AppFormsTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY2")).GetAsync(Values)).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await (await Admin()).GetAsync(Values)).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await master.GetAsync("/api/staff/app-form-values/" + Zed + "/Platinum")).StatusCode);
+    }
+
+    /// <summary>2026-11-16 (approved): the Admin's repeating entries ("Add more") with columns of every own type and photo.</summary>
+    [Fact]
+    public async Task The_Admin_adds_repeating_entries_with_columns_and_edits_them()
+    {
+        var admin = await Admin();
+        var form = (await admin.GetFromJsonAsync<AppFormsController.FormDetails>($"{Url}/{Msme}"))!;
+        Assert.Contains("rows", form.CustomTypes);
+
+        var noColumns = await admin.PostAsJsonAsync($"{Url}/{Msme}/fields", new { label = "Machines", type = "rows", required = true });
+        await AssertProblem(noColumns, "Please add at least one column.");
+        var validated = await admin.PostAsJsonAsync($"{Url}/{Msme}/fields", new
+        {
+            label = "Machines", type = "rows", validationRequired = true, columns = new[] { new { label = "Name", type = "text" } },
+        });
+        await AssertProblem(validated, "Repeating entries cannot be \"Validation required\".");
+        var badPhoto = await admin.PostAsJsonAsync($"{Url}/{Msme}/fields", new
+        {
+            label = "Machines", type = "rows", columns = new object[] { new { label = "Photo", type = "photo", maxItems = 9 } },
+        });
+        await AssertProblem(badPhoto, "A photo column takes 1 to 5 photos.");
+
+        var added = await admin.PostAsJsonAsync($"{Url}/{Msme}/fields", new
+        {
+            label = "Machines", type = "rows", required = true, maxItems = 10,
+            columns = new object[]
+            {
+                new { label = "Machine name", type = "text", required = true },
+                new { label = "Kind", type = "dropdown", options = new[] { "CNC", "Lathe" } },
+                new { label = "Photo", type = "photo", maxItems = 2 },
+            },
+        });
+        Assert.Equal(HttpStatusCode.OK, added.StatusCode);
+        var merges = Writes().Where(w => w.Name.StartsWith("MERGE")).Select(w => Value(w.Args, "FieldKey")).ToList();
+        Assert.Equal(["cf_machines", "cf_machines/c_machine_name", "cf_machines/c_kind", "cf_machines/c_photo"], merges);
+        var maxItems = _host.Sql.Calls.Where(c => c.Name == SqlAppFormStore.MaxItemsSql).Select(c => (Value(c.Args, "FieldKey"), Value(c.Args, "MaxItems"))).ToList();
+        Assert.Contains(("cf_machines", "10"), maxItems);
+        Assert.Contains(("cf_machines/c_photo", "2"), maxItems);
+
+        // Stored: the field with its columns, as the apps get it.
+        _rows.Add(new AppFormFieldRow(Msme, "cf_machines", true, "Machines", null, "rows", true, true, 200, "basic", null, "ADMIN1", null, null, null, null, 10));
+        _rows.Add(new AppFormFieldRow(Msme, "cf_machines/c_machine_name", true, "Machine name", null, "text", true, true, 10, "basic", null, "ADMIN1", null));
+        _rows.Add(new AppFormFieldRow(Msme, "cf_machines/c_photo", true, "Photo", null, "photo", false, true, 20, "basic", null, "ADMIN1", null, null, null, null, 2));
+        var reloaded = (await admin.GetFromJsonAsync<AppFormsController.FormDetails>($"{Url}/{Msme}"))!;
+        var machines = reloaded.Fields.Single(f => f.Key == "cf_machines");
+        Assert.Equal(10, machines.MaxItems);
+        Assert.Equal(["cf_machines/c_machine_name", "cf_machines/c_photo"], machines.Columns!.Select(c => c.Key));
+        var appJson = (await _host.Services.GetRequiredService<AppForms>().GetAsync(Zed.Core.Http.PortalSystem.Main, Msme))!.ToAppJson();
+        var appField = appJson["fields"]!.AsArray().Single(f => (string?)f!["key"] == "cf_machines")!;
+        Assert.Equal(["c_machine_name", "c_photo"], appField["columns"]!.AsArray().Select(c => (string?)c!["key"]));
+        Assert.Equal(2, (int)appField["columns"]![1]!["maxItems"]!);
+
+        // Edit: the name column kept (its key), the photo column taken out, a new date column.
+        _host.Sql.Calls.Clear();
+        var saved = await admin.PutAsJsonAsync($"{Url}/{Msme}/fields", new
+        {
+            key = "cf_machines", label = "Machines", type = "rows", required = true,
+            columns = new object[] { new { key = "c_machine_name", label = "Machine", type = "text", required = true }, new { label = "Installed on", type = "date" } },
+        });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        Assert.Equal(["cf_machines", "cf_machines/c_machine_name", "cf_machines/c_installed_on"],
+            Writes().Where(w => w.Name.StartsWith("MERGE")).Select(w => Value(w.Args, "FieldKey")));
+        Assert.Equal("cf_machines/c_photo", Value(_host.Sql.Calls.Single(c => c.Name.StartsWith("DELETE FROM dbo.V4AppFormFields")).Args, "FieldKey"));
+        var toText = await admin.PutAsJsonAsync($"{Url}/{Msme}/fields", new { key = "cf_machines", label = "Machines", type = "text", required = true });
+        await AssertProblem(toText, "A field's type cannot be changed to or from repeating entries: add a new field instead.");
+    }
+
+    [Fact]
+    public void Repeating_entries_are_checked_and_stored_as_a_list()
+    {
+        var field = new AppField
+        {
+            Key = "cf_machines", Label = "Machines", Type = AppFieldTypes.Rows, Section = "basic", Custom = true, MaxItems = 2,
+            Columns =
+            [
+                new AppField { Key = "c_name", Label = "Machine name", Type = AppFieldTypes.Text, Section = "basic", Required = true },
+                new AppField { Key = "c_kind", Label = "Kind", Type = AppFieldTypes.MultiSelect, Section = "basic", Options = ["CNC", "Lathe"] },
+                new AppField { Key = "c_photo", Label = "Photo", Type = AppFieldTypes.Photo, Section = "basic", MaxItems = 1 },
+            ],
+        };
+        System.Text.Json.JsonElement J(object o) => System.Text.Json.JsonSerializer.SerializeToElement(o);
+        var (value, error) = AppFormRules.Normalise(field, J(new object[] { new { c_name = " Press ", c_kind = new[] { "cnc" }, c_photo = "ph_1", other = "x" } }));
+        Assert.Null(error);
+        Assert.Equal("""[{"c_name":"Press","c_kind":["CNC"],"c_photo":["ph_1"]}]""", value);
+        Assert.Equal("please fill in Machine name for every entry.", AppFormRules.Normalise(field, J(new object[] { new { c_kind = new[] { "CNC" } } })).Error);
+        Assert.Equal("2 entries at most.", AppFormRules.Normalise(field, J(new object[] { new { c_name = "a" }, new { c_name = "b" }, new { c_name = "c" } })).Error);
+        Assert.Equal("Photo: one photo at most.", AppFormRules.Normalise(field, J(new object[] { new { c_name = "a", c_photo = new[] { "p1", "p2" } } })).Error);
+        Assert.Equal("Photo: the photo is not valid.", AppFormRules.Normalise(field, J(new object[] { new { c_name = "a", c_photo = "../x" } })).Error);
+        Assert.Equal((null, null), AppFormRules.Normalise(field, J(Array.Empty<object>())));
+        Assert.Equal("1 entry", AppFormRules.Display(AppFieldTypes.Rows, value));
+        var cells = Assert.Single(AppFormRules.Entries(field, value));
+        Assert.Equal(("Press", "CNC"), (cells[0].Text, cells[1].Text));
+        Assert.Equal(["ph_1"], cells[2].Photos);
     }
 }

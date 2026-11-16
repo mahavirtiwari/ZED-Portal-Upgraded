@@ -20,9 +20,10 @@ namespace Zed.Core.Forms;
 /// <param name="Levels">V4 (migration 0030): the certification levels the field is asked for, comma-separated codes; null = all.</param>
 /// <param name="NicSectors">V4 (migration 0030): the NIC 2-digit sectors of the units it is asked of, comma-separated; null = all.</param>
 /// <param name="ValidationRequired">V4 (migration 0080, column NeedsVerification): the assessor checks the answer (Valid / Not valid, which raises an NC).</param>
+/// <param name="MaxItems">2026-11-16 (migration 0094): the Admin's repeating entries: most entries; a photo column: most photos.</param>
 public sealed record AppFormFieldRow(string FormKey, string FieldKey, bool Custom, string? Label, string? Help, string? Type, bool? Required,
     bool Enabled, int? SortOrder, string? Section, string? OptionsJson, string? UpdatedBy, DateTime? UpdatedOn,
-    string? Levels = null, string? NicSectors = null, bool? ValidationRequired = null);
+    string? Levels = null, string? NicSectors = null, bool? ValidationRequired = null, int? MaxItems = null);
 
 /// <summary>
 /// The unit and level a form is filled for: a field limited to other levels or NIC sectors is not shown to it (V4). The
@@ -87,6 +88,9 @@ public interface IAppFormStore
     /// <summary>A standard field back to the catalogue (its row is removed; rows of the Admin's own fields are never removed).</summary>
     Task ResetAsync(string formKey, string fieldKey, CancellationToken ct = default);
 
+    /// <summary>2026-11-16: a column of the Admin's repeating entries taken out (its answers stay in the entries already sent).</summary>
+    Task DeleteCustomAsync(string formKey, string fieldKey, CancellationToken ct = default) => Task.CompletedTask;
+
     /// <summary>Answers of one submit; a null value removes the stored answer.</summary>
     Task SaveValuesAsync(string formKey, string zedId, string certification, IReadOnlyDictionary<string, string?> values, string submittedBy,
         CancellationToken ct = default);
@@ -98,7 +102,12 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
 {
     public const string FieldsSql =
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
-        "NeedsVerification AS ValidationRequired FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
+        "NeedsVerification AS ValidationRequired, MaxItems FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
+
+    /// <summary>Before migration 0094 (no MaxItems yet): the missing column as NULL.</summary>
+    public const string FieldsSql0080 =
+        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
+        "NeedsVerification AS ValidationRequired, CAST(NULL AS int) AS MaxItems FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
     /// <summary>
     /// Before migration 0080 (no ValidationRequired yet). Every column of <see cref="AppFormFieldRow"/>'s constructor is
@@ -106,13 +115,13 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
     /// </summary>
     public const string FieldsSql0030 =
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
-        "CAST(NULL AS bit) AS ValidationRequired " +
+        "CAST(NULL AS bit) AS ValidationRequired, CAST(NULL AS int) AS MaxItems " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
     /// <summary>Before migration 0030 (no Levels / NicSectors yet); the missing columns as NULL, as above.</summary>
     public const string FieldsSql0017 =
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, " +
-        "CAST(NULL AS varchar(400)) AS Levels, CAST(NULL AS varchar(400)) AS NicSectors, CAST(NULL AS bit) AS ValidationRequired " +
+        "CAST(NULL AS varchar(400)) AS Levels, CAST(NULL AS varchar(400)) AS NicSectors, CAST(NULL AS bit) AS ValidationRequired, CAST(NULL AS int) AS MaxItems " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
     public const string ValuesSql =
@@ -129,7 +138,15 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
         {
             try
             {
-                return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql, new { FormKey = Ansi(formKey, 50) }, ct);
+                try
+                {
+                    return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql, new { FormKey = Ansi(formKey, 50) }, ct);
+                }
+                catch (SqlException ex0) when (ex0.Number == 207)
+                {
+                    // Migration 0094 not applied yet: no repeating entries of the Admin's own have limits.
+                    return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql0080, new { FormKey = Ansi(formKey, 50) }, ct);
+                }
             }
             catch (SqlException ex) when (ex.Number == 207)
             {
@@ -152,7 +169,27 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
         }
     }
 
-    public Task SaveFieldAsync(AppFormFieldRow row, string userId, CancellationToken ct = default) => db.ExecuteSqlAsync(
+    public const string MaxItemsSql = "UPDATE dbo.V4AppFormFields SET MaxItems = @MaxItems WHERE FormKey = @FormKey AND FieldKey = @FieldKey;";
+
+    public async Task SaveFieldAsync(AppFormFieldRow row, string userId, CancellationToken ct = default)
+    {
+        await MergeFieldAsync(row, userId, ct);
+        if (!row.Custom) return;
+        try
+        {
+            await db.ExecuteSqlAsync(MaxItemsSql, new { row.MaxItems, FormKey = Ansi(row.FormKey, 50), FieldKey = Ansi(row.FieldKey, 100) }, ct);
+        }
+        catch (SqlException ex) when (ex.Number == 207)
+        {
+            if (row.MaxItems is not null) log.LogWarning("V4AppFormFields.MaxItems missing (is migration 0094 applied?); {Key} keeps the default limit", row.FieldKey);
+        }
+    }
+
+    public Task DeleteCustomAsync(string formKey, string fieldKey, CancellationToken ct = default) => db.ExecuteSqlAsync(
+        "DELETE FROM dbo.V4AppFormFields WHERE FormKey = @FormKey AND FieldKey = @FieldKey AND Custom = 1;",
+        new { FormKey = Ansi(formKey, 50), FieldKey = Ansi(fieldKey, 100) }, ct);
+
+    private Task MergeFieldAsync(AppFormFieldRow row, string userId, CancellationToken ct) => db.ExecuteSqlAsync(
         "MERGE dbo.V4AppFormFields AS t USING (SELECT @FormKey AS FormKey, @FieldKey AS FieldKey) AS s " +
         "ON t.FormKey = s.FormKey AND t.FieldKey = s.FieldKey " +
         "WHEN MATCHED THEN UPDATE SET Custom = @Custom, Label = @Label, Help = @Help, Type = @Type, Required = @Required, Enabled = @Enabled, " +
@@ -334,8 +371,23 @@ public sealed class EffectiveAppForm
         }
         foreach (var r in saved.Values.Where(r => r.Custom && !standardKeys.Contains(r.FieldKey) && !r.FieldKey.Contains(AppFormCatalogue.ColumnSeparator)
                                                   && AppFieldTypes.Custom.Contains(r.Type ?? "")))
+        {
             // A section that no longer exists puts the field in the first one.
-            fields.Add(FromCustom(r, sections.FirstOrDefault(x => string.Equals(x, r.Section, StringComparison.OrdinalIgnoreCase)) ?? sections[0]));
+            var field = FromCustom(r, sections.FirstOrDefault(x => string.Equals(x, r.Section, StringComparison.OrdinalIgnoreCase)) ?? sections[0]);
+            // 2026-11-16: the Admin's repeating entries and their columns ({field}/{column}).
+            if (field.Type == AppFieldTypes.Rows)
+            {
+                var prefix = r.FieldKey + AppFormCatalogue.ColumnSeparator;
+                field = field with
+                {
+                    Columns = saved.Values
+                        .Where(c => c.Custom && c.FieldKey.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && AppFieldTypes.CustomColumn.Contains(c.Type ?? ""))
+                        .Select(c => FromCustom(c with { FieldKey = c.FieldKey[prefix.Length..] }, field.Section))
+                        .OrderBy(c => c.Order).ThenBy(c => c.Key, StringComparer.Ordinal).ToList(),
+                };
+            }
+            fields.Add(field);
+        }
 
         fields = fields.OrderBy(f => sections.IndexOf(f.Section)).ThenBy(f => f.Order).ThenBy(f => f.Custom).ThenBy(f => f.Key, StringComparer.Ordinal).ToList();
 
@@ -399,6 +451,8 @@ public sealed class EffectiveAppForm
         Section = section,
         Order = r.SortOrder ?? 1000,
         Options = AppFieldTypes.IsChoice(r.Type) ? AppFormRules.ParseOptions(r.OptionsJson) : null,
+        MaxItems = r.Type == AppFieldTypes.Rows ? r.MaxItems ?? AppFieldTypes.DefaultRows
+            : r.Type == AppFieldTypes.Photo ? r.MaxItems ?? AppFieldTypes.DefaultPhotos : null,
         Customised = true,
         UpdatedBy = r.UpdatedBy,
         UpdatedOn = r.UpdatedOn,
@@ -512,10 +566,20 @@ public static partial class AppFormRules
     /// <summary>Several answers as stored: a JSON array of strings.</summary>
     public static string ToJsonArray(IEnumerable<string> values) => JsonSerializer.Serialize(values.ToList());
 
-    /// <summary>A stored answer as text for staff (several answers joined with ", ").</summary>
+    /// <summary>A stored answer as text for staff (several answers joined with ", "; repeating entries counted).</summary>
     public static string Display(string type, string? value)
     {
         if (string.IsNullOrEmpty(value)) return "";
+        if (type == AppFieldTypes.Rows)
+        {
+            var n = EntryCount(value);
+            return n == 1 ? "1 entry" : $"{n} entries";
+        }
+        if (type == AppFieldTypes.Photo)
+        {
+            var n = ParseOptions(value).Count;
+            return n == 1 ? "1 photo" : $"{n} photos";
+        }
         if (AppFieldTypes.Multiple.Contains(type) || value.StartsWith('['))
         {
             try
@@ -576,10 +640,122 @@ public static partial class AppFormRules
 
     private static bool Same(string? a, string b) => string.Equals(a?.Trim(), b, StringComparison.OrdinalIgnoreCase);
 
+    // ---------- 2026-11-16: the Admin's repeating entries ("Add more") and photo columns ----------
+
+    /// <summary>One entry of the Admin's repeating entries, as staff see it: per column its label, its text and its photo ids.</summary>
+    public sealed record EntryCell(string Key, string Label, string Type, string Text, IReadOnlyList<string> Photos);
+
+    private static int EntryCount(string value)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<JsonElement>(value) is { ValueKind: JsonValueKind.Array } a ? a.GetArrayLength() : 0;
+        }
+        catch (JsonException)
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>The stored entries of a repeating field, by its columns (a column taken out since is left out).</summary>
+    public static IReadOnlyList<IReadOnlyList<EntryCell>> Entries(AppField f, string? value)
+    {
+        if (string.IsNullOrEmpty(value) || f.Columns is not { } columns) return [];
+        JsonElement array;
+        try
+        {
+            array = JsonSerializer.Deserialize<JsonElement>(value);
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+        if (array.ValueKind != JsonValueKind.Array) return [];
+        var result = new List<IReadOnlyList<EntryCell>>();
+        foreach (var entry in array.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object))
+        {
+            var cells = new List<EntryCell>();
+            foreach (var c in columns)
+            {
+                if (!entry.TryGetProperty(c.Key, out var v) || v.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) { cells.Add(new(c.Key, c.Label, c.Type, "", [])); continue; }
+                var items = v.ValueKind == JsonValueKind.Array ? v.EnumerateArray().Select(x => x.ToString()).ToList() : [v.ToString()];
+                cells.Add(c.Type == AppFieldTypes.Photo ? new(c.Key, c.Label, c.Type, "", items) : new(c.Key, c.Label, c.Type, string.Join(", ", items), []));
+            }
+            result.Add(cells);
+        }
+        return result;
+    }
+
+    /// <summary>A photo id as the apps make them (the file is uploaded with the Basic Information photos).</summary>
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,99}$")] public static partial Regex PhotoId();
+
+    private static (string? Value, string? Error) NormalisePhotos(AppField f, JsonElement raw)
+    {
+        var ids = new List<string>();
+        if (raw.ValueKind == JsonValueKind.String) { if (raw.GetString()?.Trim() is { Length: > 0 } one) ids.Add(one); }
+        else if (raw.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in raw.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String) return (null, "the photo is not valid.");
+                if (item.GetString()?.Trim() is { Length: > 0 } id && !ids.Contains(id)) ids.Add(id);
+            }
+        }
+        else return (null, "the photo is not valid.");
+        if (ids.Any(id => !PhotoId().IsMatch(id))) return (null, "the photo is not valid.");
+        var max = f.MaxItems ?? AppFieldTypes.DefaultPhotos;
+        if (ids.Count > max) return (null, max == 1 ? "one photo at most." : $"{max} photos at most.");
+        return (ids.Count == 0 ? null : ToJsonArray(ids), null);
+    }
+
+    private static (string? Value, string? Error) NormaliseRows(AppField f, JsonElement raw)
+    {
+        var array = raw;
+        if (raw.ValueKind == JsonValueKind.String)
+        {
+            var text = raw.GetString()?.Trim() ?? "";
+            if (text.Length == 0) return (null, null);
+            try
+            {
+                array = JsonSerializer.Deserialize<JsonElement>(text);
+            }
+            catch (JsonException)
+            {
+                return (null, "the entries are not valid.");
+            }
+        }
+        if (array.ValueKind != JsonValueKind.Array) return (null, "the entries are not valid.");
+        var columns = (f.Columns ?? []).Where(c => c.Active && c.Enabled).ToList();
+        var entries = new JsonArray();
+        foreach (var entry in array.EnumerateArray())
+        {
+            if (entry.ValueKind != JsonValueKind.Object) return (null, "the entries are not valid.");
+            var props = entry.EnumerateObject().ToDictionary(p => p.Name, p => p.Value, StringComparer.OrdinalIgnoreCase);
+            var stored = new JsonObject();
+            foreach (var c in columns)
+            {
+                var (value, error) = props.TryGetValue(c.Key, out var v) ? Normalise(c, v) : (null, null);
+                if (error is not null) return (null, $"{c.Label}: {error}");
+                if (value is null)
+                {
+                    if (c.Required) return (null, $"please fill in {c.Label} for every entry.");
+                    continue;
+                }
+                stored[c.Key] = c.Type == AppFieldTypes.Photo || AppFieldTypes.Multiple.Contains(c.Type) ? JsonNode.Parse(value) : value;
+            }
+            if (stored.Count > 0) entries.Add(stored);
+        }
+        var max = f.MaxItems ?? AppFieldTypes.DefaultRows;
+        if (entries.Count > max) return (null, $"{max} entries at most.");
+        return (entries.Count == 0 ? null : entries.ToJsonString(), null);
+    }
+
     /// <summary>An answer in its stored form (null: not answered), or what is wrong with it.</summary>
-    internal static (string? Value, string? Error) Normalise(AppField f, JsonElement raw)
+    public static (string? Value, string? Error) Normalise(AppField f, JsonElement raw)
     {
         if (raw.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) return (null, null);
+        if (f.Type == AppFieldTypes.Rows) return NormaliseRows(f, raw);
+        if (f.Type == AppFieldTypes.Photo) return NormalisePhotos(f, raw);
 
         if (AppFieldTypes.Multiple.Contains(f.Type))
         {

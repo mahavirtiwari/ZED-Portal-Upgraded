@@ -91,7 +91,25 @@ interface Editing {
   limitLevels: boolean;
   limitSectors: boolean;
   validationRequired: boolean;
+  /** 2026-11-16: repeating entries: the most entries (empty: the default, 20) and the columns. */
+  maxItems: number | null;
+  columns: EditColumn[];
 }
+
+/** 2026-11-16: a column of the Admin's repeating entries in the pop-up (choices comma-separated). */
+interface EditColumn {
+  /** The saved column's key (its answers are kept), or null for a new one. */
+  key: string | null;
+  label: string;
+  type: string;
+  required: boolean;
+  options: string;
+  /** Photo: the most photos (1 to 5). */
+  maxItems: number;
+}
+
+/** The types of a column of repeating entries: every own type and photo. */
+export const COLUMN_TYPES = ['text', 'number', 'decimal', 'date', 'yesno', 'dropdown', 'multiselect', 'checkboxes', 'photo'];
 
 export const FIELD_TYPES: Record<string, string> = {
   text: 'Text',
@@ -327,6 +345,33 @@ const TYPE_GLYPHS: Record<string, string> = {
                             <button type="button" class="btn btn-outline-primary btn-sm add-choice" (click)="addOption(e)">Add choice</button>
                           </div>
                         }
+                        @if (e.type === 'rows') {
+                          <span class="label top">Columns</span>
+                          <div class="rows-editor" data-columns>
+                            <p class="small text-muted mb-2">One card per entry in the apps, with "+ Add more". Each entry asks these columns.</p>
+                            @for (c of e.columns; track $index; let i = $index) {
+                              <div class="col-row" [attr.data-column]="i">
+                                <span class="choice-no">{{ i + 1 }}</span>
+                                <input type="text" class="form-control" maxlength="200" placeholder="Column label" [attr.aria-label]="'Column ' + (i + 1) + ' label'" [(ngModel)]="c.label" />
+                                <select class="form-select" [attr.aria-label]="'Column ' + (i + 1) + ' type'" [(ngModel)]="c.type">
+                                  @for (t of columnTypes; track t) { <option [value]="t">{{ t === 'photo' ? 'Photo' : types[t] }}</option> }
+                                </select>
+                                <label class="col-req"><input type="checkbox" class="form-check-input" [(ngModel)]="c.required" [attr.aria-label]="'Column ' + (i + 1) + ' required'" /> Required</label>
+                                <button type="button" class="btn btn-link choice-remove" title="Remove" [attr.aria-label]="'Remove column ' + (i + 1)" (click)="removeColumn(e, i)">✕</button>
+                                @if (isChoice(c.type)) {
+                                  <input type="text" class="form-control col-extra" placeholder="Choices, separated by commas" [attr.aria-label]="'Column ' + (i + 1) + ' choices'" [(ngModel)]="c.options" />
+                                }
+                                @if (c.type === 'photo') {
+                                  <label class="col-extra small">Photos per entry
+                                    <input type="number" class="form-control form-control-sm d-inline-block col-num" min="1" max="5" [attr.aria-label]="'Column ' + (i + 1) + ' photos'" [(ngModel)]="c.maxItems" /></label>
+                                }
+                              </div>
+                            }
+                            <button type="button" class="btn btn-outline-primary btn-sm add-choice" (click)="addColumn(e)" [disabled]="e.columns.length >= 15">Add column</button>
+                            <label class="small d-block mt-2" for="rowsMax">Most entries
+                              <input type="number" id="rowsMax" class="form-control form-control-sm d-inline-block col-num" min="1" max="50" placeholder="20" [(ngModel)]="e.maxItems" /></label>
+                          </div>
+                        }
                       } @else {
                         <span class="label">Type</span>
                         <span><span class="type-pill"><span aria-hidden="true">{{ typeGlyph(e.field!.type) }}</span> {{ typeName(e.field!) }}</span>
@@ -415,7 +460,7 @@ const TYPE_GLYPHS: Record<string, string> = {
                       <div class="toggle-card no-validation" data-no-validation>
                         <span><strong>Validation required</strong><small class="text-muted d-block">{{ e.field.noValidation }}</small></span>
                       </div>
-                    } @else if (details()?.canValidate) {
+                    } @else if (details()?.canValidate && e.type !== 'rows') {
                       <label class="toggle-card form-switch" for="fieldValidated">
                         <input class="form-check-input" type="checkbox" role="switch" id="fieldValidated" [(ngModel)]="e.validationRequired" />
                         <span>
@@ -527,6 +572,11 @@ const TYPE_GLYPHS: Record<string, string> = {
     .dialog-section h4, .dialog-preview h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 12px; }
     .form-grid > .top { align-self: start; padding-top: 8px; }
     .choices { display: flex; flex-direction: column; gap: 6px; }
+    .rows-editor { display: flex; flex-direction: column; gap: 8px; }
+    .col-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 150px auto 28px; gap: 6px; align-items: center; }
+    .col-row .col-extra { grid-column: 2 / -1; }
+    .col-req { display: flex; gap: 4px; align-items: center; font-size: 13px; margin: 0; white-space: nowrap; }
+    .col-num { width: 80px; margin-left: 6px; }
     .choice { display: flex; align-items: center; gap: 8px; }
     .choice-no { flex: 0 0 24px; height: 24px; border-radius: 12px; background: #eef6f6; color: #23474a; font-size: 12px; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center; }
@@ -661,7 +711,8 @@ export class AppFormsPage {
     this.modalError.set('');
     this.editing.set({
       field: null, custom: true, label: '', help: '', type: 'text', required: false, enabled: true, section: d.sections[0]?.key ?? '', options: [''],
-      levels: [], nicSectors: [], limitLevels: false, limitSectors: false, validationRequired: false,
+      levels: [], nicSectors: [], limitLevels: false, limitSectors: false, validationRequired: false, maxItems: null,
+      columns: [{ key: null, label: '', type: 'text', required: true, options: '', maxItems: 1 }],
     });
   }
 
@@ -682,7 +733,24 @@ export class AppFormsPage {
       limitLevels: !!f.levels?.length,
       limitSectors: !!f.nicSectors?.length,
       validationRequired: !!f.validationRequired,
+      maxItems: f.custom && f.type === 'rows' ? (f.maxItems ?? null) : null,
+      columns: f.custom && f.type === 'rows'
+        ? (f.columns ?? []).map((c) => ({
+          key: c.key.includes('/') ? c.key.slice(c.key.indexOf('/') + 1) : c.key, label: c.label, type: c.type, required: c.required,
+          options: (c.options ?? []).join(', '), maxItems: c.maxItems ?? 1,
+        }))
+        : [{ key: null, label: '', type: 'text', required: true, options: '', maxItems: 1 }],
     });
+  }
+
+  protected readonly columnTypes = COLUMN_TYPES;
+
+  protected addColumn(e: Editing): void {
+    e.columns.push({ key: null, label: '', type: 'text', required: false, options: '', maxItems: 1 });
+  }
+
+  protected removeColumn(e: Editing, index: number): void {
+    e.columns.splice(index, 1);
   }
 
   protected typeGlyph(type: string): string {
@@ -726,7 +794,15 @@ export class AppFormsPage {
       options: e.custom && this.isChoice(e.type) ? e.options.map((o) => o.trim()).filter((o) => o) : null,
       levels: e.levels,
       nicSectors: e.nicSectors,
-      validationRequired: e.validationRequired && (e.custom || !e.field?.noValidation),
+      validationRequired: e.type !== 'rows' && e.validationRequired && (e.custom || !e.field?.noValidation),
+      columns: e.custom && e.type === 'rows'
+        ? e.columns.map((c) => ({
+          key: c.key, label: c.label.trim(), type: c.type, required: c.required,
+          options: this.isChoice(c.type) ? c.options.split(',').map((o) => o.trim()).filter((o) => o) : null,
+          maxItems: c.type === 'photo' ? Number(c.maxItems) || 1 : null,
+        }))
+        : null,
+      maxItems: e.custom && e.type === 'rows' && e.maxItems ? Number(e.maxItems) : null,
     };
     this.busy.set(true);
     this.modalError.set('');

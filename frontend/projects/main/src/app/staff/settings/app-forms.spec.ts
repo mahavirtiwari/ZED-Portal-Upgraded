@@ -125,10 +125,44 @@ describe('AppFormsPage', () => {
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body).toEqual({
       key: 'auditsConducted', label: 'Audited by a third party?', help: 'Statutory audits do not count', type: null, required: false, enabled: true,
-      section: null, options: null, levels: ['ZEDX'], nicSectors: ['62'], validationRequired: false,
+      section: null, options: null, levels: ['ZEDX'], nicSectors: ['62'], validationRequired: false, columns: null, maxItems: null,
     });
     put.flush({ message: 'Field saved.' });
     await reloaded('Field saved.');
+  });
+
+  it('adds repeating entries with their columns (2026-11-16)', async () => {
+    (fixture.componentInstance as unknown as { details: { set(d: AppFormDetails): void } }).details.set({ ...details(), customTypes: [...details().customTypes, 'rows'] });
+    await settle();
+    button('Add field').click();
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    await type(dialog.querySelector('#fieldLabel') as HTMLInputElement, 'Machines');
+    (dialog.querySelector('#type-rows') as HTMLInputElement).click();
+    await settle();
+    expect(dialog.querySelector('[data-columns]')).toBeTruthy();
+    await type(dialog.querySelector('[aria-label="Column 1 label"]') as HTMLInputElement, 'Machine name');
+    button('Add column', dialog).click();
+    await settle();
+    await type(dialog.querySelector('[aria-label="Column 2 label"]') as HTMLInputElement, 'Photo');
+    const typeSelect = dialog.querySelector('[aria-label="Column 2 type"]') as HTMLSelectElement;
+    typeSelect.value = 'photo';
+    typeSelect.dispatchEvent(new Event('change'));
+    await settle();
+    expect(dialog.querySelector('[aria-label="Column 2 photos"]')).toBeTruthy();
+    expect(dialog.querySelector('#fieldValidated')).toBeNull();
+    button('SAVE', dialog).click();
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
+    expect(post.request.body).toEqual(expect.objectContaining({
+      label: 'Machines', type: 'rows', validationRequired: false, maxItems: null,
+      columns: [
+        { key: null, label: 'Machine name', type: 'text', required: true, options: null, maxItems: null },
+        { key: null, label: 'Photo', type: 'photo', required: false, options: null, maxItems: 1 },
+      ],
+    }));
+    post.flush({ message: 'Field added.', key: 'cf_machines' });
+    await reloaded('Field added.');
   });
 
   it('adds a drop-down field with its choices', async () => {
@@ -159,7 +193,7 @@ describe('AppFormsPage', () => {
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
     expect(post.request.body).toEqual({
       key: null, label: 'Sector of the unit', help: null, type: 'dropdown', required: true, enabled: true, section: 'basic', options: ['Auto', 'Textile'],
-      levels: [], nicSectors: [], validationRequired: false,
+      levels: [], nicSectors: [], validationRequired: false, columns: null, maxItems: null,
     });
     post.flush({ title: 'Please add at least one choice.' }, { status: 400, statusText: 'Bad Request' });
     await settle();

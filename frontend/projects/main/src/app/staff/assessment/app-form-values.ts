@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { withApiBase } from '../../api-base';
 
 export interface AppFormValue {
   key: string;
@@ -13,6 +14,15 @@ export interface AppFormValue {
   enabled: boolean;
   submittedBy: string | null;
   updatedOn: string | null;
+  /** 2026-11-16: repeating entries of the Admin's own: each entry's columns (photos as addresses). */
+  entries?: AppFormEntryCell[][] | null;
+}
+
+export interface AppFormEntryCell {
+  label: string;
+  type: string;
+  text: string;
+  photoUrls: string[];
 }
 
 export interface AppFormValues {
@@ -38,7 +48,32 @@ export interface AppFormValues {
             @for (v of f.values; track v.key) {
               <tr>
                 <th scope="row" style="width: 40%">{{ v.label }} @if (!v.enabled) { <small class="text-muted">(field disabled since)</small> }</th>
-                <td>{{ v.value }} @if (v.updatedOn) { <small class="text-muted d-block">{{ v.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</small> }</td>
+                <td>
+                  @if (v.entries?.length) {
+                    <div class="table-responsive">
+                      <table class="table table-sm table-bordered mb-1 afv-entries" data-entries>
+                        <thead><tr><th class="text-center">#</th>@for (c of v.entries![0]; track $index) { <th>{{ c.label }}</th> }</tr></thead>
+                        <tbody>
+                          @for (row of v.entries; track $index; let i = $index) {
+                            <tr>
+                              <td class="text-center">{{ i + 1 }}</td>
+                              @for (c of row; track $index) {
+                                <td>
+                                  @if (c.type === 'photo') {
+                                    @for (u of c.photoUrls; track u) {
+                                      <a [href]="api(u)" target="_blank" rel="noopener"><img class="afv-photo" [src]="api(u)" [alt]="c.label + ' ' + (i + 1)" /></a>
+                                    } @empty { <span class="text-muted">—</span> }
+                                  } @else { {{ c.text || '—' }} }
+                                </td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else { {{ v.value }} }
+                  @if (v.updatedOn) { <small class="text-muted d-block">{{ v.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</small> }
+                </td>
               </tr>
             }
           </tbody>
@@ -46,8 +81,17 @@ export interface AppFormValues {
       </div>
     }
   `,
+  styles: `
+    .afv-photo { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; margin: 2px; border: 1px solid #dfe9ea; }
+    .afv-entries th { font-size: 12.5px; }
+  `,
 })
 export class AppFormValuesPanel {
+  /** The API's own address of a file (the portal may run under a base path). */
+  protected api(url: string): string {
+    return withApiBase(url);
+  }
+
   private readonly http = inject(HttpClient);
 
   readonly zedId = input.required<string>();

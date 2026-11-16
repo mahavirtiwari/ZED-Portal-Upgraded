@@ -49,9 +49,16 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
     /// <param name="Levels">V4: the level codes it is asked for; none = all levels.</param>
     /// <param name="NicSectors">V4: the NIC 2-digit sectors of the units it is asked of; none = all sectors.</param>
     /// <param name="ValidationRequired">V4: the assessor checks the answer (the Admin's own fields of a form the unit fills in).</param>
+    /// <param name="Columns">2026-11-16: repeating entries ("Add more"): their columns, in order.</param>
+    /// <param name="MaxItems">2026-11-16: repeating entries: most entries (empty: the default).</param>
     public sealed record FieldRequest(string? Key, string? Label, string? Help, string? Type, bool Required, bool Enabled = true,
         string? Section = null, IReadOnlyList<string>? Options = null, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null,
-        bool ValidationRequired = false);
+        bool ValidationRequired = false, IReadOnlyList<ColumnRequest>? Columns = null, int? MaxItems = null);
+
+    /// <summary>A column of repeating entries: <paramref name="Key"/> an existing column's (relative) key, or none for a new one;
+    /// <paramref name="MaxItems"/> a photo column's most photos.</summary>
+    public sealed record ColumnRequest(string? Key, string? Label, string? Type, bool Required = false, IReadOnlyList<string>? Options = null,
+        int? MaxItems = null, string? Help = null);
 
     public sealed record EnabledRequest(string? Key, bool Enabled);
 
@@ -90,11 +97,13 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         var (levels, sectors, scopeError) = await ScopeAsync(req, ct);
         if (scopeError is not null) return this.Problem400(scopeError);
 
+        if (RowsError(req, out var columns, out var maxRows) is { } rowsError) return this.Problem400(rowsError);
         var key = NewKey(f, req.Label!);
         var order = f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10;
         var row = new AppFormFieldRow(f.Spec.Key, key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(), req.Required,
-            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req));
+            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req), maxRows);
         if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "add a field to", f) is { } failed) return failed;
+        if (columns is not null && await WriteAsync(() => SaveColumnsAsync(f, null, key, section, columns, ct), "add a field to", f) is { } colFailed) return colFailed;
         log.LogInformation("App form {Form}: field {Key} ({Type}) added by {UserId}", f.Spec.Key, key, row.Type, UserId);
         return new AddedResponse("Field added. The apps show it the next time they load the form.", key);
     }
@@ -111,10 +120,16 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         {
             if (CustomError(f, req, out var section, out var options) is { } error) return this.Problem400(error);
             if (ValidationError(f, req) is { } invalid) return this.Problem400(invalid);
+            if (RowsError(req, out var columns, out var maxRows) is { } rowsError) return this.Problem400(rowsError);
+            // A field's type changes only between single answers: repeating entries keep their entries' shape.
+            if ((field.Type == AppFieldTypes.Rows) != (req.Type!.Trim().ToLowerInvariant() == AppFieldTypes.Rows))
+                return this.Problem400("A field's type cannot be changed to or from repeating entries: add a new field instead.");
             var row = new AppFormFieldRow(f.Spec.Key, field.Key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(),
                 req.Required, req.Enabled, section == field.Section ? field.Order : f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10,
-                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req));
+                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req), maxRows);
             if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "save a field of", f) is { } failed) return failed;
+            if (columns is not null && await WriteAsync(() => SaveColumnsAsync(f, field, field.Key, section, columns, ct), "save a field of", f) is { } colFailed)
+                return colFailed;
         }
         else
         {
@@ -141,7 +156,7 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         var row = field.Custom
             ? new AppFormFieldRow(f.Spec.Key, field.Key, true, field.Label, field.Help, field.Type, field.Required, req.Enabled, field.Order, field.Section,
                 field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null, AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors),
-                field.ValidationRequired ? true : null)
+                field.ValidationRequired ? true : null, field.Type == AppFieldTypes.Rows ? field.MaxItems : null)
             : StandardRow(f, f.KeyOf(req.Key)!, field, field.Label, field.Help, field.Required, req.Enabled,
                 AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors), field.ValidationRequired);
         if (await WriteAsync(() => field.Custom ? forms.Store.SaveFieldAsync(row, UserId, ct) : SaveStandardAsync(row, ct), "change", f) is { } failed)
@@ -273,6 +288,82 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         if (options.Count == 0) return "Please add at least one choice.";
         if (options.Count > AppFormRules.MaxOptions) return $"A field can have at most {AppFormRules.MaxOptions} choices.";
         return null;
+    }
+
+    private sealed record ColumnSpec(string? Key, string Label, string? Help, string Type, bool Required, List<string>? Options, int? MaxItems);
+
+    /// <summary>2026-11-16: the columns and most entries of repeating entries (null for the other types), or what is wrong.</summary>
+    private static string? RowsError(FieldRequest req, out List<ColumnSpec>? columns, out int? maxRows)
+    {
+        columns = null;
+        maxRows = null;
+        if (req.Type?.Trim().ToLowerInvariant() != AppFieldTypes.Rows) return null;
+        if (req.ValidationRequired) return "Repeating entries cannot be \"Validation required\".";
+        if (req.MaxItems is { } max && (max < 1 || max > AppFieldTypes.MaxRows)) return $"The most entries must be between 1 and {AppFieldTypes.MaxRows}.";
+        maxRows = req.MaxItems;
+        var list = (req.Columns ?? []).ToList();
+        if (list.Count == 0) return "Please add at least one column.";
+        if (list.Count > AppFieldTypes.MaxColumns) return $"Repeating entries can have at most {AppFieldTypes.MaxColumns} columns.";
+        columns = [];
+        foreach (var c in list)
+        {
+            if (LabelError(c.Label, c.Help) is { } labelError) return "Column: " + labelError;
+            var type = c.Type?.Trim().ToLowerInvariant();
+            if (type is null || !AppFieldTypes.CustomColumn.Contains(type)) return $"Please choose the type of the column \"{c.Label!.Trim()}\".";
+            if (columns.Any(x => string.Equals(x.Label, c.Label!.Trim(), StringComparison.OrdinalIgnoreCase))) return $"The column \"{c.Label!.Trim()}\" is listed twice.";
+            List<string>? options = null;
+            if (AppFieldTypes.IsChoice(type))
+            {
+                options = (c.Options ?? []).Select(o => o?.Trim() ?? "").Where(o => o.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                if (options.Count == 0) return $"Please add at least one choice to the column \"{c.Label!.Trim()}\".";
+                if (options.Count > AppFormRules.MaxOptions || options.Any(o => o.Length > AppFormRules.MaxOptionLength))
+                    return $"The choices of the column \"{c.Label!.Trim()}\" are too many or too long.";
+            }
+            int? photos = null;
+            if (type == AppFieldTypes.Photo)
+            {
+                photos = c.MaxItems ?? AppFieldTypes.DefaultPhotos;
+                if (photos < 1 || photos > AppFieldTypes.MaxPhotos) return $"A photo column takes 1 to {AppFieldTypes.MaxPhotos} photos.";
+            }
+            columns.Add(new ColumnSpec(c.Key?.Trim(), c.Label!.Trim(), Clean(c.Help), type, c.Required, options, photos));
+        }
+        return null;
+    }
+
+    /// <summary>The columns in order ({field}/{column}); an existing column keeps its key (its answers), a column left out is taken out.</summary>
+    private async Task SaveColumnsAsync(EffectiveAppForm f, AppField? field, string fieldKey, string section, List<ColumnSpec> columns, CancellationToken ct)
+    {
+        var existing = (field?.Columns ?? []).Select(c => c.Key).ToList();
+        var used = new List<string>();
+        for (var i = 0; i < columns.Count; i++)
+        {
+            var c = columns[i];
+            var key = c.Key is { } k && existing.Contains(k, StringComparer.OrdinalIgnoreCase) && !used.Contains(k, StringComparer.OrdinalIgnoreCase)
+                ? existing.First(x => string.Equals(x, k, StringComparison.OrdinalIgnoreCase))
+                : ColumnKey(c.Label, existing.Concat(used));
+            used.Add(key);
+            await forms.Store.SaveFieldAsync(new AppFormFieldRow(f.Spec.Key, fieldKey + AppFormCatalogue.ColumnSeparator + key, true, c.Label, c.Help, c.Type,
+                c.Required, true, (i + 1) * 10, section, c.Options is null ? null : AppFormRules.ToJsonArray(c.Options), null, null, null, null, null, c.MaxItems), UserId, ct);
+        }
+        foreach (var gone in existing.Where(k => !used.Contains(k, StringComparer.OrdinalIgnoreCase)))
+            await forms.Store.DeleteCustomAsync(f.Spec.Key, fieldKey + AppFormCatalogue.ColumnSeparator + gone, ct);
+    }
+
+    /// <summary>c_ and the label in lower case (letters and digits), unique among the columns.</summary>
+    private static string ColumnKey(string label, IEnumerable<string> taken)
+    {
+        var slug = new StringBuilder();
+        foreach (var ch in label.Trim().ToLowerInvariant())
+        {
+            if (ch is >= 'a' and <= 'z' or >= '0' and <= '9') slug.Append(ch);
+            else if (slug.Length > 0 && slug[^1] != '_') slug.Append('_');
+            if (slug.Length >= 30) break;
+        }
+        var core = "c_" + (slug.ToString().Trim('_') is { Length: > 0 } s ? s : "column");
+        var all = taken.ToList();
+        var candidate = core;
+        for (var n = 2; all.Contains(candidate, StringComparer.OrdinalIgnoreCase); n++) candidate = $"{core}_{n}";
+        return candidate;
     }
 
     /// <summary>Stored as 1, or null (not validated).</summary>
