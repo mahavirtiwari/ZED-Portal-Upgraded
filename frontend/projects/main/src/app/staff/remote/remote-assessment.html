@@ -493,6 +493,43 @@
           </div>
         }
 
+        <!-- ===================================================== attendance (2026-11-16) -->
+        @if (tab() === 'attendance') {
+          @for (who of d.attendanceAssessors ?? []; track $index) {
+            <h6 class="mt-2">{{ who['AssessorName'] || who['ConsultantId'] }} ({{ who['ConsultantId'] }}) - {{ who['AssessorType'] }}</h6>
+            @if (attendanceOf(who).length) {
+              <div class="table-responsive">
+                <table class="table table-zed">
+                  <thead><tr><th>Day</th><th>Date</th><th>Punch-In</th><th>Punch-Out</th><th>No. of Hours</th></tr></thead>
+                  <tbody>
+                    @for (a of attendanceOf(who); track $index) {
+                      <tr data-attendance-row>
+                        <td>Day {{ a['RowNumber'] }}</td>
+                        <td>{{ a['TimeStamps'] }}</td>
+                        <td>
+                          {{ a['LoginTime'] || 'Not punched in' }}
+                          @if (a['LoginPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LoginPhotoUrl']))"><img [src]="a['LoginPhotoUrl']" alt="Punch-in selfie" width="44" height="44" /></button> }
+                          @if (placeUrl(a['LoginLocation'])) { <a class="ms-1" [href]="placeUrl(a['LoginLocation'])" target="_blank" rel="noopener">Map</a> }
+                        </td>
+                        <td>
+                          {{ a['LogoutTime'] || 'Not punched out' }}
+                          @if (a['LogoutPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LogoutPhotoUrl']))"><img [src]="a['LogoutPhotoUrl']" alt="Punch-out selfie" width="44" height="44" /></button> }
+                          @if (placeUrl(a['LogoutLocation'])) { <a class="ms-1" [href]="placeUrl(a['LogoutLocation'])" target="_blank" rel="noopener">Map</a> }
+                        </td>
+                        <td>{{ a['NoOfHours'] ? a['NoOfHours'] + ' h ' + a['NoOfMinutes'] + ' m' : a['NoOfMinutes'] ? a['NoOfMinutes'] + ' m' : '-' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
+            }
+          } @empty {
+            <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
+          }
+        }
+
         <!-- ===================================================== parameters -->
         @if (tab() === 'parameters') {
           @let cur = pn.active();

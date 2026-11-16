@@ -176,7 +176,7 @@ describe('MilestoneDetailsPage', () => {
     expect(el.querySelector('.zp-main')!.textContent).toContain('Milestone 2 :');
   });
 
-  it('answers the baseline checkpoints of an editable parameter', async () => {
+  it('answers the baseline checkpoints in place inside the Basic Diagnostic Study (2026-11-16)', async () => {
     const checkpoint = {
       id: 801, requirementId: 11, optionCode: '1', text: 'Written quality policy', actions: ['Write the policy', 'Display it'],
       evidences: [{ id: 91, name: 'Policy document', mandatory: true, uploaded: false, verified: null }],
@@ -186,15 +186,16 @@ describe('MilestoneDetailsPage', () => {
     await open(details({ options, checkpoints: [checkpoint], checkpointStage: 'Baseline' }));
     await tab('Parameters');
     await expand('Leadership');
-    button('ANSWER CHECKPOINTS')!.click();
-    await settle();
+    // No pop-up: the checkpoints sit in the baseline block.
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('.milestone-1 [data-checkpoints-inline]')).not.toBeNull();
     // Handholding has no per-evidence uploads: the evidence is listed to look at.
     expect(el.querySelector('zed-checkpoint-dialog')!.textContent).toContain('Evidence to see');
     el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=No]')!.click();
     await settle();
     el.querySelectorAll<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')[1].click();
     await settle();
-    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value=SUBMIT]')!.click();
+    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value="SAVE CHECKPOINTS"]')!.click();
     await settle();
     const req = http.expectOne(API + '/requirements/11/checkpoints');
     expect(req.request.body).toEqual({ answers: [{ id: 801, answer: 'No', actions: ['Display it'], remarks: null }], remarks: null });
@@ -203,15 +204,16 @@ describe('MilestoneDetailsPage', () => {
     http.expectOne(API).flush(details({ options, checkpointStage: 'Baseline', checkpoints: [{ ...checkpoint, baseline: { value: 'No', actions: ['Display it'], remarks: null } }] }));
     await settle();
     expect(el.textContent).toContain('1 action added to the Handholding Action Plan');
-    expect(el.querySelector('.cp-chip')!.textContent!.trim()).toBe('Baseline: No');
+    expect(el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=No]')!.checked).toBe(true);
   });
 
-  it('shows no checkpoint button to a viewer', async () => {
+  it('shows a viewer the checkpoints read-only, without the editor', async () => {
     const checkpoint = { id: 801, requirementId: 11, optionCode: '1', text: 'Policy', actions: [], evidences: [], desktop: null, site: null, baseline: null, review1: null, review2: null };
     await open(details({ checkpoints: [checkpoint], checkpointStage: null }));
     await tab('Parameters');
     await expand('Leadership');
-    expect(button('ANSWER CHECKPOINTS')).toBeUndefined();
+    expect(el.querySelector('[data-checkpoints-inline]')).toBeNull();
+    expect(el.querySelector('.zp-checkpoints')).not.toBeNull();
   });
 
   it('adds and deletes bullets', async () => {
@@ -270,12 +272,12 @@ describe('MilestoneDetailsPage', () => {
     expect(el.textContent).toContain('Milestone submitted');
   });
 
-  it('shows the CO decisions the server allows, without the Reject button the old page never showed', async () => {
+  it('shows the CO decisions the server allows, Reject included (2026-11-16)', async () => {
     await open(details({ party: 'Co', status: 15, permissions: { ...details().permissions, canConsultantFinalSubmit: false, canCoFinalSubmit: true, canSendBack: true, canReject: true } }));
     await tab('Closing Meeting');
     expect(button('Send Back to Consultant')).toBeDefined();
     expect(button('Final Submit')).toBeDefined();
-    expect(button('Reject')).toBeUndefined();
+    expect(button('Reject')).toBeDefined();
     button('Final Submit')!.click();
     await settle();
     expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
@@ -287,6 +289,29 @@ describe('MilestoneDetailsPage', () => {
     http.expectOne(API + '/final-submit').flush({ message: 'Milestone 1 completed.' });
     await settle();
     http.expectOne(API).flush(details({ status: 16 }));
+    await settle();
+  });
+
+  it("shows the CO's send-back remark to the consultants (2026-11-16)", async () => {
+    await open(details({ status: 13, sentBack: { remarks: 'Add the HAP bullets', sentOn: '2026-11-16T10:00:00' } }));
+    expect(el.querySelector('[data-sent-back]')!.textContent).toContain('Add the HAP bullets');
+    expect(el.querySelector('[data-sent-back]')!.textContent).toContain('16 Nov 2026');
+  });
+
+  it('lets the CO reject after confirming (2026-11-16)', async () => {
+    await open(details({ party: 'Co', status: 15, permissions: { ...details().permissions, canConsultantFinalSubmit: false, canCoFinalSubmit: true, canSendBack: true, canReject: true } }));
+    await tab('Closing Meeting');
+    button('Reject')!.click();
+    await settle();
+    el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
+    await settle();
+    button('REJECT')!.click();
+    await settle();
+    const req = http.expectOne(API + '/reject');
+    expect(req.request.body).toEqual({ confirmed: true });
+    req.flush({ message: 'Handholding rejected.' });
+    await settle();
+    http.expectOne(API).flush(details({ status: 99 }));
     await settle();
   });
 

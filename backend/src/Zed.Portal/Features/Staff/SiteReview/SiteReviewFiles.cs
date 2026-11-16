@@ -14,6 +14,7 @@ namespace Zed.Portal.Features.Staff.SiteReview;
 /// <item><c>mobileapi/Photos|CertifiedPhotos/{ZedId}/{Certification}/…</c> — MSME app uploads of the desktop assessment</item>
 /// <item><c>mobileapi/Attendance/{ZedId}/{Certification}/{PhotoId}.jpg</c> — assessors' punch-in/punch-out selfies</item>
 /// <item><c>surveillancemobileapi/SaPhotos/{ZedId}/…</c> — surveillance site tour and evidences</item>
+/// <item><c>surveillancemobileapi/Attendance/{ZedId}/{Certification}/{PhotoId}.jpg</c> — surveillance assessors' punch-in/punch-out selfies</item>
 /// </list>
 /// The folder after the store must be the record's ZED ID (or, for a rejected copy ZEDMSME000123_D_45, the
 /// MSME's own ZED ID); only images and PDFs are served.
@@ -30,6 +31,8 @@ public static class SiteReviewFiles
         ("mobileapi", "CertifiedPhotos", "Photos"),
         ("mobileapi", "Attendance", null),
         ("surveillancemobileapi", "SaPhotos", null),
+        // 2026-11-16: the surveillance assessors' punch-in / punch-out selfies (SiteAttendance).
+        ("surveillancemobileapi", "Attendance", null),
     ];
 
     public static string ApiPrefix(string zedId, string certification) =>

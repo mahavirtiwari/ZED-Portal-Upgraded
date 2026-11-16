@@ -83,7 +83,6 @@ public sealed class SiteReviewController(
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields = ["Id", "SectionCode", "RequirementCode", "EvidenceName", "NcCount", "SyncedDate"];
-    private static readonly string[] AttendanceFields = ["ConsultantId", "RowNumber", "TimeStamps", "LoginTime", "LogoutTime", "NoOfHours", "NoOfMinutes"];
     private static readonly string[] SiteVerificationFields =
         ["ZedId", "Certification", "CertificationBodyUserId", "AssessorName", "EnterpriseName", "UnitAddress", "StateName", "DesktopReasonForRejection"];
 
@@ -320,6 +319,15 @@ public sealed class SiteReviewController(
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         var rounds = ncCount > 0 ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, ct))) : [];
 
+        // 2026-11-16: the assessors' punch-in / punch-out from the attendance table itself (main and surveillance).
+        var allotted = surveillance
+            ? new[] { (Id: record.SiteAssessorId, Type: "Lead Assessor"), (Id: record.CoAssessorId, Type: "Co-Assessor") }
+                .Where(a => !string.IsNullOrWhiteSpace(a.Id))
+                .Select(a => new Dictionary<string, object?> { ["ConsultantId"] = a.Id!.Trim(), ["AssessorType"] = a.Type }).ToList()
+            : Pick(da[24], ["ConsultantId", "AssessorType"]);
+        var (attendance, attendanceAssessors) = SiteAttendance.Build(await SiteAttendance.ReadAsync(db, zedId, level, log, ct), allotted, zedId, level,
+            surveillance ? "surveillancemobileapi" : "mobileapi");
+
         var permissions = new Permissions(
             ReviewRules.For(user, record, ReviewStage.Site),
             user.RoleId == (int)UserRole.MasterAdmin && record.Status == 8,
@@ -347,8 +355,8 @@ public sealed class SiteReviewController(
             Photos(sa[6], zedId, level),
             MeetingOf(sa[1], sa[2], sa[5], zedId, level),
             MeetingOf(sa[3], sa[4], sa[8], zedId, level),
-            surveillance ? [] : Attendance(da[23], zedId, level),
-            surveillance ? [] : Pick(da[24], ["ConsultantId", "AssessorType"]),
+            attendance,
+            attendanceAssessors,
             rounds,
             permissions,
             surveillance ? SurveillanceOf(main, sa, qc) : null);
@@ -547,15 +555,6 @@ public sealed class SiteReviewController(
         IEnumerable<IDictionary<string, object?>> photos, string zedId, string level) =>
         meetings.FirstOrDefault() is not { } m ? null
             : new Meeting(Long(m, "Id"), Str(m, "Comments"), Photos(photos, zedId, level), Pick(participants, ["Name", "Designation"]));
-
-    private static List<Dictionary<string, object?>> Attendance(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level) =>
-        rows.Select(a =>
-        {
-            var d = Pick(a, AttendanceFields);
-            d["LoginPhotoUrl"] = a.Text("LoginPhotoId1").Length > 0 ? SiteReviewFiles.Url(zedId, level, a.Text("LoginPhotoId")) : null;
-            d["LogoutPhotoUrl"] = a.Text("LogoutPhotoId1").Length > 0 ? SiteReviewFiles.Url(zedId, level, a.Text("LogoutPhotoId")) : null;
-            return d;
-        }).ToList();
 
     private static List<NcProduct> NcProducts(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level) =>
         rows.Select(p =>

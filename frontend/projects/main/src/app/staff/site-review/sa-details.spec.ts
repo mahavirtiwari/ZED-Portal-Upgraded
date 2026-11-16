@@ -102,6 +102,28 @@ describe('SaDetailsPage', () => {
     expect(images.map((i) => i.getAttribute('src'))).toEqual([FILES + 'mobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/9.jpg']);
   });
 
+  it("shows each assessor's days with the selfies in a preview and where they were taken (2026-11-16)", async () => {
+    const selfie = FILES + 'mobileapi/Attendance/ZEDMSME000001/Silver/55.jpg';
+    await open(details({
+      consultants: [{ ConsultantId: 'SA1', AssessorType: 'Lead Assessor', AssessorName: 'R Sharma' }, { ConsultantId: 'SA2', AssessorType: 'Co-Assessor' }],
+      attendance: [{ ConsultantId: 'sa1', AssessorName: 'R Sharma', RowNumber: 1, TimeStamps: '14 Nov 2026', LoginTime: '09:42 AM', LogoutTime: null,
+        NoOfHours: null, NoOfMinutes: null, LoginPhotoUrl: selfie, LogoutPhotoUrl: null, LoginLocation: '17.38,78.48', LogoutLocation: null }],
+    }));
+    tab('Attendance');
+    await settle();
+    const text = el.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('R Sharma (SA1) - Lead Assessor');
+    expect(el.querySelectorAll('[data-attendance-row]').length).toBe(1);
+    expect(text).toContain('09:42 AM');
+    expect(text).toContain('Not punched out');
+    // The co-assessor has not punched in.
+    expect(el.querySelectorAll('[data-attendance-empty]').length).toBe(1);
+    expect(el.querySelector<HTMLAnchorElement>('[data-attendance-row] a')!.href).toBe('https://www.google.com/maps?q=17.38,78.48');
+    el.querySelector<HTMLButtonElement>('[data-attendance-row] button')!.click();
+    await settle();
+    expect(Array.from(el.querySelectorAll<HTMLImageElement>('img')).filter((i) => i.getAttribute('src') === selfie).length).toBe(2);
+  });
+
   it('lets the agency edit OFI comments and certify after the quality check confirmation', async () => {
     await open(details());
     tab('Parameters');
@@ -440,7 +462,7 @@ describe('SaDetailsPage (surveillance)', () => {
   it('shows the agency the surveillance next to the original certification, without the original blocks', async () => {
     await open(surveillanceDetails());
     expect(Array.from(el.querySelectorAll('.nav-link')).map((b) => b.textContent!.trim())).toEqual([
-      'Assessment Overview', 'Assessment Plan', 'Opening Meeting', 'Basic Information', 'Site Tour', 'Parameters', 'Closing Meeting', 'NC 1',
+      'Assessment Overview', 'Assessment Plan', 'Opening Meeting', 'Basic Information', 'Site Tour', 'Parameters', 'Closing Meeting', 'NC 1', 'Attendance',
     ]);
     const overview = rows();
     expect(overview).toContain('Unit Name Original Unit');

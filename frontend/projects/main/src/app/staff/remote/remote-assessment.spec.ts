@@ -88,6 +88,20 @@ describe('RemoteAssessmentPage', () => {
     expect(el.querySelector('a.map-link')!.getAttribute('href')).toBe('https://www.google.com/maps?q=26.1,80.2');
   });
 
+  it("shows the assessors' punch-in / punch-out on the Attendance tab (2026-11-16)", async () => {
+    await create({
+      ...details(),
+      attendanceAssessors: [{ ConsultantId: 'SA1', AssessorType: 'Lead Assessor', AssessorName: 'R Sharma' }],
+      attendance: [{ ConsultantId: 'SA1', RowNumber: 1, TimeStamps: '14 Nov 2026', LoginTime: '09:42 AM', LogoutTime: '05:55 PM', NoOfHours: 8, NoOfMinutes: 13,
+        LoginPhotoUrl: '/api/staff/site-review/ZEDMSME000001/Silver/files/mobileapi/Attendance/ZEDMSME000001/Silver/p1.jpg', LogoutPhotoUrl: null, LoginLocation: null, LogoutLocation: null }],
+    });
+    await openTab('Attendance');
+    const text = el.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('R Sharma (SA1) - Lead Assessor');
+    expect(text).toContain('8 h 13 m');
+    expect(el.querySelectorAll('[data-attendance-row] img').length).toBe(1);
+  });
+
   it('is read-only for the co-assessor', async () => {
     await create(details(false));
     expect(el.querySelector('.alert-info')!.textContent).toContain('Only the lead assessor');

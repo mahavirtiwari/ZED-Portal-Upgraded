@@ -90,6 +90,17 @@ describe('HandholdingPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/msme/handholding', 'Silver', 'payment']);
   });
 
+  it('says Completed for a milestone the unit accepted (2026-11-16: it read "Applied")', async () => {
+    await open(summary({ SilverStatus: 2, SilverStatusOfNc: 2, SilverStatusOfNc1: 1, SilverStatusOfNc2: 1, MilestoneCompletionStatus1: 100, MilestoneCompletionStatus2: 9 },
+      [level('Silver', { milestonesStarted: 2, nextMilestone: 3, canPay: false })]));
+    find('p', 'APPLY')!.click();
+    await settled();
+    const items = [...el.querySelectorAll('li.milestone')].map((li) => li.textContent!);
+    expect(items[0]).toContain('Completed');
+    expect(items[0]).not.toContain('Applied');
+    expect(items[1]).toContain('Applied');
+  });
+
   it('opens the milestones of the level in ?level= (BACK of the payment page)', async () => {
     await open(summary(), 'silver');
     expect(el.textContent).toContain('Milestone 1: Baseline Diagnostic Study and Handholding Action Plan');

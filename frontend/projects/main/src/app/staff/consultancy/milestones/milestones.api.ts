@@ -95,6 +95,8 @@ export interface MilestoneDetails {
   checkpoints?: Checkpoint[];
   /** The answer the user gives in this milestone (Baseline, Review1, Review2), or null. */
   checkpointStage?: Extract<CheckpointStage, 'Baseline' | 'Review1' | 'Review2'> | null;
+  /** 2026-11-16: the CO's remark while the milestone is back with the consultants. */
+  sentBack?: { remarks: string; sentOn: string | null } | null;
 }
 
 export const MILESTONE_LEVELS = ['Silver', 'Gold'] as const;

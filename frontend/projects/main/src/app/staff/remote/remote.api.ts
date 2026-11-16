@@ -56,6 +56,9 @@ export interface RemoteDetails {
   recordingLinks?: { id: number; url: string }[];
   /** The checkpoints of the requirements with the desktop and site answers (migration 0039). */
   checkpoints?: Checkpoint[];
+  /** 2026-11-16: the assessors' punch-in / punch-out by day (selfies, locations) and the assessors. */
+  attendance?: Row[];
+  attendanceAssessors?: Row[];
   /** The level's certificate validity in months (Administration → Certification Levels). */
   validityMonths?: number;
   /** The level's number of surveillances in a certification cycle (Administration → Certification Levels). */

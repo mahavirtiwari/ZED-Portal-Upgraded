@@ -346,4 +346,15 @@ public sealed class ReportPagesTests : IDisposable
         Assert.StartsWith("http", links.PageUrl(target));
         Assert.Contains("/report/link?t=", links.PageUrl(target));
     }
+
+    /// <summary>
+    /// 2026-11-16: ZED_CONSULTANT keeps a row per milestone (and ZED_SURVEILLANCE per round); TOP 1 without an order gave
+    /// milestone 1's row, so milestone 2's report (and the final report) answered "not available". The live row added last wins.
+    /// </summary>
+    [Fact]
+    public void The_consultancy_and_surveillance_record_is_the_live_row_added_last()
+    {
+        Assert.EndsWith("ORDER BY CASE WHEN IdDisabled IS NULL THEN 0 ELSE 1 END, Id DESC", Zed.Portal.Features.Staff.Assessment.AssessmentRecords.CertificationSqlWithoutPhase);
+        Assert.DoesNotContain("ORDER BY", Zed.Portal.Features.Staff.Assessment.AssessmentRecords.CertificationSql);   // main: one row per level
+    }
 }

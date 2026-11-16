@@ -426,7 +426,7 @@ public sealed partial class ConsultancySAController
     [DeviceBound(App, "saId")]
     public Task<IActionResult> SubmitBaselineDiagnostic(SubmitParameterRequest request, CancellationToken ct) =>
         Guarded(nameof(SubmitBaselineDiagnostic), () => SaveParameterAsync(nameof(SubmitBaselineDiagnostic), request, "BaselineDiagnostic",
-            r => (r.code, r.conformance), r => r.gapsIdentified, r => r.capturedEvidences, ct));
+            r => (r.code, r.conformance), r => r.gapsIdentified, r => r.capturedEvidences, ct, checkpoints: true));
 
     /// <summary>
     /// Planned activities: Conformance carries estimatedTimeInDays; photos from addedEvidences and capturedEvidences.
@@ -440,6 +440,29 @@ public sealed partial class ConsultancySAController
         Guarded(nameof(SubmitHandholdingActionPlan), () => SaveParameterAsync(nameof(SubmitHandholdingActionPlan), request, "HandholdingActionPlan",
             r => (r.code, r.estimatedTimeInDays), r => r.plannedActivities, r => [.. r.addedEvidences ?? [], .. r.capturedEvidences ?? []], ct,
             prepare: MergeWebPlanAsync));
+
+    /// <summary>
+    /// 2026-11-16 (approved): the checkpoint answers of the baseline (milestone 1) and the progress reviews (2, 3), checked and saved
+    /// as on the milestone page (<see cref="HandholdingCheckpoints"/>; a baseline Partial / No adds its ticked actions to the action
+    /// plan). Saved before the parameter, so a refused answer changes nothing; null when saved (or nothing to save).
+    /// </summary>
+    private async Task<string?> SaveCheckpointsAsync(SubmitParameterRequest request, IReadOnlyList<RequirementDetails> requirements, CancellationToken ct)
+    {
+        var answered = requirements.Where(r => r.checkpointAnswers is { Count: > 0 }).ToList();
+        if (answered.Count == 0) return null;
+        var milestone = await CurrentMilestoneAsync(request.zedId!, request.certificationType!, ct) ?? 0;
+        foreach (var r in answered)
+        {
+            var req = new CheckpointAnswers.SaveRequest(
+                r.checkpointAnswers!.Select(a => new CheckpointAnswers.AnswerRequest(a.id, a.answer, a.actions, a.remarks)).ToList(), null);
+            var result = await HandholdingCheckpoints.SaveAsync(db, request.zedId!, request.certificationType!, milestone, r.planRequirementId ?? r.id, req,
+                request.saId ?? "", log, ct, photoInRequest: r.capturedEvidences is { Count: > 0 });
+            if (result.Problem is not null) return $"Requirement {r.code}: {result.Problem}";
+            log.LogInformation("Consultant {SaId} answered the checkpoints of requirement {Id} of {ZedId} {Level} (milestone {Milestone}); {Added} action plan item(s) added",
+                request.saId, r.planRequirementId ?? r.id, request.zedId, request.certificationType, milestone, result.Added);
+        }
+        return null;
+    }
 
     /// <summary>The plan of a requirement in the current milestone (the rows SP_APP_SA_SAVE_PARAMETER replaces).</summary>
     public const string PlanSql =
@@ -499,7 +522,7 @@ public sealed partial class ConsultancySAController
     [DeviceBound(App, "saId")]
     public Task<IActionResult> SubmitProgressReview(SubmitParameterRequest request, CancellationToken ct) =>
         Guarded(nameof(SubmitProgressReview), () => SaveParameterAsync(nameof(SubmitProgressReview), request, "ProgressReview",
-            r => (r.code, r.isProposedActivityCompleted), _ => null, r => r.capturedEvidences, ct));
+            r => (r.code, r.isProposedActivityCompleted), _ => null, r => r.capturedEvidences, ct, checkpoints: true));
 
     /// <summary>
     /// SP_APP_SA_SAVE_PARAMETER with @Phototype naming the milestone screen: @RequirementsList (DynamicRequirementsList1)
@@ -509,12 +532,13 @@ public sealed partial class ConsultancySAController
     private async Task<IActionResult> SaveParameterAsync(string action, SubmitParameterRequest request, string type,
         Func<RequirementDetails, (string? Code, string? Conformance)> fields, Func<RequirementDetails, List<string>?> bullets,
         Func<RequirementDetails, List<PhotoInformation>?> evidences, CancellationToken ct,
-        Func<SubmitParameterRequest, IReadOnlyList<RequirementDetails>, CancellationToken, Task>? prepare = null)
+        Func<SubmitParameterRequest, IReadOnlyList<RequirementDetails>, CancellationToken, Task>? prepare = null, bool checkpoints = false)
     {
         if (await RefuseAsync(action, request.saId, request.zedId, request.certificationType, Role.Team, ct) is { } refused) return refused;
         if (await RequireOpenAsync(request.zedId, request.certificationType, request.saId, ct) is { } stage) return stage;
         if (request.allottedParameterObj is not { requirements: { } requirements } parameter) return Fail(ErrorText);
         if (prepare is not null) await prepare(request, requirements, ct);
+        if (checkpoints && await SaveCheckpointsAsync(request, requirements, ct) is { } problem) return Fail(problem);
 
         var reqs = Table("RequirementId", "RequirementCode", "Conformance", "AssessorRemarks");
         var photos = PhotoTable();

@@ -52,11 +52,9 @@
           <button class="nav-link" [class.active]="tab() === nc + 7" type="button" role="tab" [attr.aria-selected]="tab() === nc + 7" (click)="tab.set(nc + 7)">{{ surveillance ? 'NC ' + nc : 'NC' + nc }}</button>
         </li>
       }
-      @if (!surveillance) {
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="tab() === 13" type="button" role="tab" [attr.aria-selected]="tab() === 13" (click)="tab.set(13)">Attendance</button>
-        </li>
-      }
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" [class.active]="tab() === 13" type="button" role="tab" [attr.aria-selected]="tab() === 13" (click)="tab.set(13)">Attendance</button>
+      </li>
     </ul>
 
     <div class="tab-content">
@@ -851,25 +849,37 @@
       @if (tab() === 13) {
         <div class="tab-pane fade show active" role="tabpanel">
           @for (att of d.consultants; track $index) {
-            <div class="panel panel-default panel-black"><div class="panel-body">{{ t(att, 'ConsultantId') }} - {{ t(att, 'AssessorType') }}</div></div>
-            <div class="table-responsive">
-            <table class="table table-zed">
-              <thead><tr><th class="text-center">Day</th><th class="text-center">Date</th><th class="text-center">Punch-In</th><th class="text-center">Punch-Out</th><th class="text-center">No. of Hours</th><th class="text-center">Punch-In Selfie</th><th class="text-center">Punch-Out Selfie</th></tr></thead>
-              <tbody>
-                @for (a of attendanceOf(att); track $index) {
-                  <tr>
-                    <td class="text-center">Day {{ t(a, 'RowNumber') }}</td>
-                    <td class="text-center">{{ t(a, 'TimeStamps') }}</td>
-                    <td class="text-center">{{ t(a, 'LoginTime') }}</td>
-                    <td class="text-center">{{ t(a, 'LogoutTime') }}</td>
-                    <td class="text-center">{{ t(a, 'NoOfHours') }} Hours ({{ t(a, 'NoOfMinutes') }} Minutes)</td>
-                    <td class="text-center">@if (t(a, 'LoginPhotoUrl')) { <a [href]="t(a, 'LoginPhotoUrl')" target="_blank" rel="noopener"><img [src]="t(a, 'LoginPhotoUrl')" alt="Login Selfie" width="50" height="50" /></a> }</td>
-                    <td class="text-center">@if (t(a, 'LogoutPhotoUrl')) { <a [href]="t(a, 'LogoutPhotoUrl')" target="_blank" rel="noopener"><img [src]="t(a, 'LogoutPhotoUrl')" alt="Logout Selfie" width="50" height="50" /></a> }</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            </div>
+            <div class="panel panel-default panel-black"><div class="panel-body">{{ t(att, 'AssessorName') || t(att, 'ConsultantId') }} ({{ t(att, 'ConsultantId') }}) - {{ t(att, 'AssessorType') }}</div></div>
+            @if (attendanceOf(att).length) {
+              <div class="table-responsive">
+              <table class="table table-zed">
+                <thead><tr><th class="text-center">Day</th><th class="text-center">Date</th><th class="text-center">Punch-In</th><th class="text-center">Punch-Out</th><th class="text-center">No. of Hours</th></tr></thead>
+                <tbody>
+                  @for (a of attendanceOf(att); track $index) {
+                    <tr data-attendance-row>
+                      <td class="text-center">Day {{ t(a, 'RowNumber') }}</td>
+                      <td class="text-center">{{ t(a, 'TimeStamps') }}</td>
+                      <td class="text-center">
+                        {{ t(a, 'LoginTime') || 'Not punched in' }}
+                        @if (t(a, 'LoginPhotoUrl')) { <button type="button" class="btn btn-link p-0 ms-1" (click)="openImage(t(a, 'LoginPhotoUrl'))"><img [src]="t(a, 'LoginPhotoUrl')" alt="Punch-in selfie" width="44" height="44" /></button> }
+                        @if (placeUrl(a['LoginLocation'])) { <a class="ms-1" [href]="placeUrl(a['LoginLocation'])" target="_blank" rel="noopener" title="Where the punch-in was made">Map</a> }
+                      </td>
+                      <td class="text-center">
+                        {{ t(a, 'LogoutTime') || 'Not punched out' }}
+                        @if (t(a, 'LogoutPhotoUrl')) { <button type="button" class="btn btn-link p-0 ms-1" (click)="openImage(t(a, 'LogoutPhotoUrl'))"><img [src]="t(a, 'LogoutPhotoUrl')" alt="Punch-out selfie" width="44" height="44" /></button> }
+                        @if (placeUrl(a['LogoutLocation'])) { <a class="ms-1" [href]="placeUrl(a['LogoutLocation'])" target="_blank" rel="noopener" title="Where the punch-out was made">Map</a> }
+                      </td>
+                      <td class="text-center">{{ t(a, 'NoOfHours') ? t(a, 'NoOfHours') + ' h ' + t(a, 'NoOfMinutes') + ' m' : t(a, 'NoOfMinutes') ? t(a, 'NoOfMinutes') + ' m' : '-' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              </div>
+            } @else {
+              <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
+            }
+          } @empty {
+            <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
           }
         </div>
       }

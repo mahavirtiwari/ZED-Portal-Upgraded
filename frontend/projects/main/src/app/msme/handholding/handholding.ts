@@ -39,6 +39,8 @@ interface MilestoneRow {
   canApply: boolean;
   /** "ACCEPT MILESTONE n": the consultant has submitted it (status 16). */
   canAccept: boolean;
+  /** 2026-11-16: accepted by the MSME (status 100): "Completed", not "Applied". */
+  accepted: boolean;
 }
 
 /**
@@ -134,6 +136,7 @@ export class HandholdingPage {
         applied: this.num(`${level}StatusOfNc${n}`) === 1,
         canApply: !!state?.canPay && state.nextMilestone === n,
         canAccept: this.num(completionColumn(level, n)) === 16,
+        accepted: this.num(completionColumn(level, n)) >= 100,
       };
     });
   });

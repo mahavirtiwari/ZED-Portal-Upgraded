@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Zed.Core.Mobile;
@@ -334,6 +334,47 @@ public sealed class ConsultancyAppWriteTests : IDisposable
         var photos = AssessorTestHost.Tvp(args, "PhotoList")!;
         Assert.Equal(["c1"], photos.Rows.Cast<System.Data.DataRow>().Select(r => r["PhotoId"].ToString()));
         Assert.Equal("210", photos.Rows[0]["PhotoType"]);
+    }
+
+    /// <summary>
+    /// 2026-11-16 (approved): the baseline's checkpoint answers are checked and saved as on the milestone page (the plan row,
+    /// PrevReqId), a Partial / No adds its ticked actions to the action plan once, and a refused answer saves nothing.
+    /// </summary>
+    [Fact]
+    public async Task Baseline_checkpoints_are_saved_on_the_plan_row_and_their_actions_join_the_action_plan()
+    {
+        const string master = "ZEDCS_V2_LIVE.dbo";
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.CheckpointSql(master)] = args => FakeSql.Arg(args, "ZedId") == Zed
+            ? [new { RequirementRowId = 11L, Id = 801L, OptionCode = "1", OptionName = "Written policy", ActionsNeeded = "Write the policy\nDisplay it" }]
+            : [];
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.EvidenceSql(master)] = _ =>
+            [new { RequirementRowId = 11L, Id = 91L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = false, IsVerified = (string?)null }];
+        _t.Fake.Queries[ConsultancySAController.CurrentMilestoneSql] = _ => [1];
+        _t.Fake.Queries[global::Zed.Core.Assessment.HandholdingCheckpoints.PhotoCountSql] = _ => [new { Total = 0 }];
+        _t.Fake.Queries[global::Zed.Core.Assessment.HandholdingCheckpoints.ActionPlanSql] = _ => [new { BulletPoints = "Display it" }];
+
+        object Req(object answer, bool photo) => new
+        {
+            id = 210, planRequirementId = 11, code = "R1", conformance = "No", gapsIdentified = new[] { "Gap A" },
+            capturedEvidences = photo ? new[] { new { photoId = "c1", name = "captured" } } : null,
+            checkpointAnswers = new[] { answer },
+        };
+
+        // Partial without a ticked action is refused before anything is saved.
+        AssertFail(await _t.Json("/SA/SubmitBaselineDiagnostic", Parameter(Lead, Req(new { id = 801, answer = "Partial" }, photo: false))),
+            "Requirement R1: Checkpoint 1: please tick the actions needed.");
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PARAMETER"));
+
+        AssertOk(await _t.Json("/SA/SubmitBaselineDiagnostic",
+            Parameter(Lead, Req(new { id = 801, answer = "No", actions = new[] { "Write the policy", "Display it" } }, photo: false))));
+        // "Display it" is already in the plan: only the new action is added, on the plan row.
+        var added = Assert.Single(_t.CallsTo("SP_CONSULTANCY_INSERT_BULLETS"));
+        Assert.Equal(("Write the policy", "11", "HandholdingActionPlan"),
+            (ConsultancyAppHost.Arg(added.Args, "BulletPoints"), ConsultancyAppHost.Arg(added.Args, "RequirementId"), ConsultancyAppHost.Arg(added.Args, "ReqType")));
+        Assert.Single(_t.CallsTo("SP_APP_SA_SAVE_PARAMETER"));
+
+        // A Yes with mandatory evidence needs a photo: the one sent with the same submit counts.
+        AssertOk(await _t.Json("/SA/SubmitBaselineDiagnostic", Parameter(Lead, Req(new { id = 801, answer = "Yes" }, photo: true))));
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -42,9 +42,12 @@ export const REQUIREMENT_FIELDS: Record<string, { label: string }> = {
 };
 
 /** The progress review tables of a parameter, shown once its section reaches the milestone (MsmeSections.NcCount). */
+/** One empty list for the rows without checkpoints to answer (a stable value for the in-page editor). */
+const NO_CHECKPOINTS: Checkpoint[] = [];
+
 export const PROGRESS_REVIEWS = [
-  { milestone: 2, title: 'Progress Review 1', completed: 'IsProposedActivityCompleted', field: 'ProgressReviewRemarks' },
-  { milestone: 3, title: 'Progress Review 2', completed: 'IsProposedActivityCompleted2', field: 'ProgressReviewRemarks2' },
+  { milestone: 2, title: 'Progress Review 1', completed: 'IsProposedActivityCompleted', field: 'ProgressReviewRemarks', stage: 'Review1' as const },
+  { milestone: 3, title: 'Progress Review 2', completed: 'IsProposedActivityCompleted2', field: 'ProgressReviewRemarks2', stage: 'Review2' as const },
 ];
 
 interface BasicInfoField {
@@ -166,7 +169,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
+  imports: [RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -235,8 +238,9 @@ export class MilestoneDetailsPage {
   protected readonly tab = signal(1);
   protected readonly preview = signal<string | null>(null);
   protected readonly busy = signal(false);
-  protected readonly checkpointEdit = signal<{ id: unknown; checkpoints: Checkpoint[]; title: string } | null>(null);
   protected readonly checkpointError = signal('');
+  /** The requirement (MsmeRequirements.Id) whose save gave {@link checkpointError}. */
+  protected readonly checkpointErrorFor = signal('');
   protected readonly editing = signal<Editing | null>(null);
   protected readonly draft = signal('');
   protected readonly dialog = signal<Dialog>(null);
@@ -511,10 +515,23 @@ export class MilestoneDetailsPage {
     void this.reload();
   }
 
+  /**
+   * The checkpoints of each plan row, by MsmeRequirements.Id, built once per load: the in-page editor resets its answers when
+   * it gets a new list, so the list must stay the same object between loads.
+   */
+  private readonly checkpointsByRow = computed(() => {
+    const map = new Map<string, Checkpoint[]>();
+    for (const c of this.data()?.checkpoints ?? []) {
+      const key = String(c.requirementId);
+      map.set(key, [...(map.get(key) ?? []), c]);
+    }
+    return map;
+  });
+
   /** The checkpoints of a plan row, when its answer can be given now (milestones 1 to 3, an editable parameter). */
   protected checkpointsToAnswer(r: Row): Checkpoint[] {
     const d = this.data();
-    return d?.checkpointStage && r['Editable'] ? checkpointsOf(d.checkpoints, r['Id']) : [];
+    return d?.checkpointStage && r['Editable'] ? (this.checkpointsByRow().get(String(r['Id'])) ?? NO_CHECKPOINTS) : NO_CHECKPOINTS;
   }
 
   /** A checkpoint's handholding answers: baseline, progress reviews 1 and 2. */
@@ -525,20 +542,25 @@ export class MilestoneDetailsPage {
     return list.filter((x): x is { label: string; value: CheckpointValue } => !!x.value);
   }
 
-  protected openCheckpoints(s: Row, r: Row): void {
-    this.checkpointError.set('');
-    this.checkpointEdit.set({ id: r['Id'], checkpoints: this.checkpointsToAnswer(r), title: `${text(s, 'SectionCode')}.${text(r, 'RequirementCode')}` });
+  /** The stage the user answers now (Baseline in milestone 1, Review1 / Review2 in milestones 2 / 3), or null. */
+  protected checkpointStage(): string | null {
+    return this.data()?.checkpointStage ?? null;
   }
 
-  protected async saveCheckpoints(body: CheckpointSaveRequest): Promise<void> {
-    const e = this.checkpointEdit();
+  /** The server's answer to the last save of this requirement's checkpoints. */
+  protected checkpointErrorOf(r: Row): string {
+    return this.checkpointErrorFor() === String(r['Id']) ? this.checkpointError() : '';
+  }
+
+  /** 2026-11-16: the checkpoints are answered in place (Baseline block, Progress Review blocks); a Partial / No adds its actions to the plan. */
+  protected async saveCheckpoints(body: CheckpointSaveRequest, r: Row): Promise<void> {
     const d = this.data();
-    if (!e || !d) return;
+    if (!d) return;
     this.busy.set(true);
     this.checkpointError.set('');
+    this.checkpointErrorFor.set(String(r['Id']));
     try {
-      const res = await firstValueFrom(this.api.checkpoints(d.zedId, d.certification, e.id, body));
-      this.checkpointEdit.set(null);
+      const res = await firstValueFrom(this.api.checkpoints(d.zedId, d.certification, r['Id'], body));
       this.notice.set({ ok: true, text: res.message });
     } catch (err) {
       this.checkpointError.set(apiErrorMessage(err));

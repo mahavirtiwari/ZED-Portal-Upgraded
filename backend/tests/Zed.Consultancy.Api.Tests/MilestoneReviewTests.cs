@@ -504,9 +504,17 @@ public sealed class MilestoneReviewTests : IDisposable
         Assert.True(NothingWritten());
 
         _status = 15;
+        // 2026-11-16: the lead and the co-consultants are mailed the remarks.
+        _host.Sql.Queries[MilestoneSendBack.ConsultantsSql] = args =>
+            FakeSql.Arg(args, "Ids")!.Split(',').Contains(Lead) ? [new { Email = "lead@x.test", UserName = "Lead One" }] : [];
         Assert.Equal(HttpStatusCode.BadRequest, (await co.PostAsJsonAsync(Base + "/send-back", new { remarks = "" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync(Base + "/send-back", new { remarks = "Please add bullets" })).StatusCode);
         Assert.Equal("Please add bullets", FakeSql.Arg(CallsTo("SP_MONITORING_SEND_BACK_TO_ASSESSOR").Single(), "SendBackRemarks"));
+        var back = Assert.Single(_host.Email.Sent);
+        Assert.Equal("lead@x.test", back.To);
+        Assert.StartsWith("Milestone 1 sent back by the Consultant Organisation", back.Subject);
+        Assert.Contains("Please add bullets", back.HtmlBody);
+        _host.Email.Sent.Clear();
 
         Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync(Base + "/reject", new { confirmed = true })).StatusCode);
         Assert.Single(CallsTo("SP_MONITORING_REJECT_FINAL_SUBMIT"));
@@ -515,6 +523,18 @@ public sealed class MilestoneReviewTests : IDisposable
         Assert.StartsWith("Rejection of your application", mail.Subject);
         Assert.Equal($"{Zed}_Silver_Reject_Report.pdf", Assert.Single(mail.Attachments!).FileName);
         Assert.DoesNotContain(mail.Bcc ?? [], b => b.Contains("geostat", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>2026-11-16 (approved): the CO's send-back remark is shown on the page while the milestone is back with the consultants.</summary>
+    [Fact]
+    public async Task The_page_shows_the_COs_send_back_remark()
+    {
+        var lead = await As(Lead);
+        Assert.Equal(JsonValueKind.Null, (await lead.GetFromJsonAsync<JsonElement>(Base)).GetProperty("sentBack").ValueKind);
+
+        _host.Sql.Queries[MilestoneSendBack.Sql] = _ => [new { Remarks = " Add the HAP bullets ", SentOn = new DateTime(2026, 11, 16) }];
+        var sentBack = (await lead.GetFromJsonAsync<JsonElement>(Base)).GetProperty("sentBack");
+        Assert.Equal("Add the HAP bullets", sentBack.GetProperty("remarks").GetString());
     }
 
     // ------------------------------------------------------------------ files

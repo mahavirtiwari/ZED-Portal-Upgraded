@@ -158,13 +158,16 @@ public static class AssessmentRecords
 
     /// <summary>
     /// <see cref="CertificationSql"/> for ZED_CONSULTANT and ZED_SURVEILLANCE, whose MsmeCertifications has no
-    /// CertificationPhase (main's only): their records are read without it.
+    /// CertificationPhase (main's only): their records are read without it. 2026-11-16: these keep a row per milestone /
+    /// round (a payment adds one and disables the open ones), so the live row added last is the record (milestone 2's
+    /// report answered "not available": TOP 1 without an order gave milestone 1's row).
     /// </summary>
     internal const string CertificationSqlWithoutPhase =
         "SELECT TOP 1 ZedId, Certification, CertificationStatus, NcCount, NcStatus, Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status, " +
         "DesktopAssessorId, DesktopAccepted, DesktopReasonForRejection, CertificationBodyUserId, SiteAssessorId, CoAssessorId, IsAutoReject, " +
         "DaCertificateNo, SaCertificateNo " +
-        "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
+        "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification " +
+        "ORDER BY CASE WHEN IdDisabled IS NULL THEN 0 ELSE 1 END, Id DESC";
 
     /// <summary>The databases (one executor each) found without CertificationPhase: asked without it from then on.</summary>
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ISqlExecutor, object> NoPhase = new();

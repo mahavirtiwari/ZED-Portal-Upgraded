@@ -148,6 +148,9 @@ public sealed class MilestoneReviewController(
 
         /// <summary>The answer the user gives in this milestone: "Baseline", "Review1", "Review2", or null (none, or read-only).</summary>
         public string? CheckpointStage { get; init; }
+
+        /// <summary>2026-11-16: the CO's remark while the milestone is back with the consultants (<see cref="MilestoneSendBack"/>).</summary>
+        public MilestoneSendBack.Info? SentBack { get; init; }
     }
 
     public sealed record FieldRequest(string? Field, string? Value);
@@ -257,32 +260,19 @@ public sealed class MilestoneReviewController(
         {
             Checkpoints = checkpoints,
             CheckpointStage = ctx.CanEdit && StageOf(ctx.Milestone) is { } stage ? stage.ToString() : null,
+            SentBack = await MilestoneSendBack.ReadAsync(db, ctx.Record.Id, log, ct),
         };
     }
 
     /// <summary>Handholding reads main's questionnaire (the payment copies ZEDCS_V2_LIVE's parameters).</summary>
-    private const string Master = "ZEDCS_V2_LIVE.dbo";
+    private const string Master = HandholdingCheckpoints.Master;
 
     /// <summary>Milestone 1 answers the baseline, milestones 2 and 3 the progress reviews.</summary>
-    internal static CheckpointAnswers.Stage? StageOf(int milestone) => milestone switch
-    {
-        1 => CheckpointAnswers.Stage.Baseline,
-        2 => CheckpointAnswers.Stage.Review1,
-        3 => CheckpointAnswers.Stage.Review2,
-        _ => null,
-    };
+    internal static CheckpointAnswers.Stage? StageOf(int milestone) => HandholdingCheckpoints.StageOf(milestone);
 
-    internal const string PhotoCountSql =
-        "SELECT COUNT(*) AS Total FROM SaRequirementPhotos p WHERE p.ZedId = @ZedId AND p.Certification = @Certification " +
-        "AND p.RequirementId = (SELECT TOP 1 r.RequirementId FROM MsmeRequirements r WHERE r.Id = @Id AND r.ZedId = @ZedId AND r.SectionType = @Certification)";
+    internal const string PhotoCountSql = HandholdingCheckpoints.PhotoCountSql;
 
-    internal const string ActionPlanSql =
-        "SELECT BulletPoints FROM MsmeRequirementBullets WHERE ZedId = @ZedId AND CertificationType = @Certification " +
-        "AND RequirementId = @RequirementId AND ReqType = 'HandholdingActionPlan'";
-
-    private sealed class CountRow { public int Total { get; init; } }
-
-    private sealed class BulletRow { public string? BulletPoints { get; init; } }
+    internal const string ActionPlanSql = HandholdingCheckpoints.ActionPlanSql;
 
     /// <summary>
     /// Yes / Partial / No for each checkpoint of a parameter's requirement (migration 0039): the baseline in milestone 1, whose
@@ -300,37 +290,13 @@ public sealed class MilestoneReviewController(
         if (row is null || row.NcCount != 1) return NotFound();
         if (!CanTouchSection(ctx, await OwnSectionsAsync(ctx, ct), row.SectionCode)) return Forbidden("This parameter is not allotted to you.");
 
-        var checkpoints = await CheckpointAnswers.LoadAsync(db, ctx.ZedId, ctx.Level, id, Master, log, ct);
-        var args = new { Id = id, ZedId = AssessmentInput.Ansi(ctx.ZedId), Certification = AssessmentInput.Ansi(ctx.Level) };
-        var hasPhoto = (await db.QuerySqlAsync<CountRow>(PhotoCountSql, args, ct)).FirstOrDefault()?.Total > 0;
-        var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, stage, hasPhoto);
-        if (decision is null) return this.Problem400(problem!);
-        await CheckpointAnswers.SaveAsync(db, ctx.ZedId, ctx.Level, stage, decision, UserId, ct);
-
-        var added = 0;
-        if (stage == CheckpointAnswers.Stage.Baseline)
-        {
-            var requirementId = id.ToString(CultureInfo.InvariantCulture);
-            var existing = (await db.QuerySqlAsync<BulletRow>(ActionPlanSql,
-                    new { args.ZedId, args.Certification, RequirementId = AssessmentInput.Ansi(requirementId, 500) }, ct))
-                .Select(b => b.BulletPoints?.Trim() ?? "").ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var action in decision.Answers.SelectMany(a => a.Answer.Actions).Where(a => existing.Add(a)))
-            {
-                await db.ExecuteProcAsync("SP_CONSULTANCY_INSERT_BULLETS", new
-                {
-                    ZedId = AssessmentInput.Ansi(ctx.ZedId),
-                    Certification = AssessmentInput.Ansi(ctx.Level),
-                    RequirementId = AssessmentInput.Ansi(requirementId),
-                    ReqType = AssessmentInput.Ansi(MilestoneFields.BulletTypes[1], 200),
-                    BulletPoints = AssessmentInput.Ansi(action, 2000),
-                    UserId = AssessmentInput.Ansi(UserId),
-                }, ct);
-                added++;
-            }
-        }
+        // 2026-11-16: shared with the consultant app (Zed.Core HandholdingCheckpoints).
+        var result = await HandholdingCheckpoints.SaveAsync(db, ctx.ZedId, ctx.Level, ctx.Milestone, id, req, UserId, log, ct);
+        if (result.Problem is not null) return this.Problem400(result.Problem);
+        var added = result.Added;
         log.LogInformation("{UserId} ({Party}) answered the {Stage} checkpoints of requirement {Id} of {ZedId} {Level}; {Added} action plan item(s) added",
             UserId, ctx.Party, stage, id, ctx.ZedId, ctx.Level, added);
-        return new MessageResponse(added > 0 ? $"Saved. {added} action{(added == 1 ? "" : "s")} added to the Handholding Action Plan." : "Saved.");
+        return new MessageResponse(HandholdingCheckpoints.Message(added));
     }
 
     /// <summary>GET .../files/consultancymobileapi/SaPhotos/{ZedId}/Silver/SiteTour/1.jpg</summary>
@@ -629,7 +595,10 @@ public sealed class MilestoneReviewController(
                 SendBackRemarks = AssessmentInput.Ansi(remarks, 2000),
             }, ct);
             log.LogInformation("CO {UserId} sent milestone {Milestone} of {ZedId} {Level} back to the consultant", UserId, ctx.Milestone, ctx.ZedId, ctx.Level);
-            return new MessageResponse("Sent back to the consultant.");
+            // 2026-11-16: the lead and the co-consultants are told what to fix.
+            var mailed = await MilestoneSendBack.MailAsync(db, HttpContext.RequestServices.GetRequiredService<Zed.Core.Email.IEmailSender>(),
+                [ctx.Record.SiteAssessorId, .. ctx.CoConsultants.Select(c => c.CoAssessorId)], ctx.ZedId, ctx.Level, ctx.Milestone, remarks, log, ct);
+            return new MessageResponse(mailed ? "Sent back to the consultant. The consultants have been mailed the remarks." : "Sent back to the consultant.");
         }
         finally
         {

@@ -209,6 +209,10 @@ public sealed partial class RemoteAssessmentController(
         /// joining reward), from this portal's fee master (Admin → Masters → Payments); null when none is set.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public decimal? SurveillanceFee { get; init; }
+
+        /// <summary>2026-11-16: the assessors' punch-in / punch-out by day (<see cref="Staff.SiteReview.SiteAttendance"/>), and the assessors.</summary>
+        public IReadOnlyList<Dictionary<string, object?>> Attendance { get; init; } = [];
+        public IReadOnlyList<Dictionary<string, object?>> AttendanceAssessors { get; init; } = [];
     }
 
     public sealed record SurveillanceFeeRow(decimal? AssessmentFee);
@@ -235,6 +239,10 @@ public sealed partial class RemoteAssessmentController(
         var sa = await db.QueryProcMultipleAsync("SP_ASSESSMENT_SA_DETAILS", args, ct);
 
         var moved = main.Text("PhotosPath").Length > 0;
+        var attendance = Staff.SiteReview.SiteAttendance.Build(await Staff.SiteReview.SiteAttendance.ReadAsync(db, zedId, level!, log, ct),
+            new[] { (Id: record!.SiteAssessorId, Type: "Lead Assessor"), (Id: record.CoAssessorId, Type: "Co-Assessor") }.Where(a => !string.IsNullOrWhiteSpace(a.Id))
+                .Select(a => new Dictionary<string, object?> { ["ConsultantId"] = a.Id!.Trim(), ["AssessorType"] = a.Type }),
+            zedId, level!, MeetingMode ? "surveillancemobileapi" : "mobileapi");
         RemotePhoto Photo(IDictionary<string, object?> p) => ToPhoto(p, zedId, level!, canAssess, p.Text("src") is { Length: > 0 } s ? s : p.Text("Photo"));
         List<RemotePhoto> Photos(IEnumerable<IDictionary<string, object?>> rows) => rows.Select(Photo).ToList();
 
@@ -317,6 +325,8 @@ public sealed partial class RemoteAssessmentController(
                     .Where(r => r.Url is not null).Select(r => new RecordingLink(r.Id, r.Url!)).ToList()
                 : null,
             Checkpoints = checkpoints,
+            Attendance = attendance.Rows,
+            AttendanceAssessors = attendance.Assessors,
             Nc = InNcRound(record!) ? new NcReview(record!.NcCount!.Value, record.CurrentNcStatus == 2) : null,
             ValidityMonths = settings?.ValidityMonths ?? Documents.DocumentLevels.DefaultValidityMonths,
             SurveillanceCount = settings?.Schedule.Count ?? CertLevels.SurveillanceSchedule.Default.Count,

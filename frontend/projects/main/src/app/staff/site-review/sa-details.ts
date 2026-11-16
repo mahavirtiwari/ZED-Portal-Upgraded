@@ -38,7 +38,8 @@ export const SA_TAB_TITLES: Record<number, string> = {
  * the site assessment page (staff/remote); the page links there for the assessors of the unit.
  * <p>Surveillance build (that portal's SaDetails.cshtml): tabs 1-7 put the surveillance next to the original certification
  * on main ({@link SaSurveillanceTab}, loaded with the page; MasterAdmin also sees the original's blocks), the NC tabs are
- * the surveillance's, and there is no Attendance tab.</p>
+ * the surveillance's. 2026-11-16: the Attendance tab on both portals (the assessors' punch-in / punch-out with selfies and
+ * where they were taken, read from the attendance table: it used to go empty once an NC was raised).</p>
  */
 @Component({
   selector: 'zed-staff-sa-details',
@@ -183,7 +184,14 @@ export class SaDetailsPage {
   }
 
   protected attendanceOf(consultant: Row): Row[] {
-    return (this.data()?.attendance ?? []).filter((a) => text(a, 'ConsultantId') === text(consultant, 'ConsultantId'));
+    const id = text(consultant, 'ConsultantId').trim().toUpperCase();
+    return (this.data()?.attendance ?? []).filter((a) => text(a, 'ConsultantId').trim().toUpperCase() === id);
+  }
+
+  /** "lat,lng" of a punch (server-built) → a map link. */
+  protected placeUrl(place: unknown): string {
+    const [lat, lng] = String(place ?? '').split(',');
+    return this.mapUrl(lat, lng);
   }
 
   protected mapUrl(lat: unknown, lng: unknown): string {

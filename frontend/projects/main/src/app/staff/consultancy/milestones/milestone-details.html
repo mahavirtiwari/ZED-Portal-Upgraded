@@ -26,6 +26,13 @@
 @if (loading() && !data()) { <p role="status">Loading…</p> }
 
 @if (data(); as d) {
+  <!-- 2026-11-16 (approved): what the CO asked the consultants to fix. -->
+  @if (d.sentBack; as sb) {
+    <div class="alert alert-warning" role="status" data-sent-back>
+      <strong>Sent back by the Consultant Organisation{{ sb.sentOn ? ' on ' + (sb.sentOn | date: 'd MMM yyyy') : '' }}:</strong>
+      <span class="d-block" style="white-space: pre-line">{{ sb.remarks }}</span>
+    </div>
+  }
   <div class="zed-tabs cd-v2">
     <div class="tab-title">
       <div class="numberCircle">{{ tab() }}</div>
@@ -312,34 +319,34 @@
                       </div>
 
                       <div class="zp-req-body">
-                        <div class="zp-block zp-checkpoints">
-                          <div class="zp-block-head">Checkpoints</div>
-                          @for (o of optionsOf(r); track $index) {
-                            <div class="zp-cp">
-                              <div class="zp-cp-text">
-                                {{ t(o, 'OptionName') }}
-                                @if (subOptionsOf(o).length) {
-                                  <ul>@for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
-                                }
-                              </div>
-                              <div class="zp-cp-answer">
-                                @for (a of answersOf(r, o); track a.label) { <span class="cp-chip" [attr.data-v]="a.value">{{ a.label }}: {{ a.value }}</span> }
-                              </div>
-                            </div>
-                          } @empty {
-                            <div class="zp-block-empty">No checkpoints.</div>
-                          }
-                          @if (checkpointsToAnswer(r).length) {
-                            <div class="zp-block-body">
-                              <button type="button" class="btn btn-primary btn-sm zp-btn answer-checkpoints" [disabled]="busy()" (click)="openCheckpoints(s, r)">ANSWER CHECKPOINTS</button>
-                            </div>
-                          }
-                        </div>
-
                         <!-- Milestone 1 : Basic Diagnostic Study -->
                         <div class="zp-block zp-milestone milestone-1">
                           <div class="zp-block-head">Milestone 1 : Basic Diagnostic Study</div>
                           <div class="zp-block-body">
+                            <!-- 2026-11-16 (approved): the checkpoints inside the baseline, answered in place (as in the consultant app). -->
+                            <div class="zp-checkpoints">
+                              <div class="zp-label">CHECKPOINTS</div>
+                              @if (checkpointStage() === 'Baseline' && checkpointsToAnswer(r).length) {
+                                <zed-checkpoint-dialog [inline]="true" [title]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [checkpoints]="checkpointsToAnswer(r)"
+                                  stage="Baseline" [busy]="busy()" [error]="checkpointErrorOf(r)" (saved)="saveCheckpoints($event, r)" />
+                              } @else {
+                                @for (o of optionsOf(r); track $index) {
+                                  <div class="zp-cp">
+                                    <div class="zp-cp-text">
+                                      {{ t(o, 'OptionName') }}
+                                      @if (subOptionsOf(o).length) {
+                                        <ul>@for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
+                                      }
+                                    </div>
+                                    <div class="zp-cp-answer">
+                                      @for (a of answersOf(r, o); track a.label) { <span class="cp-chip" [attr.data-v]="a.value">{{ a.label }}: {{ a.value }}</span> }
+                                    </div>
+                                  </div>
+                                } @empty {
+                                  <div class="zp-block-empty">No checkpoints.</div>
+                                }
+                              }
+                            </div>
                             @if (!isExempted) {
                               <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, 1) }" />
                               <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'BaselineDiagnostic', label: 'GAPS IDENTIFIED' }" />
@@ -383,6 +390,11 @@
                             <div [class]="'zp-block zp-milestone milestone-' + pr.milestone">
                               <div class="zp-block-head">Milestone {{ pr.milestone }} : {{ pr.title }}</div>
                               <div class="zp-block-body">
+                                @if (checkpointStage() === pr.stage && checkpointsToAnswer(r).length) {
+                                  <div class="zp-label">CHECKPOINTS</div>
+                                  <zed-checkpoint-dialog [inline]="true" [title]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [checkpoints]="checkpointsToAnswer(r)"
+                                    [stage]="pr.stage" [busy]="busy()" [error]="checkpointErrorOf(r)" (saved)="saveCheckpoints($event, r)" />
+                                }
                                 @if (!isExempted) {
                                   <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, pr.milestone) }" />
                                   <div class="zp-row my-2">
@@ -446,13 +458,16 @@
             @if (d.permissions.canSendBack) {
               <input type="button" value="Send Back to Consultant" class="btn btn-outline-danger" [disabled]="busy()" (click)="openDialog('sendBack')" />
             }
+            <!-- 2026-11-16 (approved): the CO's Reject (the old page had the dialog but no button). -->
+            @if (d.permissions.canReject) {
+              <input type="button" value="Reject" class="btn btn-danger" [disabled]="busy()" (click)="openDialog('reject')" />
+            }
             @if (d.permissions.canConsultantFinalSubmit) {
               <input type="button" value="Final Submit" class="btn btn-primary" [disabled]="busy()" (click)="openConsultantSubmit()" />
             }
             @if (d.permissions.canCoFinalSubmit) {
               <input type="button" value="Final Submit" class="btn btn-primary" [disabled]="busy()" (click)="openDialog('coSubmit')" />
             }
-            <!-- No Reject button: the old page has the reject dialog but never shows a button for it. -->
           </div>
         </div>
       }
@@ -697,7 +712,3 @@
   <div class="modal-backdrop show"></div>
 }
 
-@if (checkpointEdit(); as e) {
-  <zed-checkpoint-dialog [title]="e.title" [checkpoints]="e.checkpoints" [stage]="data()?.checkpointStage ?? 'Baseline'" [busy]="busy()" [error]="checkpointError()"
-    (saved)="saveCheckpoints($event)" (closed)="checkpointEdit.set(null)" />
-}

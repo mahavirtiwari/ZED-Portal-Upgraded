@@ -375,7 +375,46 @@ public sealed partial class ConsultancySAController(
         else response.siteTourSections = [];
         // Handholding uses main's questionnaire, and so its videos.
         await AppRequirementVideos.FillAsync(db, "ZEDCS_V2_LIVE.dbo", certification, response.allottedParameters, null, ct);
+        if (!dfo) await AttachCheckpointsAsync(response.allottedParameters, zedId, certification, ct);
         return new UnitAnswer(response, null);
+    }
+
+    /// <summary>
+    /// 2026-11-16 (approved): the checkpoints of the unit's requirements on their options (main's questionnaire, the answers on
+    /// the plan rows), so the app answers Yes / Partial / No per checkpoint as the milestone page does. None before migration 0039.
+    /// </summary>
+    private async Task AttachCheckpointsAsync(List<AllottedParameters>? parameters, string zedId, string level, CancellationToken ct)
+    {
+        if (parameters is null || level.Length == 0) return;
+        IReadOnlyList<CheckpointAnswers.Checkpoint> checkpoints;
+        try { checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, HandholdingCheckpoints.Master, log, ct); }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Checkpoints of {ZedId} {Level} not readable", zedId, level);
+            return;
+        }
+        if (checkpoints.Count == 0) return;
+        foreach (var r in parameters.SelectMany(p => p.requirements ?? []))
+        {
+            var plan = r.planRequirementId ?? r.id;
+            var mine = checkpoints.Where(c => c.RequirementId == plan).ToList();
+            foreach (var o in r.options ?? [])
+            {
+                var c = mine.FirstOrDefault(x => Same(x.OptionCode, o.code));
+                if (c is null) continue;
+                o.checkpoint = new HhCheckpointInfo
+                {
+                    id = c.Id,
+                    actions = [.. c.Actions],
+                    evidences = c.Evidences.Select(e => new HhCheckpointEvidenceInfo { name = e.Name, mandatory = e.Mandatory }).ToList(),
+                    baselineAnswer = c.Baseline?.Value,
+                    baselineActions = c.Baseline is { Actions.Count: > 0 } b ? [.. b.Actions] : null,
+                    baselineRemarks = c.Baseline?.Remarks,
+                    review1Answer = c.Review1,
+                    review2Answer = c.Review2,
+                };
+            }
+        }
     }
 
     /// <summary>The NIC 2-digit sector's name (dbo.Sectors, the sector master).</summary>
@@ -417,6 +456,7 @@ public sealed partial class ConsultancySAController(
 
         // Bullets were saved against the milestone-1 requirement row (PrevReqId).
         var previous = r.Int("PrevReqId");
+        requirement.planRequirementId = previous > 0 ? previous : requirement.id;
         List<string> Bullets(string type) => sets[9]
             .Where(b => b.Int("RequirementId") == previous && string.Equals(b.Text("ReqType"), type, StringComparison.OrdinalIgnoreCase))
             .Select(b => b.Text("BulletPoints")).ToList();

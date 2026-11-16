@@ -49,7 +49,7 @@ export function mapUrl(lat: unknown, lng: unknown): string {
 
 export interface MapLocation { title: string; lat: string; lng: string; href: string }
 
-export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting' | 'nc';
+export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting' | 'attendance' | 'nc';
 
 export const TABS: { id: RemoteTab; no: number; title: string }[] = [
   { id: 'overview', no: 1, title: 'Assessment Overview' },
@@ -58,6 +58,7 @@ export const TABS: { id: RemoteTab; no: number; title: string }[] = [
   { id: 'siteTour', no: 2, title: 'Site Tour' },
   { id: 'parameters', no: 5, title: 'Parameters' },
   { id: 'closeMeeting', no: 6, title: 'Closing Meeting' },
+  { id: 'attendance', no: 7, title: 'Attendance' },
 ];
 
 /** Surveillance (that portal's Remote/Index.cshtml): an Instructions tab first, the site tour as "Assessment Evidence". */
@@ -69,6 +70,7 @@ export const SURVEILLANCE_TABS: { id: RemoteTab; no: number; title: string }[] =
   { id: 'siteTour', no: 5, title: 'Assessment Evidence' },
   { id: 'parameters', no: 6, title: 'Parameters' },
   { id: 'closeMeeting', no: 7, title: 'Closing Meeting' },
+  { id: 'attendance', no: 8, title: 'Attendance' },
 ];
 
 /** Basic Info rows: DA answer column, remote answer column, Yes/No choice. */
@@ -150,6 +152,18 @@ export class RemoteAssessmentPage {
   protected readonly modalError = signal('');
   protected readonly tab = signal<RemoteTab>('overview');
   protected readonly preview = signal<string | null>(null);
+
+  /** 2026-11-16: an assessor's days of the Attendance tab (ids compared trimmed, ignoring case). */
+  protected attendanceOf(assessor: Row): Row[] {
+    const id = String(assessor['ConsultantId'] ?? '').trim().toUpperCase();
+    return (this.data()?.attendance ?? []).filter((a) => String(a['ConsultantId'] ?? '').trim().toUpperCase() === id);
+  }
+
+  /** "lat,lng" of a punch → a map link. */
+  protected placeUrl(place: unknown): string {
+    const [lat, lng] = String(place ?? '').split(',');
+    return mapUrl(lat, lng);
+  }
 
   protected readonly capture = signal<Capture | null>(null);
   protected readonly choice = signal<Choice | null>(null);

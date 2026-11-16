@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, input, output, signal, untracked } from '@angular/core';
 
 /** Who answers: the desktop assessor, the lead site assessor, or the handholding consultant (baseline, progress reviews). */
@@ -90,18 +91,9 @@ const TITLES: Record<CheckpointStage, string> = {
  */
 @Component({
   selector: 'zed-checkpoint-dialog',
+  imports: [NgTemplateOutlet],
   template: `
-    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="cpTitle">
-      <div class="modal-dialog modal-lg cp-dialog">
-        <div class="modal-content">
-          <div class="modal-header justify-content-between">
-            <div>
-              <h5 class="modal-title" id="cpTitle">Checkpoints · {{ stageTitle() }}</h5>
-              <small class="cp-sub">{{ title() }}</small>
-            </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
-          </div>
-          <div class="modal-body">
+    <ng-template #body>
             @for (c of checkpoints(); track c.id; let i = $index) {
               @let e = edits()[i];
               <section class="cp" [attr.data-checkpoint]="c.optionCode">
@@ -162,6 +154,28 @@ const TITLES: Record<CheckpointStage, string> = {
                 placeholder="Optional. If empty and not conforming, the actions ticked are written as the remarks."></textarea>
             }
             @if (problem() || error()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ problem() || error() }}</div> }
+    </ng-template>
+    @if (inline()) {
+      <!-- 2026-11-16 (approved): answered in place on the milestone page, as in the consultant app. -->
+      <div class="cp-inline" data-checkpoints-inline>
+        <ng-container [ngTemplateOutlet]="body" />
+        <div class="cp-inline-actions">
+          <input type="button" class="btn btn-primary btn-sm" value="SAVE CHECKPOINTS" [disabled]="busy()" (click)="submit()" />
+        </div>
+      </div>
+    } @else {
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="cpTitle">
+      <div class="modal-dialog modal-lg cp-dialog">
+        <div class="modal-content">
+          <div class="modal-header justify-content-between">
+            <div>
+              <h5 class="modal-title" id="cpTitle">Checkpoints · {{ stageTitle() }}</h5>
+              <small class="cp-sub">{{ title() }}</small>
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
+          </div>
+          <div class="modal-body">
+            <ng-container [ngTemplateOutlet]="body" />
           </div>
           <div class="modal-footer">
             <input type="button" class="btn btn-default" value="CANCEL" (click)="closed.emit()" />
@@ -171,6 +185,7 @@ const TITLES: Record<CheckpointStage, string> = {
       </div>
     </div>
     <div class="modal-backdrop show"></div>
+    }
   `,
   styles: `
     .modal > .modal-dialog.cp-dialog { max-width: 860px; width: calc(100% - 32px); }
@@ -197,7 +212,9 @@ const TITLES: Record<CheckpointStage, string> = {
     .cp-box.act { background: #fffaf0; border: 1px solid #f1e0b0; }
     .cp-box h6 { margin: 0 0 5px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: #5f6f70; }
     .cp-line { display: flex; align-items: center; gap: 8px; padding: 2px 0; flex-wrap: wrap; }
-    .modal .cp-check { font-weight: 400; margin: 0; cursor: pointer; }
+    .modal .cp-check, .cp-inline .cp-check { font-weight: 400; margin: 0; cursor: pointer; }
+    .cp-inline .cp-remark { min-height: 0; height: auto; margin-top: 6px; font-size: 13px; }
+    .cp-inline-actions { margin-top: 8px; }
     .cp-tag { font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #f2f4f4; color: #5f6f70; }
     .cp-tag.m { background: #f1f0fb; color: #3f3a7a; }
     .cp-state { font-size: 12px; color: #1e7a3c; }
@@ -215,6 +232,8 @@ export class CheckpointDialog {
   readonly checkpoints = input.required<Checkpoint[]>();
   readonly stage = input.required<CheckpointStage>();
   readonly busy = input(false);
+  /** 2026-11-16: in the page (no pop-up): a SAVE CHECKPOINTS button under the checkpoints, no cancel. */
+  readonly inline = input(false);
   /** The server's answer to the last submit. */
   readonly error = input('');
   readonly saved = output<CheckpointSaveRequest>();

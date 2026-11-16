@@ -127,6 +127,43 @@ public sealed class RequirementDetails
     public string? handholdingActionPlanRemarks { get; set; }
     public string? technologyInterventionRemarks { get; set; }
     public string? progressReview1Remarks { get; set; }
+    /// <summary>
+    /// 2026-11-16: the plan row (milestone 1's MsmeRequirements.Id) the checkpoints and bullets hang off; in milestones 2 and 3
+    /// <see cref="id"/> is the current milestone's row.
+    /// </summary>
+    public long? planRequirementId { get; set; }
+    /// <summary>2026-11-16: Yes / Partial / No per checkpoint (OptionInfo.checkpoint.id), sent with the baseline and the progress reviews.</summary>
+    public List<HhCheckpointAnswerInfo>? checkpointAnswers { get; set; }
+}
+
+/// <summary>2026-11-16: a checkpoint of a requirement as the consultant answers it (CheckpointAnswers, migration 0039).</summary>
+public sealed class HhCheckpointInfo
+{
+    /// <summary>MsmeOptions.Id: the answer's id.</summary>
+    public long id { get; set; }
+    /// <summary>The Admin's actions needed for Partial / No (ticked ones join the Handholding Action Plan).</summary>
+    public List<string> actions { get; set; } = [];
+    /// <summary>What to see for Yes; a mandatory one needs a photo on the requirement.</summary>
+    public List<HhCheckpointEvidenceInfo> evidences { get; set; } = [];
+    public string? baselineAnswer { get; set; }
+    public List<string>? baselineActions { get; set; }
+    public string? baselineRemarks { get; set; }
+    public string? review1Answer { get; set; }
+    public string? review2Answer { get; set; }
+}
+
+public sealed class HhCheckpointEvidenceInfo
+{
+    public string? name { get; set; }
+    public bool mandatory { get; set; }
+}
+
+public sealed class HhCheckpointAnswerInfo
+{
+    public long id { get; set; }
+    public string? answer { get; set; }
+    public List<string>? actions { get; set; }
+    public string? remarks { get; set; }
 }
 
 public sealed class EvidenceInfo
@@ -146,6 +183,9 @@ public sealed class OptionInfo
     public string? label { get; set; }
     public string? image { get; set; }
     public List<SubOption>? subOptions { get; set; }
+    /// <summary>2026-11-16: the option is a checkpoint of the requirement; null otherwise (older databases, or none).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public HhCheckpointInfo? checkpoint { get; set; }
 }
 
 public sealed class SubOption

@@ -52,6 +52,11 @@ public sealed class SiteReviewTests : IDisposable
             sets.Add([new { ConsultantId = "ASSESSORSV", AssessorType = "Assessor" }]);
             return FakeSql.Sets([.. sets]);
         };
+        // 2026-11-16: the attendance comes from the table itself (set 23 above is no longer read: it dropped every punch after an NC).
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.SiteReview.SiteAttendance.Sql] = args => FakeSql.Arg(args, "ZedId") != Zed ? [] :
+        [
+            new global::Zed.Portal.Features.Staff.SiteReview.SiteAttendance.Punch { ConsultantId = "ASSESSORSV", AttendanceType = "LOGIN", Stamp = "Oct 01, 2026 10:00 AM", PhotoId = "55", AssessorName = "Site One" },
+        ];
 
         _host.Sql.Procs["SP_ASSESSMENT_SA_DETAILS"] = args =>
         {
@@ -177,6 +182,8 @@ public sealed class SiteReviewTests : IDisposable
         var attendance = json.GetProperty("attendance")[0];
         Assert.Equal(prefix + "mobileapi/Attendance/ZEDMSME000001/Silver/55.jpg", attendance.GetProperty("LoginPhotoUrl").GetString());
         Assert.Equal(JsonValueKind.Null, attendance.GetProperty("LogoutPhotoUrl").ValueKind);
+        Assert.Equal(("10:00 AM", "Site One"), (attendance.GetProperty("LoginTime").GetString(), attendance.GetProperty("AssessorName").GetString()));
+        Assert.Equal("Site One", json.GetProperty("consultants")[0].GetProperty("AssessorName").GetString());
 
         var round = json.GetProperty("ncRounds")[0];
         Assert.Equal(1, round.GetProperty("ncCount").GetInt32());

@@ -120,7 +120,7 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
       '4. Surveillance Assessment Fee for Silver Certification is as shown on the payment page (subsidy as applicable).']);
     expect(el.querySelector('.tab-content tbody tr:nth-child(2) b')!.textContent).toBe('Assessment Agency');
     expect([...el.querySelectorAll('.nav-link')].map((b) => b.textContent!.trim())).toEqual([
-      'Instructions', 'Assessment Overview', 'Opening Meeting', 'Basic Info', 'Assessment Evidence', 'Parameters', 'Closing Meeting',
+      'Instructions', 'Assessment Overview', 'Opening Meeting', 'Basic Info', 'Assessment Evidence', 'Parameters', 'Closing Meeting', 'Attendance',
     ]);
   });
 

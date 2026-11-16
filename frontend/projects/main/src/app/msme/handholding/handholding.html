@@ -98,7 +98,7 @@
                       <span class="ms-num" aria-hidden="true">{{ m.applied ? '✓' : m.number }}</span>
                       <div class="ms-text">
                         <strong>{{ m.title }}</strong>
-                        <small>{{ m.canAccept ? 'Submitted by the consultant: please accept' : m.applied ? 'Applied' : m.canApply ? 'Apply and pay to start' : 'After the previous milestone' }}</small>
+                        <small>{{ m.canAccept ? 'Submitted by the consultant: please accept' : m.accepted ? 'Completed' : m.applied ? 'Applied' : m.canApply ? 'Apply and pay to start' : 'After the previous milestone' }}</small>
                       </div>
                       <span class="ms-act">
                         @if (m.canAccept) {
