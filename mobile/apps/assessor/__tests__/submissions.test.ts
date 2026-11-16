@@ -149,6 +149,35 @@ describe('basic information (BasicInfoViewModel)', () => {
     expect(((server.requests[1] as SentRequest).json!.photos as PhotoData[])[0]!.photo).toBe('P100');
   });
 
+  it('sends the repeating entries of the Admin with their photo ids, then each photo (2026-11-16)', async () => {
+    const { app, server } = await openAssessment();
+    const stored: PhotoData = { photoId: SA_ID + '200', associatedId: ZED_ID + SA_ID, photo: 'P200', photoPath: '/files/m.jpg', status: 0, isPdf: false };
+    await app.photos.insert(stored);
+    const info = Object.assign(newBasicInformation(), {
+      energySources: ['Solar'],
+      customAnswers: { cf_machines: [{ c_name: 'Press', c_photo: [{ ...stored, photo: null }] }] },
+    });
+    const def: FormDefinition = {
+      ...BUILT_IN_BASIC_INFO,
+      fields: [
+        ...BUILT_IN_BASIC_INFO.fields.map(f => ({ ...f, required: false })),
+        {
+          key: 'cf_machines', label: 'Machines', type: 'rows', required: true, custom: true, section: 'basic', order: 15, maxItems: 5,
+          columns: [
+            { key: 'c_name', label: 'Machine name', type: 'text', required: true, custom: true, section: 'basic', order: 10 },
+            { key: 'c_photo', label: 'Photo', type: 'photo', required: false, custom: true, section: 'basic', order: 20, maxItems: 1 },
+          ],
+        },
+      ],
+      version: 'v10',
+    };
+    stampFormAnswers(def, info, STANDARD_KEYS);
+    expect((await submitBasicInformation(app, info)).status).toBe('1');
+    expect(names(server)).toEqual(['SubmitBasicInformation', 'SubmitBasicInfoPhotos']);
+    expect(server.requests[0]!.json!.customFields).toEqual({ cf_machines: [{ c_name: 'Press', c_photo: [SA_ID + '200'] }] });
+    expect(((server.requests[1] as SentRequest).json!.photos as PhotoData[])[0]!.photo).toBe('P200');
+  });
+
   it('stops with the legacy message when a product photo is missing on the phone', async () => {
     const { app } = await openAssessment();
     const info = Object.assign(newBasicInformation(), {

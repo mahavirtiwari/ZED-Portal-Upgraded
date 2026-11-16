@@ -14,6 +14,7 @@ import {
   numericFilter,
   percentageFilter,
   PhotosField,
+  RowsFormField,
   REQUIRED,
   rowErrors,
   stampFormAnswers,
@@ -370,6 +371,8 @@ export function FormFieldControl({
  */
 export function BasicInformationScreen() {
   const app = useSa();
+  // 2026-11-16: the photo columns of the Admin's repeating entries.
+  const rowsCapturer = useSaPhotoCapture();
   const ui = useUi();
   const nav = useNavigation();
   const insets = useSafeAreaInsets();
@@ -483,6 +486,20 @@ export function BasicInformationScreen() {
     const label = numberedLabel(def, f);
     const error = errors.get(f.key);
     const base: Base = { label, required: f.required, error, help: f.help };
+    if (f.custom && f.type === 'rows') {
+      // 2026-11-16: the Admin's repeating entries ("Add more"), photos captured as the Basic Information photos.
+      return (
+        <RowsFormField
+          field={{ ...f, label }}
+          value={info.customAnswers?.[f.key]}
+          onChange={v => change(b => (b.customAnswers = { ...(b.customAnswers ?? {}), [f.key]: v }), f.key, true)}
+          error={error}
+          capturer={rowsCapturer}
+          store={app.photos}
+          sourceOptions={src => (src === 'countries' ? countryNames() : [])}
+        />
+      );
+    }
     if (f.custom) {
       return (
         <FormFieldControl

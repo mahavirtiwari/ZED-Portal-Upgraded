@@ -21,7 +21,7 @@ describe('answers the agency sent back (2026-11-16)', () => {
     expect(server.last('/FormCorrections')!.json).toEqual(expect.objectContaining({ saId: SA_ID }));
     expect(server.last('/FormCorrections')!.json!.zedId).toBeUndefined();
 
-    expect(await app.submitFormCorrection(list[0], '14')).toBeNull();
+    expect(await app.submitFormCorrection(list[0]!, '14')).toBeNull();
     expect(server.last('/SubmitFormCorrection')!.json).toEqual(expect.objectContaining({
       saId: SA_ID, zedId: ZED_ID, certificationType: 'Silver', form: 'assessor.basicInfo', key: 'cf_machines', value: '14',
     }));

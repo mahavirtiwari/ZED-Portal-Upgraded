@@ -2,6 +2,7 @@ import {
   basicInfoForSubmit,
   errorResponse,
   isNetworkError,
+  photosInAnswers,
   isSuccess,
   type BaseServiceResponse,
   type PhotoData,
@@ -260,6 +261,23 @@ export async function submitBasicInformation(app: SaApp, info: BasicInformation)
     let filled: PhotoData[];
     try {
       filled = await app.photos.fill(productPhotos, `${product.productName} product photos missing, please capture again`);
+    } catch (e) {
+      return errorResponse((e as Error).message);
+    }
+    for (const photo of filled) {
+      try {
+        response = await app.api.submitBasicInfoPhotos({ ...baseRequest(app), photos: [photo] });
+      } catch (e) {
+        return errorResponse((e as Error).message || UNKNOWN_ERROR);
+      }
+    }
+  }
+  // 2026-11-16: the photos of the Admin's repeating entries, one per request as the product photos.
+  const rowPhotos = photosInAnswers<PhotoData>(info.customAnswers);
+  if (rowPhotos.length) {
+    let filled: PhotoData[];
+    try {
+      filled = await app.photos.fill(rowPhotos, 'Photos of the entries missing, please capture again');
     } catch (e) {
       return errorResponse((e as Error).message);
     }
