@@ -37,16 +37,25 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
           <span class="ml-rule" aria-hidden="true"></span>
           <p class="ml-sub"><zed-text key="msme.login.hero.subtitle" [inline]="true">Raise your quality and sustainability, get certified and unlock incentives.</zed-text></p>
 
-          <p class="ml-label"><zed-text key="msme.login.hero.stepsHeading" [inline]="true">How it works</zed-text></p>
-          <ol class="ml-steps">
-            @for (s of steps; track s.title; let i = $index) {
+          <!-- 2026-11-16 (approved option A): "Apnaenge ZED!" and the benefits of ZED in place of the steps; every text the Admin's. -->
+          <div class="ml-banner" data-apnaenge>
+            <svg class="ml-cog" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)" /></svg>
+            <div>
+              <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
+              <p class="ml-apna-sub"><zed-text key="msme.login.hero.taglineText" [inline]="true">Zero Defect, Zero Effect: better quality, less waste, more business</zed-text></p>
+            </div>
+          </div>
+
+          <p class="ml-label"><zed-text key="msme.login.hero.benefitsHeading" [inline]="true">Benefits of ZED</zed-text></p>
+          <ul class="ml-benefits">
+            @for (b of benefits; track b.title; let i = $index) {
               <li>
-                <span class="ml-no">{{ i + 1 }}</span>
-                <strong><zed-text [key]="'msme.login.hero.step' + (i + 1) + '.title'" [inline]="true">{{ s.title }}</zed-text></strong>
-                <small><zed-text [key]="'msme.login.hero.step' + (i + 1) + '.text'" [inline]="true">{{ s.text }}</zed-text></small>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="b.icon" /></svg>
+                <strong><zed-text [key]="'msme.login.hero.benefit' + (i + 1) + '.title'" [inline]="true">{{ b.title }}</zed-text></strong>
+                <small><zed-text [key]="'msme.login.hero.benefit' + (i + 1) + '.text'" [inline]="true">{{ b.text }}</zed-text></small>
               </li>
             }
-          </ol>
+          </ul>
 
           <p class="ml-label"><zed-text key="msme.login.hero.levelsHeading" [inline]="true">Certification levels</zed-text></p>
           <ul class="ml-levels">
@@ -99,11 +108,15 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
     .ml-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: #23656b; margin: 14px 0; }
     .ml-sub { font-size: 15.5px; color: #4f6062; line-height: 1.6; margin: 0 0 20px; }
     .ml-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
-    .ml-steps { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
-    .ml-steps li { background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 12px 14px; }
-    .ml-steps strong { display: block; font-size: 14px; color: #1d2b2c; margin-top: 6px; }
-    .ml-steps small { display: block; font-size: 12.5px; color: #5f6f70; line-height: 1.4; }
-    .ml-no { width: 24px; height: 24px; border-radius: 50%; background: #23656b; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .ml-banner { display: flex; align-items: center; gap: 14px; background: #23656b; border-radius: 12px; padding: 14px 18px; margin: 0 0 18px; }
+    .ml-cog { width: 42px; height: 42px; flex: none; fill: #9fd3d6; }
+    .ml-apna { margin: 0; font-family: 'Segoe Script', 'Brush Script MT', 'Comic Sans MS', cursive; font-size: 32px; line-height: 1.15; color: #fff; }
+    .ml-apna-sub { margin: 4px 0 0; font-size: 13px; color: #d9efef; }
+    .ml-benefits { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+    .ml-benefits li { background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 12px 14px; }
+    .ml-benefits svg { width: 22px; height: 22px; fill: #23656b; display: block; }
+    .ml-benefits strong { display: block; font-size: 14px; color: #1d2b2c; margin-top: 6px; }
+    .ml-benefits small { display: block; font-size: 12.5px; color: #5f6f70; line-height: 1.4; }
     .ml-levels { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
     .ml-level { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 14px; font-weight: 700; color: #1d2b2c; font-size: 14px; }
     .ml-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
@@ -128,7 +141,10 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       .ml-zed { height: 42px; }
       .ml-hero-body { padding: 12px 0 0; }
       .ml-title { font-size: 21px; }
-      .ml-rule, .ml-sub, .ml-label, .ml-steps, .ml-levels { display: none; }
+      .ml-rule, .ml-sub, .ml-label, .ml-benefits, .ml-levels { display: none; }
+      .ml-banner { padding: 10px 14px; margin-bottom: 4px; }
+      .ml-apna { font-size: 24px; }
+      .ml-cog { width: 32px; height: 32px; }
       .ml-side { padding: 8px 20px 14px; }
       .ml-card { padding: 14px 0 20px; }
     }
@@ -140,11 +156,16 @@ export class LoginShell {
   /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
   protected readonly brand = inject(BrandingService);
   protected readonly year = new Date().getFullYear();
-  protected readonly steps = [
-    { title: 'Register', text: 'With your Udyam number' },
-    { title: 'Apply', text: 'Choose a level and pay' },
-    { title: 'Assessment', text: 'Your documents, then a visit' },
-    { title: 'Certificate', text: 'And the incentives it unlocks' },
+  /** 2026-11-16 (approved option A): the defaults until the Admin changes them (Administration → Texts, "MSME: Registration"). */
+  protected readonly benefits = [
+    { title: 'Up to 80% subsidy', text: 'On certification cost: micro 80%, small 60%, medium 50%',
+      icon: 'M7.5 11a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm9 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7ZM5.4 20 17.6 4h1.9L7.3 20H5.4Z' },
+    { title: 'Joining reward', text: 'Rs 10,000 on Bronze certification',
+      icon: 'M20 7h-2.2A3 3 0 0 0 12 3.8 3 3 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3h18V8a1 1 0 0 0-1-1Zm-9 0H9a1 1 0 1 1 1-1v1Zm4 0h-2V6a1 1 0 1 1 2 1ZM4 13v7a1 1 0 0 0 1 1h6v-8H4Zm9 8h6a1 1 0 0 0 1-1v-7h-7v8Z' },
+    { title: 'Handholding', text: 'Expert support to reach the next level',
+      icon: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7.5 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4Zm7.5 0c-.5 0-1 0-1.5.1 1.2.9 2 2.2 2 3.9v3h5v-2.6c0-2.6-3.3-4.4-5.5-4.4Z' },
+    { title: 'Incentives', text: 'Technology upgradation, state and bank benefits',
+      icon: 'M12 2 2 7v2h20V7L12 2ZM4 11v7h3v-7H4Zm6.5 0v7h3v-7h-3ZM17 11v7h3v-7h-3ZM2 20v2h20v-2H2Z' },
   ];
   /** The enabled levels as the Admin named them, with their badges (Certification Levels; built-in until they arrive). */
   private readonly publicLevels = inject(PublicLevels);

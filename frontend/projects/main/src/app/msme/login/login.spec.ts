@@ -45,6 +45,12 @@ describe('LoginPage', () => {
     expect(el.querySelector('.ml-new [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
   });
 
+  it('shows Apnaenge ZED! and the four benefits of ZED (2026-11-16, option A), each an Admin text', () => {
+    expect(el.querySelector('[data-apnaenge]')!.textContent).toContain('Apnaenge ZED!');
+    expect([...el.querySelectorAll('.ml-benefits strong')].map((s) => s.textContent!.trim())).toEqual(['Up to 80% subsidy', 'Joining reward', 'Handholding', 'Incentives']);
+    expect(el.querySelector('[data-key="msme.login.hero.benefit4.text"]')).not.toBeNull();
+  });
+
   it('forgot password: finds the units of a PAN, sends the link for the chosen one and shows the hidden e-mail', async () => {
     const buttons = () => Array.from(el.querySelectorAll('button')) as HTMLButtonElement[];
     buttons().find((b) => b.textContent?.includes('Forgot password'))!.click();
