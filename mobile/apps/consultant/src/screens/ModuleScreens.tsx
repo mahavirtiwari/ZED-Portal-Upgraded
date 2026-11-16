@@ -28,6 +28,20 @@ import {
   type RequirementDetails,
 } from '../models';
 import { RequirementVideoButton } from '../components/RequirementVideoButton';
+import { CheckpointList } from '../components/CheckpointList';
+import {
+  addActionsToPlan,
+  checkpointProblem,
+  conformanceOf,
+  hasCheckpoints,
+  initialAnswers,
+  plannedFrom,
+  setAnswer,
+  setRemarks as setCheckpointRemarks,
+  stageOf,
+  toggleAction,
+  type CheckpointStage,
+} from '../checkpoints';
 import { promptComment, REQUIRED, usePresentPhotos } from '../ui/inputs';
 import { Badge, C, Card, CharCounter, Field, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName, type Tone } from '../ui/zed';
 
@@ -517,6 +531,13 @@ function RequirementPage({
   const [rationale, setRationale] = useState(r.technologyInterventionRationale ?? '');
   const [remarks, setRemarks] = useState(r.comments ?? '');
   const [errors, setErrors] = useState<Set<string>>(new Set());
+  // 2026-11-16 (approved): the checkpoints, in the baseline (milestone 1) and the progress reviews (milestones 2 and 3).
+  const milestoneStage = stageOf(app.details!.milestone);
+  const cpStage: CheckpointStage | null =
+    module === 'baselineDiagnostic' ? 'baseline' : module === 'progressReview' && !m4 && milestoneStage && milestoneStage !== 'baseline' ? milestoneStage : null;
+  const useCheckpoints = cpStage != null && hasCheckpoints(r);
+  const [answers, setAnswers] = useState(() => (useCheckpoints ? initialAnswers(r, cpStage!) : []));
+  const shownConformance = useCheckpoints && module === 'baselineDiagnostic' ? conformanceOf(answers) : conformance;
   const evidences = usePresentPhotos(r.capturedEvidences, app.photos, kept => {
     r.capturedEvidences = kept;
     app.update();
@@ -537,11 +558,12 @@ function RequirementPage({
   /** collectEnteredData; the helpers marked the required fields left empty. */
   const collect = () => {
     const e = new Set<string>();
+    if (useCheckpoints) r.checkpointAnswers = answers;
     if (module === 'baselineDiagnostic') {
-      r.conformance = conformance;
+      r.conformance = shownConformance;
       r.gapsIdentified = listOrNull(gaps);
       r.comments = orNull(remarks);
-      if (blank(conformance)) e.add('conformance');
+      if (blank(shownConformance)) e.add('conformance');
     } else if (module === 'handholdingActionPlan') {
       r.plannedActivities = listOrNull(planned);
       r.estimatedTimeInDays = orNull(estimated);
@@ -565,9 +587,18 @@ function RequirementPage({
   const proceed = () => {
     if (module === 'progressReview' && m4) return onUpdated();
     collect();
+    if (useCheckpoints) {
+      const problem = checkpointProblem(r, answers, cpStage!, (photos?.length ?? 0) > 0);
+      if (problem) return ui.snackbar(problem);
+    }
     if (module === 'baselineDiagnostic') {
       if (!isBaselineDiagnosticInfoValid(r)) return ui.snackbar(DATA_ERROR);
       r.reviewNeeded = false;
+      // The ticked actions of a Partial / No join the requirement's action plan (deletable there, more can be added).
+      if (useCheckpoints) {
+        const added = addActionsToPlan(moduleData(app, 'handholdingActionPlan', true), r, plannedFrom(answers));
+        if (added > 0) ui.toast(`${added} action${added === 1 ? '' : 's'} added to the Handholding Action Plan`);
+      }
       return onUpdated();
     }
     const valid = module === 'handholdingActionPlan' ? isHandholdingActionPlanValid(r) : module === 'technologyIntervention' ? isSuggestionForTechnologyInterventionValid(r) : isProgressReviewValid(r);
@@ -638,8 +669,33 @@ function RequirementPage({
         ))}
         {module === 'baselineDiagnostic' ? (
           <>
-            <SectionLabel label="Conformance" style={styles.label} right={err('conformance') ? <Badge label={REQUIRED} tone="danger" small /> : undefined} />
-            <AnswerChoice value={conformance} onChange={setConformance} error={!!err('conformance')} disabled={readOnly} testIDPrefix="req-conformance" />
+            {useCheckpoints ? (
+              <>
+                <CheckpointList
+                  requirement={r}
+                  answers={answers}
+                  stage="baseline"
+                  error={!!err('conformance')}
+                  readOnly={readOnly}
+                  onAnswer={(id, v) => setAnswers(list => setAnswer(list, id, v))}
+                  onAction={(id, a) => setAnswers(list => toggleAction(list, id, a))}
+                  onRemarks={(id, v) => setAnswers(list => setCheckpointRemarks(list, id, v))}
+                />
+                <SectionLabel label="Conformance (from the checkpoints)" style={styles.label} />
+                <View style={styles.conformanceRow} testID="req-conformance-result">
+                  {shownConformance ? (
+                    <Badge label={shownConformance} tone={shownConformance === YES ? 'success' : shownConformance === NO ? 'danger' : 'warning'} small />
+                  ) : (
+                    <Text style={styles.none}>Answer every checkpoint</Text>
+                  )}
+                </View>
+              </>
+            ) : (
+              <>
+                <SectionLabel label="Conformance" style={styles.label} right={err('conformance') ? <Badge label={REQUIRED} tone="danger" small /> : undefined} />
+                <AnswerChoice value={conformance} onChange={setConformance} error={!!err('conformance')} disabled={readOnly} testIDPrefix="req-conformance" />
+              </>
+            )}
             {evidence}
             <PointsList label="Gaps Identified" addLabel="gap" value={gaps} onChange={setGaps} readOnly={readOnly} testID="req-gaps" />
             <RemarksBullets value={remarks} onChange={setRemarks} readOnly={readOnly} />
@@ -673,6 +729,17 @@ function RequirementPage({
         ) : null}
         {module === 'progressReview' ? (
           <>
+            {useCheckpoints ? (
+              <CheckpointList
+                requirement={r}
+                answers={answers}
+                stage={cpStage!}
+                error={false}
+                onAnswer={(id, v) => setAnswers(list => setAnswer(list, id, v))}
+                onAction={(id, a) => setAnswers(list => toggleAction(list, id, a))}
+                onRemarks={(id, v) => setAnswers(list => setCheckpointRemarks(list, id, v))}
+              />
+            ) : null}
             <SectionLabel label="Is proposed activity completed?" style={styles.label} right={err('proposed') ? <Badge label={REQUIRED} tone="danger" small /> : undefined} />
             <AnswerChoice value={proposed} onChange={setProposed} error={!!err('proposed')} disabled={m4} testIDPrefix="req-proposed" />
             {!m4 ? (
@@ -711,6 +778,7 @@ function ReviewRow({ label, icon, onView, testID }: { label: string; icon: IconN
 }
 
 const styles = StyleSheet.create({
+  conformanceRow: { flexDirection: 'row', marginTop: 4 },
   flex: { flex: 1 },
   label: { marginTop: 12 },
   // parameter list (09 / 11 / 12 / 08)

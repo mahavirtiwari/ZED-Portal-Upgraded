@@ -134,7 +134,25 @@ export type Evidences = {
   isOpened: boolean;
 };
 
-export type Option = { id: number; code?: string | null; label?: string | null; subOptions?: Option[] | null };
+/** 2026-11-16: a checkpoint of a requirement (main's questionnaire, migration 0039), answered Yes / Partial / No by the consultant. */
+export type CheckpointInfo = {
+  /** MsmeOptions.Id: the answer's id. */
+  id: number;
+  /** The Admin's actions needed for Partial / No; the ticked ones join the Handholding Action Plan. */
+  actions: string[];
+  /** What to see for Yes; a mandatory one needs a photo on the requirement. */
+  evidences: { name?: string | null; mandatory: boolean }[];
+  baselineAnswer?: string | null;
+  baselineActions?: string[] | null;
+  baselineRemarks?: string | null;
+  review1Answer?: string | null;
+  review2Answer?: string | null;
+};
+
+/** One checkpoint's answer, sent with the baseline and the progress reviews. */
+export type CheckpointAnswer = { id: number; answer: string | null; actions: string[]; remarks: string | null };
+
+export type Option = { id: number; code?: string | null; label?: string | null; subOptions?: Option[] | null; checkpoint?: CheckpointInfo | null };
 
 export type RequirementDetails = {
   id: string;
@@ -163,6 +181,10 @@ export type RequirementDetails = {
   isProposedActivityCompleted?: string | null;
   /** 2026-11-08: the Admin's video for the requirement (SA/Login); absent when none. */
   videoUrl?: string | null;
+  /** 2026-11-16: the plan row (milestone 1's requirement) the checkpoints hang off. */
+  planRequirementId?: number | null;
+  /** 2026-11-16: the checkpoint answers of this section (baseline, or the progress review of milestone 2 / 3). */
+  checkpointAnswers?: CheckpointAnswer[] | null;
 };
 
 const blank = (s: string | null | undefined) => s == null || s.trim() === '';
