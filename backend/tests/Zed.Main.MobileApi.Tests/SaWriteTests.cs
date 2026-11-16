@@ -87,6 +87,13 @@ public sealed class SaWriteTests : IDisposable
         var corrected = _t.CallsTo(global::Zed.Core.Forms.AppFormChecks.CorrectSql).Single().Args;
         Assert.Equal(("14", "cf_machines", Co), (FakeSql.Arg(corrected, "Value"), FakeSql.Arg(corrected, "FieldKey"), FakeSql.Arg(corrected, "By")));
 
+        // The home page: every unit of the assessor under the agency's review.
+        _t.Fake.Queries[global::Zed.Main.MobileApi.Controllers.SAController.InReviewSql] = args =>
+            FakeSql.Arg(args, "SaId") == Lead ? [new { ZedId = Zed, Certification = "Silver" }] : [];
+        var all = await _t.Json("/SA/FormCorrections", new { saId = Lead });
+        var one = Assert.Single(all.GetProperty("corrections").EnumerateArray());
+        Assert.Equal((Zed, "Silver"), (one.GetProperty("zedId").GetString(), one.GetProperty("certificationType").GetString()));
+
         // Not allotted, or the agency's review is not open: refused.
         AssertFail(await _t.Json("/SA/FormCorrections", new { saId = Other, zedId = Zed, certificationType = "Silver" }), "Site Assessment data not yet allocated for the ZEDID: " + Zed);
         status = 16;

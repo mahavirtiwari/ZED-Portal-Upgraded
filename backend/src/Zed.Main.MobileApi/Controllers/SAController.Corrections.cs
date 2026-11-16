@@ -20,21 +20,43 @@ public sealed partial class SAController
 
     private sealed record ReviewStatusRow(int? CertificationStatus);
 
+    /// <summary>The assessor's units (lead or co-assessor) under the agency's site review.</summary>
+    public const string InReviewSql =
+        "SELECT ZedId, Certification FROM dbo.MsmeCertifications WHERE CertificationStatus = 15 AND (SiteAssessorId = @SaId OR CoAssessorId = @SaId);";
+
+    private sealed record InReviewRow(string ZedId, string Certification);
+
     private AppFormChecks FormChecks => HttpContext.RequestServices.GetRequiredService<AppFormChecks>();
 
     private async Task<bool> InAgencyReviewAsync(string zedId, string certification, CancellationToken ct) =>
         (await db.QuerySqlAsync<ReviewStatusRow>(ReviewStatusSql, new { ZedId = zedId, Certification = certification }, ct)).FirstOrDefault()?.CertificationStatus == 15;
 
-    /// <summary>The answers the agency sent back for correction (none outside the agency's review).</summary>
+    /// <summary>
+    /// The answers the agency sent back for correction: of one unit, or (no zedId: the assessor app's home page, after the
+    /// assessment's local data is gone) of every unit the assessor is lead or co-assessor of under the agency's review.
+    /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.SiteAssessor, "saId")]
     public Task<IActionResult> FormCorrections(SaAssessmentRequest request, CancellationToken ct) => Guarded(nameof(FormCorrections), async () =>
     {
-        if (await CheckNamedAssessorAsync(nameof(FormCorrections), request.saId, request.zedId, request.certificationType, ct) is { } refused) return refused;
-        var certification = AppFormSubmission.Certification(request.certificationType);
-        if (portal.System != PortalSystem.Main || !await InAgencyReviewAsync(request.zedId!, certification, ct))
-            return LegacyJson(new SaFormCorrectionsResponse { status = "1" });
-        return LegacyJson(new SaFormCorrectionsResponse { status = "1", corrections = (await FormChecks.CorrectionsAsync(PortalSystem.Main, request.zedId!, certification, ct)).Select(SaFormCorrection.From).ToList() });
+        if (portal.System != PortalSystem.Main) return LegacyJson(new SaFormCorrectionsResponse { status = "1" });
+        var units = new List<(string ZedId, string Certification)>();
+        if (string.IsNullOrWhiteSpace(request.zedId))
+        {
+            if (string.IsNullOrWhiteSpace(request.saId)) return Fail(ErrorText);
+            units.AddRange((await db.QuerySqlAsync<InReviewRow>(InReviewSql, new { SaId = request.saId.Trim() }, ct))
+                .Select(r => (r.ZedId.Trim(), r.Certification.Trim())));
+        }
+        else
+        {
+            if (await CheckNamedAssessorAsync(nameof(FormCorrections), request.saId, request.zedId, request.certificationType, ct) is { } refused) return refused;
+            var certification = AppFormSubmission.Certification(request.certificationType);
+            if (await InAgencyReviewAsync(request.zedId, certification, ct)) units.Add((request.zedId.Trim(), certification));
+        }
+        var corrections = new List<SaFormCorrection>();
+        foreach (var (zedId, certification) in units)
+            corrections.AddRange((await FormChecks.CorrectionsAsync(PortalSystem.Main, zedId, certification, ct)).Select(c => SaFormCorrection.From(zedId, certification, c)));
+        return LegacyJson(new SaFormCorrectionsResponse { status = "1", corrections = corrections });
     });
 
     /// <summary>The corrected answer (checked against the field's type and choices); the agency checks it again.</summary>

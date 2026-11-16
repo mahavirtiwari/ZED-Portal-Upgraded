@@ -634,6 +634,8 @@ public sealed class SaFormCorrectionsResponse : ServiceResponse
 /// <summary>One answer sent back: the field (type, choices, help as the form has them), the agency's remark and the answer found not valid.</summary>
 public sealed class SaFormCorrection
 {
+    public string zedId { get; set; } = "";
+    public string certificationType { get; set; } = "";
     public string form { get; set; } = "";
     public string key { get; set; } = "";
     public string label { get; set; } = "";
@@ -643,8 +645,8 @@ public sealed class SaFormCorrection
     public string? remarks { get; set; }
     public string? value { get; set; }
 
-    public static SaFormCorrection From(Zed.Core.Forms.AppFormChecks.AppFormCorrection c) => new()
+    public static SaFormCorrection From(string zedId, string certification, Zed.Core.Forms.AppFormChecks.AppFormCorrection c) => new()
     {
-        form = c.Form, key = c.Key, label = c.Label, type = c.Type, help = c.Help, options = c.Options, remarks = c.Remarks, value = c.Value,
+        zedId = zedId, certificationType = certification, form = c.Form, key = c.Key, label = c.Label, type = c.Type, help = c.Help, options = c.Options, remarks = c.Remarks, value = c.Value,
     };
 }
