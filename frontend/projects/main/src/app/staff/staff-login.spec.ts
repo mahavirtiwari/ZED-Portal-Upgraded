@@ -83,6 +83,9 @@ describe('StaffLoginPage (2026-11-07 design)', () => {
     await settle(fixture);
     for (const r of http.match(() => true)) r.flush(null);
     expect(el.querySelector('.login-title')!.textContent).toBe('Sign in');
+    // 2026-11-16: LOGIN and FORGOT PASSWORD? side by side.
+    expect([...el.querySelectorAll('.login-actions .btn')].map((b) => b.textContent!.trim())).toEqual(['LOGIN', 'FORGOT PASSWORD?']);
+    expect(el.querySelector('.login-actions a.btn-forgot')!.getAttribute('href')).toBe('/forgot-password');
     expect([...el.querySelectorAll('.zl-level')].map((c) => c.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
     expect([...el.querySelectorAll('.zl-quick strong')].map((c) => c.textContent!.trim())).toEqual(['MSME login', 'Register your enterprise']);
     const password = el.querySelector('#password') as HTMLInputElement;

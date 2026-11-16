@@ -38,6 +38,8 @@ export interface AnalyticsFilter {
   gender?: string;
   size?: string;
   socialCategory?: string;
+  /** 2026-11-16: Manufacturing or Services. */
+  sector?: string;
   from?: string;
   to?: string;
 }
@@ -71,6 +73,8 @@ export interface Analytics {
   districtOptions: string[];
   /** A state-bound Ministry user's state: the State filter is fixed to it. */
   boundState: string | null;
+  /** 2026-11-16: the one sector of a login limited to it: the Sector filter is fixed to it. */
+  boundSector?: string | null;
   generatedAt: string;
   /**
    * 2026-11-08: the levels the Admin added (not Bronze / Silver / Gold / ZED-X), all their applications (main portal; an agency

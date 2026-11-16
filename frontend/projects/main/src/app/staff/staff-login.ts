@@ -33,8 +33,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
           </div>
         </div>
         <div class="mb-3">
-          <!-- 2026-11-14: Forgot password beside the label. -->
-          <div class="pw-label"><label for="password">Password</label><a routerLink="/forgot-password">Forgot password?</a></div>
+          <label for="password">Password</label>
           <div class="field">
             <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
             <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" class="form-control has-toggle" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
@@ -44,8 +43,10 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
           </div>
         </div>
         <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
+        <!-- 2026-11-16 (as the user's design): LOGIN and FORGOT PASSWORD? side by side. -->
         <div class="login-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Sign in<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3z" /></svg></button>
+          <button type="submit" class="btn btn-login" [disabled]="busy()">LOGIN</button>
+          <a class="btn btn-forgot" routerLink="/forgot-password">FORGOT PASSWORD?</a>
         </div>
         @if (error()) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
@@ -80,10 +81,16 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
       text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     }
     .btn-primary:hover, .btn-primary:focus-visible { background-color: #174a4e; border-color: #174a4e; filter: none; }
-    .login-actions .btn-primary { width: 100%; text-transform: none; letter-spacing: 0.2px; }
-    .pw-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-    .pw-label a { color: #23656b; font-weight: 600; font-size: 13px; white-space: nowrap; }
-    .btn-primary .go { width: 18px; height: 18px; fill: currentColor; margin-left: 8px; }
+    .login-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .login-actions .btn {
+      height: 46px; border-radius: 5px; border: 0; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
+      text-transform: uppercase; display: flex; align-items: center; justify-content: center; white-space: nowrap; padding: 0 10px;
+    }
+    .btn-login { background-color: #2b8a8e; }
+    .btn-login:hover, .btn-login:focus-visible { background-color: #23656b; color: #fff; }
+    .btn-forgot { background-color: #7a7a7a; }
+    .btn-forgot:hover, .btn-forgot:focus-visible { background-color: #5f5f5f; color: #fff; }
+    @media (max-width: 359.98px) { .login-actions { grid-template-columns: 1fr; } }
   `,
 })
 export class StaffLoginPage {

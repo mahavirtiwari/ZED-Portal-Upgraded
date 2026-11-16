@@ -131,12 +131,21 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
             @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
           </select>
         </div>
+        <!-- 2026-11-16 (approved): Manufacturing / Services; fixed for a login limited to one sector. -->
+        <div class="filter">
+          <label class="form-label" for="an-sector">Sector</label>
+          <select id="an-sector" class="form-select" [disabled]="!!data()?.boundSector" [ngModel]="filter().sector ?? ''" (ngModelChange)="set('sector', $event)">
+            <option value="">All</option>
+            <option value="Manufacturing">Manufacturing</option>
+            <option value="Services">Services</option>
+          </select>
+        </div>
       </div>
       @if (chips().length) {
         <div class="an-chips" aria-label="Filters set">
           @for (c of chips(); track c.key) {
             <span class="an-chip">{{ c.label }}
-              @if (c.key !== 'state' || !data()?.boundState) {
+              @if ((c.key !== 'state' || !data()?.boundState) && (c.key !== 'sector' || !data()?.boundSector)) {
                 <button type="button" [attr.aria-label]="'Remove ' + c.label" (click)="set(c.key, '')">×</button>
               }
             </span>
@@ -207,7 +216,7 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an-basis-tab + .an-basis-tab { border-left: 1px solid #cbd9da; }
     .an-basis-tab.active { background: #23656b; color: #fff; }
     .an-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.7fr) auto; gap: 12px 16px; margin-bottom: 12px; align-items: end; }
-    .an-more { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid #e4ecec; border-radius: 10px; }
+    .an-more { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid #e4ecec; border-radius: 10px; }
     .an-more[hidden] { display: none; }
     .an-range-inputs { display: flex; align-items: center; gap: 6px; }
     .an-range-inputs .form-control { min-width: 0; padding-right: 8px; }
@@ -272,14 +281,14 @@ export class StaffAnalytics {
   protected readonly today = new Date().toISOString().slice(0, 10);
 
   protected readonly view = signal<AnalyticsView>(this.views[0]);
-  /** More filters (gender, size, social category) open. */
+  /** More filters (gender, size, social category, sector) open. */
   protected readonly moreOpen = signal(false);
-  protected readonly moreCount = computed(() => (['gender', 'size', 'socialCategory'] as const).filter((k) => !!this.filter()[k]).length);
+  protected readonly moreCount = computed(() => (['gender', 'size', 'socialCategory', 'sector'] as const).filter((k) => !!this.filter()[k]).length);
   /** The filters that are set, as removable chips. */
   protected readonly chips = computed(() => {
     const f = this.filter();
     const names: [FilterKey, string][] = [['state', 'State'], ['district', 'District'], ['certification', this.words.certLabel], ['gender', 'Gender'],
-      ['size', 'Size'], ['socialCategory', 'Social category'], ['from', 'From'], ['to', 'To']];
+      ['size', 'Size'], ['socialCategory', 'Social category'], ['sector', 'Sector'], ['from', 'From'], ['to', 'To']];
     return names.filter(([k]) => !!f[k]).map(([key, name]) => {
       const v = f[key]!;
       return { key, label: `${name}: ${key === 'gender' ? (GENDER_LABELS[v.toLowerCase()] ?? v) : v}` };
@@ -390,6 +399,7 @@ export class StaffAnalytics {
       this.statusCards.emit({ ...(d.statusCards ?? {}), ...extra });
       this.otherLevels.set(d.otherLevels ?? []);
       if (d.boundState && this.filter().state !== d.boundState) this.filter.update((f) => ({ ...f, state: d.boundState! }));
+      if (d.boundSector && this.filter().sector !== d.boundSector) this.filter.update((f) => ({ ...f, sector: d.boundSector! }));
     } catch (err) {
       if (id === this.request) this.error.set(apiErrorMessage(err));
     } finally {

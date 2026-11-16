@@ -118,6 +118,9 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         /// other filters do not apply to them.
         /// </summary>
         public IReadOnlyList<LevelCount> OtherLevels { get; init; } = [];
+
+        /// <summary>2026-11-16: the one sector (Manufacturing / Services) of a login limited to it; the Sector filter is fixed to it.</summary>
+        public string? BoundSector { get; init; }
     }
 
     /// <param name="Total">Applications (certification rows) of the level.</param>
@@ -203,7 +206,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
     [HttpGet("analytics")]
     public async Task<ActionResult<AnalyticsResponse>> Analytics(
         string? view, string? state, string? district, string? certification, string? gender, string? size, string? socialCategory,
-        string? from, string? to, [FromServices] IMemoryCache cache, CancellationToken ct, bool fresh = false)
+        string? from, string? to, [FromServices] IMemoryCache cache, CancellationToken ct, bool fresh = false, string? sector = null)
     {
         var invalid = false;
         var viewValue = DashboardFilters.Pick(view, ["registered", "certified"], ref invalid) ?? "registered";
@@ -217,6 +220,8 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         var genderValue = DashboardFilters.Pick(gender, ["male", "female", "OTHERS"], ref invalid);
         var sizeValue = DashboardFilters.Pick(size, DashboardFilters.Sizes, ref invalid);
         var social = DashboardFilters.Pick(socialCategory, DashboardFilters.SocialCategories, ref invalid);
+        // 2026-11-16 (approved): Manufacturing or Services (the unit's NIC sector type, else its Udyam activity, as the scope).
+        var sectorValue = DashboardFilters.Pick(sector, [Users.LoginScope.Manufacturing, Users.LoginScope.Services], ref invalid);
         var districtName = string.IsNullOrWhiteSpace(district) ? null : district.Trim();
         if (districtName is { Length: > 100 } || (districtName is not null && !districtName.All(c => char.IsLetterOrDigit(c) || " .-&()'/,".Contains(c))))
             invalid = true;
@@ -234,7 +239,9 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         var ownOnly = IsRole(UserRole.Agency) || IsRole(UserRole.DesktopAssessor);
         // A Master Admin / Ministry login with a scope (migration 0057) sees its category, levels and states only.
         var scope = await HttpContext.LoginScopeAsync(ct);
-        var scopeSector = scope.OneSector;
+        // A login limited to one sector sees that sector whatever is picked (BoundSector); else the Sector filter.
+        var boundSector = scope.OneSector;
+        var scopeSector = boundSector ?? sectorValue;
         var scopeLevels = Users.LoginScope.Join(scope.Levels);
         var scopeStates = Users.LoginScope.Join(scope.StateCodes);
         var key = string.Join('|', "dash-analytics", host.System, viewValue, stateName, districtName, cert, genderValue, sizeValue, social, fromDate, toDate,
@@ -265,6 +272,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
             bound, DateTimeOffset.Now, DashboardFilters.Pick(sets[9].FirstOrDefault(), CardColumns), Trend(sets[10], "Year"))
         {
             OtherLevels = await OtherLevelsAsync(ownOnly, ct),
+            BoundSector = boundSector,
         };
         cache.Set(key, result, AnalyticsCacheTime);
         return result;

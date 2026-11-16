@@ -113,6 +113,8 @@ describe('StaffDashboardPage', () => {
     await settle();
     expect((el.querySelector('#an-more') as HTMLElement).hidden).toBe(false);
     expect([...(el.querySelector('#an-gender') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Male', 'Female', 'Others']);
+    // 2026-11-16: Sector (Manufacturing / Services) under More filters too.
+    expect([...(el.querySelector('#an-sector') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Manufacturing', 'Services']);
     const top = el.querySelector('.rk-list li')!;
     expect([text(top.querySelector('.rk-rank')), text(top.querySelector('.rk-label')), text(top.querySelector('.rk-value'))]).toEqual(['1', 'GUJARAT', '1,46,518']);
     // Every row, sortable by count or name; the rank stays the rank by count.
@@ -200,6 +202,28 @@ describe('StaffDashboardPage', () => {
     const state = el.querySelector('#an-state') as HTMLSelectElement;
     expect(state.disabled).toBe(true);
     expect(state.value).toBe('UTTAR PRADESH');
+  });
+
+  it('main portal: the Sector filter (2026-11-16), fixed for a one-sector login', async () => {
+    await create('main');
+    analyticsCall().flush(analytics());
+    await settle();
+    await choose('#an-sector', 'Services');
+    const services = analyticsCall();
+    expect(services.request.params.get('sector')).toBe('Services');
+    services.flush(analytics());
+    await settle();
+    expect([...el.querySelectorAll('.an-chip')].map(text)).toContain('Sector: Services ×');
+    expect(text(el.querySelector('.an-more-btn button'))).toContain('More filters (1)');
+
+    // A login limited to Manufacturing: the filter shows Manufacturing and cannot be changed.
+    await choose('#an-sector', '');
+    analyticsCall().flush(analytics('registered', { boundSector: 'Manufacturing' }));
+    await settle();
+    const sector = el.querySelector('#an-sector') as HTMLSelectElement;
+    expect(sector.disabled).toBe(true);
+    expect(sector.value).toBe('Manufacturing');
+    expect(el.querySelector('.an-chip button')).toBeNull();
   });
 
   it('surveillance: the same figures, worded for surveillance, with its cards', async () => {

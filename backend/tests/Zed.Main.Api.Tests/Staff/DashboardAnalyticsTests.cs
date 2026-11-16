@@ -84,8 +84,31 @@ public sealed class DashboardAnalyticsTests : IDisposable
         Assert.Equal("registered", FakeSql.Arg(_host.LastCall(Proc).Args, "View"));
     }
 
+    [Fact]
+    public async Task Filters_by_sector_and_keeps_a_one_sector_login_to_its_sector()
+    {
+        // 2026-11-16: Manufacturing / Services, through the procedure's sector rule (ScopeSector).
+        var client = await _host.SignInAsync("SUPER1");
+        var r = await client.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics?sector=services");
+        Assert.Equal("Services", FakeSql.Arg(_host.LastCall(Proc).Args, "ScopeSector"));
+        Assert.Null(r!.BoundSector);
+        await client.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics");
+        Assert.Null(FakeSql.Arg(_host.LastCall(Proc).Args, "ScopeSector"));
+        Assert.Equal(2, Calls());
+
+        // A login limited to Manufacturing sees Manufacturing whatever it picks.
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.LoginScopes.Sql] = args => FakeSql.Arg(args, "UserId") == "MASTER1"
+            ? [new { SectorActivity = "Manufacturing", ScopeLevels = (string?)null, ScopeStates = (string?)null }]
+            : [];
+        var scoped = await _host.SignInAsync("MASTER1");
+        r = await scoped.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics?sector=Services");
+        Assert.Equal("Manufacturing", FakeSql.Arg(_host.LastCall(Proc).Args, "ScopeSector"));
+        Assert.Equal("Manufacturing", r!.BoundSector);
+    }
+
     [Theory]
     [InlineData("view=all", "Invalid filter.")]
+    [InlineData("sector=Agriculture", "Invalid filter.")]
     [InlineData("state=Atlantis", "Invalid filter.")]
     [InlineData("gender=x", "Invalid filter.")]
     [InlineData("gender=NA", "Invalid filter.")]
