@@ -31,7 +31,7 @@ public static class PortalSetup
             {
                 ServerCertificateCustomValidationCallback = sp.GetRequiredService<IOptions<UdyamOptions>>().Value.AllowInvalidCertificate
                     ? HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                    : null,
+                    : UdyamCertificateTrust.Validate,
             });
         if (config.GetValue<bool>("Udyam:UseSampleData"))
         {
