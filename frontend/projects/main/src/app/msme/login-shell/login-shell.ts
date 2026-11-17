@@ -43,15 +43,18 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
             <img class="ml-zed" [src]="brand.logo('login-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" />
           </div>
           <div class="ml-hero-body">
+            <div class="ml-blk">
             <p class="ml-kicker"><zed-text key="msme.login.hero.kicker" [inline]="true">For manufacturing and service MSMEs</zed-text></p>
             <p class="ml-title"><zed-text key="msme.login.hero.title" [inline]="true">MSME Sustainable (ZED) Certification</zed-text></p>
             <p class="ml-sub"><zed-text key="msme.login.hero.subtitle" [inline]="true">Raise your quality and sustainability, get certified and unlock incentives.</zed-text></p>
+            </div>
 
             <div class="ml-banner" data-apnaenge>
               <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
               <p class="ml-apna-sub"><zed-text key="msme.login.hero.taglineText" [inline]="true">Zero Defect, Zero Effect — better quality, less waste, more business.</zed-text></p>
             </div>
 
+            <div class="ml-blk">
             <p class="ml-label ml-label-rule"><zed-text key="msme.login.hero.benefitsHeading" [inline]="true">Benefits of ZED</zed-text></p>
             <ul class="ml-benefits">
               @for (b of benefits; track b.title; let i = $index) {
@@ -73,7 +76,9 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
                 </li>
               }
             </ul>
+            </div>
 
+            <div class="ml-blk">
             <p class="ml-label"><zed-text key="msme.login.hero.levelsHeading" [inline]="true">Certification levels</zed-text></p>
             <div class="ml-levels">
               @if (levels().steps.length) {
@@ -88,6 +93,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
                   <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }} (Export)</span></li>
                 </ul>
               }
+            </div>
             </div>
           </div>
         </aside>

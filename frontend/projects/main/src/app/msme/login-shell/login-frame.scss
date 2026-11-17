@@ -8,17 +8,20 @@ p { margin: 0; }
 .ml-logos { display: flex; align-items: center; gap: 18px; padding: 12px 48px; border-bottom: 2px solid var(--ml-line); }
 .ml-ministry { height: 92px; display: block; }
 .ml-zed { height: 88px; display: block; margin-left: auto; }
-.ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 32px 48px; }
+// 2026-11-17 (the user: "check the spacing"): the four blocks (title, banner, benefits, levels) spread evenly over the
+// column, the same space above, between and below them, instead of a tight stack with empty space around it.
+.ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; gap: 18px; padding: 20px 48px; }
+.ml-blk > :last-child { margin-bottom: 0; }
 .ml-kicker, .ml-label { font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ml-muted); }
 .ml-kicker { color: var(--zt-dark, #1f5c61); }
-.ml-title { font-size: clamp(26px, 2.5vw, 36px); font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; color: var(--ml-ink); margin: 10px 0 10px; }
+.ml-title { font-size: clamp(26px, 2.5vw, 36px); font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; color: var(--ml-ink); margin: 10px 0 8px; }
 .ml-sub { font-size: 17px; color: var(--ml-muted); line-height: 1.5; }
-.ml-banner { display: flex; align-items: center; background: var(--zt-dark, #1f5c61); margin: 26px 0 36px; min-height: 72px; }
+.ml-banner { display: flex; align-items: center; background: var(--zt-dark, #1f5c61); margin: 0; min-height: 72px; }
 // 2026-11-17 (the user): the old login banner's lettering, Segoe Print (Windows); Kalam where it is not installed.
 .ml-apna { flex: none; font-family: 'Segoe Print', 'Kalam', cursive; font-size: 26px; font-weight: 700; letter-spacing: 0.3px; line-height: 1.25; color: #fff; padding: 10px 24px; border-right: 2px solid rgb(255 255 255 / 30%); }
 .ml-apna-sub { font-size: 15px; color: #eef6f4; padding: 10px 24px; line-height: 1.4; }
 .ml-label-rule { padding-bottom: 10px; border-bottom: 2px solid var(--zt-dark, #1f5c61); }
-.ml-benefits { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: 1fr 1fr; }
+.ml-benefits { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; }
 .ml-benefits li { display: flex; gap: 12px; padding: 16px 16px 16px 0; min-width: 0; }
 .ml-benefits li:nth-child(odd) { border-right: 2px solid var(--ml-line); }
 .ml-benefits li:nth-child(even) { padding-left: 20px; }
@@ -28,7 +31,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .ml-ic svg { color: var(--zt-dark, #1f5c61); }
 .ml-benefits strong { display: block; font-size: 16px; font-weight: 800; color: var(--ml-ink); }
 .ml-benefits small { display: block; font-size: 13px; color: var(--ml-muted); line-height: 1.4; margin-top: 3px; }
-.ml-levels { display: flex; gap: 24px; margin-top: 12px; }
+.ml-levels { display: flex; gap: 24px; margin-top: 10px; }
 .ml-lv-box { list-style: none; margin: 0; padding: 0; display: flex; flex: 3; background: #fff; border: 2px solid var(--ml-line); }
 .ml-lv-x { flex: 1; }
 .ml-level { flex: 1; min-width: 0; padding: 14px 14px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; }
@@ -49,7 +52,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .ml-hero { border-right: 0; border-bottom: 2px solid var(--ml-line); }
   .ml-logos { padding: 10px 20px; }
   .ml-ministry, .ml-zed { height: 54px; }
-  .ml-hero-body { padding: 14px 20px 16px; }
+  .ml-hero-body { padding: 14px 20px 16px; gap: 0; justify-content: flex-start; }
   .ml-title { font-size: 24px; letter-spacing: -0.4px; margin: 6px 0 0; }
   .ml-sub, .ml-label, .ml-benefits, .ml-levels { display: none; }
   .ml-banner { margin: 12px 0 0; min-height: 0; }
@@ -66,15 +69,14 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .ml-logos { padding: 8px 48px; }
   .ml-ministry, .ml-zed { height: 60px; }
   .ml-side-top { min-height: 76px; }
-  .ml-hero-body { padding: 14px 48px; }
+  .ml-hero-body { padding: 12px 48px; gap: 12px; }
   .ml-kicker, .ml-label { font-size: 11px; }
   .ml-title { font-size: clamp(24px, 2.2vw, 32px); margin: 6px 0; }
   .ml-sub { font-size: 14.5px; }
-  .ml-banner { margin: 12px 0 16px; min-height: 52px; }
+  .ml-banner { min-height: 52px; }
   .ml-apna { font-size: 24px; padding: 6px 20px; }
   .ml-apna-sub { font-size: 13.5px; padding: 6px 20px; }
   .ml-label-rule { padding-bottom: 6px; }
-  .ml-benefits { margin-bottom: 14px; }
   .ml-benefits li { padding: 9px 12px 9px 0; }
   .ml-benefits li:nth-child(even) { padding-left: 16px; }
   .ml-ic { width: 32px; height: 32px; }
@@ -92,9 +94,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .ml-ministry, .ml-zed { height: 50px; }
   .ml-side-top { min-height: 66px; }
   .ml-sub { display: none; }
-  .ml-banner { margin: 10px 0 12px; }
   .ml-benefits li { padding-top: 6px; padding-bottom: 6px; }
   .ml-card { padding: 8px 56px; }
-  .ml-hero-body { padding: 10px 48px; }
-  .ml-benefits { margin-bottom: 10px; }
+  .ml-hero-body { padding: 8px 48px; gap: 8px; }
 }

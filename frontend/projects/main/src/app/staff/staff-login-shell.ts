@@ -31,9 +31,11 @@ import { loginLevels } from '../msme/login-shell/login-shell';
             <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" class="ml-zed" />
           </div>
           <div class="ml-hero-body">
+            <div class="ml-blk">
             <p class="ml-kicker">{{ kicker }}</p>
             <h2 class="ml-title">{{ title }}</h2>
             <p class="ml-sub">{{ lead }}</p>
+            </div>
 
             <div class="ml-banner" data-apnaenge>
               <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
@@ -41,6 +43,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
             </div>
 
             @if (msmeLinks) {
+              <div class="ml-blk">
               <p class="ml-label ml-label-rule">Are you an MSME?</p>
               <ul class="ml-benefits ml-quick">
                 <li>
@@ -52,8 +55,10 @@ import { loginLevels } from '../msme/login-shell/login-shell';
                   <a routerLink="/msme/register"><strong>Register your enterprise →</strong><small>With your Udyam registration number</small></a>
                 </li>
               </ul>
+              </div>
             }
 
+            <div class="ml-blk">
             <p class="ml-label">Certification levels</p>
             <div class="ml-levels">
               @if (levels().steps.length) {
@@ -68,6 +73,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
                   <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }} (Export)</span></li>
                 </ul>
               }
+            </div>
             </div>
           </div>
         </aside>
