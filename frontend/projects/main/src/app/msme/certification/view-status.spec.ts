@@ -41,15 +41,18 @@ describe('ViewStatusPage', () => {
     });
     await settle();
 
-    const text = el.textContent!.replace(/\s+/g, ' ');
-    expect(text).toContain('Status');
-    expect(el.querySelector('.label-highlight strong')!.textContent).toBe('Application Received');
-    expect(el.querySelector('.label-highlight li')!.textContent).toBe('Received on May 1, 2024');
-    expect(text).toContain('YOU: In-progress');
-    const visible = Array.from(el.querySelectorAll<HTMLElement>('.cert-steps > li')).filter((li) => !li.hidden);
-    expect(visible.map((li) => li.querySelector('h4')!.textContent!.trim()))
-      .toEqual(['Basic Information and Document Upload', 'Desktop Verification', 'Get Certified!', 'Avail Incentives']);
-    expect(el.querySelector('.cert-steps a')!.getAttribute('href')).toBe('/incentives?ct=Gold&id=9');
+    expect(el.querySelector('zed-page-head .ph-title')!.textContent).toBe('Status');
+    expect(Array.from(el.querySelectorAll('zed-step-tracker .st-label')).map((s) => s.textContent!.trim())).toEqual([
+      'Application received', 'Information & documents', 'Desktop verification', 'Remote/onsite assessment', 'Certified', 'Avail incentives',
+    ]);
+    // Newest first, each with who acted.
+    const items = Array.from(el.querySelectorAll<HTMLElement>('.tl-item'));
+    expect(items.map((i) => i.querySelector('.tl-title')!.textContent!.trim()))
+      .toEqual(['Certificate & report generated', 'Desktop verification', 'Basic information & documents', 'Application received']);
+    expect(items[2].querySelector('.tl-who')!.textContent).toBe('YOU');
+    expect(items[2].querySelector('.tl-note')!.textContent).toBe('In-progress');
+    expect(items[3].querySelector('.tl-date')!.textContent).toBe('1 May 2024');
+    expect(el.querySelector('.vs-incentives a')!.getAttribute('href')).toBe('/incentives?ct=Gold&id=9');
   });
 
   it('only accepts Bronze, Silver and Gold', async () => {

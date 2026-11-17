@@ -13,7 +13,7 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0096 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0097 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
   2026-11-15 release: migrations 0077-0094 (invoice setup, level flows, certified-by-record rule, App Forms validation,
   reports / surveillance certificate / partner API by record, PENDING phase fix, AP state handholding fee by level, NC rounds and days by level, sub-user states and agencies, quality observations, handholding ZED-X dashboard, sector disable, incentive ZED-X and activity, parameter disable, App Forms repeating entries).
@@ -157,6 +157,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0094 App Forms repeating entries'; Test = (Has-Col 'dbo.V4AppFormFields' 'MaxItems') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT'); Name = '0095 zero-amount payment record'; Test = (Has-Text 'dbo.SP_MSME_ZERO_PAYMENT_DETAILS' 'PaymentType = ''ZeroAmount''') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0096 submission checklists'; Test = "COL_LENGTH('dbo.AssessorComments', 'QoCategory') >= 300" }
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0097 notification bell'; Test = (Has-Col 'dbo.Msme' 'NotificationsSeenOn') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

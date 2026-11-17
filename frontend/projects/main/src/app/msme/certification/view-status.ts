@@ -2,39 +2,42 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { CertificationSteps } from './certification-steps';
-import { CertificationApi, CertificationData, canonicalCertification, certificationKind, incentiveUrl } from './certification.api';
+import { CertificationTimeline } from './certification-timeline';
+import { progressOptions, progressSteps, timelineItems } from './certification-progress';
+import { CertificationApi, CertificationData, canonicalCertification, certificationKind, certificationLevel, incentiveUrl } from './certification.api';
+import { PageHead } from '../shared/page-head';
+import { StepTracker } from '../shared/step-tracker';
+import { PublicLevels, levelName } from '../shared/levels';
 
 
 /**
  * Status timeline of one certification of the signed-in MSME. Port of Views/Msme/ViewStatus.cshtml.
  * The old page had no sign-in and took the ZED ID from the address; no page of the old portal links to
  * it. This port shows the signed-in MSME's own status only.
+ * 2026-11-17 (the user's applicant design, zed-msme-01): the certification page's look: page head, step tracker and the
+ * application timeline.
  */
 @Component({
   selector: 'zed-msme-view-status',
-  imports: [RouterLink, CertificationSteps],
+  imports: [RouterLink, PageHead, StepTracker, CertificationTimeline],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="msme-cer-details status-page">
-        <div class="page-head">
-          <div>
-            <h3 class="registration-title">Status</h3>
-          </div>
-          <div class="page-actions"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
+    <div class="container status-page">
+      <zed-page-head [crumbs]="crumbs()" title="Status">
+        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back to dashboard</a>
+      </zed-page-head>
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          {{ error() }}
+          <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
         </div>
-        @if (error()) {
-          <div class="alert alert-danger" role="alert">
-            {{ error() }}
-            <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
-          </div>
+      }
+      @if (data()) {
+        <zed-step-tracker class="vs-track" [steps]="progress().steps" [current]="progress().current" label="Certification progress" />
+        <zed-certification-timeline [items]="timeline()" />
+        @if (certified()) {
+          <p class="vs-incentives"><a [href]="incentiveUrl()">Click here to view your Incentives</a></p>
         }
-        @if (data(); as d) {
-          <div class="zed-card">
-            <zed-certification-steps [certification]="d.certification" [status]="d.status" [incentiveUrl]="incentiveUrl()" />
-          </div>
-        }
-      </div>
+      }
     </div>
 
     @if (loading()) {
@@ -49,7 +52,12 @@ import { CertificationApi, CertificationData, canonicalCertification, certificat
       </div>
     }
   `,
-  styles: `.status-page { max-width: 960px; margin: 24px auto 0; }`,
+  styles: `
+    .status-page { max-width: 960px; padding-top: 20px; padding-bottom: 32px; }
+    .vs-track { margin-bottom: 20px; }
+    .vs-incentives { margin: 16px 0 0; font-weight: 700; }
+    .vs-incentives a { color: var(--zt-dark, #1f5c61); }
+  `,
 })
 export class ViewStatusPage {
   /** Route parameter :certification (Bronze, Silver, Gold or a V4 level). */
@@ -72,6 +80,22 @@ export class ViewStatusPage {
   });
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
+
+  private readonly levels = inject(PublicLevels);
+  protected readonly crumbs = computed(() => [
+    { label: 'Home', link: '/msme/dashboard' },
+    { label: 'Certifications', link: '/msme/dashboard' },
+    ...(this.type() ? [{ label: levelName(certificationLevel(this.type()!)), link: ['/msme/certification', this.type()!] }] : []),
+    { label: 'Status' },
+  ]);
+  private readonly options = computed(() => {
+    const t = this.type() ?? 'Bronze';
+    const code = certificationLevel(t).toLowerCase();
+    return progressOptions(t, this.levels.levels()?.find((l) => l.code.toLowerCase() === code)?.assessmentFlow);
+  });
+  protected readonly progress = computed(() => progressSteps(this.data()?.status ?? {}, this.options()));
+  protected readonly timeline = computed(() => timelineItems(this.data()?.status ?? {}, this.options()));
+  protected readonly certified = computed(() => !!this.data()?.status?.['GetCertified']);
 
   constructor() {
     effect(() => {

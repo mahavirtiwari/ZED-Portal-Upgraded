@@ -1,0 +1,65 @@
+// 2026-11-17 (the user's design zed-msme-05): the claim form, the unit confirmation, the summary, the own applications and
+// the success card in the same card look (see financial-assistance.scss for the cards).
+
+// Two columns of fields (one on a phone); notes and documents across.
+.fa-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+.fa-wide { grid-column: 1 / -1; }
+.fa-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fa-field > label, .fa-label { margin: 0; font-size: 13px; font-weight: 700; color: #3b4b4c; }
+.fa-field .form-control, .fa-field .form-select { border-radius: 8px; border-color: #cfdcdd; }
+.fa-field .form-control:focus, .fa-field .form-select:focus { border-color: var(--zt-mid2, #2a8a8c);
+  box-shadow: 0 0 0 3px rgba(42, 138, 140, .15); }
+.fa-field .help-block { font-size: 12.5px; color: #c0392b; }
+.fa-radios { display: flex; flex-wrap: wrap; gap: 10px; }
+.fa-radio { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 8px 14px; border: 1px solid #cfdcdd;
+  border-radius: 8px; font-size: 14px; cursor: pointer; }
+.fa-radio:has(input:checked) { border-color: var(--zt-dark, #1f5c61); background: #eef5f4; }
+.fa-radio input { accent-color: var(--zt-dark, #1f5c61); }
+.fa-note { padding: 10px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 600; color: var(--zt-ink, #173f44);
+  background: #f1f8f6; border: 1px solid var(--zt-soft, #d4ebe6); }
+
+// The shared document field, in this page's look.
+:host ::ng-deep .scheme-document {
+  border: 1px dashed #c9d6d7; border-radius: 10px; box-shadow: none;
+  > .card-body { padding: 14px 16px; }
+  label:first-child { font-size: 13px; font-weight: 700; color: #3b4b4c; }
+  .bg-grey { border-radius: 8px; background: #f5f8f8 !important; }
+  .btn-primary { border: 0; border-radius: 8px; font-weight: 700; background: var(--zt-dark, #1f5c61); }
+  .text-grey { margin-top: 6px; font-size: 12px; }
+}
+
+// Step 3: the unit.
+.fa-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; margin: 0; }
+.fa-dl dt { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7c7d; }
+.fa-dl dd { margin: 2px 0 0; font-size: 14px; color: #1f2d2e; overflow-wrap: anywhere; }
+
+// Summary and the own applications.
+.fa-sec { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--zt-dark, #1f5c61); }
+.detail-table { margin-bottom: 20px; font-size: 14px; }
+.table > tbody > tr.fa-total > td { font-weight: 700; color: var(--zt-ink, #173f44); background: #f1f8f6; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.fa-view { padding: 3px 14px; border: 1px solid var(--zt-dark, #1f5c61); border-radius: 6px; font-size: 12.5px; font-weight: 700;
+  color: var(--zt-dark, #1f5c61); text-decoration: none; }
+.fa-view:hover { background: #eef5f4; }
+.fa-message { margin-bottom: 20px; padding: 12px 16px; border-radius: 10px; font-size: 14px; color: var(--zt-ink, #173f44);
+  background: #f1f8f6; border: 1px solid var(--zt-soft, #d4ebe6); }
+
+// Submitted.
+.fa-done { max-width: 640px; margin: 0 auto 20px; padding: 32px 24px; text-align: center; }
+.fa-done h2 { margin: 14px 0 20px; font-size: 21px; font-weight: 700; color: var(--zt-ink, #173f44); }
+
+// Rail.
+.fa-checks, .fa-dots { list-style: none; margin: 0; padding: 0; font-size: 14px; color: #1f2d2e; }
+.fa-checks li { position: relative; padding-left: 30px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.fa-checks li::before { content: '\2713'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: #2e9e57; }
+.fa-ok { margin: 4px 0 0; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #2e7d4f; background: #e3f3e8; }
+.fa-dots li { position: relative; padding-left: 18px; margin-bottom: 10px; }
+.fa-dots li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--zt-dark, #1f5c61); }
+.fa-next { margin: 0; font-size: 13.5px; color: #3b4b4c; line-height: 1.55; }
+
+@media (max-width: 767.98px) {
+  .fa-fields, .fa-dl { grid-template-columns: minmax(0, 1fr); }
+}

@@ -19,10 +19,14 @@ describe('DocumentsPage', () => {
 
   const rows = () =>
     [...el.querySelectorAll('.doc-row')].map((d) => ({
-      text: d.querySelector('p')!.textContent!.replace(/\s+/g, ' ').trim(),
+      text: d.querySelector('.doc-title')!.textContent!.replace(/\s+/g, ' ').trim(),
       href: d.querySelector('a')?.getAttribute('href') ?? null,
       target: d.querySelector('a')?.getAttribute('target') ?? null,
     }));
+
+  const chips = () => [...el.querySelectorAll('.dchip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim());
+  const locked = () => el.querySelector('.dlocked');
+  const titles = () => rows().map((r) => r.text);
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -80,7 +84,68 @@ describe('DocumentsPage', () => {
 
     expect(rows()).toEqual([{ text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' }]);
     expect(el.textContent).not.toContain('Guidelines');
-    expect(el.textContent).not.toContain('Invoices and Receipts');
+    expect(el.textContent).not.toContain('Invoices');
+    // 2026-11-17 (the user's design): only the All and Certificates chips; a locked card for Bronze.
+    expect(chips()).toEqual(['All 1', 'Certificates 1']);
+    expect(locked()!.textContent).toContain('Unlocks after Bronze certification');
+    expect(locked()!.querySelector('a')!.getAttribute('href')).toBe('/msme/certification/Bronze');
+  });
+
+  it('filters by chip and search, and offers the next level after the one held', async () => {
+    http.expectOne('/api/msme/documents').flush({
+      Guidelines: [
+        { DocumentName: 'ZED Certification Guidelines for MSMEs', DocumentPath: '/api/msme/files/Uploads/Documents/Guide.pdf', Description: 'The scheme guidelines' },
+        { DocumentName: 'How to complete Basic Information', DocumentPath: null, VideoUrl: 'https://videos.example/basic', Description: '4 min walkthrough' },
+      ],
+      Certificates: [{ Pledge: null, Bronze: '/api/msme/files/Certificates/DA/ZEDMSME000001/Bronze.pdf', Silver: null, Gold: null }],
+      Invoices: [],
+    } satisfies MyDocuments);
+    await settle();
+
+    expect(chips()).toEqual(['All 5', 'Certificates 2', 'Reports 1', 'Guidelines 2']);
+    expect(el.querySelector('.t-bronze .doc-title')!.textContent).toContain('Bronze Certificate');
+    expect(locked()!.textContent).toContain('Silver Certificate');
+    expect(locked()!.querySelector('a')!.getAttribute('href')).toBe('/msme/certification/Silver');
+    // The video row: VIDEO badge and Watch in a new tab.
+    const video = [...el.querySelectorAll('.doc-row')].find((r) => r.textContent!.includes('Basic Information'))!;
+    expect(video.querySelector('.dtag')!.textContent!.trim()).toBe('VIDEO');
+    expect(video.querySelector('a')!.textContent).toContain('Watch');
+
+    (el.querySelectorAll('.dchip')[2] as HTMLButtonElement).click();
+    await settle();
+    expect(titles()).toEqual(['Bronze Assessment Report']);
+    expect(locked()).toBeNull();
+
+    (el.querySelectorAll('.dchip')[3] as HTMLButtonElement).click();
+    await settle();
+    expect(titles()).toEqual(['ZED Certification Guidelines for MSMEs', 'How to complete Basic Information']);
+
+    (el.querySelectorAll('.dchip')[0] as HTMLButtonElement).click();
+    const search = el.querySelector('.dsearch input') as HTMLInputElement;
+    search.value = 'walkthrough';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    expect(titles()).toEqual(['How to complete Basic Information']);
+    expect(locked()).toBeNull();
+
+    search.value = 'nothing like this';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    expect(rows()).toEqual([]);
+    expect(el.querySelector('.dempty')!.textContent).toContain('No documents match');
+  });
+
+  it('offers no locked card once Gold and ZED-X are held', async () => {
+    http.expectOne('/api/msme/documents').flush({
+      Guidelines: [],
+      Certificates: [{ Pledge: null, Bronze: null, Silver: null, Gold: '/api/msme/files/Certificates/SA/ZEDMSME000001/Gold.pdf', ZEDX: '/api/msme/files/Certificates/SA/ZEDMSME000001/ZEDX.pdf' }],
+      Invoices: [],
+    } satisfies MyDocuments);
+    await settle();
+
+    expect(titles()).toEqual(['Pledge Certificate', 'Gold Certificate', 'Gold Assessment Report', 'ZED-X Certificate', 'ZED-X Assessment Report']);
+    expect(el.querySelector('.t-zedx')).not.toBeNull();
+    expect(locked()).toBeNull();
   });
 
   it('shows the API error', async () => {

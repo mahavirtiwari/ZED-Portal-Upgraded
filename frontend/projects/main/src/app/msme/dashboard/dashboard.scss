@@ -1,0 +1,105 @@
+// 2026-11-17 (the user's Home design): the MSME dashboard. The level cards, incentive cards and the foot have their own
+// styles (level-card.ts, incentive-tile.ts, dash-extras.ts: the 8 kB component style budget); the pop-ups' in
+// styles/_v4-blocks.scss (dash-pop, dp-*).
+
+.Dashboard-msme { margin-top: 20px; }
+
+// The unit card.
+.unit-card {
+  display: flex; align-items: center; gap: 24px; padding: 22px 24px; margin-bottom: 24px; background: #fff;
+  border: 1px solid #dfe7e8; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .06);
+}
+.uc-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: flex-start; gap: 20px; }
+.ent {
+  flex: 0 0 72px; height: 72px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1; background: #eef6f6; color: var(--zt-ink, #173f44);
+  b { font-size: 28px; }
+  small { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; margin-top: 4px; }
+}
+// The enterprise type's colours of the live page (Micro / Small / Medium).
+.ent-micro { background: #f6cb8b; color: #6b4d00; }
+.ent-small { background: #e6e96e; color: #575a00; }
+.ent-medium { background: #a9dbeb; color: #1d4f5e; }
+.uc-name { min-width: 0; }
+.uc-name h3 { margin: 0 0 10px; font-size: 21px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.uc-ids { display: flex; flex-wrap: wrap; gap: 8px; }
+.id-tag {
+  display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dfe7e8; border-radius: 6px; padding: 3px 10px 3px 4px;
+  font-size: 13px; font-weight: 500; color: #232527; overflow-wrap: anywhere;
+  i { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--zt-mid2, #2a8a8c); background: #eef6f6; border-radius: 4px; padding: 2px 6px; }
+}
+.pledge {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 12px 0 0; font-size: 13px; color: #3b4b4c;
+  a { display: inline-flex; align-items: center; gap: 5px; margin-left: 24px; font-weight: 700; color: var(--zt-dark, #1f5c61); text-decoration: none; }
+}
+.pl-ok { width: 18px; height: 18px; border-radius: 9px; display: grid; place-items: center; background: #2e9e5b; color: #fff; }
+.uc-facts {
+  flex: none; display: flex; margin: 0;
+  > div { padding: 0 20px; border-left: 1px solid #e3eaeb; min-width: 128px; }
+  dt { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7a7b; margin-bottom: 8px; }
+  dd { margin: 0; }
+  b, .uc-level { display: flex; align-items: center; gap: 6px; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
+  small, a { display: block; margin-top: 4px; font-size: 12px; color: #6b7a7b; }
+  a { font-weight: 700; color: var(--zt-dark, #1f5c61); }
+}
+.uc-level img { width: 24px; height: 24px; object-fit: contain; }
+
+// Section labels and the next steps.
+.dash-label { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5b5c; }
+.ns-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 28px; }
+.ns-card { display: flex; gap: 16px; padding: 20px; background: #fff; border: 1px solid #dfe7e8; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+.ns-card.is-hi { background: #edf7f2; border-color: #cfe7da; }
+.ns-card.is-nc { background: #fdf3f2; border-color: #f2cfca; }
+.ns-icon {
+  flex: none; width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: #fdf3e3; color: #b8741a;
+  img { width: 44px; height: 44px; object-fit: contain; }
+}
+.is-hi .ns-icon { background: #fff; color: var(--zt-dark, #1f5c61); border: 1px solid #cfe7da; }
+.is-nc .ns-icon { background: #f8d9d5; color: #c0392b; }
+.ns-icon:has(img) { background: none; }
+.ns-text { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.ns-text h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
+.ns-text p { margin: 0 0 14px; font-size: 13px; color: #4b5b5c; }
+.ns-text .btn {
+  margin-top: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; border-radius: 8px; padding: 5px 18px;
+  background: #fff; color: var(--zt-dark, #1f5c61); border: 1.5px solid var(--zt-dark, #1f5c61);
+}
+.ns-text .btn.ns-solid { background: var(--zt-dark, #1f5c61); color: #fff; }
+.is-nc .ns-text .btn.ns-solid { background: #c0392b; border-color: #c0392b; }
+
+// The bands: My Certifications (green) and My Incentives (teal).
+.band { margin-bottom: 28px; }
+.band-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 24px; border-radius: 12px 12px 0 0; color: #fff;
+  h2 { margin: 0; font-size: 19px; font-weight: 700; color: #fff; }
+  p { margin: 2px 0 0; font-size: 13px; }
+}
+.band-cert .band-head { background: linear-gradient(90deg, #7fd38b, #6cc77b); }
+.band-inc .band-head { background: linear-gradient(90deg, var(--zt-mid, #45a5ad), var(--zt-mid2, #2a8a8c)); }
+.band-link { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.band-body { padding: 24px; background: #fff; border: 1px solid #dfe7e8; border-top: 0; border-radius: 0 0 12px 12px; }
+.level-grid { display: grid; grid-template-columns: repeat(var(--levels, 3), minmax(0, 1fr)); gap: 20px; }
+.inc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+
+@media (max-width: 1199.98px) {
+  .unit-card { flex-wrap: wrap; }
+  .uc-facts { width: 100%; > div:first-child { border-left: 0; padding-left: 0; } }
+  .level-grid, .inc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 991.98px) { .ns-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 575.98px) {
+  .unit-card, .band-body { padding: 16px; }
+  .uc-main { flex-direction: column; gap: 12px; }
+  .uc-facts { flex-wrap: wrap; row-gap: 12px; > div { min-width: 0; flex: 1 1 40%; padding: 0 12px 0 0; border-left: 0; } }
+  .pledge a { margin-left: 0; }
+  .band-head { padding: 12px 16px; flex-wrap: wrap; }
+  .level-grid, .inc-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+// Apply steps and the pop-ups.
+.step-page { max-width: 960px; margin: 0 auto; }
+// The three parts of the disclaimer read as one list.
+.disclaimer-points > zed-text:not(:last-child) ::ng-deep ol { margin-bottom: 0; padding-bottom: 0; }
+.level-comment, .incentive-details { white-space: pre-line; }
+.apply-logo { max-height: 180px; max-width: 100%; object-fit: contain; }
+.loadingdiv { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

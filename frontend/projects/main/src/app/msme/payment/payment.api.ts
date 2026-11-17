@@ -37,6 +37,26 @@ export interface CheckoutResponse {
   accessCode?: string;
 }
 
+/** 2026-11-17: what the payment confirmation page shows (PaymentConfirmationController); null where not known. */
+export interface PaymentConfirmation {
+  certification: string;
+  amount: number | null;
+  orderId: string | null;
+  transactionId: string | null;
+  paidOn: string | null;
+  method: string | null;
+  receiptUrl: string | null;
+  invoiceUrl: string | null;
+  invoiceNo: string | null;
+  email: string | null;
+}
+
+/** Certification payments are under api/msme/payments, surveillance ones under api/msme/surveillance-payments. */
+export type PaymentKind = 'certification' | 'surveillance';
+
+const base = (kind: PaymentKind, certification: string) =>
+  `/api/msme/${kind === 'surveillance' ? 'surveillance-payments' : 'payments'}/${encodeURIComponent(certification)}`;
+
 /** Client for api/msme/payments (Zed.Main.Api MsmePaymentController). */
 @Injectable({ providedIn: 'root' })
 export class PaymentApi {
@@ -56,6 +76,20 @@ export class PaymentApi {
 
   checkout(certification: string, req: CheckoutRequest): Observable<CheckoutResponse> {
     return this.http.post<CheckoutResponse>(`/api/msme/payments/${encodeURIComponent(certification)}/checkout`, req);
+  }
+
+  confirmation(certification: string, kind: PaymentKind = 'certification'): Observable<PaymentConfirmation> {
+    return this.http.get<PaymentConfirmation>(`${base(kind, certification)}/confirmation`);
+  }
+
+  /** The tax invoice's link, or 404 while the ERP has not sent it. */
+  invoice(certification: string, kind: PaymentKind = 'certification'): Observable<{ url: string; invoiceNo: string }> {
+    return this.http.get<{ url: string; invoiceNo: string }>(`${base(kind, certification)}/invoice`);
+  }
+
+  /** The confirmation mail again, to the unit's registered e-mail (masked in the answer). */
+  emailCopy(certification: string, kind: PaymentKind = 'certification'): Observable<{ sentTo: string }> {
+    return this.http.post<{ sentTo: string }>(`${base(kind, certification)}/email-copy`, {});
   }
 }
 

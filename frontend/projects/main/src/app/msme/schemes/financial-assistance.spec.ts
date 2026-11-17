@@ -59,22 +59,45 @@ describe('FinancialAssistancePage', () => {
     expect(el.textContent).toContain('Rs.30000');
     expect(el.textContent).toContain('Under verification');
     expect(el.querySelector('a[href="/api/msme/schemes/fa/files/a.pdf"]')).not.toBeNull();
-    expect(el.textContent).not.toContain('DISCLAIMER');
+    expect(el.querySelector('[data-key="msme.schemes.disclaimer"]')).toBeNull();
+    expect(el.querySelector('zed-step-tracker')).toBeNull();
   });
 
-  it('walks through disclaimer, instructions and unit confirmation to the form', async () => {
+  it('walks through disclaimer (with consent), instructions and unit confirmation to the form', async () => {
     http.expectOne('/api/msme/schemes/fa').flush(open);
     await settle();
 
-    expect(el.textContent).toContain('DISCLAIMER');
+    const tracker = () => [...el.querySelectorAll('zed-step-tracker .st-label')].map((s) => s.textContent!.trim());
+    const current = () => el.querySelector('zed-step-tracker .st-now .st-label')?.textContent!.trim();
+    expect(tracker()).toEqual(['Disclaimer', 'Confirm unit', 'Claim details', 'Review & submit']);
+    expect(current()).toBe('Disclaimer');
+    expect(el.querySelector('.ph-sub')!.textContent).toContain('Step 1 of 4');
+    expect(el.querySelector('.ph-crumb')!.textContent).toContain('Incentives');
+    expect(el.querySelector('#faDisclaimerTitle')!.textContent).toBe('Disclaimer');
     expect(el.querySelector('[data-key="msme.schemes.disclaimer"]')).not.toBeNull();
-    buttons('ACCEPT & PROCEED')[0].click();
+    expect(el.querySelector('.fa-facts')!.textContent).toContain('50,000');
+    expect(el.querySelector('#faEligibility')!.textContent).toContain('Silver certified');
+    expect(el.querySelector('#faEligibility')!.textContent).toContain('No claim made yet for Silver');
+    expect(el.querySelector('#faEligibility')!.textContent).toContain('Unit: Unit 1');
+
+    // The explicit consent comes before "Accept & proceed".
+    const accept = el.querySelector('#faAccept') as HTMLButtonElement;
+    expect(accept.disabled).toBe(true);
+    expect(el.querySelector('#faConsent')!.closest('label')!.textContent).toContain('on behalf of Acme Castings');
+    click('#faConsent');
     await settle();
-    expect(el.textContent).toContain('Instructions');
-    expect(el.querySelector('[data-key="msme.schemes.instructions"]')).not.toBeNull();
-    buttons('ACCEPT & PROCEED')[0].click();
+    expect(accept.disabled).toBe(false);
+    accept.click();
     await settle();
 
+    expect(el.querySelector('#faInstructionsTitle')!.textContent).toBe('Instructions');
+    expect(el.querySelector('[data-key="msme.schemes.instructions"]')).not.toBeNull();
+    expect(current()).toBe('Disclaimer');
+    click('#faInstructionsAccept');
+    await settle();
+
+    expect(current()).toBe('Confirm unit');
+    expect(el.querySelector('.ph-sub')!.textContent).toContain('Step 2 of 4');
     expect(el.textContent).toContain('UDYAM-UP-29-0003915');
     expect((el.querySelector('#faConfirmProceed') as HTMLButtonElement).disabled).toBe(true);
     expect(el.querySelector('#faConfirm')!.closest('label')!.querySelector('[data-key="msme.fa.confirm.checkbox"]')).not.toBeNull();
@@ -82,10 +105,11 @@ describe('FinancialAssistancePage', () => {
     await settle();
     click('#faConfirmProceed');
     await settle();
+    expect(current()).toBe('Claim details');
     expect(el.querySelector('#faForm')).not.toBeNull();
     expect(el.querySelector('#faForm [data-key="msme.fa.eligibleAmountNote"]')).not.toBeNull();
-    expect(el.textContent).toContain('Certification Details');
-    expect(el.textContent).not.toContain('Certification Details (Silver)');
+    expect(el.textContent).toContain('Certification details');
+    expect(el.textContent).not.toContain('Certification details (Silver)');
   });
 
   it('checks the form in the browser, uploads documents and submits them by name', async () => {
@@ -127,6 +151,7 @@ describe('FinancialAssistancePage', () => {
     (el.querySelector('#faForm') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     expect(el.querySelector('#faSummary')!.textContent).toContain('50,000.00');
+    expect(el.querySelector('zed-step-tracker .st-now .st-label')!.textContent!.trim()).toBe('Review & submit');
 
     click('#faSubmit');
     const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/msme/schemes/fa');

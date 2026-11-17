@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
@@ -9,18 +9,29 @@ import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/a
 import { levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, PaymentApi, PaymentOptions, postToGateway } from './payment.api';
 
+/** The unit's billing details (from the dashboard's data). */
+export interface PaymentBilling {
+  name: string | null;
+  address: string | null;
+  zedId: string | null;
+  /** "<unit> · <ZED ID>" under the level in the summary. */
+  unit: string | null;
+}
+
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
 
 /**
  * Payment step of the dashboard (Views/Msme/Dashboard.cshtml DisplayStep 4 and the PAN mismatch
  * pop-up). The summary is computed from the fee rows for display only; the API decides the amount.
+ * 2026-11-17 (the user's "Fee & tax details" design): GSTIN and TDS as Yes / No toggles (the GSTIN and TAN fields unlock when
+ * needed), the billing details from the dashboard's data, and the fee summary card with Net payable and the pay button.
  */
 @Component({
   selector: 'zed-payment-step',
-  imports: [FormsModule, DecimalPipe, AlertDialog, ContentTextComponent],
+  imports: [FormsModule, DecimalPipe, RouterLink, AlertDialog, ContentTextComponent],
   templateUrl: './payment-step.html',
-  styleUrl: './payment-form.scss',
+  styleUrl: './payment-step.scss',
 })
 export class PaymentStep implements OnInit {
   private readonly api = inject(PaymentApi);
@@ -30,7 +41,12 @@ export class PaymentStep implements OnInit {
   /** The level's name and picture (ZEDX is ZED-X). */
   protected readonly name = computed(() => levelName(this.certification()));
   protected readonly logo = computed(() => levelLogo(this.certification()));
+  /** The unit as the dashboard has it (billing details card and the summary's head); hidden when not given. */
+  readonly billing = input<PaymentBilling | null>(null);
+  /** Cancel application: back to the dashboard. */
   readonly back = output<void>();
+  /** Back to disclaimer. */
+  readonly previous = output<void>();
 
   protected readonly options = signal<PaymentOptions | null>(null);
   protected readonly busy = signal(false);

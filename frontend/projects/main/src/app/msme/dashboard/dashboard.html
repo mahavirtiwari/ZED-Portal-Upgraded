@@ -10,332 +10,119 @@
     @if (data(); as d) {
       @switch (step()) {
         @case ('home') {
-          <!-- 2026-11-14 (approved design A): breadcrumb, the welcome title and the refresh as a secondary button. -->
-          <div class="page-head dash-head">
-            <div>
-              <nav class="dash-crumb" aria-label="Breadcrumb"><span>Home</span><span aria-hidden="true">›</span><span aria-current="page">Dashboard</span></nav>
-              <h3 class="registration-title dash-text-clr">Welcome{{ msme()['EnterpriseName'] ? ', ' + msme()['EnterpriseName'] : '' }}</h3>
-            </div>
-            <div class="page-actions">
-              @if (ubpReturnUrl) {
-                <a class="btn btn-primary btn-sm" [href]="ubpReturnUrl">Back to UBP</a>
-              }
-              <button type="button" class="btn btn-outline-secondary btn-sm refresh-btn" (click)="load()" [title]="'Refreshed on ' + (refreshedAt() | date: 'dd/MM/yyyy hh:mm a')">
-                <img src="/Images/svgicons/refresh.svg" alt="" />
-                <span>Refresh</span>
-              </button>
-            </div>
-          </div>
+          <!-- 2026-11-17 (the user's Home design): breadcrumb, "Welcome, <unit>", when it was refreshed, and Refresh. -->
+          <zed-page-head [crumbs]="[{ label: 'Home' }, { label: 'Dashboard' }]" [title]="'Welcome' + (msme()['EnterpriseName'] ? ', ' + msme()['EnterpriseName'] : '')"
+                         [subtitle]="refreshedText()">
+            @if (ubpReturnUrl) { <a class="btn btn-primary btn-sm" [href]="ubpReturnUrl">Back to UBP</a> }
+            <button type="button" class="btn btn-ph refresh-btn" (click)="load()" [title]="refreshedText()"><zed-dash-icon name="refresh" [size]="15" /><span>Refresh</span></button>
+          </zed-page-head>
 
-          <!-- The unit, in one band above the cards (V4; it was the side bar of the live page). -->
-          <section class="unit-band" aria-label="Your unit">
-            <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true"><b>{{ entType().charAt(0) || '?' }}</b><small>{{ entType().toUpperCase() }}</small></span>
-            <div class="unit-name">
-              <h4>{{ msme()['EnterpriseName'] }}</h4>
-              <div class="unit-ids">
-                @if (basic()['UdyogAadharNo']) { <span class="id-tag"><i>UDYAM</i>{{ basic()['UdyogAadharNo'] }}</span> }
-                <span class="id-tag"><i>ZED ID</i>{{ msme()['ZedId'] }}</span>
+          <!-- The unit: enterprise type, name, Udyam / ZED ID / plant, the pledge; on the right its current level. -->
+          <section class="unit-card" aria-label="Your unit">
+            <div class="uc-main">
+              <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true"><b>{{ entType().charAt(0) || '?' }}</b><small>{{ entType().toUpperCase() }}</small></span>
+              <div class="uc-name">
+                <h3>{{ msme()['EnterpriseName'] }}</h3>
+                <div class="uc-ids">
+                  @if (basic()['UdyogAadharNo']) { <span class="id-tag"><i>UDYAM</i>{{ basic()['UdyogAadharNo'] }}</span> }
+                  <span class="id-tag"><i>ZED ID</i>{{ msme()['ZedId'] }}</span>
+                  @if (msme()['PUnitName']) { <span class="id-tag"><i>PLANT</i>{{ msme()['PUnitName'] }}{{ msme()['PDistrictName'] ? ', ' + msme()['PDistrictName'] : '' }}</span> }
+                </div>
+                @if (msme()['PledgeOn']) {
+                  <p class="pledge">
+                    <span class="pl-ok"><zed-dash-icon name="check" [size]="11" [stroke]="3.5" /></span>
+                    <span>ZED Pledge taken on {{ msme()['PledgeOn'] }}</span>
+                    <a routerLink="/msme/pledge-certificate"><zed-dash-icon name="download" [size]="14" /> Download pledge</a>
+                  </p>
+                }
               </div>
             </div>
-            <div class="band-side">
-              @if (msme()['PledgeOn']) {
-                <div class="pledge-box">
-                  <span class="seal" aria-hidden="true">✓</span>
-                  <div><small>ZED Pledge taken on</small><b>{{ msme()['PledgeOn'] }}</b></div>
-                  <a class="btn btn-primary btn-sm" routerLink="/msme/pledge-certificate">DOWNLOAD PLEDGE</a>
+            @if (unitFacts(); as f) {
+              <dl class="uc-facts">
+                <div>
+                  <dt>Current level</dt>
+                  <dd><span class="uc-level"><img [src]="f.logo" alt="" />{{ f.name }}</span><small>Certified</small></dd>
                 </div>
+                @if (f.validity) { <div><dt>Valid for</dt><dd><b>{{ f.validity }}</b><small>from certification</small></dd></div> }
+                @if (f.surveillance; as s) {
+                  <div>
+                    <dt>{{ s.label }}</dt>
+                    <dd><b>{{ s.value }}</b>@if (s.link) { <a [routerLink]="s.link">{{ s.note }}</a> } @else { <small>{{ s.note }}</small> }</dd>
+                  </div>
+                }
+              </dl>
+            }
+          </section>
+
+          <!-- Your next steps: up to three, from the unit's state. -->
+          @if (nextSteps().length) {
+            <h2 class="dash-label">Your next steps</h2>
+            <div class="ns-grid">
+              @for (s of nextSteps(); track s.key) {
+                <article class="ns-card" [class.next-step]="s.progress" [class.is-nc]="s.tone === 'nc'" [class.is-hi]="s.tone === 'hi'">
+                  <span class="ns-icon">@if (s.logo) { <img [src]="s.logo" alt="" /> } @else { <zed-dash-icon [name]="s.icon" [size]="22" [stroke]="1.8" /> }</span>
+                  <div class="ns-text">
+                    <h3>{{ s.title }}</h3>
+                    <p>{{ s.text }}</p>
+                    @if (s.link) {
+                      <a class="btn" [class.ns-solid]="s.tone !== 'plain'" [routerLink]="s.link">{{ s.action }} <zed-dash-icon name="arrow" [size]="15" /></a>
+                    } @else if (s.apply) {
+                      <button type="button" class="btn" (click)="apply(s.apply)">{{ s.action }} <zed-dash-icon name="arrow" [size]="15" /></button>
+                    } @else {
+                      <button type="button" class="btn ns-solid" (click)="scrollToIncentives()">{{ s.action }} <zed-dash-icon name="arrow" [size]="15" /></button>
+                    }
+                  </div>
+                </article>
               }
-              <!-- 2026-11-15 (the user): the ZED MSME app hint and store badges removed from the band. -->
+            </div>
+          }
+
+          <!-- My Certifications: a card per enabled level, the recommended next level outlined. -->
+          <section class="band band-cert" id="certifications" aria-labelledby="myCertTitle">
+            <div class="band-head">
+              <div>
+                <h2 id="myCertTitle">My Certifications</h2>
+                <p>Apply for {{ levelsText() }} certification.</p>
+              </div>
+              <button type="button" class="band-link" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
+                <zed-dash-icon name="info" [size]="15" /><span>About certifications</span>
+              </button>
+            </div>
+            <div class="band-body">
+              <div class="level-grid" [style.--levels]="levels().length">
+                @for (c of levelCards(); track c.code) {
+                  <zed-dash-level-card [vm]="c" (info)="open({ kind: 'info', topic: c.code })" (details)="open({ kind: 'apply-info', level: c.code })" (apply)="apply(c.code)" />
+                }
+              </div>
             </div>
           </section>
 
-          <!-- Next step: the first paid level not completed yet (2026-11-14). -->
-          @if (nextStep(); as n) {
-            <section class="next-step" [class.is-nc]="n.kind === 'nc'" aria-label="Next step">
-              <span class="ns-icon" aria-hidden="true">{{ n.kind === 'nc' ? '!' : n.kind === 'entry' ? '→' : '⏳' }}</span>
-              <div class="ns-text">
-                <small>NEXT STEP · {{ levelName(n.level).toUpperCase() }}</small>
-                <b>{{ n.text }}</b>
-              </div>
-              <a class="btn btn-sm" [class.btn-primary]="n.kind !== 'nc'" [class.btn-danger]="n.kind === 'nc'" [routerLink]="n.link">{{ n.action }}</a>
-            </section>
-          }
-
-          <div class="dash-main">
-              <!-- My Certifications: a card per level, all in one row on wide screens. -->
-              <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
-                <div class="panel-heading dash-panel-head">
-                  <div class="panel-titles-sec">
-                    <h4>My Certifications</h4>
-                    <p>Apply for {{ levelsText() }} Certifications.</p>
-                  </div>
-                  <button type="button" class="btn btn-link p-0" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
-                    <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                  </button>
-                </div>
-                <div class="panel-body">
-                  <div class="level-grid" [style.--levels]="levels().length">
-                    @for (level of levels(); track level) {
-                      <article class="lv-card panel-{{ level.toLowerCase() }}" [class.panel-added]="addedLevel(level)" [class.plant-activity-disabled]="levelDisabled(level)">
-                        <div class="panel-heading lv-head">
-                          <h5>{{ levelName(level).toUpperCase() }} CERTIFICATION</h5>
-                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + levelName(level)" (click)="open({ kind: 'info', topic: level })">
-                            <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                          </button>
-                        </div>
-                        <div class="lv-body">
-                          <div class="inner2 lv-logo"><img [src]="levelLogo(level)" alt="" /></div>
-                          @if (facts(level); as rows) {
-                            @if (rows.length) {
-                              <dl class="lv-facts">
-                                @for (f of rows; track f.label) { <div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div> }
-                              </dl>
-                            }
-                          }
-                          <p class="lv-status" [class.is-done]="status(level) === completed(level)" [class.is-new]="status(level) === 0" [class.is-locked]="levelDisabled(level)">
-                            <span>{{ levelDisabled(level) ? 'Locked' : statusLabel(level) }}</span>
-                          </p>
-                          @if (levelDisabled(level)) {
-                            <p class="lv-lock-note">Available after your current certification is completed.</p>
-                          }
-                          <div class="stepper lv-steps" [style.--fill]="fill(level)" role="img" [attr.aria-label]="statusLabel(level)">
-                            <ol>
-                              @for (rule of steps(level); track $index) {
-                                <li [class]="stepClass(level, rule)"><span class="dot"></span></li>
-                              }
-                            </ol>
-                            <div class="lv-steps-labels" aria-hidden="true">
-                              @for (rule of steps(level); track $index) {
-                                <span [class.on]="stepClass(level, rule) !== ''">{{ rule.label }}</span>
-                              }
-                            </div>
-                          </div>
-                          <div class="lv-actions">
-                            @if (paid(level)) {
-                              <a class="btn btn-outline-primary btn-sm" [routerLink]="['/msme/certification', level]">VIEW DETAILS</a>
-                              <a class="btn btn-primary btn-sm" [routerLink]="['/msme/certification', level]" [attr.aria-label]="'Continue ' + levelName(level)">{{ status(level) === completed(level) ? 'CERTIFICATE' : 'CONTINUE' }}</a>
-                            } @else {
-                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</button>
-                              <button type="button" class="btn btn-primary btn-sm apply-btn" (click)="apply(level)">APPLY</button>
-                            }
-                          </div>
-
-                          @if (surveillanceVisible(level)) {
-                            <div class="lv-extra">
-                              @if (surveillancePaid(level)) {
-                                <a [routerLink]="['/msme/certification', level + 'Surveillance']">SURVEILLANCE</a>
-                                <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="levelName(level) + ' surveillance details'">→</a>
-                              } @else {
-                                <a [routerLink]="['/msme/surveillance-payment', level]">SURVEILLANCE</a>
-                                <a [routerLink]="['/msme/surveillance-payment', level]" class="btn btn-primary btn-sm">APPLY</a>
-                              }
-                            </div>
-                          }
-
-                          @if (reCertificationVisible(level)) {
-                            <div class="lv-extra">
-                              <span class="clickable" (click)="apply(level)">RE-CERTIFICATION</span>
-                              <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</span>
-                            </div>
-                          }
-                        </div>
-                      </article>
-                    }
-                  </div>
-                </div>
-              </div>
-
-              <!-- My Incentives -->
-              <div class="panel panel-primary panel-dashboard panel-incentive panel-bg-default">
-                <div class="panel-heading dash-panel-head">
-                  <div class="panel-titles-sec">
-                    <h4>My Incentives</h4>
-                    <p>Apply to avail incentives.</p>
-                  </div>
-                  <button type="button" class="btn btn-link p-0" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
-                    <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                  </button>
-                </div>
-                <div class="panel-body">
-                  <div>
-                    <div class="panel-incen-box">
-                      @if (card('JOINING_REWARD'); as b) {
-                        <div class="item">
-                          <div class="panel panel-default panel-incen-block">
-                            <div class="panel-heading">
-                              <img src="/Images/Dashboard/reward.png" [alt]="b.title" />
-                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'joining' })">
-                                {{ is(msme(), 'IsCouponUsed', 1) ? 'View' : 'Avail' }}
-                              </button>
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ b.title }}</h4>
-                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      @if (card('FINANCIAL_ASSISTANCE'); as b) {
-                        <div class="item">
-                          <!-- Not eligible (yet): the card faded with its AVAIL button, as the other cards. -->
-                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!is(basic(), 'IsEligibleForFinancial', 1)">
-                            <div class="panel-heading">
-                              <img src="/Images/Dashboard/financial.png" [alt]="b.title" />
-                              @if (is(cert(), 'FinancialAssistanceStatus', 0) && is(basic(), 'IsEligibleForFinancial', 1)) {
-                                <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'fa' })">View</button>
-                              } @else {
-                                <a routerLink="/msme/financial-assistance" class="btn btn-sm btn-primary">Avail</a>
-                              }
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ b.title }}</h4>
-                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      @if (card('HANDHOLDING'); as b) {
-                        <div class="item">
-                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!(anyCertified() && is(basic(), 'IsEligibleForBenefits', 1))">
-                            <div class="panel-heading">
-                              <img src="/Images/Dashboard/handholding.png" [alt]="b.title" />
-                              <a routerLink="/msme/handholding" class="btn btn-sm btn-primary">
-                                {{ num('ConsultancyStatus') > 0 ? 'View' : 'Avail' }}
-                              </a>
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ b.title }}</h4>
-                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      @if (card('TECHNOLOGY_UPGRADATION'); as b) {
-                        <div class="item">
-                          <div class="panel panel-default panel-incen-block"
-                               [class.plant-activity-disabled]="!((is(cert(), 'TechnologyUpgradationStatus', 0) || is(cert(), 'TechnologyUpgradationStatus', 1)) && is(basic(), 'IsEligibleForBenefits', 1))">
-                            <div class="panel-heading">
-                              <img src="/Images/Dashboard/technology.png" [alt]="b.title" />
-                              @if (is(basic(), 'IsEligibleForBenefits', 1)) {
-                                @if (num('TechnologyUpgradationStatus') > 0) {
-                                  <a routerLink="/msme/technology-upgradation" class="btn btn-sm btn-primary">Avail</a>
-                                }
-                                @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
-                                  <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'tu' })">View</button>
-                                }
-                              }
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ b.title }}</h4>
-                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      <!-- Incentives the Admin put on the dashboard (Admin → Incentives: "Where it appears" = Main dashboard). -->
-                      @for (c of incentiveCards(); track c.id) {
-                        <div class="item">
-                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!eligibleFor(c)">
-                            <div class="panel-heading">
-                              <img src="/Images/Dashboard/incentive.png" [alt]="c.title" />
-                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'incentive', card: c })">Avail</button>
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ c.title }}</h4>
-                              <p class="card-text-clamp">@if (c.highlight) { <span class="clr-spot">{{ c.highlight }}</span> } {{ c.details }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-
-                      @for (inc of incentives; track inc.type) {
-                        <div class="item">
-                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!anyCertified()">
-                            <div class="panel-heading">
-                              <img [src]="inc.image" [alt]="inc.title" [attr.style]="inc.imageStyle" />
-                              <a routerLink="/incentives" [queryParams]="incentiveQuery(inc.type)" class="btn btn-sm btn-primary">Avail</a>
-                            </div>
-                            <div class="panel-body">
-                              <h4>{{ inc.title }}</h4>
-                              <p>{{ inc.text }}</p>
-                            </div>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div><div class="line-icon"></div></div>
-
-              <!-- Certification steps -->
-              <div class="panel panel-steps panel-bg-default">
-                <div class="panel-body">
-                  <h4 class="step-title">ZED CERTIFICATION STEPS</h4>
-                  <ul class="cert-steps">
-                    @for (s of certificationSteps; track $index) {
-                      <li>
-                        <div class="step-num"><span>{{ $index + 1 }}</span></div>
-                        <div class="step-details"><zed-text [key]="s" /></div>
-                      </li>
-                    }
-                  </ul>
-                </div>
-              </div>
-          </div>
-        }
-
-        @case ('disclaimer') {
-          <div class="step-page">
-            <div class="page-head">
+          <!-- My Incentives: every card with its status (Availed / Open / In progress / Locked, and why). -->
+          <section class="band band-inc" id="incentives" aria-labelledby="myIncTitle">
+            <div class="band-head">
               <div>
-                <h3 class="registration-title">DISCLAIMER</h3>
+                <h2 id="myIncTitle">My Incentives</h2>
+                <p>Benefits unlocked by your certification level. Apply to avail them.</p>
               </div>
+              <button type="button" class="band-link" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
+                <zed-dash-icon name="info" [size]="15" /><span>How incentives work</span>
+              </button>
             </div>
-            <div class="zed-card disclaimer-sec">
-              <!-- Points 5–6 are not shown for a re-certification: the last point is then number 5. -->
-              <div class="disclaimer-points">
-                <zed-text key="msme.certification.payment.disclaimer" [required]="true" />
-                @if (!(num('ReCertification', basic()) > 0)) {
-                  <zed-text key="msme.certification.payment.disclaimer.firstCertification" />
-                  <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 7 }" />
-                } @else {
-                  <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 5 }" />
+            <div class="band-body">
+              <div class="inc-grid">
+                @for (t of incentiveTiles(); track t.key) {
+                  <zed-dash-incentive [tile]="t" (act)="openTile(t)" />
                 }
               </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                <button type="button" class="btn btn-primary" [class.btn-disabled]="!textsLoaded()" [disabled]="!textsLoaded()" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
-              </div>
             </div>
-          </div>
+          </section>
+
+          <zed-dash-extras />
         }
 
-        @case ('instructions') {
-          <div class="step-page">
-            <div class="page-head">
-              <div>
-                <h3 class="registration-title">Instructions</h3>
-              </div>
-            </div>
-            <div class="zed-card disclaimer-sec">
-              <zed-text key="msme.certification.payment.instructions" [required]="true" />
-              <div class="form-actions">
-                <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                <button type="button" class="btn btn-primary" [class.btn-disabled]="!textsLoaded()" [disabled]="!textsLoaded()" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
-              </div>
-            </div>
-          </div>
-        }
-
-        @case ('payment') {
-          <!-- Full width, as the live step 4 (the step itself is a centred col-sm-10). -->
-          <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
+        @default {
+          <!-- 2026-11-17 (the user's apply-and-pay designs): disclaimer, instructions and the fee step with the step tracker. -->
+          <zed-apply-flow [step]="applyStep()" [vm]="applyVm()" [billing]="billing()" [textsLoaded]="textsLoaded()" (go)="goStep($event)" />
         }
       }
     }

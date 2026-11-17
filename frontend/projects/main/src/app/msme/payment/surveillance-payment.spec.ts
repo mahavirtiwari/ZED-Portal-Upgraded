@@ -263,7 +263,8 @@ describe('Surveillance payment entry points', () => {
     await settle(fixture);
 
     const el = fixture.nativeElement as HTMLElement;
-    const links = [...el.querySelectorAll('a')].filter((a) => a.getAttribute('href') === '/msme/surveillance-payment/Bronze');
+    // The level card's SURVEILLANCE line (the unit card and Your next steps link the same page, 2026-11-17).
+    const links = [...el.querySelectorAll('.lv-extra a')].filter((a) => a.getAttribute('href') === '/msme/surveillance-payment/Bronze');
     expect(links.map((a) => a.textContent!.trim())).toEqual(['SURVEILLANCE', 'APPLY']);
     expect(el.querySelector('a[href*="SurveillancePay"]')).toBeNull();
     http.verify();
@@ -272,7 +273,7 @@ describe('Surveillance payment entry points', () => {
 
 describe('PaymentResultPage for surveillance', () => {
   async function render(query: Record<string, string>) {
-    await TestBed.configureTestingModule({ imports: [PaymentResultPage], providers: [provideRouter([])] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [PaymentResultPage], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
     const fixture = TestBed.createComponent(PaymentResultPage);
     for (const [k, v] of Object.entries(query)) fixture.componentRef.setInput(k, v);
     await settle(fixture);
@@ -292,7 +293,8 @@ describe('PaymentResultPage for surveillance', () => {
 
   it('shows the gateway message on failure', async () => {
     const text = await render({ status: 'failure', certification: 'Bronze', kind: 'surveillance', message: 'Card declined' });
-    expect(text).toContain('Payment Failed');
+    expect(text).toContain('Payment failed');
     expect(text).toContain('Card declined');
+    expect(text).toContain('Contact helpdesk');
   });
 });

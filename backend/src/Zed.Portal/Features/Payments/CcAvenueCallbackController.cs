@@ -99,6 +99,11 @@ public sealed class CcAvenueCallbackController(
     {
         CcAvenueResult.Invalid => Result("failure", null, kind, outcome.Message),
         CcAvenueResult.Paid or CcAvenueResult.AlreadyPaid => Result("success", outcome.Certification, kind, null),
+        // 2026-11-17 (the user's confirmation design): a payment the bank has not confirmed yet ("Awaited"), or a success not
+        // recorded yet (left to the reconciliation), is shown as pending, so the applicant does not pay twice.
+        CcAvenueResult.NotRecorded => Result("pending", outcome.Certification, kind, outcome.Message),
+        CcAvenueResult.Failed when string.Equals(outcome.Fields.GetValueOrDefault("order_status"), "Awaited", StringComparison.OrdinalIgnoreCase)
+            => Result("pending", outcome.Certification, kind, outcome.Message),
         _ => Result("failure", outcome.Certification, kind, outcome.Message),
     };
 

@@ -1,8 +1,11 @@
+import { NgTemplateOutlet } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { CertificationSteps } from './certification-steps';
+import { CertificationTimeline } from './certification-timeline';
+import { ncBlock, progressOptions, progressSteps, splitDate, statusText, timelineItems } from './certification-progress';
 import {
   CertificationApi,
   CertificationData,
@@ -13,8 +16,9 @@ import {
   incentiveUrl,
   milestoneNumber,
 } from './certification.api';
-import { MsmeUnitSummary } from '../shared/unit-summary';
-import { levelMode, levelName } from '../shared/levels';
+import { PageHead, Crumb } from '../shared/page-head';
+import { StepTracker } from '../shared/step-tracker';
+import { PublicLevels, allLevels, levelLogo, levelMode, levelName } from '../shared/levels';
 import { isWebEntryLevel } from '../entry/entry.api';
 import { reportRoute } from '../../report/report.api';
 
@@ -39,17 +43,34 @@ const CERT_PATH = /^Surveillance\/Certifica(tions|tes)$/;
 /** Certificates and reports of the signed-in MSME (authorised downloads). */
 const DOCUMENTS_API = '/api/msme/certification-documents';
 
+/** The rail's "Your next step" card. */
+interface NextStep {
+  title: string;
+  text: string;
+  label?: string;
+  route?: string;
+  href?: string;
+}
+
+/** The rail's "Go further" card: the next level, the unit's fee for it (null: not known) and Apply. */
+interface GoFurther {
+  level: string;
+  fee: number | null;
+}
+
 /**
  * Status and actions of one certification (Bronze, Silver, Gold, their surveillance, or a
  * handholding milestone). Port of Views/Msme/CertificationDetails.cshtml. Assessment pages,
- * certificates and Bronze/Silver/Gold reports open in this portal; surveillance and milestone reports
- * and incentives still open on the old portal.
+ * certificates and reports open in this portal.
+ * 2026-11-17 (the user's applicant design, zed-msme-01): page head; a header card with the unit, the status and both
+ * downloads; the step tracker; the application timeline (NCs in one block); a right rail with the next step, the next level
+ * and the page's actions. The app banner only while a step is pending in the app.
  */
 @Component({
   selector: 'zed-msme-certification-details',
-  imports: [RouterLink, CertificationSteps, MsmeUnitSummary],
+  imports: [NgTemplateOutlet, RouterLink, PageHead, StepTracker, CertificationTimeline],
   templateUrl: './certification-details.html',
-  styleUrls: ['../shared/msme-page.scss', './certification-details.scss'],
+  styleUrls: ['./certification-details.scss', './certification-rail.scss'],
 })
 export class CertificationDetailsPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
@@ -59,6 +80,8 @@ export class CertificationDetailsPage {
 
   private readonly api = inject(CertificationApi);
   private readonly config = inject(ClientConfigService);
+  private readonly http = inject(HttpClient);
+  private readonly levels = inject(PublicLevels);
   private request = 0;
 
   protected readonly data = signal<CertificationData | null>(null);
@@ -82,14 +105,32 @@ export class CertificationDetailsPage {
     }
   });
 
+  /** Breadcrumb: Home › Certifications (or Handholding) › the level. */
+  protected readonly crumbs = computed<Crumb[]>(() => {
+    const name = levelName(this.level());
+    if (this.kind() === 'milestone') {
+      return [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding', link: '/msme/handholding' }, { label: `${name} milestone ${this.milestone()}` }];
+    }
+    return [
+      { label: 'Home', link: '/msme/dashboard' },
+      { label: 'Certifications', link: '/msme/dashboard' },
+      { label: this.kind() === 'surveillance' ? `${name} surveillance` : name },
+    ];
+  });
+  protected readonly backLink = computed(() => (this.kind() === 'milestone' ? '/msme/handholding' : '/msme/dashboard'));
+
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});
   protected readonly cert = computed<Row>(() => this.data()?.certStatus ?? {});
   protected readonly status = computed<Row>(() => this.data()?.status ?? {});
 
-  /** The mobile app banner was shown for every type except Bronze surveillance and the milestones. */
+  /**
+   * The mobile app banner was shown for every type except Bronze surveillance and the milestones; 2026-11-17 (design note)
+   * only while a step is pending in the app (basic information and documents not submitted, not certified).
+   */
   protected readonly showAppBanner = computed(() =>
-    ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? '') || this.webEntry(),
+    (['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? '') || this.webEntry())
+      && !this.has('GetCertified') && !this.infoDone(),
   );
   /**
    * ZED-X and the levels the Admin added: what the app uploaded is shown read-only on the entry page (2026-11-14: no level
@@ -100,11 +141,91 @@ export class CertificationDetailsPage {
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
 
+  // ----- 2026-11-17 design: header card, tracker, timeline, rail -----
+
+  protected readonly logo = computed(() => levelLogo(this.level()));
+  protected readonly levelTitle = computed(() => levelName(this.level()));
+  /** "Micro", "Small" or "Medium" (UAM registrations: their own type column). */
+  protected readonly size = computed(() => String((this.msme()['RegistrationType'] === 'UAM' ? this.msme()['EnterpriseTypee'] : this.msme()['EnterpriseType']) ?? ''));
+  protected readonly plant = computed(() => {
+    const m = this.msme();
+    const place = [m['PDistrictName'], m['PStateName']].map((x) => String(x ?? '').trim()).filter((x) => x).join(', ');
+    return [String(m['PUnitName'] ?? '').trim(), place].filter((x) => x).join(', ');
+  });
+  /** The chip next to the unit's name. */
+  protected readonly statusChip = computed(() => {
+    if (this.kind() === 'milestone') return this.has('ApplicantAcceptedOn') ? 'COMPLETED' : this.anyStatus() ? 'IN PROGRESS' : '';
+    if (this.has('GetCertified')) return this.kind() === 'surveillance' ? 'SURVEILLANCE CERTIFIED' : `${this.levelTitle().toUpperCase()} CERTIFIED`;
+    return this.anyStatus() ? 'IN PROGRESS' : '';
+  });
+  /** The dates the descriptions carry (no validity or surveillance dates: the API does not give them). */
+  protected readonly facts = computed(() => {
+    const date = (field: string) => splitDate(statusText(this.status(), field)).date;
+    const list = [{ label: 'Applied on', value: date('ApplicationReceived') }];
+    list.push(this.kind() === 'milestone' ? { label: 'Completed on', value: date('CompletedOn') } : { label: 'Certified on', value: date('GetCertified') });
+    return list.filter((f) => f.value);
+  });
+  /** The header's two buttons: the certificate and the report, when they can be opened today. */
+  protected readonly certificateAction = computed(() => this.actions().find((a) => a.icon === 'certificate' && a.enabled) ?? null);
+  protected readonly reportAction = computed(() => this.actions().find((a) => a.icon === 'report' && a.enabled) ?? null);
+  protected readonly ncRoute = computed(() => this.actions().find((a) => a.icon === 'non-conformance')?.route ?? null);
+
+  /** The level's flow (Admin → Certification Levels): Remote only / Onsite only have no desktop step. */
+  private readonly flow = computed(() => {
+    const code = this.level().toLowerCase();
+    return this.levels.levels()?.find((l) => l.code.toLowerCase() === code)?.assessmentFlow ?? null;
+  });
+  private readonly options = computed(() => progressOptions(this.type() ?? 'Bronze', this.flow()));
+  protected readonly progress = computed(() => progressSteps(this.status(), this.options()));
+  protected readonly timeline = computed(() => timelineItems(this.status(), this.options()));
+
+  /** "Your next step", from the current state and the page's own links. */
+  protected readonly next = computed<NextStep | null>(() => {
+    if (!this.data()) return null;
+    const kind = this.kind();
+    const find = (icon: string, label?: RegExp) => this.actions().find((a) => a.icon === icon && a.enabled && (!label || label.test(a.label)));
+    if (kind !== 'milestone' && this.has('GetCertified')) {
+      return {
+        title: 'Avail your incentives',
+        text: `Your ${this.levelTitle()} certification opens incentives from the Ministry of MSME, States/UTs and financial institutions.`,
+        label: 'View my incentives',
+        href: this.incentiveUrl(),
+      };
+    }
+    const nc = ncBlock(this.status());
+    const last = nc?.rounds[nc.rounds.length - 1];
+    if (nc && last && !last.submitted && !nc.closed) {
+      return {
+        title: 'Respond to the non-conformances',
+        text: nc.finalClosure ? `ZED raised non-conformances. Final closure date: ${nc.finalClosure}.` : 'ZED raised non-conformances.',
+        label: 'View non-conformances',
+        route: this.ncRoute() ?? undefined,
+      };
+    }
+    const { steps, current } = this.progress();
+    const step = steps[current];
+    if (!step) return null;
+    if (kind !== 'milestone' && kind !== 'surveillance' && step.label === 'Information & documents') {
+      return { title: 'Basic information & documents', text: 'Enter your basic information and upload the documents in the ZED MSME mobile app.' };
+    }
+    const site = kind !== 'milestone' ? find('basicInfo', /onsite|surveillance assessment/i) : find('basicInfo', /milestone/i);
+    return {
+      title: step.label,
+      text: step.note && step.note !== 'Your next step' ? step.note : kind === 'milestone' && current === 2 ? 'Review the milestone and accept it.' : 'This step is with ZED; nothing is needed from you now.',
+      label: site ? site.label : undefined,
+      route: site?.route,
+    };
+  });
+
+  /** "Go further": the next enabled level once this one is certified and the next is not paid for yet. */
+  protected readonly further = signal<GoFurther | null>(null);
+  protected readonly furtherLogo = computed(() => (this.further() ? levelLogo(this.further()!.level) : ''));
+
   protected readonly actions = computed<Action[]>(() => {
     const type = this.type();
     if (!type || !this.data()) return [];
     const has = (field: string) => this.has(field);
-    const basicInfo = 'View Basic Information & Documents Upload';
+    const basicInfo = 'View basic information & documents';
     const ncRaised = has('Nc1Raised');
     const list: Action[] = [];
 
@@ -115,8 +236,8 @@ export class CertificationDetailsPage {
     const ncRoute = `/msme/assessment/non-conformances/${type === 'BronzeSurveillance' ? 'Bronze' : type}`;
     // ZED-X and the added levels: the NCs (answered in the app) shown on the entry page.
     const nc: Action = this.webEntry()
-      ? { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: `/msme/entry/${type}` }
-      : { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: ncRoute };
+      ? { icon: 'non-conformance', label: 'Non-conformance history', enabled: true, danger: true, route: `/msme/entry/${type}` }
+      : { icon: 'non-conformance', label: 'Non-conformance history', enabled: true, danger: true, route: ncRoute };
     const siteRoute = `/msme/site-assessment/${this.kind() === 'surveillance' ? baseLevel : type}`;
 
     switch (this.kind()) {
@@ -130,33 +251,33 @@ export class CertificationDetailsPage {
           : { icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
         // A level the Admin added with desktop assessment only has no site visit (2026-11-08).
         if (levelMode(this.level()) !== 'Desktop') {
-          list.push({ icon: 'basicInfo', label: 'View Onsite/Remote Assessment Information', enabled: has('ScheduledOn'), route: siteRoute });
+          list.push({ icon: 'basicInfo', label: 'View onsite/remote assessment information', enabled: has('ScheduledOn'), route: siteRoute });
         }
         if (ncRaised) list.push(nc);
         break;
       case 'surveillance':
         list.push({ icon: 'basicInfo', label: basicInfo, enabled: true, route: basicInfoRoute });
         if (type !== 'BronzeSurveillance') {
-          list.push({ icon: 'basicInfo', label: 'View Onsite/Remote Assessment Information', enabled: true, route: siteRoute });
-          list.push({ icon: 'basicInfo', label: 'View Surveillance Assessment Information', enabled: has('ScheduledOn'), route: siteRoute });
+          list.push({ icon: 'basicInfo', label: 'View onsite/remote assessment information', enabled: true, route: siteRoute });
+          list.push({ icon: 'basicInfo', label: 'View surveillance assessment information', enabled: has('ScheduledOn'), route: siteRoute });
         }
         if (ncRaised) list.push(nc);
         break;
       case 'milestone':
-        list.push({ icon: 'basicInfo', label: `View Milestone ${this.milestone()}`, enabled: has('CompletedOn'), route: siteRoute });
-        list.push({ icon: 'report', label: 'View Report', enabled: has('CompletedOn'), href: this.reportUrl(), newTab: true });
+        list.push({ icon: 'basicInfo', label: `View milestone ${this.milestone()}`, enabled: has('CompletedOn'), route: siteRoute });
+        list.push({ icon: 'report', label: 'View report', enabled: has('CompletedOn'), href: this.reportUrl(), newTab: true });
         break;
     }
 
     const certified = has('GetCertified');
     if (this.kind() === 'bronze' || this.kind() === 'silverGold') {
-      list.push({ icon: 'certificate', label: 'Download Certificate', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'View Report', enabled: certified, href: this.reportUrl(), newTab: true });
-      list.push({ icon: 'incentives', label: 'View My Incentives', enabled: certified, href: this.incentiveUrl() });
+      list.push({ icon: 'certificate', label: 'Download certificate (PDF)', enabled: certified, href: this.certificateUrl(), download: true });
+      list.push({ icon: 'report', label: 'View assessment report', enabled: certified, href: this.reportUrl(), newTab: true });
+      list.push({ icon: 'incentives', label: 'View my incentives', enabled: certified, href: this.incentiveUrl() });
     } else if (this.kind() === 'surveillance') {
-      list.push({ icon: 'certificate', label: 'Download Surveillance Certificate', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'View Surveillance Report', enabled: certified, href: this.reportUrl(), newTab: true });
-      list.push({ icon: 'incentives', label: 'View My Incentives', enabled: true, href: this.incentiveUrl() });
+      list.push({ icon: 'certificate', label: 'Download surveillance certificate (PDF)', enabled: certified, href: this.certificateUrl(), download: true });
+      list.push({ icon: 'report', label: 'View surveillance report', enabled: certified, href: this.reportUrl(), newTab: true });
+      list.push({ icon: 'incentives', label: 'View my incentives', enabled: true, href: this.incentiveUrl() });
     }
     // A download whose address cannot be built (no certificate path yet, settings not loaded) stays disabled.
     return list.map((a) => (a.href === '' ? { ...a, enabled: false } : a));
@@ -167,6 +288,43 @@ export class CertificationDetailsPage {
       const type = this.type();
       untracked(() => void this.load(type));
     });
+    effect(() => {
+      const certified = !!this.data() && (this.kind() === 'bronze' || this.kind() === 'silverGold') && this.has('GetCertified');
+      const level = this.level();
+      untracked(() => void this.loadFurther(certified ? level : null));
+    });
+  }
+
+  /** The next level after this one (Admin's order, enabled), its payment flag and the unit's fee (dashboard API). */
+  private async loadFurther(level: string | null): Promise<void> {
+    this.further.set(null);
+    if (!level) return;
+    const list = allLevels();
+    const i = list.findIndex((l) => l.code.toLowerCase() === level.toLowerCase());
+    const nextLevel = i < 0 ? undefined : list.slice(i + 1).find((l) => l.isEnabled);
+    if (!nextLevel) return;
+    try {
+      const [dash, fees] = await Promise.all([
+        firstValueFrom(this.http.get<{ msme?: Row }>('/api/msme/dashboard')),
+        firstValueFrom(this.http.get<Record<string, number | null>>('/api/msme/dashboard/level-fees')).catch(() => null),
+      ]);
+      const paid = dash?.msme?.[`Is${nextLevel.code}PaymentDone`];
+      // Only when the dashboard says the next level is not paid for (no flag: not shown).
+      if (paid === undefined || paid === null || Number(paid) === 1 || level !== this.level()) return;
+      const fee = fees?.[nextLevel.code];
+      this.further.set({ level: nextLevel.code, fee: typeof fee === 'number' ? fee : null });
+    } catch {
+      this.further.set(null);
+    }
+  }
+
+  /** A fee as ₹ 5,000 (Indian grouping). */
+  protected rupees(fee: number): string {
+    return `₹ ${Math.round(fee).toLocaleString('en-IN')}`;
+  }
+
+  protected levelLabel(code: string): string {
+    return levelName(code);
   }
 
   protected refresh(): void {
@@ -203,8 +361,17 @@ export class CertificationDetailsPage {
 
   /** Truthy like an AngularJS ng-show expression. */
   private has(field: string): boolean {
-    const v = this.status()[field];
-    return v !== null && v !== undefined && v !== '' && v !== 0 && v !== false;
+    return !!statusText(this.status(), field);
+  }
+
+  private anyStatus(): boolean {
+    return Object.keys(this.status()).some((f) => this.has(f));
+  }
+
+  /** Basic information and documents submitted (a date, or a description other than "In-progress"). */
+  private infoDone(): boolean {
+    const t = statusText(this.status(), 'BasicInfoStatus');
+    return !!t && (!!splitDate(t).date || !/progress|pending/i.test(t));
   }
 
   protected num(row: Row, field: string): number {

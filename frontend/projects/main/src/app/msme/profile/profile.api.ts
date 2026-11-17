@@ -21,6 +21,14 @@ export interface UdyamActivity {
   Five_DigitActivity: string;
 }
 
+/** What the profile's header reads of api/msme/dashboard (the pledge date, the enterprise size, the certification statuses). */
+export interface ProfileDashboard {
+  msme: ProfileRow;
+  certStatus: ProfileRow;
+  /** The V4 levels (ZED-X and the Admin's), after Bronze, Silver and Gold. */
+  levels?: { code: string; name: string }[];
+}
+
 /** Client for api/msme/profile (Zed.Main.Api MsmeProfileController). The ZED ID comes from the sign-in cookie. */
 @Injectable({ providedIn: 'root' })
 export class ProfileApi {
@@ -37,6 +45,16 @@ export class ProfileApi {
 
   updateActivity(fiveDigitActivity: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/activity`, { fiveDigitActivity });
+  }
+
+  /** The dashboard's data (existing API, read only) for the header's chips; the profile API has no certification. */
+  dashboard(): Observable<ProfileDashboard> {
+    return this.http.get<ProfileDashboard>('/api/msme/dashboard');
+  }
+
+  /** The number of recorded changes (api/msme/edit-history's total) for the section menu. */
+  editHistoryTotal(): Observable<{ total: number }> {
+    return this.http.get<{ total: number }>('/api/msme/edit-history', { params: { pageNo: 1, pageSize: 10 } });
   }
 
   /** Change of the registered e-mail, step 1: an OTP to the new address. */

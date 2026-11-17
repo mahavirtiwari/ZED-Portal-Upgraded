@@ -1,0 +1,74 @@
+// 2026-11-17 (the user's design zed-msme-05): tracker, headline facts, cards and the rail. The form's fields are in
+// financial-assistance-form.scss, with the rail's lists (two files for the 8 kB component style budget).
+:host { display: block; }
+.fa-page { padding-top: 20px; padding-bottom: 32px; }
+.fa-track { margin-bottom: 20px; }
+
+// Headline facts.
+.fa-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.fa-fact { display: flex; flex-direction: column; padding: 16px 20px; background: #fff; border: 1px solid #e3ecec;
+  border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); min-width: 0; }
+.fa-fact b { font-size: 22px; line-height: 1.2; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.fa-fact span { margin-top: 6px; font-size: 13.5px; color: #24393b; }
+.fa-fact small { font-size: 12px; color: #6b7c7d; }
+
+// Main column and rail.
+.fa-grid { display: grid; grid-template-columns: minmax(0, 1.95fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.fa-main, .fa-rail { min-width: 0; }
+
+.fa-card { background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05);
+  margin-bottom: 20px; }
+.fa-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #e8eff0; }
+.fa-card-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 16.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
+.fa-ico, .fa-num { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #eef5f4; }
+.fa-ico svg { width: 16px; height: 16px; fill: none; stroke: var(--zt-dark, #1f5c61); stroke-width: 2; stroke-linecap: round;
+  stroke-linejoin: round; }
+.fa-num { border-radius: 50%; font-size: 13px; font-weight: 700; color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
+.fa-card-body { padding: 18px 20px; }
+.fa-chip { padding: 3px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; color: var(--zt-dark, #1f5c61);
+  background: var(--zt-soft, #d4ebe6); }
+
+// The Admin's disclaimer / instructions: the clauses numbered in circles, the sub-clauses a, b, c.
+.fa-clauses { font-size: 14px; color: #24393b; }
+.fa-clauses ::ng-deep {
+  p { margin: 0 0 14px; }
+  p:first-child { font-style: italic; color: #5f6f70; }
+  ol { list-style: none; counter-reset: fa-c; margin: 0; padding: 0; }
+  ol > li { counter-increment: fa-c; position: relative; margin: 0 0 12px; padding-left: 40px; line-height: 1.55; }
+  ol > li::before { content: counter(fa-c); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--zt-ink, #173f44); background: #eef5f4; }
+  ol[type='a'] { counter-reset: fa-s; margin-top: 6px; }
+  ol[type='a'] > li { counter-increment: fa-s; margin-bottom: 4px; padding-left: 22px; }
+  ol[type='a'] > li::before { content: counter(fa-s, lower-alpha) '.'; width: auto; height: auto; display: block; font-size: 13px;
+    color: var(--zt-dark, #1f5c61); background: none; }
+}
+
+// Consent / buttons bar under a card (pinned to the bottom of the window on a laptop for the disclaimer).
+.fa-consent { padding: 16px 20px; border-top: 1px solid #e8eff0; background: #fff; border-radius: 0 0 12px 12px; }
+.fa-card.fa-consent { border-radius: 12px; }
+.fa-check { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px; font-size: 14px; color: #1f2d2e; cursor: pointer; }
+.fa-check input { flex: none; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--zt-dark, #1f5c61); }
+.fa-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.fa-main > .fa-actions { margin-bottom: 20px; }
+.fa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 22px; border: 0;
+  border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.fa-btn-main { color: #fff; background: var(--zt-dark, #1f5c61); }
+.fa-btn-main:hover:not(:disabled) { color: #fff; background: var(--zt-ink, #173f44); }
+.fa-btn-main:disabled { opacity: .5; cursor: not-allowed; }
+.fa-btn-soft { color: var(--zt-ink, #173f44); background: #e8eff0; }
+.fa-btn-soft:hover { color: var(--zt-ink, #173f44); background: #dbe7e8; }
+@media (min-width: 992px) {
+  .fa-sticky { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -6px 14px rgba(16, 61, 64, .07); }
+}
+
+@media (max-width: 991.98px) {
+  .fa-grid { grid-template-columns: minmax(0, 1fr); }
+  .fa-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+  .fa-facts { gap: 10px; }
+  .fa-fact { padding: 12px 14px; }
+  .fa-fact b { font-size: 18px; }
+  .fa-card-head, .fa-card-body, .fa-consent { padding-left: 16px; padding-right: 16px; }
+  .fa-actions .fa-btn { flex: 1 1 100%; }
+}

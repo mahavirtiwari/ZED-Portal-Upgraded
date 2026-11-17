@@ -1,0 +1,58 @@
+<section class="tl-card" aria-labelledby="tlTitle">
+  <div class="tl-head">
+    <span class="tl-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg>
+    </span>
+    <h3 id="tlTitle">Application timeline</h3>
+    <span class="tl-order">Newest first</span>
+  </div>
+
+  @if (items().length) {
+    <ol class="tl">
+      @for (it of items(); track $index) {
+        @if (it.kind === 'entry') {
+          <li class="tl-item" [class.tl-you]="it.entry.who === 'YOU'">
+            <span class="tl-date">{{ it.entry.date }}</span>
+            <span class="tl-dot" aria-hidden="true"></span>
+            <div class="tl-body">
+              <p class="tl-title">{{ it.entry.title }}</p>
+              <span class="tl-who">{{ it.entry.who }}</span>
+              @if (it.entry.note) { <span class="tl-note">{{ it.entry.note }}</span> }
+            </div>
+          </li>
+        } @else {
+          @let nc = it.nc;
+          <li class="tl-item tl-nc">
+            <span class="tl-date">{{ nc.date }}</span>
+            <span class="tl-dot" aria-hidden="true"></span>
+            <div class="tl-body nc-box">
+              <div class="nc-head">
+                <p class="tl-title">Non-conformances</p>
+                <span class="nc-chip">{{ nc.rounds.length }} RAISED · {{ nc.closed ? 'CLOSED' : nc.responded + ' RESPONDED' }}</span>
+                @if (nc.finalClosure) { <span class="nc-final">Final closure date {{ nc.finalClosure }}</span> }
+              </div>
+              @for (r of nc.rounds; track r.round) {
+                <div class="nc-row">
+                  <b>Round {{ r.round }}</b>
+                  <span class="nc-trail">
+                    Raised by ZED · {{ when(r.raised) }}
+                    @if (r.submitted) { → You responded · {{ when(r.submitted) }} } @else { → <em>Awaiting your response</em> }
+                    @if (r.closed) { → Closed }
+                  </span>
+                  @if (r.submitted) {
+                    <svg class="nc-ok" viewBox="0 0 24 24" role="img" aria-label="Responded"><circle cx="12" cy="12" r="10" /><path d="M7.5 12.5l3 3 6-6" /></svg>
+                  }
+                  @if (ncRoute(); as route) {
+                    <a class="nc-view" [routerLink]="route" [attr.aria-label]="'View non-conformance round ' + r.round">View ›</a>
+                  }
+                </div>
+              }
+            </div>
+          </li>
+        }
+      }
+    </ol>
+  } @else {
+    <p class="tl-empty">Nothing has happened on this application yet.</p>
+  }
+</section>

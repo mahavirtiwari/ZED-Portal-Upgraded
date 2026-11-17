@@ -385,6 +385,16 @@ public sealed class PaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task Payment_awaiting_the_bank_is_shown_as_pending()
+    {
+        PendingOrder();
+        var r = await Gateway().PostAsync("/api/payments/ccavenue/response",
+            Encrypted($"order_id=100001&order_status=Awaited&status_message=Awaiting bank&amount=2360.00&merchant_param1={Me}&merchant_param2=Bronze"));
+        Assert.Equal("/msme/payment/result?status=pending&certification=Bronze&message=Awaiting%20bank", r.Headers.Location!.OriginalString);
+        Assert.Empty(_host.Email.Sent);
+    }
+
+    [Fact]
     public async Task Reconciliation_uses_its_own_key_and_maps_shipped_to_success()
     {
         _host.Sql.Procs["SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"] = _ => FakeSql.Sets([new { ModuleName = "ZED" }]);

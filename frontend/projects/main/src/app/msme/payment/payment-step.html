@@ -1,108 +1,135 @@
 @if (options(); as o) {
-  <!-- 2026-11-14 (approved): two white cards, the options on the left and a receipt-style summary with the pay button on the right. -->
-  <form (ngSubmit)="proceed()" class="form-horizontal pay-v2" novalidate>
-    <div class="pay-cols">
-      <!-- Payment options -->
-      <section class="pay-card" aria-labelledby="payOptionsTitle">
-        <div class="pay-card-head">
-          <img [src]="logo()" [alt]="name() + ' Certification'" class="level-logo" />
-          <h3 class="registration-title" id="payOptionsTitle">Payment Options</h3>
-        </div>
+  <!-- 2026-11-17 (the user's "Fee & tax details" design): tax details as Yes / No questions and the billing details on the left;
+       the fee summary with Net payable and the pay button on the right, pinned beside the form on a laptop. -->
+  <form (ngSubmit)="proceed()" class="pst" novalidate>
+    <div class="pst-main">
+      <section class="pst-card" aria-labelledby="taxTitle">
+        <header class="pst-head"><span class="pst-ico" aria-hidden="true">≡</span><h3 id="taxTitle">Tax details</h3></header>
 
-        <div class="payment-option-block">
-          <p id="gstinLabel">GSTIN Applicable?</p>
-          <div role="radiogroup" aria-labelledby="gstinLabel">
-            <label><input type="radio" class="option-input yes radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /> <span>Yes</span></label>
-            <label><input type="radio" class="option-input yes radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /> <span>No</span></label>
+        <div class="pst-q">
+          <div class="pst-qtext">
+            <p class="pst-qlabel" id="gstinLabel">Is this unit registered under GST?</p>
+            <p class="pst-help">If yes, your GSTIN is printed on the tax invoice.</p>
           </div>
-          @if (submitted() && !gstinApplicable) { <span class="help-block text-danger">This is required.</span> }
-        </div>
-        @if (gstinApplicable === 'Yes') {
-          <div class="payment-option-block payment-input-block">
-            <input type="text" placeholder="Unit GSTIN" aria-label="Unit GSTIN" class="form-control border-less" name="gstin" maxlength="15" [(ngModel)]="gstin" />
-            @if (submitted() && gstinInvalid()) { <span class="help-block text-danger">Please enter valid GSTIN.</span> }
+          <div class="seg" role="radiogroup" aria-labelledby="gstinLabel">
+            <label [class.on]="gstinApplicable === 'Yes'"><input type="radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /><span>Yes</span></label>
+            <label [class.on]="gstinApplicable === 'No'"><input type="radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /><span>No</span></label>
           </div>
-        }
-
-        <div class="payment-option-block">
-          <p id="tdsLabel">TDS Deductible?</p>
-          <div role="radiogroup" aria-labelledby="tdsLabel">
-            <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /> <span>Yes</span></label>
-            <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /> <span>No</span></label>
-          </div>
-          @if (submitted() && !tdsDeductible) { <span class="help-block text-danger">This is required.</span> }
-        </div>
-        @if (tdsDeductible === 'Yes') {
-          <div class="payment-option-block">
-            <p id="tdsAmountLabel">TDS Amount</p>
-            <div role="radiogroup" aria-labelledby="tdsAmountLabel">
-              <label><input type="radio" class="option-input yes radio" name="tds" value="1.5" [(ngModel)]="tds" /> <span>2%</span></label>
-              <label><input type="radio" class="option-input yes radio" name="tds" value="7.5" [(ngModel)]="tds" /> <span>10%</span></label>
-            </div>
-            @if (submitted() && !tds) { <span class="help-block text-danger">This is required.</span> }
-          </div>
-          <div class="payment-option-block payment-input-block">
-            <input type="text" placeholder="TAN Number" aria-label="TAN Number" class="form-control border-less" name="tan" maxlength="10" [(ngModel)]="tan" />
-            @if (submitted() && tanInvalid()) { <span class="help-block text-danger">Please enter valid TAN Number.</span> }
-          </div>
-        }
-
-        @if (o.rewardAvailable) {
-          <div class="payment-reward-block">
+          @if (submitted() && !gstinApplicable) { <span class="pst-err">This is required.</span> }
+          <div class="pst-field">
             <div>
-              <h4>Joining Reward*</h4>
-              <strong>{{ 10000 | number: '1.2-2' }}</strong>
-              <zed-text key="msme.payment.joiningReward.note" />
+              <label for="gstin">Unit GSTIN</label>
+              <input id="gstin" type="text" class="form-control" name="gstin" maxlength="15" [(ngModel)]="gstin" [disabled]="gstinApplicable !== 'Yes'"
+                     [placeholder]="gstinApplicable === 'Yes' ? '15 characters, e.g. 07ABCDE1234F1Z5' : 'Required only when registered under GST'" />
+              @if (submitted() && gstinInvalid()) { <span class="pst-err">Please enter valid GSTIN.</span> }
+              <p class="pst-help">The PAN inside the GSTIN must match the PAN on your Udyam registration.</p>
             </div>
-            <div class="reward-action">
-              @if (useReward()) {
-                <span class="dash-text-success d-block mb-1"><strong>Reward Applied</strong></span>
-                <button type="button" class="btn btn-outline-danger" (click)="useReward.set(false)">REMOVE</button>
-              } @else {
-                <button type="button" class="btn btn-primary" (click)="useReward.set(true)">APPLY REWARD</button>
-              }
+            @if (gstinApplicable === 'Yes') {
+              <p class="pst-note" role="note"><span aria-hidden="true">i</span>If the PAN does not match, you will be asked to enter the correct PAN before you can pay.</p>
+            }
+          </div>
+        </div>
+
+        <div class="pst-q">
+          <div class="pst-qtext">
+            <p class="pst-qlabel" id="tdsLabel">Will you deduct TDS on this payment?</p>
+            <p class="pst-help">Choose Yes only if you must deduct tax at source. A TAN is then mandatory.</p>
+          </div>
+          <div class="seg" role="radiogroup" aria-labelledby="tdsLabel">
+            <label [class.on]="tdsDeductible === 'Yes'"><input type="radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /><span>Yes</span></label>
+            <label [class.on]="tdsDeductible === 'No'"><input type="radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /><span>No</span></label>
+          </div>
+          @if (submitted() && !tdsDeductible) { <span class="pst-err">This is required.</span> }
+          <div class="pst-field">
+            @if (tdsDeductible === 'Yes') {
+              <div>
+                <p class="pst-sub" id="tdsAmountLabel">TDS rate</p>
+                <div class="seg seg-sm" role="radiogroup" aria-labelledby="tdsAmountLabel">
+                  <label [class.on]="tds === '1.5'"><input type="radio" name="tds" value="1.5" [(ngModel)]="tds" /><span>2%</span></label>
+                  <label [class.on]="tds === '7.5'"><input type="radio" name="tds" value="7.5" [(ngModel)]="tds" /><span>10%</span></label>
+                </div>
+                @if (submitted() && !tds) { <span class="pst-err">This is required.</span> }
+              </div>
+            }
+            <div>
+              <label for="tan">TAN number</label>
+              <input id="tan" type="text" class="form-control" name="tan" maxlength="10" [(ngModel)]="tan" [disabled]="tdsDeductible !== 'Yes'"
+                     [placeholder]="tdsDeductible === 'Yes' ? '10 characters, e.g. ABCD12345E' : 'Required only when TDS is deducted'" />
+              @if (submitted() && tanInvalid()) { <span class="pst-err">Please enter valid TAN Number.</span> }
             </div>
           </div>
-        }
+        </div>
       </section>
 
-      <!-- Summary -->
-      <section class="pay-card payment-summary" aria-labelledby="paySummaryTitle">
-        <h3 class="registration-title" id="paySummaryTitle">Summary</h3>
-        <div class="panel panel-info summary-rows">
-          <div><span>Certification Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
-          @if (useReward()) {
-            <div><span>Joining Reward</span><strong>- ₹ {{ n('Coupon') | number: '1.2-2' }}</strong></div>
-            <div><span>Final Certification Fee<small class="d-block">(After adjusting joining reward)</small></span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
-          }
-          <div>
-            <span>Subsidy <strong>{{ text('SubsidyLabel') }}</strong><small class="d-block">(On Final certification fee)</small></span>
-            <strong>- ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong>
-          </div>
-          @if (text('StateSubsidyLabel')) {
-            <div>
-              <span>Andhra Pradesh Govt. Subsidy <strong>{{ text('StateSubsidyLabel') }}</strong><small class="d-block">(On Final certification fee)</small></span>
-              <strong>- ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong>
-            </div>
-          }
-          <div><span>Amount Payable</span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
-          <div><span>Amount</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
-          <div><span>GST(18%)</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
-          @if (tdsDeductible === 'Yes' && tds) {
-            <div>
-              <span>TDS Deducted ({{ tds === '1.5' ? '2%' : '10%' }})</span>
-              <strong>₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong>
-            </div>
-          }
-          <div class="net"><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
-        </div>
-        @if (nothingToPay()) {
-          <p class="alert alert-info py-2 small mb-2" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
-        }
-        <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">{{ nothingToPay() ? 'CONFIRM (NOTHING TO PAY)' : 'PROCEED TO PAY' }}</button>
-        <button type="button" class="btn btn-link back-link" (click)="back.emit()">BACK TO DASHBOARD</button>
-      </section>
+      @if (billing(); as b) {
+        <section class="pst-card" aria-labelledby="billTitle">
+          <header class="pst-head">
+            <span class="pst-ico" aria-hidden="true">▤</span><h3 id="billTitle">Billing details</h3>
+            <a class="pst-link" routerLink="/msme/profile">Edit in profile</a>
+          </header>
+          <dl class="pst-bill">
+            @if (b.name) { <div><dt>Billed to</dt><dd>{{ b.name }}</dd></div> }
+            @if (b.address) { <div><dt>Unit address</dt><dd>{{ b.address }}</dd></div> }
+            @if (b.zedId) { <div><dt>ZED ID</dt><dd>{{ b.zedId }}</dd></div> }
+          </dl>
+        </section>
+      }
+
+      <div class="pst-foot">
+        <button type="button" class="btn pst-btn-soft" (click)="previous.emit()">← Back to disclaimer</button>
+        <button type="button" class="btn btn-link pst-cancel" (click)="back.emit()">Cancel application</button>
+      </div>
     </div>
+
+    <!-- Fee summary -->
+    <aside class="pst-card pst-rail payment-summary" aria-labelledby="paySummaryTitle">
+      <div class="pst-level">
+        <img [src]="logo()" alt="" />
+        <div><h3>{{ name() }} Certification</h3>@if (billing()?.unit; as u) { <p>{{ u }}</p> }</div>
+      </div>
+      <h4 class="pst-cap" id="paySummaryTitle">Fee summary</h4>
+      <div class="summary-rows">
+        <div><span>Certification fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
+        @if (o.rewardAvailable || useReward()) {
+          <div class="payment-reward-block">
+            <span>Joining Reward<small><zed-text key="msme.payment.joiningReward.note" [inline]="true" /></small>
+              @if (useReward()) { <small class="ok">Reward applied</small> }</span>
+            <span class="reward-action">
+              @if (useReward()) {
+                <strong>− ₹ {{ n('Coupon') | number: '1.2-2' }}</strong>
+                <button type="button" class="btn btn-link btn-sm" (click)="useReward.set(false)">Remove</button>
+              } @else {
+                <button type="button" class="btn btn-sm pst-apply" (click)="useReward.set(true)">Apply reward</button>
+              }
+            </span>
+          </div>
+          @if (useReward()) {
+            <div><span>Fee after joining reward</span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
+          }
+        }
+        <div><span>Subsidy {{ text('SubsidyLabel') }}<small>On the final certification fee</small></span><strong>− ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong></div>
+        @if (text('StateSubsidyLabel')) {
+          <div><span>Andhra Pradesh Govt. subsidy {{ text('StateSubsidyLabel') }}<small>On the final certification fee</small></span><strong>− ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+        }
+        <div><span>Amount before GST</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
+        <div><span>GST &#64; 18%</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
+        <div><span>Amount payable<small>incl. GST</small></span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+        @if (tdsDeductible === 'Yes' && tds) {
+          <div><span>TDS Deducted ({{ tds === '1.5' ? '2%' : '10%' }})</span><strong>− ₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong></div>
+        } @else {
+          <div><span>TDS deducted<small>Not opted</small></span><strong>− ₹ 0.00</strong></div>
+        }
+      </div>
+      <div class="net"><span><b>Net payable</b><small>incl. GST</small></span><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
+      @if (nothingToPay()) {
+        <p class="pst-zero" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
+      }
+      <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">
+        @if (nothingToPay()) { CONFIRM (NOTHING TO PAY) } @else { <span aria-hidden="true">🔒</span> Save &amp; proceed to pay }
+      </button>
+      @if (!nothingToPay()) { <p class="pst-line ok">You will be taken to a secure payment gateway.</p> }
+      <p class="pst-line warn">The amount once remitted is non-refundable.</p>
+    </aside>
   </form>
 } @else if (!busy()) {
   <!-- As the legacy step 4 (always rendered): the way back stays when the fee summary could not load. -->

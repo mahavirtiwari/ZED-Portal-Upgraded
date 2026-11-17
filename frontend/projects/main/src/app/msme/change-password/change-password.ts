@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -5,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PageHead } from '../shared/page-head';
+import { ProfileShell } from '../profile/profile-shell';
 
 /** ChangePwdViewModel's RegularExpression on the new and the confirm password. */
 /** As PasswordPolicy on the server: 8 to 50 characters, upper and lower case, a digit and any other character. */
@@ -14,16 +16,25 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
 /** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml, in the live page's layout (eye toggles in the fields). */
 @Component({
   selector: 'zed-msme-change-password',
-  imports: [FormsModule, PageHead],
+  imports: [FormsModule, NgTemplateOutlet, PageHead, ProfileShell],
   template: `
     <!-- Redesigned 2026-11-07: one card with the title and the signed-in ID, the rules of the new password ticked as typed
          with a strength bar, and CHANGE PASSWORD. -->
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center" [class.mt-4]="!applicant">
-        <div class="col-md-8 col-lg-6">
-          @if (applicant) {
-            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Change password' }]" title="Change password" />
-          }
+    <!-- 2026-11-17 (the user's approved design "Enterprise profile"): for the applicant, "Account & security" of the profile,
+         with the profile's section menu on the left; the staff keep the centred card. -->
+    @if (applicant) {
+      <div class="container form-page cp-page" id="zed_user_form">
+        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Change password' }]" title="Change password" />
+        <zed-profile-shell active="security"><ng-container [ngTemplateOutlet]="card" /></zed-profile-shell>
+      </div>
+    } @else {
+      <div class="container form-page" id="zed_user_form">
+        <div class="row justify-content-center mt-4">
+          <div class="col-md-8 col-lg-6"><ng-container [ngTemplateOutlet]="card" /></div>
+        </div>
+      </div>
+    }
+    <ng-template #card>
           <div class="cp-card">
             <div class="cp-head">
               <span class="cp-icon" aria-hidden="true">
@@ -77,11 +88,11 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
               </div>
             </form>
           </div>
-        </div>
-      </div>
-    </div>
+    </ng-template>
   `,
   styles: `
+    .cp-page { padding-top: 16px; padding-bottom: 32px; }
+    .cp-page .cp-card { max-width: 680px; }
     .cp-card { background: #fff; border: 1px solid #e3e6e8; border-radius: 14px; padding: 24px 28px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05); }
     .cp-head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
     .cp-icon { width: 44px; height: 44px; border-radius: 50%; background: rgba(69, 165, 173, 0.14); color: #2d6f75; display: flex; align-items: center; justify-content: center; }

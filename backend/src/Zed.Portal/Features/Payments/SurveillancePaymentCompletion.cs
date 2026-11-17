@@ -46,32 +46,10 @@ public sealed class SurveillancePaymentCompletion(
         await LevelSurveillance.PaidAsync(db, zedId, certification, log, ct);
         try
         {
-            var sets = await db.QueryProcMultipleAsync("SP_SURVEILLANCE_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);
-            var msme = sets[0].FirstOrDefault();
-            var basic = sets[1].FirstOrDefault();
-            var payment = sets[4].FirstOrDefault();
-            var lines = payment is null ? [] : SurveillancePaymentSummary.Lines(payment);
-
-            if (payment is not null)
-            {
-                var milestone = msme?.Text("MileStoneNo") is { Length: > 0 } m ? m : "0";
-                var receiptName = basic?.Text("PaymentReceiptName") is { Length: > 0 } n ? n : $"{certification}_Milestone{milestone}_Payment_Receipt.pdf";
-                await SaveReceiptAsync(zedId, receiptName, lines, ct);
-            }
-
-            if (msme?.Text("PledgeEmailId") is { Length: > 0 } to)
-            {
-                var html = await templates.RenderAsync<SurveillancePaymentConfirmationEmail>(new Dictionary<string, object?>
-                {
-                    [nameof(SurveillancePaymentConfirmationEmail.ZedId)] = zedId,
-                    [nameof(SurveillancePaymentConfirmationEmail.Certification)] = certification,
-                    [nameof(SurveillancePaymentConfirmationEmail.Lines)] = lines,
-                    [nameof(SurveillancePaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-                    [nameof(SurveillancePaymentConfirmationEmail.AppUrl)] = (await PortalLinks.ForPagesAsync(settings, portal.Value, ct)).GetValueOrDefault("playStore"),
-                });
-                var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
-                await email.SendAsync(new EmailMessage(to, $"ZED Surveillance Assessment fee Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);
-            }
+            var details = await LoadAsync(zedId, certification, ct);
+            if (details.Payment is not null)
+                await SaveReceiptAsync(zedId, ReceiptFileName(certification, details.Msme, details.Basic), details.Lines, ct);
+            await SendMailAsync(zedId, certification, details, null, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -91,14 +69,75 @@ public sealed class SurveillancePaymentCompletion(
         }
     }
 
-    private async Task SaveReceiptAsync(string zedId, string fileName, List<SummaryLine> lines, CancellationToken ct)
+    /// <summary>The unit's details (result sets 0, 1 and 4 of SP_SURVEILLANCE_MSME_GET_DETAILS) and the payment's summary lines.</summary>
+    public sealed record Details(IDictionary<string, object?>? Msme, IDictionary<string, object?>? Basic, IDictionary<string, object?>? Payment, List<SummaryLine> Lines);
+
+    public async Task<Details> LoadAsync(string zedId, string certification, CancellationToken ct)
+    {
+        var sets = await db.QueryProcMultipleAsync("SP_SURVEILLANCE_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);
+        var payment = sets[4].FirstOrDefault();
+        return new(sets[0].FirstOrDefault(), sets[1].FirstOrDefault(), payment, payment is null ? [] : SurveillancePaymentSummary.Lines(payment));
+    }
+
+    /// <summary>The receipt's file name in PDFs/SA/{ZedId} ({Level}_Milestone{0|2}_Payment_Receipt.pdf, where GenerateReceipt wrote it).</summary>
+    public static string ReceiptFileName(string certification, IDictionary<string, object?>? msme, IDictionary<string, object?>? basic)
+    {
+        var milestone = msme?.Text("MileStoneNo") is { Length: > 0 } m ? m : "0";
+        return basic?.Text("PaymentReceiptName") is { Length: > 0 } n ? n : $"{certification}_Milestone{milestone}_Payment_Receipt.pdf";
+    }
+
+    /// <summary>
+    /// 2026-11-17 (the user): "E-mail a copy" of the surveillance payment confirmation: the same mail, to the unit's registered
+    /// e-mail only, with the receipt and the tax invoice when there is one. The address it went to, or null (no e-mail or no payment).
+    /// </summary>
+    public async Task<string?> ResendAsync(string zedId, string certification, string? invoiceFile, CancellationToken ct)
+    {
+        var details = await LoadAsync(zedId, certification, ct);
+        if (details.Payment is null) return null;
+        var receipt = ReceiptPath(zedId, ReceiptFileName(certification, details.Msme, details.Basic));
+        var attachments = new List<EmailAttachment>
+        {
+            new(Path.GetFileName(receipt), File.Exists(receipt) ? await File.ReadAllBytesAsync(receipt, ct) : RenderReceipt(zedId, details.Lines)),
+        };
+        if (invoiceFile is not null && File.Exists(invoiceFile))
+            attachments.Add(new EmailAttachment(Path.GetFileName(invoiceFile), await File.ReadAllBytesAsync(invoiceFile, ct)));
+        return await SendMailAsync(zedId, certification, details, attachments, ct);
+    }
+
+    private async Task<string?> SendMailAsync(string zedId, string certification, Details details, IReadOnlyList<EmailAttachment>? attachments, CancellationToken ct)
+    {
+        if (details.Msme?.Text("PledgeEmailId") is not { Length: > 0 } to) return null;
+        var html = await templates.RenderAsync<SurveillancePaymentConfirmationEmail>(new Dictionary<string, object?>
+        {
+            [nameof(SurveillancePaymentConfirmationEmail.ZedId)] = zedId,
+            [nameof(SurveillancePaymentConfirmationEmail.Certification)] = certification,
+            [nameof(SurveillancePaymentConfirmationEmail.Lines)] = details.Lines,
+            [nameof(SurveillancePaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+            [nameof(SurveillancePaymentConfirmationEmail.AppUrl)] = (await PortalLinks.ForPagesAsync(settings, portal.Value, ct)).GetValueOrDefault("playStore"),
+        });
+        // The copy the applicant asks for goes to the unit only; the office copy went with the first mail.
+        var cc = attachments is null && emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
+        await email.SendAsync(new EmailMessage(to, $"ZED Surveillance Assessment fee Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc, attachments), ct);
+        return to;
+    }
+
+    /// <summary>Full path of a receipt of this unit (PDFs/SA/{ZedId}/{file}).</summary>
+    public string ReceiptPath(string zedId, string fileName)
     {
         var root = Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
-        var dir = Path.Combine(root, "PDFs", "SA", string.Concat(zedId.Where(char.IsLetterOrDigit)));
-        Directory.CreateDirectory(dir);
-        var pdf = SummaryPdf.Render("Surveillance Payment Summary", [$"ZED ID: {zedId}", $"Date: {DateTime.Now:MMMM d, yyyy}"], lines,
+        return Path.Combine(root, "PDFs", "SA", string.Concat(zedId.Where(char.IsLetterOrDigit)),
+            string.Concat(fileName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-')));
+    }
+
+    private static byte[] RenderReceipt(string zedId, List<SummaryLine> lines) =>
+        SummaryPdf.Render("Surveillance Payment Summary", [$"ZED ID: {zedId}", $"Date: {DateTime.Now:MMMM d, yyyy}"], lines,
             Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "zed-logo.png"));
-        await File.WriteAllBytesAsync(Path.Combine(dir, string.Concat(fileName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-'))), pdf, ct);
+
+    private async Task SaveReceiptAsync(string zedId, string fileName, List<SummaryLine> lines, CancellationToken ct)
+    {
+        var path = ReceiptPath(zedId, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, RenderReceipt(zedId, lines), ct);
     }
 }
 

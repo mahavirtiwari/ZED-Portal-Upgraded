@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagerComponent, ServerPager } from '../../staff/pager';
 import { PageHead } from '../shared/page-head';
+import { ProfileShell } from '../profile/profile-shell';
 
 export interface EditItem {
   id: number;
@@ -191,21 +192,25 @@ export class EditHistoryTable {
   }
 }
 
-/** MSME → Edit History: the signed-in applicant's own changes. */
+/**
+ * MSME → Edit History: the signed-in applicant's own changes. 2026-11-17 (the user's approved design "Enterprise
+ * profile"): a section of the profile, with the profile's section menu on the left.
+ */
 @Component({
   selector: 'zed-msme-edit-history',
-  imports: [EditHistoryTable, PageHead],
+  imports: [EditHistoryTable, PageHead, ProfileShell],
   template: `
-    <!-- 2026-11-14 (approved): breadcrumb header; the filters and the changes in one card. -->
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center">
-        <div class="col-lg-10">
-          <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Edit history' }]" title="Edit history" />
-          <div class="eh-card"><zed-edit-history-table url="/api/msme/edit-history" /></div>
-        </div>
-      </div>
+    <div class="container eh-page">
+      <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Edit history' }]" title="Edit history" />
+      <zed-profile-shell active="history">
+        <div class="eh-card"><zed-edit-history-table url="/api/msme/edit-history" /></div>
+      </zed-profile-shell>
     </div>
   `,
-  styles: `.eh-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 20px; }`,
+  styles: `
+    .eh-page { padding-top: 16px; padding-bottom: 32px; }
+    .eh-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; padding: 18px 22px; box-shadow: 0 2px 8px rgba(23, 63, 68, .05); }
+    @media (max-width: 767.98px) { .eh-card { padding: 14px 16px; } }
+  `,
 })
 export class EditHistoryPage {}

@@ -1,97 +1,90 @@
-// The page is the live View Profile markup (site.css styles it); only what the old markup had no class for is here.
+// 2026-11-17 (the user's approved design "Enterprise profile"). The menu and the two columns: profile-shell.ts.
+.pp { padding-top: 16px; padding-bottom: 32px; }
 
-label.panel-item {
-  display: block;
-  cursor: pointer;
-}
+.pc { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; box-shadow: 0 2px 8px rgba(23, 63, 68, .05); scroll-margin-top: 16px; }
+.pc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 22px; border-bottom: 1px solid #e6eeee; }
+.pc-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
+.pc-ic { flex: none; width: 32px; height: 32px; border-radius: 8px; background: #eef4f4; display: grid; place-items: center; }
+svg:not([width]) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pc-ic svg { color: var(--zt-mid2, #2a8a8c); }
+.ro { display: inline-flex; align-items: center; gap: 5px; background: #eef4f4; color: var(--zt-ink, #173f44); border-radius: 999px; padding: 3px 12px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.ro svg { width: 13px; height: 13px; }
+.end { margin-left: auto; display: inline-flex; gap: 18px; }
+.lnk { border: 0; background: none; padding: 0; color: var(--zt-dark, #1f5c61); font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+.lnk:hover { text-decoration: underline; }
+.lnk:disabled { opacity: .6; }
+.lnk svg { width: 15px; height: 15px; }
+.muted { color: #6b7b7c; }
+.pad { padding: 18px 22px; margin: 0; }
 
-.unit-isselected .option-input {
-  vertical-align: sub;
-}
+// The header card: size letter, name, chips and Download pledge.
+.hero { display: flex; align-items: center; gap: 18px; padding: 20px 22px; }
+.ent { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 24px; background: #eef6f6; color: #23474a; }
+.ent-micro { background: #f6cb8b; color: #6b4d00; }
+.ent-small { background: #e6e96e; color: #575a00; }
+.ent-medium { background: #a9dbeb; color: #1d4f5e; }
+.hero-text { flex: 1 1 auto; min-width: 0; }
+.hero-text h3 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border-radius: 999px; padding: 3px 14px; font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; background: #e6f1f0; color: var(--zt-ink, #173f44); }
+.chip-size { background: #fde9c6; color: #7a4f00; }
+.chip-cert { background: #e3f4e8; color: #1e7a3c; }
+.chip-id { text-transform: none; background: #f1f4f4; color: #4f6061; }
+.btn-ol { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--zt-dark, #1f5c61); color: var(--zt-dark, #1f5c61); background: #fff;
+  border-radius: 8px; padding: 9px 18px; font-weight: 700; }
+.btn-ol:hover { background: var(--zt-soft, #d4ebe6); color: var(--zt-dark, #1f5c61); }
+
+// Label above value, two columns.
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 32px; margin: 0; padding: 20px 22px 22px; }
+.fields dt { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7b7c; margin-bottom: 4px; }
+.fields dt small { font-size: inherit; font-weight: inherit; }
+.fields dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 15px; color: #1d2b2c; overflow-wrap: anywhere; }
+.addr { flex-wrap: nowrap !important; }
+.addr > span { min-width: 0; }
+.clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ok { display: inline-flex; align-items: center; gap: 5px; color: #1e8a3c; font-weight: 700; font-size: 14px; }
+.ok svg { width: 17px; height: 17px; fill: #1e9e46; stroke: #fff; stroke-width: 2.2; }
+.ok svg circle { stroke: none; }
+
+.email-change { margin: 0 22px 20px; background: #f5fafa; border: 1px dashed var(--zt-mid2, #2a8a8c); border-radius: 10px; padding: 12px 14px; }
+.email-change h4 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.email-change .otp { letter-spacing: 4px; width: 160px; }
+
+// Units as cards beside the unit's activity (NIC).
+.units { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 18px; padding: 20px 22px 22px; align-items: start; }
+.unit { border: 2px solid var(--zt-dark, #1f5c61); border-radius: 12px; background: #f4faf9; padding: 16px 18px; }
+.unit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.unit-top b { font-size: 16px; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.tag { flex: none; background: #e3eeed; color: var(--zt-ink, #173f44); border-radius: 999px; padding: 2px 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.unit p { margin: 6px 0 0; font-size: 13.5px; color: #3c4b4c; overflow-wrap: anywhere; }
+.unit-cert { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #1d2b2c; }
+.unit-cert img { width: 30px; height: 30px; object-fit: contain; }
+.unit-none { margin: 0; }
+.nic { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 18px; scroll-margin-top: 16px; min-width: 0; }
+.nic-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.nic-head h4 { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7b7c; }
+.tree { list-style: none; margin: 0; padding: 0; }
+.tree li { position: relative; display: flex; gap: 10px; padding: 4px 0 4px 18px; font-size: 14px; color: #2d3c3d; }
+.tree li::before { content: ''; position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 2px; background: var(--zt-mid2, #2a8a8c); }
+.tree .lv1 { margin-left: 16px; }
+.tree .lv2 { margin-left: 32px; }
+.tree .lv3 { margin-left: 48px; }
+.tree b { flex: none; color: var(--zt-ink, #173f44); }
+.tree .major { font-weight: 700; color: var(--zt-ink, #173f44); }
+.activity-option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+.activity-option.panel-selected { border: 2px solid var(--zt-mid2, #2a8a8c); background: rgba(42, 138, 140, .08); }
 
 // The legacy .loadingdiv is display:none until jQuery showed it; here it only exists while loading.
-.loadingdiv {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
+.loadingdiv { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 
-// 2026-11-07 redesign: cards for enterprise, contact, unit and activity.
-.profile-v2 {
-  .pcard { background: #fff; border: 1px solid #e3e6e8; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
-  .pcard-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
-  .pcard-head h3 { font-size: 1.05rem; font-weight: 700; color: #2d6f75; margin: 0; display: flex; align-items: center; gap: 8px; }
-  .pcard-head h3 img { width: 22px; height: 22px; }
-  .id-chip { background: rgba(69, 165, 173, 0.13); color: #2d6f75; border-radius: 14px; padding: 2px 12px; font-weight: 600; letter-spacing: 0.5px; }
-  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; margin: 0; }
-  .pgrid dt { color: #7a7d80; font-weight: 500; font-size: 0.85rem; }
-  .pgrid dt small { font-weight: 400; }
-  .pgrid dd { margin: 0; font-weight: 600; color: #232527; word-break: break-word; }
-  .more { margin-top: 10px; font-weight: 600; }
-  .unit-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
-  .email-change { margin-top: 14px; background: #f5fafa; border: 1px dashed #45a5ad; border-radius: 10px; padding: 12px 14px; }
-  .email-change h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
-  .email-change .otp { letter-spacing: 4px; width: 160px; }
-  .activity-option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
-  .activity-option.panel-selected { border: 2px solid #45a5ad; background: rgba(69, 165, 173, 0.08); }
-
-  // 2026-11-14 (approved design): header, summary card, two-column sections.
-  .page-head { align-items: center; }
-  .crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
-  .crumb a { color: #7a8a8b; text-decoration: none; }
-  .crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
-  .registration-title { font-size: 22px; }
-  .summary { display: flex; align-items: center; gap: 14px; background: linear-gradient(90deg, #eef8f6, #fff 70%); }
-  .ent { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 20px;
-    background: #eef6f6; color: #23474a; }
-  .ent-micro { background: #F6CB8B; color: #6b4d00; }
-  .ent-small { background: #E6E96E; color: #575a00; }
-  .ent-medium { background: #A9DBEB; color: #1d4f5e; }
-  .summary-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-  .summary-text b { font-size: 17px; color: #23474a; overflow-wrap: anywhere; }
-  .summary-text span { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
-  .pledge-chip { flex: none; background: #e3f4e8; color: #1e7a3c; border-radius: 14px; padding: 3px 12px; font-size: 12.5px; font-weight: 700; }
-  .pcols { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
-  .pcols > .pcard { margin: 0; }
-  // Four equal columns in every section, so that the fields of all the sections line up under each other.
-  .pcols .pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px; }
-  .pcols .pgrid-empty { grid-column: 1 / -1; }
-  .pcols .span-3 { grid-column: span 3; }
-  .pcard-head .more { margin: 0; font-size: 13px; }
-  @media (max-width: 991.98px) { .pcols .pgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pcols .span-3 { grid-column: 1 / -1; } }
-  @media (max-width: 575.98px) { .pcols .pgrid { grid-template-columns: minmax(0, 1fr); } }
-  .summary-text b + span { margin-top: 2px; }
-
-  // 2026-11-15 (the user, design approved): as the staff MSME Profile, in the applicant pages' colours: each section a
-  // heading bar (the applicant heading gradient, as "My Incentives") over ruled label / value rows, the labels on a pale
-  // teal column, four columns that line up from section to section.
-  .summary { background: none; border: 0; border-radius: 0; padding: 0; margin: 0 0 12px; box-shadow: none; }
-  .summary .ent { width: 38px; height: 38px; font-size: 17px; border-radius: 10px; }
-  .pcols { gap: 14px; }
-  .pcols > .pcard { padding: 0; overflow: hidden; border: 1px solid #cfe3e3; border-radius: 10px; }
-  .pcols .pcard-head { margin: 0; padding: 9px 14px; min-height: 42px;
-    background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }
-  .pcols .pcard-head h3 { color: #fff; font-size: 15px; }
-  .pcols .pcard-head h3 img { width: 18px; height: 18px; filter: brightness(0) invert(1); }
-  .pcols .pcard-head .more { color: #fff; text-decoration: underline; }
-  .pcols .pcard-head .btn-outline-primary { background: #fff; border-color: #fff; color: var(--zt-mid2, #2f7c83); font-weight: 600; }
-  // Lines under and right of every cell; the last row's and column's are hidden under the card's edge.
-  .pcols .pgrid { grid-template-columns: 18% 32% 18% 32%; gap: 0; margin: 0 -1px -1px 0; }
-  .pcols .pgrid > div { display: contents; }
-  .pcols .pgrid dt, .pcols .pgrid dd { padding: 9px 12px; border-bottom: 1px solid #dbe8e9; border-right: 1px solid #dbe8e9; min-width: 0; }
-  .pcols .pgrid dt { background: #f1f8f8; color: #5f6f70; font-weight: 500; font-size: 13.5px; }
-  .pcols .pgrid dd { color: #1d2b2c; font-weight: 600; font-size: 14px; }
-  .pcols .pgrid .span-3 dd { grid-column: span 3; }
-  .pcols .pgrid .pgrid-empty { padding: 12px 14px; }
-  // What a section has besides its rows (the e-mail change, the activity choice, a note) keeps a margin.
-  .pcols .pcard > :not(.pcard-head):not(.pgrid) { margin: 12px 14px; }
-  @media (max-width: 991.98px) {
-    .pcols .pgrid { grid-template-columns: 38% 62%; }
-    .pcols .pgrid .span-3 dd { grid-column: auto; }
-  }
-  @media (max-width: 575.98px) { .pcols .pgrid { grid-template-columns: 42% 58%; } }
+@media (max-width: 1199.98px) { .units { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767.98px) {
+  .hero { flex-wrap: wrap; padding: 16px; }
+  .btn-ol { width: 100%; justify-content: center; }
+  .pc-head { padding: 12px 16px; }
+  .fields { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; }
+  .units { padding: 16px; }
+  .email-change { margin: 0 16px 16px; }
+  .tree .lv1 { margin-left: 8px; } .tree .lv2 { margin-left: 16px; } .tree .lv3 { margin-left: 24px; }
 }

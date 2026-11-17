@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { ContentTextComponent } from '../../content/content-text';
+import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import {
   HANDHOLDING_LEVELS,
   HandholdingApi,
@@ -17,20 +17,15 @@ import {
   handholdingLevel,
   handholdingLevelName,
 } from './handholding.api';
-import { MsmeUnitSummary } from '../shared/unit-summary';
+import { HandholdingLevelCard, LevelCardVm } from './handholding-level-card';
 import { Crumb, PageHead } from '../shared/page-head';
 
 type InfoTopic = 'My' | HandholdingLevel;
 
-/** One step of a level card's stepper. */
-interface Step {
-  completed: boolean;
-  current: boolean;
-}
-
 /** One milestone row of the level view. */
 interface MilestoneRow {
   number: number;
+  /** The milestone's name without its "Milestone n:" prefix. */
   title: string;
   /** Greyed out until the previous milestone is accepted (status 100). */
   disabled: boolean;
@@ -42,6 +37,16 @@ interface MilestoneRow {
   canAccept: boolean;
   /** 2026-11-16: accepted by the MSME (status 100): "Completed", not "Applied". */
   accepted: boolean;
+  /** The milestone being worked on now (highlighted). */
+  now: boolean;
+  /** Its state, top right ("Completed", "Starts after Milestone 1", ...). */
+  state: string;
+}
+
+/** "MILESTONE 1: BASIC DIAGNOSTIC STUDY" → "Basic diagnostic study" (the old titles, without the prefix). */
+function milestoneName(title: string): string {
+  const name = title.replace(/^Milestone\s*\d+\s*:\s*/i, '').trim();
+  return name === name.toUpperCase() ? name.charAt(0) + name.slice(1).toLowerCase() : name;
 }
 
 /**
@@ -49,51 +54,19 @@ interface MilestoneRow {
  * level cards, milestones, accept milestone, information pop-ups). The disclaimer, instructions and
  * payment steps of that page are {@link ConsultancyPaymentPage} (/msme/handholding/:level/payment);
  * the milestone details are the certification page (/msme/certification/SilverMilestone1, ...).
+ * 2026-11-17 (the user's design): one card per level open to the unit with a four-point tracker; the selected level
+ * (outlined) shows its milestones below on the same page; the cost and subsidy in the right column.
  */
 @Component({
   selector: 'zed-msme-handholding',
-  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, MsmeUnitSummary, PageHead],
+  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, PageHead, HandholdingLevelCard],
   templateUrl: './handholding.html',
-  styleUrl: '../shared/msme-page.scss',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--zt-mid2, #2f7c83); text-decoration: none; }
-    /* The two level cards side by side, equal height (one column on phones). */
-    .level-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-    .panel-cert-block, .panel-cert-block:hover { height: 100%; overflow: visible; background: #fff; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08) !important; }
-    .panel-cert-block > .panel-heading h5 { margin: 0; font-size: 14px; font-weight: 700; }
-    .panel-cert-block .cert-inner-block { padding: 10px 12px; gap: 10px; justify-content: space-between; }
-    .panel-cert-block .cert-inner-block .inner2 img { width: 64px; padding: 0 8px 0 0; }
-    /* One milestone per line: its title and VIEW / APPLY. */
-    .milestone-card { margin-bottom: 10px; border-radius: 10px; }
-    .milestone-card > .panel-body { padding: 12px 16px; }
-    .milestone-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .clickable { cursor: pointer; }
-    .checkbox-inline { margin-left: 30px; padding-left: 10px; }
-    /* 2026-11-14 (approved): main column and the unit / steps column. */
-    .hh-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
-    @media (max-width: 991.98px) { .hh-grid { grid-template-columns: minmax(0, 1fr); } }
-    .hh-steps { border-radius: 12px; }
-    /* The milestones as a numbered timeline. */
-    .ms-list { list-style: none; padding: 0; margin: 0; }
-    .ms-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #eef3f3; }
-    .ms-item:first-child { border-top: 0; }
-    .ms-num { flex: none; width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; font-weight: 800; font-size: 13px;
-      background: #eef1f1; color: #7a8a8b; }
-    .ms-item.is-done .ms-num { background: #1e7a3c; color: #fff; }
-    .ms-item.is-due .ms-num { background: #fdf1dc; color: #a86a12; }
-    .ms-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-    .ms-text strong { color: #23474a; font-size: 14px; overflow-wrap: anywhere; }
-    .ms-text small { color: #7a8a8b; font-size: 12.5px; }
-    .ms-item.is-off .ms-text strong { color: #7a8a8b; }
-    .ms-act { flex: none; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-    .ms-chip { background: #eef1f1; color: #5f6f70; border-radius: 12px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
-    @media (max-width: 575.98px) { .ms-item { flex-wrap: wrap; } .ms-act { width: 100%; justify-content: flex-start; padding-left: 44px; } }
-  `,
+  styleUrls: ['../shared/msme-page.scss', './handholding.scss'],
 })
 export class HandholdingPage {
   private readonly api = inject(HandholdingApi);
   private readonly router = inject(Router);
+  private readonly content = inject(ContentService);
 
   /** `?level=Silver`: open that level's milestones (the BACK of the payment page, as the old DisplayStep = 1). */
   readonly levelParam = input('', { alias: 'level' });
@@ -106,7 +79,7 @@ export class HandholdingPage {
    */
   protected readonly shownLevels = computed(() => {
     if (!this.data()) return [];
-    return this.levels.filter((l) => !this.cardDisabled(l) || this.paid(l) || this.num(`${l}StatusOfNc`) > 0 || this.num(`${l}Status`) > 0);
+    return this.levels.filter((l) => !this.cardDisabled(l) || this.started(l) || this.num(`${l}Status`) > 0);
   });
   protected readonly levelName = handholdingLevelName;
 
@@ -119,41 +92,100 @@ export class HandholdingPage {
   protected readonly error = signal('');
   protected readonly loadedAt = signal(new Date());
 
-  /** Level whose milestones are shown (the old page's showLevels / certification). */
+  /** Level whose milestones are shown below the cards (outlined). */
   protected readonly selected = signal<HandholdingLevel | null>(null);
-  /** Home › Handholding support (› the level). */
-  protected readonly crumbs = computed<Crumb[]>(() => {
-    const level = this.selected();
-    return level
-      ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }, { label: handholdingLevelName(level) }]
-      : [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }];
-  });
+  protected readonly crumbs: Crumb[] = [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Incentives', link: '/msme/dashboard', fragment: 'incentives' }, { label: 'Handholding support' }];
   protected readonly info = signal<InfoTopic | null>(null);
   protected readonly detailsOf = signal<HandholdingLevel | null>(null);
   protected readonly accepting = signal<{ level: HandholdingLevel; milestone: number } | null>(null);
   protected accepted = false;
   private preselected = false;
 
-
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
-  protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});
   protected readonly status = computed<Row>(() => this.data()?.status ?? {});
+
+  /**
+   * The handholding cost from the Admin's text "Handholding: information (a level)" ("The Handholding Support cost is
+   * Rs. 2,00,000/- inclusive of taxes; ..."): nothing when the text is hidden, not loaded, or names no amount.
+   */
+  protected readonly cost = computed(() => {
+    const text = this.content.text('msme.handholding.info.level');
+    if (!text?.enabled) return null;
+    const line = textParts(text.html, 'li')
+      .map((l) => l.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim())
+      .find((l) => /cost/i.test(l));
+    const amount = line?.match(/(?:Rs\.?|₹|INR)\s*([\d,]+(?:\.\d+)?)/i)?.[1];
+    return amount ? { amount, taxes: /inclusive of tax/i.test(line!) } : null;
+  });
+
+  /** The unit's size (Micro / Small / Medium): the subsidy depends on it. */
+  protected readonly size = computed(() => {
+    const t = String(this.msme()['EnterpriseType'] ?? '').trim();
+    return /^(micro|small|medium)$/i.test(t) ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+  });
+
+  protected readonly subtitle = computed(() => {
+    const cost = this.cost();
+    return 'Consultancy to help you reach your target level.' + (cost ? ` Cost ₹ ${cost.amount}, subsidy as per MSME size.` : '');
+  });
+
+  protected readonly cards = computed<LevelCardVm[]>(() =>
+    this.shownLevels().map((level) => {
+      const started = this.started(level);
+      const completed = this.completed(level);
+      const current = this.currentMilestone(level);
+      const points = ['Baseline', 'Review 1', 'Review 2'].map((label, i) => ({
+        label,
+        done: completed || this.isAccepted(level, i + 1),
+        now: started && !completed && current === i + 1,
+      }));
+      return {
+        code: level,
+        name: handholdingLevelName(level),
+        logo: this.logo(level),
+        chip: completed
+          ? { label: 'Completed', tone: 'done' as const }
+          : started
+            ? { label: `In progress · Milestone ${current}`, tone: 'prog' as const }
+            : { label: 'Not started', tone: 'new' as const },
+        points: [...points, { label: 'Complete', done: completed, now: false }],
+        canApply: !started && !!this.state(level)?.canPay,
+        selected: this.selected() === level,
+      };
+    }),
+  );
 
   protected readonly milestones = computed<MilestoneRow[]>(() => {
     const level = this.selected();
     if (!level) return [];
     const state = this.state(level);
+    let nowTaken = false;
     return MILESTONE_TITLES[level].map((title, i) => {
       const n = i + 1;
-      return {
+      const row = {
         number: n,
-        title,
+        title: milestoneName(title),
         disabled: n > 1 && this.num(completionColumn(level, n - 1)) < 100,
         applied: this.num(`${level}StatusOfNc${n}`) === 1,
         canApply: !!state?.canPay && state.nextMilestone === n,
         canAccept: this.num(completionColumn(level, n)) === 16,
         accepted: this.num(completionColumn(level, n)) >= 100,
+        now: false,
+        state: '',
       };
+      row.state = row.canAccept
+        ? 'Submitted by the consultant: please accept'
+        : row.accepted
+          ? 'Completed'
+          : row.applied
+            ? 'Applied · in progress'
+            : row.canApply
+              ? 'Apply and pay to start'
+              : row.disabled
+                ? `Starts after Milestone ${n - 1}`
+                : 'Not started';
+      if (!nowTaken && !row.accepted && (row.canAccept || row.applied || row.canApply)) row.now = nowTaken = true;
+      return row;
     });
   });
 
@@ -170,12 +202,24 @@ export class HandholdingPage {
     }
   }
 
-  /** Once, after the first load: the level of the query parameter, if its card is enabled. */
+  /**
+   * The level whose milestones open below: once, the level of the query parameter if it is shown; otherwise (and when
+   * the selected level is no longer shown) the level in progress, else the first level shown.
+   */
   private preselect(): void {
-    if (this.preselected) return;
-    this.preselected = true;
-    const level = handholdingLevel(this.levelParam());
-    if (level && !this.cardDisabled(level)) this.selected.set(level);
+    const shown = this.shownLevels();
+    if (!this.preselected) {
+      this.preselected = true;
+      const level = handholdingLevel(this.levelParam());
+      if (level && shown.includes(level) && !this.cardDisabled(level)) {
+        this.selected.set(level);
+        return;
+      }
+    }
+    const current = this.selected();
+    if (current && shown.includes(current)) return;
+    const busy = shown.filter((l) => this.started(l));
+    this.selected.set(busy.find((l) => !this.completed(l)) ?? busy[0] ?? shown[0] ?? null);
   }
 
   protected state(level: HandholdingLevel): LevelState | undefined {
@@ -194,39 +238,42 @@ export class HandholdingPage {
     return this.num(`Enable${level}`) === 0;
   }
 
-  /** Text next to the arrow of a level card. */
-  protected progress(level: HandholdingLevel): string[] {
-    const status = this.num(`${level}Status`);
-    const started = this.num(`${level}StatusOfNc`);
-    const labels: string[] = [];
-    if (status === 0) labels.push('Get started');
-    if (started >= 1 && started <= 3) labels.push(`Milestone ${started}`);
-    if (started === 3 && status === 4) labels.push('Completed');
-    return labels;
+  /** Paid for, or a milestone started. */
+  private started(level: HandholdingLevel): boolean {
+    return this.paid(level) || this.num(`${level}StatusOfNc`) > 0;
   }
 
-  /** The four stepper dots of a level card (old ng-class expressions; Gold milestones complete above 5, ZED-X's as Silver's). */
-  protected steps(level: HandholdingLevel): Step[] {
-    const done = level === 'Gold' ? 5 : 3;
-    const s1 = this.num(`${level}Status`);
-    const later = [s1, this.num(`${level}Status2`), this.num(`${level}Status3`)];
-    return [
-      { completed: s1 > 1, current: s1 === 1 },
-      ...later.map((s) => ({ completed: s > done, current: s > 1 && s <= done })),
-    ];
+  private isAccepted(level: HandholdingLevel, milestone: number): boolean {
+    return this.num(completionColumn(level, milestone)) >= 100;
   }
 
-  /** VIEW DETAILS / APPLY of a level card. */
+  /** All three milestones accepted (or the old page's "Completed": the third milestone started and status 4). */
+  private completed(level: HandholdingLevel): boolean {
+    return [1, 2, 3].every((n) => this.isAccepted(level, n)) || (this.num(`${level}StatusOfNc`) === 3 && this.num(`${level}Status`) === 4);
+  }
+
+  /** The first milestone not accepted yet (1–3). */
+  private currentMilestone(level: HandholdingLevel): number {
+    return [1, 2, 3].find((n) => !this.isAccepted(level, n)) ?? 3;
+  }
+
+  /** A level card: show its milestones below. */
   protected openLevel(level: HandholdingLevel): void {
-    if (this.cardDisabled(level)) return;
+    if (!this.shownLevels().includes(level)) return;
     this.selected.set(level);
-    window.scrollTo(0, 0);
+    if (window.innerWidth < 992) document.getElementById('hh-milestones')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }
 
+  /** "View details" of the selected level: its milestones when paid, the details pop-up otherwise. */
   protected viewDetails(level: HandholdingLevel): void {
-    if (this.cardDisabled(level)) return;
     if (this.paid(level)) this.openLevel(level);
     else this.detailsOf.set(level);
+  }
+
+  /** Apply of a level card (not started, payable): the disclaimer, instructions and payment of its first milestone. */
+  protected applyLevel(card: LevelCardVm): void {
+    if (!card.canApply) return;
+    void this.router.navigate(['/msme/handholding', card.code, 'payment']);
   }
 
   protected apply(m: MilestoneRow): void {

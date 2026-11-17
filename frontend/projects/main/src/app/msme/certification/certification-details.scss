@@ -1,49 +1,55 @@
-// The page is the live Certification Details markup (site.css styles the steps panel and the .alert-document actions);
-// only what the old markup had no class for is here.
+// 2026-11-17 (the user's applicant design, zed-msme-01): header card, app banner, tracker and the two columns.
+:host { display: block; }
+.cd-page { padding-top: 20px; padding-bottom: 32px; }
 
-// The arrow or download link at the end of an action, as the live page's plain icon link.
-.doc-go {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-  text-decoration: none;
+.cd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 24px; padding: 20px 24px; margin-bottom: 20px;
+  background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+.cd-badge { flex: none; width: 84px; height: 84px; object-fit: contain; }
+.cd-unit { flex: 1 1 300px; min-width: 0; }
+.cd-unit h3 { margin: 0 0 8px; font-size: 21px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.cd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.chip { padding: 3px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
+.chip-status { color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
+.chip-done { color: #2e7d4f; background: #e3f3e8; }
+.chip-size { color: #9a5b00; background: #fdeccd; }
+.cd-ids { display: flex; flex-wrap: wrap; margin: 0; font-size: 13px; color: #4f5f60; }
+.cd-ids span + span::before { content: '·'; margin: 0 6px; }
+.cd-facts { display: flex; margin: 0; }
+.cd-facts > div { padding: 0 22px; border-left: 1px solid #e3ecec; }
+.cd-facts dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #6b7c7d; text-transform: uppercase; }
+.cd-facts dd { margin: 4px 0 0; font-size: 17px; color: #1f2d2e; white-space: nowrap; }
+.cd-btns { display: flex; flex-direction: column; gap: 10px; }
+.cd-btns .btn { justify-content: center; }
+
+// The page's buttons (also in the rail).
+.cd-btn-main, .cd-btn-line { display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px;
+  border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; }
+.cd-btn-main { color: #fff; background: var(--zt-dark, #1f5c61); border: 1px solid var(--zt-dark, #1f5c61); }
+.cd-btn-main:hover { color: #fff; background: var(--zt-ink, #173f44); }
+.cd-btn-line { color: var(--zt-dark, #1f5c61); background: #fff; border: 2px solid var(--zt-dark, #1f5c61); }
+.cd-btn-line:hover { background: var(--zt-soft, #d4ebe6); }
+.cd-btn-main svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+.cd-app { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 20px; margin-bottom: 20px;
+  border: 1px solid var(--zt-soft, #d4ebe6); border-radius: 12px; background: #f1f8f6; }
+.cd-app p { flex: 1 1 320px; margin: 0; font-size: 14px; color: var(--zt-ink, #173f44); }
+.cd-app-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+.cd-track { margin-bottom: 20px; }
+.cd-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+@media (max-width: 1199.98px) {
+  .cd-facts { order: 3; flex-basis: 100%; }
+  .cd-facts > div:first-child { padding-left: 0; border-left: 0; }
+  .cd-btns { order: 4; flex-direction: row; flex-wrap: wrap; }
 }
-
-// 2026-11-14 (approved design): header, two-column grid of cards.
-.cd-head { align-items: center; }
-.crumb { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
-.crumb a { color: #7a8a8b; text-decoration: none; }
-.crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
-.cd-head .registration-title { font-size: 22px; margin: 0; }
-.cd-actions { display: flex; gap: 8px; }
-.cd-actions .btn { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.cd-actions img { width: 14px; }
-.cd-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
-@media (max-width: 991.98px) { .cd-grid { grid-template-columns: minmax(0, 1fr); } }
-.cd-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
-.cd-title { font-size: 15px; font-weight: 700; color: var(--zt-mid2, #2f7c83); margin: 0 0 10px; }
-// 2026-11-15 (the user, as the profile): each section under a heading bar in the applicant pages' colours.
-.cd-card { padding: 0; overflow: hidden; border-color: #cfe3e3; border-radius: 10px; }
-.cd-card > .cd-title { margin: 0; padding: 9px 14px; color: #fff; background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }
-.cd-card > :not(.cd-title) { margin-left: 14px; margin-right: 14px; }
-.cd-card > .cd-title + * { margin-top: 12px; }
-.cd-card > :last-child:not(.cd-title) { margin-bottom: 14px; }
-// The action rows flush with the card's title (Bootstrap's .alert padding and the legacy fixed height off).
-.cd-card .alert-document { margin: 0 0 8px; padding: 8px 10px; height: auto; min-height: 52px; gap: 10px; border: 1px solid #eef3f3; border-radius: 8px; }
-.cd-card .alert-document > div { gap: 10px; min-width: 0; }
-.cd-card .alert-document p { margin: 0; }
-.cd-card .alert-document:last-child { margin-bottom: 0; }
-
-// "Available soon" in place of the arrow of a page that is not migrated yet.
-.soon-note {
-  flex: 0 0 auto;
-  margin-left: 8px;
-  white-space: nowrap;
-  color: #8d8f90;
-  font-size: 12px;
-  font-weight: 600;
+@media (max-width: 991.98px) {
+  .cd-grid { grid-template-columns: minmax(0, 1fr); }
 }
-
-// The app banner: the text on the left, the store badges and the QR code together on the right.
-.zed-payment-success .label-highlight > div { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.zed-payment-success .label-highlight > div > p { flex: 1 1 320px; margin: 0; font-size: 14px; }
+@media (max-width: 575.98px) {
+  .cd-hero { padding: 16px; }
+  .cd-badge { width: 60px; height: 60px; }
+  .cd-facts { flex-wrap: wrap; gap: 10px 0; }
+  .cd-facts > div { padding: 0 14px 0 0; border: 0; }
+  .cd-btns .btn { flex: 1 1 100%; }
+}

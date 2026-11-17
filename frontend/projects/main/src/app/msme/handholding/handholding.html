@@ -11,139 +11,112 @@
     }
 
     @if (data()) {
-      <!-- 2026-11-14 (approved): the shared header; the levels or the milestones on the left, the unit and the steps on the right. -->
-      <zed-page-head [crumbs]="crumbs()" [title]="selected() ? 'Handholding support · ' + levelName(selected()!) : 'Handholding support'">
-        @if (selected()) {
-          <button type="button" class="btn btn-outline-secondary btn-sm back-link" (click)="selected.set(null)"><img src="/Images/svgicons/back.svg" alt="" /> Back</button>
-        } @else {
-          <a class="btn btn-outline-secondary btn-sm back-link" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-        }
-        <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()" [title]="'Refreshed on ' + (loadedAt() | date: 'dd/MM/yyyy hh:mm a')">
+      <!-- 2026-11-17 (the user's design): the level cards, then the selected level's milestones with the cost beside them. -->
+      <zed-page-head [crumbs]="crumbs" title="Handholding support" [subtitle]="subtitle()">
+        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+        <button type="button" class="btn btn-ph refresh-link" (click)="load()" [title]="'Refreshed on ' + (loadedAt() | date: 'dd/MM/yyyy hh:mm a')">
           <img src="/Images/svgicons/refresh.svg" alt="" /> Refresh
         </button>
       </zed-page-head>
 
+      @if (!shownLevels().length) {
+        <div class="hh-box hh-empty">
+          <p class="mb-0" data-no-handholding>No handholding is available for your unit's certification level now.</p>
+          <button type="button" class="hh-icon-btn" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
+        </div>
+      } @else {
+        <div class="hh-levels">
+          @for (c of cards(); track c.code) {
+            <zed-hh-level-card [vm]="c" (pick)="openLevel(c.code)" (apply)="applyLevel(c)" (info)="info.set(c.code)" />
+          }
+        </div>
+      }
+
       <div class="hh-grid">
-        <div class="dash-main">
-          @if (!selected()) {
-            <!-- Level cards -->
-            <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
-              <div class="panel-heading dash-panel-head">
-                <div class="panel-titles-sec">
-                  <h4>Handholding Support</h4>
-                  <p>Avail consultancy to achieve desired certification level</p>
-                </div>
-                <button type="button" class="btn btn-link p-0" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
-              </div>
-              <div class="panel-body">
-                <div class="level-grid">
-                  @if (data() && !shownLevels().length) {
-                    <p class="text-muted mb-0" data-no-handholding>No handholding is available for your unit's certification level now.</p>
-                  }
-                  @for (level of shownLevels(); track level) {
-                    <div class="panel-handhold">
-                      <div class="panel panel-default panel-cert-block" [class.panel-silver]="level === 'Silver'" [class.panel-gold]="level === 'Gold'" [class.panel-zedx]="level === 'ZEDX'" [class.plant-activity-disabled]="cardDisabled(level)">
-                        <div class="panel-heading">
-                          <h5>HANDHOLDING FOR {{ levelName(level).toUpperCase() }} LEVEL</h5>
-                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About Handholding for ' + levelName(level) + ' Level'" (click)="info.set(level)"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
-                        </div>
-                        <div class="panel-body">
-                          <div class="cert-inner-block">
-                            <div class="inner1">
-                              <p>
-                                <span><img src="/Images/svgicons/arrow-right.svg" alt="" /></span>
-                                @for (label of progress(level); track label) { <span> {{ label }}</span> }
-                              </p>
-                              <div class="stepper">
-                                <ul class="nav nav-tabs" role="list">
-                                  @for (s of steps(level); track $index) {
-                                    <li role="listitem" class="w-25" [class.completed]="s.completed" [class.current]="s.current && !s.completed">
-                                      <a [attr.aria-label]="'Step ' + ($index + 1)"><span class="round-tab">
-                                        @if (s.completed) { <img src="/Images/svgicons/stepper-completed.svg" alt="" /> }
-                                      </span></a>
-                                    </li>
-                                  }
-                                </ul>
-                              </div>
-                              <h5 class="clickable" role="button" tabindex="0" (click)="viewDetails(level)" (keydown.enter)="viewDetails(level)">VIEW DETAILS</h5>
-                            </div>
-                            <div class="inner2"><img [src]="logo(level)" alt="" /></div>
-                            <div class="inner3">
-                              @if (paid(level)) {
-                                <p class="dash-text-clr clickable" role="button" tabindex="0" [attr.aria-label]="'Open ' + levelName(level) + ' milestones'" (click)="openLevel(level)" (keydown.enter)="openLevel(level)"><img src="/Images/svgicons/arrow-right-black.svg" alt="->" /></p>
-                              } @else {
-                                <p class="dash-text-clr clickable" role="button" tabindex="0" (click)="openLevel(level)" (keydown.enter)="openLevel(level)">APPLY</p>
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+        @if (selected(); as level) {
+          <section class="hh-box" id="hh-milestones" aria-labelledby="hh-ms-title">
+            <header class="hh-box-head">
+              <span class="hh-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
+              <h3 id="hh-ms-title">{{ levelName(level) }} handholding: milestones</h3>
+              @if (!paid(level)) {
+                <button type="button" class="hh-text-btn" (click)="viewDetails(level)">View details</button>
+              }
+              <button type="button" class="hh-icon-btn" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
+            </header>
+            <ol class="ms-list">
+              @for (m of milestones(); track m.number) {
+                <li class="ms-item milestone" [class.is-done]="m.accepted" [class.is-now]="m.now" [class.is-off]="m.disabled">
+                  <span class="ms-num" aria-hidden="true">{{ m.accepted ? '✓' : m.number }}</span>
+                  <div class="ms-body">
+                    <div class="ms-line">
+                      <small class="ms-eyebrow">Milestone {{ m.number }}</small>
+                      <span class="ms-state">{{ m.state }}</span>
                     </div>
-                  }
-                </div>
-              </div>
-            </div>
-          } @else {
-            <!-- Milestones of the selected level -->
-            <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
-              <div class="panel-heading dash-panel-head">
-                <div class="panel-titles-sec">
-                  <h4>Handholding Support</h4>
-                  <p>Avail consultancy to achieve desired certification level. </p>
-                </div>
-                <button type="button" class="btn btn-link p-0" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
-              </div>
-              <div class="panel-body">
-                <!-- The milestones as a numbered timeline, one action each. -->
-                <ol class="ms-list">
-                  @for (m of milestones(); track m.number) {
-                    <li class="ms-item milestone" [class.is-done]="m.applied" [class.is-due]="!m.applied && m.canApply" [class.is-off]="m.disabled">
-                      <span class="ms-num" aria-hidden="true">{{ m.applied ? '✓' : m.number }}</span>
-                      <div class="ms-text">
-                        <strong>{{ m.title }}</strong>
-                        <small>{{ m.canAccept ? 'Submitted by the consultant: please accept' : m.accepted ? 'Completed' : m.applied ? 'Applied' : m.canApply ? 'Apply and pay to start' : 'After the previous milestone' }}</small>
-                      </div>
-                      <span class="ms-act">
+                    <strong class="ms-title">{{ m.title }}</strong>
+                    <div class="ms-desc">
+                      @if (m.number === 1) {
+                        <zed-text key="msme.handholding.steps.1"><p>The consultant studies where your unit stands and agrees a time-bound improvement plan with you.</p></zed-text>
+                      } @else {
+                        <zed-text key="msme.handholding.steps.2"><p>You implement the plan; the consultant monitors and reviews the progress.</p></zed-text>
+                      }
+                    </div>
+                    <p class="ms-who">Who acts: {{ m.number === 1 ? 'the consultant, then you accept the plan' : 'you implement, the consultant reviews' }}</p>
+                    @if (m.canAccept || m.applied || m.canApply) {
+                      <div class="ms-act">
                         @if (m.canAccept) {
-                          <button type="button" class="btn btn-primary btn-sm" (click)="openAccept(m)">ACCEPT MILESTONE {{ m.number }}</button>
+                          <button type="button" class="btn btn-primary btn-sm" (click)="openAccept(m)">Accept milestone {{ m.number }}</button>
                         }
                         @if (m.applied) {
-                          <a class="btn btn-outline-primary btn-sm" [routerLink]="milestoneRoute(m)">VIEW</a>
+                          <a [class]="m.canAccept ? 'btn btn-sm btn-outline-primary' : 'btn btn-sm btn-primary'" [routerLink]="milestoneRoute(m)">{{ m.number === 1 ? 'View action plan' : 'View milestone' }}</a>
                         } @else if (m.canApply) {
-                          <button type="button" class="btn btn-primary btn-sm" (click)="apply(m)">APPLY</button>
-                        } @else {
-                          <span class="ms-chip">Not started</span>
+                          <button type="button" class="btn btn-primary btn-sm ms-apply" (click)="apply(m)">Apply</button>
                         }
-                      </span>
-                    </li>
-                  }
-                </ol>
-                @if (state(selected()!); as st) {
-                  @if (!st.canPay && st.refusal && st.enabled) {
-                    <p class="text-muted mb-0">{{ st.refusal }}</p>
-                  }
-                }
-              </div>
-            </div>
-          }
+                      </div>
+                    }
+                  </div>
+                </li>
+              }
+              @let done = cards().find((c) => c.code === level)?.chip.tone === 'done';
+              <li class="ms-item ms-close" [class.is-done]="done">
+                <span class="ms-num" aria-hidden="true">{{ done ? '✓' : 4 }}</span>
+                <div class="ms-body">
+                  <div class="ms-line">
+                    <small class="ms-eyebrow">Completion</small>
+                    <span class="ms-state">{{ done ? 'Completed' : 'Not started' }}</span>
+                  </div>
+                  <strong class="ms-title">Handholding closed</strong>
+                  <div class="ms-desc">
+                    <zed-text key="msme.handholding.steps.3"><p>Handholding is complete when all the actions of the implementation plan are done.</p></zed-text>
+                  </div>
+                </div>
+              </li>
+            </ol>
+            @if (state(level); as st) {
+              @if (!st.canPay && st.refusal && st.enabled) {
+                <p class="hh-refusal">{{ st.refusal }}</p>
+              }
+            }
+          </section>
+        }
 
-        </div>
-        <div>
-          <zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [compact]="true" />
-          <div class="panel panel-steps panel-bg-default hh-steps">
-            <div class="panel-body">
-              <h4 class="step-title">HANDHOLDING SUPPORT STEPS</h4>
-              <ul class="cert-steps">
-                @for (n of [1, 2, 3]; track n) {
-                  <li>
-                    <div class="step-num"><span>{{ n }}</span></div>
-                    <div class="step-details"><zed-text [key]="'msme.handholding.steps.' + n" /></div>
-                  </li>
+        @if (shownLevels().length) {
+          <aside class="hh-rail">
+            <section class="hh-box" aria-labelledby="hh-cost-title">
+              <header class="hh-box-head">
+                <span class="hh-head-icon hh-rupee" aria-hidden="true">₹</span>
+                <h3 id="hh-cost-title">Cost and subsidy</h3>
+              </header>
+              <dl class="hh-cost">
+                @if (cost(); as c) {
+                  <div><dt>Handholding cost</dt><dd>₹ {{ c.amount }}@if (c.taxes) { <small>incl. taxes</small> }</dd></div>
                 }
-              </ul>
-            </div>
-          </div>
-        </div>
+                <div><dt>Subsidy{{ size() ? ' (' + size() + ')' : '' }}</dt><dd class="hh-green">As per scheme</dd></div>
+                <div><dt>Your contribution</dt><dd>Shown before you pay</dd></div>
+              </dl>
+              <p class="hh-cost-note">You pay at the start of each milestone; the next milestone opens after you accept the previous one.</p>
+            </section>
+          </aside>
+        }
       </div>
     }
   </div>

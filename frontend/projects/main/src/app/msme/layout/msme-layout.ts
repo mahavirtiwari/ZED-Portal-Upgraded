@@ -1,16 +1,21 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
 import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
+import { BhashiniMenu } from './bhashini-menu';
+import { NotificationBell } from './notification-bell';
 
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
  * Port of the Ulb (MSME) branch of Views/Shared/_Layout.cshtml.
+ * 2026-11-17 (the user's applicant designs, approved): a white logo bar; the menu strip Home, Certifications,
+ * Incentives, My Documents, Profile, Help, with on the right the Bhashini language menu (as on the ZED website), the
+ * notification bell and the user's menu; a light grey page; a dark footer.
  */
 @Component({
   selector: 'zed-msme-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBell, BhashiniMenu],
   host: { class: 'zed-legacy d-block' },
   template: `
     <div class="main-container">
@@ -23,8 +28,6 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
         </div>
       </header>
 
-      <!-- 2026-11-14 (approved frame A, refined top menu): a slim menu strip with text links, the current page underlined;
-           the page's name is in the page's own header (breadcrumb and title), no more "Dashboard / Home" on every page. -->
       <nav class="navbar navbar-expand-lg topnav" id="main_navbar" aria-label="MSME menu">
         <div class="container">
           <span class="topnav-portal d-lg-none">ZED Certification</span>
@@ -34,15 +37,16 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
           </button>
           <div class="collapse navbar-collapse" id="msme-menu" [class.show]="menuOpen()">
             <ul class="navbar-nav me-auto">
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" routerLinkActive="active">Home</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/profile" routerLinkActive="active">Profile</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" [class.active]="section() === 'home'">Home</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="certifications" [class.active]="section() === 'certifications'">Certifications</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="incentives" [class.active]="section() === 'incentives'">Incentives</a></li>
               <li class="nav-item"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">My Documents</a></li>
-              <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
-              @if (links.url('contact'); as u) {
-                <li class="nav-item"><a class="nav-link" [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
-              }
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/profile" [class.active]="section() === 'profile'">Profile</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/contact" routerLinkActive="active">Help</a></li>
             </ul>
-            <ul class="navbar-nav">
+            <ul class="navbar-nav nav-tools">
+              <li class="nav-item tool"><zed-bhashini-menu /></li>
+              <li class="nav-item tool"><zed-notification-bell /></li>
               <li class="nav-item dropdown user-menu">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()"
                         (click)="toggleUserMenu($event)">
@@ -65,12 +69,14 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
         <router-outlet />
       </div>
 
-      <footer>
-        <div class="footer">
-          <div class="container d-flex justify-content-between align-items-center py-2">
-            <small>ZED © {{ year }} All Rights Reserved</small>
-            <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
-          </div>
+      <footer class="msme-footer">
+        <div class="container mf">
+          <small>ZED © {{ year }} All Rights Reserved</small>
+          <nav class="mf-links" aria-label="Footer">
+            <a routerLink="/msme/contact">Help desk</a>
+            @if (links.url('contact'); as u) { <span aria-hidden="true">·</span><a [href]="u" target="_blank" rel="noopener">Contact ZED</a> }
+          </nav>
+          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
         </div>
       </footer>
     </div>
@@ -78,32 +84,40 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
   styles: `
     /* The MVC layout had body { padding-top: 100px } under its fixed 100px header (Content/swachh.css). */
     :host { padding-top: 100px; color: #333; }
-    /* As the staff pages: a light tint behind the page, so its cards stand out. */
-    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #fff; }
+    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f3f6f6; }
     .dropdown-toggle.btn-link { text-decoration: none; }
-    /* Frame A: the menu strip. */
-    .topnav { background: var(--zt-dark, #23656b); padding: 0; min-height: 48px; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.12); }
+    .topnav { background: var(--zt-dark, #1f5c61); padding: 0; min-height: 48px; }
     .topnav .navbar-nav { align-items: stretch; gap: 2px; }
     .topnav .nav-link, .topnav button.nav-link {
-      display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; color: var(--zt-soft, #d9eef0); font-size: 14px; font-weight: 700;
-      border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; white-space: nowrap;
+      display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; color: #d4ebe6; font-size: 14px; font-weight: 600;
+      border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; white-space: nowrap;
     }
-    .topnav .nav-link:hover, .topnav .nav-link:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.06); }
-    .topnav .nav-link.active { color: #fff; border-bottom-color: #c9e8a0; }
-    .topnav .avatar { width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: var(--zt-ink, #174a4e);
+    .topnav .nav-link:hover, .topnav .nav-link:focus-visible { color: #fff; background: rgb(255 255 255 / 6%); }
+    .topnav .nav-link.active { color: #fff; font-weight: 800; border-bottom-color: #8fd1a8; }
+    .nav-tools { align-items: center !important; }
+    .nav-tools .tool { display: flex; align-items: center; padding: 0 4px; }
+    .nav-tools .user-menu { border-left: 1px solid rgb(255 255 255 / 20%); margin-left: 6px; padding-left: 6px; }
+    .topnav .avatar { width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #d4ebe6; color: var(--zt-ink, #173f44);
       font-size: 12.5px; font-weight: 800; }
-    .topnav .dropdown-menu { border-radius: 8px; border: 1px solid #dfe9ea; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); padding: 6px; }
+    .topnav .dropdown-menu { border-radius: 8px; border: 1px solid #dfe9ea; box-shadow: 0 8px 24px rgb(16 61 64 / 14%); padding: 6px; }
     .topnav .dropdown-item { border-radius: 6px; font-size: 14px; font-weight: 600; padding: 7px 12px; }
-    .topnav .dropdown-item:hover { background: #eef6f6; color: var(--zt-ink, #174a4e); }
+    .topnav .dropdown-item:hover { background: #eef6f6; color: var(--zt-ink, #173f44); }
     .topnav-portal { color: #fff; font-weight: 700; font-size: 14px; padding: 12px 0; }
-    .topnav .navbar-toggler { border-color: rgba(255, 255, 255, 0.4); margin: 6px 0; }
+    .topnav .navbar-toggler { border-color: rgb(255 255 255 / 40%); margin: 6px 0; }
     .topnav .navbar-toggler-icon { filter: invert(1); }
+    .msme-footer { background: #1d2f31; color: #c9dcdc; }
+    .mf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 12px; }
+    .mf-links { display: flex; gap: 8px; font-size: 13px; }
+    .mf-links a { color: #c9dcdc; text-decoration: none; }
+    .mf-links a:hover { color: #fff; text-decoration: underline; }
     @media (max-width: 991.98px) {
       .topnav .container { flex-wrap: wrap; }
       .topnav .navbar-nav { gap: 0; }
       .topnav .nav-link, .topnav button.nav-link { height: 42px; border-bottom: 0; border-left: 3px solid transparent; }
-      .topnav .nav-link.active { border-left-color: #c9e8a0; }
+      .topnav .nav-link.active { border-left-color: #8fd1a8; }
       .topnav .dropdown-menu { position: static; }
+      .nav-tools { flex-direction: row; flex-wrap: wrap; padding-bottom: 6px; }
+      .nav-tools .user-menu { border-left: 0; }
     }
   `,
 })
@@ -119,11 +133,19 @@ export class MsmeLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
+  /** The menu item of the page shown (the dashboard's sections by its fragment; the pages under them by their path). */
+  protected readonly section = signal(sectionOf(this.router.url));
 
   constructor() {
     this.router.events.subscribe((e) => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);
+      if (e instanceof NavigationEnd) {
+        this.section.set(sectionOf(e.urlAfterRedirects));
+        // The dashboard's sections (Certifications, Incentives): scrolled to once the page has drawn them.
+        const fragment = this.router.parseUrl(e.urlAfterRedirects).fragment;
+        if (fragment) setTimeout(() => document.getElementById(fragment)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+      }
     });
   }
 
@@ -147,4 +169,16 @@ export class MsmeLayout {
     }
     await this.router.navigateByUrl('/msme/login');
   }
+}
+
+/** The menu item a page belongs to (2026-11-17 designs: certification and apply pages under Certifications, the
+ * schemes and handholding under Incentives, edit history and password under Profile). */
+export function sectionOf(url: string): 'home' | 'certifications' | 'incentives' | 'profile' | 'other' {
+  const [path, fragment] = url.split('#');
+  const p = path.split('?')[0].toLowerCase();
+  if (p.startsWith('/msme/dashboard')) return fragment === 'certifications' ? 'certifications' : fragment === 'incentives' ? 'incentives' : 'home';
+  if (/^\/msme\/(certification|status|payment|surveillance-payment|entry|assessment|site-assessment)(\/|$)/.test(p)) return 'certifications';
+  if (/^\/msme\/(financial-assistance|technology-upgradation|handholding)(\/|$)/.test(p)) return 'incentives';
+  if (/^\/msme\/(profile|edit-history|change-password)(\/|$)/.test(p)) return 'profile';
+  return 'other';
 }

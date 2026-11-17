@@ -1,39 +1,89 @@
-// 2026-11-14 (approved design): one card, grouped rows, a Download button per row.
-.docs-v2 {
-  .page-head { align-items: center; }
-  .crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
-  .crumb a { color: #7a8a8b; text-decoration: none; }
-  .crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
-  .registration-title { font-size: 22px; margin: 0; }
-  // 2026-11-15 (design approved, second option): a heading bar in the applicant pages' colours over a ruled table per group.
-  .dsec { background: #fff; border: 1px solid #cfe3e3; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
-  .dbar { margin: 0; padding: 9px 14px; font-size: 15px; font-weight: 700; color: #fff;
-    background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }
-  .table-responsive { margin: 0; }
-  .dtable { width: 100%; margin: 0; border-collapse: collapse; font-size: 14px; }
-  .dtable th { background: #f1f8f8; color: #5f6f70; font-weight: 600; font-size: 13px; text-align: left; padding: 8px 12px; border-bottom: 1px solid #dbe8e9; }
-  .dtable td { padding: 9px 12px; border-bottom: 1px solid #dbe8e9; border-right: 1px solid #dbe8e9; vertical-align: middle; }
-  .dtable td:last-child { border-right: 0; }
-  .dtable tbody tr:last-child td { border-bottom: 0; }
-  .dtable tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
-  .dn { width: 64px; text-align: center !important; color: #7a8a8b; }
-  .da { width: 150px; text-align: center !important; }
-  .dtable p { margin: 0; font-weight: 600; color: #1d2b2c; overflow-wrap: anywhere; }
-  .dd { color: #5f6f70; font-size: 13px; overflow-wrap: anywhere; }
-  .dname { display: flex; align-items: center; gap: 8px; }
-  .dtag { flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; border-radius: 3px; padding: 1px 6px; background: #fbe4e1; color: #b03a2e; }
-  .dtag-video { background: #e5eefb; color: #2b5aa8; }
-  .doc-download { min-width: 96px; font-weight: 700; }
-  .not-available { display: inline-block; font-size: 12px; font-weight: 600; color: #9a6a12; background: #fdf1dc; border-radius: 4px; padding: 2px 8px; }
-  @media (max-width: 575.98px) { .dtable th:nth-child(3), .dtable td.dd { display: none; } .da { width: 110px; } }
+// 2026-11-17 (the user's design): search + chips, document cards (3 a row on a laptop) with a level-coloured top edge, lists.
+.docs {
+  --ink: var(--zt-ink, #173f44);
+  --dk: var(--zt-dark, #1f5c61);
+  --mut: #5f6f70;
+  --ln: #e1eaea;
+  padding-top: 16px;
+  padding-bottom: 32px;
+  svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  h4 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+  .dtext { min-width: 0; }
+  .dtext p { margin: 3px 0 0; font-size: 13.5px; color: var(--mut); overflow-wrap: anywhere; }
 }
 
-.loadingdiv {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+.dtools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 8px; }
+.dsearch {
+  position: relative; flex: 0 1 400px; margin: 0;
+  svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #7a8a8b; }
+  input { width: 100%; height: 46px; padding: 0 14px 0 40px; border: 1px solid #cfdcdc; border-radius: 8px; background: #fff; font-size: 14px; color: var(--ink); }
+  input:focus { outline: 2px solid var(--zt-soft, #d4ebe6); border-color: var(--zt-mid2, #2a8a8c); }
 }
+.dchips { display: flex; flex-wrap: wrap; gap: 10px; }
+.dchip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 15px; border: 1px solid #d6e2e2; border-radius: 20px;
+  background: #fff; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer;
+  &:hover { border-color: var(--zt-mid2, #2a8a8c); }
+  &.on { background: var(--dk); border-color: var(--dk); color: #fff; }
+}
+.dcount { min-width: 20px; padding: 1px 6px; border-radius: 10px; background: #eef3f3; font-size: 11.5px; color: var(--mut); text-align: center; }
+.on .dcount { background: rgba(255, 255, 255, .2); color: #fff; }
+
+.dhead { margin: 26px 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
+
+.dgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.dcard {
+  --lv: var(--zt-mid2, #2a8a8c);
+  position: relative; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--ln); border-top: 6px solid var(--lv);
+  border-radius: 10px; box-shadow: 0 2px 8px rgba(23, 63, 68, .06);
+  &.t-bronze { --lv: #c0704f; }
+  &.t-silver { --lv: #8e9aa3; }
+  &.t-gold { --lv: #c99a1c; }
+  &.t-zedx { --lv: #4b4f9e; }
+}
+.dbody { display: flex; gap: 16px; padding: 20px; flex: 1; }
+.dicon {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; flex: none; width: 50px; height: 60px;
+  border: 1px solid var(--ln); border-radius: 8px; color: var(--lv);
+  svg { width: 22px; height: 22px; }
+  b { font-size: 10px; letter-spacing: .04em; }
+}
+.dfoot { display: flex; align-items: center; padding: 14px 20px; border-top: 1px solid #edf2f2; }
+
+.dbtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 150px; padding: 8px 18px; border: 1.5px solid var(--dk);
+  border-radius: 6px; background: var(--dk); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap;
+  &:hover { background: var(--ink); border-color: var(--ink); color: #fff; }
+}
+.dbtn-line { background: #fff; color: var(--dk); min-width: 0; &:hover { background: var(--zt-soft, #d4ebe6); color: var(--dk); } }
+.dbtn-soft { margin-left: auto; background: #e8eff0; border-color: #e8eff0; color: var(--ink); min-width: 130px; &:hover { background: #dbe7e8; border-color: #dbe7e8; color: var(--ink); } }
+.dbtn-soft .fill { fill: currentColor; }
+
+.dlocked {
+  border: 2px dashed #c7d2d3; background: #f8fafa; box-shadow: none;
+  h4 { color: #6f8081; }
+  .dfoot { border-top: 0; padding-top: 0; }
+}
+.dlock { position: absolute; top: 18px; right: 20px; color: #7a8a8b; width: 18px !important; height: 18px !important; }
+.dmedal { width: 56px; height: 56px; flex: none; object-fit: contain; filter: grayscale(1); opacity: .6; }
+
+.dlist { list-style: none; margin: 0; padding: 0; background: #fff; border: 1px solid var(--ln); border-radius: 10px; box-shadow: 0 2px 8px rgba(23, 63, 68, .06); }
+.dlist li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px 24px; border-bottom: 1px solid #edf2f2; }
+.dlist li:last-child { border-bottom: 0; }
+.dlist .dtext { flex: 1 1 260px; }
+.dtag { flex: none; width: 58px; padding: 8px 0; border-radius: 6px; background: var(--zt-soft, #d4ebe6); color: var(--dk); font-size: 11.5px; font-weight: 700; text-align: center; }
+.dtag-video { background: #fdf0d5; color: #a05a00; }
+
+.not-available { display: inline-block; margin-left: auto; font-size: 12px; font-weight: 600; color: #9a6a12; background: #fdf1dc; border-radius: 4px; padding: 3px 9px; }
+.dfoot .not-available { margin-left: 0; }
+.dempty { margin: 24px 0; padding: 18px; border: 1px dashed #c7d2d3; border-radius: 10px; text-align: center; color: var(--mut); }
+
+@media (max-width: 991.98px) { .dgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+  .dgrid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .dsearch { flex-basis: 100%; }
+  .dlist li { padding: 14px 16px; }
+  .dbtn-soft { min-width: 0; }
+}
+
+.loadingdiv { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
