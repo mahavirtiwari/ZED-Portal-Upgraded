@@ -372,7 +372,8 @@ function DetailsPage({
       </ScrollView>
       <Footer
         onBack={onBack}
-        proceedTitle={due == null || due === 0 ? 'PROCEED TO PAY' : `PROCEED TO PAY ${formatCurrency(due)}`}
+        // 2026-11-17 (the user): nothing to pay after the subsidy is confirmed without the payment gateway.
+        proceedTitle={due === 0 ? 'CONFIRM (NOTHING TO PAY)' : due == null ? 'PROCEED TO PAY' : `PROCEED TO PAY ${formatCurrency(due)}`}
         proceedEnabled={due != null}
         onProceed={async () => {
           const req = prepare();
@@ -436,7 +437,7 @@ function DetailsPage({
         <ZedDialog visible title="Summary" cancelable={false} onClose={() => setSummaryOpen(null)}>
           <SummaryRows summary={paymentSummary(details, tdsDeductible === YES ? tds : null, type)} />
           <ZedButton
-            title="PROCEED TO PAYMENT"
+            title={due === 0 ? 'CONFIRM (NOTHING TO PAY)' : 'PROCEED TO PAYMENT'}
             small
             style={{ alignSelf: 'center' }}
             testID="payment-confirm"
