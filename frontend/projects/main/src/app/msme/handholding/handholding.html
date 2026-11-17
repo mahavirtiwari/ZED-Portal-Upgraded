@@ -52,27 +52,31 @@
                       <small class="ms-eyebrow">Milestone {{ m.number }}</small>
                       <span class="ms-state">{{ m.state }}</span>
                     </div>
-                    <strong class="ms-title">{{ m.title }}</strong>
-                    <div class="ms-desc">
-                      @if (m.number === 1) {
-                        <zed-text key="msme.handholding.steps.1"><p>The consultant studies where your unit stands and agrees a time-bound improvement plan with you.</p></zed-text>
-                      } @else {
-                        <zed-text key="msme.handholding.steps.2"><p>You implement the plan; the consultant monitors and reviews the progress.</p></zed-text>
+                    <!-- 2026-11-18 (the user's applicant designs): title and text on the left, the action on the right of the box, vertically centred. -->
+                    <div class="ms-main">
+                      <div class="ms-text">
+                        <strong class="ms-title">{{ m.title }}</strong>
+                        <div class="ms-desc">
+                          @if (m.number === 1) {
+                            <zed-text key="msme.handholding.steps.1"><p>The consultant studies where your unit stands and agrees a time-bound improvement plan with you.</p></zed-text>
+                          } @else {
+                            <zed-text key="msme.handholding.steps.2"><p>You implement the plan; the consultant monitors and reviews the progress.</p></zed-text>
+                          }
+                        </div>
+                      </div>
+                      @if (m.canAccept || m.applied || m.canApply) {
+                        <div class="ms-act">
+                          @if (m.canAccept) {
+                            <button type="button" class="btn btn-primary" (click)="openAccept(m)">Accept milestone {{ m.number }}</button>
+                          }
+                          @if (m.applied) {
+                            <a [class]="m.canAccept ? 'btn btn-outline-primary' : 'btn btn-primary'" [routerLink]="milestoneRoute(m)">{{ m.number === 1 ? 'View action plan' : 'View milestone' }}</a>
+                          } @else if (m.canApply) {
+                            <button type="button" class="btn btn-primary ms-apply" (click)="apply(m)">Apply</button>
+                          }
+                        </div>
                       }
                     </div>
-                    <p class="ms-who">Who acts: {{ m.number === 1 ? 'the consultant, then you accept the plan' : 'you implement, the consultant reviews' }}</p>
-                    @if (m.canAccept || m.applied || m.canApply) {
-                      <div class="ms-act">
-                        @if (m.canAccept) {
-                          <button type="button" class="btn btn-primary btn-sm" (click)="openAccept(m)">Accept milestone {{ m.number }}</button>
-                        }
-                        @if (m.applied) {
-                          <a [class]="m.canAccept ? 'btn btn-sm btn-outline-primary' : 'btn btn-sm btn-primary'" [routerLink]="milestoneRoute(m)">{{ m.number === 1 ? 'View action plan' : 'View milestone' }}</a>
-                        } @else if (m.canApply) {
-                          <button type="button" class="btn btn-primary btn-sm ms-apply" (click)="apply(m)">Apply</button>
-                        }
-                      </div>
-                    }
                   </div>
                 </li>
               }
@@ -179,8 +183,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="accepting.set(null)">CANCEL</button>
-          <button type="button" class="btn btn-primary" [disabled]="!accepted || busy()" (click)="submitAccept()">SUBMIT</button>
+          <button type="button" class="btn btn-default" (click)="accepting.set(null)">Cancel</button>
+          <button type="button" class="btn btn-primary" [disabled]="!accepted || busy()" (click)="submitAccept()">Submit</button>
         </div>
       </div>
     </div>

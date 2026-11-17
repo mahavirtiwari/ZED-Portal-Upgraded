@@ -161,7 +161,7 @@
               <p class="pst-zero" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
             }
             <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">
-              @if (nothingToPay()) { CONFIRM (NOTHING TO PAY) } @else { <span aria-hidden="true">🔒</span> Save &amp; proceed to pay }
+              @if (nothingToPay()) { Confirm (nothing to pay) } @else { <svg class="pay-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg> Save &amp; proceed to pay }
             </button>
             @if (!nothingToPay()) { <p class="pst-line ok">You will be taken to a secure payment gateway.</p> }
             <p class="pst-line warn">The amount once remitted is non-refundable.</p>
@@ -194,7 +194,20 @@
 }
 
 @if (busy()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite">
+    @if (leaving()) {
+      <!-- 2026-11-18 (the user's applicant designs, zed-msme-08): the hand-off to the payment gateway. -->
+      <div class="pst-handoff">
+        <span class="pst-handoff-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></span>
+        <h3>Taking you to the secure payment gateway</h3>
+        <p>Paying <b>₹ {{ netPayable() | number: '1.2-2' }}</b></p>
+        <p class="pst-handoff-warn">Do not refresh this page or press Back until you see the confirmation.</p>
+        <div class="spinner-border" aria-hidden="true"></div>
+      </div>
+    } @else {
+      <div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span>
+    }
+  </div>
 }
 
 <zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

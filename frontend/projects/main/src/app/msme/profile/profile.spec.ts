@@ -2,7 +2,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ProfilePage } from './profile';
+import { ProfilePage, profileCompleteness, shortDate } from './profile';
 
 describe('ProfilePage', () => {
   let fixture: ComponentFixture<ProfilePage>;
@@ -20,7 +20,7 @@ describe('ProfilePage', () => {
   };
 
   /** api/msme/dashboard, read for the header's chips (Bronze certified: status 6). */
-  const dashboard = { msme: { PledgeOn: '13/11/2026', EnterpriseType: 'Micro' }, basicInfo: {}, certStatus: { BronzeStatus: 6, SilverStatus: 0 }, levels: [] };
+  const dashboard = { msme: { PledgeOn: 'November 13, 2026', EnterpriseType: 'Micro' }, basicInfo: {}, certStatus: { BronzeStatus: 6, SilverStatus: 0 }, levels: [] };
 
   const activities = [
     { Activity: 'Manufacturing', Two_DigitActivity: '24 - Basic metals', Four_DigitActivity: '2431 - Casting', Five_DigitActivity: '24311' },
@@ -105,11 +105,11 @@ describe('ProfilePage', () => {
     const radios = el.querySelectorAll<HTMLInputElement>('input[name="Activity"]');
     expect(radios.length).toBe(2);
     expect(radios[0].checked).toBe(true);
-    expect(button('UPDATE')).toBeUndefined();
+    expect(button('Update')).toBeUndefined();
 
     radios[1].click();
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
 
     const req = http.expectOne('/api/msme/profile/activity');
@@ -131,7 +131,7 @@ describe('ProfilePage', () => {
     await openEditor();
     el.querySelectorAll<HTMLInputElement>('input[name="Activity"]')[1].click();
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
 
     http.expectOne('/api/msme/profile/activity').flush(
@@ -145,7 +145,7 @@ describe('ProfilePage', () => {
 
   it('CANCEL returns to the current activity without saving', async () => {
     await openEditor();
-    button('CANCEL')!.click();
+    button('Cancel')!.click();
     await settle();
     expect(el.querySelector('input[name="Activity"]')).toBeNull();
     expect(button('Edit activity')).toBeDefined();
@@ -156,7 +156,8 @@ describe('ProfilePage', () => {
     const hero = el.querySelector('.hero')!;
     expect(hero.textContent).toContain('Acme Castings');
     expect(hero.textContent).toContain('Bronze certified');
-    expect(hero.textContent).toContain('Pledge taken 13/11/2026');
+    // 2026-11-18 (the user's applicant designs): the procedure's "November 13, 2026" as 13 Nov 2026.
+    expect(hero.textContent).toContain('Pledge taken 13 Nov 2026');
     expect(hero.querySelector('a')!.getAttribute('href')).toBe('/msme/pledge-certificate');
     const nav = el.querySelector('nav[aria-label="Profile sections"]')!;
     expect(nav.textContent).toContain('1 unit');
@@ -196,11 +197,53 @@ describe('ProfilePage', () => {
     expect(items).toEqual(['Manufacturing', '24 Basic metals', '2431 Casting', '24311']);
   });
 
+  it('shows Verified after the mobile only when it is the Udyam record’s', async () => {
+    await loaded({ ...profile, basicInfo: { ...profile.basicInfo, MobileNo: '9876543133' }, mobileVerified: true });
+    const mobile = el.querySelector('[data-testid="mobile"]')!.parentElement!;
+    expect(mobile.textContent).toContain('98•••••133');
+    expect(mobile.querySelector('.ok')!.textContent).toContain('Verified');
+  });
+
+  it('shows no Verified after a mobile the API does not vouch for', async () => {
+    await loaded({ ...profile, basicInfo: { ...profile.basicInfo, MobileNo: '9876543133' } });
+    expect(el.querySelector('[data-testid="mobile"]')!.parentElement!.querySelector('.ok')).toBeNull();
+  });
+
+  it('shows the profile completeness under the menu with the first missing detail', async () => {
+    // The sample has the e-mail, activity, unit and no PAN, mobile or address: 3 of 6.
+    await loaded();
+    const card = el.querySelector('[data-testid="completeness"]')!;
+    expect(card.closest('.ps-side')).not.toBeNull();
+    expect(card.textContent).toContain('Profile completeness');
+    expect(card.textContent).toContain('50%');
+    expect(card.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow')).toBe('50');
+    expect(card.textContent).toContain('Add your mobile number on the Udyam portal; 2 more details missing.');
+  });
+
   it('Edit contact opens the change of the registered e-mail', async () => {
     await loaded();
     button('Edit contact')!.click();
     await settle();
     expect(el.querySelector('[data-testid="email-change"]')).not.toBeNull();
     expect(button('Edit contact')).toBeUndefined();
+  });
+});
+
+// 2026-11-18 (the user's applicant designs): the pure helpers (no page, so no requests to flush).
+describe('ProfilePage helpers', () => {
+  it('computes the completeness from the six facts the page reads', () => {
+    const all = { email: true, activity: true, unit: true, mobile: true, pan: true, address: true };
+    expect(profileCompleteness(all)).toEqual({ percent: 100, hint: 'All your profile details are in place.' });
+    expect(profileCompleteness({ ...all, pan: false })).toEqual({ percent: 83, hint: 'Add your PAN on the Udyam portal to reach 100%.' });
+    expect(profileCompleteness({ ...all, email: false, address: false }).percent).toBe(66);
+    expect(profileCompleteness({ ...all, email: false, address: false }).hint).toBe('Verify a registered e-mail under Contact; 1 more detail missing.');
+    expect(profileCompleteness({ email: false, activity: false, unit: false, mobile: false, pan: false, address: false }).percent).toBe(0);
+  });
+
+  it('writes the pledge date as d MMM yyyy', () => {
+    expect(shortDate('November 13, 2026')).toBe('13 Nov 2026');
+    expect(shortDate('13/11/2026')).toBe('13 Nov 2026');
+    expect(shortDate('2026-11-05')).toBe('5 Nov 2026');
+    expect(shortDate('soon')).toBe('soon');
   });
 });

@@ -128,7 +128,7 @@ describe('ConsultancyResultPage', () => {
     http.expectNone(() => true);
     expect(el.querySelector('.ph-title')!.textContent).toContain('Payment failed');
     expect(el.textContent).toContain('Step 3 of 4: the payment did not go through.');
-    expect(el.textContent).toContain('Payment Failed');
+    expect(el.querySelector('.pr-state h2')!.textContent).toContain('Payment failed');
     expect(el.textContent).toContain('<b>Cancelled</b>');
     expect(el.querySelector('.pr-msg span b')).toBeNull();
     expect(link('Try again').getAttribute('href')).toBe('/msme/handholding/Silver/payment');

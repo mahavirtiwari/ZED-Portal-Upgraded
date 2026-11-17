@@ -9,14 +9,14 @@ import { NotificationBell } from './notification-bell';
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
  * Port of the Ulb (MSME) branch of Views/Shared/_Layout.cshtml.
- * 2026-11-17 (the user's applicant designs, approved): a white logo bar; the menu strip Home, Certifications,
+ * 2026-11-17 (the user's applicant designs, approved): a white logo bar (72px, 2026-11-18); the menu strip Home, Certifications,
  * Incentives, My Documents, Profile, Help, with on the right the Bhashini language menu (as on the ZED website), the
  * notification bell and the user's menu; a light grey page; a dark footer.
  */
 @Component({
   selector: 'zed-msme-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBell, BhashiniMenu],
-  host: { class: 'zed-legacy d-block' },
+  host: { class: 'zed-legacy zed-msme d-block' },
   template: `
     <div class="main-container">
       <header class="zed-header zed-smooth" id="main_header">
@@ -73,8 +73,10 @@ import { NotificationBell } from './notification-bell';
         <div class="container mf">
           <small>ZED © {{ year }} All Rights Reserved</small>
           <nav class="mf-links" aria-label="Footer">
+            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a><span aria-hidden="true">·</span> }
+            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a><span aria-hidden="true">·</span> }
+            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a><span aria-hidden="true">·</span> }
             <a routerLink="/msme/contact">Help desk</a>
-            @if (links.url('contact'); as u) { <span aria-hidden="true">·</span><a [href]="u" target="_blank" rel="noopener">Contact ZED</a> }
           </nav>
           <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
         </div>
@@ -82,9 +84,18 @@ import { NotificationBell } from './notification-bell';
     </div>
   `,
   styles: `
-    /* The MVC layout had body { padding-top: 100px } under its fixed 100px header (Content/swachh.css). */
-    :host { padding-top: 100px; color: #333; }
-    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f3f6f6; }
+    /* 2026-11-18 (the user: "not matching with the SVG files"): the designs' 72px logo bar, which scrolls away, and the menu
+       strip pinned to the top of the window (the old fixed 100px header stayed while the menu scrolled off). */
+    :host { padding-top: 0; color: #333; }
+    .zed-header { position: relative; height: 72px; box-shadow: none; }
+    .header-top { height: 72px; }
+    .header-top a img, .header-top > img { width: auto; }
+    .header-top > a:first-child > img, .header-top > img:first-child { height: 80px; margin: -4px 0 -4px -8px; }
+    .header-top img.zedv2-logo { width: auto !important; height: 56px; }
+    .topnav { position: sticky; top: 0; z-index: 98; }
+    .msme-content { min-height: calc(100vh - 230px); padding: 2px 0 40px; background: #f3f6f6; }
+    /* The dashboard's sections, scrolled to from the menu, clear the pinned menu. */
+    .msme-content ::ng-deep [id] { scroll-margin-top: 64px; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     .topnav { background: var(--zt-dark, #1f5c61); padding: 0; min-height: 48px; }
     .topnav .navbar-nav { align-items: stretch; gap: 2px; }
@@ -107,12 +118,15 @@ import { NotificationBell } from './notification-bell';
     .topnav .navbar-toggler-icon { filter: invert(1); }
     .msme-footer { background: #1d2f31; color: #c9dcdc; }
     .mf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 12px; }
-    .mf-links { display: flex; gap: 8px; font-size: 13px; }
+    .mf { padding: 22px 12px; }
+    .mf small { font-size: 13px; font-weight: 600; color: #fff; }
+    .mf-links { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
     .mf-links a { color: #c9dcdc; text-decoration: none; }
     .mf-links a:hover { color: #fff; text-decoration: underline; }
     @media (max-width: 991.98px) {
       .topnav .container { flex-wrap: wrap; }
       .topnav .navbar-nav { gap: 0; }
+      .header-top > a:first-child > img, .header-top > img:first-child { height: 64px; }
       .topnav .nav-link, .topnav button.nav-link { height: 42px; border-bottom: 0; border-left: 3px solid transparent; }
       .topnav .nav-link.active { border-left-color: #8fd1a8; }
       .topnav .dropdown-menu { position: static; }

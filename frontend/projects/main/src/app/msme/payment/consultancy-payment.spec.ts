@@ -172,7 +172,7 @@ describe('ConsultancyPaymentPage', () => {
     expect(el.querySelector('[data-testid="covers-all"]')).toBeNull();
     // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
     expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
-    expect(payButton().textContent!.trim()).toBe('CONFIRM (NOTHING TO PAY)');
+    expect(payButton().textContent!.trim()).toBe('Confirm (nothing to pay)');
   });
 
   it('checks the form, then sends only the choices and the milestone shown to checkout', async () => {

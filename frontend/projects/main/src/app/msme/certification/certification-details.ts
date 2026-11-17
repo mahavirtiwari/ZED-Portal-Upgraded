@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CertificationTimeline } from './certification-timeline';
+import { monthYear, nextSurveillance, parseShortDate, shortDate, validTill, validityOf } from './certification-dates';
 import { ncBlock, progressOptions, progressSteps, splitDate, statusText, timelineItems } from './certification-progress';
 import {
   CertificationApi,
@@ -158,12 +159,35 @@ export class CertificationDetailsPage {
     if (this.has('GetCertified')) return this.kind() === 'surveillance' ? 'SURVEILLANCE CERTIFIED' : `${this.levelTitle().toUpperCase()} CERTIFIED`;
     return this.anyStatus() ? 'IN PROGRESS' : '';
   });
-  /** The dates the descriptions carry (no validity or surveillance dates: the API does not give them). */
+  /**
+   * The dates the descriptions carry; 2026-11-18 (design): once a level is certified, Certified on, Valid till (the
+   * certification date plus the level's validity, less a day) and Next surveillance (the first visit month not yet past).
+   * Before that: Applied on.
+   */
   protected readonly facts = computed(() => {
     const date = (field: string) => splitDate(statusText(this.status(), field)).date;
+    if ((this.kind() === 'bronze' || this.kind() === 'silverGold') && this.has('GetCertified')) {
+      const on = date('GetCertified');
+      const list = [{ label: 'Certified on', value: on }];
+      const certified = parseShortDate(on);
+      const v = this.validity();
+      if (certified && v) {
+        if (v.validityMonths > 0) list.push({ label: 'Valid till', value: shortDate(validTill(certified, v.validityMonths)) });
+        const next = nextSurveillance(certified, v.surveillanceMonths);
+        if (next) list.push({ label: 'Next surveillance', value: monthYear(next) });
+      }
+      return list.filter((f) => f.value);
+    }
     const list = [{ label: 'Applied on', value: date('ApplicationReceived') }];
     list.push(this.kind() === 'milestone' ? { label: 'Completed on', value: date('CompletedOn') } : { label: 'Certified on', value: date('GetCertified') });
     return list.filter((f) => f.value);
+  });
+  /** The level's validity and surveillance months: from the certification API, else the Admin's enabled level (api/public/levels). */
+  private readonly validity = computed(() => {
+    const own = this.data()?.validity;
+    if (own) return own;
+    const code = this.level().toLowerCase();
+    return validityOf(this.levels.levels()?.find((l) => l.code.toLowerCase() === code));
   });
   /** The header's two buttons: the certificate and the report, when they can be opened today. */
   protected readonly certificateAction = computed(() => this.actions().find((a) => a.icon === 'certificate' && a.enabled) ?? null);
@@ -309,8 +333,9 @@ export class CertificationDetailsPage {
         firstValueFrom(this.http.get<Record<string, number | null>>('/api/msme/dashboard/level-fees')).catch(() => null),
       ]);
       const paid = dash?.msme?.[`Is${nextLevel.code}PaymentDone`];
-      // Only when the dashboard says the next level is not paid for (no flag: not shown).
-      if (paid === undefined || paid === null || Number(paid) === 1 || level !== this.level()) return;
+      // Only when the dashboard says the next level is not paid for (no flag: not shown). 2026-11-18: an empty flag (NULL in
+      // Msme for a level never paid for) is "not paid", as the dashboard's own Apply reads it.
+      if (paid === undefined || Number(paid) === 1 || level !== this.level()) return;
       const fee = fees?.[nextLevel.code];
       this.further.set({ level: nextLevel.code, fee: typeof fee === 'number' ? fee : null });
     } catch {

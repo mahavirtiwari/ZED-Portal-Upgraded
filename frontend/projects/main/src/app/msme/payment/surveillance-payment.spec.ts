@@ -201,7 +201,7 @@ describe('SurveillancePaymentPage', () => {
 
     // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
     expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
-    expect(payButton().textContent!.trim()).toBe('CONFIRM (NOTHING TO PAY)');
+    expect(payButton().textContent!.trim()).toBe('Confirm (nothing to pay)');
     payButton().click();
     await settled();
     const req = http.expectOne(`${API}/Bronze/checkout`);
@@ -313,7 +313,7 @@ describe('Surveillance payment entry points', () => {
     const el = fixture.nativeElement as HTMLElement;
     // The level card's SURVEILLANCE line (the unit card and Your next steps link the same page, 2026-11-17).
     const links = [...el.querySelectorAll('.lv-extra a')].filter((a) => a.getAttribute('href') === '/msme/surveillance-payment/Bronze');
-    expect(links.map((a) => a.textContent!.trim())).toEqual(['SURVEILLANCE', 'APPLY']);
+    expect(links.map((a) => a.textContent!.trim())).toEqual(['Surveillance', 'Apply']);
     expect(el.querySelector('a[href*="SurveillancePay"]')).toBeNull();
     http.verify();
   });

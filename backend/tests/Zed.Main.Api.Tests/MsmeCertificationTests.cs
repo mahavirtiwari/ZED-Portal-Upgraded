@@ -107,6 +107,43 @@ public sealed class MsmeCertificationTests : IDisposable
         Assert.DoesNotContain("agency@example.test", json.GetRawText());
     }
 
+    // 2026-11-18 (the user's applicant designs, zed-msme-01): the header's "Valid till" and "Next surveillance".
+    [Fact]
+    public async Task Gives_the_validity_and_surveillance_months_of_the_level_the_admin_set()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+        [
+            new Zed.Portal.Features.CertLevels.CertificationLevel("Bronze", "Bronze", 10, null, null, null, true, "Desktop", 60, true, 18,
+                "{DDMMYYYY}_{ZEDNO}", null, null, null, SurveillanceCount: 2, SurveillanceIntervalMonths: 18),
+            new Zed.Portal.Features.CertLevels.CertificationLevel("Silver", "Silver", 20, null, null, null, false, "Site", 36, false, null,
+                "{DDMMYYYY}_{ZEDNO}", null, null, null),
+        ];
+        var client = await SignedInAsync();
+
+        var bronze = (await client.GetFromJsonAsync<JsonElement>("/api/msme/certifications/Bronze")).GetProperty("validity");
+        Assert.Equal(60, bronze.GetProperty("validityMonths").GetInt32());
+        Assert.Equal(new[] { 18, 36 }, bronze.GetProperty("surveillanceMonths").EnumerateArray().Select(m => m.GetInt32()).ToArray());
+
+        // Its surveillance: the level's; a disabled level still gives its own; no surveillance: no months.
+        var surveillance = (await client.GetFromJsonAsync<JsonElement>("/api/msme/certifications/BronzeSurveillance")).GetProperty("validity");
+        Assert.Equal(60, surveillance.GetProperty("validityMonths").GetInt32());
+        var silver = (await client.GetFromJsonAsync<JsonElement>("/api/msme/certifications/Silver")).GetProperty("validity");
+        Assert.Equal(36, silver.GetProperty("validityMonths").GetInt32());
+        Assert.Empty(silver.GetProperty("surveillanceMonths").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Gives_the_built_in_validity_before_the_levels_are_set_and_none_for_a_milestone()
+    {
+        var client = await SignedInAsync();
+
+        var bronze = (await client.GetFromJsonAsync<JsonElement>("/api/msme/certifications/Bronze")).GetProperty("validity");
+        Assert.Equal(36, bronze.GetProperty("validityMonths").GetInt32());
+        Assert.Equal(new[] { 15, 27 }, bronze.GetProperty("surveillanceMonths").EnumerateArray().Select(m => m.GetInt32()).ToArray());
+        var milestone = await client.GetFromJsonAsync<JsonElement>("/api/msme/certifications/SilverMilestone1");
+        Assert.Equal(JsonValueKind.Null, milestone.GetProperty("validity").ValueKind);
+    }
+
     [Fact]
     public async Task Missing_status_history_gives_empty_status_fields()
     {

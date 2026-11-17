@@ -101,7 +101,7 @@ describe('PaymentStep', () => {
 
     // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
     expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
-    button('CONFIRM (NOTHING TO PAY)').click();
+    button('Confirm (nothing to pay)').click();
     await settle();
     http.expectOne('/api/msme/payments/gstin').flush({ message: 'ok', panMatches: false, gstinPan: 'PQRST6789K', udyamPan: 'ABCDE1234F' });
     await settle();
@@ -132,7 +132,7 @@ describe('PaymentStep', () => {
 
     // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
     expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
-    button('CONFIRM (NOTHING TO PAY)').click();
+    button('Confirm (nothing to pay)').click();
     await settle();
     const req = http.expectOne('/api/msme/payments/Bronze/checkout');
     expect(req.request.body).toEqual({ useReward: true, gstinApplicable: false, gstin: null, tdsDeductible: false, tds: null, tan: null });
@@ -174,7 +174,7 @@ describe('PaymentStep billing details', () => {
 });
 
 describe('PaymentStep without options', () => {
-  it('keeps BACK TO DASHBOARD when the fee summary cannot load', async () => {
+  it('keeps Back to dashboard when the fee summary cannot load', async () => {
     await TestBed.configureTestingModule({
       imports: [PaymentStep],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
@@ -192,7 +192,7 @@ describe('PaymentStep without options', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('[role="dialog"]')!.textContent).toContain('Payment is not available.');
-    const backButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'BACK TO DASHBOARD') as HTMLButtonElement;
+    const backButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Back to dashboard') as HTMLButtonElement;
     backButton.click();
     expect(back).toBe(1);
     http.verify();

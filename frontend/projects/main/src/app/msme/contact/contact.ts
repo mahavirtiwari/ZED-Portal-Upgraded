@@ -34,7 +34,7 @@ import { PageHead } from '../shared/page-head';
                 <div><zed-recaptcha (token)="captchaToken = $event" /></div>
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">SUBMIT</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">Submit</button>
               </div>
             </form>
           }

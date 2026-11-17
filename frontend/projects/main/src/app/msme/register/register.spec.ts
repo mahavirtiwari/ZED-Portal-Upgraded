@@ -34,7 +34,7 @@ describe('RegisterPage', () => {
 
   async function goToUdyamStep() {
     await settle();
-    button('PROCEED').click();
+    button('Proceed').click();
     await settle();
     answerCaptchaConfig();
     await settle();
@@ -60,7 +60,7 @@ describe('RegisterPage', () => {
     await goToUdyamStep();
     type('#regNo', '12345');
     type('#mobileNo', '9999999999');
-    button('PROCEED').click();
+    button('Proceed').click();
     await settle();
 
     http.expectNone('/api/msme/registration/lookup');
@@ -71,7 +71,7 @@ describe('RegisterPage', () => {
     await goToUdyamStep();
     type('#regNo', 'udyam-up-29-0003915');
     type('#mobileNo', '9999999999');
-    button('PROCEED').click();
+    button('Proceed').click();
     await settle();
 
     const req = http.expectOne('/api/msme/registration/lookup');
@@ -94,7 +94,7 @@ describe('RegisterPage', () => {
     await goToUdyamStep();
     type('#regNo', 'UDYAM-UP-29-0003915');
     type('#mobileNo', '9999999999');
-    button('PROCEED').click();
+    button('Proceed').click();
     await settle();
 
     http.expectOne('/api/msme/registration/lookup').flush(

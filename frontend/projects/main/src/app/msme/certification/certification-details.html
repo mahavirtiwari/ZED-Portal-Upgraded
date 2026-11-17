@@ -45,13 +45,13 @@
       @if (certificateAction() || reportAction()) {
         <div class="cd-btns">
           @if (certificateAction(); as a) {
-            <a class="btn cd-btn-main" [href]="a.href" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg>
+            <a class="btn btn-primary cd-btn" [href]="a.href" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
               {{ a.label.replace(' (PDF)', '') }}
             </a>
           }
           @if (reportAction(); as a) {
-            <a class="btn cd-btn-line" [href]="a.href" target="_blank" rel="noopener">{{ a.label }}</a>
+            <a class="btn btn-outline-primary cd-btn" [href]="a.href" target="_blank" rel="noopener">{{ a.label }}</a>
           }
         </div>
       }
@@ -80,9 +80,9 @@
             <h3 id="nextTitle">{{ n.title }}</h3>
             <p class="rail-text">{{ n.text }}</p>
             @if (n.label && n.route) {
-              <a class="btn cd-btn-main" [routerLink]="n.route">{{ n.label }} <span aria-hidden="true">→</span></a>
+              <a class="btn btn-primary cd-btn" [routerLink]="n.route">{{ n.label }} <ng-container *ngTemplateOutlet="arrow" /></a>
             } @else if (n.label && n.href) {
-              <a class="btn cd-btn-main" [href]="n.href">{{ n.label }} <span aria-hidden="true">→</span></a>
+              <a class="btn btn-primary cd-btn" [href]="n.href">{{ n.label }} <ng-container *ngTemplateOutlet="arrow" /></a>
             }
           </section>
         }
@@ -103,7 +103,7 @@
                   <b>{{ levelLabel(f.level) }} certification</b>
                 }
               </div>
-              <a class="btn cd-btn-line" routerLink="/msme/dashboard" [queryParams]="{ apply: f.level }" [attr.aria-label]="'Apply for ' + levelLabel(f.level)">Apply <span aria-hidden="true">→</span></a>
+              <a class="btn btn-outline-primary cd-btn cd-btn-apply" routerLink="/msme/dashboard" [queryParams]="{ apply: f.level }" [attr.aria-label]="'Apply for ' + levelLabel(f.level)">Apply <ng-container *ngTemplateOutlet="arrow" /></a>
             </div>
           </section>
         }
@@ -115,20 +115,20 @@
               <li class="qa-row" [class.qa-off]="!a.enabled" [class.qa-danger]="a.danger">
                 <ng-template #body>
                   @switch (a.icon) {
-                    @case ('non-conformance') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9.5 17h-19L12 3zm0 6v5m0 3h.01" /></svg> }
-                    @case ('certificate') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" /></svg> }
-                    @case ('report') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg> }
+                    @case ('non-conformance') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg> }
+                    @case ('certificate') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg> }
+                    @case ('report') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg> }
                     @case ('incentives') { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM3 7h18v3H3zm9 0v13M12 7s-1-4-4-4-2 4 0 4m4 0s1-4 4-4 2 4 0 4" /></svg> }
-                    @default { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6" /></svg> }
+                    @default { <svg class="qa-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg> }
                   }
                   <span class="qa-label">{{ a.label }}</span>
                 </ng-template>
                 @if (a.route && a.enabled) {
-                  <a class="qa-link" [routerLink]="a.route"><ng-container *ngTemplateOutlet="body" /><span class="qa-go" aria-hidden="true">›</span></a>
+                  <a class="qa-link" [routerLink]="a.route"><ng-container *ngTemplateOutlet="body" /><ng-container *ngTemplateOutlet="chevron" /></a>
                 } @else if (a.href !== undefined && a.enabled) {
                   <!-- Downloads and the report page open a new tab; "View my incentives" opens in the same tab, as the live page. -->
                   <a class="qa-link" [href]="a.href" [attr.target]="a.download || a.newTab ? '_blank' : null" [attr.rel]="a.download || a.newTab ? 'noopener' : null">
-                    <ng-container *ngTemplateOutlet="body" /><span class="qa-go" aria-hidden="true">›</span>
+                    <ng-container *ngTemplateOutlet="body" /><ng-container *ngTemplateOutlet="chevron" />
                   </a>
                 } @else if (a.route || a.href !== undefined) {
                   <span class="qa-link" aria-disabled="true"><ng-container *ngTemplateOutlet="body" /></span>
@@ -143,6 +143,10 @@
         </section>
       </aside>
     </div>
+
+    <!-- 2026-11-18 (design): the buttons' arrow and the quick actions' chevron. -->
+    <ng-template #arrow><svg class="cd-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg></ng-template>
+    <ng-template #chevron><svg class="qa-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></ng-template>
   }
 </div>
 

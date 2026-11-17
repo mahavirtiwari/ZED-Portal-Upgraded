@@ -52,7 +52,13 @@ public sealed class MsmeProfileService(
         public static Result<T> Fail(string error) => new(default, error);
     }
 
-    public sealed record Profile(Dictionary<string, object?> Msme, Dictionary<string, object?> BasicInfo, string? RegisteredEmail);
+    /// <param name="MobileVerified">
+    /// 2026-11-18 (the user's applicant designs): the mobile shown (the Udyam record's) is the one the unit registered with,
+    /// which the Ministry's Udyam service accepted for this Udyam number at registration (Msme.MobileNo); false when they differ
+    /// or either is missing. No OTP is sent to the mobile; this is the Udyam match only.
+    /// </param>
+    public sealed record Profile(Dictionary<string, object?> Msme, Dictionary<string, object?> BasicInfo, string? RegisteredEmail,
+        bool MobileVerified = false);
 
     // ---------------------------------------------------------------- details
 
@@ -62,7 +68,21 @@ public sealed class MsmeProfileService(
         var sets = await Details(zedId, ct);
         if (sets[0].FirstOrDefault() is not { } msme) return new(null, "Not found.", NotFound: true);
         var account = await PasswordResetTokens.FindMsmeAccountAsync(db, zedId, ct);
-        return Result<Profile>.Ok(new Profile(Pick(msme, MsmeFields), Pick(sets[1].FirstOrDefault(), BasicInfoFields), account?.MailAddress));
+        var basic = sets[1].FirstOrDefault();
+        return Result<Profile>.Ok(new Profile(Pick(msme, MsmeFields), Pick(basic, BasicInfoFields), account?.MailAddress,
+            SameMobile(msme.Text("MobileNo"), basic?.Text("MobileNo"))));
+    }
+
+    /// <summary>The same 10-digit mobile (spaces, +91 or a leading 0 aside); false when either is missing.</summary>
+    internal static bool SameMobile(string? registered, string? udyam)
+    {
+        static string Digits(string? v)
+        {
+            var d = new string((v ?? "").Where(char.IsAsciiDigit).ToArray());
+            return d.Length > 10 ? d[^10..] : d;
+        }
+        var a = Digits(registered);
+        return a.Length == 10 && a == Digits(udyam);
     }
 
     // ---------------------------------------------------------------- activity

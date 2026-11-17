@@ -1,0 +1,56 @@
+// 2026-11-18 (the user: the applicant pages "not matching with the SVG files"): the buttons of the applicant designs
+// (D:\ZED Portal SVG\Applicant) on the signed-in MSME pages (inside .zed-legacy.zed-msme, the MSME layout). The old site's
+// rules (".zed-legacy .btn-primary": orange, then blue, then light teal, all in capitals) no longer win there:
+// the main action is solid dark teal, the second one white with a teal outline, the quiet one (Back, Refresh) light grey,
+// all in the words' own case, 700 weight, 9px corners.
+
+.btn {
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: none;
+  white-space: nowrap;
+}
+.btn-sm { font-size: 12.5px; border-radius: 8px; }
+.btn:focus-visible { box-shadow: 0 0 0 3px rgb(36 102 107 / 25%); }
+
+.btn-primary,
+.btn-primary:focus,
+.btn-primary:hover,
+.btn-primary:active {
+  background-color: var(--zt-dark, #24666b);
+  border: 1.5px solid var(--zt-dark, #24666b);
+  color: #fff;
+  text-transform: none;
+  box-shadow: none;
+}
+.btn-primary:hover { background-color: var(--zt-ink, #1a4c50); border-color: var(--zt-ink, #1a4c50); }
+.btn-primary:disabled,
+.btn-primary.disabled { background-color: #a9c6c8; border-color: #a9c6c8; color: #fff; opacity: 1; }
+
+.btn-outline-primary,
+.btn-outline-primary:focus {
+  background-color: #fff;
+  border: 1.5px solid var(--zt-dark, #24666b);
+  color: var(--zt-dark, #24666b);
+  text-transform: none;
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:active { background-color: #eef6f6; border-color: var(--zt-dark, #24666b); color: var(--zt-ink, #1a4c50); }
+.btn-outline-primary:disabled,
+.btn-outline-primary.disabled { background-color: #fff; border-color: #c9d9da; color: #8fa5a7; opacity: 1; }
+
+.btn.btn-default,
+.btn.btn-default:focus,
+.btn-secondary,
+.btn-light {
+  background-color: #e7eeee !important;
+  border: 1.5px solid #e7eeee !important;
+  color: #17373b !important;
+  text-transform: none;
+}
+.btn.btn-default:hover,
+.btn-secondary:hover,
+.btn-light:hover { background-color: #d9e4e4 !important; border-color: #d9e4e4 !important; color: #10292c !important; }

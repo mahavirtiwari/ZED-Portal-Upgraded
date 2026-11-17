@@ -28,12 +28,12 @@
             <div class="tl-body nc-box">
               <div class="nc-head">
                 <p class="tl-title">Non-conformances</p>
-                <span class="nc-chip">{{ nc.rounds.length }} RAISED · {{ nc.closed ? 'CLOSED' : nc.responded + ' RESPONDED' }}</span>
+                <span class="nc-chip">{{ nc.rounds.length }} RAISED · {{ nc.closed ? nc.rounds.length + ' CLOSED' : nc.responded + ' RESPONDED' }}</span>
                 @if (nc.finalClosure) { <span class="nc-final">Final closure date {{ nc.finalClosure }}</span> }
               </div>
               @for (r of nc.rounds; track r.round) {
                 <div class="nc-row">
-                  <b>Round {{ r.round }}</b>
+                  <b>NC {{ r.round }}</b>
                   <span class="nc-trail">
                     Raised by ZED · {{ when(r.raised) }}
                     @if (r.submitted) { → You responded · {{ when(r.submitted) }} } @else { → <em>Awaiting your response</em> }
@@ -43,7 +43,7 @@
                     <svg class="nc-ok" viewBox="0 0 24 24" role="img" aria-label="Responded"><circle cx="12" cy="12" r="10" /><path d="M7.5 12.5l3 3 6-6" /></svg>
                   }
                   @if (ncRoute(); as route) {
-                    <a class="nc-view" [routerLink]="route" [attr.aria-label]="'View non-conformance round ' + r.round">View ›</a>
+                    <a class="nc-view" [routerLink]="route" [attr.aria-label]="'View non-conformance round ' + r.round">View <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></a>
                   }
                 </div>
               }

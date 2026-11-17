@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { splitCertification } from '../shared/levels';
+import { LevelValidity } from './certification-dates';
 
 /** Rows keep the procedure's column names (EnterpriseName, BronzeStatus, Nc1Raised, ...). */
 export type Row = Record<string, string | number | boolean | null>;
@@ -14,6 +15,8 @@ export interface CertificationData {
   certStatus: Row;
   /** MsmeHistory descriptions by status type (ApplicationReceived, ScheduledOn, Nc1Raised, ...). */
   status: Row;
+  /** 2026-11-18: the level's validity and surveillance months (Administration → Certification Levels); null for a milestone. */
+  validity?: LevelValidity | null;
 }
 
 /** A level's code: Bronze, Silver, Gold, ZEDX (ZED-X) or a level the Admin added (2026-11-08), which works as ZED-X does. */

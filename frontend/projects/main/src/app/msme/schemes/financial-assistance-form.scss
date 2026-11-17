@@ -49,16 +49,16 @@
 .fa-done { max-width: 640px; margin: 0 auto 20px; padding: 32px 24px; text-align: center; }
 .fa-done h2 { margin: 14px 0 20px; font-size: 21px; font-weight: 700; color: var(--zt-ink, #173f44); }
 
-// Rail.
-.fa-checks, .fa-dots { list-style: none; margin: 0; padding: 0; font-size: 14px; color: #1f2d2e; }
-.fa-checks li { position: relative; padding-left: 30px; margin-bottom: 12px; overflow-wrap: anywhere; }
-.fa-checks li::before { content: '\2713'; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: #2e9e57; }
-.fa-ok { margin: 4px 0 0; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #2e7d4f; background: #e3f3e8; }
-.fa-dots li { position: relative; padding-left: 18px; margin-bottom: 10px; }
-.fa-dots li::before { content: ''; position: absolute; left: 2px; top: 8px; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--zt-dark, #1f5c61); }
-.fa-next { margin: 0; font-size: 13.5px; color: #3b4b4c; line-height: 1.55; }
+// Rail. 2026-11-18 (the user's applicant designs): green 18px ticks on 36px rows, dots on 30px rows, 13.5px text.
+.fa-checks, .fa-dots { list-style: none; margin: 0; padding: 0; font-size: 13.5px; font-weight: 500; line-height: 20px; color: #17373b; }
+.fa-checks li { position: relative; padding-left: 32px; margin-bottom: 16px; overflow-wrap: anywhere; }
+.fa-checks li::before { content: '\2713'; position: absolute; left: 1px; top: 1px; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: #2f9e58; }
+.fa-ok { margin: 0; padding: 5px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; line-height: 20px; color: #2f9e58; background: #e5f5ea; }
+.fa-dots li { position: relative; padding-left: 20px; margin-bottom: 10px; }
+.fa-dots li::before { content: ''; position: absolute; left: 3px; top: 7px; width: 6px; height: 6px; border-radius: 50%;
+  background: #24666b; }
+.fa-next { margin: 0; font-size: 12.5px; font-weight: 500; color: #3d5559; line-height: 18px; }
 
 @media (max-width: 767.98px) {
   .fa-fields, .fa-dl { grid-template-columns: minmax(0, 1fr); }

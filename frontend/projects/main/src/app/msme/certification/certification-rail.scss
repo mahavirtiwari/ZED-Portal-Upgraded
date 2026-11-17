@@ -1,32 +1,38 @@
 // 2026-11-17 (the user's applicant design, zed-msme-01): the right rail (next step, go further, quick actions).
+// 2026-11-18 (design, zed-msme-01): 24px insets, 56px card heads, 44px action rows with inset rules, teal icons and chevrons.
 .cd-rail { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-.rail-next { padding: 20px 24px; border: 1px solid #cfe6df; border-radius: 12px; background: linear-gradient(135deg, #e9f6f2, #f4faf8); }
-.rail-kicker { margin: 0 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; color: #2e9e57; }
-.rail-next h3 { margin: 0 0 6px; font-size: 19px; font-weight: 700; color: var(--zt-ink, #173f44); }
-.rail-text { margin: 0 0 14px; font-size: 13.5px; color: #3f4f50; overflow-wrap: anywhere; }
+.rail-next { padding: 24px; border: 1px solid #bfe3c6; border-radius: 14px; background: linear-gradient(135deg, #eaf7ee, #e3f3f2);
+  box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+.rail-kicker { margin: 0 0 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .09em; color: #2f9e58; }
+.rail-next h3 { margin: 0 0 8px; font-size: 19px; font-weight: 700; color: #17373b; }
+.rail-text { margin: 0 0 18px; font-size: 12.5px; font-weight: 500; line-height: 18px; color: #3d5559; overflow-wrap: anywhere; }
 .rail-text:last-child { margin-bottom: 0; }
-.rail-card { background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-.rail-head { margin: 0; padding: 14px 24px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); border-bottom: 1px solid #e8eff0; }
-.rail-further { display: flex; align-items: center; gap: 14px; padding: 16px 24px; }
+.rail-next .cd-btn { height: 38px; }
+.rail-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+.rail-head { margin: 0; padding: 16px 24px 15px; font-size: 16px; font-weight: 700; line-height: 24px; color: #17373b; border-bottom: 1px solid #dde7e8; }
+.rail-further { display: flex; align-items: center; gap: 14px; padding: 20px 24px; }
 .rail-further img { flex: none; width: 52px; height: 52px; object-fit: contain; }
 .rail-further > div { flex: 1; min-width: 0; }
-.rail-further b { display: block; font-size: 15px; color: #1f2d2e; }
-.rail-further small { font-size: 12.5px; color: #5f6f70; }
-.qa { list-style: none; margin: 0; padding: 4px 0; }
-.qa-row + .qa-row { border-top: 1px solid #eef3f3; }
-.qa-link { display: flex; align-items: center; gap: 12px; padding: 11px 24px; font-size: 14px; color: #1f2d2e; text-decoration: none; }
-a.qa-link:hover { background: #f4f8f8; color: var(--zt-dark, #1f5c61); }
-.qa-ico { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--zt-dark, #1f5c61); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.qa-danger .qa-ico { stroke: #c0392b; }
+.rail-further b { display: block; font-size: 15px; font-weight: 700; color: #17373b; }
+.rail-further small { font-size: 12px; font-weight: 500; color: #6f8487; }
+.rail-further .cd-btn-apply { min-width: 100px; height: 36px; padding: 0 16px; }
+.qa { list-style: none; margin: 0; padding: 0 0 4px; }
+// The rule between two rows stops 24px short of the card's edges.
+.qa-row + .qa-row::before { content: ''; display: block; margin: 0 24px; border-top: 1px solid #dde7e8; }
+.qa-link { display: flex; align-items: center; gap: 12px; padding: 12px 24px; font-size: 13.5px; font-weight: 500; line-height: 20px;
+  color: #17373b; text-decoration: none; }
+a.qa-link:hover { background: #f4f8f8; color: #24666b; }
+.qa-ico { flex: none; width: 16px; height: 16px; fill: none; stroke: #24666b; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .qa-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.qa-go { flex: none; font-size: 18px; line-height: 1; color: #6b7c7d; }
+.qa-go { flex: none; width: 16px; height: 16px; fill: none; stroke: #6f8487; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .qa-off .qa-link { color: #9aa6a7; cursor: not-allowed; }
 .qa-off .qa-ico { stroke: #b5c0c1; }
-.qa-none { padding: 12px 24px; font-size: 13px; color: #5f6f70; }
+.qa-none { padding: 12px 24px; font-size: 13px; color: #6f8487; }
 .soon-note { flex: none; white-space: nowrap; color: #8d8f90; font-size: 12px; font-weight: 600; }
 
 @media (max-width: 575.98px) {
   .rail-next, .rail-further { padding: 16px; }
   .rail-head, .qa-link, .qa-none { padding-left: 16px; padding-right: 16px; }
+  .qa-row + .qa-row::before { margin: 0 16px; }
   .rail-further { flex-wrap: wrap; }
 }

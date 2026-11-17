@@ -9,7 +9,8 @@ namespace Zed.Portal.Features.Msme;
 /// <summary>My Documents. Port of MsmeController.MyDocuments / GetMyDocuments.</summary>
 [Route("api/msme/documents")]
 public sealed class MsmeDocumentsController(
-    ISqlExecutor db, IDocumentAccessStore access, IWebHostEnvironment env, IOptions<PortalOptions> portal) : MsmeApiController
+    ISqlExecutor db, IDocumentAccessStore access, IWebHostEnvironment env, IOptions<PortalOptions> portal,
+    PledgeCertificateService pledge, ILogger<MsmeDocumentsController> log) : MsmeApiController
 {
     /// <summary>
     /// SP_MSME_GET_MY_DOCUMENTS for the signed-in ZED ID: <c>{ Guidelines, Certificates,
@@ -17,15 +18,89 @@ public sealed class MsmeDocumentsController(
     /// api/msme/files URLs instead of the old public URLs, or null when there is no servable file — also when the file is
     /// not in storage, so the page shows "not available" instead of a link that fails.
     /// </summary>
+    /// <remarks>
+    /// 2026-11-18 (the user's applicant designs: each card shows its issue date or validity): also <c>Unit</c> (the ZED ID and
+    /// the pledge date, as the pledge certificate prints it) and <c>Certified</c> (per level, the date of certification and
+    /// the date the certificate is valid till), both from existing data (<see cref="MsmeDocumentDates"/>).
+    /// </remarks>
     [HttpGet]
     public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct)
     {
         var root = MsmeFilePaths.Root(env, portal.Value);
         var sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
         await MsmeMyDocuments.AddV4LevelsAsync(db, sets, ZedId, ct);
-        return MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(sets, await access.AllAsync(ct)), ZedId,
+        var result = MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(sets, await access.AllAsync(ct)), ZedId,
             path => MsmeFilePaths.Find(root, path) is not null);
+
+        var pledged = await pledge.LoadAsync(db, ZedId, ct);
+        result["Unit"] = [new Dictionary<string, object?>
+        {
+            ["ZedId"] = ZedId,
+            ["PledgeOn"] = MsmeDocumentDates.IsoDate(pledged?.DateOfPledge),
+        }];
+        result["Certified"] = await MsmeDocumentDates.CertifiedAsync(db, ZedId, log, ct);
+        return result;
     }
+}
+
+/// <summary>
+/// 2026-11-18 (the user's applicant designs): the dates My Documents shows under each certificate and report, from existing
+/// data: the date of certification is MsmeCertifications.CertificationStatusDate of the certified record (the date the
+/// certificate prints, SP_DA/RA_GET_CERTIFICATE_DETAILS' DateOfCertification), and the certificate is valid till that date
+/// plus the level's validity (Administration → Certification Levels, the validity the certificate prints; 36 months when it
+/// cannot be read).
+/// </summary>
+public static class MsmeDocumentDates
+{
+    /// <summary>
+    /// The latest certified record of each level (the rule of <see cref="Documents.DocumentLevels.IsCertifiedRecord"/>: 16, or 6
+    /// with its desktop number or a certification phase).
+    /// </summary>
+    internal const string CertifiedSql =
+        "SELECT Certification, MAX(CertificationStatusDate) AS CertifiedOn FROM dbo.MsmeCertifications WHERE ZedId = @ZedId " +
+        "AND CertificationStatusDate IS NOT NULL AND (CertificationStatus = 16 OR (CertificationStatus = 6 AND (DaCertificateNo IS NOT NULL " +
+        "OR ISNULL(CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED')))) GROUP BY Certification;";
+
+    public sealed record CertifiedRow(string? Certification, DateTime? CertifiedOn);
+
+    /// <summary>{ Level, CertifiedOn, ValidTill } (yyyy-MM-dd) per certified level; none when the table cannot be read.</summary>
+    public static async Task<IReadOnlyList<IDictionary<string, object?>>> CertifiedAsync(ISqlExecutor db, string zedId, ILogger log, CancellationToken ct)
+    {
+        IReadOnlyList<CertifiedRow> rows;
+        try
+        {
+            rows = await db.QuerySqlAsync<CertifiedRow>(CertifiedSql, new { ZedId = zedId }, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "My Documents: the certification dates of {ZedId} were not read", zedId);
+            return [];
+        }
+        if (rows.Count == 0) return [];
+        var levels = await CertLevels.CertificationLevels.AllAsync(db, log, ct);
+        return rows.Where(r => r.CertifiedOn is not null && !string.IsNullOrWhiteSpace(r.Certification)).Select(r =>
+        {
+            var code = r.Certification!.Trim();
+            var months = levels.FirstOrDefault(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase))?.ValidityMonths
+                         ?? Documents.DocumentLevels.DefaultValidityMonths;
+            if (months <= 0) months = Documents.DocumentLevels.DefaultValidityMonths;
+            var on = r.CertifiedOn!.Value.Date;
+            return (IDictionary<string, object?>)new Dictionary<string, object?>
+            {
+                ["Level"] = code,
+                ["CertifiedOn"] = Iso(on),
+                ["ValidTill"] = Iso(on.AddMonths(months)),
+            };
+        }).ToList();
+    }
+
+    /// <summary>"January 1, 2026" (the procedures' FORMAT 'MMMM d, yyyy') as 2026-01-01; null when it is not such a date.</summary>
+    public static string? IsoDate(string? text) =>
+        DateTime.TryParseExact((text ?? "").Trim(), ["MMMM d, yyyy", "MMM d, yyyy", "dd/MM/yyyy", "dd-MM-yyyy", "yyyy-MM-dd"],
+            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? Iso(d) : null;
+
+    private static string Iso(DateTime d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 }
 
 /// <summary>Reads SP_MSME_GET_MY_DOCUMENTS and knows which of its columns name files.</summary>

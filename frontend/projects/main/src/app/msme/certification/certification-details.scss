@@ -2,33 +2,29 @@
 :host { display: block; }
 .cd-page { padding-top: 20px; padding-bottom: 32px; }
 
-.cd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 24px; padding: 20px 24px; margin-bottom: 20px;
-  background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+.cd-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 24px; min-height: 132px; padding: 20px 24px; margin-bottom: 20px;
+  background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
 .cd-badge { flex: none; width: 84px; height: 84px; object-fit: contain; }
-.cd-unit { flex: 1 1 300px; min-width: 0; }
-.cd-unit h3 { margin: 0 0 8px; font-size: 21px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
-.cd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-.chip { padding: 3px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; }
-.chip-status { color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
-.chip-done { color: #2e7d4f; background: #e3f3e8; }
-.chip-size { color: #9a5b00; background: #fdeccd; }
-.cd-ids { display: flex; flex-wrap: wrap; margin: 0; font-size: 13px; color: #4f5f60; }
+.cd-unit { flex: 1 1 240px; min-width: 0; }
+// 2026-11-18 (design): unit name 20px/700, chips 22px high, the ids 12.5px grey.
+.cd-unit h3 { margin: 0 0 6px; font-size: 20px; font-weight: 700; line-height: 1.3; color: #17373b; overflow-wrap: anywhere; }
+.cd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip { display: inline-block; padding: 0 12px; border-radius: 11px; font-size: 10.5px; font-weight: 700; line-height: 22px; letter-spacing: .04em; }
+.chip-status { color: #24666b; background: #e6f2f3; }
+.chip-done { color: #2f9e58; background: #e5f5ea; }
+.chip-size { color: #8a5a00; background: #fdeccd; }
+.cd-ids { display: flex; flex-wrap: wrap; margin: 0; font-size: 12.5px; font-weight: 500; color: #6f8487; }
 .cd-ids span + span::before { content: '·'; margin: 0 6px; }
+// Certified on / Valid till / Next surveillance: 148px columns with a rule on the left.
 .cd-facts { display: flex; margin: 0; }
-.cd-facts > div { padding: 0 22px; border-left: 1px solid #e3ecec; }
-.cd-facts dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #6b7c7d; text-transform: uppercase; }
-.cd-facts dd { margin: 4px 0 0; font-size: 17px; color: #1f2d2e; white-space: nowrap; }
+.cd-facts > div { min-width: 148px; padding: 4px 18px 6px; border-left: 1px solid #dde7e8; }
+.cd-facts dt { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #6f8487; text-transform: uppercase; }
+.cd-facts dd { margin: 6px 0 0; font-size: 17px; font-weight: 600; color: #17373b; white-space: nowrap; }
 .cd-btns { display: flex; flex-direction: column; gap: 10px; }
-.cd-btns .btn { justify-content: center; }
 
-// The page's buttons (also in the rail).
-.cd-btn-main, .cd-btn-line { display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px;
-  border-radius: 8px; font-size: 14px; font-weight: 700; text-decoration: none; }
-.cd-btn-main { color: #fff; background: var(--zt-dark, #1f5c61); border: 1px solid var(--zt-dark, #1f5c61); }
-.cd-btn-main:hover { color: #fff; background: var(--zt-ink, #173f44); }
-.cd-btn-line { color: var(--zt-dark, #1f5c61); background: #fff; border: 2px solid var(--zt-dark, #1f5c61); }
-.cd-btn-line:hover { background: var(--zt-soft, #d4ebe6); }
-.cd-btn-main svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+// The page's buttons (colours: the applicant skin's btn-primary / btn-outline-primary); 200 x 40, the rail's 38 / 36 high.
+.cd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 200px; height: 40px; padding: 0 20px; }
+.cd-btn svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 .cd-app { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 20px; margin-bottom: 20px;
   border: 1px solid var(--zt-soft, #d4ebe6); border-radius: 12px; background: #f1f8f6; }
@@ -36,7 +32,10 @@
 .cd-app-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 
 .cd-track { margin-bottom: 20px; }
-.cd-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+// 2026-11-18 (design): the timeline takes the room left by a 420px rail.
+.cd-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); gap: 20px; align-items: start; }
+// The design's page title: 24px/700.
+.cd-page ::ng-deep .ph-title { font-size: 24px; font-weight: 700; }
 
 @media (max-width: 1199.98px) {
   .cd-facts { order: 3; flex-basis: 100%; }

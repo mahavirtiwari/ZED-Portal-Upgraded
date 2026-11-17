@@ -30,6 +30,13 @@ public static class PortalLinks
             "Portal.AppStoreUrl", "Portal.AppStoreEnabled", "https://apps.apple.com/in/app/zed-msme/id1631537071"),
         new("lgd", "LGD Directory", "Admin → Master → LG Directory, where to download the list of districts. Switched off: shown as text.",
             "Portal.LgdUrl", "Portal.LgdEnabled", "https://lgdirectory.gov.in/downloadDirectory.do"),
+        // 2026-11-18 (the user's applicant designs: the footer and the dashboard's help box): the ZED website's pages.
+        new("guidelines", "Scheme guidelines", "The MSME pages' footer and the dashboard's \"Need help\" box. Switched off: not shown.",
+            "Portal.GuidelinesUrl", "Portal.GuidelinesEnabled", "https://zed.msme.gov.in/uploads/Guideline_Book.pdf"),
+        new("privacy", "Privacy policy", "The MSME pages' footer. Switched off: not shown.",
+            "Portal.PrivacyUrl", "Portal.PrivacyEnabled", "https://zed.msme.gov.in/privacy-policy"),
+        new("terms", "Terms of use", "The MSME pages' footer. Switched off: not shown.",
+            "Portal.TermsUrl", "Portal.TermsEnabled", "https://zed.msme.gov.in/terms-and-conditions"),
     ];
 
     public static Link? Find(string key) => All.FirstOrDefault(l => string.Equals(l.Key, key, StringComparison.OrdinalIgnoreCase));

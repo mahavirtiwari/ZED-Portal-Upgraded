@@ -20,6 +20,8 @@ interface DashboardData {
   msme: Row;
   basicInfo: Row;
   certStatus: Row;
+  /** 2026-11-18 (the user's applicant designs): when each certified level was certified (level code → yyyy-MM-dd). */
+  certifiedOn?: Record<string, string | null>;
 }
 
 /**
@@ -341,7 +343,9 @@ export class DashboardPage {
   /** Micro, Small or Medium (the band's badge). */
   protected readonly entType = computed(() => String(this.msme()['EnterpriseType'] ?? ''));
 
-  protected months(n: number): string {
+  /** "5 years" / "18 months"; adjective: "5-year" / "18-month" (as in "5-year validity"). */
+  protected months(n: number, adjective = false): string {
+    if (adjective) return n % 12 === 0 ? `${n / 12}-year` : `${n}-month`;
     return n % 12 === 0 ? `${n / 12} year${n === 12 ? '' : 's'}` : `${n} months`;
   }
 
@@ -386,7 +390,21 @@ export class DashboardPage {
     return v !== null && v !== undefined && Number(v) !== 0;
   }
 
-  /** The unit card's facts on the right: the current level, its validity and surveillance (none before a certification). */
+  /** 2026-11-18 (the user's applicant designs): the day the unit was certified at the level (the server's certifiedOn), or null. */
+  protected certifiedOn(level: Level): Date | null {
+    if (!this.certified(level)) return null;
+    const dates = this.data()?.certifiedOn ?? {};
+    const key = Object.keys(dates).find((k) => k === level) ?? Object.keys(dates).find((k) => k.toLowerCase() === level.toLowerCase());
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((key && dates[key]) || '');
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+
+  /**
+   * The unit card's facts on the right: the current level, its validity and surveillance (none before a certification).
+   * 2026-11-18 (the user's applicant designs): with the certification date known, "Certified 14 Nov 2026", VALID TILL (the
+   * date + the level's validity − 1 day, "5-year validity") and NEXT SURVEILLANCE (the month of the first visit not yet past,
+   * "1st of 2 visits"); without it, as before (Valid for, the surveillance months).
+   */
   protected readonly unitFacts = computed(() => {
     const level = this.currentLevel();
     if (!level) return null;
@@ -394,30 +412,56 @@ export class DashboardPage {
     const visits = this.surveillanceMonths(level);
     const open = this.surveillanceOpen(level);
     const paid = this.surveillancePaid(level);
+    const on = this.certifiedOn(level);
+    const day = (d: Date) => formatDate(d, 'd MMM y', 'en-US');
+    const validity = !pl ? null
+      : on ? { label: 'Valid till', value: day(addDays(addMonths(on, pl.validityMonths), -1)), note: `${this.months(pl.validityMonths, true)} validity` }
+        : { label: 'Valid for', value: this.months(pl.validityMonths), note: 'from certification' };
+    // The first visit whose month has not passed yet.
+    const now = new Date();
+    const thisMonth = now.getFullYear() * 12 + now.getMonth();
+    const next = on ? visits.map((m) => addMonths(on, m)).findIndex((d) => d.getFullYear() * 12 + d.getMonth() >= thisMonth) : -1;
     return {
       level, name: this.levelName(level), logo: this.levelLogo(level),
-      validity: pl ? this.months(pl.validityMonths) : null,
+      certified: on ? `Certified ${day(on)}` : 'Certified',
+      validity,
       surveillance: open
         ? { label: 'Next surveillance', value: 'Due now', note: paid ? 'Under way' : 'Apply and pay',
             link: paid ? ['/msme/certification', level + 'Surveillance'] : ['/msme/surveillance-payment', level] }
-        : visits.length
-          ? { label: 'Surveillance', value: `Month ${visits.join(', ')}`, note: `${visits.length} visit${visits.length > 1 ? 's' : ''} after certification`, link: null }
-          : null,
+        : on && next >= 0
+          ? { label: 'Next surveillance', value: formatDate(addMonths(on, visits[next]), 'MMM y', 'en-US'),
+              note: `${ordinal(next + 1)} of ${visits.length} visit${visits.length > 1 ? 's' : ''}`, link: null }
+          : visits.length
+            ? { label: 'Surveillance', value: `Month ${visits.join(', ')}`, note: `${visits.length} visit${visits.length > 1 ? 's' : ''} after certification`, link: null }
+            : null,
     };
   });
 
-  /** The level to apply for next: the first one above the highest certified that is open and not applied for. */
+  /**
+   * The level to apply for next: the first one above the highest certified that is open and not applied for.
+   * 2026-11-18 (the user's applicant designs): or the one in progress (paid, not yet certified), whichever comes first.
+   */
   protected readonly recommended = computed<Level | null>(() => {
     const all = this.levels();
     const from = all.reduce((at, l, i) => (this.certified(l) ? i + 1 : at), 0);
-    return all.slice(from).find((l) => !this.paid(l) && !this.levelDisabled(l) && this.status(l) === 0) ?? null;
+    return all.slice(from).find((l) => !this.levelDisabled(l) && ((!this.paid(l) && this.status(l) === 0) || this.inProgress(l))) ?? null;
   });
+
+  /** Paid and on its way to the certificate (below the level's certified status). */
+  private inProgress(level: Level): boolean {
+    const s = this.status(level);
+    return this.paid(level) && s > 0 && s < completedStatus(level);
+  }
 
   /** The status chip of a level's card. */
   private chip(level: Level): LevelCardVm['chip'] {
     if (this.levelDisabled(level)) return { label: 'Locked', tone: 'locked' };
     const s = this.status(level);
-    if (s === completedStatus(level)) return { label: 'Certified', tone: 'done' };
+    if (s === completedStatus(level)) {
+      // 2026-11-18 (the user's applicant designs): "CERTIFIED · 14 NOV 2026" once the date is known.
+      const on = this.certifiedOn(level);
+      return { label: on ? `Certified · ${formatDate(on, 'd MMM y', 'en-US')}` : 'Certified', tone: 'done' };
+    }
     if (s === 0) return this.recommended() === level ? { label: 'Ready to apply', tone: 'ready' } : { label: 'Not started', tone: 'new' };
     return s > 0 && s < completedStatus(level) ? { label: 'In progress', tone: 'prog' } : null;
   }
@@ -510,7 +554,7 @@ export class DashboardPage {
         text: `${open.slice(0, 3).join(', ')}${open.length > 3 ? ' and more' : ''} ${open.length > 1 ? 'are' : 'is'} open to you.`, action: 'View incentives', scroll: true });
     }
     const rec = this.recommended();
-    if (rec && !n) {
+    if (rec && !n && this.canApply(rec)) {
       const fee = this.levelFees()[rec];
       const feeText = typeof fee === 'number' ? (fee > 0 ? `Your fee is ${this.inr(fee)} incl. GST, after subsidy. ` : 'Fully subsidised for your unit. ') : '';
       const site = this.steps(rec).some((r) => r.label === 'Site visit');
@@ -709,6 +753,23 @@ export class DashboardPage {
   protected infoTitle(topic: InfoTopic): string {
     return topic === 'MyIncentives' ? 'My Incentives' : topic === 'My' ? 'My Certification' : `${this.levelName(topic)} Certification`;
   }
+}
+
+/** The same day n months later (the last day of a shorter month). */
+function addMonths(d: Date, n: number): Date {
+  const r = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  r.setDate(Math.min(d.getDate(), new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate()));
+  return r;
+}
+
+function addDays(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+}
+
+/** 1st, 2nd, 3rd, 4th, ... */
+function ordinal(n: number): string {
+  const t = n % 100;
+  return n + (t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
 }
 
 function readUbpReturnUrl(): string | null {

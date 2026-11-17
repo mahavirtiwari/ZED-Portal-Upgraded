@@ -35,10 +35,26 @@ export interface Invoice {
   MileStoneNo: string | null;
 }
 
+/** 2026-11-18: the ZED ID and the pledge date (yyyy-MM-dd, as the pledge certificate prints it; null when not known). */
+export interface DocumentsUnit {
+  ZedId: string;
+  PledgeOn: string | null;
+}
+
+/** 2026-11-18: a certified level's date of certification and the date its certificate is valid till (yyyy-MM-dd). */
+export interface CertifiedLevel {
+  Level: string;
+  CertifiedOn: string;
+  ValidTill: string;
+}
+
 export interface MyDocuments {
   Guidelines: Guideline[];
   Certificates: CertificateLinks[];
   Invoices: Invoice[];
+  /** 2026-11-18 (the user's applicant designs): the dates under the cards; absent from older answers. */
+  Unit?: DocumentsUnit[];
+  Certified?: CertifiedLevel[];
 }
 
 /** Client for api/msme/documents (Zed.Main.Api MsmeDocumentsController). */

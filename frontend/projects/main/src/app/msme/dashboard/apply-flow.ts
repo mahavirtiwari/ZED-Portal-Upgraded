@@ -109,39 +109,66 @@ export interface ApplyLevelVm {
       </div>
     }
   `,
+  // 2026-11-18 (the user's applicant designs, zed-msme-06): the 104px tracker card with 30px dots, 56px card heads, the clauses
+  // numbered in 24px grey-teal circles (13px text on 20px lines), the 42px buttons, the rail's 34px rows and 34px key-point tiles.
   styles: `
     .af-tracker { margin-bottom: 20px; }
+    .af-tracker ::ng-deep {
+      .st { min-height: 104px; padding: 19px 12px 10px; border-color: #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); }
+      .st-step + .st-step::before { top: 14px; right: calc(50% + 24px); left: calc(-50% + 24px); }
+      .st-dot { box-sizing: border-box; width: 30px; height: 30px; border-color: #cfdadb; color: #6f8487; }
+      .st-now .st-dot { border: 3px solid #24666b; color: #24666b; font-weight: 800; box-shadow: 0 0 0 6px #e6f2f3; }
+      .st-label { margin-top: 12px; font-size: 13.5px; font-weight: 700; line-height: 18px; color: #17373b; }
+      .st-step:not(.st-done):not(.st-now) .st-label { color: #6f8487; }
+      .st-note { margin-top: 2px; font-size: 11.5px; font-weight: 500; color: #6f8487; }
+      .st-now .st-note { font-weight: 600; color: #24666b; }
+    }
     .af-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; align-items: start; }
     @media (max-width: 991.98px) { .af-cols { grid-template-columns: minmax(0, 1fr); } }
-    .af-card { background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-    .af-head { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid #e8eff0; }
-    .af-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .af-ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #eef5f5; }
-    .af-ico svg { width: 18px; height: 18px; fill: none; stroke: var(--zt-dark, #1f5c61); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-    .af-body { padding: 18px 22px; color: #24393b; font-size: 14.5px; line-height: 1.6; }
-    .af-bar { padding: 16px 22px; border-top: 1px solid #e8eff0; background: #fff; border-radius: 0 0 12px 12px; }
-    @media (min-width: 992px) { .af-bar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -6px 14px rgba(16, 61, 64, .06); } }
-    .af-consent { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 14px; font-weight: 500; color: #24393b; cursor: pointer; }
-    .af-consent input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--zt-dark, #1f5c61); }
+    .af-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); }
+    .af-head { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 20px; border-bottom: 1px solid #dde7e8; }
+    .af-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #17373b; }
+    .af-ico { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; }
+    .af-ico svg { width: 16px; height: 16px; fill: none; stroke: #24666b; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+    .af-body { padding: 22px 24px 24px; color: #3d5559; font-size: 13px; font-weight: 500; line-height: 20px; overflow-wrap: anywhere; }
+    .af-body ::ng-deep {
+      p { margin: 0 0 14px; font-size: 13.5px; line-height: 21px; color: #17373b; }
+      ol { list-style: none; counter-reset: af-c; margin: 0; padding: 0; }
+      zed-text + zed-text { display: block; margin-top: 10px; }
+      ol[start='2'] { counter-reset: af-c 1; } ol[start='3'] { counter-reset: af-c 2; } ol[start='4'] { counter-reset: af-c 3; }
+      ol[start='5'] { counter-reset: af-c 4; } ol[start='6'] { counter-reset: af-c 5; } ol[start='7'] { counter-reset: af-c 6; }
+      ol[start='8'] { counter-reset: af-c 7; } ol[start='9'] { counter-reset: af-c 8; }
+      ol > li { counter-increment: af-c; position: relative; margin: 0 0 10px; padding-left: 40px; }
+      ol > li::before { content: counter(af-c); position: absolute; left: 2px; top: -2px; width: 24px; height: 24px; border-radius: 50%;
+        display: grid; place-items: center; font-size: 11.5px; font-weight: 800; color: #24666b; background: #e6f2f3; }
+    }
+    .af-bar { padding: 22px 24px 24px; border-top: 1px solid #dde7e8; background: #fff; border-radius: 0 0 14px 14px; }
+    @media (min-width: 992px) { .af-bar { position: sticky; bottom: 0; z-index: 2; box-shadow: 0 -6px 14px rgba(23, 55, 59, .08); } }
+    .af-consent { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 22px; font-size: 13.5px; font-weight: 600; line-height: 20px; color: #17373b; cursor: pointer; }
+    .af-consent input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: #24666b; }
     .af-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-    .af-soft { background: #e8eff0; color: var(--zt-ink, #173f44); font-weight: 700; border-radius: 8px; padding: 10px 22px; }
-    .af-go { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); font-weight: 700; border-radius: 8px; padding: 10px 26px; }
-    .af-free { margin-left: auto; font-size: 13px; color: #5f6f70; }
+    .af-soft, .af-go { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 24px; font-size: 13.5px; font-weight: 700;
+      border-radius: 9px; text-transform: none; }
+    .af-soft { min-width: 190px; background: #e7eeee; border: 0; color: #17373b; }
+    .af-soft:hover { background: #dbe5e5; color: #17373b; }
+    .af-go { min-width: 210px; background: #24666b; border-color: #24666b; color: #fff; }
+    .af-free { margin-left: auto; font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .af-rail { display: grid; gap: 20px; }
-    .af-rh { margin: 0; padding: 14px 22px; border-bottom: 1px solid #e8eff0; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .af-level { display: flex; align-items: center; gap: 14px; padding: 16px 22px 4px; }
-    .af-level img { width: 56px; height: 56px; object-fit: contain; }
-    .af-level b { display: block; font-size: 17px; color: var(--zt-ink, #173f44); }
-    .af-level small { color: #5f6f70; font-size: 13px; }
-    .af-facts { margin: 8px 22px 14px; }
-    .af-facts div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #eef3f3; font-size: 13.5px; }
-    .af-facts dt { font-weight: 400; color: #5f6f70; }
-    .af-facts dd { margin: 0; text-align: right; font-weight: 600; color: #24393b; }
-    .af-facts small { font-weight: 400; color: #5f6f70; }
-    .af-keys { list-style: none; margin: 0; padding: 14px 22px; display: grid; gap: 12px; font-size: 13.5px; color: #24393b; }
-    .af-keys li { display: flex; gap: 12px; align-items: flex-start; }
-    .af-keys span { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #eef5f5; color: var(--zt-dark, #1f5c61); font-weight: 700; }
-    .af-keys .k-warn { background: #fdf3dc; color: #9a6700; }
+    .af-rh { margin: 0; min-height: 56px; padding: 17px 24px 12px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; line-height: 1.6; color: #17373b; }
+    .af-level { display: flex; align-items: center; gap: 16px; padding: 18px 24px 16px; }
+    .af-level img { width: 60px; height: 60px; object-fit: contain; }
+    .af-level b { display: block; font-size: 17px; font-weight: 700; color: #17373b; }
+    .af-level small { display: block; margin-top: 2px; color: #6f8487; font-size: 12.5px; font-weight: 500; }
+    .af-facts { margin: 0 24px 16px; }
+    .af-facts div { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 34px; padding: 6px 0; border-top: 1px solid #dde7e8; }
+    .af-facts dt { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .af-facts dd { margin: 0; text-align: right; font-size: 13px; font-weight: 600; color: #17373b; }
+    .af-facts div:first-child dd { font-weight: 700; }
+    .af-facts small { font-weight: 400; color: #6f8487; }
+    .af-keys { list-style: none; margin: 0; padding: 16px 24px 20px; display: grid; gap: 18px; font-size: 12.5px; font-weight: 500; line-height: 18px; color: #17373b; }
+    .af-keys li { display: flex; gap: 14px; align-items: flex-start; }
+    .af-keys span { flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-weight: 700; }
+    .af-keys .k-warn { background: #fdf2dc; color: #9a5f06; }
   `,
 })
 export class ApplyFlow {

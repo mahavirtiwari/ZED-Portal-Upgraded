@@ -36,6 +36,8 @@ export interface LevelCardVm {
  * 2026-11-17 (the user's Home design): one level of "My Certifications": the level's colour bar, its badge, validity,
  * surveillance and the unit's fee, the status chip, a progress strip, and "View details" with the level's action (Apply,
  * Continue or Certificate). The recommended next level is outlined.
+ * 2026-11-18 (the user's applicant designs): the header colours, sizes and spacing of zed-msme-00-home-dashboard.svg, the
+ * certified chip with its date ("CERTIFIED · 14 NOV 2026"), two equal 34px buttons, and the extra lines in title case.
  */
 @Component({
   selector: 'zed-dash-level-card',
@@ -47,14 +49,14 @@ export interface LevelCardVm {
       @if (v.recommended) { <span class="lv-rec">RECOMMENDED NEXT</span> }
       <div class="panel-heading lv-head">
         <h5>{{ v.name.toUpperCase() }} CERTIFICATION</h5>
-        <button type="button" class="lv-info" [attr.aria-label]="'About ' + v.name" (click)="info.emit()"><zed-dash-icon name="info" [size]="17" /></button>
+        <button type="button" class="lv-info" [attr.aria-label]="'About ' + v.name" (click)="info.emit()"><zed-dash-icon name="info" [size]="18" /></button>
       </div>
       <div class="lv-body">
         <div class="inner2 lv-logo"><img [src]="v.logo" alt="" /></div>
         @if (v.facts.length) {
           <dl class="lv-facts">
             @for (f of v.facts; track f.label) {
-              <div><dt>{{ f.label }}</dt><dd><b>{{ f.value }}</b>@if (f.note) { <small>{{ f.note }}</small> }</dd></div>
+              <div [class.lv-fee]="!!f.note"><dt>{{ f.label }}</dt><dd><b>{{ f.value }}</b>@if (f.note) { <small>{{ f.note }}</small> }</dd></div>
             }
           </dl>
         }
@@ -82,77 +84,76 @@ export interface LevelCardVm {
         @if (v.surveillance; as s) {
           <div class="lv-extra">
             @if (s.paid) {
-              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']">SURVEILLANCE</a>
+              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']">Surveillance</a>
               <a [routerLink]="['/msme/certification', v.code + 'Surveillance']" [attr.aria-label]="v.name + ' surveillance details'"><zed-dash-icon name="arrow" [size]="16" /></a>
             } @else {
-              <a [routerLink]="['/msme/surveillance-payment', v.code]">SURVEILLANCE</a>
-              <a [routerLink]="['/msme/surveillance-payment', v.code]" class="btn btn-primary btn-sm">APPLY</a>
+              <a [routerLink]="['/msme/surveillance-payment', v.code]">Surveillance</a>
+              <a [routerLink]="['/msme/surveillance-payment', v.code]" class="btn btn-primary btn-sm">Apply</a>
             }
           </div>
         }
         @if (v.reCertification) {
           <div class="lv-extra">
-            <span class="clickable" (click)="apply.emit()">RE-CERTIFICATION</span>
-            <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply.emit()" (keydown.enter)="apply.emit()">APPLY</span>
+            <span class="clickable" (click)="apply.emit()">Re-certification</span>
+            <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply.emit()" (keydown.enter)="apply.emit()">Apply</span>
           </div>
         }
       </div>
     </article>
   `,
   styles: `
-    .lv-card { position: relative; display: flex; flex-direction: column; height: 100%; margin: 0; background: #fff; border: 1px solid #dfe7e8; border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(16, 61, 64, .06); }
-    .lv-card.is-rec { border: 2px solid var(--zt-ink, #173f44); }
-    .lv-rec { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap; background: var(--zt-ink, #173f44); color: #fff;
-      font-size: 10.5px; font-weight: 700; letter-spacing: .04em; padding: 3px 12px; border-radius: 10px; }
-    .lv-card > .lv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; border: 0; border-radius: 11px 11px 0 0;
-      background: var(--zt-mid2, #2a8a8c); color: #fff; }
-    .lv-card.is-rec > .lv-head { border-radius: 10px 10px 0 0; }
-    .lv-card.panel-bronze > .lv-head { background: #c8693f; }
-    .lv-card.panel-silver > .lv-head { background: #9aa3a8; }
-    .lv-card.panel-gold > .lv-head { background: #c9a43a; }
-    .lv-card.panel-zedx > .lv-head { background: #3d8fa6; }
-    .lv-head h5 { margin: 0; min-width: 0; font-size: 12.5px; font-weight: 700; letter-spacing: .03em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .lv-info { background: none; border: 0; padding: 0; color: #fff; opacity: .9; cursor: pointer; }
-    .lv-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; flex: 1 1 auto; }
+    .lv-card { position: relative; display: flex; flex-direction: column; height: 100%; margin: 0; background: #fff; border: 1px solid #dde7e8; border-radius: 14px;
+      box-shadow: 0 3px 10px rgba(16, 61, 64, .09); }
+    .lv-card.is-rec { border: 2px solid var(--zt-dark, #24666b); }
+    .lv-rec { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap; background: var(--zt-dark, #24666b); color: #fff;
+      font-size: 10.5px; font-weight: 700; line-height: 14px; letter-spacing: .4px; padding: 4px 14px; border-radius: 11px; }
+    .lv-card > .lv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; height: 44px; padding: 0 14px 0 16px; border: 0;
+      border-radius: 13px 13px 0 0; background: var(--zt-mid2, #2a8a8c); color: #fff; }
+    .lv-card.is-rec > .lv-head { border-radius: 12px 12px 0 0; }
+    .lv-card.panel-bronze > .lv-head { background: #c9714f; }
+    .lv-card.panel-silver > .lv-head { background: #a5abb0; }
+    .lv-card.panel-gold > .lv-head { background: #c9a23f; }
+    .lv-card.panel-zedx > .lv-head { background: #3c8f99; }
+    .lv-head h5 { margin: 0; min-width: 0; font-size: 12px; font-weight: 700; letter-spacing: .5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lv-info { background: none; border: 0; padding: 0; color: #fff; cursor: pointer; }
+    .lv-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 12px; flex: 1 1 auto; }
     .lv-logo { align-self: center; }
     .lv-logo img { width: 84px; height: 84px; object-fit: contain; }
-    .lv-facts { margin: 0; font-size: 13px; border-top: 1px solid #eef3f3; min-height: 104px; }
-    .lv-facts > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid #eef3f3; }
-    .lv-facts dt { color: #5f6f70; font-weight: 500; }
-    .lv-facts dd { margin: 0; color: #232527; overflow-wrap: anywhere; }
-    .lv-facts dd b { font-weight: 500; }
-    .lv-facts > div:last-child dd b { font-weight: 700; }
-    .lv-facts dd small { display: block; font-size: 11px; color: #6b7a7b; }
-    .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
-      text-transform: uppercase; border-radius: 12px; padding: 3px 12px; color: #a86a12; background: #fdf1dc; }
-    .lv-status.is-done { color: #1e7a3c; background: #e3f4e8; }
-    .lv-status.is-ready { color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
-    .lv-status.is-new, .lv-status.is-locked { color: #5f6f70; background: #eef1f1; }
-    .lv-lock-note { margin: -6px 0 0; font-size: 12px; color: #5f6f70; }
-    /* A locked level stays readable (the legacy rule fades it to 0.3). */
+    .lv-facts { margin: 4px 0 0; font-size: 13px; border-top: 1px solid #dde7e8; min-height: 104px; }
+    .lv-facts > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #dde7e8; }
+    .lv-facts dt { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .lv-facts dd { margin: 0; color: #17373b; overflow-wrap: anywhere; }
+    .lv-facts dd b { font-weight: 600; }
+    .lv-facts .lv-fee dd b { font-size: 16px; font-weight: 800; }
+    .lv-facts dd small { display: block; font-size: 11px; font-weight: 500; color: #6f8487; }
+    .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; line-height: 14px;
+      letter-spacing: .4px; text-transform: uppercase; border-radius: 11px; padding: 4px 12px; color: #9a5f06; background: #fdf2dc; }
+    .lv-status.is-done { color: #2f9e58; background: #e5f5ea; }
+    .lv-status.is-ready { color: var(--zt-dark, #24666b); background: #e6f2f3; }
+    .lv-status.is-new, .lv-status.is-locked { color: #6f8487; background: #ecf0f0; }
+    .lv-lock-note { margin: -6px 0 0; font-size: 12px; color: #6f8487; }
+    /* A locked level stays readable (the legacy rule fades it to 0.3); its colour bar keeps the level's colour. */
     .lv-card.plant-activity-disabled { opacity: 1; }
-    .lv-card.plant-activity-disabled .lv-head { filter: grayscale(.5); }
     .lv-card.plant-activity-disabled :is(.lv-logo, .lv-steps, .lv-actions) { opacity: .55; filter: grayscale(.6); }
+    .lv-steps { margin-top: 2px; }
     .lv-steps ol { position: relative; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
     .lv-steps ol::before, .lv-steps ol::after { content: ''; position: absolute; left: 7px; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; }
-    .lv-steps ol::before { right: 7px; background: #e1e8e9; }
-    .lv-steps ol::after { width: calc((100% - 14px) * var(--fill, 0)); background: #2e9e5b; }
+    .lv-steps ol::before { right: 7px; background: #d5dfe0; }
+    .lv-steps ol::after { width: calc((100% - 14px) * var(--fill, 0)); background: #2f9e58; }
     .lv-steps li { position: relative; z-index: 1; }
-    .lv-steps .dot { display: block; width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #c3cfd0; }
-    .lv-steps li.completed .dot { background: #2e9e5b; border-color: #2e9e5b; }
-    .lv-steps li.current .dot { border: 4px solid #2e9e5b; }
-    .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: #6b7a7b; }
+    .lv-steps .dot { display: block; width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #c3d0d2; }
+    .lv-steps li.completed .dot { background: #2f9e58; border-color: #2f9e58; }
+    .lv-steps li.current .dot { border: 4px solid #2f9e58; }
+    .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; font-weight: 600; color: #6f8487; }
     .lv-steps-labels span { flex: 1 1 0; text-align: center; }
     .lv-steps-labels span:first-child { text-align: left; }
     .lv-steps-labels span:last-child { text-align: right; }
-    .lv-steps-labels span.on { color: #1e7a3c; font-weight: 600; }
-    .lv-actions { display: flex; gap: 8px; }
-    .lv-actions .btn { flex: 1 1 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; font-size: 13px; font-weight: 700;
-      padding: 7px 8px; border-radius: 8px; }
-    .lv-actions .btn-outline-primary { background: #fff; color: var(--zt-dark, #1f5c61); border: 1.5px solid var(--zt-dark, #1f5c61); }
-    .lv-extra { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #dfe9ea; padding-top: 8px; font-size: 12.5px; font-weight: 700; }
-    .lv-extra a:not(.btn), .lv-extra .clickable { color: var(--zt-mid2, #2a8a8c); text-decoration: none; cursor: pointer; }
+    .lv-steps-labels span.on { color: #2f9e58; }
+    .lv-actions { display: flex; gap: 10px; margin-top: -4px; }
+    .lv-actions .btn { flex: 1 1 0; min-width: 0; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 8px;
+      white-space: nowrap; font-size: 12.5px; font-weight: 700; border-radius: 9px; }
+    .lv-extra { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #dde7e8; padding-top: 8px; font-size: 12.5px; font-weight: 700; }
+    .lv-extra a:not(.btn), .lv-extra .clickable { color: var(--zt-dark, #24666b); text-decoration: none; cursor: pointer; }
   `,
 })
 export class LevelCard {
@@ -161,6 +162,6 @@ export class LevelCard {
   readonly info = output<void>();
   /** "View details" of a level not applied for: its pop-up. */
   readonly details = output<void>();
-  /** APPLY (or RE-CERTIFICATION): the disclaimer, instructions and payment. */
+  /** Apply (or Re-certification): the disclaimer, instructions and payment. */
   readonly apply = output<void>();
 }

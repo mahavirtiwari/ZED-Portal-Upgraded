@@ -22,8 +22,8 @@
         <h3 class="registration-title">Welcome</h3>
         <zed-text key="msme.registration.welcome" />
         <div class="reg-footer">
-          <a routerLink="/msme/login" class="btn btn-default">BACK</a>
-          <button type="button" class="btn btn-primary" (click)="go('udyam')">PROCEED</button>
+          <a routerLink="/msme/login" class="btn btn-default">Back</a>
+          <button type="button" class="btn btn-primary" (click)="go('udyam')">Proceed</button>
         </div>
       </section>
     }
@@ -51,9 +51,9 @@
             <zed-recaptcha (token)="onCaptcha($event)" />
           </div>
           <div class="reg-footer">
-            <button type="button" class="btn btn-default" (click)="go('welcome')">BACK</button>
+            <button type="button" class="btn btn-default" (click)="go('welcome')">Back</button>
             <span class="reg-footer-step">Step 1 of 4</span>
-            <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">Proceed</button>
           </div>
         </form>
       </section>
@@ -151,10 +151,10 @@
           </div>
         </div>
         <div class="reg-footer">
-          <button type="button" class="btn btn-default" (click)="go('udyam')">BACK</button>
+          <button type="button" class="btn btn-default" (click)="go('udyam')">Back</button>
           <span class="reg-footer-step">Step 2 of 4</span>
           <button type="submit" class="btn btn-primary" [class.btn-disabled]="activityIndex() === null" [disabled]="busy()">
-            CONFIRM &amp; PROCEED
+            Confirm &amp; proceed
           </button>
         </div>
         </form>
@@ -208,9 +208,9 @@
           </label>
         </div>
         <div class="reg-footer">
-          <button type="button" class="btn btn-default" (click)="go('plant')">BACK</button>
+          <button type="button" class="btn btn-default" (click)="go('plant')">Back</button>
           <span class="reg-footer-step">Step 3 of 4</span>
-          <button type="button" class="btn btn-primary" [class.btn-disabled]="!accepted" (click)="toPledge()">PROCEED TO PLEDGE</button>
+          <button type="button" class="btn btn-primary" [class.btn-disabled]="!accepted" (click)="toPledge()">Proceed to pledge</button>
         </div>
       </section>
     }
@@ -237,10 +237,10 @@
           </div>
         </div>
         <div class="reg-footer">
-          <button type="button" class="btn btn-default" (click)="go('summary')">BACK</button>
+          <button type="button" class="btn btn-default" (click)="go('summary')">Back</button>
           <span class="reg-footer-step">Step 4 of 4</span>
           <button type="button" class="btn btn-primary" [class.btn-disabled]="!pledgeReady() || !pledgeLoaded()" [disabled]="!pledgeReady() || !pledgeLoaded() || busy()" (click)="takePledge()">
-            I/WE PLEDGE
+            I/We pledge
           </button>
         </div>
       </section>
@@ -288,8 +288,8 @@
         </section>
 
         <div class="stepper-footer-sec initial-step reg-success-actions">
-          <a class="btn btn-default" routerLink="/msme/pledge-certificate">PLEDGE CERTIFICATE</a>
-          <a class="btn btn-primary" routerLink="/msme/dashboard">GO TO DASHBOARD</a>
+          <a class="btn btn-default" routerLink="/msme/pledge-certificate">Pledge certificate</a>
+          <a class="btn btn-primary" routerLink="/msme/dashboard">Go to dashboard</a>
         </div>
       </div>
     }
@@ -315,7 +315,7 @@
             <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
           </div>
           <div class="reg-modal-actions one">
-            <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">PROCEED</button>
+            <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">Proceed</button>
           </div>
         </div>
       </form>

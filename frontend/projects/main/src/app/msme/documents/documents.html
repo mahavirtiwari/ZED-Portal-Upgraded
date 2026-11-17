@@ -1,4 +1,6 @@
-<!-- 2026-11-17 (the user's design): search and filter chips; certificates and reports as cards; invoices and guidelines as lists. -->
+<!-- 2026-11-17 (the user's design): search and filter chips; certificates and reports as cards; invoices and guidelines as lists.
+     2026-11-18 (the user's applicant designs): each card's third line and VALID badge, the design's sizes; the buttons are the
+     MSME skin's (primary, outline, quiet grey). -->
 <div class="container form-page docs" id="zed_user_form">
   <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'My Documents' }]" title="My documents" />
 
@@ -26,6 +28,9 @@
       <div class="dgrid">
         @for (c of shownCards(); track c.label) {
           <article class="dcard doc-row" [class]="'t-' + c.tone">
+            @if (c.valid) {
+              <span class="dvalid"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8.5 3.2 3L13 4.5" /></svg>Valid</span>
+            }
             <div class="dbody">
               <span class="dicon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></svg>
@@ -34,15 +39,16 @@
               <div class="dtext">
                 <h4 class="doc-title">{{ c.label }}</h4>
                 <p>{{ c.detail }}</p>
+                @if (c.meta) { <p class="dmeta">{{ c.meta }}</p> }
               </div>
             </div>
             <div class="dfoot">
               @if (c.url && c.report) {
-                <a class="dbtn doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'View ' + c.label">
+                <a class="btn btn-primary dbtn doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'View ' + c.label">
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" /><circle cx="8" cy="8" r="2" /></svg>View report
                 </a>
               } @else if (c.url) {
-                <a class="dbtn doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">
+                <a class="btn btn-primary dbtn doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M2 12v2h12v-2" /></svg>Download
                 </a>
               } @else {
@@ -62,7 +68,7 @@
               </div>
             </div>
             <div class="dfoot">
-              <a class="dbtn dbtn-line" [routerLink]="['/msme/certification', n.code]">Apply for {{ n.after }} <span aria-hidden="true">→</span></a>
+              <a class="btn btn-outline-primary dbtn dbtn-line" [routerLink]="['/msme/certification', n.code]">Apply for {{ n.after }} <span aria-hidden="true">→</span></a>
             </div>
           </article>
         }
@@ -82,7 +88,7 @@
               @if (invoiceDetail(inv)) { <p>{{ invoiceDetail(inv) }}</p> }
             </div>
             @if (inv.InvoicePath) {
-              <a class="dbtn dbtn-soft doc-download" [href]="inv.InvoicePath" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + invoiceLabel(inv)">
+              <a class="btn btn-default dbtn dbtn-soft doc-download" [href]="inv.InvoicePath" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + invoiceLabel(inv)">
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M2 12v2h12v-2" /></svg>Download
               </a>
             } @else {
@@ -106,11 +112,11 @@
               @if (d.Description) { <p>{{ d.Description }}</p> }
             </div>
             @if (d.VideoUrl) {
-              <a class="dbtn dbtn-soft doc-download" [href]="d.VideoUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Watch ' + d.DocumentName">
+              <a class="btn btn-default dbtn dbtn-soft doc-download" [href]="d.VideoUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Watch ' + d.DocumentName">
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path class="fill" d="M5 3v10l8-5z" /></svg>Watch
               </a>
             } @else if (d.DocumentPath) {
-              <a class="dbtn dbtn-soft doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
+              <a class="btn btn-default dbtn dbtn-soft doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m-3-3 3 3 3-3M2 12v2h12v-2" /></svg>Download
               </a>
             }

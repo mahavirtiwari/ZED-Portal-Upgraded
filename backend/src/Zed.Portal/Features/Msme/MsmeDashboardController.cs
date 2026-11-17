@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Portal.Features.Payments;
@@ -44,6 +45,12 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     {
         /// <summary>2026-11-08: every V4 level (ZED-X and the levels the Admin added), the same values as the keys above.</summary>
         public IReadOnlyList<LevelState> Levels { get; init; } = [];
+
+        /// <summary>
+        /// 2026-11-18 (the user's applicant designs): when the unit was certified at each level it is certified at (level code →
+        /// yyyy-MM-dd), for "Certified 14 Nov 2026", the validity end and the next surveillance on the dashboard.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> CertifiedOn { get; init; } = new Dictionary<string, string>();
     }
 
     /// <param name="Status">As {Code}Status: the certification row's status, else the payment flag (0 / 1).</param>
@@ -79,7 +86,38 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
             levels.Add(new LevelState(level.Code, level.Name, level.AssessmentMode, level.IsEnabled, s.PaymentDone, s.Value,
                 LevelSurveillance.DashboardStatus(sur), sur is { Paid: true } ? 1 : 0));
         }
-        return response with { Levels = levels };
+        return response with { Levels = levels, CertifiedOn = await CertifiedOnAsync(ct) };
+    }
+
+    public sealed record CertifiedRow(string? Level, int? Status, DateTime? At);
+
+    /// <summary>
+    /// The certification rows that are certified (Bronze at 6, the other levels at 16, as the dashboard reads {Code}Status) and
+    /// the date of that status; a later row of the same level wins.
+    /// </summary>
+    internal const string CertifiedOnSql =
+        "SELECT Certification AS Level, CertificationStatus AS Status, CertificationStatusDate AS At FROM dbo.MsmeCertifications " +
+        "WHERE ZedId = @ZedId AND CertificationStatus IN (6, 16) AND CertificationStatusDate IS NOT NULL ORDER BY Id;";
+
+    /// <summary>2026-11-18: the date each level was certified (none on an error: the dashboard then shows no dates).</summary>
+    private async Task<IReadOnlyDictionary<string, string>> CertifiedOnAsync(CancellationToken ct)
+    {
+        var dates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var r in await db.QuerySqlAsync<CertifiedRow>(CertifiedOnSql, new { ZedId }, ct))
+            {
+                var level = r.Level?.Trim();
+                if (string.IsNullOrEmpty(level) || r.At is not { } at) continue;
+                var certified = string.Equals(level, "Bronze", StringComparison.OrdinalIgnoreCase) ? r.Status == 6 : r.Status == 16;
+                if (certified) dates[level] = at.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Certification dates of {ZedId} not readable", ZedId);
+        }
+        return dates;
     }
 
     internal const string ZedXSql =

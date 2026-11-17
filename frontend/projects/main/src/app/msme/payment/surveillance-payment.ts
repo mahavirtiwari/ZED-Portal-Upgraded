@@ -51,6 +51,8 @@ export class SurveillancePaymentPage implements OnInit {
   protected readonly step = signal<Step | null>(null);
   protected readonly options = signal<SurveillanceOptions | null>(null);
   protected readonly busy = signal(false);
+  /** 2026-11-18 (the user's applicant designs, zed-msme-08): the browser is leaving for the payment gateway (the hand-off card). */
+  protected readonly leaving = signal(false);
   /** Error / success pop-up (the legacy swal). */
   protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly submitted = signal(false);
@@ -235,6 +237,7 @@ export class SurveillancePaymentPage implements OnInit {
       await this.router.navigate(['/msme/payment/result'], { queryParams: { status: 'success', certification: level, kind: 'surveillance' } });
     } else {
       this.busy.set(true); // keep the overlay while the browser leaves for the gateway
+      this.leaving.set(true);
       postToGateway(res);
     }
   }

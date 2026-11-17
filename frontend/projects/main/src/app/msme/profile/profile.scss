@@ -1,77 +1,93 @@
 // 2026-11-17 (the user's approved design "Enterprise profile"). The menu and the two columns: profile-shell.ts.
+// 2026-11-18 (the user's applicant designs, zed-msme-02-enterprise-profile.svg): the design's sizes and colours (56px section
+// headers with 16px titles, 10px letter-spaced labels over 14px values, the 100px header card); the buttons' colours and case
+// are the MSME skin's (styles/_msme-skin.scss).
 .pp { padding-top: 16px; padding-bottom: 32px; }
 
-.pc { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; box-shadow: 0 2px 8px rgba(23, 63, 68, .05); scroll-margin-top: 16px; }
-.pc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 22px; border-bottom: 1px solid #e6eeee; }
-.pc-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
-.pc-ic { flex: none; width: 32px; height: 32px; border-radius: 8px; background: #eef4f4; display: grid; place-items: center; }
+.pc { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 63, 68, .06); scroll-margin-top: 16px; }
+.pc-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 56px; padding: 10px 24px 10px 20px; border-bottom: 1px solid #dde7e8; }
+.pc-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #17373b; }
+.pc-ic { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #e6f2f3; display: grid; place-items: center; }
 svg:not([width]) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.pc-ic svg { color: var(--zt-mid2, #2a8a8c); }
-.ro { display: inline-flex; align-items: center; gap: 5px; background: #eef4f4; color: var(--zt-ink, #173f44); border-radius: 999px; padding: 3px 12px;
-  font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-.ro svg { width: 13px; height: 13px; }
+.pc-ic svg { width: 16px; height: 16px; stroke-width: 2; color: var(--zt-dark, #24666b); }
+.ro { display: inline-flex; align-items: center; gap: 5px; height: 22px; background: #e6f2f3; color: var(--zt-dark, #24666b); border-radius: 11px; padding: 0 10px 0 9px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap; }
+.ro svg { width: 12px; height: 12px; stroke-width: 2.4; }
 .end { margin-left: auto; display: inline-flex; gap: 18px; }
-.lnk { border: 0; background: none; padding: 0; color: var(--zt-dark, #1f5c61); font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+.lnk { border: 0; background: none; padding: 0; color: var(--zt-dark, #24666b); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap; flex: none; }
 .lnk:hover { text-decoration: underline; }
 .lnk:disabled { opacity: .6; }
-.lnk svg { width: 15px; height: 15px; }
-.muted { color: #6b7b7c; }
-.pad { padding: 18px 22px; margin: 0; }
+.lnk svg { width: 14px; height: 14px; stroke-width: 2; }
+.fields dd .lnk, .nic-head .lnk { font-size: 12.5px; }
+.muted { color: #6f8487; }
+.pad { padding: 18px 24px; margin: 0; }
 
-// The header card: size letter, name, chips and Download pledge.
-.hero { display: flex; align-items: center; gap: 18px; padding: 20px 22px; }
+// The completeness card under the section menu (projected into the shell's [ps-aside]).
+.pcomp { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 63, 68, .06); padding: 22px 20px 20px; }
+.pcomp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pcomp-top h3 { margin: 0; font-size: 13.5px; font-weight: 700; color: #17373b; }
+.pcomp-top b { font-size: 13.5px; font-weight: 800; color: #2f9e58; }
+.pcomp-bar { height: 8px; margin-top: 12px; border-radius: 4px; background: #e3ecec; overflow: hidden; }
+.pcomp-bar span { display: block; height: 100%; border-radius: 4px; background: #2f9e58; }
+.pcomp p { margin: 18px 0 0; font-size: 12px; font-weight: 500; line-height: 1.45; color: #6f8487; }
+
+// The header card (100px): size letter, name, chips and Download pledge.
+.hero { display: flex; align-items: center; gap: 18px; min-height: 100px; padding: 16px 24px; }
 .ent { flex: none; width: 56px; height: 56px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 24px; background: #eef6f6; color: #23474a; }
-.ent-micro { background: #f6cb8b; color: #6b4d00; }
+.ent-micro { background: #f7c873; color: #7a4b00; }
 .ent-small { background: #e6e96e; color: #575a00; }
 .ent-medium { background: #a9dbeb; color: #1d4f5e; }
 .hero-text { flex: 1 1 auto; min-width: 0; }
-.hero-text h3 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.hero-text h3 { margin: 0 0 8px; font-size: 19px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { border-radius: 999px; padding: 3px 14px; font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; background: #e6f1f0; color: var(--zt-ink, #173f44); }
-.chip-size { background: #fde9c6; color: #7a4f00; }
-.chip-cert { background: #e3f4e8; color: #1e7a3c; }
-.chip-id { text-transform: none; background: #f1f4f4; color: #4f6061; }
-.btn-ol { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--zt-dark, #1f5c61); color: var(--zt-dark, #1f5c61); background: #fff;
-  border-radius: 8px; padding: 9px 18px; font-weight: 700; }
-.btn-ol:hover { background: var(--zt-soft, #d4ebe6); color: var(--zt-dark, #1f5c61); }
+.chip { display: inline-flex; align-items: center; gap: 4px; height: 22px; border-radius: 11px; padding: 0 11px; font-size: 10.5px; font-weight: 700; letter-spacing: .4px;
+  text-transform: uppercase; white-space: nowrap; background: #e6f2f3; color: var(--zt-dark, #24666b); }
+.chip-size { background: #fdeccd; color: #8a5a00; }
+.chip-cert { background: #e5f5ea; color: #2f9e58; }
+.chip-id { text-transform: none; letter-spacing: 0; background: #f1f4f4; color: #4f6061; }
+.btn.dl { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 170px; height: 38px; padding: 0 16px; }
 
-// Label above value, two columns.
-.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 32px; margin: 0; padding: 20px 22px 22px; }
-.fields dt { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7b7c; margin-bottom: 4px; }
+// Label above value, two columns (60px rows).
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 24px; margin: 0; padding: 18px 24px 24px; }
+.fields dt { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6f8487; margin-bottom: 6px; line-height: 1.3; }
 .fields dt small { font-size: inherit; font-weight: inherit; }
-.fields dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 15px; color: #1d2b2c; overflow-wrap: anywhere; }
-.addr { flex-wrap: nowrap !important; }
-.addr > span { min-width: 0; }
-.clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ok { display: inline-flex; align-items: center; gap: 5px; color: #1e8a3c; font-weight: 700; font-size: 14px; }
-.ok svg { width: 17px; height: 17px; fill: #1e9e46; stroke: #fff; stroke-width: 2.2; }
+.fields dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 20px; font-size: 14px; font-weight: 600; color: #17373b; overflow-wrap: anywhere; }
+// The address on one line (ellipsis) with "View full" beside it, never wrapping.
+.fields dd.addr { flex-wrap: nowrap; }
+.addr > span { flex: 0 1 auto; min-width: 0; }
+.addr > .lnk { flex: none; white-space: nowrap; }
+.clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+.ok { display: inline-flex; align-items: center; gap: 6px; color: #2f9e58; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.ok svg { width: 16px; height: 16px; fill: #2f9e58; stroke: #fff; stroke-width: 2.2; }
 .ok svg circle { stroke: none; }
 
-.email-change { margin: 0 22px 20px; background: #f5fafa; border: 1px dashed var(--zt-mid2, #2a8a8c); border-radius: 10px; padding: 12px 14px; }
+.email-change { margin: 0 24px 20px; background: #f5fafa; border: 1px dashed var(--zt-mid2, #2a8a8c); border-radius: 10px; padding: 12px 14px; }
 .email-change h4 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 .email-change .otp { letter-spacing: 4px; width: 160px; }
 
-// Units as cards beside the unit's activity (NIC).
-.units { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 18px; padding: 20px 22px 22px; align-items: start; }
-.unit { border: 2px solid var(--zt-dark, #1f5c61); border-radius: 12px; background: #f4faf9; padding: 16px 18px; }
+// Units as cards (310px) beside the unit's activity (NIC).
+.units { display: grid; grid-template-columns: minmax(0, 310px) minmax(0, 1fr); gap: 20px; padding: 20px 24px 22px; align-items: stretch; }
+.unit { border: 1.5px solid var(--zt-dark, #24666b); border-radius: 12px; background: #f3fafa; padding: 16px 16px 16px 18px; min-height: 148px; }
 .unit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.unit-top b { font-size: 16px; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
-.tag { flex: none; background: #e3eeed; color: var(--zt-ink, #173f44); border-radius: 999px; padding: 2px 12px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.unit p { margin: 6px 0 0; font-size: 13.5px; color: #3c4b4c; overflow-wrap: anywhere; }
-.unit-cert { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: #1d2b2c; }
+.unit-top b { font-size: 15.5px; color: #17373b; overflow-wrap: anywhere; }
+.tag { flex: none; display: inline-flex; align-items: center; height: 22px; background: #e6f2f3; color: var(--zt-dark, #24666b); border-radius: 11px; padding: 0 12px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+.unit p { margin: 6px 0 0; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: #3d5559; overflow-wrap: anywhere; }
+.unit-cert { display: flex; align-items: center; gap: 8px; margin-top: 18px; font-size: 12.5px; font-weight: 600; color: #17373b; }
 .unit-cert img { width: 30px; height: 30px; object-fit: contain; }
 .unit-none { margin: 0; }
-.nic { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 18px; scroll-margin-top: 16px; min-width: 0; }
+.nic { border: 1px solid #dde7e8; border-radius: 12px; padding: 14px 20px 16px; scroll-margin-top: 16px; min-width: 0; min-height: 148px; }
 .nic-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.nic-head h4 { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #6b7b7c; }
+.nic-head h4 { margin: 0; font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6f8487; }
 .tree { list-style: none; margin: 0; padding: 0; }
-.tree li { position: relative; display: flex; gap: 10px; padding: 4px 0 4px 18px; font-size: 14px; color: #2d3c3d; }
-.tree li::before { content: ''; position: absolute; left: 0; top: 11px; width: 8px; height: 8px; border-radius: 2px; background: var(--zt-mid2, #2a8a8c); }
+.tree li { position: relative; display: flex; gap: 8px; padding: 4px 0 4px 18px; font-size: 12.5px; font-weight: 500; line-height: 18px; color: #3d5559; }
+.tree li::before { content: ''; position: absolute; left: 0; top: 9px; width: 8px; height: 8px; border-radius: 2px; background: #3ba3ad; }
 .tree .lv1 { margin-left: 16px; }
 .tree .lv2 { margin-left: 32px; }
 .tree .lv3 { margin-left: 48px; }
-.tree b { flex: none; color: var(--zt-ink, #173f44); }
-.tree .major { font-weight: 700; color: var(--zt-ink, #173f44); }
+.tree b { flex: none; font-size: 13px; font-weight: 700; color: #17373b; }
+.tree .major { font-size: 13px; font-weight: 700; color: #17373b; }
 .activity-option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
 .activity-option.panel-selected { border: 2px solid var(--zt-mid2, #2a8a8c); background: rgba(42, 138, 140, .08); }
 
@@ -81,8 +97,8 @@ svg:not([width]) { width: 18px; height: 18px; fill: none; stroke: currentColor; 
 @media (max-width: 1199.98px) { .units { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 767.98px) {
   .hero { flex-wrap: wrap; padding: 16px; }
-  .btn-ol { width: 100%; justify-content: center; }
-  .pc-head { padding: 12px 16px; }
+  .btn.dl { width: 100%; }
+  .pc-head { padding: 10px 16px; }
   .fields { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; }
   .units { padding: 16px; }
   .email-change { margin: 0 16px 16px; }

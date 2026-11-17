@@ -47,7 +47,7 @@ public sealed class PortalLinksTests : IDisposable
 
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var links = (await admin.GetFromJsonAsync<PortalLinksController.LinksResponse>(Url))!.Links;
-        Assert.Equal(["contact", "ministry", "playStore", "appStore", "lgd"], links.Select(l => l.Key));
+        Assert.Equal(["contact", "ministry", "playStore", "appStore", "lgd", "guidelines", "privacy", "terms"], links.Select(l => l.Key));
         Assert.Equal(new PortalLinksController.LinkItem("contact", "Contact ZED", PortalLinks.All[0].ShownOn, null, "https://zed.msme.gov.in/contact-us", true), links[0]);
         Assert.All(links, l => Assert.True(l.Enabled));
 

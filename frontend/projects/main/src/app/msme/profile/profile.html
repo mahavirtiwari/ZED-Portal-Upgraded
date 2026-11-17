@@ -1,11 +1,22 @@
 <!-- 2026-11-17 (the user's approved design "Enterprise profile"): a left section menu in place of one long scroll; the
      header card; the enterprise from Udyam (read only, PAN masked); the contact with the change of the registered e-mail
      (OTP to the new address); the unit as a card and its NIC activity as the 2 > 4 > 5-digit hierarchy with Edit activity.
-     Basic information and documents are entered only in the ZED MSME app. -->
+     Basic information and documents are entered only in the ZED MSME app.
+     2026-11-18 (the user's applicant designs): the design's sizes, the pledge date as d MMM yyyy, Verified after the mobile when
+     it is the Udyam record's, the profile completeness card under the menu; the buttons are the MSME skin's, in title case. -->
 <div class="container pp">
   <zed-page-head [crumbs]="crumbs" title="Enterprise profile" />
 
   <zed-profile-shell [here]="true" [active]="active()" [units]="unitCount()" [changes]="changes()" (pick)="go($event)">
+    @if (loaded()) {
+      <section ps-aside class="pcomp" aria-labelledby="completeTitle" data-testid="completeness">
+        <div class="pcomp-top"><h3 id="completeTitle">Profile completeness</h3><b>{{ completeness().percent }}%</b></div>
+        <div class="pcomp-bar" role="progressbar" aria-labelledby="completeTitle" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="completeness().percent">
+          <span [style.width.%]="completeness().percent"></span>
+        </div>
+        <p>{{ completeness().hint }}</p>
+      </section>
+    }
     @if (enterpriseName()) {
       <section class="pc hero" aria-label="Your enterprise">
         @if (entType()) { <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true">{{ entType().charAt(0) }}</span> }
@@ -18,8 +29,8 @@
             @if (zedId()) { <span class="chip chip-id">ZED ID {{ zedId() }}</span> }
           </div>
         </div>
-        <a class="btn btn-ol" routerLink="/msme/pledge-certificate">
-          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg>
+        <a class="btn btn-outline-primary dl" routerLink="/msme/pledge-certificate">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Download pledge
         </a>
       </section>
@@ -87,7 +98,16 @@
             @if (registeredEmail()) { <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span> }
           </dd>
         </div>
-        <div><dt>Mobile</dt><dd>{{ mobile() ? (showContact() ? mobile() : masked(mobile())) : 'Not given' }}</dd></div>
+        <div>
+          <dt>Mobile</dt>
+          <dd>
+            <span data-testid="mobile">{{ mobile() ? (showContact() ? mobile() : masked(mobile())) : 'Not given' }}</span>
+            <!-- 2026-11-18: the mobile the Udyam service accepted for the Udyam number at registration (no OTP to the mobile). -->
+            @if (mobile() && mobileVerified()) {
+              <span class="ok" title="The mobile number of your Udyam registration"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span>
+            }
+          </dd>
+        </div>
       </dl>
 
       @if (emailStep() !== 'idle') {
@@ -100,8 +120,8 @@
                 <input id="newEmail" name="newEmail" type="email" class="form-control" placeholder="New e-mail address" maxlength="100"
                        [(ngModel)]="newEmail" />
               </div>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">SEND OTP</button>
-              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">CANCEL</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">Send OTP</button>
+              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">Cancel</button>
             </form>
           } @else {
             <p class="mb-2">An OTP has been sent to <b>{{ newEmail }}</b>. It is valid for 10 minutes.</p>
@@ -111,9 +131,9 @@
                 <input id="emailOtp" name="emailOtp" class="form-control otp" inputmode="numeric" maxlength="6" placeholder="6-digit OTP"
                        [(ngModel)]="emailOtp" />
               </div>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">VERIFY AND CHANGE</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">Verify and change</button>
               <button type="button" class="btn btn-link" (click)="sendEmailOtp()" [disabled]="busy()">Resend OTP</button>
-              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">CANCEL</button>
+              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">Cancel</button>
             </form>
           }
           <p class="muted small mb-0 mt-2">The e-mail changes only after the OTP is verified; the old address gets a notice.</p>
@@ -173,9 +193,9 @@
               <span class="help-block">This is required.</span>
             }
             <div class="text-center mt-3">
-              <button type="button" class="btn btn-warning" (click)="cancelEdit()">CANCEL</button>
+              <button type="button" class="btn btn-default" (click)="cancelEdit()">Cancel</button>
               @if (changed()) {
-                <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">UPDATE</button>
+                <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">Update</button>
               }
             </div>
           }

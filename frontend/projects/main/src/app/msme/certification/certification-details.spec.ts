@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CertificationDetailsPage } from './certification-details';
 import { CertificationData } from './certification.api';
-import { PublicLevels } from '../shared/levels';
+import { PublicLevelInfo, PublicLevels } from '../shared/levels';
 
 const LEGACY = 'https://legacy.example.test';
 
@@ -199,6 +199,32 @@ describe('CertificationDetailsPage', () => {
     expect(el.querySelector('.rail-further')).toBeNull();
   });
 
+  // 2026-11-18 (design): once certified, the header shows Certified on, Valid till and Next surveillance.
+  it('shows the validity and the next surveillance of a certified level from the API', async () => {
+    const data = { ...details('Bronze', {
+      ApplicationReceived: 'Application received on November 13, 2026',
+      GetCertified: 'Certificate & Report generated on November 14, 2026',
+    }, { BronzeStatus: 6 }), validity: { validityMonths: 60, surveillanceMonths: [18, 36] } };
+    await open('Bronze', data);
+    expect(facts().slice(0, 2)).toEqual(['Certified on: 14 Nov 2026', 'Valid till: 13 Nov 2031']);
+    expect(facts().some((f) => f.startsWith('Applied on'))).toBe(false);
+    // The first visit month not yet past (18 months after 14 Nov 2026), until it has passed.
+    if (new Date() < new Date(2028, 5, 1)) expect(facts()[2]).toBe('Next surveillance: May 2028');
+    expect(el.querySelector('.cd-app')).toBeNull();
+  });
+
+  it('falls back to the Admin\'s level for the validity, and to the certification date alone without one', async () => {
+    TestBed.inject(PublicLevels).levels.set([
+      { code: 'Silver', name: 'Silver', logoUrl: null, validityMonths: 36, surveillance: { firstDueMonths: 15, count: 2, intervalMonths: 12 } } as PublicLevelInfo,
+    ]);
+    await open('Silver', details('Silver', { GetCertified: 'Certificate & Report generated on June 1, 2024' }));
+    // Both visits (Sep 2025, Sep 2026) are past: no next surveillance.
+    expect(facts()).toEqual(['Certified on: 1 Jun 2024', 'Valid till: 31 May 2027']);
+
+    await open('Gold', details('Gold', { GetCertified: 'Certificate & Report generated on June 1, 2024' }));
+    expect(facts()).toEqual(['Certified on: 1 Jun 2024']);
+  });
+
   it('offers the next level with the unit\'s fee once certified and the next level is not paid for', async () => {
     await open('Bronze', details('Bronze', { GetCertified: 'Certificate & Report generated on June 1, 2024' }, { BronzeStatus: 6 }),
       '/api/msme/certifications/Bronze', { msme: { IsSilverPaymentDone: 0 } }, { Silver: 5000 });
@@ -212,6 +238,14 @@ describe('CertificationDetailsPage', () => {
     await open('Bronze', details('Bronze', { GetCertified: 'Certified on June 1, 2024' }, { BronzeStatus: 6 }),
       '/api/msme/certifications/Bronze', { msme: { IsSilverPaymentDone: 1 } }, { Silver: 5000 });
     expect(el.querySelector('.rail-further')).toBeNull();
+  });
+
+  it('offers the next level when its payment flag is empty (never paid for), without a fee when none is known', async () => {
+    await open('Bronze', details('Bronze', { GetCertified: 'Certified on June 1, 2024' }, { BronzeStatus: 6 }),
+      '/api/msme/certifications/Bronze', { msme: { IsSilverPaymentDone: null } }, {});
+    expect(el.querySelector('#furtherTitle')!.textContent).toBe('Go further: Silver');
+    expect(el.querySelector('.rail-further')!.textContent).not.toContain('Your fee');
+    expect(el.querySelector('.rail-further a')!.getAttribute('href')).toBe('/msme/dashboard?apply=Silver');
   });
 
   it('links the Bronze certificate and report of this portal even before the file exists', async () => {

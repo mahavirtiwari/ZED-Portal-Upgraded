@@ -59,6 +59,67 @@ export function maskedEmail(value: string): string {
   return `${value.slice(0, Math.min(2, at))}•••••${value.slice(at)}`;
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * 2026-11-18 (the user's applicant designs: "PLEDGE TAKEN 13 NOV 2026"): a date as the procedures give it ("November 13, 2026",
+ * FORMAT 'MMMM d, yyyy'; also 13/11/2026 and 2026-11-13) written d MMM yyyy; anything else as it is.
+ */
+export function shortDate(value: string): string {
+  const v = value.trim();
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v);
+  if (m) return fmt(+m[3], +m[2], +m[1], v);
+  m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(v);
+  if (m) return fmt(+m[1], +m[2], +m[3], v);
+  m = /^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/.exec(v);
+  if (m) {
+    const month = MONTHS.findIndex((x) => x.toLowerCase() === m![1].slice(0, 3).toLowerCase());
+    if (month >= 0) return fmt(+m[2], month + 1, +m[3], v);
+  }
+  return v;
+}
+
+function fmt(day: number, month: number, year: number, fallback: string): string {
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31 ? `${day} ${MONTHS[month - 1]} ${year}` : fallback;
+}
+
+/** What the profile completeness counts (each true when the page has it). */
+export interface CompletenessFacts {
+  /** A registered e-mail (only ever set with an OTP sent to it, so verified). */
+  email: boolean;
+  /** The unit activity down to its 5-digit NIC code. */
+  activity: boolean;
+  /** The selected unit / plant (its name or address). */
+  unit: boolean;
+  mobile: boolean;
+  pan: boolean;
+  address: boolean;
+}
+
+/** The hint for each missing fact, in the order they are suggested (the ones the applicant can do here first). */
+const COMPLETENESS_HINTS: readonly { key: keyof CompletenessFacts; hint: string }[] = [
+  { key: 'email', hint: 'Verify a registered e-mail under Contact' },
+  { key: 'activity', hint: 'Set the unit activity (NIC) under Units / plants' },
+  { key: 'unit', hint: 'Your unit / plant is not on record yet' },
+  { key: 'mobile', hint: 'Add your mobile number on the Udyam portal' },
+  { key: 'pan', hint: 'Add your PAN on the Udyam portal' },
+  { key: 'address', hint: 'Add your registered address on the Udyam portal' },
+];
+
+/**
+ * 2026-11-18 (the user's applicant designs, "Profile completeness"): the share of the six profile facts the page has (registered
+ * e-mail, unit activity, unit, mobile, PAN, registered address), each counting the same, rounded down so 100% means all of
+ * them; the hint names the first missing one. Only facts the page already reads (nothing invented: no second contact person,
+ * which ZED does not record).
+ */
+export function profileCompleteness(facts: CompletenessFacts): { percent: number; hint: string } {
+  const missing = COMPLETENESS_HINTS.filter((h) => !facts[h.key]);
+  const percent = Math.floor(((COMPLETENESS_HINTS.length - missing.length) / COMPLETENESS_HINTS.length) * 100);
+  if (!missing.length) return { percent, hint: 'All your profile details are in place.' };
+  const more = missing.length - 1;
+  return { percent, hint: more ? `${missing[0].hint}; ${more} more detail${more === 1 ? '' : 's'} missing.` : `${missing[0].hint} to reach 100%.` };
+}
+
 /** Status meaning "certified" per level (as the dashboard): 6 for Bronze, 16 for the others. */
 const certifiedStatus = (code: string): number => (code === 'Bronze' ? 6 : 16);
 
@@ -68,7 +129,8 @@ const certifiedStatus = (code: string): number => (code === 'Bronze' ? 6 : 16);
  * (size, certification, pledge), the Udyam details read only with the PAN masked, the contact with the change of the
  * registered e-mail (OTP to the new address), the unit as a card and its NIC activity as the 2 > 4 > 5-digit hierarchy
  * with "Edit activity" choosing another activity of the MSME's own Udyam record. Basic information and documents are
- * entered only in the ZED MSME app; nothing else is edited here.
+ * entered only in the ZED MSME app; nothing else is edited here. 2026-11-18 (the user's applicant designs): the design's sizes, the
+ * pledge date as d MMM yyyy, "Verified" after the mobile when it is the Udyam record's, and the profile completeness card.
  */
 @Component({
   selector: 'zed-msme-profile',
@@ -108,7 +170,7 @@ export class ProfilePage {
   protected readonly address = computed(() => this.text(this.basicInfo(), 'Address'));
   protected readonly place = computed(() =>
     [this.text(this.basicInfo(), 'StateName'), this.text(this.basicInfo(), 'DistrictName')].filter((x) => x.trim()).join(' · '));
-  protected readonly pledgeOn = computed(() => this.text(this.dash()?.msme ?? {}, 'PledgeOn'));
+  protected readonly pledgeOn = computed(() => shortDate(this.text(this.dash()?.msme ?? {}, 'PledgeOn')));
 
   /** The highest level the unit is certified at (dashboard statuses), with its name and logo; null before one. */
   protected readonly level = computed(() => {
@@ -135,6 +197,20 @@ export class ProfilePage {
   });
 
   protected readonly registeredEmail = signal('');
+  /** 2026-11-18: the mobile is the one the Udyam service accepted at registration (api/msme/profile's mobileVerified). */
+  protected readonly mobileVerified = signal(false);
+  /** The profile has answered (the completeness card waits for it). */
+  protected readonly loaded = signal(false);
+
+  /** 2026-11-18 (the user's applicant designs): the completeness card under the section menu. */
+  protected readonly completeness = computed(() => profileCompleteness({
+    email: !!this.registeredEmail().trim(),
+    activity: !!this.text(this.msme(), 'FiveDigitActivity').trim(),
+    unit: this.hasUnit(),
+    mobile: !!this.mobile().trim(),
+    pan: !!this.pan().trim(),
+    address: !!this.address().trim(),
+  }));
   /** Change of the registered e-mail: enter the new address, then the OTP sent to it. */
   protected readonly emailStep = signal<'idle' | 'enter' | 'otp'>('idle');
   protected newEmail = '';
@@ -240,6 +316,8 @@ export class ProfilePage {
     this.msme.set(res.msme ?? {});
     this.basicInfo.set(res.basicInfo ?? {});
     this.registeredEmail.set(res.registeredEmail ?? '');
+    this.mobileVerified.set(res.mobileVerified === true);
+    this.loaded.set(true);
   }
 
   /** Runs a request with the loading overlay; shows the API message in the pop-up on failure. */

@@ -25,6 +25,7 @@ const CHIPS: Record<IncentiveState, string> = { availed: 'Availed', open: 'Open'
 /**
  * 2026-11-17 (the user's Home design): one incentive: its icon and status chip (Availed / Open / In progress / Locked), the
  * title, the amount, a line of text, and the action at the foot; a locked card says why instead.
+ * 2026-11-18 (the user's applicant designs): the design's sizes and colours (teal action, a locked card faded as a whole).
  */
 @Component({
   selector: 'zed-dash-incentive',
@@ -55,27 +56,27 @@ const CHIPS: Record<IncentiveState, string> = { availed: 'Availed', open: 'Open'
     </article>
   `,
   styles: `
-    .inc-card { display: flex; flex-direction: column; height: 100%; background: #fff; border: 1px solid #dfe7e8; border-radius: 12px; padding: 16px 16px 0;
-      box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-    .inc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .inc-ic { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: #eef3f3; color: var(--zt-dark, #1f5c61); }
-    .inc-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-      border-radius: 10px; padding: 3px 10px; }
-    .inc-chip.is-availed { color: #1e7a3c; background: #e3f4e8; }
-    .inc-chip.is-open { color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
-    .inc-chip.is-progress { color: #a8620f; background: #fdeed6; }
-    .inc-chip.is-locked { color: #7a8a8b; background: #eef1f1; }
-    h4 { margin: 0 0 2px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .inc-hl { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--zt-dark, #1f5c61); }
-    .inc-txt { margin: 0 0 12px; font-size: 12.5px; color: #5f6f70; white-space: pre-line; }
+    .inc-card { display: flex; flex-direction: column; height: 100%; min-height: 204px; background: #fff; border: 1px solid #dde7e8; border-radius: 14px;
+      padding: 16px 16px 0; box-shadow: 0 3px 10px rgba(16, 61, 64, .09); }
+    .inc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .inc-ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: var(--zt-dark, #24666b); }
+    .inc-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; line-height: 14px; letter-spacing: .4px;
+      text-transform: uppercase; border-radius: 11px; padding: 4px 12px; }
+    .inc-chip.is-availed { color: #2f9e58; background: #e5f5ea; }
+    .inc-chip.is-open { color: var(--zt-dark, #24666b); background: #e6f2f3; }
+    .inc-chip.is-progress { color: #9a5f06; background: #fdf2dc; }
+    .inc-chip.is-locked { color: #6f8487; background: #ecf0f0; }
+    h4 { margin: 0 0 3px; font-size: 15.5px; font-weight: 700; color: #17373b; }
+    .inc-hl { margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: var(--zt-dark, #24666b); }
+    .inc-txt { margin: 0 0 12px; font-size: 12px; font-weight: 500; line-height: 16px; color: #6f8487; white-space: pre-line; }
     .inc-txt.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-    .inc-note { margin: 0 0 10px; font-size: 12px; color: #7a8a8b; }
-    .inc-foot { margin-top: auto; border-top: 1px solid #eef3f3; padding: 11px 0 12px; }
-    .inc-foot .inc-note { margin: 0; }
+    .inc-note { margin: 0 0 10px; font-size: 12px; color: #6f8487; }
+    .inc-foot { margin: auto -16px 0; border-top: 1px solid #dde7e8; padding: 11px 16px 13px; }
+    .inc-foot .inc-note { margin: 0; font-size: 12.5px; font-weight: 600; }
     .inc-foot a, .inc-foot button { display: flex; width: 100%; justify-content: space-between; align-items: center; background: none; border: 0; padding: 0;
-      font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); text-decoration: none; cursor: pointer; }
-    .inc-foot a:hover, .inc-foot button:hover { color: var(--zt-mid2, #2a8a8c); }
-    .is-locked :is(h4, .inc-hl, .inc-txt, .inc-ic) { opacity: .6; }
+      font-size: 13px; font-weight: 700; color: var(--zt-dark, #24666b); text-decoration: none; cursor: pointer; }
+    .inc-foot a:hover, .inc-foot button:hover { color: var(--zt-ink, #1a4c50); }
+    .inc-card.is-locked { opacity: .62; }
   `,
 })
 export class IncentiveTile {

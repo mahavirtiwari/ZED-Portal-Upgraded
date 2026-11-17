@@ -27,6 +27,9 @@ export const PORTAL_LINK_DEFAULTS = {
   playStore: 'https://play.google.com/store/apps/details?id=com.qci.zed.msme',
   appStore: 'https://apps.apple.com/in/app/zed-msme/id1631537071',
   lgd: 'https://lgdirectory.gov.in/downloadDirectory.do',
+  guidelines: 'https://zed.msme.gov.in/uploads/Guideline_Book.pdf',
+  privacy: 'https://zed.msme.gov.in/privacy-policy',
+  terms: 'https://zed.msme.gov.in/terms-and-conditions',
 } as const;
 
 export type PortalLinkKey = keyof typeof PORTAL_LINK_DEFAULTS;

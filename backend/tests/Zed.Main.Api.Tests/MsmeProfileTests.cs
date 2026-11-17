@@ -89,6 +89,8 @@ public sealed class MsmeProfileTests : IDisposable
         Assert.Equal("Acme Unit 1", json.GetProperty("msme").GetProperty("PUnitName").GetString());
         Assert.Equal("24311", json.GetProperty("msme").GetProperty("FiveDigitActivity").GetString());
         Assert.Equal(MyUdyam, json.GetProperty("basicInfo").GetProperty("UdyogAadharNo").GetString());
+        // 2026-11-18: the registered mobile (Msme) is the Udyam record's, so it is shown as verified.
+        Assert.True(json.GetProperty("mobileVerified").GetBoolean());
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("secret", body);
         Assert.DoesNotContain("PledgeEmailId", body);
@@ -110,6 +112,16 @@ public sealed class MsmeProfileTests : IDisposable
         Assert.Equal("26101", rows[1]["Five_DigitActivity"]);
         Assert.False(rows[0].ContainsKey("ActivityDetail_Id"));
     }
+
+    [Theory]
+    [InlineData("9999999999", "9999999999", true)]
+    [InlineData("9999999999", "+91 99999 99999", true)]
+    [InlineData("9999999999", "8888888888", false)]
+    [InlineData("", "9999999999", false)]
+    [InlineData("9999999999", null, false)]
+    [InlineData("12345", "12345", false)]
+    public void Mobile_is_verified_only_when_the_registered_one_is_the_udyam_record_one(string? registered, string? udyam, bool verified) =>
+        Assert.Equal(verified, MsmeProfileService.SameMobile(registered, udyam));
 
     [Fact]
     public async Task Udyam_service_failure_is_a_502_without_details()

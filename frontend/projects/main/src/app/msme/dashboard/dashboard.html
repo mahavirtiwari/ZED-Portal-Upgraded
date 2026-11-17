@@ -41,9 +41,10 @@
               <dl class="uc-facts">
                 <div>
                   <dt>Current level</dt>
-                  <dd><span class="uc-level"><img [src]="f.logo" alt="" />{{ f.name }}</span><small>Certified</small></dd>
+                  <dd><span class="uc-level"><img [src]="f.logo" alt="" />{{ f.name }}</span><small>{{ f.certified }}</small></dd>
                 </div>
-                @if (f.validity) { <div><dt>Valid for</dt><dd><b>{{ f.validity }}</b><small>from certification</small></dd></div> }
+                <!-- 2026-11-18 (the user's applicant designs): VALID TILL "13 Nov 2031" / "5-year validity" once the certification date is known. -->
+                @if (f.validity; as v) { <div><dt>{{ v.label }}</dt><dd><b>{{ v.value }}</b><small>{{ v.note }}</small></dd></div> }
                 @if (f.surveillance; as s) {
                   <div>
                     <dt>{{ s.label }}</dt>
@@ -165,13 +166,13 @@
               </dl>
               @if (!eligibleFor(c)) { <p class="dp-note">Available once your unit is certified at {{ levelsOf(c, ' or ') }} level.</p> }
               <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
-                @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">APPLY ON THE SCHEME PORTAL</a> }
-                @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">WATCH VIDEO</a> }
+                @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">Apply on the scheme portal</a> }
+                @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">Watch video</a> }
               </div>
             }
             @case ('apply-info') {
               <div class="text-center"><img [src]="levelLogo(m.level)" alt="" class="apply-logo" /></div>
-              <p class="dp-note text-center mt-3">Click on APPLY to start the application.</p>
+              <p class="dp-note text-center mt-3">Click Apply to start the application.</p>
             }
             @case ('info') {
               <div class="dp-text">

@@ -222,7 +222,7 @@ describe('HandholdingPage', () => {
 
     find('button', 'Accept milestone 1')!.click();
     await settled();
-    const submit = find('button', 'SUBMIT') as HTMLButtonElement;
+    const submit = find('button', 'Submit') as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
     expect(el.querySelector('input[name="isAccepted"]')!.closest('label')!.querySelector('[data-key="msme.handholding.acceptMilestone.checkbox"]')).not.toBeNull();
     (el.querySelector('input[name="isAccepted"]') as HTMLInputElement).click();

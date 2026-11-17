@@ -24,6 +24,10 @@ body {
 .zed-legacy.zed-v4 {
   @include meta.load-css('styles/v4-skin');
 }
+// 2026-11-18: the buttons of the applicant designs on the signed-in MSME pages (the MSME layout).
+.zed-legacy.zed-msme {
+  @include meta.load-css('styles/msme-skin');
+}
 
 // 2026-11-15: Admin → Branding colour themes (only with <html data-zed-theme>; ZED Teal unchanged).
 @include meta.load-css('styles/themes');

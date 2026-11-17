@@ -107,6 +107,40 @@ public sealed class MsmeDocumentsTests : IDisposable
     }
 
     [Fact]
+    public async Task Documents_carry_the_zed_id_the_pledge_date_and_each_certified_level_dates()
+    {
+        // 2026-11-18 (the user's applicant designs): "Issued ...", "Valid till ...", "Generated ..." under the cards.
+        _host.Sql.Queries[MsmeDocumentDates.CertifiedSql] = _ =>
+        [
+            new { Certification = "Bronze", CertifiedOn = new DateTime(2026, 11, 13, 15, 20, 0) },
+            new { Certification = "ZEDX", CertifiedOn = (DateTime?)null },
+        ];
+        var client = await SignInAsync();
+
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/msme/documents");
+
+        var call = Assert.Single(_host.Sql.Calls, c => c.Name == MsmeDocumentDates.CertifiedSql);
+        Assert.Equal(Me, FakeSql.Arg(call.Args, "ZedId"));
+        var unit = json.GetProperty("Unit")[0];
+        Assert.Equal(Me, unit.GetProperty("ZedId").GetString());
+        // As the pledge certificate prints it ("January 1, 2026", FakeSql.PledgeRow).
+        Assert.Equal("2026-01-01", unit.GetProperty("PledgeOn").GetString());
+        var bronze = Assert.Single(json.GetProperty("Certified").EnumerateArray());
+        Assert.Equal("Bronze", bronze.GetProperty("Level").GetString());
+        Assert.Equal("2026-11-13", bronze.GetProperty("CertifiedOn").GetString());
+        // The level's validity (36 months unless the Admin set another).
+        Assert.Equal("2029-11-13", bronze.GetProperty("ValidTill").GetString());
+    }
+
+    [Theory]
+    [InlineData("November 13, 2026", "2026-11-13")]
+    [InlineData("13/11/2026", "2026-11-13")]
+    [InlineData("", null)]
+    [InlineData("soon", null)]
+    public void Pledge_dates_are_read_as_the_procedures_format_them(string text, string? iso) =>
+        Assert.Equal(iso, MsmeDocumentDates.IsoDate(text));
+
+    [Fact]
     public async Task A_listed_file_missing_from_storage_has_no_link()
     {
         // The test server had the guideline rows but not their files: the link opened a 404 page.

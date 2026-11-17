@@ -1,20 +1,24 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
 import { ContactPage } from '../contact/contact';
+import { PageHead } from '../shared/page-head';
 
 /**
  * Frame of the public pages (registration, Contact ZED), as Views/Shared/_LayoutHome.cshtml drew it: the logo header,
  * the green bar with the page name and "Back to Login" / "Contact ZED", and the footer.
+ * 2026-11-18 (the user: the registration header "is not aligned with other page headers"): the same frame as the
+ * signed-in MSME pages: the 72px logo bar, the dark teal strip (pinned on scroll) with "Back to Login" and "Contact ZED",
+ * the breadcrumb and the page name as the page title, the light grey page, the dark footer, and the new buttons.
  */
 @Component({
   selector: 'zed-public-layout',
-  imports: [RouterLink],
-  host: { class: 'zed-legacy d-block' },
+  imports: [RouterLink, PageHead],
+  host: { class: 'zed-legacy zed-msme d-block' },
   template: `
     <div class="main-container">
-      <header class="zed-header zed-smooth" id="main_header">
+      <header class="zed-header" id="main_header">
         <div class="container g-0">
           <div class="header-top">
             @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" />}
@@ -23,40 +27,69 @@ import { ContactPage } from '../contact/contact';
         </div>
       </header>
 
-      <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Public menu">
-        <div class="container nav-bar-sec">
-          <span class="navbar-brand">{{ title() }}<br /><span>Home</span></span>
-          <button class="navbar-toggler" type="button" aria-controls="public-menu" [attr.aria-expanded]="menuOpen()"
-                  aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="public-menu" [class.show]="menuOpen()">
-            <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0">
-              <li class="nav-item tag"><a class="nav-link" routerLink="/msme/login">Back to Login</a></li>
-              <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
-              @if (links.url('contact'); as u) {
-                <li class="nav-item tag"><a class="nav-link" [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
-              }
-            </ul>
-          </div>
+      <nav class="pub-nav" id="main_navbar" aria-label="Public menu">
+        <div class="container pub-nav-in">
+          <span class="pub-portal">ZED Certification</span>
+          <ul class="pub-links">
+            <li><a routerLink="/msme/login">Back to Login</a></li>
+            <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
+            @if (links.url('contact'); as u) {
+              <li><a [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
+            }
+          </ul>
         </div>
       </nav>
 
-      <div class="public-content"><ng-content /></div>
+      <div class="public-content">
+        @if (head()) {
+        <div class="container">
+          <zed-page-head [crumbs]="[{ label: 'Login', link: '/msme/login' }, { label: title() }]" [title]="title()" />
+        </div>
+        }
+        <ng-content />
+      </div>
 
-      <footer>
-        <div class="footer">
-          <div class="container d-flex justify-content-between align-items-center py-2">
-            <small>ZED © {{ year }} All Rights Reserved</small>
-            <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
-          </div>
+      <footer class="pub-footer">
+        <div class="container pf">
+          <small>ZED © {{ year }} All Rights Reserved</small>
+          <nav class="pf-links" aria-label="Footer">
+            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a><span aria-hidden="true">·</span> }
+            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a><span aria-hidden="true">·</span> }
+            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a><span aria-hidden="true">·</span> }
+            <a routerLink="/msme/login">Login</a>
+          </nav>
+          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
         </div>
       </footer>
     </div>
   `,
   styles: `
-    :host { padding-top: 100px; color: #333; }
-    .public-content { min-height: calc(100vh - 260px); }
+    :host { padding-top: 0; color: #333; }
+    .zed-header { position: relative; height: 72px; box-shadow: none; }
+    .header-top { height: 72px; }
+    .header-top a img, .header-top > img { width: auto; }
+    .header-top > a:first-child > img, .header-top > img:first-child { height: 80px; margin: -4px 0 -4px -8px; }
+    .header-top img.zedv2-logo { width: auto !important; height: 56px; }
+    .pub-nav { position: sticky; top: 0; z-index: 98; background: var(--zt-dark, #1f5c61); min-height: 48px; }
+    .pub-nav-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+    .pub-portal { color: #fff; font-size: 14px; font-weight: 800; }
+    .pub-links { display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none; }
+    .pub-links li + li { border-left: 1px solid rgb(255 255 255 / 20%); }
+    .pub-links a { display: flex; align-items: center; height: 48px; padding: 0 16px; color: #d4ebe6; font-size: 14px; font-weight: 600;
+      text-decoration: none; white-space: nowrap; }
+    .pub-links a:hover, .pub-links a:focus-visible { color: #fff; background: rgb(255 255 255 / 6%); }
+    .public-content { min-height: calc(100vh - 230px); padding: 2px 0 40px; background: #f3f6f6; }
+    .pub-footer { background: #1d2f31; color: #c9dcdc; }
+    .pf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 12px; }
+    .pf small { font-size: 13px; font-weight: 600; color: #fff; }
+    .pf-links { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+    .pf-links a { color: #c9dcdc; text-decoration: none; }
+    .pf-links a:hover { color: #fff; text-decoration: underline; }
+    @media (max-width: 575.98px) {
+      .header-top > a:first-child > img, .header-top > img:first-child { height: 64px; }
+      .pub-portal { display: none; }
+      .pub-links a { padding: 0 10px; }
+    }
   `,
 })
 export class PublicLayout {
@@ -64,12 +97,10 @@ export class PublicLayout {
   protected readonly links = inject(PortalLinksService);
   /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
   protected readonly brand = inject(BrandingService);
-  /** The page name shown in the green bar (old ViewBag title: "Registration", "Contact ZED"). */
+  /** The page name (old ViewBag title: "Registration", "Contact ZED"), now the page title under the breadcrumb. */
   readonly title = input('Home');
-  protected readonly menuOpen = signal(false);
-
-  constructor() {
-  }
+  /** False when the page draws its own breadcrumb and title (Contact ZED). */
+  readonly head = input(true);
   protected readonly year = new Date().getFullYear();
 }
 
@@ -77,6 +108,6 @@ export class PublicLayout {
 @Component({
   selector: 'zed-public-contact',
   imports: [PublicLayout, ContactPage],
-  template: `<zed-public-layout title="Contact ZED"><zed-msme-contact /></zed-public-layout>`,
+  template: `<zed-public-layout title="Contact ZED" [head]="false"><zed-msme-contact /></zed-public-layout>`,
 })
 export class PublicContactPage {}

@@ -1,63 +1,95 @@
 // 2026-11-17 (the user's "Fee & tax details" design): the form on the left, the fee summary on the right (pinned on a laptop).
+// 2026-11-18 (the user's applicant designs, zed-msme-07): 56px card heads, 14.5px questions, 36px Yes / No toggles, 44px
+// fields, 46px fee rows, the 72px Net payable box, the 46px pay button. Also the surveillance and handholding fee steps.
+// The four-step tracker of the surveillance and handholding payment pages (104px card, 30px dots, the current one haloed).
+zed-step-tracker ::ng-deep {
+  .st { min-height: 104px; padding: 19px 12px 10px; border-color: #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); }
+  .st-step + .st-step::before { top: 14px; right: calc(50% + 24px); left: calc(-50% + 24px); }
+  .st-dot { box-sizing: border-box; width: 30px; height: 30px; border-color: #cfdadb; color: #6f8487; }
+  .st-now .st-dot { border: 3px solid #24666b; color: #24666b; box-shadow: 0 0 0 6px #e6f2f3; }
+  .st-label { margin-top: 12px; color: #17373b; }
+  .st-step:not(.st-done):not(.st-now) .st-label, .st-note { color: #6f8487; }
+  .st-note { font-size: 11.5px; }
+  .st-now .st-note { color: #24666b; font-weight: 600; }
+}
 .pst { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; align-items: start; }
 @media (max-width: 991.98px) { .pst { grid-template-columns: minmax(0, 1fr); } }
 .pst-main { display: grid; gap: 20px; min-width: 0; }
-.pst-card { background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-.pst-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #e8eff0; }
-.pst-head h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); flex: 1; }
-.pst-ico { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #eef5f5; color: var(--zt-dark, #1f5c61); font-weight: 700; }
-.pst-link { font-size: 14px; font-weight: 700; color: var(--zt-dark, #1f5c61); text-decoration: none; }
-.pst-q { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 16px 20px; }
-.pst-q + .pst-q { border-top: 1px solid #e8eff0; }
-.pst-qlabel { margin: 0; font-weight: 700; color: #24393b; }
-.pst-help { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
-.pst-err { grid-column: 1 / -1; color: #c0392b; font-size: 13px; }
-.pst-field { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; align-items: start; margin-top: 6px; }
-.pst-field label, .pst-sub { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #24393b; }
-.pst-field .form-control { max-width: none; height: 44px; border-radius: 8px; }
-.pst-field .form-control:disabled { background: #f3f6f6; }
-.pst-note { display: flex; gap: 10px; margin: 0; padding: 12px 14px; border-radius: 10px; background: #e9f3f3; font-size: 13.5px; color: #24393b; }
-.pst-note span { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--zt-mid2, #2a8a8c); color: var(--zt-mid2, #2a8a8c);
+.pst-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); }
+.pst-head { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 12px 20px; border-bottom: 1px solid #dde7e8; }
+.pst-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #17373b; flex: 1; }
+.pst-ico { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-weight: 700; }
+.pst-link { margin-right: 4px; font-size: 13px; font-weight: 700; color: #24666b; text-decoration: none; }
+.pst-q { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 20px 24px 18px; }
+.pst-q + .pst-q { border-top: 1px solid #dde7e8; }
+.pst-qlabel { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 20px; color: #17373b; }
+.pst-help { margin: 2px 0 0; font-size: 12.5px; font-weight: 500; line-height: 18px; color: #6f8487; }
+.pst-field .pst-help { font-size: 11.5px; line-height: 16px; }
+.pst-err { grid-column: 1 / -1; color: #c0392b; font-size: 12.5px; }
+.pst-field { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; align-items: start; margin-top: 4px; }
+.pst-field label, .pst-sub { display: block; margin: 0 0 8px; font-size: 12.5px; font-weight: 600; color: #17373b; }
+.pst-field .form-control { max-width: none; height: 44px; border-radius: 9px; border: 1.2px solid #b9cdcf; font-size: 13.5px; color: #17373b; }
+.pst-field .form-control::placeholder { color: #9aadaf; }
+.pst-field .form-control:disabled { background: #f3f6f6; border-color: #dde7e8; }
+.pst-note { display: flex; gap: 12px; margin: 0; padding: 18px 20px; border-radius: 10px; background: #e6f2f3; font-size: 12.5px; font-weight: 500; line-height: 18px; color: #17373b; }
+.pst-note span { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid #24666b; color: #24666b;
   display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 
-// Yes / No toggles: the radios stay (keyboard, forms), drawn as a segmented control.
-.seg { display: inline-flex; align-self: start; background: #eef3f3; border-radius: 10px; padding: 3px; }
+// Yes / No toggles: the radios stay (keyboard, forms), drawn as a segmented control (152 × 36, the chosen one outlined).
+.seg { display: inline-flex; align-self: start; background: #eef3f3; border-radius: 9px; padding: 3px; }
 .seg label { position: relative; margin: 0; cursor: pointer; }
 .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
-.seg span { display: block; min-width: 70px; padding: 7px 18px; text-align: center; border-radius: 8px; border: 2px solid transparent; font-weight: 700; color: #5f6f70; }
-.seg label.on span { background: #fff; border-color: var(--zt-dark, #1f5c61); color: var(--zt-ink, #173f44); }
-.seg input:focus-visible + span { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
-.seg-sm span { min-width: 56px; padding: 5px 12px; }
+.seg span { display: block; min-width: 70px; padding: 4px 16px; text-align: center; border-radius: 7px; border: 1.5px solid transparent; font-size: 13px; font-weight: 500; line-height: 19px; color: #6f8487; }
+.seg label.on span { background: #fff; border-color: #24666b; color: #24666b; font-weight: 700; }
+.seg input:focus-visible + span { outline: 2px solid #24666b; outline-offset: 2px; }
+.seg-sm span { min-width: 56px; padding: 3px 12px; }
 
-.pst-bill { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 20px; margin: 0; padding: 16px 20px; }
-.pst-bill dt { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: #5f6f70; font-weight: 700; }
-.pst-bill dd { margin: 4px 0 0; color: #24393b; overflow-wrap: anywhere; }
+.pst-bill { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 24px; margin: 0; padding: 22px 24px 24px; }
+.pst-bill dt { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; font-weight: 700; }
+.pst-bill dd { margin: 6px 0 0; font-size: 14px; font-weight: 600; line-height: 20px; color: #17373b; overflow-wrap: anywhere; }
 .pst-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
-.pst-btn-soft { background: #e8eff0; color: var(--zt-ink, #173f44); font-weight: 700; border-radius: 8px; padding: 10px 22px; }
-.pst-cancel { color: #5f6f70; font-weight: 700; text-decoration: none; }
+.pst-btn-soft { display: inline-flex; align-items: center; justify-content: center; min-width: 210px; min-height: 42px; padding: 0 24px; border: 0;
+  background: #e7eeee; color: #17373b; font-size: 13.5px; font-weight: 700; border-radius: 9px; text-transform: none; }
+.pst-btn-soft:hover { background: #dbe5e5; color: #17373b; }
+.pst-cancel { color: #6f8487; font-size: 13px; font-weight: 700; text-decoration: none; text-transform: none; }
 
 // Fee summary
-.pst-rail { padding: 0 20px 18px; }
+.pst-rail { padding: 0 24px 20px; }
 @media (min-width: 992px) { .pst-rail { position: sticky; top: 16px; } }
-.pst-level { display: flex; align-items: center; gap: 12px; margin: 0 -20px; padding: 16px 20px; border-bottom: 1px solid #e8eff0; }
-.pst-level img { width: 48px; height: 48px; object-fit: contain; }
-.pst-level h3 { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
-.pst-level p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
-.pst-cap { margin: 16px 0 4px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: #4b5b5c; }
-.summary-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eef3f3; font-size: 14px; color: #24393b; }
+.pst-level { display: flex; align-items: center; gap: 14px; min-height: 86px; margin: 0 -24px; padding: 16px 24px; border-bottom: 1px solid #dde7e8; }
+.pst-level img { width: 44px; height: 44px; object-fit: contain; }
+.pst-level h3 { margin: 0; font-size: 16.5px; font-weight: 700; color: #17373b; }
+.pst-level p { margin: 2px 0 0; font-size: 12.5px; font-weight: 500; color: #6f8487; }
+.pst-cap { margin: 20px 0 4px; font-size: 10.5px; letter-spacing: .085em; text-transform: uppercase; font-weight: 800; color: #6f8487; }
+.summary-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; min-height: 46px; padding: 10px 0 8px; border-bottom: 1px solid #edf2f2;
+  font-size: 13.5px; font-weight: 500; line-height: 18px; color: #17373b; }
 .summary-rows > div > strong { white-space: nowrap; font-weight: 600; }
-.summary-rows small { display: block; font-size: 12px; color: #5f6f70; }
-.summary-rows small.ok { color: #1e7a3c; font-weight: 700; }
+.summary-rows small { display: block; margin-top: 1px; font-size: 11.5px; font-weight: 500; line-height: 16px; color: #6f8487; }
+.summary-rows small.ok { color: #2f9e58; font-weight: 700; }
 .reward-action { display: flex; align-items: center; gap: 4px; flex: none; }
-.pst-apply { border: 1px solid #cfdcdd; color: var(--zt-dark, #1f5c61); font-weight: 700; border-radius: 8px; }
-.net { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 16px 18px; border-radius: 12px; background: #eef5f5; }
-.net small { display: block; font-size: 12px; color: #5f6f70; }
-.net strong { font-size: 26px; color: var(--zt-ink, #173f44); white-space: nowrap; }
-.pst-zero { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: #e9f3f3; font-size: 13px; color: #24393b; }
-.pay-btn { display: block; width: 100%; margin-top: 14px; height: 48px; font-weight: 700; border-radius: 8px; background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); }
-.pst-line { margin: 10px 0 0; font-size: 13px; color: #5f6f70; }
-.pst-line.ok::before { content: '✓ '; color: #1e7a3c; }
-.pst-line.warn { color: #9a6700; }
+.pst-apply { border: 1.2px solid #b9cdcf; color: #24666b; font-size: 12.5px; font-weight: 700; border-radius: 8px; text-transform: none; }
+.net { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 72px; margin-top: 18px; padding: 12px 18px; border-radius: 12px; background: #e6f2f3; }
+.net b { font-size: 14px; font-weight: 700; color: #17373b; }
+.net small { display: block; font-size: 11.5px; font-weight: 500; color: #6f8487; }
+.net strong { font-size: 27px; font-weight: 800; color: #1b4f53; white-space: nowrap; }
+.pst-zero { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: #e6f2f3; font-size: 12.5px; color: #17373b; }
+.pay-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-top: 18px; height: 46px; font-size: 14.5px; font-weight: 700;
+  border-radius: 9px; background: #24666b; border-color: #24666b; text-transform: none; }
+.pay-lock { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pst-line { margin: 12px 0 0; font-size: 12px; font-weight: 500; color: #3d5559; }
+.pst-line + .pst-line { margin-top: 6px; }
+.pst-line.ok::before { content: '✓ '; color: #2f9e58; font-weight: 700; }
+.pst-line.warn { font-weight: 600; color: #9a5f06; }
 .pst-line.warn::before { content: '⚠ '; }
 
 .loadingdiv { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+// The hand-off to the payment gateway (zed-msme-08): a white card on the overlay with the amount and the warning.
+.pst-handoff { width: min(420px, calc(100% - 32px)); padding: 28px 24px 24px; border-radius: 14px; background: #fff; text-align: center; box-shadow: 0 10px 30px rgba(23, 55, 59, .25);
+  h3 { margin: 14px 0 6px; font-size: 18px; font-weight: 700; color: #17373b; }
+  p { margin: 0 0 6px; font-size: 13.5px; color: #3d5559; }
+  .spinner-border { margin-top: 12px; color: #24666b; }
+}
+.pst-handoff-ico { width: 52px; height: 52px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3;
+  svg { width: 24px; height: 24px; fill: none; stroke: #24666b; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+}
+p.pst-handoff-warn { margin-top: 10px; padding: 8px 12px; border-radius: 9px; background: #fdf2dc; font-size: 12.5px; font-weight: 600; color: #9a5f06; }

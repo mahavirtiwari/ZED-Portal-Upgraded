@@ -117,6 +117,28 @@ public sealed class MsmeDashboardTests : IDisposable
     }
 
     [Fact]
+    public async Task Dashboard_gives_the_date_each_certified_level_was_certified()
+    {
+        // 2026-11-18 (the user's applicant designs): "Certified 14 Nov 2026", the validity end and the next surveillance.
+        var client = await SignedInAsync();
+        Assert.Equal(0, (await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard")).GetProperty("certifiedOn").EnumerateObject().Count());
+
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.CertifiedOnSql] = _ =>
+        [
+            new { Level = "Bronze", Status = (int?)6, At = (DateTime?)new DateTime(2026, 11, 14, 10, 30, 0) },
+            // Silver at 6 has passed its desktop check only: not certified.
+            new { Level = "Silver", Status = (int?)6, At = (DateTime?)new DateTime(2026, 11, 15) },
+            new { Level = "ZEDX", Status = (int?)16, At = (DateTime?)new DateTime(2027, 1, 2) },
+        ];
+        var on = (await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard")).GetProperty("certifiedOn");
+        Assert.Equal("2026-11-14", on.GetProperty("Bronze").GetString());
+        Assert.False(on.TryGetProperty("Silver", out _));
+        Assert.Equal("2027-01-02", on.GetProperty("ZEDX").GetString());
+        var call = _host.Sql.Calls.Last(c => c.Name == Zed.Portal.Features.Msme.MsmeDashboardController.CertifiedOnSql);
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(call.Args, "ZedId"));
+    }
+
+    [Fact]
     public async Task Dashboard_is_forbidden_for_staff_roles()
     {
         // Staff cannot sign in through the MSME login, so sign in directly with the cookie helper route.

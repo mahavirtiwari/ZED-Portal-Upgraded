@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Portal.Features.CertLevels;
 
 namespace Zed.Portal.Features.Msme;
 
@@ -12,7 +13,7 @@ namespace Zed.Portal.Features.Msme;
 /// sign-in at all); here it is always the signed-in MSME.
 /// </summary>
 [Route("api/msme/certifications")]
-public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiController
+public sealed class MsmeCertificationController(ISqlExecutor db, ILogger<MsmeCertificationController> log) : MsmeApiController
 {
     /// <summary>
     /// Certification types the certification pages are opened with (dashboard, handholding support,
@@ -54,12 +55,21 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
         "AllocationCompleted", "BdsScheduledOn", "HapScheduledOn", "SubmittedByConsultant", "ApplicantAcceptedOn",
     ];
 
+    /// <param name="Validity">2026-11-18 (the user's applicant designs, zed-msme-01): the level's validity and surveillance months
+    /// (Administration → Certification Levels), for the header's "Valid till" and "Next surveillance"; null for a milestone.</param>
     public sealed record CertificationResponse(
         string Certification,
         Dictionary<string, object?> Msme,
         Dictionary<string, object?> BasicInfo,
         Dictionary<string, object?> CertStatus,
-        Dictionary<string, object?> Status);
+        Dictionary<string, object?> Status,
+        LevelValidity? Validity = null);
+
+    /// <summary>
+    /// How long a certificate of the level is valid and the months after certification its surveillance visits fall due
+    /// (the schedule in force: <see cref="CertificationLevel.Schedule"/>); no months when the level has no surveillance.
+    /// </summary>
+    public sealed record LevelValidity(int ValidityMonths, IReadOnlyList<int> SurveillanceMonths);
 
     [HttpGet("{certification}")]
     public async Task<ActionResult<CertificationResponse>> Get(string certification, CancellationToken ct)
@@ -77,7 +87,25 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
             Pick(msme, MsmeFields),
             Pick(sets[1].FirstOrDefault(), BasicInfoFields),
             Pick(sets[2].FirstOrDefault(), CertStatusFields),
-            Pick(sets[3].FirstOrDefault(), StatusFields));
+            Pick(sets[3].FirstOrDefault(), StatusFields),
+            await ValidityAsync(type, ct));
+    }
+
+    /// <summary>The level's validity and surveillance months (a level or its surveillance; null for a milestone or an unknown level).</summary>
+    private async Task<LevelValidity?> ValidityAsync(string type, CancellationToken ct)
+    {
+        if (System.Text.RegularExpressions.Regex.IsMatch(type, @"Milestone\d$")) return null;
+        var code = type.EndsWith("Surveillance", StringComparison.OrdinalIgnoreCase) ? type[..^"Surveillance".Length] : type;
+        if (await CertificationLevels.FindAsync(db, code, log, ct) is not { } level) return null;
+        return new LevelValidity(level.ValidityMonths, SurveillanceMonths(level));
+    }
+
+    internal static IReadOnlyList<int> SurveillanceMonths(CertificationLevel level)
+    {
+        if (!level.SurveillanceEnabled) return [];
+        var s = level.Schedule;
+        var count = s.Count > 1 && s.IntervalMonths > 0 ? s.Count : 1;
+        return Enumerable.Range(0, count).Select(i => s.FirstDueMonths + i * s.IntervalMonths).ToList();
     }
 
     /// <summary>Copies the listed columns (null when the procedure did not return them).</summary>

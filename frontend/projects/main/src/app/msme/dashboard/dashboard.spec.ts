@@ -1,3 +1,4 @@
+import { formatDate } from '@angular/common';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -18,7 +19,7 @@ describe('DashboardPage', () => {
 
   async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
                         incentives: object = { builtIn: [], incentives: [] }, levels: object[] = [], basic: Record<string, unknown> = {},
-                        levelFees: Record<string, number | null> = {}) {
+                        levelFees: Record<string, number | null> = {}, certifiedOn?: Record<string, string>) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -28,6 +29,7 @@ describe('DashboardPage', () => {
       msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme Castings', EnterpriseType: 'Micro', ...msme },
       basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: reCertification, ...basic },
       certStatus: { BronzeStatus: 0, SilverStatus: 0, GoldStatus: 0, ...certStatus },
+      ...(certifiedOn ? { certifiedOn } : {}),
     });
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
     for (const r of http.match('/api/public/levels')) r.flush(levels);
@@ -83,6 +85,10 @@ describe('DashboardPage', () => {
     expect(el.querySelector('zed-dash-extras a[href="https://play.google.com/store/apps/details?id=com.qci.zed.msme"]')!.textContent).toContain('Android app');
     expect(el.querySelector('zed-dash-extras a[href="https://apps.apple.com/in/app/zed-msme/id1631537071"]')!.textContent).toContain('iOS app');
     expect(el.querySelector('zed-dash-extras a[href="https://zed.msme.gov.in/contact-us"]')!.textContent).toContain('Contact ZED');
+    // 2026-11-18 (the user's applicant designs): the scheme guidelines (Admin → Links) and the app's QR code.
+    expect(el.querySelector('zed-dash-extras a[href="https://zed.msme.gov.in/uploads/Guideline_Book.pdf"]')!.textContent).toContain('Scheme guidelines');
+    expect(el.querySelector('zed-dash-extras')!.textContent).toContain('Talk to the ZED helpdesk or read the scheme guidelines.');
+    expect(el.querySelector('zed-dash-extras img[src="/Images/qrcode.png"]')).toBeTruthy();
     (steps[0].querySelector('button') as HTMLButtonElement).click();
     await settle();
     expect(el.textContent).toContain('Disclaimer / declaration');
@@ -137,6 +143,8 @@ describe('DashboardPage', () => {
   it('greys out Silver and Gold while Bronze is in progress, and marks Bronze steps', async () => {
     await render({ BronzeStatus: 3 }, { IsBronzePaymentDone: 1 });
     expect(card('bronze').textContent).toContain('In progress');
+    // 2026-11-18: the level in progress is the recommended next one.
+    expect(card('bronze').classList).toContain('is-rec');
     expect(card('silver').classList).toContain('plant-activity-disabled');
     expect(card('gold').classList).toContain('plant-activity-disabled');
     // A locked level says so, and why.
@@ -301,6 +309,35 @@ describe('DashboardPage', () => {
     expect(card('gold').classList).toContain('is-rec');
   });
 
+  it('shows when the current level was certified, its validity end and the next surveillance (2026-11-18)', async () => {
+    const levels = ['Bronze', 'Silver', 'Gold'].map((code) => ({ code, name: code, description: null, comment: null, logoUrl: null, assessmentMode: 'Site',
+      validityMonths: 60, fee: null, surveillance: { firstDueMonths: 18, count: 2, intervalMonths: 18 } }));
+    // Certified two years ago: the visit of month 18 has passed, the one of month 36 is next.
+    const now = new Date();
+    const on = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+    const iso = `${on.getFullYear()}-${String(on.getMonth() + 1).padStart(2, '0')}-01`;
+    const day = (d: Date) => formatDate(d, 'd MMM y', 'en-US');
+    const fact = (i: number) => {
+      const d = el.querySelectorAll('.uc-facts > div')[i];
+      return [d.querySelector('dt')!.textContent!.trim(), d.querySelector('b, .uc-level')!.textContent!.trim(), d.querySelector('small')!.textContent!.trim()];
+    };
+    await render({ BronzeStatus: 6 }, { IsBronzePaymentDone: 1 }, 0, undefined, levels, {}, {}, { Bronze: iso });
+    expect(fact(0)).toEqual(['Current level', 'Bronze', `Certified ${day(on)}`]);
+    expect(fact(1)).toEqual(['Valid till', day(new Date(on.getFullYear() + 5, on.getMonth(), 0)), '5-year validity']);
+    expect(fact(2)).toEqual(['Next surveillance', formatDate(new Date(on.getFullYear() + 3, on.getMonth(), 1), 'MMM y', 'en-US'), '2nd of 2 visits']);
+    expect(card('bronze').querySelector('.lv-status')!.textContent!.trim()).toBe(`Certified · ${day(on)}`);
+    // Silver is the recommended next level.
+    expect(card('silver').classList).toContain('is-rec');
+    fixture.destroy();
+
+    // Without the date: as before.
+    await render({ BronzeStatus: 6 }, { IsBronzePaymentDone: 1 }, 0, undefined, levels);
+    expect(fact(0)).toEqual(['Current level', 'Bronze', 'Certified']);
+    expect(fact(1)).toEqual(['Valid for', '5 years', 'from certification']);
+    expect(fact(2)).toEqual(['Surveillance', 'Month 18, 36', '2 visits after certification']);
+    expect(card('bronze').querySelector('.lv-status')!.textContent!.trim()).toBe('Certified');
+  });
+
   it('walks the apply flow: disclaimer, instructions, then the payment step', async () => {
     await render({}, {}, 0, undefined, [], {}, { Gold: 21240 });
     (card('gold').querySelector('.apply-btn') as HTMLElement).click();
@@ -373,8 +410,8 @@ describe('DashboardPage', () => {
 
   it('offers Bronze re-certification to every unit it is enabled for', async () => {
     await render({ BronzeStatus: 6 }, {}, 1, undefined, [], { ReCertificationLevel: 'Bronze' });
-    expect(card('bronze').textContent).toContain('RE-CERTIFICATION');
-    expect(card('silver').textContent).not.toContain('RE-CERTIFICATION');
+    expect(card('bronze').textContent).toContain('Re-certification');
+    expect(card('silver').textContent).not.toContain('Re-certification');
   });
 
   it('gives each incentive its status, and puts surveillance, incentives, the next level and handholding in the next steps', async () => {

@@ -2,7 +2,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DocumentsPage } from './documents';
+import { DocumentsPage, documentLevelName, shortDate } from './documents';
 import { MyDocuments } from './documents.api';
 
 describe('DocumentsPage', () => {
@@ -146,6 +146,46 @@ describe('DocumentsPage', () => {
     expect(titles()).toEqual(['Pledge Certificate', 'Gold Certificate', 'Gold Assessment Report', 'ZED-X Certificate', 'ZED-X Assessment Report']);
     expect(el.querySelector('.t-zedx')).not.toBeNull();
     expect(locked()).toBeNull();
+  });
+
+  it('shows the issue, validity and generated dates, the VALID badge and "ZED ID" for the Admin’s ZedId level', async () => {
+    // 2026-11-18 (the user's applicant designs): the third line of each card and the VALID badge of a certificate in validity.
+    http.expectOne('/api/msme/documents').flush({
+      Guidelines: [],
+      Certificates: [{
+        Pledge: null, Bronze: '/api/msme/files/Certificates/DA/ZEDM000005/Bronze.pdf', Silver: null, Gold: null,
+        ZedId: '/api/msme/files/Certificates/SA/ZEDM000005/ZedId.pdf',
+      }],
+      Invoices: [],
+      Unit: [{ ZedId: 'ZEDM000005', PledgeOn: '2026-11-13' }],
+      Certified: [
+        { Level: 'Bronze', CertifiedOn: '2026-11-14', ValidTill: '2999-11-14' },
+        { Level: 'ZedId', CertifiedOn: '2026-11-15', ValidTill: '2000-01-01' },
+      ],
+    } satisfies MyDocuments);
+    await settle();
+
+    expect(titles()).toEqual(['Pledge Certificate', 'Bronze Certificate', 'Bronze Assessment Report', 'ZED ID Certificate', 'ZED ID Assessment Report']);
+    const cards = [...el.querySelectorAll('.dcard.doc-row')];
+    const meta = cards.map((c) => c.querySelector('.dmeta')?.textContent!.trim() ?? '');
+    expect(meta).toEqual(['Issued 13 Nov 2026', 'Valid till 14 Nov 2999', 'Generated 14 Nov 2026', 'ZEDM000005', 'Generated 15 Nov 2026']);
+    // Only the Bronze certificate is within its validity.
+    expect(cards.map((c) => !!c.querySelector('.dvalid'))).toEqual([false, true, false, false, false]);
+    expect(cards[1].querySelector('.dvalid')!.textContent!.trim()).toBe('Valid');
+    expect(cards[3].classList).toContain('t-teal');
+    // The buttons are the MSME skin's: solid primary on the cards.
+    expect(cards[1].querySelector('a')!.classList).toContain('btn-primary');
+  });
+
+  it('writes dates as d MMM yyyy and the ZedId level as ZED ID', () => {
+    http.expectOne('/api/msme/documents').flush({ Guidelines: [], Certificates: [], Invoices: [] });
+    expect(shortDate('2026-11-13')).toBe('13 Nov 2026');
+    expect(shortDate('2031-01-05T00:00:00')).toBe('5 Jan 2031');
+    expect(shortDate(null)).toBe('');
+    expect(shortDate('November 13, 2026')).toBe('');
+    expect(documentLevelName('ZedId')).toBe('ZED ID');
+    expect(documentLevelName('ZEDX')).toBe('ZED-X');
+    expect(documentLevelName('Bronze')).toBe('Bronze');
   });
 
   it('shows the API error', async () => {

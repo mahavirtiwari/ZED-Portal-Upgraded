@@ -56,14 +56,14 @@ import { ConsultancyConfirmation, ConsultancyPaymentApi, milestoneTitle } from '
                   </dl>
                 }
                 <div class="pr-actions">
-                  @if (c.receiptUrl) { <a class="btn btn-primary pr-solid" [href]="c.receiptUrl" target="_blank" rel="noopener" data-receipt>⤓ Download receipt</a> }
+                  @if (c.receiptUrl) { <a class="btn btn-primary pr-solid" [href]="c.receiptUrl" target="_blank" rel="noopener" data-receipt><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download receipt</a> }
                   @if (c.invoiceUrl) {
-                    <a class="btn pr-line" [href]="c.invoiceUrl" target="_blank" rel="noopener" data-invoice>⤓ Download tax invoice</a>
+                    <a class="btn pr-line" [href]="c.invoiceUrl" target="_blank" rel="noopener" data-invoice><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download tax invoice</a>
                   } @else {
-                    <button type="button" class="btn pr-line" disabled data-invoice aria-describedby="invoiceNote">⤓ Download tax invoice</button>
+                    <button type="button" class="btn pr-line" disabled data-invoice aria-describedby="invoiceNote"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download tax invoice</button>
                   }
                   @if (c.email) {
-                    <button type="button" class="btn btn-link pr-mail" [disabled]="sending()" (click)="emailCopy()">✉ E-mail a copy</button>
+                    <button type="button" class="btn btn-link pr-mail" [disabled]="sending()" (click)="emailCopy()"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg> E-mail a copy</button>
                   }
                 </div>
                 @if (!c.invoiceUrl) { <p class="pr-note" id="invoiceNote">The tax invoice is issued shortly; it will be in My Documents.</p> }
@@ -74,7 +74,7 @@ import { ConsultancyConfirmation, ConsultancyPaymentApi, milestoneTitle } from '
             </section>
           } @else {
             <section class="pr-card pr-state" role="alert">
-              <h2><span aria-hidden="true">✕</span> Payment Failed</h2>
+              <h2><span aria-hidden="true">✕</span> Payment failed</h2>
               <zed-text key="msme.payment.failed"><p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p></zed-text>
               <p>No amount was collected. If money left your account, your bank reverses it automatically.</p>
               @if (message()) { <p class="pr-msg"><b>Error Message</b>: <span>{{ message() }}</span></p> }
@@ -101,42 +101,64 @@ import { ConsultancyConfirmation, ConsultancyPaymentApi, milestoneTitle } from '
       </div>
     </div>
   `,
+  // 2026-11-18 (the user's applicant designs, zed-msme-09): the confirmation card of the certification payment
+  // (zed-payment-result): 14px cards, the 52px tick in a pale green halo, 10px fact labels, 42px buttons, the red failed card.
   styles: `
     .result-page { margin-top: 20px; }
     .pr-tracker { margin-bottom: 20px; }
+    .pr-tracker ::ng-deep {
+      .st { min-height: 104px; padding: 19px 12px 10px; border-color: #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); }
+      .st-step + .st-step::before { top: 14px; right: calc(50% + 24px); left: calc(-50% + 24px); background: #dde7e8; }
+      .st-step.st-done + .st-step::before { background: #2f9e58; }
+      .st-dot { box-sizing: border-box; width: 30px; height: 30px; border: 2px solid #cfdadb; color: #6f8487; }
+      .st-done .st-dot { background: #2f9e58; border-color: #2f9e58; }
+      .st-now .st-dot { border: 3px solid #24666b; color: #24666b; font-weight: 800; box-shadow: 0 0 0 6px #e6f2f3; }
+      .st-label { margin-top: 12px; font-size: 13.5px; font-weight: 700; line-height: 18px; color: #17373b; }
+      .st-step:not(.st-done):not(.st-now) .st-label { color: #6f8487; }
+      .st-note { margin-top: 2px; font-size: 11.5px; font-weight: 500; color: #6f8487; }
+    }
     .pr-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; align-items: start; }
     @media (max-width: 991.98px) { .pr-cols { grid-template-columns: minmax(0, 1fr); } }
     .pr-main { display: grid; gap: 20px; min-width: 0; }
-    .pr-card { background: #fff; border: 1px solid #e3ecec; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); padding: 20px 22px; }
-    .pr-hero { display: flex; gap: 18px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #e8eff0; }
-    .pr-hero h2 { margin: 0; font-size: 24px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .pr-hero p { margin: 4px 0 0; color: #24393b; }
-    .pr-hero .pr-amt { color: #5f6f70; font-size: 14px; }
-    .pr-mark { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: #2e9e57; box-shadow: 0 0 0 8px #dcf1e3; }
-    .pr-mark svg { width: 34px; height: 34px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .pr-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 20px; margin: 0; padding: 16px 0; border-bottom: 1px solid #e8eff0; }
-    .pr-facts dt { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: #5f6f70; font-weight: 700; }
-    .pr-facts dd { margin: 4px 0 0; color: #24393b; overflow-wrap: anywhere; }
-    .pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
-    .pr-solid { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; font-weight: 700; border-radius: 8px; padding: 10px 22px; }
-    .pr-line { border: 1.5px solid var(--zt-dark, #1f5c61); color: var(--zt-dark, #1f5c61); background: #fff; font-weight: 700; border-radius: 8px; padding: 9px 20px; }
+    .pr-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .08); padding: 24px; }
+    .pr-hero { display: flex; gap: 20px; align-items: center; padding: 2px 0 20px; border-bottom: 1px solid #dde7e8; }
+    .pr-hero h2 { margin: 0; font-size: 24px; font-weight: 700; color: #17373b; }
+    .pr-hero p { margin: 6px 0 0; font-size: 14px; font-weight: 500; color: #3d5559; }
+    .pr-hero .pr-amt { color: #6f8487; font-size: 13.5px; }
+    .pr-mark { flex: none; width: 52px; height: 52px; margin: 12px; border-radius: 50%; display: grid; place-items: center; background: #2f9e58; box-shadow: 0 0 0 12px #e5f5ea; }
+    .pr-mark svg { width: 28px; height: 28px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .pr-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 24px; margin: 0; padding: 18px 0 16px; border-bottom: 1px solid #dde7e8; }
+    .pr-facts dt { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; font-weight: 700; }
+    .pr-facts dd { margin: 6px 0 0; font-size: 14px; font-weight: 600; color: #17373b; overflow-wrap: anywhere; }
+    .pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+    .pr-i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .pr-solid, .pr-line { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 22px; font-size: 13.5px; font-weight: 700;
+      border-radius: 9px; text-transform: none; }
+    .pr-solid { min-width: 200px; background: #24666b; border: 1.5px solid #24666b; color: #fff; }
+    .pr-solid:hover { background: #1b4f53; border-color: #1b4f53; color: #fff; }
+    .pr-line { min-width: 220px; border: 1.5px solid #24666b; color: #24666b; background: #fff; }
+    .pr-line:hover:not(:disabled) { background: #e6f2f3; color: #24666b; }
     .pr-line:disabled { border-color: #c9d6d7; color: #8a9899; }
-    .pr-mail { font-weight: 700; color: var(--zt-dark, #1f5c61); text-decoration: none; }
-    .pr-note { margin: 10px 0 0; font-size: 13px; color: #5f6f70; }
-    .pr-sent { color: #1e7a3c; font-weight: 600; }
+    .pr-mail { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 13px; font-weight: 700; color: #24666b; text-decoration: none; text-transform: none; }
+    .pr-note { margin: 12px 0 0; font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .pr-sent { color: #2f9e58; font-weight: 600; }
     .pr-err { color: #c0392b; }
-    .pr-h { margin: -20px -22px 16px; padding: 14px 22px; border-bottom: 1px solid #e8eff0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .pr-state { background: #fcebea; border-color: #f2c4c0; }
-    .pr-state h2 { font-size: 20px; font-weight: 700; margin: 0 0 8px; color: #c0392b; }
-    .pr-msg { font-size: 13.5px; color: #4b5b5c; overflow-wrap: anywhere; }
-    .pr-level { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #e8eff0; }
-    .pr-level img { width: 52px; height: 52px; object-fit: contain; }
-    .pr-level b { display: block; font-size: 17px; color: var(--zt-ink, #173f44); }
-    .pr-level small { display: block; font-size: 13px; color: #5f6f70; }
-    .pr-chip { display: inline-block; margin-top: 4px; padding: 2px 10px; border-radius: 10px; background: #dcf1e3; color: #1e7a3c; font-size: 11.5px; font-weight: 700; }
-    .pr-paid { display: flex; justify-content: space-between; margin: 12px 0; color: #5f6f70; }
-    .pr-paid b { color: #24393b; }
-    .pr-go { display: block; width: 100%; text-align: center; margin-top: 8px; }
+    .pr-h { min-height: 56px; margin: -24px -24px 18px; padding: 15px 24px 12px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
+    .pr-state { padding: 18px 20px 20px; background: #fbe9e7; border-color: #f0c4bf; }
+    .pr-state h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-size: 15.5px; font-weight: 700; color: #c8473c; }
+    .pr-state h2 span { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #fff; font-size: 18px; }
+    .pr-state p { font-size: 12.5px; font-weight: 500; color: #17373b; }
+    .pr-state .pr-solid, .pr-state .pr-line { min-width: 140px; min-height: 34px; font-size: 13px; }
+    .pr-msg { font-size: 12.5px; color: #3d5559; overflow-wrap: anywhere; }
+    .pr-level { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #dde7e8; }
+    .pr-level img { width: 48px; height: 48px; object-fit: contain; }
+    .pr-level b { display: block; font-size: 16px; font-weight: 700; color: #17373b; }
+    .pr-level small { display: block; font-size: 12.5px; color: #6f8487; }
+    .pr-chip { display: inline-block; margin-top: 4px; padding: 0 12px; border-radius: 11px; background: #e5f5ea; color: #2f9e58; font-size: 10.5px; font-weight: 700;
+      line-height: 22px; letter-spacing: .04em; }
+    .pr-paid { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 12px; font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .pr-paid b { font-size: 13.5px; font-weight: 700; color: #17373b; }
+    .pr-go { display: flex; width: 100%; min-height: 40px; }
   `,
 })
 export class ConsultancyResultPage {

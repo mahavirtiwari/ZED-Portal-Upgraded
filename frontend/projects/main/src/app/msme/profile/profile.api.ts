@@ -11,6 +11,11 @@ export interface ProfileResponse {
   basicInfo: ProfileRow;
   /** The registered (pledge) e-mail: ZED mails and password links go there. */
   registeredEmail: string | null;
+  /**
+   * 2026-11-18: the mobile shown (the Udyam record's) is the one the unit registered with, which the Udyam service accepted
+   * for its Udyam number; absent from older answers.
+   */
+  mobileVerified?: boolean;
 }
 
 /** An activity of the MSME's Udyam record, with the Ministry service's column names. */

@@ -20,7 +20,9 @@ public sealed class MsmeProfileController(MsmeProfileService profiles) : MsmeApi
 {
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
-    public sealed record ProfileResponse(Dictionary<string, object?> Msme, Dictionary<string, object?> BasicInfo, string? RegisteredEmail);
+    /// <param name="MobileVerified">2026-11-18: the mobile is the one the Udyam service accepted at registration (<see cref="MsmeProfileService.Profile"/>).</param>
+    public sealed record ProfileResponse(Dictionary<string, object?> Msme, Dictionary<string, object?> BasicInfo, string? RegisteredEmail,
+        bool MobileVerified);
 
     /// <summary>Basic information, selected unit and unit activity (SP_MSME_GET_DETAILS sets 0 and 1), registered e-mail.</summary>
     [HttpGet]
@@ -28,7 +30,7 @@ public sealed class MsmeProfileController(MsmeProfileService profiles) : MsmeApi
     {
         var r = await profiles.GetAsync(ZedId, ct);
         if (r.Value is not { } p) return Problem(r);
-        return new ProfileResponse(p.Msme, p.BasicInfo, p.RegisteredEmail);
+        return new ProfileResponse(p.Msme, p.BasicInfo, p.RegisteredEmail, p.MobileVerified);
     }
 
     /// <summary>"Edit Activity": the activities of the MSME's own Udyam record, read from the Ministry service.</summary>
