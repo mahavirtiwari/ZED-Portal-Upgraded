@@ -124,29 +124,98 @@ public sealed class SchemesIncentiveTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, (await super.GetAsync("/api/staff/schemes/incentives/submissions?sector=123")).StatusCode);
     }
 
-    // ----- upload (MasterAdmin) -----
+    // ----- upload (MasterAdmin): check, then apply the valid rows (2026-11-17, approved) -----
 
-    [Fact]
-    public async Task Upload_is_for_the_master_admin_only()
+    private const string CheckUrl = "/api/staff/schemes/incentives/upload/check";
+    private const string ApplyUrl = "/api/staff/schemes/incentives/upload/apply";
+
+    [Theory]
+    [InlineData(CheckUrl)]
+    [InlineData(ApplyUrl)]
+    public async Task Upload_is_for_the_master_admin_only(string url)
     {
         var xlsx = TestXlsx.Build([Header, Row()]);
         var anon = await _host.CreateBrowserAsync();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync("/api/staff/schemes/incentives/upload", File(xlsx))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync(url, File(xlsx))).StatusCode);
         foreach (var user in new[] { "SUPER1", "ADMIN1", "AGENCY1", "SC_UP" })
-            Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn(user)).PostAsync("/api/staff/schemes/incentives/upload", File(xlsx))).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn(user)).PostAsync(url, File(xlsx))).StatusCode);
         Assert.Empty(Inserts);
     }
 
     [Fact]
-    public async Task A_valid_sheet_is_inserted_row_by_row_with_normalised_values()
+    public async Task The_old_all_or_nothing_upload_is_gone()
     {
         var admin = await SignIn("MADMIN");
-        var xlsx = TestXlsx.Build([Header, Row(), Row(udyam: "udyam-mh-23-0006117", amount: "1200", app: "A2")], sharedStrings: true);
-        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload", File(xlsx));
+        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload", File(TestXlsx.Build([Header, Row()])));
+        Assert.True(r.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed, r.StatusCode.ToString());
+        Assert.Empty(Inserts);
+    }
+
+    [Fact]
+    public async Task Check_counts_the_valid_rows_and_lists_the_errors_by_row_without_saving()
+    {
+        var admin = await SignIn("MADMIN");
+        var xlsx = TestXlsx.Build([Header, Row(udyam: "UDYAM-12"), Row(amount: "-5", app: "A9"), Row(date: "31-02-2026", app: "A8"), Row(), Row(), Row(app: "A7")]);
+        var r = await admin.PostAsync(CheckUrl, File(xlsx));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var json = await r.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("incentives.xlsx", json.GetProperty("fileName").GetString());
+        Assert.Equal(6, json.GetProperty("total").GetInt32());
+        Assert.Equal(2, json.GetProperty("valid").GetInt32());   // rows 5 and 7
+        Assert.Equal(4, json.GetProperty("invalid").GetInt32()); // rows 2, 3, 4 and 6 (a second copy of row 5)
+        Assert.Equal(0, json.GetProperty("alreadyUploaded").GetInt32());
+
+        var errors = json.GetProperty("errors").EnumerateArray()
+            .Select(e => (e.GetProperty("row").GetInt32(), e.GetProperty("column").GetString(), e.GetProperty("value").GetString())).ToList();
+        Assert.Contains((2, "UdyamNo", "UDYAM-12"), errors);
+        Assert.Contains((3, "DisbursedAmount", "-5"), errors);
+        Assert.Contains((4, "DisbursedDate", "31-02-2026"), errors);
+        Assert.Contains(errors, e => e.Item1 == 6 && e.Item2 == "");
+        Assert.Equal(4, json.GetProperty("errorCount").GetInt32());
+
+        // The rejected rows, as written, for the download.
+        var rejected = json.GetProperty("rejected").EnumerateArray().ToList();
+        Assert.Equal(new[] { 2, 3, 4, 6 }, rejected.Select(x => x.GetProperty("row").GetInt32()));
+        Assert.Equal("UDYAM-12", rejected[0].GetProperty("cells")[0].GetString());
+        Assert.Contains("UdyamNo:", rejected[0].GetProperty("problems").GetString());
+        Assert.Equal(15, json.GetProperty("columns").GetArrayLength());
+
+        Assert.Empty(Inserts);
+        Assert.False(Directory.Exists(Path.Combine(_host.StorageRoot, "Excels")));
+    }
+
+    [Fact]
+    public async Task Check_counts_rows_already_uploaded_apart_from_the_rows_ready_to_save()
+    {
+        _host.Sql.Queries["SELECT j.RowNo"] = _ => [new { RowNo = 2, FirstUploaded = (DateTime?)new DateTime(2026, 1, 6, 10, 0, 0) }];
+        var admin = await SignIn("MADMIN");
+        var json = await (await admin.PostAsync(CheckUrl, File(TestXlsx.Build([Header, Row(), Row(udyam: "UDYAM-MH-23-0006117", app: "A2"), Row(udyam: "bad")]))))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(3, json.GetProperty("total").GetInt32());
+        Assert.Equal(1, json.GetProperty("valid").GetInt32());
+        Assert.Equal(1, json.GetProperty("alreadyUploaded").GetInt32());
+        Assert.Equal(1, json.GetProperty("invalid").GetInt32());
+        var skipped = Assert.Single(json.GetProperty("skipped").EnumerateArray());
+        Assert.Equal(2, skipped.GetProperty("row").GetInt32());
+        // Only the valid rows are looked up.
+        var lookup = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("FROM OPENJSON(@Rows)"));
+        Assert.Equal(2, JsonDocument.Parse(FakeSql.Arg(lookup.Args, "Rows")!).RootElement.GetArrayLength());
+        Assert.Empty(Inserts);
+    }
+
+    [Fact]
+    public async Task Apply_saves_only_the_valid_rows_with_normalised_values()
+    {
+        var admin = await SignIn("MADMIN");
+        var xlsx = TestXlsx.Build([Header, Row(), Row(udyam: "bad", app: "A3"), Row(udyam: "udyam-mh-23-0006117", amount: "1200", app: "A2")], sharedStrings: true);
+        var r = await admin.PostAsync(ApplyUrl, File(xlsx));
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var json = await r.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(2, json.GetProperty("inserted").GetInt32());
+        Assert.Equal(1, json.GetProperty("rejected").GetInt32());
+        Assert.Equal("2 row(s) saved. 1 row(s) with errors were not saved.", json.GetProperty("message").GetString());
 
+        Assert.Equal(2, Inserts.Count());
         var first = Inserts.First();
         Assert.Equal("UDYAM-UP-29-0003915", FakeSql.Arg(first, "UdyamNo"));
         Assert.Equal("25000.50", FakeSql.Arg(first, "DisbursedAmount"));
@@ -159,13 +228,22 @@ public sealed class SchemesIncentiveTests : IDisposable
     }
 
     [Fact]
-    public async Task Rows_already_uploaded_are_skipped_and_listed_so_a_file_can_be_uploaded_again()
+    public async Task Apply_checks_the_file_again_and_refuses_one_without_a_valid_row()
+    {
+        var admin = await SignIn("MADMIN");
+        var r = await admin.PostAsync(ApplyUrl, File(TestXlsx.Build([Header, Row(udyam: "UDYAM-12"), Row(service: "=HYPERLINK(\"http://evil\")", app: "A2")])));
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Contains("every row has errors", await r.ProblemTitle());
+        Assert.Empty(Inserts);
+    }
+
+    [Fact]
+    public async Task Apply_skips_rows_already_uploaded_so_a_file_can_be_uploaded_again()
     {
         // Sheet row 2 is already in ApiIncentives; row 3 is new.
         _host.Sql.Queries["SELECT j.RowNo"] = _ => [new { RowNo = 2, FirstUploaded = (DateTime?)new DateTime(2026, 1, 6, 10, 0, 0) }];
         var admin = await SignIn("MADMIN");
-        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload",
-            File(TestXlsx.Build([Header, Row(), Row(udyam: "UDYAM-MH-23-0006117", app: "A2")])));
+        var r = await admin.PostAsync(ApplyUrl, File(TestXlsx.Build([Header, Row(), Row(udyam: "UDYAM-MH-23-0006117", app: "A2")])));
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var json = await r.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, json.GetProperty("inserted").GetInt32());
@@ -176,7 +254,7 @@ public sealed class SchemesIncentiveTests : IDisposable
         Assert.Equal("UDYAM-MH-23-0006117", FakeSql.Arg(Assert.Single(Inserts), "UdyamNo"));
         Assert.Single(json.GetProperty("rows").EnumerateArray());
 
-        // The lookup gets every row's key, with the date and amount as the table stores them.
+        // The lookup gets every valid row's key, with the date and amount as the table stores them.
         var lookup = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("FROM OPENJSON(@Rows)"));
         var keys = JsonDocument.Parse(FakeSql.Arg(lookup.Args, "Rows")!).RootElement;
         Assert.Equal(2, keys.GetArrayLength());
@@ -186,16 +264,15 @@ public sealed class SchemesIncentiveTests : IDisposable
     }
 
     [Fact]
-    public async Task A_file_whose_rows_were_all_uploaded_before_inserts_nothing()
+    public async Task A_file_whose_valid_rows_were_all_uploaded_before_inserts_nothing()
     {
         _host.Sql.Queries["SELECT j.RowNo"] = _ => [new { RowNo = 2, FirstUploaded = (DateTime?)null }, new { RowNo = 3, FirstUploaded = (DateTime?)null }];
         var admin = await SignIn("MADMIN");
-        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload",
-            File(TestXlsx.Build([Header, Row(), Row(udyam: "UDYAM-MH-23-0006117", app: "A2")])));
+        var r = await admin.PostAsync(ApplyUrl, File(TestXlsx.Build([Header, Row(), Row(udyam: "UDYAM-MH-23-0006117", app: "A2")])));
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var json = await r.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(0, json.GetProperty("inserted").GetInt32());
-        Assert.Equal("Nothing new to upload: all 2 row(s) were uploaded before.", json.GetProperty("message").GetString());
+        Assert.Equal("Nothing new to upload: all 2 valid row(s) were uploaded before.", json.GetProperty("message").GetString());
         Assert.Empty(Inserts);
     }
 
@@ -205,47 +282,36 @@ public sealed class SchemesIncentiveTests : IDisposable
     [InlineData("@SUM(A1)")]
     [InlineData("<script>alert(1)</script>")]
     [InlineData("javascript:alert(1)")]
-    public async Task Unsafe_cells_reject_the_whole_file(string service)
+    public async Task Unsafe_cells_make_their_row_invalid_and_it_is_not_saved(string service)
     {
         var admin = await SignIn("MADMIN");
-        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload", File(TestXlsx.Build([Header, Row(app: "A0"), Row(service: service)])));
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        var json = await r.Content.ReadFromJsonAsync<JsonElement>();
-        var error = json.GetProperty("rowErrors")[0];
+        var xlsx = TestXlsx.Build([Header, Row(app: "A0"), Row(service: service)]);
+        var check = await (await admin.PostAsync(CheckUrl, File(xlsx))).Content.ReadFromJsonAsync<JsonElement>();
+        var error = Assert.Single(check.GetProperty("errors").EnumerateArray());
         Assert.Equal(3, error.GetProperty("row").GetInt32());
         Assert.Equal("ServiceName", error.GetProperty("column").GetString());
-        Assert.Empty(Inserts);
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync(ApplyUrl, File(xlsx))).StatusCode);
+        Assert.Equal("A0", FakeSql.Arg(Assert.Single(Inserts), "ApplicationId"));
     }
 
-    [Fact]
-    public async Task Invalid_values_and_duplicate_rows_are_reported_with_their_row_numbers()
+    [Theory]
+    [InlineData(CheckUrl)]
+    [InlineData(ApplyUrl)]
+    public async Task Wrong_files_are_refused(string url)
     {
         var admin = await SignIn("MADMIN");
-        var xlsx = TestXlsx.Build([Header, Row(udyam: "UDYAM-12"), Row(amount: "-5", app: "A9"), Row(date: "31-02-2026", app: "A8"), Row(), Row()]);
-        var r = await admin.PostAsync("/api/staff/schemes/incentives/upload", File(xlsx));
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        var errors = (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("rowErrors").EnumerateArray()
-            .Select(e => (e.GetProperty("row").GetInt32(), e.GetProperty("column").GetString())).ToList();
-        Assert.Contains((2, "UdyamNo"), errors);
-        Assert.Contains((3, "DisbursedAmount"), errors);
-        Assert.Contains((4, "DisbursedDate"), errors);
-        Assert.Contains((6, ""), errors); // second copy of row 5
-        Assert.Empty(Inserts);
-    }
-
-    [Fact]
-    public async Task Wrong_files_are_refused()
-    {
-        var admin = await SignIn("MADMIN");
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/api/staff/schemes/incentives/upload", File(TestXlsx.Build([Header, Row()]), "a.xls"))).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/api/staff/schemes/incentives/upload", File("PK not a zip"u8.ToArray()))).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/api/staff/schemes/incentives/upload", File(TestXlsx.Build([Header])))).StatusCode);
-        var missing = await admin.PostAsync("/api/staff/schemes/incentives/upload", File(TestXlsx.Build([Header[..14], Row()[..14]])));
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync(url, File(TestXlsx.Build([Header, Row()]), "a.xls"))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync(url, File("PK not a zip"u8.ToArray()))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync(url, File(TestXlsx.Build([Header])))).StatusCode);
+        var missing = await admin.PostAsync(url, File(TestXlsx.Build([Header[..14], Row()[..14]])));
         Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
         Assert.Contains("ApprovedDate", await missing.ProblemTitle());
+        var twice = await admin.PostAsync(url, File(TestXlsx.Build([[.. Header, "UdyamNo"], Row()])));
+        Assert.Equal(HttpStatusCode.BadRequest, twice.StatusCode);
         // Too many rows.
         var big = TestXlsx.Build(new[] { Header }.Concat(Enumerable.Range(0, 5001).Select(i => Row(app: "A" + i))));
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync("/api/staff/schemes/incentives/upload", File(big))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsync(url, File(big))).StatusCode);
         Assert.Empty(Inserts);
     }
 

@@ -277,12 +277,14 @@ public sealed class DashboardTests : IDisposable
     {
         _host.Sql.Procs["SP_DASHBOARD_PAYMENT_TRANSACTIONS"] = _ => FakeSql.Sets([new
         {
-            RowNumber = 1, ZedId = "ZEDMSME000001", Certification = "Gold", PUnitName = "Acme", FinalAmountPaid = 9000,
+            RowNumber = 1, ZedId = "ZEDMSME000001", Certification = "Gold", PUnitName = "Acme", FinalAmountPaid = 9000, PaymentType = "ZeroAmount",
             MobileNo = "9999999999", EmailId = "owner@acme.test", PledgeEmailId = "owner@acme.test", OwnerName = "A Kumar",
         }]);
         var master = await _host.SignInAsync("MASTER1");
         var row = (await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/payments-received?gender=female"))[0];
         Assert.Equal(9000, row.GetProperty("FinalAmountPaid").GetInt32());
+        // 2026-11-17: the payment type, so a zero-amount payment (100% subsidy) shows as such.
+        Assert.Equal("ZeroAmount", row.GetProperty("PaymentType").GetString());
         foreach (var hidden in new[] { "MobileNo", "EmailId", "PledgeEmailId", "OwnerName" })
             Assert.False(row.TryGetProperty(hidden, out _), hidden);
         var call = _host.LastCall("SP_DASHBOARD_PAYMENT_TRANSACTIONS");

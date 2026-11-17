@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
 import { FaSubmissionsPage } from './fa-submissions';
+import { ToastService } from '../toast';
 
 describe('FaSubmissionsPage', () => {
   let fixture: ComponentFixture<FaSubmissionsPage>;
@@ -29,7 +30,7 @@ describe('FaSubmissionsPage', () => {
   const text = (b: Element) => b.textContent!.replace(/\s+/g, ' ').trim();
   /** Buttons and links whose text is exactly the label. */
   const button = (label: string) => [...el.querySelectorAll('button, a')].filter((b) => text(b) === label) as HTMLElement[];
-  /** Tab buttons ("FA ALLOTMENT 2"). */
+  /** Stage chips ("FA allotment 2"). */
   const tab = (label: string) => [...el.querySelectorAll('button')].filter((b) => text(b).startsWith(label + ' ')) as HTMLElement[];
 
   async function create(roleId: number) {
@@ -54,15 +55,18 @@ describe('FaSubmissionsPage', () => {
 
   it('lets the master admin allot a new application to an agency', async () => {
     await create(StaffRole.MasterAdmin);
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     expectList('1').flush({ rows: [row(11), row(12, { CertificationBodyUserId: 'AG1', ReasonForRejection: 'Busy' })], counts });
     await settle();
 
-    expect(el.textContent).toContain('FA ALLOTMENT 2');
-    expect(button('ALLOT').length).toBe(1);
-    expect(button('RE-ALLOT').length).toBe(1);
+    expect(el.textContent).toContain('FA allotment 2');
+    // One button per row; no ⋮ menu when there is nothing else to do.
+    expect(el.querySelectorAll('zed-row-menu').length).toBe(0);
+    expect(button('Allot').length).toBe(1);
+    expect(button('Re-allot').length).toBe(1);
     expect(el.textContent).toContain('Rejected');
 
-    button('ALLOT')[0].click();
+    button('Allot')[0].click();
     await settle();
     const agencies = http.expectOne((r) => r.url === '/api/staff/schemes/fa/agencies');
     expect(agencies.request.params.get('zedId')).toBe('ZEDMSME000011');
@@ -70,7 +74,7 @@ describe('FaSubmissionsPage', () => {
     await settle();
 
     // Nothing chosen yet.
-    button('ALLOT').at(-1)!.click();
+    button('Allot').at(-1)!.click();
     await settle();
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please select assessment agency.');
 
@@ -78,7 +82,7 @@ describe('FaSubmissionsPage', () => {
     select.value = 'AG2';
     select.dispatchEvent(new Event('change'));
     await settle();
-    button('ALLOT').at(-1)!.click();
+    button('Allot').at(-1)!.click();
     await settle();
 
     const allot = http.expectOne('/api/staff/schemes/fa/allot');
@@ -87,7 +91,7 @@ describe('FaSubmissionsPage', () => {
     await settle();
     expectList('1').flush({ rows: [], counts });
     await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Application allotted.');
+    expect(toast).toHaveBeenCalledWith('Application allotted.');
     expect(el.querySelector('.modal')).toBeNull();
   });
 
@@ -95,16 +99,21 @@ describe('FaSubmissionsPage', () => {
     await create(StaffRole.Agency);
     expectList('1').flush({ rows: [row(11, { CertificationBodyUserId: 'U1' })], counts });
     await settle();
-    expect(button('ALLOT').length).toBe(0);
+    expect(button('Allot').length).toBe(0);
+    expect(button('Accept').length).toBe(1);
 
-    button('REJECT')[0].click();
+    // Reject is in the row's ⋮ menu.
+    expect(button('Reject').length).toBe(0);
+    (el.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    button('Reject')[0].click();
     await settle();
     const reason = el.querySelector('#faReason') as HTMLTextAreaElement;
     expect(reason.maxLength).toBe(100);
     reason.value = 'Not our sector';
     reason.dispatchEvent(new Event('input'));
     await settle();
-    button('REJECT').at(-1)!.click();
+    button('Reject').at(-1)!.click();
     await settle();
     const reject = http.expectOne('/api/staff/schemes/fa/reject');
     expect(reject.request.body).toEqual({ zedId: 'ZEDMSME000011', certification: 'Bronze', reason: 'Not our sector' });
@@ -117,23 +126,23 @@ describe('FaSubmissionsPage', () => {
     await create(StaffRole.Agency);
     expectList('1').flush({ rows: [], counts });
     await settle();
-    tab('IN-PROGRESS')[0].click();
+    tab('In-progress')[0].click();
     await settle();
     expectList('2').flush({ rows: [row(13, { CertificationBodyUserId: 'U1', FinancialAssessorId: 'DA1', FaAssessorName: 'Assessor' })], counts });
     await settle();
 
-    const link = button('View Details')[0] as HTMLAnchorElement;
+    const link = button('View details')[0] as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('/staff/financial-assistance/ZEDMSME000013?certification=Bronze');
-    expect(button('ACCEPT').length).toBe(0);
+    expect(button('Accept').length).toBe(0);
   });
 
   it('shows assessors their in-progress list without tabs', async () => {
     await create(StaffRole.DesktopAssessor);
     expectList('2').flush({ rows: [row(14, { FinancialAssessorId: 'U1' })], counts: null });
     await settle();
-    expect(tab('FA ALLOTMENT').length).toBe(0);
-    expect(button('ASSESS').length).toBe(1);
-    expect(el.querySelector('thead')!.textContent).not.toContain('Assessor Details');
+    expect(tab('FA allotment').length).toBe(0);
+    expect(button('Assess').length).toBe(1);
+    expect(el.querySelector('thead')!.textContent).not.toContain('Assessor');
   });
 
   it('filters by level, agency and registered-on dates, with the tab counts of the filtered lists (2026-11-08)', async () => {
@@ -156,8 +165,8 @@ describe('FaSubmissionsPage', () => {
     expect(req.request.params.has('agency')).toBe(false);
     req.flush({ rows: [row(11, { CertificationType: 'Silver' })], counts: { New: 1, InProgress: 0, Qc: 0, Approved: 2, Rejected: 0 } });
     await settle();
-    expect(el.textContent).toContain('FA ALLOTMENT 1');
-    expect(el.textContent).toContain('APPROVED 2');
+    expect(el.textContent).toContain('FA allotment 1');
+    expect(el.textContent).toContain('Approved 2');
 
     select('#fa-agency', 'AG1');
     await settle();
@@ -176,7 +185,7 @@ describe('FaSubmissionsPage', () => {
     expect(el.querySelector('[data-filter-summary]')!.textContent).toContain('Silver · Agency One · registered 2026-10-01 to …');
 
     // Changing tab keeps the filters.
-    tab('APPROVED')[0].click();
+    tab('Approved')[0].click();
     await settle();
     req = expectList('4');
     expect(req.request.params.get('agency')).toBe('AG1');

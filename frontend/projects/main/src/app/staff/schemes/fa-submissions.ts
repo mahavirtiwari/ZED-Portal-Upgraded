@@ -1,12 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { FaApi, FaCounts, FaFilter, FaStatus, FaSubmission, UserOption } from './fa.api';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PagedView, PagerComponent, searchRows } from '../pager';
 import { levelCodes, levelName } from '../../msme/shared/levels';
+import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ToastService } from '../toast';
+
+type RowAction = 'allot' | 'reallot' | 'accept' | 'reject' | 'open';
 
 type Dialog =
   | { kind: 'allot'; row: FaSubmission; options: UserOption[]; choice: string }
@@ -21,47 +28,61 @@ const NO_FILTER: FaFilter = { level: '', agency: '', from: '', to: '' };
  * Views/FinancialAssistance/Submissions.cshtml: the master admin allots (or re-allots) an application to
  * an agency, the agency accepts it with one of its assessors or rejects the allotment, and everyone
  * opens the application they are assigned to. The API checks every action again.
+ * <p>2026-11-17 (approved redesign): the stage tabs as chips with their counts, search and filters in one row, the unit as
+ * name over ZED ID, one "Certificate claimed" column (name; category · certifying body), and per row one button (Allot,
+ * Re-allot, Accept or View details) with the other actions in the ⋮ menu; each action keeps its pop-up and reason. The
+ * verification date shows only when the list has one. The design's days badge is not shown: the list has no date of
+ * entering a stage (RegisteredDate is the unit's registration).</p>
  */
 @Component({
   selector: 'zed-staff-fa-submissions',
-  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ChipFilter, RowMenu],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './fa-submissions.html',
   styles: `
-    /* Status lists as a row of tabs with their counts. */
-    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .status-tabs .tab-count { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 7px; border-radius: 10px; background: rgba(69, 165, 173, 0.15); font-size: 12px; font-weight: 700; }
-    .status-tabs .btn-primary .tab-count { background: rgba(255, 255, 255, 0.25); }
-    /* Several values in one cell, one per line. */
-    .cell-lines > * { display: block; }
-    .cell-lines > * + * { margin-top: 4px; }
-    .zed-chip.is-auto { background: #e7f3f4; color: #2f6f75; margin: 0; }
-    /* Filters above the tabs (2026-11-08, as on Assessment Monitoring). */
-    .fa-filters { padding: 14px 16px; margin-bottom: 14px; }
-    .fa-filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.7fr); gap: 12px; align-items: end; }
-    .fa-filter-grid .form-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-bottom: 4px; }
+    .fa-tabs { display: block; margin-bottom: 14px; }
+    .zed-chip.is-auto { background: #e7f3f4; color: #2f6f75; margin: 0 0 0 4px; }
+    .fa-filters { padding: 12px 14px; margin-bottom: 14px; }
+    .fa-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .fa-row > div { flex: 1 1 170px; min-width: 0; }
+    .fa-row > .fa-q { flex: 2 1 240px; }
+    .fa-row > .fa-when { flex: 2 1 280px; }
+    .fa-row .form-label { font-size: 12.5px; color: #5f6f70; margin-bottom: 4px; }
     .fa-dates { display: flex; gap: 6px; align-items: center; }
     .fa-dates .form-control { min-width: 0; }
     .fa-dates .to { font-size: 13px; color: #5f6f70; }
-    .fa-filter-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #5f6f70; }
-    @media (max-width: 767.98px) { .fa-filter-grid { grid-template-columns: minmax(0, 1fr); } }
+    .fa-filter-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #5f6f70; }
+    .fa-addr { max-width: 260px; }
+    .fa-cert { min-width: 180px; }
+    .fa-reason { min-width: 160px; max-width: 300px; white-space: pre-wrap; }
+    tr.fa-rej > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
+    .fa-act { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .fa-act .btn { font-weight: 600; }
+    .fa-modal { border-radius: 12px; }
+    .fa-x { font-size: 24px; line-height: 1; color: #5f6f70 !important; text-decoration: none; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class FaSubmissionsPage {
   private readonly api = inject(FaApi);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private readonly user = inject(AuthService).currentUser;
+  protected readonly crumbs = staffCrumbs({ label: 'Financial Assistance' });
 
   protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
 
   protected readonly tabs = [
-    { status: FaStatus.New, label: 'FA ALLOTMENT', count: 'New' },
-    { status: FaStatus.InProgress, label: 'IN-PROGRESS', count: 'InProgress' },
+    { status: FaStatus.New, label: 'FA allotment', count: 'New' },
+    { status: FaStatus.InProgress, label: 'In-progress', count: 'InProgress' },
     { status: FaStatus.Qc, label: 'QC', count: 'Qc' },
-    { status: FaStatus.Approved, label: 'APPROVED', count: 'Approved' },
-    { status: FaStatus.Rejected, label: 'REJECTED', count: 'Rejected' },
+    { status: FaStatus.Approved, label: 'Approved', count: 'Approved' },
+    { status: FaStatus.Rejected, label: 'Rejected', count: 'Rejected' },
   ] as const;
+  /** The stage tabs as chips, with the counts of the (filtered) lists. */
+  protected readonly chips = computed<FilterChip[]>(() => this.tabs.map((t) => ({ key: String(t.status), label: t.label, count: this.counts()[t.count] ?? 0 })));
 
   protected readonly status = signal<number>(FaStatus.New);
   protected readonly rows = signal<FaSubmission[]>([]);
@@ -84,7 +105,6 @@ export class FaSubmissionsPage {
   });
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly dialog = signal<Dialog | null>(null);
   protected readonly dialogError = signal('');
   protected readonly saving = signal(false);
@@ -93,6 +113,8 @@ export class FaSubmissionsPage {
   protected readonly showStatusColumn = computed(() => this.status() === FaStatus.New);
   /** Legacy ng-hide="status>1 && status<5": the reason shows on FA ALLOTMENT and on REJECTED. */
   protected readonly showReasonColumn = computed(() => this.status() === FaStatus.New || this.status() === FaStatus.Rejected);
+  /** The verification date only on a list that has one. */
+  protected readonly showVerificationColumn = computed(() => this.rows().some((r) => !!r.VerificationDate));
 
   constructor() {
     // Assessors only have their in-progress list (the old page had no tabs for them).
@@ -159,6 +181,34 @@ export class FaSubmissionsPage {
     return r.FaAssessorName ?? r.FinAssessorName;
   }
 
+  /** "Certificate claimed": its category and certifying body under the name. */
+  protected certificateLine(r: FaSubmission): string {
+    return [r.CategoryOfCertificate, r.CertificationAgency].filter((x) => !!x?.trim()).join(' · ');
+  }
+
+  /** The row's actions: the first is its button, the others are in the ⋮ menu. */
+  protected actions(r: FaSubmission): (RowMenuItem & { key: RowAction })[] {
+    const list: (RowMenuItem & { key: RowAction })[] = [];
+    if (this.canAllot(r)) list.push({ key: 'allot', label: 'Allot', icon: 'people' });
+    if (this.canReAllot(r)) list.push({ key: 'reallot', label: 'Re-allot', icon: 'refresh' });
+    if (this.canRespond(r)) {
+      list.push({ key: 'accept', label: 'Accept', icon: 'people' });
+      list.push({ key: 'reject', label: 'Reject', icon: 'trash', danger: true });
+    }
+    if (this.canOpen(r)) list.push({ key: 'open', label: this.isAssessor() ? 'Assess' : 'View details', icon: 'eye' });
+    return list;
+  }
+
+  protected act(r: FaSubmission, key: string): void {
+    switch (key as RowAction) {
+      case 'allot':
+      case 'reallot': void this.openAllot(r); break;
+      case 'accept': void this.openAccept(r); break;
+      case 'reject': this.openReject(r); break;
+      case 'open': void this.router.navigate(['/staff/financial-assistance', r.ZedId], { queryParams: { certification: r.CertificationType } }); break;
+    }
+  }
+
   // ----- dialogs -----
 
   protected async openAllot(row: FaSubmission): Promise<void> {
@@ -170,7 +220,6 @@ export class FaSubmissionsPage {
   }
 
   protected openReject(row: FaSubmission): void {
-    this.success.set('');
     this.dialogError.set('');
     this.dialog.set({ kind: 'reject', row, reason: '' });
   }
@@ -212,7 +261,7 @@ export class FaSubmissionsPage {
             : this.api.reject(ZedId, CertificationType, d.reason.trim()),
       );
       this.dialog.set(null);
-      this.success.set(r.message);
+      this.toast.success(r.message);
       await this.load(this.status());
     } catch (err) {
       this.dialogError.set(apiErrorMessage(err));
@@ -222,7 +271,6 @@ export class FaSubmissionsPage {
   }
 
   private async openWithOptions(row: FaSubmission, kind: 'allot' | 'accept', fetch: () => ReturnType<FaApi['assessors']>): Promise<void> {
-    this.success.set('');
     this.error.set('');
     this.dialogError.set('');
     this.loading.set(true);

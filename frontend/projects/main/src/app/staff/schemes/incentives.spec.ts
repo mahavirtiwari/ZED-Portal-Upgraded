@@ -7,7 +7,6 @@ import { of } from 'rxjs';
 import { IncentiveFormPage } from './incentive-form';
 import { IncentiveMasterPage } from './incentive-master';
 import { IncentiveSubmissionsPage } from './incentive-submissions';
-import { IncentiveUploadPage } from './incentive-upload';
 
 describe('incentive pages', () => {
   let fixture: ComponentFixture<unknown>;
@@ -68,60 +67,6 @@ describe('incentive pages', () => {
     req.flush([]);
     await settle();
     expect(el.textContent).toContain('No Ministry of MSME Incentives available currently');
-  });
-
-  it('uploads an incentive workbook and lists the row errors the server finds', async () => {
-    await create(IncentiveUploadPage);
-    const input = el.querySelector('#incFile') as HTMLInputElement;
-
-    choose(input, new File(['x'], 'old.xls'));
-    await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('.xlsx');
-
-    choose(input, new File(['PK'], 'incentives.xlsx'));
-    await settle();
-    button('Upload').click();
-    await settle();
-    const req = http.expectOne('/api/staff/schemes/incentives/upload');
-    expect((req.request.body as FormData).get('file')).toBeTruthy();
-    req.flush(
-      { title: 'The file has errors; nothing was uploaded.', rowErrors: [{ row: 3, column: 'ServiceName', message: 'Contains characters or words that are not allowed.' }] },
-      { status: 400, statusText: 'Bad Request' },
-    );
-    await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('nothing was uploaded');
-    expect(el.querySelector('table')!.textContent).toContain('ServiceName');
-
-    button('Upload').click();
-    await settle();
-    http.expectOne('/api/staff/schemes/incentives/upload').flush({
-      message: 'Incentives Uploaded successfully.', inserted: 1,
-      rows: [{ UdyamNo: 'UDYAM-UP-29-0003915', DisbursedDate: '20260105', ApplicationId: '20260105' }],
-    });
-    await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('(1 rows)');
-    const cells = [...el.querySelectorAll('tbody tr td')].map((td) => td.textContent!.trim());
-    expect(cells).toContain('05-01-2026');
-    expect(cells).toContain('20260105'); // ApplicationId is not a date
-  });
-
-  it('lists the rows that were uploaded before and were skipped', async () => {
-    await create(IncentiveUploadPage);
-    choose(el.querySelector('#incFile') as HTMLInputElement, new File(['PK'], 'incentives.xlsx'));
-    await settle();
-    button('Upload').click();
-    await settle();
-    http.expectOne('/api/staff/schemes/incentives/upload').flush({
-      message: 'Nothing new to upload: all 1 row(s) were uploaded before.', inserted: 0, rows: [],
-      skipped: [{ row: 2, udyamNo: 'UDYAM-UP-29-0003915', uploadedOn: '2026-01-06T10:00:00' }],
-    });
-    await settle();
-    expect(el.querySelector('.alert-info')!.textContent).toContain('Nothing new to upload');
-    const skipped = el.querySelector('#skippedRows')!.textContent!;
-    expect(skipped).toContain('UDYAM-UP-29-0003915');
-    expect(skipped).toContain('06-01-2026');
-    // Nothing was saved, so the file chooser stays available.
-    expect(el.querySelector('#incFile')).toBeTruthy();
   });
 
   const typeIn = (id: string, value: string) => {

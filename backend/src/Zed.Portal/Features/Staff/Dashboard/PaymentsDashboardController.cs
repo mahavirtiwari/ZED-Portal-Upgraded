@@ -41,6 +41,8 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
     [
         "RowNumber", "ZedId", "Certification", "PUnitName", "EnterpriseTypee", "Gender", "SocialCategoryName", "IsCouponUsed",
         "PStateName", "PDistrictName", "Tds", "SubsidyPercentage", "GstinNumber", "TanNumber", "FinalAmountPaid",
+        // 2026-11-17 (approved redesign): how it was paid (PaymentGateway, NEFT, ZeroAmount for a 100% subsidy, PaidAtMilestone1).
+        "PaymentType",
     ];
 
     /// <summary>PG Type drop-down of the pop-up (value stored in PaymentGatewayTransactions.PgType).</summary>

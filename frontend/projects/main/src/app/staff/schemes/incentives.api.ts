@@ -13,15 +13,6 @@ export interface IncentiveFilter {
   gender: string;
 }
 
-export interface UploadResult {
-  message: string;
-  inserted: number;
-  /** The rows saved by this upload. */
-  rows: Record<string, string | null>[];
-  /** Rows that were already uploaded (same unit, application, approval, incentive, date and amount); not saved again. */
-  skipped?: SkippedRow[];
-}
-
 export interface SkippedRow {
   row: number;
   udyamNo: string | null;
@@ -128,12 +119,6 @@ export class IncentivesApi {
     let params = new HttpParams();
     for (const [k, v] of Object.entries(f)) if (v) params = params.set(k, v);
     return this.http.get<Row[]>('/api/staff/schemes/incentives/submissions', { params });
-  }
-
-  upload(file: File): Observable<UploadResult> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<UploadResult>('/api/staff/schemes/incentives/upload', form);
   }
 
   catalogue(type: string): Observable<CatalogueItem[]> {
