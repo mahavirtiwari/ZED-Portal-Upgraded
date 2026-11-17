@@ -21,6 +21,7 @@ namespace Zed.Portal.Features.Staff.Assessment;
 /// </para>
 /// <para>
 /// Completed rows carry ReasonForRejection (all three procedures return it): the old Completed pages coloured those rows red.
+/// Rejected rows carry it too (2026-11-17, approved redesign: the "Reason for rejection" column).
 /// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
@@ -115,10 +116,14 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         }, ct);
 
         var total = sets[1].FirstOrDefault() is { } t && int.TryParse(t.Text("TotalCounts"), out var n) ? n : 0;
-        return new PageResponse(Pick(sets[0], WithReason(status, Fields)), total, page, size2);
+        return new PageResponse(Pick(sets[0], WithReason(Fields)), total, page, size2);
     }
 
-    private static string[] WithReason(int status, string[] fields) => status == CompletedStatus ? [.. fields, "ReasonForRejection"] : fields;
+    /// <summary>
+    /// The reason for rejection (2026-11-17, approved redesign: also on the Rejected list, its own column) and the unit's district
+    /// and state (the rows show those instead of the full address; the procedures select PDistrictName and PStateName).
+    /// </summary>
+    private static string[] WithReason(string[] fields) => [.. fields, "ReasonForRejection", "PDistrictName", "PStateName"];
 
     /// <summary>
     /// Consultancy and Surveillance: SP_MONITORING_GET_LIST (@UserId, @RoleId, @Status, @CertificationType, @State,
@@ -157,7 +162,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
             rows = rows.Where(r => columns.Any(col => r.Text(col).Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
         var all = rows.ToList();
-        var fields = WithReason(status, host.System == PortalSystem.Consultancy ? ConsultancyFields : SurveillanceFields);
+        var fields = WithReason(host.System == PortalSystem.Consultancy ? ConsultancyFields : SurveillanceFields);
         return new PageResponse(Pick(all.Skip((page - 1) * pageSize).Take(pageSize), fields), all.Count, page, pageSize);
     }
 

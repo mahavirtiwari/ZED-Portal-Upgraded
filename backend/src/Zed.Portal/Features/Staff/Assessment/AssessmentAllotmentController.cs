@@ -50,9 +50,53 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
             PortalSystem.Surveillance => ["TimeDuration", "SurveillanceNo", "AutoAllocationDate"],
             _ => ["TimeDuration", "UdyamStatus"],
         };
+        // 2026-11-17 (approved redesign): the unit's district, state and size (the procedure's Msme columns) for the rows.
+        string[] place = ["PDistrictName", "PStateName", "EnterpriseTypee"];
         // A Master Admin with a scope sees only its units and levels (migration 0057).
-        return new ListResponse(AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), [.. AllotmentLists.ListFields, .. extra]));
+        var rows = AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), [.. AllotmentLists.ListFields, .. extra, .. place]);
+        await AddPaidOnAsync(rows, ct);
+        return new ListResponse(rows);
     }
+
+    /// <summary>
+    /// 2026-11-17 (approved redesign, "Waiting" column): PaidOn, when the level's payment was recorded (the newest MsmePaymentInfo
+    /// row of the unit and level in the portal's database; Consultancy: of the row's milestone). Left null when there is none or
+    /// the table cannot be read: the page then shows no waiting time rather than a guessed one.
+    /// </summary>
+    private async Task AddPaidOnAsync(List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        var ids = rows.Select(r => r.Text("ZedId").Trim()).Where(AssessmentInput.IsId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        foreach (var r in rows) r["PaidOn"] = null;
+        if (ids.Count == 0) return;
+        var paid = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            // In chunks: SQL Server takes at most 2,100 parameters.
+            foreach (var chunk in ids.Chunk(1000))
+                foreach (var p in await db.QuerySqlAsync<PaidRow>(PaidOnSql(host.System == PortalSystem.Consultancy), new { ZedIds = chunk }, ct))
+                    if (p.PaidOn is { } d) paid[PaidKey(p.ZedId, p.Certification, p.Milestone)] = d;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Payment dates of the allot list could not be read");
+            return;
+        }
+        var consultancy = host.System == PortalSystem.Consultancy;
+        foreach (var r in rows)
+            if (paid.TryGetValue(PaidKey(r.Text("ZedId"), r.Text("Certification"), consultancy ? r.Text("NcCount") : null), out var d)) r["PaidOn"] = d;
+    }
+
+    private static string PaidKey(string? zedId, string? level, string? milestone) =>
+        $"{zedId?.Trim()}|{level?.Trim()}|{(string.IsNullOrWhiteSpace(milestone) ? "" : milestone.Trim())}";
+
+    /// <summary>The newest payment of each unit and level (Consultancy: and milestone, MileStoneNum).</summary>
+    internal static string PaidOnSql(bool consultancy) => consultancy
+        ? "SELECT ZedId, Certification, CAST(MileStoneNum AS varchar(10)) AS Milestone, MAX(CreatedDate) AS PaidOn FROM dbo.MsmePaymentInfo " +
+          "WHERE ZedId IN @ZedIds GROUP BY ZedId, Certification, MileStoneNum;"
+        : "SELECT ZedId, Certification, CAST(NULL AS varchar(10)) AS Milestone, MAX(CreatedDate) AS PaidOn FROM dbo.MsmePaymentInfo " +
+          "WHERE ZedId IN @ZedIds GROUP BY ZedId, Certification;";
+
+    public sealed record PaidRow(string? ZedId, string? Certification, string? Milestone, DateTime? PaidOn);
 
     /// <summary>Agencies that may be given this record (GetCb), filtered as the old pop-up did.</summary>
     [HttpGet("allot/agencies")]
@@ -70,25 +114,98 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> AllotToAgency(AllotToAgencyRequest req, CancellationToken ct)
     {
-        var level = AssessmentInput.Level(req.Certification);
-        if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
+        var refused = await AllotOneAsync(req.ZedId, req.Certification, req.AgencyUserId, ct);
+        return refused is null ? new MessageResponse(AllottedMessage) : this.Problem400(refused);
+    }
+
+    private string AllottedMessage => host.System == PortalSystem.Consultancy ? "Consultancy allotted." : "Assessment allotted.";
+
+    /// <summary>Most units one bulk allotment takes (the page selects from one page of at most 100 rows).</summary>
+    public const int BulkLimit = 100;
+
+    public sealed record BulkUnit(string? ZedId, string? Certification);
+
+    public sealed record BulkAllotRequest(IReadOnlyList<BulkUnit>? Units, string? AgencyUserId);
+
+    /// <param name="Allotted">True when the unit went to the agency; else <paramref name="Message"/> says why not.</param>
+    public sealed record BulkResult(string ZedId, string Certification, bool Allotted, string Message);
+
+    public sealed record BulkAllotResponse(int Allotted, int Refused, IReadOnlyList<BulkResult> Results);
+
+    /// <summary>
+    /// 2026-11-17 (approved redesign, bulk allotment): several units to one agency in one request. Each unit goes through the
+    /// single allotment's own checks, procedure, desktop skip and mail (<see cref="AllotOneAsync"/>), one after the other; a
+    /// unit that is refused does not stop the others, and the answer says, per unit, allotted or why not.
+    /// </summary>
+    [HttpPost("allot/bulk")]
+    [StaffRoles(UserRole.MasterAdmin)]
+    public async Task<ActionResult<BulkAllotResponse>> AllotBulk(BulkAllotRequest req, CancellationToken ct)
+    {
+        var units = req.Units ?? [];
+        if (units.Count == 0) return this.Problem400("Please select the units to allot.");
+        if (units.Count > BulkLimit) return this.Problem400($"Please select at most {BulkLimit} units at a time.");
         if (!AssessmentInput.IsId(req.AgencyUserId)) return this.Problem400("Please select valid data.");
 
-        var listed = (await AllotmentLists.List(db, UserId, RoleId, null, req.ZedId, AllotmentLists.Filter.None with { Certification = level }, ct))[0]
-            .Any(r => AllotmentLists.Same(r, "ZedId", req.ZedId!) && AllotmentLists.Same(r, "Certification", level));
-        if (!listed) return this.Problem400("This assessment can no longer be allotted.");
+        var results = new List<BulkResult>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var u in units)
+        {
+            var zedId = u?.ZedId?.Trim() ?? "";
+            var level = AssessmentInput.Level(u?.Certification) ?? u?.Certification?.Trim() ?? "";
+            if (!seen.Add(zedId + "|" + level))
+            {
+                results.Add(new BulkResult(zedId, level, false, "Listed twice; allotted once."));
+                continue;
+            }
+            string? refused;
+            try
+            {
+                refused = await AllotOneAsync(zedId, u?.Certification, req.AgencyUserId, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log.LogError(ex, "Bulk allotment of {ZedId} {Certification} failed", zedId, level);
+                refused = "Could not be allotted. Please try again.";
+            }
+            results.Add(new BulkResult(zedId, level, refused is null, refused ?? AllottedMessage));
+        }
+        var allotted = results.Count(r => r.Allotted);
+        return new BulkAllotResponse(allotted, results.Count - allotted, results);
+    }
 
-        var agency = (await AgenciesFor(req.ZedId!, level, ct)).FirstOrDefault(a => string.Equals(a.UserId, req.AgencyUserId, StringComparison.OrdinalIgnoreCase));
-        if (agency is null) return this.Problem400("Please select valid data.");
+    /// <summary>
+    /// One allotment: the record must be in the master admin's allot list and the agency among those offered for it. Null when
+    /// allotted, else the reason it was refused (nothing changed then).
+    /// </summary>
+    private async Task<string?> AllotOneAsync(string? zedId, string? certification, string? agencyUserId, CancellationToken ct)
+    {
+        var level = AssessmentInput.Level(certification);
+        if (!AssessmentInput.IsId(zedId) || level is null) return "Invalid request.";
+        if (!AssessmentInput.IsId(agencyUserId)) return "Please select valid data.";
+
+        var listed = (await AllotmentLists.List(db, UserId, RoleId, null, zedId, AllotmentLists.Filter.None with { Certification = level }, ct))[0]
+            .Any(r => AllotmentLists.Same(r, "ZedId", zedId!) && AllotmentLists.Same(r, "Certification", level));
+        if (!listed) return "This assessment can no longer be allotted.";
+
+        var agency = (await AgenciesFor(zedId!, level, ct)).FirstOrDefault(a => string.Equals(a.UserId, agencyUserId, StringComparison.OrdinalIgnoreCase));
+        if (agency is null) return "Please select valid data.";
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
-            new { ZedId = req.ZedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
-        log.LogInformation("{UserId} allotted {ZedId} {Certification} to agency {Agency}", UserId, req.ZedId, level, agency.UserId);
-        // 2026-11-14: Remote only / Onsite only levels go straight to the agency's SA allotment (migration 0074).
-        if (host.System == PortalSystem.Main) await DesktopSkip.TryAsync(db, req.ZedId!, level, log, ct);
-        await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
-            .SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, req.ZedId!, level, null, ct);
-        return new MessageResponse(host.System == PortalSystem.Consultancy ? "Consultancy allotted." : "Assessment allotted.");
+            new { ZedId = zedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
+        log.LogInformation("{UserId} allotted {ZedId} {Certification} to agency {Agency}", UserId, zedId, level, agency.UserId);
+        try
+        {
+            // 2026-11-14: Remote only / Onsite only levels go straight to the agency's SA allotment (migration 0074).
+            if (host.System == PortalSystem.Main) await DesktopSkip.TryAsync(db, zedId!, level, log, ct);
+            await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
+                .SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, zedId!, level, null, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The unit is allotted: a later step that fails is logged, not reported as a refusal.
+            log.LogError(ex, "After allotting {ZedId} {Certification}: the desktop skip or the mail failed", zedId, level);
+        }
+        return null;
     }
 
     private async Task<IEnumerable<Person>> AgenciesFor(string zedId, string level, CancellationToken ct)

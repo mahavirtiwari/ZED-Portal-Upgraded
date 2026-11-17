@@ -22,6 +22,7 @@ export interface MonitoringList {
 }
 
 export interface MonitoringFilter {
+  /** '' for every level (2026-11-17: the API then lists each level and adds the counts). */
   certification: string;
   status: number | null;
   /** yyyy-MM-dd, NC tab only. */
@@ -34,7 +35,8 @@ export class MonitoringApi {
   private readonly http = inject(HttpClient);
 
   list(f: MonitoringFilter): Observable<MonitoringList> {
-    let params = new HttpParams().set('certification', f.certification);
+    let params = new HttpParams();
+    if (f.certification) params = params.set('certification', f.certification);
     if (f.status !== null) params = params.set('status', f.status);
     if (f.ncClosingDate) params = params.set('ncClosingDate', f.ncClosingDate);
     return this.http.get<MonitoringList>('/api/staff/monitoring', { params });

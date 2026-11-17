@@ -7,6 +7,8 @@ import { AuthService } from '@zed/shared';
 import { AllotPage } from './allot';
 import { AssessmentResultsPage } from './assessment-results';
 import { ClientPager } from '../pager';
+import { ToastService } from '../toast';
+import { TableExport } from '../table-export';
 import { DaAllotmentPage } from './da-allotment';
 import { DaVerificationPage } from './da-verification';
 import { NonConformancesPage } from './non-conformances';
@@ -47,43 +49,123 @@ describe('assessment list pages', () => {
 
   afterEach(() => http.verify());
 
-  it('Allot: lists records, loads the eligible agencies and allots', async () => {
+  /** An ISO date `days` before today (the API's PaidOn). */
+  function daysAgo(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString();
+  }
+
+  function flushAttention() {
+    for (const r of http.match((r) => r.url === '/api/staff/attention')) r.flush({ total: 0, items: [] });
+  }
+
+  const allotRows = () => [
+    { ZedId: 'ZEDMSME000001', Certification: 'Bronze', PUnitName: 'Unit 1', CertificationStatus: 2, PaidOn: daysAgo(3), PDistrictName: 'Pune', PStateName: 'Maharashtra', EnterpriseTypee: 'Small' },
+    { ZedId: 'ZEDMSME000002', Certification: 'Silver', PUnitName: 'Unit 2', CertificationStatus: 3, CertificationBodyUserId: 'AGENCY1', AgencyName: 'Agency One', ReasonForRejection: 'Busy' },
+    { ZedId: 'ZEDMSME000003', Certification: 'Gold', PUnitName: 'Unit 3', CertificationStatus: 2, PaidOn: daysAgo(10), UnitAddress: 'Plot 4, Kanpur' },
+  ];
+
+  const chip = (el: HTMLElement, label: string) => [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')].find((b) => b.textContent!.includes(label))!;
+
+  it('Allot: two tabs with counts, oldest payment first, the eligible agencies and the single allotment', async () => {
     const fixture = await create(AllotPage);
     const el: HTMLElement = fixture.nativeElement;
-    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({
-      rows: [
-        { ZedId: 'ZEDMSME000001', Certification: 'Bronze', PUnitName: 'Unit 1', CertificationStatus: 2 },
-        { ZedId: 'ZEDMSME000002', Certification: 'Silver', PUnitName: 'Unit 2', CertificationStatus: 3, CertificationBodyUserId: 'AGENCY1', ReasonForRejection: 'Busy' },
-      ],
-    });
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: allotRows() });
     await settle(fixture);
+    expect(chip(el, 'To allot').textContent!.replace(/\s+/g, ' ').trim()).toBe('To allot 2');
+    expect(chip(el, 'To re-allot').textContent!.replace(/\s+/g, ' ').trim()).toBe('To re-allot 1');
+    let rows = el.querySelectorAll('tbody tr');
+    // Waiting longest first; district and state, else the address.
+    expect(rows[0].textContent).toContain('ZEDMSME000003');
+    expect(rows[0].textContent).toContain('10 days');
+    expect(rows[0].textContent).toContain('Plot 4, Kanpur');
+    expect(rows[1].textContent).toContain('Pune, Maharashtra');
+    expect(rows[1].textContent).toContain('3 days');
+    expect(rows[1].textContent).toContain('Small');
     expect(el.textContent).toContain('Allotment Pending');
-    expect(el.textContent).toContain('Agency Rejected');
-    expect(el.querySelector('a[href="staff/msme-profile/ZEDMSME000001"]')).toBeTruthy();
-    expect(el.querySelector('a[href="/staff/assessment/da-details/ZEDMSME000001/Bronze"]')).toBeTruthy();
-    expect(buttons(el, 'RE-ALLOT').length).toBe(1);
+    const page = fixture.componentInstance as unknown as { href(s: object, k: string): string };
+    expect(page.href(allotRows()[0], 'profile')).toBe('/staff/msme-profile/ZEDMSME000001');
+    expect(page.href(allotRows()[0], 'details')).toBe('/staff/assessment/da-details/ZEDMSME000001/Bronze');
 
-    buttons(el, 'ALLOT')[0].click();
+    (rows[1].querySelector('.al-act') as HTMLButtonElement).click();
     await settle(fixture);
     const agencies = http.expectOne((r) => r.url === '/api/staff/assessment/allot/agencies');
     expect(agencies.request.params.get('zedId')).toBe('ZEDMSME000001');
     expect(agencies.request.params.get('certification')).toBe('Bronze');
     agencies.flush([{ userId: 'AGENCY1', userName: 'Agency One' }]);
     await settle(fixture);
-
-    const select = el.querySelector<HTMLSelectElement>('.modal select')!;
-    select.value = select.options[1].value;
-    select.dispatchEvent(new Event('change'));
+    expect(el.querySelector('.modal')!.textContent).toContain('Pune, Maharashtra');
+    const radio = el.querySelector<HTMLInputElement>('.modal input[type=radio]')!;
+    radio.click();
     await settle(fixture);
-    buttons(el, 'ALLOT').find((b) => b instanceof HTMLInputElement)!.click();
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    buttons(el, 'Allot to agency')[0].click();
     await settle(fixture);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/assessment/allot');
     expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', agencyUserId: 'AGENCY1' });
     post.flush({ message: 'Assessment allotted.' });
     await settle(fixture);
+    flushAttention();
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: allotRows() });
+    await settle(fixture);
+    expect(toast).toHaveBeenCalled();
+    expect(el.querySelector('.modal')).toBeNull();
+
+    // The re-allot tab: the agency, its rejection and the reason.
+    chip(el, 'To re-allot').click();
+    await settle(fixture);
+    rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Agency Rejected');
+    expect(rows[0].textContent).toContain('Busy');
+    expect(rows[0].querySelector('.al-act')!.textContent!.trim()).toBe('Re-allot');
+  });
+
+  it('Allot: bulk allotment of the ticked units to one agency, with the refused ones and their reason', async () => {
+    const fixture = await create(AllotPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: allotRows() });
+    await settle(fixture);
+    expect(el.querySelector('.al-bar')).toBeNull();
+    for (const box of el.querySelectorAll<HTMLInputElement>('tbody input[type=checkbox]')) box.click();
+    await settle(fixture);
+    expect(el.querySelector('.al-bar')!.textContent).toContain('2 units selected');
+    buttons(el, 'Allot 2 units')[0].click();
+    await settle(fixture);
+    const lists = http.match((r) => r.url === '/api/staff/assessment/allot/agencies');
+    expect(lists.length).toBe(2);
+    lists[0].flush([{ userId: 'AG1', userName: 'Agency One' }, { userId: 'AG2', userName: 'Agency Two' }]);
+    lists[1].flush([{ userId: 'AG1', userName: 'Agency One' }]);
+    await settle(fixture);
+    const options = [...el.querySelectorAll('.ad-opt')].map((o) => o.textContent!.replace(/\s+/g, ' ').trim());
+    expect(options[0]).toContain('May take 2 of 2');
+    expect(options[1]).toContain('May take 1 of 2');
+    el.querySelector<HTMLInputElement>('.modal input[type=radio]')!.click();
+    await settle(fixture);
+    buttons(el, 'Allot to agency')[0].click();
+    await settle(fixture);
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/assessment/allot/bulk');
+    expect(post.request.body).toEqual({
+      units: [{ zedId: 'ZEDMSME000003', certification: 'Gold' }, { zedId: 'ZEDMSME000001', certification: 'Bronze' }],
+      agencyUserId: 'AG1',
+    });
+    post.flush({
+      allotted: 1, refused: 1,
+      results: [
+        { zedId: 'ZEDMSME000003', certification: 'Gold', allotted: false, message: 'This assessment can no longer be allotted.' },
+        { zedId: 'ZEDMSME000001', certification: 'Bronze', allotted: true, message: 'Assessment allotted.' },
+      ],
+    });
+    await settle(fixture);
+    flushAttention();
     http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: [] });
     await settle(fixture);
-    expect(el.querySelector('.alert-success')).toBeTruthy();
+    expect(el.querySelector('.modal')!.textContent).toContain('This assessment can no longer be allotted.');
+    expect(el.querySelector('.al-bar')).toBeNull();
+    buttons(el, 'Close')[0].click();
+    await settle(fixture);
+    expect(el.querySelector('.modal')).toBeNull();
   });
 
   it('DA Allotment: offers Bronze assessors for Bronze records and posts the choice', async () => {
@@ -192,8 +274,10 @@ describe('assessment list pages', () => {
     expect(first.request.params.get('pageSize')).toBe('20');
     first.flush({ rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', Certification: 'Bronze', DeskAssessment: 'D', DocVerifiAllot: 'May 1, 2024' }], totalCount: 45, pageNo: 1, pageSize: 20 });
     await settle(fixture);
-    expect(el.textContent).toContain('Assessment Allocated On');
-    expect(el.textContent).not.toContain('Assessors Details');
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent!.trim());
+    expect(heads).toContain('Assessment allocated on');
+    expect(heads).not.toContain('Assessor');
+    expect(heads).not.toContain('Actions');
     expect(el.textContent).toContain('May 1, 2024');
 
     (el.querySelector('.zed-pager button[aria-label="Page 3"]') as HTMLButtonElement).click();
@@ -203,19 +287,106 @@ describe('assessment list pages', () => {
     last.flush({ rows: [], totalCount: 45, pageNo: 3, pageSize: 20 });
   });
 
-  it('Rejected: master admin opens the rejected copy of a Bronze record', async () => {
+  it('Completed: the master admin has the five actions in the row menu, district and state, the surveillance due flag', async () => {
+    TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
+    const fixture = TestBed.createComponent(AssessmentResultsPage);
+    fixture.componentRef.setInput('kind', 'completed');
+    await settle(fixture);
+    flushConfig();
+    const el: HTMLElement = fixture.nativeElement;
+    const due = new Date();
+    due.setDate(due.getDate() + 22);
+    const row = {
+      ZedId: 'ZEDMSME000008', Certification: 'Gold', CertificationStatus: 16, PUnitName: 'Lakshmi', PDistrictName: 'Chennai', PStateName: 'Tamil Nadu',
+      UnitAddress: 'Plot 9, Guindy, Chennai', FirstSurveDueDate: due.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      ModeOfAssessment: 'Onsite Assessment', CertificationPhase: 'ACTIVE', SameUdyamAddress: 1,
+    };
+    http.expectOne((r) => r.url === '/api/staff/assessment/completed').flush({ rows: [row], totalCount: 1, pageNo: 1, pageSize: 20 });
+    await settle(fixture);
+    const tr = el.querySelector('tbody tr')!;
+    expect(tr.textContent).toContain('Chennai, Tamil Nadu');
+    expect(tr.textContent).not.toContain('Guindy');
+    expect(tr.textContent).toContain('In 22 days');
+    expect(tr.textContent).toContain('Onsite');
+    (tr.querySelector('.rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim()))
+      .toEqual(['Assessment details', 'View MSME profile', 'Pledge certificate', 'Download certificate', 'View report']);
+    const page = fixture.componentInstance as unknown as { href(s: object, k: string): string };
+    expect(page.href(row, 'details')).toBe('/staff/assessment/sa-details/ZEDMSME000008/Gold');
+    expect(page.href(row, 'pledge')).toBe('/staff/pledge-certificate/ZEDMSME000008');
+    expect(page.href(row, 'certificate')).toContain('/api/staff/certification-documents/ZEDMSME000008/Gold/certificate');
+  });
+
+  it('Completed: Export reads every page of the filter (200 at a time) into one workbook', async () => {
+    TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
+    const exporter = vi.spyOn(TestBed.inject(TableExport), 'xlsx').mockResolvedValue();
+    const fixture = TestBed.createComponent(AssessmentResultsPage);
+    fixture.componentRef.setInput('kind', 'completed');
+    await settle(fixture);
+    flushConfig();
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/completed').flush({ rows: [{ ZedId: 'Z1', Certification: 'Bronze' }], totalCount: 201, pageNo: 1, pageSize: 20 });
+    await settle(fixture);
+    buttons(el, 'Export')[0].click();
+    await settle(fixture);
+    const p1 = http.expectOne((r) => r.url === '/api/staff/assessment/completed');
+    expect(p1.request.params.get('pageSize')).toBe('200');
+    p1.flush({ rows: Array.from({ length: 200 }, (_, i) => ({ ZedId: 'Z' + i, Certification: 'Bronze' })), totalCount: 201, pageNo: 1, pageSize: 200 });
+    await settle(fixture);
+    const p2 = http.expectOne((r) => r.url === '/api/staff/assessment/completed');
+    expect(p2.request.params.get('pageNo')).toBe('2');
+    p2.flush({ rows: [{ ZedId: 'Z200', Certification: 'Bronze' }], totalCount: 201, pageNo: 2, pageSize: 200 });
+    await settle(fixture);
+    expect(exporter).toHaveBeenCalledTimes(1);
+    const [name, sheets] = exporter.mock.calls[exporter.mock.calls.length - 1];
+    expect(name).toBe('completed-assessment');
+    expect(sheets[0].rows.length).toBe(201);
+    expect(sheets[0].columns[0]).toBe('ZED ID');
+  });
+
+  it('Rejected: the reason column, the rejected copy of a Bronze record, Re-allot when the unit is on the Allot list', async () => {
     TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
     const fixture = TestBed.createComponent(AssessmentResultsPage);
     fixture.componentRef.setInput('kind', 'rejected');
     await settle(fixture);
     flushConfig();
     const el: HTMLElement = fixture.nativeElement;
+    const rejected = { RowNumber: 1, ZedId: 'ZEDMSME000001', RejectedZedId: 'ZEDMSME000001_D_45', Certification: 'Bronze', ReasonForRejection: 'NCs not closed in time' };
     http.expectOne((r) => r.url === '/api/staff/assessment/rejected').flush({
-      rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', RejectedZedId: 'ZEDMSME000001_D_45', Certification: 'Bronze' }], totalCount: 1, pageNo: 1, pageSize: 20,
+      rows: [rejected, { ZedId: 'ZEDMSME000002', Certification: 'Silver', ReasonForRejection: 'Documents incomplete' }], totalCount: 2, pageNo: 1, pageSize: 20,
+    });
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({
+      rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Bronze', PUnitName: 'Unit 1', CertificationBodyUserId: 'AG1' }],
     });
     await settle(fixture);
     expect(el.querySelector('h2')!.textContent).toContain('Rejected Certification');
-    expect(el.querySelector('a[href="/staff/assessment/da-details/ZEDMSME000001_D_45/Bronze"]')).toBeTruthy();
+    expect(el.querySelector('thead')!.textContent).toContain('Reason for rejection');
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('NCs not closed in time');
+    const page = fixture.componentInstance as unknown as { href(s: object, k: string): string };
+    expect(page.href(rejected, 'details')).toBe('/staff/assessment/da-details/ZEDMSME000001_D_45/Bronze');
+    expect(buttons(rows[1] as HTMLElement, 'Re-allot').length).toBe(0);
+
+    buttons(rows[0] as HTMLElement, 'Re-allot')[0].click();
+    await settle(fixture);
+    const agencies = http.expectOne((r) => r.url === '/api/staff/assessment/allot/agencies');
+    expect(agencies.request.params.get('zedId')).toBe('ZEDMSME000001');
+    agencies.flush([{ userId: 'AG2', userName: 'Agency Two' }]);
+    await settle(fixture);
+    el.querySelector<HTMLInputElement>('.modal input[type=radio]')!.click();
+    await settle(fixture);
+    buttons(el, 'Allot to agency')[0].click();
+    await settle(fixture);
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/assessment/allot');
+    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', agencyUserId: 'AG2' });
+    post.flush({ message: 'Assessment allotted.' });
+    await settle(fixture);
+    flushAttention();
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: [] });
+    await settle(fixture);
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(buttons(el, 'Re-allot').length).toBe(0);
   });
 
   it('ClientPager searches any shown value and pages', () => {

@@ -348,7 +348,119 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?gender=female");
         Assert.Null(DaTestUsers.CallsTo(_host.Sql, "SP_MONITORING_GET_LIST_PAGINATION").Last().Args!.GetType().GetProperty("Gender"));
 
+        // 2026-11-17 (approved redesign): the Rejected list has its reason column too.
         var rejected = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/rejected");
-        Assert.False(rejected.GetProperty("rows")[0].TryGetProperty("ReasonForRejection", out _));
+        Assert.Equal("Withdrawn by the unit", rejected.GetProperty("rows")[0].GetProperty("ReasonForRejection").GetString());
+    }
+
+    [Fact]
+    public async Task Result_rows_carry_district_and_state()
+    {
+        _host.Sql.Procs["SP_MONITORING_GET_LIST_PAGINATION"] = _ => FakeSql.Sets(
+            [new { RowNumber = 1, ZedId = "ZEDMSME000001", Certification = "Bronze", PDistrictName = "Pune", PStateName = "Maharashtra", PPin = "411001" }],
+            [new { TotalCounts = 1, PageNo = 1, PageSize = 20 }]);
+        var client = await DaTestUsers.SignInAsync(_host, "AGENCY1");
+        var row = (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed")).GetProperty("rows")[0];
+        Assert.Equal("Pune", row.GetProperty("PDistrictName").GetString());
+        Assert.Equal("Maharashtra", row.GetProperty("PStateName").GetString());
+        Assert.False(row.TryGetProperty("PPin", out _));
+    }
+
+    // ----- 2026-11-17 (approved redesign): Waiting column and bulk allotment -----
+
+    [Fact]
+    public async Task Allot_list_rows_carry_the_payment_date_district_state_and_size()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = _ => FakeSql.Sets([
+            new { ZedId = "ZEDMSME000001", Certification = "Bronze", CertificationStatus = 2, PDistrictName = "Pune", PStateName = "Maharashtra", EnterpriseTypee = "Small", MobileNo = "9" },
+            new { ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = 2, PDistrictName = "Agra", PStateName = "Uttar Pradesh", EnterpriseTypee = "Micro", MobileNo = "9" },
+        ], []);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Assessment.AssessmentAllotmentController.PaidOnSql(false)] = _ =>
+        [
+            new { ZedId = "ZEDMSME000001", Certification = "Bronze", Milestone = (string?)null, PaidOn = (DateTime?)new DateTime(2026, 11, 11, 10, 0, 0) },
+            // Another level's payment is not this record's.
+            new { ZedId = "ZEDMSME000002", Certification = "Bronze", Milestone = (string?)null, PaidOn = (DateTime?)new DateTime(2026, 1, 1) },
+        ];
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+        var rows = (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot")).GetProperty("rows");
+        Assert.StartsWith("2026-11-11", rows[0].GetProperty("PaidOn").GetString());
+        Assert.Equal("Pune", rows[0].GetProperty("PDistrictName").GetString());
+        Assert.Equal("Small", rows[0].GetProperty("EnterpriseTypee").GetString());
+        Assert.Equal(JsonValueKind.Null, rows[1].GetProperty("PaidOn").ValueKind);
+        Assert.False(rows[0].TryGetProperty("MobileNo", out _));
+        var query = _host.Sql.Calls.Single(c => c.Name.StartsWith("SELECT ZedId, Certification, CAST(", StringComparison.Ordinal));
+        Assert.Equal(["ZEDMSME000001", "ZEDMSME000002"], (string[])query.Args!.GetType().GetProperty("ZedIds")!.GetValue(query.Args)!);
+    }
+
+    [Fact]
+    public async Task Bulk_allotment_applies_the_single_rules_to_each_unit_and_answers_per_unit()
+    {
+        // ZEDMSME000001 waits on the list (Bronze: AGENCY1 is eligible); ZEDMSME000099 is not on it.
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+        var r = await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk", new
+        {
+            units = new[]
+            {
+                new { zedId = "ZEDMSME000001", certification = "bronze" },
+                new { zedId = "ZEDMSME000099", certification = "Bronze" },
+                new { zedId = "ZEDMSME000001", certification = "Bronze" },
+            },
+            agencyUserId = "AGENCY1",
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var json = await r.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, json.GetProperty("allotted").GetInt32());
+        Assert.Equal(2, json.GetProperty("refused").GetInt32());
+        var results = json.GetProperty("results");
+        Assert.True(results[0].GetProperty("allotted").GetBoolean());
+        Assert.Equal("Bronze", results[0].GetProperty("certification").GetString());
+        Assert.False(results[1].GetProperty("allotted").GetBoolean());
+        Assert.Equal("This assessment can no longer be allotted.", results[1].GetProperty("message").GetString());
+        Assert.False(results[2].GetProperty("allotted").GetBoolean());
+        var call = DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY").Single();
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(call.Args, "ZedId"));
+        Assert.Equal("AGENCY1", FakeSql.Arg(call.Args, "CertificationBodyUserId"));
+        Assert.Equal("agency@x.test", Assert.Single(_host.Email.Sent).To);
+    }
+
+    [Fact]
+    public async Task Bulk_allotment_refuses_an_agency_not_offered_for_the_unit()
+    {
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+        var json = await (await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk", new
+        {
+            units = new[] { new { zedId = "ZEDMSME000001", certification = "Bronze" } },
+            agencyUserId = "AGENCYSV", // site verification only: not offered for Bronze
+        })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, json.GetProperty("allotted").GetInt32());
+        Assert.Equal("Please select valid data.", json.GetProperty("results")[0].GetProperty("message").GetString());
+        Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+    }
+
+    [Theory]
+    [InlineData("AGENCY1")]
+    [InlineData("ASSESSOR1")]
+    public async Task Bulk_allotment_is_for_the_master_admin_only(string user)
+    {
+        var client = await DaTestUsers.SignInAsync(_host, user);
+        var r = await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk",
+            new { units = new[] { new { zedId = "ZEDMSME000001", certification = "Bronze" } }, agencyUserId = "AGENCY1" });
+        Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
+        Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+    }
+
+    [Fact]
+    public async Task Bulk_allotment_needs_units_an_agency_and_at_most_the_limit()
+    {
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk",
+            new { units = Array.Empty<object>(), agencyUserId = "AGENCY1" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk",
+            new { units = new[] { new { zedId = "ZEDMSME000001", certification = "Bronze" } }, agencyUserId = "bad id!" })).StatusCode);
+        var many = Enumerable.Range(0, Zed.Portal.Features.Staff.Assessment.AssessmentAllotmentController.BulkLimit + 1)
+            .Select(i => new { zedId = $"ZEDMSME{i:000000}", certification = "Bronze" }).ToArray();
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot/bulk",
+            new { units = many, agencyUserId = "AGENCY1" })).StatusCode);
+        Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
     }
 }

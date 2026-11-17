@@ -118,6 +118,21 @@ public sealed class MonitoringTests : IDisposable
         Assert.Equal("October 30, 2026", body.GetProperty("units")[0].GetProperty("NcFinalClosureDt").GetString());
     }
 
+    [Fact]
+    public async Task Without_a_level_every_level_is_listed_and_the_counts_are_added()
+    {
+        var client = await SignIn("ADMIN1");
+        var body = await client.GetFromJsonAsync<JsonElement>("/api/staff/monitoring?status=4");
+        var units = body.GetProperty("units").EnumerateArray().Select(u => u.GetProperty("ZedId").GetString()).ToList();
+        Assert.Equal(new[] { "ZEDMSME000001", "ZEDMSME000004", "ZEDMSME000005" }, units.Order().ToArray());
+        // One call per level, each with its level (the procedure counts by "Certification = @CertificationType").
+        var levels = CallsTo("SP_MONITORING_GET_LIST").Select(a => FakeSql.Arg(a, "CertificationType")).ToList();
+        Assert.DoesNotContain(null, levels);
+        Assert.Equal(levels.Count, levels.Distinct().Count());
+        Assert.Contains("Silver", levels);
+        Assert.Equal(4 * levels.Count, body.GetProperty("counts").GetProperty("Nc").GetInt32());
+    }
+
     [Theory]
     [InlineData("?certification=Platinum&status=4")]
     [InlineData("?certification=Silver&status=9")]

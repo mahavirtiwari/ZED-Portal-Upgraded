@@ -19,6 +19,11 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// in the state in which the page offered the button.
 /// </para>
 /// <para>The review actions of the DA/SA details pages are in <see cref="MonitoringReviewController"/>.</para>
+/// <para>
+/// 2026-11-17 (approved redesign): the list's level is optional. Without one, the procedure is called once per level of the
+/// portal (a Master Admin with a level scope: its levels), the rows joined and the counts added, as the header bell counts
+/// them; the procedure itself cannot be asked without a level (its counts filter with <c>Certification = @CertificationType</c>).
+/// </para>
 /// <para>Per system (the list's status numbers are the same in all three procedures):</para>
 /// <list type="bullet">
 /// <item>Consultancy ("Consultancy Monitoring"): Silver/Gold only, tabs 2/3/5 (no NC or rejected tab), no NC closure
@@ -91,8 +96,10 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
         if (IsRole(UserRole.Agency) && !CurrentUser.HasSubRole(SubRoles.SiteVerification) && !CurrentUser.HasSubRole(SubRoles.DesktopVerification))
             return Forbid();
 
-        var level = Level(certification, Consultancy ? ConsultancyLevels : Levels);
-        if (level is null || (status is not null && !(Consultancy ? ConsultancyStatuses : Statuses).Contains(status.Value)))
+        // 2026-11-17 (approved redesign): the level is optional; without one, every level of the portal (see below).
+        var allLevels = string.IsNullOrWhiteSpace(certification);
+        var level = allLevels ? null : Level(certification, Consultancy ? ConsultancyLevels : Levels);
+        if ((!allLevels && level is null) || (status is not null && !(Consultancy ? ConsultancyStatuses : Statuses).Contains(status.Value)))
             return this.Problem400("Please select valid data.");
 
         string? ncDate = null;
@@ -103,7 +110,9 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
             ncDate = d.ToString("MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture); // CONVERT(..., 101)
         }
 
-        var sets = await ListAsync(level, status, null, ncDate, ct);
+        // One level: the procedure's rows and counts. All levels: the procedure once per level (its counts filter on the level
+        // with "=", so a NULL level would count nothing), rows joined and counts added, as the header bell counts them.
+        var (rows, counts) = allLevels ? await AllLevelsAsync(status, ncDate, ct) : await OneLevelAsync(level!, status, ncDate, ct);
         var master = IsRole(UserRole.MasterAdmin);
         var fields = host.System switch
         {
@@ -112,10 +121,36 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
             _ => Fields,
         };
         return new ListResponse(
-            Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), master ? fields.Concat(MasterAdminFields) : fields),
-            Pick(sets[1].Take(1), CountFields).FirstOrDefault() ?? CountFields.ToDictionary(f => f, _ => (object?)0),
+            Pick(await ScopeFilter.ApplyAsync(HttpContext, rows, ct), master ? fields.Concat(MasterAdminFields) : fields),
+            counts,
             master);
     }
+
+    private async Task<(List<IDictionary<string, object?>> Rows, Dictionary<string, object?> Counts)> OneLevelAsync(
+        string level, int? status, string? ncDate, CancellationToken ct)
+    {
+        var sets = await ListAsync(level, status, null, ncDate, ct);
+        return ([.. sets[0]], Pick(sets[1].Take(1), CountFields).FirstOrDefault() ?? CountFields.ToDictionary(f => f, _ => (object?)0));
+    }
+
+    /// <summary>Every level of the portal (a Master Admin with a level scope: only its levels), rows joined, counts added.</summary>
+    private async Task<(List<IDictionary<string, object?>> Rows, Dictionary<string, object?> Counts)> AllLevelsAsync(
+        int? status, string? ncDate, CancellationToken ct)
+    {
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        var rows = new List<IDictionary<string, object?>>();
+        var counts = CountFields.ToDictionary(f => f, _ => (object?)0);
+        foreach (var level in (Consultancy ? ConsultancyLevels : Levels).Where(l => !scope.IsLimited || scope.AllowsLevel(l)))
+        {
+            var (r, c) = await OneLevelAsync(level, status, ncDate, ct);
+            rows.AddRange(r);
+            foreach (var f in CountFields) counts[f] = Convert.ToInt32(counts[f], System.Globalization.CultureInfo.InvariantCulture) + Count(c, f);
+        }
+        return (rows, counts);
+    }
+
+    private static int Count(Dictionary<string, object?> counts, string field) =>
+        counts.TryGetValue(field, out var v) && v is not null && int.TryParse(Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture), out var n) ? n : 0;
 
     /// <summary>Moves the NC final closure date of a unit in non-conformance (surveillance: or rejected) by 1 to 30 days.</summary>
     [HttpPost("extend-nc-closure")]

@@ -43,7 +43,7 @@ describe('AssessmentResultsPage gender filter', () => {
     await settle(fixture);
 
     const options = [...el.querySelectorAll<HTMLOptionElement>('#resGender option')];
-    expect(options.map((o) => o.text.trim())).toEqual(['Show All', 'Male', 'Female', 'Others']);
+    expect(options.map((o) => o.text.trim())).toEqual(['Show all', 'Male', 'Female', 'Others']);
     expect(options.map((o) => o.value)).toEqual(['', 'male', 'female', 'Others']);
 
     const select = el.querySelector('#resGender') as HTMLSelectElement;
@@ -68,6 +68,8 @@ describe('AssessmentResultsPage gender filter', () => {
     const req = http.expectOne((r) => r.url === '/api/staff/assessment/rejected');
     expect(req.request.params.has('gender')).toBe(false);
     req.flush(empty);
+    // The master admin's Rejected list also reads the Allot list (Re-allot on the row).
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: [] });
     await settle(rejected);
     expect((rejected.nativeElement as HTMLElement).querySelector('#resGender')).toBeNull();
   });

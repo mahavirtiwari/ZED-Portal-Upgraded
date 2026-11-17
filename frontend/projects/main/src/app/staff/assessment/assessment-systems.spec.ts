@@ -42,6 +42,8 @@ describe('assessment pages per system', () => {
 
   afterEach(() => http.verify());
 
+  const reallotTab = (el: HTMLElement) => [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')].find((b) => b.textContent!.includes('To re-allot'))!;
+
   it('consultancy Allot: milestone column, CO wording, no assessment details link', async () => {
     await setup('consultancy');
     const fixture = await create(AllotPage);
@@ -51,6 +53,8 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     expect(el.textContent).toContain('Allot Consultancy');
+    reallotTab(el).click();
+    await settle(fixture);
     expect(el.textContent).toContain('Milestone 2');
     expect(el.textContent).toContain('Allocated to CO');
     expect(el.querySelector('a[href^="/staff/assessment/"]')).toBeNull();
@@ -67,6 +71,8 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     expect(el.textContent).toContain('Allot Surveillance');
+    reallotTab(el).click();
+    await settle(fixture);
     expect(el.textContent).toContain('1st Surveillance');
     expect(el.textContent).toContain('Auto Alloted on:');
     expect(el.textContent).toContain('May 1, 2026');
@@ -131,7 +137,7 @@ describe('assessment pages per system', () => {
     expect(el.querySelector('input[placeholder="Enter ZED ID"]')).toBeNull();
   });
 
-  it('surveillance Allot: rejected rows in btn-danger, no duplicate-Udyam colour, RE-ALLOT among the row actions', async () => {
+  it('surveillance Allot: rejected rows marked, no duplicate-Udyam mark, Re-allot on the row', async () => {
     await setup('surveillance');
     const fixture = await create(AllotPage);
     const el: HTMLElement = fixture.nativeElement;
@@ -139,12 +145,13 @@ describe('assessment pages per system', () => {
       rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationBodyUserId: 'AG1', ReasonForRejection: 'No capacity', TimeDuration: 1, UdyamStatus: 'Duplicate' }],
     });
     await settle(fixture);
+    reallotTab(el).click();
+    await settle(fixture);
     const row = el.querySelector('tbody tr')!;
-    expect(row.classList).toContain('btn-danger');
-    expect(row.classList).not.toContain('table-danger');
-    expect(row.querySelector('td')!.classList).toContain('btn-danger');
-    expect(row.querySelector('.table-warning')).toBeNull();
-    expect(row.querySelector('.row-actions .re-allot')!.classList).toContain('btn-outline-primary');
+    expect(row.classList).toContain('al-flag');
+    expect(row.textContent).not.toContain('Duplicate Udyam');
+    expect(row.textContent).toContain('No answer in 72 hours');
+    expect(row.querySelector('.al-act.re-allot')!.textContent!.trim()).toBe('Re-allot');
   });
 
   it('consultancy Allot: RE-ALLOT also once a consultant was allotted', async () => {
@@ -159,10 +166,10 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     const rows = el.querySelectorAll('tbody tr');
-    const reAllot = rows[0].querySelector('.row-actions .re-allot') as HTMLElement;
-    expect(reAllot.textContent!.trim()).toBe('RE-ALLOT');
-    expect(reAllot.classList).toContain('btn-outline-primary');
+    const reAllot = rows[0].querySelector('.al-act.re-allot') as HTMLElement;
+    expect(reAllot.textContent!.trim()).toBe('Re-allot');
     expect(rows[1].querySelector('.re-allot')).toBeNull();
+    expect(rows[1].querySelector('.al-act')!.textContent!.trim()).toBe('Allot');
   });
 
   it('consultancy Completed: milestone reports and recommended technologies', async () => {
@@ -180,10 +187,16 @@ describe('assessment pages per system', () => {
     await settle(fixture);
     expect(el.textContent).toContain('Consultancy Completed');
     const rows = el.querySelectorAll('tbody tr');
-    const links = (i: number) => [...rows[i].querySelectorAll('a')].map((a) => a.getAttribute('href'));
+    const page = fixture.componentInstance as unknown as { menu(s: object): { key: string }[]; href(s: object, k: string): string };
+    const data = [
+      { ZedId: 'ZEDMSME000001', Certification: 'Silver', NcCount: 3 },
+      { ZedId: 'ZEDMSME000002', Certification: 'Gold', NcCount: 1 },
+    ];
+    const links = (i: number) => page.menu(data[i]).map((m) => page.href(data[i], m.key));
     // 2026-11-15: the report pages (an earlier milestone stored as a PDF opens from there).
     expect(links(0)).toContain('/staff/report/milestone/Silver/ZEDMSME000001?milestone=3');
-    expect(links(0)).toContain('/staff/consultancy/technology/ZEDMSME000001/Silver');
+    expect(links(0)).toContain('/staff/consultancy/milestones/ZEDMSME000001/Silver');
+    expect([...rows[0].querySelectorAll('a')].map((a) => a.getAttribute('href'))).toContain('/staff/consultancy/technology/ZEDMSME000001/Silver');
     expect(links(1)).toContain('/staff/report/milestone/Gold/ZEDMSME000002?milestone=1');
     expect(links(1).filter((h) => h?.includes('/staff/report/milestone/')).length).toBe(1);
     expect(rows[1].textContent).not.toContain('Recommended Technologies');
@@ -232,8 +245,13 @@ describe('assessment pages per system', () => {
       totalCount: 2, pageNo: 1, pageSize: 10,
     });
     await settle(fixture);
-    const rows = el.querySelectorAll('tbody tr');
-    const details = (i: number) => [...rows[i].querySelectorAll('a')].filter((a) => a.textContent!.includes('Assessment Details')).map((a) => a.getAttribute('href'));
+    expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    const page = fixture.componentInstance as unknown as { menu(s: object): { key: string }[]; href(s: object, k: string): string };
+    const data = [
+      { ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 9 },
+      { ZedId: 'ZEDMSME000002', Certification: 'Bronze', CertificationStatus: 6 },
+    ];
+    const details = (i: number) => page.menu(data[i]).filter((m) => m.key === 'details').map((m) => page.href(data[i], m.key));
     expect(details(0)).toEqual(['/staff/assessment/sa-details/ZEDMSME000001/Silver']);
     expect(details(1)).toEqual(['/staff/assessment/da-details/ZEDMSME000002/Bronze']);
   });
@@ -247,7 +265,8 @@ describe('assessment pages per system', () => {
       rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 9 }], totalCount: 1, pageNo: 1, pageSize: 20,
     });
     await settle(fixture);
-    expect([...el.querySelectorAll('tbody a')].filter((a) => a.textContent!.includes('Assessment Details')).length).toBe(0);
+    const page = fixture.componentInstance as unknown as { menu(s: object): { key: string }[] };
+    expect(page.menu({ ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 9 }).map((m) => m.key)).toEqual(['profile']);
     expect(el.querySelector('#resSearchBy')).not.toBeNull();
   });
 
@@ -276,6 +295,7 @@ describe('assessment pages per system', () => {
     const fixture = await create(AssessmentResultsPage, 'rejected');
     const el: HTMLElement = fixture.nativeElement;
     http.expectOne((r) => r.url === '/api/staff/assessment/rejected').flush({ rows: [], totalCount: 0, pageNo: 1, pageSize: 10 });
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: [] });
     await settle(fixture);
     expect(el.querySelector('h2')!.textContent).toContain('Rejected Surveillance');
     expect([...el.querySelectorAll('select[id]')].map((s) => s.id)).toEqual(['resLevel']);
@@ -284,7 +304,7 @@ describe('assessment pages per system', () => {
     expect(el.querySelector('#resSearch')).toBeNull();
   });
 
-  it('consultancy Completed: a rejected milestone row in btn-danger', async () => {
+  it('consultancy Completed: a rejected milestone row marked', async () => {
     await setup('consultancy');
     TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
     const fixture = await create(AssessmentResultsPage, 'completed');
@@ -298,7 +318,7 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     const rows = el.querySelectorAll('tbody tr');
-    expect(rows[0].classList).toContain('btn-danger');
-    expect(rows[1].classList).not.toContain('btn-danger');
+    expect(rows[0].classList).toContain('rs-rej');
+    expect(rows[1].classList).not.toContain('rs-rej');
   });
 });
