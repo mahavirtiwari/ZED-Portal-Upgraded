@@ -1,5 +1,5 @@
-import { Component, computed, inject } from '@angular/core';
-import { ContentService, ContentTextComponent } from '../../content/content-text';
+import { Component } from '@angular/core';
+import { ContentTextComponent } from '../../content/content-text';
 
 export const MOTTO_KEY = 'msme.login.hero.taglineText';
 export const MOTTO_DEFAULT = 'Zero Defect, Zero Effect — better quality, less waste, more business.';
@@ -18,57 +18,29 @@ export function mottoParts(html: string): { chips: string[]; rest: string } {
 }
 
 /**
- * 2026-11-17 (the user chose option B): the "Apnaenge ZED!" banner of the login pages: a teal-to-green gradient (the old
- * login banner's colours) with a faint ZED gear, the tagline in the old banner's lettering (Segoe Print, Kalam where it is
- * not installed), and "Zero Defect" / "Zero Effect" as chips with the rest of the line. Both texts stay the Admin's
- * (Administration → Texts, "MSME: Registration").
+ * 2026-11-17 (the user chose option B): the "Apnaenge ZED!" banner of the login pages.
+ * 2026-11-18 (the user: "make it like" the earlier page): a dark teal band across the whole left column with a yellow
+ * underline, and "Apnaenge ZED!" large and centred in the old banner's lettering (Segoe Print, Kalam where it is not
+ * installed). The text stays the Admin's (Administration → Texts, "MSME: Registration"); the line under it
+ * (msme.login.hero.taglineText) is no longer shown here.
  */
 @Component({
   selector: 'zed-apnaenge-banner',
   imports: [ContentTextComponent],
   host: { class: 'ab', 'data-apnaenge': '' },
-  template: `
-    <svg class="ab-gear" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5L19.4 13Z" />
-      <circle cx="13" cy="12" r="3.4" />
-    </svg>
-    <p class="ab-tag"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
-    @if (motto(); as m) {
-      <p class="ab-line">
-        @for (c of m.chips; track c) { <span class="ab-chip">{{ c }}</span> }
-        <span class="ab-rest">{{ m.rest }}</span>
-      </p>
-    }
-  `,
+  template: `<p class="ab-tag"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>`,
   styles: `
-    :host { position: relative; display: block; overflow: hidden; border-radius: 14px; padding: 18px 24px 18px;
-      background: linear-gradient(110deg, var(--zt-dark, #1f5c61) 0%, var(--zt-mid2, #2a8a8c) 55%, #7cc58f 100%); color: #fff; }
-    .ab-gear { position: absolute; right: -10px; top: -30px; width: 160px; height: 160px; fill: none; stroke: #fff; stroke-width: 1.1;
-      stroke-linejoin: round; opacity: 0.25; pointer-events: none; }
-    p { margin: 0; position: relative; }
-    .ab-tag { font-family: 'Segoe Print', 'Kalam', cursive; font-size: 30px; font-weight: 700; line-height: 1.25; letter-spacing: 0.3px; }
-    .ab-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; font-size: 13.5px; color: #eef6f4; }
-    .ab-chip { background: rgb(255 255 255 / 18%); color: #fff; font-weight: 600; font-size: 12.5px; padding: 4px 12px; border-radius: 20px; }
+    :host { display: block; margin: 0 -48px; padding: 16px 24px 14px; background: var(--zt-dark, #1f5c61); border-bottom: 6px solid #f2c230;
+      color: #fff; text-align: center; }
+    .ab-tag { margin: 0; font-family: 'Segoe Print', 'Kalam', cursive; font-size: 40px; font-weight: 700; line-height: 1.25; letter-spacing: 0.5px; }
     @media (min-width: 901px) and (max-height: 900px) {
-      :host { padding: 12px 22px; }
-      .ab-tag { font-size: 25px; }
-      .ab-line { margin-top: 4px; font-size: 13px; }
-      .ab-gear { width: 120px; height: 120px; top: -18px; }
+      :host { padding: 10px 24px 8px; }
+      .ab-tag { font-size: 34px; }
     }
     @media (max-width: 900px) {
-      :host { padding: 10px 16px; border-radius: 10px; }
-      .ab-tag { font-size: 22px; }
-      .ab-line { font-size: 12.5px; }
-      .ab-gear { width: 100px; height: 100px; }
+      :host { margin: 10px -20px 0; padding: 8px 16px 6px; border-bottom-width: 4px; }
+      .ab-tag { font-size: 26px; }
     }
   `,
 })
-export class ApnaengeBanner {
-  private readonly content = inject(ContentService);
-  /** The Admin's line (the standard one until the texts arrive); null when the Admin hid it. */
-  protected readonly motto = computed(() => {
-    const t = this.content.text(MOTTO_KEY);
-    if (t && !t.enabled) return null;
-    return mottoParts(t?.html ?? MOTTO_DEFAULT);
-  });
-}
+export class ApnaengeBanner {}

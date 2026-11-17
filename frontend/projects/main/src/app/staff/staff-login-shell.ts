@@ -67,7 +67,7 @@ import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
               }
               @for (l of levels().export; track l.name) {
                 <ul class="ml-lv-box ml-lv-x">
-                  <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }} (Export)</span></li>
+                  <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.label }}</span></li>
                 </ul>
               }
             </div>
