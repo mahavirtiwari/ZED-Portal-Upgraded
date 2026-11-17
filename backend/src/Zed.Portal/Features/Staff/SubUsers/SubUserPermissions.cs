@@ -108,6 +108,8 @@ public static class SubUserPermissions
 
     /// <summary>Calls every screen of a sub-user may make whatever it was given: the home dashboard and the read-only MSME views.</summary>
     public static bool AlwaysReadable(string method, string path) =>
+        // 2026-11-17: "Export" turns the table the page already shows into a workbook (TableExportController reads nothing).
+        (HttpMethods.IsPost(method) && path.Equals("/api/staff/export/xlsx", StringComparison.OrdinalIgnoreCase)) ||
         HttpMethods.IsGet(method) && (
             path.Equals("/api/staff/dashboard", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/api/staff/dashboard/counts", StringComparison.OrdinalIgnoreCase)
