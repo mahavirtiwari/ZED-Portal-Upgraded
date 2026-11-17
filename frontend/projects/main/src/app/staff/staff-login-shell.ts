@@ -4,8 +4,8 @@ import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
-import { ContentTextComponent } from '../content/content-text';
 import { loginLevels } from '../msme/login-shell/login-shell';
+import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password).
@@ -17,7 +17,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
 @Component({
   selector: 'zed-staff-login-shell',
   host: { class: 'zed-login d-block' },
-  imports: [RouterLink, ContentTextComponent],
+  imports: [RouterLink, ApnaengeBanner],
   template: `
     <div class="ml-page">
       <div class="ml-cols">
@@ -37,10 +37,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
             <p class="ml-sub">{{ lead }}</p>
             </div>
 
-            <div class="ml-banner" data-apnaenge>
-              <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
-              <p class="ml-apna-sub"><zed-text key="msme.login.hero.taglineText" [inline]="true">Zero Defect, Zero Effect — better quality, less waste, more business.</zed-text></p>
-            </div>
+            <zed-apnaenge-banner />
 
             @if (msmeLinks) {
               <div class="ml-blk">

@@ -3,6 +3,7 @@ import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
 import { PublicLevels, levelLogo } from '../shared/levels';
 import { ContentTextComponent } from '../../content/content-text';
+import { ApnaengeBanner } from './apnaenge-banner';
 
 /** The live portal's banner (Banner_20220428033601.png, resized); no longer shown on the login pages since 2026-11-14. */
 /** 2026-11-17 (the design): the bar colour of each level by code. */
@@ -28,7 +29,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
  */
 @Component({
   selector: 'zed-login-shell',
-  imports: [ContentTextComponent],
+  imports: [ContentTextComponent, ApnaengeBanner],
   host: { class: 'zed-login d-block' },
   template: `
     <div class="ml-page">
@@ -49,10 +50,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
             <p class="ml-sub"><zed-text key="msme.login.hero.subtitle" [inline]="true">Raise your quality and sustainability, get certified and unlock incentives.</zed-text></p>
             </div>
 
-            <div class="ml-banner" data-apnaenge>
-              <p class="ml-apna"><zed-text key="msme.login.hero.tagline" [inline]="true">Apnaenge ZED!</zed-text></p>
-              <p class="ml-apna-sub"><zed-text key="msme.login.hero.taglineText" [inline]="true">Zero Defect, Zero Effect — better quality, less waste, more business.</zed-text></p>
-            </div>
+            <zed-apnaenge-banner />
 
             <div class="ml-blk">
             <p class="ml-label ml-label-rule"><zed-text key="msme.login.hero.benefitsHeading" [inline]="true">Benefits of ZED</zed-text></p>

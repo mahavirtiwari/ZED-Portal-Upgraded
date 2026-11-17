@@ -16,10 +16,6 @@ p { margin: 0; }
 .ml-kicker { color: var(--zt-dark, #1f5c61); }
 .ml-title { font-size: clamp(26px, 2.5vw, 36px); font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; color: var(--ml-ink); margin: 10px 0 8px; }
 .ml-sub { font-size: 17px; color: var(--ml-muted); line-height: 1.5; }
-.ml-banner { display: flex; align-items: center; background: var(--zt-dark, #1f5c61); margin: 0; min-height: 72px; }
-// 2026-11-17 (the user): the old login banner's lettering, Segoe Print (Windows); Kalam where it is not installed.
-.ml-apna { flex: none; font-family: 'Segoe Print', 'Kalam', cursive; font-size: 26px; font-weight: 700; letter-spacing: 0.3px; line-height: 1.25; color: #fff; padding: 10px 24px; border-right: 2px solid rgb(255 255 255 / 30%); }
-.ml-apna-sub { font-size: 15px; color: #eef6f4; padding: 10px 24px; line-height: 1.4; }
 .ml-label-rule { padding-bottom: 10px; border-bottom: 2px solid var(--zt-dark, #1f5c61); }
 .ml-benefits { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; }
 .ml-benefits li { display: flex; gap: 12px; padding: 16px 16px 16px 0; min-width: 0; }
@@ -55,9 +51,6 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .ml-hero-body { padding: 14px 20px 16px; gap: 0; justify-content: flex-start; }
   .ml-title { font-size: 24px; letter-spacing: -0.4px; margin: 6px 0 0; }
   .ml-sub, .ml-label, .ml-benefits, .ml-levels { display: none; }
-  .ml-banner { margin: 12px 0 0; min-height: 0; }
-  .ml-apna { font-size: 22px; padding: 8px 14px; }
-  .ml-apna-sub { font-size: 13px; padding: 8px 14px; }
   .ml-side-top { min-height: 48px; padding: 0 20px; }
   .ml-card { padding: 22px 20px 26px; }
   .ml-footer { padding: 14px 20px; justify-content: center; text-align: center; }
@@ -73,9 +66,6 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .ml-kicker, .ml-label { font-size: 11px; }
   .ml-title { font-size: clamp(24px, 2.2vw, 32px); margin: 6px 0; }
   .ml-sub { font-size: 14.5px; }
-  .ml-banner { min-height: 52px; }
-  .ml-apna { font-size: 24px; padding: 6px 20px; }
-  .ml-apna-sub { font-size: 13.5px; padding: 6px 20px; }
   .ml-label-rule { padding-bottom: 6px; }
   .ml-benefits li { padding: 9px 12px 9px 0; }
   .ml-benefits li:nth-child(even) { padding-left: 16px; }
