@@ -35,7 +35,7 @@ export interface LevelCardVm {
 /**
  * 2026-11-17 (the user's Home design): one level of "My Certifications": the level's colour bar, its badge, validity,
  * surveillance and the unit's fee, the status chip, a progress strip, and "View details" with the level's action (Apply,
- * Continue or Certificate). The recommended next level is outlined.
+ * Continue or Certificate). 2026-11-18 (the user): no "Recommended next" tag or outline.
  * 2026-11-18 (the user's applicant designs): the header colours, sizes and spacing of zed-msme-00-home-dashboard.svg, the
  * certified chip with its date ("CERTIFIED · 14 NOV 2026"), two equal 34px buttons, and the extra lines in title case.
  */
@@ -45,8 +45,7 @@ export interface LevelCardVm {
   host: { class: 'd-block h-100' },
   template: `
     @let v = vm();
-    <article class="lv-card panel-{{ v.code.toLowerCase() }}" [class.panel-added]="v.added" [class.plant-activity-disabled]="v.disabled" [class.is-rec]="v.recommended">
-      @if (v.recommended) { <span class="lv-rec">RECOMMENDED NEXT</span> }
+    <article class="lv-card panel-{{ v.code.toLowerCase() }}" [class.panel-added]="v.added" [class.plant-activity-disabled]="v.disabled">
       <div class="panel-heading lv-head">
         <h5>{{ v.name.toUpperCase() }} CERTIFICATION</h5>
         <button type="button" class="lv-info" [attr.aria-label]="'About ' + v.name" (click)="info.emit()"><zed-dash-icon name="info" [size]="18" /></button>
@@ -104,12 +103,8 @@ export interface LevelCardVm {
   styles: `
     .lv-card { position: relative; display: flex; flex-direction: column; height: 100%; margin: 0; background: #fff; border: 1px solid #dde7e8; border-radius: 14px;
       box-shadow: 0 3px 10px rgba(16, 61, 64, .09); }
-    .lv-card.is-rec { border: 2px solid var(--zt-dark, #24666b); }
-    .lv-rec { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap; background: var(--zt-dark, #24666b); color: #fff;
-      font-size: 10.5px; font-weight: 700; line-height: 14px; letter-spacing: .4px; padding: 4px 14px; border-radius: 11px; }
     .lv-card > .lv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; height: 44px; padding: 0 14px 0 16px; border: 0;
       border-radius: 13px 13px 0 0; background: var(--zt-mid2, #2a8a8c); color: #fff; }
-    .lv-card.is-rec > .lv-head { border-radius: 12px 12px 0 0; }
     .lv-card.panel-bronze > .lv-head { background: #c9714f; }
     .lv-card.panel-silver > .lv-head { background: #a5abb0; }
     .lv-card.panel-gold > .lv-head { background: #c9a23f; }

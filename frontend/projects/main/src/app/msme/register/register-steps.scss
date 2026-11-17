@@ -1,0 +1,78 @@
+// 2026-11-18 (the user approved the registration design): the blocks of the steps: the enterprise card, plants and
+// activities as selectable cards and the summary grid. The pledge and success steps are in register-done.scss.
+.reg-chip {
+  display: inline-block; height: 22px; line-height: 22px; padding: 0 10px; margin-right: 6px; border-radius: 11px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap;
+  background: #e6f2f3; color: var(--zt-dark, #24666b);
+}
+.reg-chip-size { background: #fdf0d5; color: #8a5a00; }
+// Why a plant or an activity cannot be chosen: the server's own sentence, so in its own case and free to wrap.
+.reg-chip-off {
+  height: auto; line-height: 1.35; padding: 4px 10px; margin: 0; white-space: normal; text-transform: none; letter-spacing: 0;
+  font-size: 11.5px; background: #fde3e1; color: #8f1f15;
+}
+.reg-hint { font-size: 12px; color: #6f8487; margin-top: 4px; }
+
+// Unit and activity: the enterprise (size letter as on the profile, name, chips, four details).
+.reg-ent-card { margin-bottom: 20px; }
+.reg-ent { display: flex; gap: 16px; align-items: center; padding: 20px 24px; }
+.reg-ent-badge {
+  flex: none; width: 56px; height: 56px; border-radius: 10px; display: grid; place-items: center;
+  font-weight: 800; font-size: 24px; background: #eef6f6; color: #23474a;
+}
+.ent-micro { background: #f7c873; color: #7a4b00; }
+.ent-small { background: #e6e96e; color: #575a00; }
+.ent-medium { background: #a9dbeb; color: #1d4f5e; }
+.reg-ent-text { min-width: 0; h4 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; } }
+.reg-kv {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0 24px 20px;
+  dt { font-size: 10px; font-weight: 700; letter-spacing: .6px; color: #6f8487; text-transform: uppercase; }
+  dd { margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+}
+:host ::ng-deep .reg-ent-note { margin: 0 24px 20px; padding: 10px 14px; font-size: 13px; p { margin: 0; } }
+
+.reg-sec { display: flex; align-items: center; gap: 10px; margin: 4px 0 12px; font-size: 14.5px; font-weight: 700; color: #17373b; }
+.reg-plant-note { margin: 0 0 12px; padding: 10px 14px; font-size: 13px; }
+.reg-units { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.reg-units:last-child { margin-bottom: 0; }
+.reg-unit {
+  display: block; margin: 0; padding: 16px 18px; border: 1.5px solid #dde7e8; border-radius: 12px; background: #fff;
+  font-size: 13px; color: #17373b; cursor: pointer; transition: border-color .15s;
+  &:hover { border-color: #45a5ad; }
+  &.sel { border: 2px solid var(--zt-dark, #24666b); background: #f6fbfb; padding: 15.5px 17.5px; }
+  &.off { background: #f7f9f9; color: #8a9a9c; cursor: not-allowed; border-color: #dde7e8; }
+}
+.reg-unit-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.reg-unit-name { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.reg-unit-head .reg-chip { flex: none; margin: 0; }
+.reg-unit-head .reg-chip-off { flex: 0 1 auto; max-width: 60%; }
+.reg-unit-sub { display: block; overflow-wrap: anywhere; }
+.reg-radio { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--zt-dark, #24666b); cursor: pointer; }
+.reg-step-off { opacity: .5; pointer-events: none; }
+// The NIC lines (2, 4 and 5 digits), each with a small teal square.
+.reg-nic {
+  list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; line-height: 1.9;
+  li::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 8px; background: #3ba3ad; }
+}
+
+// Summary: four cards two by two, then the confirm card.
+.reg-sum { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.reg-sum-body { font-size: 14px; overflow-wrap: anywhere; }
+.reg-sum-name { font-size: 16px; }
+.reg-change {
+  margin-left: auto; padding: 0; border: 0; background: none; font-size: 13px; font-weight: 700; color: var(--zt-dark, #24666b);
+  &:hover { text-decoration: underline; }
+}
+.reg-verified { margin-left: 4px; font-size: 12.5px; font-weight: 700; color: #2f9e58; }
+:host ::ng-deep .reg-email-note p { margin: 0; }
+.reg-confirm { margin-top: 20px; }
+.reg-consent {
+  display: flex; align-items: center; gap: 12px; margin: 0; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--zt-dark, #24666b); }
+  ::ng-deep p { margin: 0; }
+}
+
+@media (max-width: 767.98px) {
+  .reg-units, .reg-sum { grid-template-columns: minmax(0, 1fr); }
+  .reg-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

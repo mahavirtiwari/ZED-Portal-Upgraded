@@ -1,0 +1,49 @@
+// 2026-11-18 (the user approved the registration design): the pledge card and the success card with the app rail.
+// The pledge: logo, the PLEDGE pill and the Admin's lines faded in one after the other.
+.reg-pledge { max-width: 860px; margin: 0 auto; padding: 28px 48px 30px; text-align: center; }
+.reg-pledge-logo { height: 72px; width: auto; }
+.reg-pledge-pill {
+  display: inline-block; margin: 10px 0 6px; padding: 6px 18px; border-radius: 20px;
+  background: var(--zt-dark, #24666b); color: #fff; font-size: 12px; font-weight: 800; letter-spacing: 3px;
+}
+.reg-pledge-text { margin-top: 12px; font-size: 15px; line-height: 1.75; color: #24393b; }
+.pledge-line { opacity: 0; animation: pledge-fade 1.2s ease forwards; }
+@keyframes pledge-fade { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pledge-line { animation: none; opacity: 1; } }
+.pledge-failed { margin-top: 12px; }
+.pledge-retry { padding: 0; vertical-align: baseline; border: 0; }
+
+// Success: the green tick, the ZED ID in a teal pill, the two buttons, then what next.
+.reg-done { padding: 30px 24px; text-align: center; h2 { margin: 16px 0 4px; font-size: 22px; font-weight: 700; color: #17373b; } }
+.reg-tick {
+  width: 76px; height: 76px; margin: 0 auto; border-radius: 50%; background: #e3f4e8; display: grid; place-items: center;
+  span { width: 52px; height: 52px; border-radius: 50%; background: #2f9e58; color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 800; }
+}
+.reg-done-sub { font-size: 13.5px; color: #5f6f70; }
+.reg-zed-id {
+  display: inline-block; margin: 10px 0; padding: 8px 22px; border-radius: 12px; background: #e6f2f3;
+  color: var(--zt-dark, #24666b); font-size: 26px; font-weight: 800; letter-spacing: 1px;
+}
+:host ::ng-deep .reg-done-warn { margin: 16px 0 0; text-align: left; font-size: 13.5px; }
+.reg-done-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; }
+.reg-dl::before { content: '↓'; }
+:host ::ng-deep .reg-done-next {
+  margin-top: 24px; padding: 16px 20px; border-radius: 10px; background: #eef8ee; border: 1px solid #cfe9d3;
+  text-align: left; font-size: 13.5px; color: #3d5559;
+  ul { margin: 4px 0 8px; padding-left: 20px; }
+  ul:last-child { margin-bottom: 0; }
+}
+
+// The app rail: the note, then each store's QR code and badge (Admin → Links can switch each off).
+:host ::ng-deep .reg-app-note { margin: 0; font-size: 13px; color: #3d5559; }
+.reg-app-codes { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-top: 14px; }
+.reg-app-code {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 1px solid #dde7e8; border-radius: 10px;
+  text-decoration: none; color: #4a5556; font-size: 12.5px; font-weight: 600;
+  &:hover { border-color: #45a5ad; }
+}
+.reg-qr { background: #fff; }
+
+@media (max-width: 767.98px) {
+  .reg-pledge { padding: 24px 16px; }
+}

@@ -23,7 +23,8 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
   selector: 'zed-msme-register',
   imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent, AlertDialog],
   templateUrl: './register.html',
-  styleUrls: ['./register.scss', './register-modals.scss'],
+  // 2026-11-18 (the user approved the registration design): four sheets, each under the 8 kB per-component budget.
+  styleUrls: ['./register.scss', './register-steps.scss', './register-done.scss', './register-modals.scss'],
 })
 export class RegisterPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
@@ -35,12 +36,15 @@ export class RegisterPage {
 
   protected readonly step = signal<Step>('welcome');
   protected readonly stepNumber = computed(() => STEP_NUMBER[this.step()]);
-  /** The stepper's labels (V4 2026-11-08). */
+  /**
+   * The stepper's labels (V4 2026-11-08). 2026-11-18 (the user approved the registration design): each step also has a
+   * small note under its label: what it asks for while still ahead, what was done once passed ("You are here" when current).
+   */
   protected readonly steps = [
-    { n: 1, label: 'Udyam check' },
-    { n: 2, label: 'Unit and activity' },
-    { n: 3, label: 'Summary' },
-    { n: 4, label: 'Pledge' },
+    { n: 1, label: 'Udyam check', todo: 'Udyam number, mobile', done: 'Validated' },
+    { n: 2, label: 'Unit and activity', todo: 'Plant, NIC code', done: 'Selected' },
+    { n: 3, label: 'Summary', todo: 'E-mail and details', done: 'Confirmed' },
+    { n: 4, label: 'ZED Pledge', todo: 'Get your ZED ID', done: 'Pledged' },
   ];
   protected readonly modal = signal<'email' | 'otp' | null>(null);
   protected readonly busy = signal(false);

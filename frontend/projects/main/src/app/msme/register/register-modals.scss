@@ -69,7 +69,8 @@
   gap: 10px;
   margin-top: 20px;
   &.one { grid-template-columns: 1fr; }
-  .btn { text-transform: none; font-size: 16px; margin: 0; padding: 9px 12px; }
+  // 2026-11-18 (the user approved the registration design): the skin's buttons (Cancel the quiet grey btn-default),
+  // 42px tall with 9px corners like the page's footer bars.
+  .btn { display: inline-flex; align-items: center; justify-content: center; height: 42px; margin: 0; padding: 0 12px; border-radius: 9px; }
 }
-.reg-modal-actions .btn-outline-secondary { border: 1px solid #e6eded !important; background: #e6eded !important; color: #24393b !important; &:hover { background: #eef6f6 !important; } }
 

@@ -34,7 +34,7 @@ describe('RegisterPage', () => {
 
   async function goToUdyamStep() {
     await settle();
-    button('Proceed').click();
+    button('Start registration').click();
     await settle();
     answerCaptchaConfig();
     await settle();
@@ -56,11 +56,22 @@ describe('RegisterPage', () => {
     expect(el.querySelector('[data-key="msme.registration.welcome"]')).not.toBeNull();
   });
 
+  // 2026-11-18 (the user approved the registration design): the 4-step tracker card, with the current step's note.
+  it('shows the tracker with the current step from the Udyam check on', async () => {
+    await settle();
+    expect(el.querySelector('.reg-track')).toBeNull();
+    await goToUdyamStep();
+    const current = el.querySelector('.reg-track li.cur')!;
+    expect(current.textContent).toContain('Udyam check');
+    expect(current.textContent).toContain('You are here');
+    expect(current.textContent).toContain('(current)');
+  });
+
   it('validates the Udyam number format before calling the API', async () => {
     await goToUdyamStep();
     type('#regNo', '12345');
     type('#mobileNo', '9999999999');
-    button('Proceed').click();
+    button('Check and proceed').click();
     await settle();
 
     http.expectNone('/api/msme/registration/lookup');
@@ -71,7 +82,7 @@ describe('RegisterPage', () => {
     await goToUdyamStep();
     type('#regNo', 'udyam-up-29-0003915');
     type('#mobileNo', '9999999999');
-    button('Proceed').click();
+    button('Check and proceed').click();
     await settle();
 
     const req = http.expectOne('/api/msme/registration/lookup');
@@ -84,7 +95,7 @@ describe('RegisterPage', () => {
     });
     await settle();
 
-    expect(el.textContent).toContain('Unit and Activity');
+    expect(el.textContent).toContain('Select one plant location');
     expect(el.textContent).toContain('Acme Castings');
     expect(el.textContent).toContain('Plot 4, KANPUR, UP, 208001');
     expect(el.querySelector('[data-key="msme.registration.plant.validatedNote"]')).not.toBeNull();
@@ -94,7 +105,7 @@ describe('RegisterPage', () => {
     await goToUdyamStep();
     type('#regNo', 'UDYAM-UP-29-0003915');
     type('#mobileNo', '9999999999');
-    button('Proceed').click();
+    button('Check and proceed').click();
     await settle();
 
     http.expectOne('/api/msme/registration/lookup').flush(
@@ -104,7 +115,7 @@ describe('RegisterPage', () => {
     await settle();
 
     expect(el.querySelector('[role="dialog"] .swal-text')!.textContent).toContain('Plant Details are missing');
-    expect(el.textContent).toContain('Udyam Registration Validation');
+    expect(el.textContent).toContain('Udyam Registration validation');
   });
 
   afterEach(() => {

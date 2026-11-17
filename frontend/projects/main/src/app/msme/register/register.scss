@@ -1,296 +1,118 @@
-.register-page {
-  padding-top: 24px;
-  padding-bottom: 60px;
+// 2026-11-18 (the user approved the registration design): the page frame of every step: white cards (1px #dde7e8 border,
+// 14px corners), a 56px head with a 30px icon tile, a rail card (420px) beside the main one, the footer bar
+// (Back · Step n of 4 · main action) and the 4-step tracker card. The steps' own blocks are in register-steps.scss.
+.register-page { padding-top: 4px; padding-bottom: 40px; color: #17373b; }
+
+.reg-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(23, 55, 59, .06); }
+.reg-grid { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 24px; align-items: start; }
+.reg-ch {
+  display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 24px; border-bottom: 1px solid #dde7e8;
+  h3 { margin: 0; font-size: 16px; font-weight: 700; color: #17373b; }
 }
+.reg-ico, .reg-n { flex: none; display: grid; place-items: center; background: #e6f2f3; color: var(--zt-dark, #24666b); font-weight: 800; }
+.reg-ico { width: 30px; height: 30px; border-radius: 8px; font-size: 13px; }
+.reg-n { width: 24px; height: 24px; border-radius: 50%; font-size: 11.5px; }
+.reg-cb { padding: 22px 24px; }
 
-// V4 (2026-11-08): a labelled stepper (number in a circle, a tick when done, the current step in teal), joined by a line.
-.zed-stepper {
-  display: flex;
-  width: 100%;
-  max-width: 760px;
-  list-style: none;
-  padding: 0;
-  margin: 0 auto 24px;
+// The footer bar: the quiet Back, the step, the main action (the skin's buttons, sized as in the design).
+.reg-ft {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px;
+  border-top: 1px solid #dde7e8; background: #fafcfc; border-radius: 0 0 14px 14px;
+}
+.reg-ft-step { font-size: 12.5px; color: #6f8487; }
+.reg-ft .btn, .reg-done-actions .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 24px; margin: 0; border-radius: 9px;
+}
+.reg-ft .btn-default { min-width: 150px; }
+.reg-ft .btn-primary, .reg-done-actions .btn { min-width: 170px; }
+.reg-back::before { content: '←'; }
+.reg-next::after { content: '→'; }
 
+// The rails: numbered rows with a bold line and a small note.
+.reg-rail { padding: 16px 24px 20px; }
+.reg-row {
+  display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; font-size: 13px;
+  b { display: block; font-size: 13.5px; }
+  small { display: block; font-size: 12.5px; color: #6f8487; }
+}
+.reg-note {
+  background: #eef8ee; border: 1px solid #cfe9d3; border-radius: 10px; padding: 14px 16px; font-size: 13.5px; margin-top: 14px;
+  a { color: var(--zt-dark, #24666b); font-weight: 700; }
+  p { margin: 0; }
+}
+.reg-note-teal { background: #e6f2f3; border-color: #d3e6e7; }
+.reg-rail > .reg-note { margin-top: 10px; }
+
+// The tracker card: 30px dots joined by a line; done = green tick, current = teal ring with a halo.
+.reg-track { display: flex; list-style: none; margin: 0 0 20px; padding: 22px 40px; }
+.reg-track li {
+  position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; text-align: center;
+  &:not(:last-child)::after {
+    content: ''; position: absolute; top: 15px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 2px; background: #d6e2e3;
+  }
+  &.done:not(:last-child)::after { background: #2f9e58; }
+}
+.reg-dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid #c9d9da; background: #fff;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #6f8487;
+  .cur & { border-color: var(--zt-dark, #24666b); color: var(--zt-dark, #24666b); box-shadow: 0 0 0 5px #e1efef; }
+  .done & { background: #2f9e58; border-color: #2f9e58; color: #fff; }
+}
+.reg-track-label { margin-top: 8px; font-size: 13.5px; font-weight: 600; color: #6f8487; line-height: 1.3; .cur &, .done & { color: #17373b; } }
+.reg-track-note { font-size: 11.5px; color: #6f8487; }
+
+// Before you start: the Admin text (Admin → Texts) drawn as the numbered checklist and the green Udyam note.
+:host ::ng-deep .reg-welcome {
+  font-size: 13.5px; color: #3d5559;
+  .zed-text > p:first-child { margin: 0 0 6px; font-size: 13.5px; }
+  ol { list-style: none; counter-reset: reg-w; padding: 0; margin: 0; }
   li {
-    position: relative;
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    text-align: center;
-
-    // The line to the next step, from this circle's edge to the next one's.
-    &:not(:last-child)::after {
-      content: '';
-      position: absolute;
-      top: 15px;
-      left: calc(50% + 20px);
-      right: calc(-50% + 20px);
-      height: 2px;
-      background: #dfe9ea;
+    position: relative; counter-increment: reg-w; padding: 14px 0 14px 38px; border-bottom: 1px solid #edf2f2; font-size: 14px; color: #17373b;
+    &:last-child { border-bottom: 0; }
+    &::before {
+      content: counter(reg-w); position: absolute; left: 0; top: 12px; width: 24px; height: 24px; border-radius: 50%;
+      background: #e6f2f3; color: var(--zt-dark, #24666b); font-size: 11.5px; font-weight: 800; display: grid; place-items: center;
     }
-    &.done:not(:last-child)::after { background: #9ccfac; }
+    strong { font-size: 14px; }
   }
-
-  .round-tab {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    background: #fff;
-    color: #5f6f70;
-    border: 2px solid #cbd9da;
+  .label-highlight {
+    background: #eef8ee; border: 1px solid #cfe9d3; border-radius: 10px; padding: 14px 16px; margin: 14px 0 0;
+    font-size: 13.5px; text-align: left !important;
+    br { display: none; }
   }
-  li.current .round-tab { background: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); color: #fff; box-shadow: 0 0 0 4px rgba(36, 102, 107, 0.16); }
-  li.done .round-tab { background: #e8f5ec; border-color: #9ccfac; color: #1e7a3c; }
-  .step-label { font-size: 13px; font-weight: 600; color: #5f6f70; line-height: 1.3; }
-  li.current .step-label { color: #23474a; }
+  .udyam-info-link {
+    background: none; padding: 0; margin: 0; border-radius: 0; color: var(--zt-dark, #24666b); font-weight: 700; text-decoration: none;
+    img { width: 12px; height: 12px; vertical-align: baseline; }
+  }
 }
 
-// Each step in one card; the narrow steps (welcome, Udyam check) centred.
-.reg-card {
-  background: #fff;
-  border: 1px solid #dfe9ea;
-  border-radius: 12px;
-  padding: 20px 24px 0;
-  box-shadow: 0 1px 2px rgba(35, 71, 74, 0.05);
-  .registration-title { margin-top: 0; }
-}
-.reg-narrow { max-width: 860px; margin: 0 auto; }
-.reg-lead { color: #5f6f70; margin-bottom: 16px; }
-
-.reg-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+// Udyam check: the two fields side by side (44px), the captcha under them.
+.reg-lead { margin: 0 0 18px; font-size: 13.5px; color: #3d5559; }
+.reg-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
 .reg-field {
-  text-align: left;
-  .input-title { display: block; font-weight: 600; color: #23474a; margin-bottom: 6px; }
-  .form-control { max-width: none; width: 100%; }
-  .input-sub-title { font-size: 13px; color: #5f6f70; margin: 6px 0 0; }
+  .input-title { display: block; font-size: 13px; font-weight: 700; color: #17373b; margin-bottom: 6px; }
+  .form-control { width: 100%; max-width: none; height: 44px; border: 1px solid #cbd9da; border-radius: 9px; padding: 0 14px; font-size: 14px; }
+  .input-sub-title { font-size: 12px; color: #6f8487; margin: 6px 0 0; }
 }
-.reg-captcha { display: flex; justify-content: center; margin: 18px 0 4px; }
-
-// The footer of every step: BACK on the left, the step in the middle, the main button on the right.
-.reg-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 20px -24px 0;
-  padding: 14px 24px;
-  border-top: 1px solid #eef1f2;
-  background: #f8fbfb;
-  border-radius: 0 0 12px 12px;
-  .btn { min-width: 140px; margin: 0; }
-}
-.reg-footer-step { font-size: 13px; color: #5f6f70; }
-
-// Unit and activity: the enterprise beside the two choices.
-.reg-plant { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; margin-top: 12px; align-items: start; }
-.reg-side { border: 1px solid #dfe9ea; border-radius: 10px; overflow: hidden; position: sticky; top: 12px; }
-.reg-side-head { background: #eef6f6; color: #23474a; font-weight: 700; padding: 10px 14px; }
-.reg-side-body { padding: 12px 14px; background: #fafcfc; }
-.reg-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #23474a; margin: 0 0 10px; }
-.reg-section-n { width: 24px; height: 24px; border-radius: 50%; background: #45a5ad; color: #fff; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
-.reg-plant-note { text-align: left; padding: 8px 12px; margin-bottom: 4px; p { margin: 0; } }
-
-// Summary: four cards of one height.
-.reg-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 8px 0 16px; }
-.reg-sum-card { border: 1px solid #dfe9ea; border-radius: 10px; padding: 12px 14px; background: #fafcfc; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
-.reg-sum-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #5f6f70;
-  text-transform: uppercase; letter-spacing: .3px; margin-bottom: 8px; img { width: 18px; } }
-
-@media (max-width: 991.98px) {
-  .reg-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .reg-plant { grid-template-columns: minmax(0, 1fr); }
-  .reg-side { position: static; }
-}
-@media (max-width: 575.98px) {
-  .reg-card { padding: 16px 14px 0; }
-  .reg-footer { margin: 16px -14px 0; padding: 12px 14px; flex-wrap: wrap; .btn { min-width: 0; flex: 1 1 0; } }
-  .reg-footer-step { order: -1; flex: 1 1 100%; text-align: center; }
-  .reg-fields, .reg-summary { grid-template-columns: minmax(0, 1fr); }
-  .zed-stepper .step-label { font-size: 11px; }
-}
-
-// Plant and activity cards three to a row across the whole width (the old 250px cards left a gap on the right);
-// two on tablets, one on phones. Cards in a row share its height.
-.plant-activity .panel-units {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin: 10px 0 0;
-}
-.plant-activity .panel-units .panel-item {
-  display: block;
-  width: auto;
-  margin: 0;
-}
-.plant-activity .panel-units .panel-item > .panel {
-  height: 100%;
-}
-@media (max-width: 991.98px) {
-  .plant-activity .panel-units { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 575.98px) {
-  .plant-activity .panel-units { grid-template-columns: minmax(0, 1fr); }
-}
-.panel-units .panel-default {
-  background: transparent;
-  border: 1px solid transparent;
-  box-shadow: none;
-}
-.plant-activity {
-  margin-bottom: 20px;
-}
-.panel-units .panel-item > .panel { border: 1px solid #dfe9ea !important; border-radius: 10px; background: #fff; transition: border-color .15s, box-shadow .15s; }
-.panel-units .panel-item:hover > .panel { border-color: #45a5ad !important; }
-.panel-units .panel-item.panel-selected > .panel { border-color: #45a5ad !important; box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); background: #f6fbfb; }
-.unit-isselected {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-label.panel-item {
-  display: block;
-  cursor: pointer;
-}
-
-.plant-activity-disabled {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-// The old page faded the pledge text in phrase by phrase (one per second).
-.pledge-line {
-  opacity: 0;
-  animation: pledge-fade 1.2s ease forwards;
-}
-
-@keyframes pledge-fade {
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pledge-line {
-    animation: none;
-    opacity: 1;
-  }
+.reg-captcha {
+  margin-top: 20px;
+  ::ng-deep .zed-captcha-image { height: 44px; width: auto; border-radius: 9px; }
+  ::ng-deep .zed-captcha-input { height: 44px; width: 200px; border: 1px solid #cbd9da; border-radius: 9px; font-size: 14px; }
 }
 
 .loadingdiv {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
+  position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .35);
 }
 
-// The e-mail note on the summary: its box is drawn by zed-text (Admin → Texts).
-:host ::ng-deep .email-note {
-  background-color: rgba(179, 224, 121, 0.2);
+@media (max-width: 991.98px) {
+  .reg-grid { grid-template-columns: minmax(0, 1fr); }
+  .reg-track { padding: 18px 12px; }
 }
-
-// 2026-11-18: Back is the applicant pages' quiet grey button (styles/_msme-skin.scss), no longer the old dark grey.
-
-// The small labels of the details box (Name of Entrepreneur, Gender, Udyam Number, …) were a light grey on the grey
-// box; darker and a little bolder so they read clearly.
-.entp-details small {
-  color: #4a5556;
-  font-size: 13px;
-  font-weight: 600;
+@media (max-width: 575.98px) {
+  .reg-ch, .reg-cb, .reg-rail { padding-left: 16px; padding-right: 16px; }
+  .reg-ft { flex-wrap: wrap; padding: 14px 16px; .btn { min-width: 0; flex: 1 1 0; padding: 0 12px; } }
+  .reg-ft-step { order: -1; flex: 1 1 100%; text-align: center; }
+  .reg-fields { grid-template-columns: minmax(0, 1fr); }
+  .reg-track-label { font-size: 11.5px; }
+  .reg-track-note { display: none; }
 }
-.entp-type-title {
-  color: #4a5556;
-}
-
-// The confirm box on the summary: the tick box and its sentence on one line, centred on each other (the old checkbox
-// sat above the text line).
-.label-highlight2 {
-  padding: 12px 16px;
-  .checkbox-inline {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0;
-    cursor: pointer;
-  }
-  .option-input1 {
-    flex: 0 0 20px;
-    top: 0;
-    margin: 0;
-  }
-  ::ng-deep p {
-    margin: 0;
-  }
-}
-
-// Success: the result, what next, and the app to download (QR codes and store badges).
-.reg-success-head {
-  img { width: 120px; margin-bottom: 8px; }
-  h2 { font-weight: 600; color: #23474a; }
-}
-.reg-zed-id {
-  display: inline-block;
-  background: #eef6f6;
-  color: #23474a;
-  border-radius: 6px;
-  padding: 2px 10px;
-  letter-spacing: 0.5px;
-}
-.reg-success-next {
-  padding: 16px 20px;
-  margin-bottom: 16px;
-  ::ng-deep ul { margin-bottom: 8px; }
-  ::ng-deep li { font-size: 15px; }
-}
-.reg-app {
-  border: 1px solid #dfe9ea;
-  border-radius: 12px;
-  background: #fff;
-  padding: 18px 20px;
-  text-align: center;
-  margin-bottom: 16px;
-  h4 { font-size: 18px; font-weight: 700; color: #23474a; margin-bottom: 4px; }
-}
-.reg-app-codes {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 28px;
-  margin-top: 12px;
-}
-.reg-app-code {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid #eef2f2;
-  border-radius: 10px;
-  text-decoration: none;
-  color: #4a5556;
-  font-size: 13px;
-  font-weight: 600;
-  &:hover { border-color: #45a5ad; }
-}
-.reg-qr {
-  background: #fff;
-}
-
-.pledge-failed { margin-top: 12px; }
-.pledge-retry { padding: 0; vertical-align: baseline; border: 0; }
-
-/* New (2026-11-07): a registered plant or an activity the scheme does not cover, greyed out with the reason. */
-.panel-unavailable { opacity: 0.65; cursor: not-allowed; }
-.panel-unavailable .panel { background: #f2f2f2; }
-.unit-unavailable { background: #fbe5ad; color: #5a4300; font-weight: 600; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }

@@ -57,10 +57,10 @@ describe('DashboardPage', () => {
     expect(el.textContent).toContain('Acme Castings');
     expect(el.textContent).toContain('UDYAM-UP-29-0003915');
     for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).not.toContain('plant-activity-disabled');
-    // 2026-11-17 (the user's Home design): the recommended next level is outlined and ready to apply.
+    // The next level is ready to apply; 2026-11-18 (the user): no "Recommended next" tag or outline.
     expect(card('bronze').textContent).toContain('Ready to apply');
-    expect(card('bronze').classList).toContain('is-rec');
-    expect(card('bronze').textContent).toContain('RECOMMENDED NEXT');
+    expect(card('bronze').classList).not.toContain('is-rec');
+    expect(card('bronze').textContent).not.toContain('RECOMMENDED NEXT');
     for (const level of ['silver', 'gold']) {
       expect(card(level).textContent).toContain('Not started');
       expect(card(level).classList).not.toContain('is-rec');
@@ -144,7 +144,7 @@ describe('DashboardPage', () => {
     await render({ BronzeStatus: 3 }, { IsBronzePaymentDone: 1 });
     expect(card('bronze').textContent).toContain('In progress');
     // 2026-11-18: the level in progress is the recommended next one.
-    expect(card('bronze').classList).toContain('is-rec');
+    expect(card('bronze').classList).not.toContain('is-rec');
     expect(card('silver').classList).toContain('plant-activity-disabled');
     expect(card('gold').classList).toContain('plant-activity-disabled');
     // A locked level says so, and why.
@@ -306,7 +306,7 @@ describe('DashboardPage', () => {
     // The unit card's current level, and the next steps: the incentives open now, and the next level (Gold) outlined.
     expect(el.querySelector('.uc-facts')!.textContent).toContain('Silver');
     expect([...el.querySelectorAll('.ns-card h3')].map((h) => h.textContent)).toEqual(['Avail your Silver incentives', 'Apply for Gold certification']);
-    expect(card('gold').classList).toContain('is-rec');
+    expect(card('gold').classList).not.toContain('is-rec');
   });
 
   it('shows when the current level was certified, its validity end and the next surveillance (2026-11-18)', async () => {
@@ -327,7 +327,7 @@ describe('DashboardPage', () => {
     expect(fact(2)).toEqual(['Next surveillance', formatDate(new Date(on.getFullYear() + 3, on.getMonth(), 1), 'MMM y', 'en-US'), '2nd of 2 visits']);
     expect(card('bronze').querySelector('.lv-status')!.textContent!.trim()).toBe(`Certified · ${day(on)}`);
     // Silver is the recommended next level.
-    expect(card('silver').classList).toContain('is-rec');
+    expect(card('silver').classList).not.toContain('is-rec');
     fixture.destroy();
 
     // Without the date: as before.
