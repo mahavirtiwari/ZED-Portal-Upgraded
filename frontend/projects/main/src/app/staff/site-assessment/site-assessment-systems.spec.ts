@@ -4,6 +4,7 @@ import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { PortalSystem } from '../../portal-system';
+import { ToastService } from '../toast';
 import { RemoteAssessmentsPage } from './remote-assessments';
 import { SaAllotmentPage } from './sa-allotment';
 import { SITE_SYSTEM, isWebLink, todayIso } from './site-assessment.api';
@@ -78,19 +79,22 @@ describe('SaAllotmentPage (consultancy)', () => {
 
   afterEach(() => http.verify());
 
-  it('shows the CO page with ACCEPT / REJECT, RE-ALLOT and REJECTED', () => {
-    expect(el.querySelector('h3')!.textContent).toContain('Allot Consultancy');
+  it('shows the CO page with Accept (Reject in the row menu), Re-allot and Rejected', () => {
+    expect(el.querySelector('h2')!.textContent).toContain('Allot Consultancy');
     const rows = el.querySelectorAll('tbody tr');
-    expect(rows[0].textContent).toContain('ACCEPT');
-    expect(rows[0].textContent).toContain('REJECT');
+    expect(rows[0].textContent).toContain('Accept');
+    expect(rows[0].querySelector('.rm-btn')).not.toBeNull();
     expect(rows[0].textContent).toContain('Milestone 1');
-    expect(rows[1].textContent).toContain('RE-ALLOT');
+    expect(rows[1].textContent).toContain('Re-allot');
+    expect(rows[1].querySelector('.rm-btn')).toBeNull();
     expect(rows[1].textContent).toContain('Co Two');
-    expect(rows[2].textContent).toContain('REJECTED');
+    expect(rows[2].textContent).toContain('Rejected');
+    expect(rows[2].querySelector('button')).toBeNull();
   });
 
   it('allots milestone 1 with the team and the BDS and HAP dates', async () => {
-    button(el, 'ACCEPT')!.click();
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    button(el, 'Accept')!.click();
     await settle(fixture);
     expect(el.querySelector('#HapFromDate')).not.toBeNull();
     choose(el, '#LeadConsultant', 'CC1');
@@ -115,11 +119,11 @@ describe('SaAllotmentPage (consultancy)', () => {
     await settle(fixture);
     http.expectOne('/api/staff/site-assessment/consultancy/allotments').flush({ units, consultants, technicalExperts });
     await settle(fixture);
-    expect(el.textContent).toContain('allotted successfully');
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 allotted', 'Lead consultant: Lead One.');
   });
 
   it('re-allots a later milestone without HAP dates, keeping the current team', async () => {
-    button(el, 'RE-ALLOT')!.click();
+    button(el, 'Re-allot')!.click();
     await settle(fixture);
     expect(el.querySelector('#HapFromDate')).toBeNull();
     expect(el.textContent).toContain('Progress Review 1');
@@ -138,7 +142,7 @@ describe('SaAllotmentPage (consultancy)', () => {
   });
 
   it('requires the dates before sending', async () => {
-    button(el, 'ACCEPT')!.click();
+    button(el, 'Accept')!.click();
     await settle(fixture);
     choose(el, '#LeadConsultant', 'CC1');
     await settle(fixture);
@@ -148,11 +152,14 @@ describe('SaAllotmentPage (consultancy)', () => {
   });
 
   it('rejects with a reason', async () => {
-    (el.querySelector('tbody tr .reject') as HTMLButtonElement).click();
+    (el.querySelector('tbody tr .rm-btn') as HTMLButtonElement).click();
     await settle(fixture);
+    (el.querySelector('.rm-item.danger') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('.modal h3')!.textContent).toContain('Reject unit?');
     choose(el, '#ReasonForRejection', 'Outside our state');
     await settle(fixture);
-    (el.querySelector('.submit-reject') as HTMLButtonElement).click();
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
     const req = http.expectOne('/api/staff/site-assessment/consultancy/allotments/reject');
     expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', reasonForRejection: 'Outside our state' });
     req.flush({ message: 'Unit rejected.' });
@@ -184,7 +191,7 @@ describe('SaAllotmentPage (surveillance)', () => {
   it('shows the surveillance round and date and sends the meeting link', async () => {
     expect(el.textContent).toContain('1st Surveillance');
     expect(el.textContent).toContain('Surveillance Date');
-    button(el, 'ALLOT')!.click();
+    button(el, 'Allot')!.click();
     await settle(fixture);
     expect(el.textContent).toContain('Original Lead');
     // One "Assessor" and no Co Assessor choice, as on the surveillance page.
@@ -222,7 +229,7 @@ describe('SaAllotmentPage (surveillance RE-ALLOT)', () => {
       assessors: [{ userId: 'ASR1', userName: 'Lead One' }, { userId: 'ASR2', userName: 'Two' }],
     });
     await settle(fixture);
-    button(el, 'RE-ALLOT')!.click();
+    button(el, 'Re-allot')!.click();
     await settle(fixture);
     expect((el.querySelector('#SiteAssessorId') as HTMLSelectElement).value).toBe('ASR1');
     const link = el.querySelector('#MeetingLink') as HTMLTextAreaElement;
@@ -244,11 +251,12 @@ describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
     expect(el.querySelector('h2')!.textContent).toContain('Milestone 2');
     expect(el.textContent).toContain('October 30, 2026');
     expect((el.querySelector('a.details') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/consultancy/milestones/ZEDMSME000001/Silver');
-    // As the old list: "View Profile" before VIEW DETAILS, and no consultant role under the certification.
+    // View details on the row, the profile in the row menu; no consultant role under the certification.
     const actions = [...el.querySelectorAll('tbody tr td:last-child a')];
-    expect(actions.map((a) => a.textContent!.trim())).toEqual(['View Profile', 'VIEW DETAILS']);
-    expect(actions[0].getAttribute('href')).toBe('/staff/msme-profile/ZEDMSME000001');
-    expect(actions.every((a) => a.classList.contains('btn-outline-primary') && !!a.closest('.row-actions'))).toBe(true);
+    expect(actions.map((a) => a.textContent!.trim())).toEqual(['View details']);
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View MSME profile']);
     expect(el.textContent).not.toContain('Lead Consultant');
   });
 
@@ -271,7 +279,7 @@ describe('RemoteAssessmentsPage (surveillance)', () => {
     expect((el.querySelector('a.assess') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/remote/ZEDMSME000001/Silver');
     expect(el.textContent).toContain('Remote');
     expect(el.textContent).toContain('Surveillance date');
-    expect(el.textContent).not.toContain('VIEW DETAILS');
+    expect(el.textContent).not.toContain('View details');
   });
 
   it('offers ASSESS only on onsite rows', async () => {

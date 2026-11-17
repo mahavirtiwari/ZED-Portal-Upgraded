@@ -38,14 +38,14 @@ describe('ReportsPage', () => {
 
   it('lists the reports of the role', () => {
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()));
-    expect(rows).toEqual([['1', 'List Of ZED Cases In-Progress', 'DOWNLOAD'], ['2', 'List Of ZED Certified MSME', 'DOWNLOAD']]);
+    expect(rows).toEqual([['1', 'List Of ZED Cases In-Progress', 'Download'], ['2', 'List Of ZED Certified MSME', 'Download']]);
   });
 
   it('downloads by report id only', async () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     (el.querySelector('tbody tr button') as HTMLButtonElement).click();
     await settle();
-    expect(el.textContent).toContain('PLEASE WAIT');
+    expect(el.textContent).toContain('Please wait');
 
     const req = http.expectOne('/api/staff/reports/list-of-registered-msme/download');
     expect(req.request.method).toBe('GET');
@@ -53,7 +53,7 @@ describe('ReportsPage', () => {
     req.flush(new Blob(['xlsx']));
     await settle();
     expect(click).toHaveBeenCalled();
-    expect(el.textContent).not.toContain('PLEASE WAIT');
+    expect(el.textContent).not.toContain('Please wait');
     click.mockRestore();
   });
 

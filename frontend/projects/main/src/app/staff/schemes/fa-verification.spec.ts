@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
+import { ToastService } from '../toast';
 import { FaApplication } from './fa.api';
 import { FaVerificationPage } from './fa-verification';
 
@@ -95,11 +96,12 @@ describe('FaVerificationPage', () => {
     expect(body.get('isVerified')).toBe('Yes');
     expect(body.get('sourceOfValidation')).toBe('Certification body portal');
     expect((body.get('file') as File).name).toBe('shot.pdf');
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     req.flush({ message: 'Saved.' });
     await settle();
     http.expectOne(base).flush([app()]);
     await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Saved.');
+    expect(toast).toHaveBeenCalledWith('Saved.');
   });
 
   it('refuses screenshots that are too large before uploading', async () => {
@@ -143,12 +145,13 @@ describe('FaVerificationPage', () => {
     expect(el.querySelector('#decisionTitle')).toBeNull();
     const req = http.expectOne(`${base}/Bronze/decision`);
     expect(req.request.body).toEqual({ decision: 'approve', comments: '' });
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     req.flush({ message: 'Application approved.' });
     await settle();
     http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 4, IsApproved: 1 } })]);
     await settle();
     expect(el.textContent).toContain('ACCEPTED');
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Application approved.');
+    expect(toast).toHaveBeenCalledWith('Application approved.');
   });
 
   it('rejects only after the comments and the confirmation', async () => {

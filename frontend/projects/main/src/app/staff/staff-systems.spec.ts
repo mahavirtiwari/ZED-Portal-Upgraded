@@ -139,22 +139,26 @@ describe('staff pages per system', () => {
     });
     await settle();
     expect(headers()).toEqual([
-      'Actions', 'ZED ID', 'Plant Name', 'TechnologyName', 'Name Of The ManufacturerMake Or Model NameAgency or Supplier', 'Amount PaidEligible Amount',
-      'Account No.IFSC Code', 'Branch Address',
+      'ZED ID', 'Plant Name', 'TechnologyName', 'Name Of The ManufacturerMake Or Model NameAgency or Supplier', 'Amount PaidEligible Amount',
+      'Account No.IFSC Code', 'Branch Address', 'Actions',
     ]);
     const links = [...el.querySelectorAll('tbody a')].map((a) => [a.textContent!.trim(), a.getAttribute('href')]);
-    expect(links).toEqual([
-      ['View Details', '/staff/consultancy/technology/verification/ZEDMSME000500/Silver'],
-      ['Visit Report', '/api/staff/consultancy/tu/ZEDMSME000500/Silver/report'],
-    ]);
-    expect([...el.querySelectorAll('tbody button')].map((b) => b.textContent!.trim())).toEqual(['Approve']);
+    expect(links).toEqual([['View details', '/staff/consultancy/technology/verification/ZEDMSME000500/Silver']]);
+    expect([...el.querySelectorAll('tbody button.btn')].map((b) => b.textContent!.trim())).toEqual(['Approve']);
+    // Visit report in the row menu (a new tab, as the old link).
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null);
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Visit report']);
+    (el.querySelector('.rm-item') as HTMLButtonElement).click();
+    expect(opened).toHaveBeenCalledWith('/api/staff/consultancy/tu/ZEDMSME000500/Silver/report', '_blank', 'noopener');
   });
 
   it('titles the Consultancy approved list as the live page', async () => {
     await create(NeftTransactionsPage, 'consultancy', { list: 'approved' });
     http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({ transactions: [] });
     await settle();
-    expect(el.querySelector('h3')!.textContent).toBe('Approved Transaction');
+    expect(el.querySelector('h2')!.textContent).toBe('Approved Transaction');
     expect(headers()).toContain('Payment receipt DateApprover Ref No.Approver Amount');
     expect(el.querySelector('.no-data')).toBeTruthy();
   });

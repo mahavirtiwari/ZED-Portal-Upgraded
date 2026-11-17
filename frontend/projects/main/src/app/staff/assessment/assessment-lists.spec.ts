@@ -177,20 +177,44 @@ describe('assessment list pages', () => {
       bronzeAssessors: [{ userId: 'ASSESSOR1', userName: 'Bronze assessor' }],
     });
     await settle(fixture);
-    buttons(el, 'ACCEPT')[0].click();
+    buttons(el, 'Accept')[0].click();
     await settle(fixture);
     const select = el.querySelector<HTMLSelectElement>('#daAssessor')!;
     expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['--Select--', 'Bronze assessor']);
     select.value = select.options[1].value;
     select.dispatchEvent(new Event('change'));
     await settle(fixture);
-    buttons(el, 'ACCEPT').find((b) => b instanceof HTMLInputElement)!.click();
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    buttons(el, 'Allot to assessor')[0].click();
     await settle(fixture);
     const post = http.expectOne('/api/staff/assessment/da-allotment/allot');
     expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', desktopAssessorId: 'ASSESSOR1' });
     post.flush({ message: 'ok' });
     await settle(fixture);
     http.expectOne('/api/staff/assessment/da-allotment').flush({ rows: [], assessors: [], bronzeAssessors: [] });
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 allotted', 'To Bronze assessor.');
+  });
+
+  it('DA Allotment: the tiles filter the list and the SPOC contact is masked', async () => {
+    const fixture = await create(DaAllotmentPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne('/api/staff/assessment/da-allotment').flush({
+      rows: [
+        { ZedId: 'ZEDMSME000001', Certification: 'Bronze', UnitSpocMobileNo: '9876543210', UnitSpocEmailId: 'spoc@unit.in' },
+        { ZedId: 'ZEDMSME000002', Certification: 'Bronze', DesktopAssessorId: 'AS1', DesktopReasonForRejection: 'Busy' },
+      ],
+      assessors: [], bronzeAssessors: [],
+    });
+    await settle(fixture);
+    expect(el.querySelector('tbody')!.textContent).toContain('98•••••210');
+    expect(el.querySelector('tbody')!.textContent).toContain('sp•••••@unit.in');
+    expect(el.querySelector('tbody')!.textContent).not.toContain('9876543210');
+    const tile = [...el.querySelectorAll<HTMLButtonElement>('.lc-btn')].find((b) => b.textContent!.includes('Rejected by the assessor'))!;
+    tile.click();
+    await settle(fixture);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+    expect(el.querySelector('tbody')!.textContent).toContain('ZEDMSME000002');
+    expect(tile.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('DA Allotment: shows the API message when a rejection is refused', async () => {
@@ -200,20 +224,26 @@ describe('assessment list pages', () => {
       rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Bronze' }], assessors: [], bronzeAssessors: [],
     });
     await settle(fixture);
-    buttons(el, 'REJECT')[0].click();
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
     await settle(fixture);
-    buttons(el, 'REJECT').find((b) => b instanceof HTMLInputElement)!.click();
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View MSME profile', 'Reject']);
+    ([...el.querySelectorAll<HTMLButtonElement>('.rm-item')].find((b) => b.textContent!.trim() === 'Reject')!).click();
     await settle(fixture);
-    expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please enter reason for rejection.');
+    expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
+    el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter reason for rejection.');
     const reason = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
     reason.value = 'No capacity';
     reason.dispatchEvent(new Event('input'));
     await settle(fixture);
-    buttons(el, 'REJECT').find((b) => b instanceof HTMLInputElement)!.click();
+    el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle(fixture);
-    http.expectOne('/api/staff/assessment/da-allotment/reject').flush({ title: 'This assessment is not allotted to your agency or can no longer be rejected.' }, { status: 400, statusText: 'Bad Request' });
+    const post = http.expectOne('/api/staff/assessment/da-allotment/reject');
+    expect(post.request.body.reasonForRejection).toBe('No capacity');
+    post.flush({ title: 'This assessment is not allotted to your agency or can no longer be rejected.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);
-    expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('can no longer be rejected');
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('can no longer be rejected');
   });
 
   it('Desktop Verification: accept before assess', async () => {
@@ -227,9 +257,10 @@ describe('assessment list pages', () => {
     });
     await settle(fixture);
     expect(el.querySelectorAll('a[href^="/staff/assessment/da-details/"]').length).toBe(1);
-    buttons(el, 'ACCEPT')[0].click();
+    buttons(el, 'Accept')[0].click();
     await settle(fixture);
-    buttons(el, 'ACCEPT').find((b) => b instanceof HTMLInputElement)!.click();
+    expect(el.querySelector('.modal')!.textContent).toContain('Accept assessment?');
+    el.querySelector<HTMLButtonElement>('.modal .dv-ok')!.click();
     await settle(fixture);
     const post = http.expectOne('/api/staff/assessment/da-verification/accept');
     expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze' });

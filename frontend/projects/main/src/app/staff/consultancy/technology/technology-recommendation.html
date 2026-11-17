@@ -1,14 +1,8 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Recommended Technologies · {{ zedId }} ({{ level }})</h3>
-    <p class="page-sub">Technologies the lead consultant recommends to the unit after Handholding milestone 3.</p>
-  </div>
-</div>
+<!-- 2026-11-17 (approved staff redesign): the page head with crumbs; a completed recommendation as a toast. -->
+<zed-page-head [crumbs]="crumbs" [title]="'Recommended technologies · ' + zedId + ' (' + level + ')'"
+               subtitle="Technologies the lead consultant recommends to the unit after Handholding milestone 3." />
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
-}
-@if (success()) {
-  <div class="alert alert-success" role="status">{{ success() }}</div>
 }
 
 <ng-template #description let-t>

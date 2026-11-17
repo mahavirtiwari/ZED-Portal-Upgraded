@@ -1,11 +1,12 @@
-<!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the meeting card above the tabs (pills). -->
+<!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the meeting card above the tabs (pills).
+     2026-11-17 (approved staff redesign): "Home > list > ZED ID" crumbs and the light head buttons. -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-ph" (click)="goBack()">Back</button>
   @if (meetingMode()) {
-    <button type="button" class="btn btn-outline-secondary btn-sm refresh" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
-    <a class="btn btn-outline-primary btn-sm assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">VIEW REPORT</a>
+    <button type="button" class="btn btn-ph refresh" (click)="refresh()">Refresh</button>
+    <a class="btn btn-outline-primary assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">View report</a>
   } @else {
-    <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    <button type="button" class="btn btn-ph refresh-link" (click)="refresh()">Refresh</button>
   }
 </zed-page-head>
 @if (data()) {
@@ -1154,6 +1155,11 @@
     </div>
   </div>
   <div class="modal-backdrop show"></div>
+}
+
+@if (photoToRemove()) {
+  <zed-confirm-dialog [ask]="{ title: 'Remove this photo?', message: 'The photo is deleted from this assessment.', confirmLabel: 'Remove', danger: true }"
+                      (confirmed)="confirmRemovePhoto()" (cancel)="photoToRemove.set(null)" />
 }
 
 @if (loading()) {

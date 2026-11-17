@@ -1,17 +1,10 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Financial Assistance · {{ zedId }}</h3>
-    <p class="page-sub">The application's details and documents: validate each document, then accept or reject the application.</p>
-  </div>
-  <div class="page-actions">
-    <a class="btn btn-default" routerLink="/staff/financial-assistance">Back to list</a>
-  </div>
-</div>
+<!-- 2026-11-17 (approved staff redesign): the page head with crumbs and the light button; completed actions as toasts. -->
+<zed-page-head [crumbs]="crumbs" [title]="'Financial assistance · ' + zedId"
+               subtitle="The application's details and documents: validate each document, then accept or reject the application.">
+  <a class="btn btn-ph" routerLink="/staff/financial-assistance">Back to list</a>
+</zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
-}
-@if (success()) {
-  <div class="alert alert-success" role="status">{{ success() }}</div>
 }
 
 @if (applications().length > 1) {

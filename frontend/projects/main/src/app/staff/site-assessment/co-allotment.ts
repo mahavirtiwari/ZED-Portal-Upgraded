@@ -1,9 +1,17 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, Row, SiteAssessmentApi, todayIso } from './site-assessment.api';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PagedView, PagerComponent, searchRows } from '../pager';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { ToastService } from '../toast';
+import { maskEmail, maskMobile } from '../users/user-display';
 
 interface CoForm {
   unit: Row;
@@ -17,11 +25,6 @@ interface CoForm {
   hapToDate: string;
 }
 
-interface RejectForm {
-  unit: Row;
-  reason: string;
-}
-
 /** Names of the review stage per milestone, as the old pop-up labelled the BDS row. */
 export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Study', 2: 'Progress Review 1', 3: 'Progress Review 2' };
 
@@ -30,96 +33,102 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
  * Views/Assessment/SaAllotment.cshtml: ACCEPT / RE-ALLOT a unit's milestone with the lead consultant, co-consultants,
  * technical experts, BDS dates and (milestone 1) HAP dates; REJECT with a reason. Multi-selects are plain checkbox
  * lists (no select2); the lead is never offered as a co-consultant.
+ * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the
+ * milestone as chips, one search box, the SPOC's mobile and e-mail masked, Accept / Re-allot on the row and Reject in its
+ * menu (the reason in the confirmation pop-up), a toast when done.</p>
  */
 @Component({
   selector: 'zed-staff-co-allotment',
-  imports: [FormsModule, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">Allot Consultancy</h3>
-        <p class="page-sub">Accept the milestones allotted to your organisation and choose the consultancy team and the visit dates, or reject them.</p>
-      </div>
-      <div class="page-actions">
-        <button type="button" class="refresh-link btn btn-default" (click)="load()">
-          <img src="Images/svgicons/refresh.svg" alt="" />
-          <span>Refresh Data</span>
-        </button>
-      </div>
+    <zed-page-head [crumbs]="crumbs" title="Allot Consultancy"
+                   subtitle="Accept the milestones allotted to your organisation and choose the consultancy team and the visit dates, or reject them.">
+      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" label="Milestones by status" (pick)="pickStage($event.key)" />
+
+    <div class="zed-card co-filters">
+      <input type="search" id="co-allot-search" class="form-control co-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or consultant"
+             aria-label="Search ZED ID, unit, SPOC or consultant" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <zed-chip-filter label="Milestone" [chips]="milestoneChips()" [value]="milestone()" (valueChange)="milestone.set($event)" />
     </div>
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
 
-    <zed-list-search [(value)]="search" placeholder="Search units" inputId="co-allot-search" [found]="view.total()" />
+    <div class="list-card">
     <div class="table-responsive">
-      <table class="table table-bordered table-zed">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 140px">Action(s)</th>
-            <th class="text-center">Desired Certification</th>
-            <th class="text-center">Milestone</th>
-            <th>Unit Details</th>
-            <th>Unit SPOC Details</th>
-            <th>Consultant Details</th>
+            <th>Unit</th>
+            <th>Desired level</th>
+            <th>Milestone</th>
+            <th>Unit SPOC</th>
+            <th>Consultants</th>
+            <th>Status</th>
+            <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
-            <tr>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
-                  @if (s['SiteAssessorId']) {
-                    <button type="button" class="btn btn-outline-primary allot" (click)="open(s)">RE-ALLOT</button>
-                  } @else if (!s['ReasonForRejection']) {
-                    <button type="button" class="btn btn-primary allot" (click)="open(s)">ACCEPT</button>
-                    <button type="button" class="btn btn-outline-danger reject" (click)="openReject(s)">REJECT</button>
-                  } @else {
-                    <span class="status-badge is-rejected">REJECTED</span>
-                  }
-                </div>
+            <tr [class.co-flag]="!!s['ReasonForRejection'] && !s['SiteAssessorId']">
+              <td class="unit unit-cell">
+                <b>{{ s['PUnitName'] }}</b>
+                <span class="dash-text-clr co-id">{{ s['ZedId'] }}</span>
+                <small class="co-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
               </td>
-              <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
-              <td class="text-center"><span class="zed-chip">Milestone {{ s['NcCount'] }}</span></td>
-              <td class="unit">
-                <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
-                <div><strong>{{ s['PUnitName'] }}</strong></div>
-                <div class="muted">{{ s['UnitAddress'] }}</div>
-              </td>
-              <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
+              <td><span [class]="'lv-tag lv-' + str(s['Certification']).toLowerCase()">{{ s['Certification'] }}</span></td>
+              <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span></td>
+              <!-- Masked in the list; the MSME profile has the full values. -->
+              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
               <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
               <td class="consultants">
                 <div><div class="muted">{{ s['SiteAssessorId'] }}</div>{{ s['SaAssessorName'] }}</div>
                 <div><div class="muted">{{ s['CoAssessorId'] }}</div>{{ s['CoConsultantNames'] }}</div>
                 <div><div class="muted">{{ s['TechExpert'] }}</div>{{ s['TechnicalExpertNames'] }}</div>
               </td>
+              <td>
+                @if (s['SiteAssessorId']) { <span class="chip is-good">Allotted</span> }
+                @else if (s['ReasonForRejection']) { <span class="chip is-bad" [title]="str(s['ReasonForRejection'])">Rejected</span> }
+                @else { <span class="chip is-warn">Waiting</span> }
+              </td>
+              <td class="text-end text-nowrap">
+                @if (s['SiteAssessorId']) {
+                  <button type="button" class="btn co-act re-allot allot" (click)="open(s)">Re-allot</button>
+                } @else if (!s['ReasonForRejection']) {
+                  <button type="button" class="btn btn-primary co-act allot" (click)="open(s)">Accept</button>
+                  <zed-row-menu [items]="menu" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
+                }
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
+              <td colspan="7" style="padding: 0px"><div class="no-data">{{ busy() ? 'Loading…' : 'No Data' }}</div></td>
             </tr>
           }
         </tbody>
       </table>
     </div>
     <zed-pager [pager]="view" />
+    </div>
 
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="co-allot-title" (click)="close()">
         <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content">
+          <div class="modal-content co-pop">
             <div class="modal-header justify-content-between">
-              <h5 class="modal-title" id="co-allot-title">Allot Unit</h5>
+              <div>
+                <h3 class="co-pop-title" id="co-allot-title">{{ f.unit['SiteAssessorId'] ? 'Re-allot unit' : 'Allot unit' }}</h3>
+                <p class="co-pop-sub">{{ f.unit['ZedId'] }} · {{ f.unit['Certification'] }}, Milestone {{ f.milestone }}@if (f.unit['PUnitName']) { · {{ f.unit['PUnitName'] }} }</p>
+              </div>
               <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
             </div>
             <div class="modal-body">
-              <p class="mb-3"><strong class="dash-text-clr">{{ f.unit['ZedId'] }}</strong> ({{ f.unit['Certification'] }}, Milestone {{ f.milestone }})</p>
               <div class="row mb-3">
-                <div class="col-sm-4"><div class="stage">{{ stage(f.milestone) }}</div></div>
+                <div class="col-sm-4"><div class="stage">{{ stageLabel(f.milestone) }}</div></div>
                 <div class="col-sm-4">
                   <label class="form-label" for="BdsFromDate">From<span class="req">*</span></label>
                   <input type="date" id="BdsFromDate" name="BdsFromDate" class="form-control" [min]="minDate" [(ngModel)]="f.bdsFromDate" />
@@ -181,8 +190,8 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
               }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
-              <button type="button" class="btn btn-primary submit" [disabled]="busy()" (click)="allot(f)">ALLOT</button>
+              <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
+              <button type="button" class="btn btn-primary submit" [disabled]="busy()" (click)="allot(f)">Allot</button>
             </div>
           </div>
         </div>
@@ -190,29 +199,9 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
       <div class="modal-backdrop show"></div>
     }
 
-    @if (rejectForm(); as r) {
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="co-reject-title" (click)="rejectForm.set(null)">
-        <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content">
-            <div class="modal-header justify-content-between">
-              <h5 class="modal-title" id="co-reject-title">Reject Unit</h5>
-              <button type="button" class="btn-close" aria-label="Close" (click)="rejectForm.set(null)"></button>
-            </div>
-            <div class="modal-body">
-              <label class="form-label" for="ReasonForRejection">Reason for Rejection<span class="req">*</span></label>
-              <textarea id="ReasonForRejection" name="ReasonForRejection" class="form-control" maxlength="100" rows="3" [(ngModel)]="r.reason"></textarea>
-              @if (formError()) {
-                <div class="alert alert-danger mt-2 mb-0" role="alert">{{ formError() }}</div>
-              }
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="rejectForm.set(null)">CANCEL</button>
-              <button type="button" class="btn btn-danger submit-reject" [disabled]="busy()" (click)="reject(r)">REJECT</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-backdrop show"></div>
+    @if (rejectFor(); as r) {
+      <zed-confirm-dialog [ask]="rejectAsk(r)" [busy]="busy()" [failed]="formError()" inputId="ReasonForRejection"
+                          (confirmed)="reject(r, $event)" (cancel)="rejectFor.set(null)" />
     }
 
     @if (busy()) {
@@ -225,28 +214,68 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
     }
   `,
   styles: `
+    .co-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; margin-bottom: 14px; }
+    .co-q { flex: 1 1 260px; max-width: 420px; }
     .unit { min-width: 200px; }
+    .co-id { display: block; font-size: 12.5px; font-weight: 700; }
+    .co-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
     .consultants > div + div { margin-top: 6px; }
+    .consultants .muted { font-size: 12px; color: #7a8a8b; }
+    tr.co-flag > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
+    .co-act { min-width: 82px; margin-right: 6px; font-weight: 600; }
+    .co-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
+    .co-act.re-allot:hover { background: #ffe6b5; }
+    .co-pop { border: 0; border-radius: 12px; }
+    .co-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .co-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
     .stage { background: #eef6f6; color: #23474a; font-weight: 600; border-radius: 8px; padding: 8px 10px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class CoAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
+  private readonly toast = inject(ToastService);
+  protected readonly crumbs = staffCrumbs({ label: 'Allot Consultancy' });
+  protected readonly maskEmail = maskEmail;
+  protected readonly maskMobile = maskMobile;
+  protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+  protected readonly menu: RowMenuItem[] = [{ key: 'reject', label: 'Reject', danger: true }];
 
   protected readonly units = signal<Row[]>([]);
-  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  /** The search box above the list (any column). */
+  /** The tile chosen ('waiting' / 'allotted' / 'rejected'; null: every unit) and the milestone chip ('' all). */
+  protected readonly stage = signal<string | null>(null);
+  protected readonly milestone = signal('');
+  private readonly stageOf = (r: Row) => (r['SiteAssessorId'] ? 'allotted' : r['ReasonForRejection'] ? 'rejected' : 'waiting');
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.units();
+    const by = (k: string) => rows.filter((r) => this.stageOf(r) === k).length;
+    return [
+      { key: 'all', label: 'All milestones', value: rows.length },
+      { key: 'waiting', label: 'Waiting for allotment', value: by('waiting'), tone: 'warn' },
+      { key: 'allotted', label: 'Allotted', value: by('allotted'), tone: 'good' },
+      { key: 'rejected', label: 'Rejected', value: by('rejected'), tone: 'bad' },
+    ];
+  });
+  protected readonly milestoneChips = computed<FilterChip[]>(() => {
+    const rows = this.units();
+    return [{ key: '', label: 'All', count: rows.length },
+      ...['1', '2', '3'].map((m) => ({ key: m, label: 'Milestone ' + m, count: rows.filter((r) => String(r['NcCount'] ?? '') === m).length }))];
+  });
+  /** The search box above the list (any column). Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly search = signal('');
-  protected readonly view = new PagedView(() => searchRows(this.units(), this.search()));
+  private readonly shown = computed(() => {
+    const stage = this.stage();
+    const m = this.milestone();
+    return this.units().filter((r) => (!stage || this.stageOf(r) === stage) && (!m || String(r['NcCount'] ?? '') === m));
+  });
+  protected readonly view = new PagedView(() => searchRows(this.shown(), this.search()));
   protected readonly consultants = signal<Assessor[]>([]);
   protected readonly experts = signal<Assessor[]>([]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly formError = signal('');
   protected readonly form = signal<CoForm | null>(null);
-  protected readonly rejectForm = signal<RejectForm | null>(null);
+  protected readonly rejectFor = signal<Row | null>(null);
   protected readonly minDate = todayIso();
   protected readonly coCandidates = (leadId: string) => this.consultants().filter((a) => a.userId !== leadId);
 
@@ -254,7 +283,26 @@ export class CoAllotmentPage {
     void this.load();
   }
 
-  protected stage(milestone: number): string {
+  /** A tile filters the list; "All milestones" (or the chosen tile again) shows every one. */
+  protected pickStage(key: string | undefined): void {
+    this.stage.set(!key || key === 'all' || key === this.stage() ? null : key);
+  }
+
+  protected act(s: Row, key: string): void {
+    if (key === 'reject') this.openReject(s);
+  }
+
+  protected rejectAsk(s: Row): ConfirmAsk {
+    return {
+      title: 'Reject unit?',
+      message: `${this.str(s['ZedId'])} (${this.str(s['Certification'])}, Milestone ${this.str(s['NcCount'])}) goes back to the ZED team with your reason.`,
+      confirmLabel: 'Reject',
+      danger: true,
+      reason: { label: 'Reason for rejection', maxLength: 100, requiredMessage: 'Please enter the reason for rejection.' },
+    };
+  }
+
+  protected stageLabel(milestone: number): string {
     return STAGE_LABEL[milestone] ?? STAGE_LABEL[1];
   }
 
@@ -274,7 +322,6 @@ export class CoAllotmentPage {
   }
 
   protected open(unit: Row): void {
-    this.success.set('');
     this.formError.set('');
     const ids = (v: unknown) => (Array.isArray(v) ? v.map(String) : []);
     this.form.set({
@@ -291,9 +338,8 @@ export class CoAllotmentPage {
   }
 
   protected openReject(unit: Row): void {
-    this.success.set('');
     this.formError.set('');
-    this.rejectForm.set({ unit, reason: '' });
+    this.rejectFor.set(unit);
   }
 
   protected close(): void {
@@ -337,7 +383,8 @@ export class CoAllotmentPage {
         }),
       );
       this.form.set(null);
-      this.success.set(`${f.unit['ZedId']} allotted successfully.`);
+      const lead = this.consultants().find((a) => a.userId === f.leadConsultantId)?.userName;
+      this.toast.success(`${f.unit['ZedId']} allotted`, lead ? `Lead consultant: ${lead}.` : null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;
@@ -347,17 +394,17 @@ export class CoAllotmentPage {
     await this.load();
   }
 
-  protected async reject(r: RejectForm): Promise<void> {
-    if (!r.reason.trim()) {
+  protected async reject(unit: Row, reason: string): Promise<void> {
+    if (!reason.trim()) {
       this.formError.set('Please enter the reason for rejection.');
       return;
     }
     this.busy.set(true);
     this.formError.set('');
     try {
-      await firstValueFrom(this.api.coReject(String(r.unit['ZedId']), String(r.unit['Certification']), r.reason.trim()));
-      this.rejectForm.set(null);
-      this.success.set(`${r.unit['ZedId']} rejected.`);
+      await firstValueFrom(this.api.coReject(String(unit['ZedId']), String(unit['Certification']), reason.trim()));
+      this.rejectFor.set(null);
+      this.toast.success(`${unit['ZedId']} rejected`);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

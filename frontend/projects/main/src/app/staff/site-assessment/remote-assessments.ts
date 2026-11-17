@@ -1,11 +1,16 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { FormsModule } from '@angular/forms';
+import { PagedView, PagerComponent, searchRows } from '../pager';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { maskEmail, maskMobile } from '../users/user-display';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -18,27 +23,33 @@ import { ListCount, ListCounts } from '../list-counts';
  * Consultancy build: "Milestone n" lists (route parameter `milestone`, 1-3; old RemoteAssessments/{n}) of the
  * consultant's units with the BDS/HAP dates; View Profile opens the unit's profile and VIEW DETAILS the milestone review page.
  * </p>
+ * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the mode as
+ * chips, one search box, the SPOC's mobile and e-mail masked, at most two buttons on a row (the milestone lists: View details
+ * and the profile in the row menu).</p>
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
-  imports: [RouterLink, PagerComponent, ListSearchComponent, PageHead, ListCounts],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu],
   host: { class: 'list-v2 d-block' },
   template: `
-    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card. -->
-    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: title }]" [title]="title">
-      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
+      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
     </zed-page-head>
-    <zed-list-counts [counts]="consultancy ? milestoneCounts() : counts()" />
+    <zed-list-counts [counts]="consultancy ? milestoneCounts() : counts()" [selected]="stage() ?? 'all'" label="Units by status" (pick)="pickStage($event.key)" />
+
+    <div class="zed-card ra-filters">
+      <input type="search" id="remote-search" class="form-control ra-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or agency"
+             aria-label="Search ZED ID, unit, SPOC or agency" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      @if (!consultancy) {
+        <zed-chip-filter label="Mode" [chips]="modeChips()" [value]="modeFilter()" (valueChange)="modeFilter.set($event)" />
+      }
+    </div>
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
     <div class="list-card">
-    <div class="list-card-head">
-      <b>Units</b>
-      <zed-list-search [(value)]="search" placeholder="Search units" inputId="remote-search" [found]="view.total()" />
-    </div>
     @if (consultancy) {
       <div class="table-responsive">
         <table class="table table-zed">
@@ -50,7 +61,7 @@ import { ListCount, ListCounts } from '../list-counts';
               <th>Consultant organisation</th>
               <th>Site visit dates</th>
               <th>Status</th>
-              <th style="width: 150px"><span class="visually-hidden">Action(s)</span></th>
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -58,10 +69,12 @@ import { ListCount, ListCounts } from '../list-counts';
               <tr>
                 <td class="unit unit-cell">
                   <b>{{ s['EnterpriseName'] }}</b>
-                  <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
+                  <span class="dash-text-clr ra-id">{{ s['ZedId'] }}</span>
+                  <small class="ra-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
                 </td>
                 <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
-                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
+                <!-- Masked in the list; the MSME profile has the full values. -->
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
                 @if (milestone === 1) {
                   <td>BDS: {{ s['BdsToDate'] }}<span class="sub">HAP: {{ s['HapToDate'] }}</span></td>
@@ -69,16 +82,14 @@ import { ListCount, ListCounts } from '../list-counts';
                   <td>{{ s['BdsToDate'] }}</td>
                 }
                 <td><span [class]="'chip ' + milestoneState(s).tone">{{ milestoneState(s).label }}</span></td>
-                <td>
-                  <div class="row-actions">
-                    <a class="btn btn-outline-primary profile" [routerLink]="['/staff/msme-profile', s['ZedId']]">View Profile</a>
-                    <a class="btn btn-outline-primary details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
-                  </div>
+                <td class="text-end text-nowrap">
+                  <a class="btn btn-primary ra-act details" [routerLink]="reviewLink(s)">View details</a>
+                  <zed-row-menu [items]="profileMenu" [label]="'More actions for ' + s['ZedId']" (picked)="openProfile(s)" />
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
+                <td colspan="7" style="padding: 0px"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
               </tr>
             }
           </tbody>
@@ -97,7 +108,7 @@ import { ListCount, ListCounts } from '../list-counts';
               <th>Mode</th>
               <th>{{ surveillance ? 'Surveillance date' : 'Assessment date' }}</th>
               <th>Status</th>
-              <th style="width: 150px"><span class="visually-hidden">Action(s)</span></th>
+              <th class="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -105,46 +116,48 @@ import { ListCount, ListCounts } from '../list-counts';
               <tr>
                 <td class="unit unit-cell">
                   <b>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</b>
-                  <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
+                  <span class="dash-text-clr ra-id">{{ s['ZedId'] }}</span>
+                  <small class="ra-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
                 </td>
                 <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
-                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
+                <!-- Masked in the list; the MSME profile has the full values. -->
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
-                <td><span class="zed-chip">{{ mode(s) }}</span></td>
-                <td>{{ s['AssessmentDate'] }}</td>
+                <td><span class="chip is-info">{{ mode(s) }}</span></td>
+                <td class="text-nowrap">{{ s['AssessmentDate'] }}</td>
                 <td><span [class]="'chip ' + stateOf(s).tone">{{ stateOf(s).label }}</span></td>
-                <td>
-                  <div class="row-actions">
+                <td class="text-end text-nowrap">
+                  <div class="ra-btns">
                     @if (surveillance && s['OnsiteVisit']) {
                       <!-- 2026-11-14 (Onsite surveillance): assessed in the assessor app; reviewed here after its closing meeting. -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">REVIEW &amp; SUBMIT</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Review &amp; submit</a>
                       } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
-                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">REVIEW NC</a>
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">Review NC</a>
                       }
                     } @else if (surveillance) {
                       <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
                       @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Assess</a>
                       }
                     } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                      <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
+                      <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">View details</a>
                       <!-- V4: after the SA app's closing meeting the lead assessor reviews and final-submits here (old SaDetails page). -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">REVIEW &amp; SUBMIT</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Review &amp; submit</a>
                       } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
                         <!-- An NC round: the MSME's answers are reviewed and final-submitted on the same page (NC tab). -->
-                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">REVIEW NC</a>
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">Review NC</a>
                       }
                     } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
-                      <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
+                      <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Assess</a>
                     }
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" style="padding: 0px"><div class="no-data">No Data</div></td>
+                <td colspan="8" style="padding: 0px"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
               </tr>
             }
           </tbody>
@@ -154,22 +167,25 @@ import { ListCount, ListCounts } from '../list-counts';
     }
     </div>
 
-    @if (loading()) {
-      <div class="loadingdiv" role="status" aria-live="polite">
-        <div class="text-center text-white">
-          <div class="spinner-border text-light"></div>
-          <div><small>Please wait ...</small></div>
-        </div>
-      </div>
-    }
   `,
   styles: `
+    .ra-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; margin-bottom: 14px; }
+    .ra-q { flex: 1 1 260px; max-width: 420px; }
     .unit { min-width: 220px; }
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .ra-id { display: block; font-size: 12.5px; font-weight: 700; }
+    .ra-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
+    .ra-btns { display: inline-flex; gap: 6px; }
+    .ra-btns .btn, .ra-act { font-weight: 600; }
+    .ra-act { margin-right: 6px; }
   `,
 })
 export class RemoteAssessmentsPage {
   private readonly api = inject(SiteAssessmentApi);
+  private readonly router = inject(Router);
+  protected readonly maskEmail = maskEmail;
+  protected readonly maskMobile = maskMobile;
+  protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+  protected readonly profileMenu: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
   private readonly legacyUrl = signal('');
   private readonly system = inject(SITE_SYSTEM);
 
@@ -184,6 +200,10 @@ export class RemoteAssessmentsPage {
 
   protected readonly rows = signal<Row[]>([]);
   protected readonly title = this.consultancy ? `Milestone ${this.milestone}` : this.surveillance ? 'Surveillance assessments (site)' : 'Remote and onsite assessments';
+  protected readonly crumbs = staffCrumbs({ label: this.title });
+  /** The tile chosen (its key; null: every unit) and the mode chip ('' all). */
+  protected readonly stage = signal<string | null>(null);
+  protected readonly modeFilter = signal('');
 
   protected lc(v: unknown): string {
     return String(v ?? '').toLowerCase();
@@ -210,27 +230,56 @@ export class RemoteAssessmentsPage {
     const rows = this.rows();
     const by = (label: string) => rows.filter((r) => this.milestoneState(r).label === label).length;
     return [
-      { label: 'Allotted to me', value: rows.length },
-      { label: 'Site visit due', value: by('Site visit due') },
-      { label: 'To review', value: by('To review'), tone: 'warn' },
-      { label: 'In progress', value: by('In progress') },
+      { key: 'all', label: 'Allotted to me', value: rows.length },
+      { key: 'Site visit due', label: 'Site visit due', value: by('Site visit due') },
+      { key: 'To review', label: 'To review', value: by('To review'), tone: 'warn' },
+      { key: 'In progress', label: 'In progress', value: by('In progress') },
     ];
   });
+
+  /** The tile of a row: its milestone state (consultancy), else to review (status 13 / 14) or waiting for the assessment. */
+  private stageOf(r: Row): string {
+    if (this.consultancy) return this.milestoneState(r).label;
+    const st = +(r['CertificationStatus'] ?? 0);
+    return st === 13 || st === 14 ? 'review' : 'open';
+  }
 
   protected readonly counts = computed<ListCount[]>(() => {
     const rows = this.rows();
     const st = (r: Row) => +(r['CertificationStatus'] ?? 0);
+    const review = rows.filter((r) => st(r) === 13 || st(r) === 14).length;
     return [
-      { label: 'Allotted to me', value: rows.length },
-      { label: 'Remote', value: rows.filter((r) => this.mode(r) === 'Remote').length },
-      { label: 'Onsite', value: rows.filter((r) => this.mode(r) === 'Onsite').length },
-      { label: 'To review', value: rows.filter((r) => st(r) === 13 || st(r) === 14).length, tone: 'warn' },
+      { key: 'all', label: 'Allotted to me', value: rows.length },
+      { key: 'open', label: this.surveillance ? 'To assess' : 'To assess or scheduled', value: rows.length - review, tone: 'info' },
+      { key: 'review', label: 'To review', value: review, tone: 'warn' },
     ];
   });
-  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  /** The search box above the list (any column). */
+
+  /** The units by mode (Remote / Onsite / Desktop), as chips. */
+  protected readonly modeChips = computed<FilterChip[]>(() => {
+    const rows = this.rows();
+    return [{ key: '', label: 'All', count: rows.length },
+      ...['Remote', 'Onsite', 'Desktop'].map((m) => ({ key: m, label: m, count: rows.filter((r) => this.mode(r) === m).length }))
+        .filter((c) => c.count > 0 || c.key !== 'Desktop')];
+  });
+
+  private readonly shown = computed(() => {
+    const stage = this.stage();
+    const m = this.consultancy ? '' : this.modeFilter();
+    return this.rows().filter((r) => (!stage || this.stageOf(r) === stage) && (!m || this.mode(r) === m));
+  });
+  /** The search box above the list (any column). Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly search = signal('');
-  protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
+  protected readonly view = new PagedView(() => searchRows(this.shown(), this.search()));
+
+  /** A tile filters the list; "Allotted to me" (or the chosen tile again) shows every unit. */
+  protected pickStage(key: string | undefined): void {
+    this.stage.set(!key || key === 'all' || key === this.stage() ? null : key);
+  }
+
+  protected openProfile(s: Row): void {
+    void this.router.navigate(['/staff/msme-profile', this.str(s['ZedId'])]);
+  }
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

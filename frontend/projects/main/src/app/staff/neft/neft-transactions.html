@@ -1,28 +1,31 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ title }}</h3>
-    <p class="page-sub">{{ consultancy ? 'Technology upgradation' : 'Financial assistance' }} reimbursements of the units {{ allStates ? 'of every state' : 'in your area' }}, paid by NEFT.</p>
-  </div>
-</div>
+<!-- 2026-11-17 (approved staff redesign, "same look"): the page head, the counts, the search, the list in one card with the
+     actions at the end (Approve and View details on the row, the TU report in the row menu), a toast when approved. -->
+<zed-page-head [crumbs]="crumbs" [title]="title"
+               [subtitle]="(consultancy ? 'Technology upgradation' : 'Financial assistance') + ' reimbursements of the units ' + (allStates ? 'of every state' : 'in your area') + ', paid by NEFT.'">
+  <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+</zed-page-head>
 @if (neftAdmin) {
   <!-- One NEFT Admin (2026-11-07): financial assistance here, Technology Upgradation on the Consultancy portal. -->
   <zed-portal-switch title="Reimbursements" [portals]="neftPortals" [labels]="neftLabels" />
 }
+<zed-list-counts [counts]="counts()" [selected]="filterable ? (stage() ?? 'all') : undefined" label="Transactions" (pick)="pickStage($event.key)" />
+
+<div class="zed-card nf-filters">
+  <input type="search" id="neft-search" class="form-control nf-q" maxlength="50" placeholder="Search ZED ID, unit, reference or account"
+         aria-label="Search ZED ID, unit, reference or account" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+</div>
+
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 }
-@if (success()) {
-  <div class="alert alert-success" role="status">{{ success() }}</div>
-}
-<zed-list-search [(value)]="search" placeholder="Search transactions" inputId="neft-search" [found]="view.total()" />
+<div class="list-card">
 <div class="table-responsive">
-  <table class="table table-zed table-bordered">
+  <table class="table table-zed">
     <thead>
       @if (consultancy) {
         <!-- ZEDCS_CONSULTANCY Frontend/Neft/NewTransactions.cshtml and ApprovedTransactions.cshtml -->
         <tr>
-          <th class="text-center" style="width: 140px">Actions</th>
-          <th class="text-center">ZED ID</th>
+          <th>ZED ID</th>
           <th>Plant Name</th>
           <th>TechnologyName</th>
           <th>Name Of The Manufacturer<br />Make Or Model Name<br />Agency or Supplier</th>
@@ -33,6 +36,7 @@
             <th class="text-center">Payment receipt Date<br />Approver Ref No.<br />Approver Amount</th>
             <th>Comments</th>
           }
+          <th class="text-end">Actions</th>
         </tr>
       } @else if (list === 'rejected') {
         <!-- Frontend/Neft/RejectedTransactions.cshtml -->
@@ -50,10 +54,7 @@
         </tr>
       } @else {
         <tr>
-          @if (list === 'new') {
-            <th class="text-center" style="width: 140px">Actions</th>
-          }
-          <th class="text-center">ZED ID</th>
+          <th>ZED ID</th>
           <th>Enterprise Name</th>
           <th>Category Of Certificate</th>
           <th>Name of the Certificate<br />Certification Agency</th>
@@ -68,6 +69,9 @@
           @if (list !== 'new') {
             <th>Comments</th>
           }
+          @if (list === 'new') {
+            <th class="text-end">Action</th>
+          }
         </tr>
       }
     </thead>
@@ -75,21 +79,7 @@
       @for (t of view.page(); track t.TransactionId) {
         @if (consultancy) {
           <tr>
-            <td class="text-center">
-              <div class="row-actions justify-content-center">
-                @if (list === 'new') {
-                  @if (t.VerificationStatus === 6) {
-                    <span class="status-badge is-success">APPROVED</span>
-                  }
-                  @if (t.VerificationStatus === 4) {
-                    <button type="button" class="btn btn-primary" (click)="open(t)">Approve</button>
-                  }
-                }
-                <a [routerLink]="tuLink(t)" class="btn btn-outline-primary">View Details</a>
-                <a [href]="reportLink(t)" target="_blank" rel="noopener" class="btn btn-outline-primary">Visit Report</a>
-              </div>
-            </td>
-            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td><strong class="dash-text-clr">{{ t.ZedId }}</strong></td>
             <td>{{ t.PUnitName }}</td>
             <td>{{ t.TechnologyName }}</td>
             <td class="cell-lines"><span>{{ t.NameOfTheManufacturer }}</span><span>{{ t.MakeOrModelName }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
@@ -100,15 +90,27 @@
               <td class="cell-lines text-center"><span>{{ t.ApproverDateOfReceiptOfPayment }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
               <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
             }
+            <td class="text-end text-nowrap">
+              @if (list === 'new') {
+                @if (t.VerificationStatus === 6) {
+                  <span class="chip is-good nf-done">Approved</span>
+                }
+                @if (t.VerificationStatus === 4) {
+                  <button type="button" class="btn btn-primary nf-act" (click)="open(t)">Approve</button>
+                }
+              }
+              <a [routerLink]="tuLink(t)" class="btn btn-outline-primary nf-act">View details</a>
+              <zed-row-menu [items]="reportMenu" [label]="'More actions for ' + t.ZedId" (picked)="openReport(t)" />
+            </td>
           </tr>
         } @else if (list === 'rejected') {
           <tr>
-            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td><strong class="dash-text-clr">{{ t.ZedId }}</strong></td>
             <td>{{ t.EnterpriseName }}</td>
             <td class="text-center">{{ t.UdyogAadharNo }}</td>
             <td class="text-center">{{ t.TotalEmp }}</td>
             <td class="cell-lines text-center"><span>{{ t.Gender }}</span><span>{{ t.SocialCategoryName }}</span></td>
-            <td class="text-center">@if (t.IsCouponUsed) { <span class="status-badge is-info">Yes</span> }</td>
+            <td class="text-center">@if (t.IsCouponUsed) { <span class="chip is-info">Yes</span> }</td>
             <td class="text-center">{{ t.GstinNumber }} {{ t.TanNumber }}</td>
             <td class="text-center">{{ t.AmountPaid }}</td>
             <td class="text-center">{{ t.UtrNumber }}</td>
@@ -116,10 +118,7 @@
           </tr>
         } @else {
           <tr>
-            @if (list === 'new') {
-              <td class="text-center"><div class="row-actions justify-content-center"><button type="button" class="btn btn-primary" (click)="open(t)">Approve</button></div></td>
-            }
-            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td><strong class="dash-text-clr">{{ t.ZedId }}</strong></td>
             <td>{{ t.PUnitName || t.EnterpriseName }}</td>
             <td>{{ t.CategoryOfCertificate }}</td>
             <td class="cell-lines"><span>{{ t.NameOfCertficate }}</span><span>{{ t.CertificationAgency }}</span></td>
@@ -134,19 +133,21 @@
             @if (list !== 'new') {
               <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
             }
+            @if (list === 'new') {
+              <td class="text-end"><button type="button" class="btn btn-primary nf-act" (click)="open(t)">Approve</button></td>
+            }
           </tr>
         }
       } @empty {
-        @if (!loading()) {
-          <tr>
-            <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
-          </tr>
-        }
+        <tr>
+          <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
+        </tr>
       }
     </tbody>
   </table>
 </div>
 <zed-pager [pager]="view" />
+</div>
 
 <!-- Comments: three lines, with more / less when longer. -->
 <ng-template #longText let-text let-id="id">
@@ -159,13 +160,16 @@
 </ng-template>
 
 @if (form(); as f) {
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="neftTitle">
-    <div class="modal-dialog modal-popup">
-      <div class="modal-content">
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="neftTitle" (click)="close()">
+    <div class="modal-dialog modal-dialog-centered modal-popup" (click)="$event.stopPropagation()">
+      <div class="modal-content nf-pop">
         <form (ngSubmit)="submit()" novalidate>
           <div class="modal-header justify-content-between">
-            <h3 class="registration-title" id="neftTitle">NEFT Transaction Details</h3>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
+            <div>
+              <h3 class="nf-pop-title" id="neftTitle">Approve NEFT transaction</h3>
+              <p class="nf-pop-sub">{{ f.transaction.ZedId }}@if (f.transaction.PUnitName || f.transaction.EnterpriseName) { · {{ f.transaction.PUnitName || f.transaction.EnterpriseName }} }</p>
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
           </div>
           <div class="modal-body">
             @if (formError()) {
@@ -201,8 +205,8 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
-            <button type="submit" class="btn btn-primary" [disabled]="saving()">SUBMIT</button>
+            <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="saving()">Submit</button>
           </div>
         </form>
       </div>
@@ -211,6 +215,3 @@
   <div class="modal-backdrop show"></div>
 }
 
-@if (loading()) {
-  <div class="loadingdiv"><div class="loader"></div></div>
-}

@@ -1,12 +1,18 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/Assessment/SaDetails.cshtml, laid out with the V4 blocks. -->
 <!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the tabs as pills below. -->
+<!-- 2026-11-17 (approved staff redesign): "Home > Milestone n > ZED ID" crumbs and the light head buttons. -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
-  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  <button type="button" class="btn btn-ph" (click)="goBack()">Back</button>
+  <button type="button" class="btn btn-ph" (click)="refresh()">Refresh</button>
 </zed-page-head>
 @if (milestoneRow(1); as m1) {
   <zed-unit-facts [msme]="m1" [udyam]="t(m1, 'UdyogAadharNo')"
                   [extra]="[{ label: 'Desired level', value: levelName(t(m1, 'Certification') || certification()) }, { label: 'Current milestone', value: milestone() ? milestone() + ' of 3' : '' }]" />
+}
+<!-- 2026-11-17: the confirmation of a bullet's deletion. -->
+@if (bulletToDelete()) {
+  <zed-confirm-dialog [ask]="{ title: 'Delete this item?', message: 'The item is removed from this milestone.', confirmLabel: 'Delete', danger: true }"
+                      (confirmed)="confirmDeleteBullet()" (cancel)="bulletToDelete.set(null)" />
 }
 
 @if (error()) {

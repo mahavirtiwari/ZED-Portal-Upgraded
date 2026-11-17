@@ -17,6 +17,8 @@ import { ParameterNav } from '../../msme/shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { ConfirmDialog } from '../confirm-dialog';
 import { UnitFacts } from '../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
@@ -116,7 +118,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -247,11 +249,12 @@ export class RemoteAssessmentPage {
     const unit = text(m, this.meetingMode() ? 'PUnitName' : 'EnterpriseName') || text(m, 'PUnitName') || text(m, 'ZedId') || this.zedId;
     return `${unit} · ${this.certification}${this.meetingMode() ? ' surveillance' : ''}`;
   });
-  protected readonly headCrumbs = computed(() => [
-    { label: 'Home', link: '/staff' },
+  protected readonly headCrumbs = computed(() => staffCrumbs(
     { label: this.meetingMode() ? 'Surveillance assessments (site)' : 'Remote and onsite assessments', link: '/staff/remote-assessments' },
     { label: text(this.msme(), 'ZedId') || this.zedId },
-  ]);
+  ));
+  /** 2026-11-17 (approved staff redesign): the photo whose removal is being confirmed (the confirmation pop-up, not window.confirm). */
+  protected readonly photoToRemove = signal<RemotePhoto | null>(null);
   /** The facts strip's unit: the plant (surveillance) or the enterprise. */
   protected readonly factsRow = computed(() => {
     const m = this.msme();
@@ -533,8 +536,14 @@ export class RemoteAssessmentPage {
     );
   }
 
-  protected async removePhoto(photo: RemotePhoto): Promise<void> {
-    if (!window.confirm('Remove this photo?')) return;
+  protected removePhoto(photo: RemotePhoto): void {
+    this.photoToRemove.set(photo);
+  }
+
+  protected async confirmRemovePhoto(): Promise<void> {
+    const photo = this.photoToRemove();
+    if (!photo) return;
+    this.photoToRemove.set(null);
     await this.run(this.api.deletePhoto(this.zedId, this.certification, photo.id), () => undefined, false);
   }
 

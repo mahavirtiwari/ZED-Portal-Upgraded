@@ -4,10 +4,14 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PagedView, PagerComponent, searchRows } from '../pager';
 import { mayAssess } from '../users/assessor-scope';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { ToastService } from '../toast';
+import { maskEmail, maskMobile } from '../users/user-display';
 
 interface AllotForm {
   unit: Row;
@@ -25,33 +29,33 @@ interface AllotForm {
  * Surveillance build: "Allot Surveillance" for Silver/Gold surveillance — surveillance date and round, the original
  * certification's assessors, and the meeting link of the external video meeting (mode stored as Onsite, shown as
  * Remote, as before); one "Assessor" and no co-assessor (that page's Co Assessor select was commented out). Consultancy build: the CO allotment page ({@link CoAllotmentPage}) instead.
+ * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the mode as
+ * chips, one search box, the SPOC's mobile and e-mail masked, Allot / Re-allot on the row, a toast when done.</p>
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, CoAllotmentPage, PagerComponent, ListSearchComponent, PageHead, ListCounts],
+  imports: [FormsModule, CoAllotmentPage, PagerComponent, PageHead, ListCounts, ChipFilter],
   host: { class: 'list-v2 d-block' },
   template: `
     @if (system === 'consultancy') {
       <zed-staff-co-allotment />
     } @else {
-    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card. -->
-    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: pageTitle }]" [title]="pageTitle">
-      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    <zed-page-head [crumbs]="crumbs" [title]="pageTitle" [subtitle]="subtitle">
+      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
     </zed-page-head>
-    <zed-list-counts [counts]="counts()" />
+    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" label="Units by status" (pick)="pickStage($event.key)" />
+
+    <div class="zed-card sa-filters">
+      <input type="search" id="sa-allot-search" class="form-control sa-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or assessor"
+             aria-label="Search ZED ID, unit, SPOC or assessor" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <zed-chip-filter label="Mode" [chips]="modeChips()" [value]="mode()" (valueChange)="mode.set($event)" />
+    </div>
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
 
     <div class="list-card">
-    <div class="list-card-head">
-      <b>Units</b>
-      <zed-list-search [(value)]="search" placeholder="Search units" inputId="sa-allot-search" [found]="view.total()" />
-    </div>
     <div class="table-responsive">
       <table class="table table-zed">
         <thead>
@@ -63,7 +67,7 @@ interface AllotForm {
             <th>Mode</th>
             <th>Assessors</th>
             <th>Status</th>
-            <th style="width: 120px"><span class="visually-hidden">Action(s)</span></th>
+            <th class="text-end">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -71,15 +75,17 @@ interface AllotForm {
             <tr>
               <td class="unit unit-cell">
                 <b>{{ s['PUnitName'] }}</b>
-                <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
+                <span class="dash-text-clr sa-id">{{ s['ZedId'] }}</span>
+                <small class="sa-addr" [title]="s['UnitAddress'] ?? ''">{{ s['UnitAddress'] }}</small>
               </td>
               <td>
                 <span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span>
                 @if (surveillance && s['SurveillanceNo']) { <span class="sub">{{ s['SurveillanceNo'] }}</span> }
               </td>
-              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
-              @if (surveillance) { <td>{{ s['AssessmentDate'] }}</td> }
-              <td>@if (modeOf(s); as m) { <span class="zed-chip">{{ m }}</span> }</td>
+              <!-- Masked in the list; the MSME profile has the full values. -->
+              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
+              @if (surveillance) { <td class="text-nowrap">{{ s['AssessmentDate'] }}</td> }
+              <td>@if (modeOf(s); as m) { <span class="chip is-info">{{ m }}</span> }</td>
               <td class="stack">
                 <div><span class="muted">{{ s['SiteAssessorId'] }}</span> <strong>{{ s['SaAssessorName'] }}</strong></div>
                 @if (surveillance) {
@@ -93,19 +99,17 @@ interface AllotForm {
                 @else if (s['ReasonForRejection']) { <span class="chip is-bad">Rejected</span> }
                 @else { <span class="chip is-warn">Waiting</span> }
               </td>
-              <td>
-                <div class="row-actions">
-                  @if (s['SiteAssessorId']) {
-                    <button type="button" class="btn btn-outline-primary" (click)="open(s)">RE-ALLOT</button>
-                  } @else if (!s['ReasonForRejection']) {
-                    <button type="button" class="btn btn-primary" (click)="open(s)">ALLOT</button>
-                  }
-                </div>
+              <td class="text-end text-nowrap">
+                @if (s['SiteAssessorId']) {
+                  <button type="button" class="btn sa-act re-allot" (click)="open(s)">Re-allot</button>
+                } @else if (!s['ReasonForRejection']) {
+                  <button type="button" class="btn btn-primary sa-act" (click)="open(s)">Allot</button>
+                }
               </td>
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">No Data</div></td>
+              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">{{ busy() ? 'Loading…' : 'No Data' }}</div></td>
             </tr>
           }
         </tbody>
@@ -117,13 +121,15 @@ interface AllotForm {
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allot-title" (click)="close()">
         <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content">
+          <div class="modal-content sa-pop">
             <div class="modal-header justify-content-between">
-              <h5 class="modal-title" id="allot-title">Allot Unit</h5>
+              <div>
+                <h3 class="sa-pop-title" id="allot-title">{{ f.unit['SiteAssessorId'] ? 'Re-allot unit' : 'Allot unit' }}</h3>
+                <p class="sa-pop-sub">{{ f.unit['ZedId'] }} · {{ f.unit['Certification'] }}@if (f.unit['PUnitName']) { · {{ f.unit['PUnitName'] }} }</p>
+              </div>
               <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
             </div>
             <div class="modal-body">
-              <p class="mb-3"><strong class="dash-text-clr">{{ f.unit['ZedId'] }}</strong> ({{ f.unit['Certification'] }})</p>
               <div class="mb-3">
                 <label class="form-label" for="FinalSaDate">{{ surveillance ? 'Surveillance Assessment Date' : 'Assessment Date' }}<span class="req">*</span></label>
                 <input type="date" id="FinalSaDate" name="FinalSaDate" class="form-control" [min]="minDate" [(ngModel)]="f.assessmentDate" />
@@ -181,8 +187,8 @@ interface AllotForm {
               }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="allot(f)">ALLOT</button>
+              <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="allot(f)">Allot</button>
             </div>
           </div>
         </div>
@@ -201,32 +207,66 @@ interface AllotForm {
     }
   `,
   styles: `
+    .sa-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; margin-bottom: 14px; }
+    .sa-q { flex: 1 1 260px; max-width: 420px; }
     .unit { min-width: 200px; }
+    .sa-id { display: block; font-size: 12.5px; font-weight: 700; }
+    .sa-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
     .stack > div + div { margin-top: 6px; }
+    .sa-act { min-width: 82px; font-weight: 600; }
+    .sa-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
+    .sa-act.re-allot:hover { background: #ffe6b5; }
+    .sa-pop { border: 0; border-radius: 12px; }
+    .sa-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .sa-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
     .original { background: #eef6f6; border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class SaAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
+  private readonly toast = inject(ToastService);
   protected readonly system = inject(SITE_SYSTEM);
   protected readonly surveillance = this.system === 'surveillance';
+  protected readonly maskEmail = maskEmail;
+  protected readonly maskMobile = maskMobile;
+  protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 
   protected readonly units = signal<Row[]>([]);
-  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  /** The search box above the list (any column). */
+  /** The tile chosen ('waiting' / 'allotted' / 'rejected'; null: every unit) and the mode chip ('' all). */
+  protected readonly stage = signal<string | null>(null);
+  protected readonly mode = signal('');
+  /** The search box above the list (any column). Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly search = signal('');
-  protected readonly view = new PagedView(() => searchRows(this.units(), this.search()));
+  private readonly shown = computed(() => {
+    const stage = this.stage();
+    const mode = this.mode();
+    return this.units().filter((r) => (!stage || this.stageOf(r) === stage) && (!mode || this.modeOf(r) === mode));
+  });
+  protected readonly view = new PagedView(() => searchRows(this.shown(), this.search()));
   protected readonly assessors = signal<Assessor[]>([]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly formError = signal('');
   protected readonly form = signal<AllotForm | null>(null);
   protected readonly onsite = ONSITE;
   protected readonly remote = REMOTE;
 
   protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments (Site)' : 'Allot SA Assessments';
+  protected readonly crumbs = staffCrumbs({ label: this.pageTitle });
+  protected readonly subtitle = this.surveillance
+    ? 'Allot the surveillance assessments to your assessors with the date and the meeting link, or re-allot them.'
+    : 'Allot the site assessments to your assessors with the date and the mode, or re-allot them.';
+
+  /** Allotted, rejected or waiting (the status chip of the row). */
+  private stageOf(r: Row): string {
+    return r['SiteAssessorId'] ? 'allotted' : r['ReasonForRejection'] ? 'rejected' : 'waiting';
+  }
+
+  /** A tile filters the list; "All units" (or the chosen tile again) shows every unit. */
+  protected pickStage(key: string | undefined): void {
+    this.stage.set(!key || key === 'all' || key === this.stage() ? null : key);
+  }
 
   protected lc(v: unknown): string {
     return String(v ?? '').toLowerCase();
@@ -242,11 +282,22 @@ export class SaAllotmentPage {
 
   protected readonly counts = computed<ListCount[]>(() => {
     const rows = this.units();
+    const by = (k: string) => rows.filter((r) => this.stageOf(r) === k).length;
     return [
-      { label: 'Waiting for allotment', value: rows.filter((r) => !r['SiteAssessorId'] && !r['ReasonForRejection']).length, tone: 'warn' },
-      { label: 'Allotted', value: rows.filter((r) => !!r['SiteAssessorId']).length, tone: 'good' },
-      { label: 'Onsite', value: rows.filter((r) => this.modeOf(r) === 'Onsite').length },
-      { label: 'Remote', value: rows.filter((r) => this.modeOf(r) === 'Remote').length },
+      { key: 'all', label: 'All units', value: rows.length },
+      { key: 'waiting', label: 'Waiting for allotment', value: by('waiting'), tone: 'warn' },
+      { key: 'allotted', label: 'Allotted', value: by('allotted'), tone: 'good' },
+      { key: 'rejected', label: 'Rejected', value: by('rejected'), tone: 'bad' },
+    ];
+  });
+
+  /** The units by mode (Onsite / Remote), as chips. */
+  protected readonly modeChips = computed<FilterChip[]>(() => {
+    const rows = this.units();
+    return [
+      { key: '', label: 'All', count: rows.length },
+      { key: 'Onsite', label: 'Onsite', count: rows.filter((r) => this.modeOf(r) === 'Onsite').length },
+      { key: 'Remote', label: 'Remote', count: rows.filter((r) => this.modeOf(r) === 'Remote').length },
     ];
   });
 
@@ -299,7 +350,6 @@ export class SaAllotmentPage {
 
   /** As the old pop-up (a copy of the row): RE-ALLOT opens with the current assessor and meeting link filled in. */
   protected open(unit: Row): void {
-    this.success.set('');
     this.formError.set('');
     const value = (column: string) => (unit[column] === null || unit[column] === undefined ? '' : String(unit[column]));
     this.form.set({
@@ -340,7 +390,8 @@ export class SaAllotmentPage {
         }),
       );
       this.form.set(null);
-      this.success.set(`${f.unit['ZedId']} allotted successfully.`);
+      const to = this.assessors().find((a) => a.userId === f.siteAssessorId)?.userName;
+      this.toast.success(`${f.unit['ZedId']} allotted`, to ? `To ${to}.` : null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

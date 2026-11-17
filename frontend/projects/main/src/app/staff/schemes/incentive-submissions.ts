@@ -3,66 +3,62 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PagedView, PagerComponent, searchRows } from '../pager';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
 
 /**
  * "API Incentives Submitted" for the super admin. Port of Views/Incentive/Submissions.cshtml
  * (SP_GET_API_INCENTIVES, which also lists technology upgradation reimbursements from ZED_CONSULTANT).
+ * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the count, the filters in one bar, the list in one card
+ * with the light header.</p>
  */
 @Component({
   selector: 'zed-staff-incentive-submissions',
-  imports: [FormsModule, PagerComponent, ListSearchComponent, DashboardPortalSwitchComponent],
+  imports: [FormsModule, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['incentive-submissions']" />
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">API Incentives Submitted</h3>
-        <p class="page-sub">Incentives disbursed to the units, as reported by the ministries' APIs and technology upgradation reimbursements.</p>
-      </div>
-    </div>
-    <form class="zed-card" (ngSubmit)="search()">
-      <div class="filter-bar">
-        <div class="filter">
-          <label class="form-label" for="incState">State</label>
-          <select id="incState" name="state" class="form-select" [(ngModel)]="filter.state">
-            <option value="">Show All</option>
-            @for (s of states; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-          </select>
-        </div>
-        <div class="filter">
-          <label class="form-label" for="incCert">Certification Level</label>
-          <select id="incCert" name="certification" class="form-select" [(ngModel)]="filter.certification">
-            <option value="">Show All</option>
-            <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
-          </select>
-        </div>
-        <div class="filter">
-          <label class="form-label" for="incSize">MSME Size</label>
-          <select id="incSize" name="msmeSize" class="form-select" [(ngModel)]="filter.msmeSize">
-            <option value="">Show All</option>
-            <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
-          </select>
-        </div>
-        <div class="filter">
-          <label class="form-label" for="incGender">Gender</label>
-          <select id="incGender" name="gender" class="form-select" [(ngModel)]="filter.gender">
-            <option value="">Show All</option>
-            <option value="male">Male</option><option value="female">Female</option><option value="Others">Others</option>
-          </select>
-        </div>
-        <div class="filter"><button type="submit" class="btn btn-primary">Search</button></div>
-      </div>
+    <zed-page-head [crumbs]="crumbs" title="API Incentives Submitted"
+                   subtitle="Incentives disbursed to the units, as reported by the ministries' APIs and technology upgradation reimbursements.">
+      <button type="button" class="btn btn-ph" (click)="search()">Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="[{ label: 'Submissions', value: rows().length }]" class="is-counts" />
+    <form class="zed-card is-filters" (ngSubmit)="search()">
+      <select id="incState" name="state" class="form-select" aria-label="State" [(ngModel)]="filter.state">
+        <option value="">All states</option>
+        @for (s of states; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+      </select>
+      <select id="incCert" name="certification" class="form-select" aria-label="Certification level" [(ngModel)]="filter.certification">
+        <option value="">All levels</option>
+        <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
+      </select>
+      <select id="incSize" name="msmeSize" class="form-select" aria-label="MSME size" [(ngModel)]="filter.msmeSize">
+        <option value="">All sizes</option>
+        <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
+      </select>
+      <select id="incGender" name="gender" class="form-select" aria-label="Gender" [(ngModel)]="filter.gender">
+        <option value="">All genders</option>
+        <option value="male">Male</option><option value="female">Female</option><option value="Others">Others</option>
+      </select>
+      <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     @if (rows().length) {
-      <zed-list-search [(value)]="searchText" placeholder="Search submissions" inputId="inc-sub-search" [found]="view.total()" />
+      <div class="list-card">
+      <div class="list-card-head">
+        <b>Submissions</b>
+        <input type="search" id="inc-sub-search" class="form-control is-q" maxlength="50" placeholder="Search submissions" aria-label="Search submissions"
+               [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
+      </div>
       <div class="table-responsive">
-        <table class="table table-bordered table-zed">
+        <table class="table table-zed">
           <thead>
             <tr>
               <th class="text-center" style="width: 60px">S.No</th>
@@ -88,6 +84,7 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
         </table>
       </div>
       <zed-pager [pager]="view" />
+      </div>
     } @else if (!loading()) {
       <div class="label-highlight4">
         <div class="no-incentive-block">
@@ -101,7 +98,10 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
     }
   `,
   styles: `
-    table tbody tr td { font-size: 14px; }
+    .is-counts { max-width: 240px; }
+    .is-filters { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)) auto; gap: 10px; padding: 12px 14px; margin-bottom: 14px; }
+    .is-q { max-width: 320px; }
+    @media (max-width: 767.98px) { .is-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     /* Several values in one cell, one per line. */
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
@@ -111,6 +111,7 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 })
 export class IncentiveSubmissionsPage {
   private readonly api = inject(IncentivesApi);
+  protected readonly crumbs = staffCrumbs({ label: 'Incentive Submissions' });
   protected readonly states = STATES;
   protected readonly filter: IncentiveFilter = { state: '', certification: '', msmeSize: '', gender: '' };
   protected readonly rows = signal<Row[]>([]);

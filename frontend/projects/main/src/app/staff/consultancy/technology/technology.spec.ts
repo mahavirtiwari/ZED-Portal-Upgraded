@@ -5,6 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { StaffRole } from '../../staff-menu';
+import { ToastService } from '../../toast';
 import { TechnologyRecommendationPage } from './technology-recommendation';
 import { TuSubmissionsPage } from './tu-submissions';
 import { TuVerificationPage } from './tu-verification';
@@ -56,23 +57,29 @@ describe('Consultancy technology pages', () => {
     expect(landing.request.params.get('status')).toBe('99');
     landing.flush({ rows: [], counts: { New: 2 } });
     await settle();
-    expect(el.textContent).toContain('TU ALLOTMENT 2');
-    button('TU ALLOTMENT 2')[0].click();
+    expect(button('2 TU allotment').length).toBe(1);
+    button('2 TU allotment')[0].click();
     await settle();
     const list = http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions');
     expect(list.request.params.get('status')).toBe('2');
     list.flush({ rows: [row(), row({ Id: 2, ZedId: 'ZEDMSME000501', FinancialAssessorId: 'DFO1', TechUpgradeStatus: 4 })], counts: { New: 2 } });
     await settle();
 
-    expect(button('ACCEPT').length).toBe(1);
-    expect(button('RE-ALLOT').length).toBe(1);
-    expect(button('View Profile').length).toBe(2);
-    expect(el.textContent).toContain('CC Details');
+    expect(button('Accept').length).toBe(1);
+    expect(button('Re-allot').length).toBe(1);
+    expect(el.querySelectorAll('tbody .rm-btn').length).toBe(2);
+    expect([...el.querySelectorAll('th')].map((h) => text(h))).toContain('Consultant');
     const links = [...el.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(links).toContain('/staff/consultancy/technology/verification/ZEDMSME000500/Silver');
-    expect(links).toContain('/staff/msme-profile/ZEDMSME000500');
+    // The profile and Reject in the row menu (Reject only before the CO answered).
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    expect([...el.querySelectorAll('.rm-item')].map((b) => text(b))).toEqual(['View MSME profile', 'Reject']);
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle();
 
-    button('ACCEPT')[0].click();
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    button('Accept')[0].click();
     await settle();
     http.expectOne('/api/staff/consultancy/tu/assessors').flush([{ userId: 'DFO1', userName: 'Dfo One' }]);
     await settle();
@@ -81,7 +88,7 @@ describe('Consultancy technology pages', () => {
     select.value = 'DFO1';
     select.dispatchEvent(new Event('change'));
     await settle();
-    button('ACCEPT').at(-1)!.click();
+    (el.querySelector('.modal .tu-ok') as HTMLButtonElement).click();
     await settle();
     const accept = http.expectOne('/api/staff/consultancy/tu/accept');
     expect(accept.request.body).toEqual({ zedId: 'ZEDMSME000500', certification: 'Silver', assessorUserId: 'DFO1' });
@@ -89,7 +96,37 @@ describe('Consultancy technology pages', () => {
     await settle();
     http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions').flush({ rows: [], counts: null });
     await settle();
-    expect(el.textContent).toContain('Application accepted.');
+    expect(toast).toHaveBeenCalledWith('Application accepted.');
+  });
+
+  it('lets the CO reject from the row menu with a reason', async () => {
+    await create(TuSubmissionsPage, StaffRole.Agency);
+    http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions').flush({ rows: [], counts: { New: 1 } });
+    await settle();
+    button('1 TU allotment')[0].click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions').flush({ rows: [row()], counts: { New: 1 } });
+    await settle();
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    (el.querySelector('.rm-item.danger') as HTMLButtonElement).click();
+    await settle();
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter the reason for rejection.');
+    const reason = el.querySelector('#tuReason') as HTMLTextAreaElement;
+    reason.value = 'Outside our scope';
+    reason.dispatchEvent(new Event('input'));
+    await settle();
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
+    await settle();
+    const post = http.expectOne('/api/staff/consultancy/tu/reject');
+    expect(JSON.stringify(post.request.body)).toContain('Outside our scope');
+    post.flush({ message: 'Application rejected.' });
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions').flush({ rows: [], counts: null });
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
   });
 
   it('opens the DFO on TU ALLOTMENT without tabs, CC details, reason or profile', async () => {
@@ -98,11 +135,11 @@ describe('Consultancy technology pages', () => {
     expect(list.request.params.get('status')).toBe('2');
     list.flush({ rows: [row({ FinancialAssessorId: 'U1', ReasonForRejection: 'x' })], counts: { New: 1 } });
     await settle();
-    expect(el.textContent).not.toContain('TU ALLOTMENT');
-    expect(el.textContent).not.toContain('CC Details');
-    expect(el.textContent).not.toContain('Reason For Rejection');
-    expect(button('View Profile').length).toBe(0);
-    expect(button('VIEW').length).toBe(1);
+    expect(el.textContent).not.toContain('TU allotment');
+    expect([...el.querySelectorAll('th')].map((h) => text(h))).not.toContain('Consultant');
+    expect(el.textContent).not.toContain('Reason for rejection');
+    expect(el.querySelectorAll('tbody .rm-btn').length).toBe(0);
+    expect(button('View').length).toBe(1);
   });
 
   it('shows the master admin the Status and Reason columns and the red rows of the old page per tab', async () => {
@@ -114,28 +151,28 @@ describe('Consultancy technology pages', () => {
     const headers = () => [...el.querySelectorAll('th')].map((h) => text(h));
     expect(headers()).toContain('Status');
 
-    button('REJECTED 1')[0].click();
+    button('1 Rejected')[0].click();
     await settle();
     http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions' && r.params.get('status') === '9').flush({
       rows: [row({ FinancialAssessorId: 'DFO1', ReasonForRejection: 'Assessor comments: bad', ReasonForRejectionAgency: 'Agency comments: worse', TimeDuration: 'Reallot' })],
       counts: { Rejected: 1 },
     });
     await settle();
-    expect(headers()).toEqual(['Action(s)', 'Status', 'Certification Level', 'Unit Details', 'CO Details', 'CC Details', 'Verification Date', 'Reason For Rejection']);
+    expect(headers()).toEqual(['Unit', 'Certification level', 'Status', 'CO', 'Consultant', 'Verification date', 'Reason for rejection', 'Actions']);
     expect(el.textContent).toContain('Alloted to Consultant');
     expect(el.textContent).toContain('Rejected');
     expect(el.textContent).toContain('Agency comments: worse');
     expect(el.textContent).not.toContain('Assessor comments: bad');
     expect(el.querySelector('tbody tr')!.classList).toContain('rejected');
     expect(el.querySelector('tbody td.actions')!.classList).toContain('late');
-    expect(button('View Profile').length).toBe(1);
+    expect(el.querySelectorAll('tbody .rm-btn').length).toBe(1);
 
-    button('TU ALLOTMENT 0')[0].click();
+    button('0 TU allotment')[0].click();
     await settle();
     http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions' && r.params.get('status') === '2').flush({ rows: [row()], counts: null });
     await settle();
     expect(headers()).not.toContain('Status');
-    expect(headers()).toContain('Reason For Rejection');
+    expect(headers()).toContain('Reason for rejection');
     expect(el.querySelector('tbody tr')!.classList).not.toContain('rejected');
   });
 
@@ -188,11 +225,12 @@ describe('Consultancy technology pages', () => {
     await settle();
     const save = http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500/Silver/technologies/301/amount');
     expect(save.request.body).toEqual({ amountPaid: '120000.50' });
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     save.flush({ message: 'Amount updated.' });
     await settle();
     http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([application()]);
     await settle();
-    expect(el.textContent).toContain('Amount updated.');
+    expect(toast).toHaveBeenCalledWith('Amount updated.');
   });
 
   it('offers the master admin only REJECT', async () => {
@@ -304,6 +342,7 @@ describe('Consultancy technology pages', () => {
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/consultancy/technology/ZEDMSME000600/Silver');
     expect(post.request.body).toEqual({ codes: ['1', '3'], confirmed: true });
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     post.flush({ message: 'Selected Technologies updated.' });
     await settle();
     http.expectOne('/api/staff/consultancy/technology/ZEDMSME000600/Silver').flush({
@@ -311,7 +350,7 @@ describe('Consultancy technology pages', () => {
       technologies: [{ ...techs[0], selected: true }, { ...techs[2], selected: true }],
     });
     await settle();
-    expect(el.textContent).toContain('Selected Technologies updated.');
+    expect(toast).toHaveBeenCalledWith('Selected Technologies updated.');
     expect(el.textContent).toContain('Summary Of Recommended Technologies');
   });
 

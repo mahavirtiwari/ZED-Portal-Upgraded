@@ -15,6 +15,8 @@ import { RequirementVideo } from '../../../msme/shared/requirement-video';
 import { ParameterNav } from '../../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../../msme/shared/page-head';
+import { staffCrumbs } from '../../staff-crumbs';
+import { ConfirmDialog } from '../../confirm-dialog';
 import { levelName } from '../../../msme/shared/levels';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
@@ -176,7 +178,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, ConfirmDialog],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -298,11 +300,12 @@ export class MilestoneDetailsPage {
     const unit = (m1 && text(m1, 'PUnitName')) || this.zedId();
     return `${unit} · ${(m1 && text(m1, 'Certification')) || this.certification()} handholding`;
   });
-  protected readonly headCrumbs = computed(() => [
-    { label: 'Home', link: '/staff' },
+  protected readonly headCrumbs = computed(() => staffCrumbs(
     ...(this.milestone() ? [{ label: `Milestone ${this.milestone()}`, link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []),
     { label: this.zedId() },
-  ]);
+  ));
+  /** 2026-11-17 (approved staff redesign): the item whose deletion is being confirmed (the confirmation pop-up, not confirm()). */
+  protected readonly bulletToDelete = signal<MilestoneBullet | null>(null);
   private readonly location = inject(Location);
   protected goBack(): void {
     this.location.back();
@@ -443,9 +446,15 @@ export class MilestoneDetailsPage {
     if (await this.run(call)) this.editing.set(null);
   }
 
-  protected async deleteBullet(b: MilestoneBullet): Promise<void> {
+  protected deleteBullet(b: MilestoneBullet): void {
+    if (this.data() && b.editable) this.bulletToDelete.set(b);
+  }
+
+  protected async confirmDeleteBullet(): Promise<void> {
     const d = this.data();
-    if (!d || !b.editable || !confirm('Delete this item?')) return;
+    const b = this.bulletToDelete();
+    this.bulletToDelete.set(null);
+    if (!d || !b || !b.editable) return;
     await this.run(this.api.deleteBullet(d.zedId, d.certification, b.id));
   }
 

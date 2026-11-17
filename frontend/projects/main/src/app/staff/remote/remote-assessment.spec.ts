@@ -262,9 +262,12 @@ describe('RemoteAssessmentPage', () => {
     req.flush({ photos: [] });
     await reload();
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await openTab('Site Tour');
     (el.querySelector('[aria-label="Remove photo"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    // The confirmation pop-up (not window.confirm).
+    expect(el.querySelector('.modal h3')!.textContent).toContain('Remove this photo?');
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
     await settle(fixture);
     http.expectOne((r) => r.method === 'DELETE' && r.url === BASE + '/photos/85').flush({ message: 'Photo removed.' });
     await reload();

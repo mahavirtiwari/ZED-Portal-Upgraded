@@ -233,8 +233,11 @@ describe('MilestoneDetailsPage', () => {
     http.expectOne(API).flush(details());
     await settle();
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     button('Delete')!.click();
+    await settle();
+    // The confirmation pop-up (not confirm()).
+    expect(el.querySelector('.modal h3')!.textContent).toContain('Delete this item?');
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
     await settle();
     const del = http.expectOne(API + '/bullets/501');
     expect(del.request.method).toBe('DELETE');

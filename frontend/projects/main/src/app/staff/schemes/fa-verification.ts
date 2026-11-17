@@ -2,6 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { ToastService } from '../toast';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
@@ -88,7 +91,7 @@ interface DecisionForm {
  */
 @Component({
   selector: 'zed-staff-fa-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead],
   templateUrl: './fa-verification.html',
   styles: `
     .section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -114,6 +117,9 @@ export class FaVerificationPage {
 
   protected readonly sections = SECTIONS;
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
+  /** 2026-11-17 (approved staff redesign): "Home > Financial Assistance > ZED ID". */
+  protected readonly crumbs = staffCrumbs({ label: 'Financial Assistance', link: '/staff/financial-assistance' }, { label: this.zedId });
+  private readonly toast = inject(ToastService);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
 
@@ -125,7 +131,6 @@ export class FaVerificationPage {
   });
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly preview = signal<string | null>(null);
   protected readonly validation = signal<ValidationForm | null>(null);
   protected readonly decision = signal<DecisionForm | null>(null);
@@ -206,7 +211,6 @@ export class FaVerificationPage {
   // ----- validation of a document -----
 
   protected openValidation(doc: FaDocument): void {
-    this.success.set('');
     this.dialogError.set('');
     this.validation.set({
       doc,
@@ -266,7 +270,6 @@ export class FaVerificationPage {
 
   /** REJECT asks for comments and a confirmation ("Confirm Final Submit"); ACCEPT submitted straight away on the old page. */
   protected async openDecision(app: FaApplication, decision: 'approve' | 'reject'): Promise<void> {
-    this.success.set('');
     this.dialogError.set('');
     if (decision === 'reject') {
       this.decision.set({ decision, comments: '', confirmed: false });
@@ -291,7 +294,6 @@ export class FaVerificationPage {
   // ----- bank account -----
 
   protected editAccount(app: FaApplication): void {
-    this.success.set('');
     this.error.set('');
     this.account.set({
       accountNo: this.value(app, 'AccountNo'),
@@ -340,7 +342,7 @@ export class FaVerificationPage {
     try {
       const r = await firstValueFrom(action());
       done();
-      this.success.set(r.message);
+      this.toast.success(r.message);
       await this.load();
     } catch (err) {
       fail(apiErrorMessage(err));

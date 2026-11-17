@@ -1,12 +1,17 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
 import { TuApi } from '../consultancy/technology/tu.api';
-import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PagedView, PagerComponent, searchRows } from '../pager';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ToastService } from '../toast';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { AdminPortalService, NEFT_PORTALS, PORTAL_API_BASE, PortalSwitchComponent, neftPortals } from '../admin-portal';
 
@@ -37,14 +42,23 @@ function today(): string {
  * NEFT reimbursements of financial assistance for state coordinators. Port of Views/Neft/NewTransactions,
  * ApprovedTransactions and RejectedTransactions (one component; the route's `data.list` picks the list).
  * The API shows only the coordinator's state and allows each approval once.
+ * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the count (on the consultancy's new list: to approve /
+ * approved as tiles that filter), one search box, the actions at the end of the row (the TU report in the row menu), the
+ * light table header, a toast when a transaction is approved. The bank details stay in full: they are what is paid.</p>
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, ListSearchComponent, PortalSwitchComponent],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, PortalSwitchComponent, PageHead, ListCounts, RowMenu],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './neft-transactions.html',
   styles: `
-    table tbody tr td { font-size: 14px; }
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .nf-filters { display: flex; flex-wrap: wrap; gap: 10px; padding: 12px 14px; margin-bottom: 14px; }
+    .nf-q { flex: 1 1 260px; max-width: 460px; }
+    .nf-act { margin-left: 6px; font-weight: 600; }
+    .nf-done { margin-right: 4px; }
+    .nf-pop { border: 0; border-radius: 12px; }
+    .nf-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .nf-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
     .help-block { color: #a94442; font-size: 13px; }
     /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
     .cell-lines > * { display: block; }
@@ -79,19 +93,46 @@ export class NeftTransactionsPage {
 
   private readonly api = inject(NeftApi);
   private readonly tu = inject(TuApi);
+  private readonly toast = inject(ToastService);
+  protected readonly reportMenu: RowMenuItem[] = [{ key: 'report', label: 'Visit report', icon: 'download' }];
+
+  protected openReport(t: NeftTransaction): void {
+    window.open(this.reportLink(t), '_blank', 'noopener');
+  }
 
   protected readonly list: NeftList = (inject(ActivatedRoute).snapshot.data['list'] as NeftList) ?? 'new';
   protected readonly title = (this.consultancy ? CONSULTANCY_TITLES : TITLES)[this.list] ?? TITLES.new;
   protected readonly maxDate = today();
+  protected readonly crumbs = staffCrumbs({ label: this.title });
+  /** The consultancy's new list has two states (to approve, approved): tiles that filter it. */
+  protected readonly filterable = this.consultancy && this.list === 'new';
+  protected readonly stage = signal<string | null>(null);
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.transactions();
+    if (!this.filterable) return [{ label: this.title, value: rows.length, tone: this.list === 'rejected' ? 'bad' : this.list === 'approved' ? 'good' : 'warn' }];
+    return [
+      { key: 'all', label: 'Transactions', value: rows.length },
+      { key: '4', label: 'To approve', value: rows.filter((t) => t.VerificationStatus === 4).length, tone: 'warn' },
+      { key: '6', label: 'Approved', value: rows.filter((t) => t.VerificationStatus === 6).length, tone: 'good' },
+    ];
+  });
+
+  /** A tile filters the list; "Transactions" (or the chosen tile again) shows every one. */
+  protected pickStage(key: string | undefined): void {
+    if (this.filterable) this.stage.set(!key || key === 'all' || key === this.stage() ? null : key);
+  }
 
   protected readonly transactions = signal<NeftTransaction[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   /** The search box above the list (any column). */
   protected readonly search = signal('');
-  protected readonly view = new PagedView(() => searchRows(this.transactions(), this.search()));
+  private readonly shown = computed(() => {
+    const stage = this.stage();
+    return stage ? this.transactions().filter((t) => String(t.VerificationStatus) === stage) : this.transactions();
+  });
+  protected readonly view = new PagedView(() => searchRows(this.shown(), this.search()));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly form = signal<ApprovalForm | null>(null);
   protected readonly formError = signal('');
   protected readonly saving = signal(false);
@@ -123,7 +164,6 @@ export class NeftTransactionsPage {
   }
 
   protected open(t: NeftTransaction): void {
-    this.success.set('');
     this.formError.set('');
     this.form.set({ transaction: t, date: '', referenceNo: '', amount: '', submitted: false });
   }
@@ -161,7 +201,7 @@ export class NeftTransactionsPage {
         }),
       );
       this.form.set(null);
-      this.success.set(r.message || 'Transaction Approved.');
+      this.toast.success(r.message || 'Transaction Approved.', f.transaction.ZedId);
       // Approved rows leave the "new" list (VerificationStatus 6).
       this.transactions.update((rows) => rows.filter((x) => x.TransactionId !== f.transaction.TransactionId));
     } catch (err) {

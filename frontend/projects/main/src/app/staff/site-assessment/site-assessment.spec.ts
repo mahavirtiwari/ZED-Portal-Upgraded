@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ToastService } from '../toast';
 import { RemoteAssessmentsPage } from './remote-assessments';
 import { SaAllotmentPage } from './sa-allotment';
 import { todayIso } from './site-assessment.api';
@@ -49,11 +50,11 @@ describe('SaAllotmentPage', () => {
 
   afterEach(() => http.verify());
 
-  it('lists the units with ALLOT / RE-ALLOT as on the old page, as text', () => {
+  it('lists the units with Allot / Re-allot, as text', () => {
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(3);
-    expect(rows[0].textContent).toContain('ALLOT');
-    expect(rows[1].textContent).toContain('RE-ALLOT');
+    expect(rows[0].textContent).toContain('Allot');
+    expect(rows[1].textContent).toContain('Re-allot');
     expect(rows[1].textContent).toContain('Lead One');
     expect(rows[2].querySelector('button')).toBeNull();
     expect(el.querySelector('tbody img')).toBeNull();
@@ -61,16 +62,28 @@ describe('SaAllotmentPage', () => {
   });
 
   it('requires date, mode and lead assessor before calling the API', async () => {
-    button(el, 'ALLOT')!.click();
+    button(el, 'Allot')!.click();
     await settle(fixture);
-    button(el.querySelector('.modal-footer') as HTMLElement, 'ALLOT')!.click();
+    button(el.querySelector('.modal-footer') as HTMLElement, 'Allot')!.click();
     await settle(fixture);
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please select valid data.');
     http.expectNone('/api/staff/site-assessment/allotments');
   });
 
+  it('a tile filters the list; the chosen tile again shows every unit', async () => {
+    const tile = [...el.querySelectorAll<HTMLButtonElement>('.lc-btn')].find((b) => b.textContent!.includes('Rejected'))!;
+    tile.click();
+    await settle(fixture);
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+    expect(el.querySelector('tbody')!.textContent).toContain('ZEDMSME000003');
+    tile.click();
+    await settle(fixture);
+    expect(el.querySelectorAll('tbody tr').length).toBe(3);
+  });
+
   it('allots with the chosen assessors and reloads the list', async () => {
-    button(el, 'ALLOT')!.click();
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    button(el, 'Allot')!.click();
     await settle(fixture);
     expect((el.querySelector('#FinalSaDate') as HTMLInputElement).min).toBe(todayIso());
 
@@ -84,7 +97,7 @@ describe('SaAllotmentPage', () => {
     choose(el, '#CoAssessorId', 'ASR2');
     await settle(fixture);
 
-    button(el.querySelector('.modal-footer') as HTMLElement, 'ALLOT')!.click();
+    button(el.querySelector('.modal-footer') as HTMLElement, 'Allot')!.click();
     await settle(fixture);
     const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/site-assessment/allotments');
     expect(req.request.body).toEqual({
@@ -96,7 +109,7 @@ describe('SaAllotmentPage', () => {
     http.expectOne((r) => r.method === 'GET' && r.url === '/api/staff/site-assessment/allotments').flush({ units, assessors });
     await settle(fixture);
     expect(el.querySelector('.modal')).toBeNull();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('ZEDMSME000001 allotted');
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 allotted', 'To Lead One.');
   });
 
   it('opens RE-ALLOT with the current assessor selected', async () => {
@@ -107,13 +120,13 @@ describe('SaAllotmentPage', () => {
   });
 
   it('shows the API message when the allotment is refused', async () => {
-    button(el, 'ALLOT')!.click();
+    button(el, 'Allot')!.click();
     await settle(fixture);
     choose(el, '#FinalSaDate', '2099-01-15');
     choose(el, '#ModeOfAssessment', 'Onsite Assessment');
     choose(el, '#SiteAssessorId', 'ASR1');
     await settle(fixture);
-    button(el.querySelector('.modal-footer') as HTMLElement, 'ALLOT')!.click();
+    button(el.querySelector('.modal-footer') as HTMLElement, 'Allot')!.click();
     await settle(fixture);
     http.expectOne((r) => r.method === 'POST').flush({ title: 'Please select an assessor of your agency.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);

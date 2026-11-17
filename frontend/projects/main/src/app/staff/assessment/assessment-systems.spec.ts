@@ -89,7 +89,7 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     expect(el.textContent).toContain('Allot Surveillance Assessments');
-    expect(el.textContent).toContain('RE-ALLOT');
+    expect(el.textContent).toContain('Re-allot');
     // The old page showed only the assessor's name and ID (no original-certification line).
     expect(el.textContent).not.toContain('Original certification');
     expect(el.textContent).not.toContain('LEAD1');
@@ -123,7 +123,7 @@ describe('assessment pages per system', () => {
     input.dispatchEvent(new Event('input'));
     (el.querySelector('button.search-zed') as HTMLButtonElement).click();
     await settle(fixture);
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'RE-ALLOT') as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Re-allot') as HTMLButtonElement).click();
     await settle(fixture);
     expect((el.querySelector('#daAssessor') as HTMLSelectElement).value).toBe('AS1');
   });

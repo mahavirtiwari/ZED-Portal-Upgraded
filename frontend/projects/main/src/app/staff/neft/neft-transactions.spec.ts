@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ToastService } from '../toast';
 import { NeftTransactionsPage } from './neft-transactions';
 
 describe('NeftTransactionsPage', () => {
@@ -35,7 +36,7 @@ describe('NeftTransactionsPage', () => {
   async function create(list: string) {
     await TestBed.configureTestingModule({
       imports: [NeftTransactionsPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { data: { list } } } }],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { data: { list } } } }],
     }).compileComponents();
     fixture = TestBed.createComponent(NeftTransactionsPage);
     http = TestBed.inject(HttpTestingController);
@@ -52,15 +53,16 @@ describe('NeftTransactionsPage', () => {
     req.flush({ transactions: [tx(11), tx(12)] });
     await settle();
 
-    expect(el.querySelector('h3')!.textContent).toContain('New Transactions');
+    expect(el.querySelector('h2')!.textContent).toContain('New Transactions');
     expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
 
     (el.querySelectorAll('tbody tr button')[0] as HTMLButtonElement).click();
     await settle();
     expect((el.querySelector('#neftZedId') as HTMLInputElement).value).toBe('ZEDMSME000011');
 
     // Required fields are checked before calling the API.
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     http.expectNone('/api/staff/neft/transactions/11/approve');
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please enter all the required details.');
@@ -68,7 +70,7 @@ describe('NeftTransactionsPage', () => {
     await type('#neftDate', '2026-01-05');
     await type('#neftRef', ' UTR123 ');
     await type('#neftAmount', '40000');
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
 
     const approve = http.expectOne('/api/staff/neft/transactions/11/approve');
@@ -78,7 +80,7 @@ describe('NeftTransactionsPage', () => {
     await settle();
 
     expect(el.querySelector('.modal')).toBeNull();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Transaction Approved.');
+    expect(toast).toHaveBeenCalledWith('Transaction Approved.', 'ZEDMSME000011');
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
   });
 
@@ -91,7 +93,7 @@ describe('NeftTransactionsPage', () => {
     await type('#neftDate', '2026-01-05');
     await type('#neftRef', 'UTR1');
     await type('#neftAmount', '90000');
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     http.expectOne('/api/staff/neft/transactions/11/approve')
       .flush({ title: 'The amount cannot be more than the amount paid by the unit (Rs. 50000).' }, { status: 400, statusText: 'Bad Request' });
@@ -108,7 +110,7 @@ describe('NeftTransactionsPage', () => {
     req.flush({ transactions: [tx(14, { ApproverReferenceNo: 'UTR9', ApproverAmount: 40000, ApproverDateOfReceiptOfPayment: '05 Jan 2026' })] });
     await settle();
 
-    expect(el.querySelector('h3')!.textContent).toContain('Approved Transactions');
+    expect(el.querySelector('h2')!.textContent).toContain('Approved Transactions');
     expect(el.querySelector('tbody')!.textContent).toContain('UTR9');
     expect(button('Approve')).toBeUndefined();
   });

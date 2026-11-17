@@ -1,19 +1,12 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/FinancialAssistance/Verification.cshtml, laid out with the V4 blocks. -->
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Technology Upgradation · {{ zedId }}</h3>
-    <p class="page-sub">The unit's purchased technologies, payments and documents; validate the documents, then accept or reject.</p>
-  </div>
-  <div class="page-actions">
-    <button type="button" class="btn btn-outline-primary" (click)="load()">Refresh</button>
-    <a class="btn btn-back" [routerLink]="backLink">BACK</a>
-  </div>
-</div>
+<!-- 2026-11-17 (approved staff redesign): the page head with crumbs and the light buttons; completed actions as toasts. -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Technology upgradation · ' + zedId"
+               subtitle="The unit's purchased technologies, payments and documents; validate the documents, then accept or reject.">
+  <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+  <a class="btn btn-ph" [routerLink]="backLink">Back</a>
+</zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
-}
-@if (success()) {
-  <div class="alert alert-success" role="status">{{ success() }}</div>
 }
 
 @if (applications().length) {

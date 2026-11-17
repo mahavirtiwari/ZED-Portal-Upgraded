@@ -2,6 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PageHead } from '../../../msme/shared/page-head';
+import { staffCrumbs } from '../../staff-crumbs';
+import { ToastService } from '../../toast';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
@@ -105,7 +108,7 @@ interface DecisionForm {
  */
 @Component({
   selector: 'zed-staff-tu-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead],
   templateUrl: './tu-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -153,6 +156,12 @@ export class TuVerificationPage {
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
   protected readonly level = this.route.snapshot.paramMap.get('level') ?? '';
   protected readonly isCoordinator = computed(() => this.user()?.roleId === StaffRole.StateCoordinator);
+  /** 2026-11-17 (approved staff redesign): "Home > the list > ZED ID" (the coordinator's NEFT list, else the TU list). */
+  protected readonly crumbs = computed(() => staffCrumbs(
+    { label: this.isCoordinator() ? 'New Transactions' : 'Technology upgradation', link: this.backLink },
+    { label: this.zedId },
+  ));
+  private readonly toast = inject(ToastService);
 
   protected readonly applications = signal<TuApplication[]>([]);
   protected readonly selected = signal(this.level);
@@ -170,7 +179,6 @@ export class TuVerificationPage {
   protected readonly recommended = computed(() => this.applications().flatMap((a) => a.recommended));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly preview = signal<string | null>(null);
   protected readonly validation = signal<ValidationForm | null>(null);
   protected readonly decision = signal<DecisionForm | null>(null);
@@ -314,7 +322,6 @@ export class TuVerificationPage {
   // ----- validation -----
 
   protected openValidation(doc: TuDocument): void {
-    this.success.set('');
     this.dialogError.set('');
     this.validation.set({
       doc,
@@ -364,7 +371,6 @@ export class TuVerificationPage {
   // ----- amounts -----
 
   protected editAmount(t: TuTechnology): void {
-    this.success.set('');
     this.error.set('');
     this.amountEdit.set({ id: t.id, value: this.value(t.details, 'AmountPaid') });
   }
@@ -382,7 +388,6 @@ export class TuVerificationPage {
   // ----- decision -----
 
   protected openDecision(decision: 'approve' | 'reject'): void {
-    this.success.set('');
     this.dialogError.set('');
     this.decision.set({ decision, comments: '', confirmed: false });
   }
@@ -402,7 +407,6 @@ export class TuVerificationPage {
   // ----- account -----
 
   protected editAccount(app: TuApplication): void {
-    this.success.set('');
     this.error.set('');
     this.account.set({
       accountNo: this.value(app.details, 'AccountNo'),
@@ -450,7 +454,7 @@ export class TuVerificationPage {
     try {
       const r = await firstValueFrom(action());
       done();
-      this.success.set(r.message);
+      this.toast.success(r.message);
       await this.load();
     } catch (err) {
       fail(apiErrorMessage(err));

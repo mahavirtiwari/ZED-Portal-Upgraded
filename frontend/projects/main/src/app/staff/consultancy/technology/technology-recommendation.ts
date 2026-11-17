@@ -2,6 +2,9 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { PageHead } from '../../../msme/shared/page-head';
+import { staffCrumbs } from '../../staff-crumbs';
+import { ToastService } from '../../toast';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
@@ -16,7 +19,7 @@ import { RecommendationPage, TuApi } from './tu.api';
  */
 @Component({
   selector: 'zed-staff-technology-recommendation',
-  imports: [FormsModule, NgTemplateOutlet, ContentTextComponent],
+  imports: [FormsModule, NgTemplateOutlet, ContentTextComponent, PageHead],
   templateUrl: './technology-recommendation.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -35,6 +38,9 @@ export class TechnologyRecommendationPage {
 
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
   protected readonly level = this.route.snapshot.paramMap.get('level') ?? '';
+  /** 2026-11-17 (approved staff redesign): opened from Consultancy Completed. */
+  protected readonly crumbs = staffCrumbs({ label: 'Consultancy Completed', link: '/staff/assessment/completed' }, { label: this.zedId });
+  private readonly toast = inject(ToastService);
 
   protected readonly page = signal<RecommendationPage | null>(null);
   protected readonly chosen = signal<ReadonlySet<string>>(new Set());
@@ -44,7 +50,6 @@ export class TechnologyRecommendationPage {
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   /** Technologies whose description is unfolded (long descriptions show three lines). */
   protected readonly expanded = signal<ReadonlySet<string>>(new Set());
 
@@ -94,7 +99,7 @@ export class TechnologyRecommendationPage {
     this.error.set('');
     try {
       const r = await firstValueFrom(this.api.recommend(this.zedId, this.level, [...this.chosen()]));
-      this.success.set(r.message);
+      this.toast.success(r.message);
       this.summary.set(false);
       await this.load();
     } catch (err) {
