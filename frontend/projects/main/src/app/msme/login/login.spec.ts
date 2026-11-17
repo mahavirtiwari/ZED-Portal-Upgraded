@@ -54,7 +54,8 @@ describe('LoginPage', () => {
     expect(el.querySelector('.ml-lv-box:not(.ml-lv-x) .ml-level small')).toBeNull();
     // 2026-11-17 (the user): each level with its certification logo.
     expect([...el.querySelectorAll('.ml-lv-name img')].map((i) => i.getAttribute('src'))).toEqual(['/Images/Dashboard/bronze.png', '/Images/Dashboard/silver.png', '/Images/Dashboard/gold.png', '/Images/Dashboard/zedx.svg']);
-    expect(el.querySelector('.ml-lv-x .ml-level')!.textContent).toContain('Export');
+    expect(el.querySelector('.ml-lv-x .ml-lv-name')!.textContent!.trim()).toBe('ZED-X (Export)');
+    expect(el.querySelector('.ml-bar')).toBeNull();
     expect(el.querySelector('.ml-footer')!.textContent).toContain('Ministry of MSME, Government of India');
   });
 

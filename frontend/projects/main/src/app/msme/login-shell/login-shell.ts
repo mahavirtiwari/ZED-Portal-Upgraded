@@ -79,13 +79,13 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
               @if (levels().steps.length) {
                 <ul class="ml-lv-box">
                   @for (l of levels().steps; track l.name) {
-                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span></li>
+                    <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span></li>
                   }
                 </ul>
               }
               @for (l of levels().export; track l.name) {
                 <ul class="ml-lv-box ml-lv-x">
-                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>Export</small></li>
+                  <li class="ml-level"><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }} (Export)</span></li>
                 </ul>
               }
             </div>
