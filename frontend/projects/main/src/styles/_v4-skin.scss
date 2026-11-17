@@ -65,23 +65,25 @@ h4.registration-title, h5.registration-title { font-size: 18px; line-height: 26p
 .table > :not(caption) > * > *:hover {
   box-shadow: inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)));
 }
-// Header rows: the teal of the old tables, also for the rows the old pages marked with "btn-default".
+// Header rows, also the rows the old pages marked with "btn-default". 2026-11-17 (approved staff redesign): a light header
+// (pale teal, dark small capitals) in place of the teal one, as the applicant pages.
+$head-bg: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff);
 .table > thead > tr > th,
 .table > thead > tr > td,
 .table > thead > tr.btn-default > th,
 table.table.table-zed thead tr th {
-  --bs-table-bg: #{$teal};
-  --bs-table-color: #fff;
-  background-color: $teal !important;
-  color: #fff !important;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.1px;
+  --bs-table-bg: #{$head-bg};
+  --bs-table-color: var(--zt-ink, #173f44);
+  background-color: $head-bg !important;
+  color: var(--zt-ink, #173f44) !important;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   white-space: normal;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  border-color: #d6e6e4 !important;
 }
-.table > thead > tr.btn-default { background: $teal !important; }
+.table > thead > tr.btn-default { background: $head-bg !important; }
 .table-responsive { border-radius: $radius; margin-bottom: 16px; }
 .table-responsive > .table { margin-bottom: 0; }
 

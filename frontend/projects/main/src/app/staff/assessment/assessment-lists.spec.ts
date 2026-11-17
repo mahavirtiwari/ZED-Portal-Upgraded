@@ -196,7 +196,7 @@ describe('assessment list pages', () => {
     expect(el.textContent).not.toContain('Assessors Details');
     expect(el.textContent).toContain('May 1, 2024');
 
-    buttons(el, 'Last')[0].click();
+    (el.querySelector('.zed-pager button[aria-label="Page 3"]') as HTMLButtonElement).click();
     await settle(fixture);
     const last = http.expectOne((r) => r.url === '/api/staff/assessment/completed');
     expect(last.request.params.get('pageNo')).toBe('3');

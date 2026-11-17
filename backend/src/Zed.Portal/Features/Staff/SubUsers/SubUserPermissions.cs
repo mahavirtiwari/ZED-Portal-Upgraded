@@ -111,6 +111,8 @@ public static class SubUserPermissions
         HttpMethods.IsGet(method) && (
             path.Equals("/api/staff/dashboard", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/api/staff/dashboard/counts", StringComparison.OrdinalIgnoreCase)
+            // 2026-11-17: the header's bell; it lists only the screens the sub-user was given (AttentionController).
+            || path.Equals("/api/staff/attention", StringComparison.OrdinalIgnoreCase)
             || Under(path, "/api/staff/msme-profile")
             || Under(path, "/api/staff/certification-documents"));
 

@@ -4,6 +4,10 @@ import { AuthService, ClientConfigService, PortalLinksService } from '@zed/share
 import { BrandingService } from '../branding';
 import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
+import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
+import { ATTENTION_ROLES, AttentionBell } from './attention';
+import { ToastHost } from './toast';
+import { PORTAL_SYSTEM } from '../portal-system';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
@@ -11,10 +15,13 @@ import { RemoteAllotments } from './remote-allotments';
  * Images are relative so that they load from the build's baseHref (/Consultancy/, /surveillance/).
  * V4: the bar names the role and the portal (each page has its own heading); on wide screens the menu stays on one row: the entries that do not fit
  * (measured, again on every resize) are under "More". Phones list every entry. Every page has the bar's width.
+ * 2026-11-17 (approved staff redesign): "Search ZED ID" (Ctrl K) for the roles that can open a unit's profile, the bell with
+ * the work waiting (api/staff/attention) for Master Admin, agencies and assessors, the toasts of the pages (ToastService),
+ * and the footer's links (as the applicant's footer).
  */
 @Component({
   selector: 'zed-staff-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost],
   host: { class: 'zed-legacy zed-v4 d-block' },
   template: `
     <div class="main-container">
@@ -105,6 +112,12 @@ import { RemoteAllotments } from './remote-allotments';
                   </ul>
                 </li>
               }
+              @if (canSearch() || canBell()) {
+                <li class="nav-item nav-tools">
+                  @if (canSearch()) { <zed-zed-id-search /> }
+                  @if (canBell()) { <zed-attention-bell /> }
+                </li>
+              }
               <li class="nav-item dropdown tag user-menu">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
                         [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
@@ -125,13 +138,19 @@ import { RemoteAllotments } from './remote-allotments';
 
       <footer>
         <div class="footer">
-          <div class="container d-flex justify-content-between align-items-center py-2">
+          <div class="container sf">
             <small>ZED © {{ year }} All Rights Reserved</small>
+            <nav class="sf-links" aria-label="Footer">
+              @if (hasDocuments()) { <a routerLink="/staff/documents">Scheme guidelines</a> }
+              @if (main) { <a routerLink="/privacy-policy">Privacy policy</a> }
+              @if (links.url('contact'); as u) { <a [href]="u" target="_blank" rel="noopener">Help desk</a> }
+            </nav>
             <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" alt="QCI" height="32" />
           </div>
         </div>
       </footer>
     </div>
+    <zed-toast />
   `,
   styles: `
     :host { color: #333; }
@@ -173,6 +192,13 @@ import { RemoteAllotments } from './remote-allotments';
       font-size: 12.5px; font-weight: 800; }
     .zed-navbar .who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
     .zed-navbar .who small { font-size: 11px; font-weight: 600; color: #a9d3d6; }
+    .zed-navbar .nav-tools { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    /* Footer: copyright, the links, the logo (as the applicant's footer). */
+    .sf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px; }
+    .sf-links { display: flex; flex-wrap: wrap; gap: 4px 0; font-size: 13px; }
+    .sf-links a { color: inherit; text-decoration: none; opacity: 0.9; }
+    .sf-links a + a::before { content: '·'; margin: 0 8px; }
+    .sf-links a:hover { opacity: 1; text-decoration: underline; }
     @media (min-width: 992px) {
       .zed-navbar .navbar-brand { display: none; }
       /* 2026-11-15: no bottom margin on wide screens (the 8px of mb-2 pushed the row up in the strip). */
@@ -187,6 +213,8 @@ import { RemoteAllotments } from './remote-allotments';
       .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
       .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; border-bottom: 3px solid #c9e8a0; }
       .zed-navbar .nav > li.user-menu { margin-left: auto; }
+      .zed-navbar .nav > li.nav-tools { margin-left: auto; padding: 0 12px; }
+      .zed-navbar .nav > li.nav-tools + li.user-menu { margin-left: 0; border-left: 1px solid rgba(255, 255, 255, 0.22); }
       /* 2026-11-16: a thin line between the tabs (not before Home, not before the user on the right). */
       .zed-navbar .nav > li.tag { position: relative; }
       .zed-navbar .nav > li.tag:not(:first-child):not(.user-menu)::before {
@@ -217,6 +245,14 @@ export class StaffLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
+  /** "Search ZED ID": the roles that can open /staff/msme-profile (its guard). */
+  protected readonly canSearch = computed(() => MSME_PROFILE_ROLES.includes(this.user()?.roleId ?? 0));
+  /** The bell: the roles whose work api/staff/attention counts. */
+  protected readonly canBell = computed(() => ATTENTION_ROLES.includes(this.user()?.roleId ?? 0));
+  /** Footer: "Scheme guidelines" opens the documents the Admin gave to the account type (not for the Admin). */
+  protected readonly hasDocuments = computed(() => this.menu().some((i) => i.route === '/staff/documents'));
+  /** The privacy policy page is on the main portal. */
+  protected readonly main = PORTAL_SYSTEM === 'main';
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
 
@@ -283,7 +319,9 @@ export class StaffLayout {
     const style = getComputedStyle(nav);
     const available = nav.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - brand - 24;
     const home = (bar.firstElementChild as HTMLElement | null)?.getBoundingClientRect().width ?? 60;
-    const user = (bar.querySelector('.user-menu') as HTMLElement | null)?.getBoundingClientRect().width ?? 160;
+    // The user menu, with the search box and bell beside it.
+    const user = ((bar.querySelector('.user-menu') as HTMLElement | null)?.getBoundingClientRect().width ?? 160)
+      + ((bar.querySelector('.nav-tools') as HTMLElement | null)?.getBoundingClientRect().width ?? 0);
     const more = 90;
     const total = this.widths.reduce((a, b) => a + b, 0);
     if (home + total + user <= available) {

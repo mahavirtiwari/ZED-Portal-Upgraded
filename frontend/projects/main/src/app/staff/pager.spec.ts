@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ClientPager, ListSearchComponent, PagedView, PagerComponent, ServerPager, searchRows } from './pager';
+import { ClientPager, ListSearchComponent, PagedView, PagerComponent, ServerPager, pageWindow, searchRows } from './pager';
 
 const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, name: i % 2 ? 'odd' : 'even' }));
 
@@ -62,7 +62,7 @@ describe('pager', () => {
     expect(v.lastPage()).toBe(2);
   });
 
-  it('draws Show N Entries, the record count and First / Prev / page / Next / Last', async () => {
+  it('draws Showing x to y of n, Rows per page and Prev / page numbers / Next', async () => {
     @Component({ imports: [PagerComponent], template: `<zed-pager [pager]="view" [sizes]="[10, 20, 200]" />` })
     class Host {
       readonly list = signal(rows(31));
@@ -72,21 +72,46 @@ describe('pager', () => {
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
-    const [sizes, pages] = Array.from(el.querySelectorAll('select'));
+    const sizes = el.querySelector('select[aria-label="Rows per page"]') as HTMLSelectElement;
+    expect(el.querySelectorAll('select').length).toBe(1);
     expect(Array.from(sizes.options).map((o) => o.value)).toEqual(['10', '20', '200']);
-    expect(Array.from(pages.options).map((o) => o.value)).toEqual(['1', '2', '3', '4']);
-    expect(el.textContent).toContain('(31 records)');
+    const pages = () => Array.from(el.querySelectorAll('.zp-num')).map((b) => b.textContent!.trim());
+    expect(pages()).toEqual(['1', '2', '3', '4']);
+    expect(el.textContent).toContain('Showing 1 to 10 of 31');
+    expect(el.querySelector('[aria-current="page"]')!.textContent!.trim()).toBe('1');
     const button = (label: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent!.trim() === label)!;
     expect(button('Prev').disabled).toBe(true);
-    button('Last').click();
+    button('4').click();
     fixture.detectChanges();
     expect(fixture.componentInstance.view.pageNo()).toBe(4);
     expect(button('Next').disabled).toBe(true);
+    expect(el.textContent).toContain('Showing 31 to 31 of 31');
+    expect(el.querySelector('[aria-current="page"]')!.getAttribute('aria-label')).toBe('Page 4');
     sizes.value = '20';
     sizes.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     expect(fixture.componentInstance.view.pageNo()).toBe(1);
     expect(fixture.componentInstance.view.lastPage()).toBe(2);
+  });
+
+  it('shows the first, last and nearby pages with gaps on long lists', () => {
+    expect(pageWindow(1, 4)).toEqual([1, 2, 3, 4]);
+    expect(pageWindow(1, 20)).toEqual([1, 2, 3, 4, 0, 20]);
+    expect(pageWindow(10, 20)).toEqual([1, 0, 9, 10, 11, 0, 20]);
+    expect(pageWindow(4, 20)).toEqual([1, 2, 3, 4, 5, 0, 20]);
+    expect(pageWindow(20, 20)).toEqual([1, 0, 17, 18, 19, 20]);
+  });
+
+  it('says No records for an empty list', async () => {
+    @Component({ imports: [PagerComponent], template: `<zed-pager [pager]="view" />` })
+    class Empty {
+      readonly view = new PagedView(() => []);
+    }
+    const fixture = TestBed.createComponent(Empty);
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('No records');
+    expect(el.querySelectorAll('.zp-num').length).toBe(1);
   });
 
   it('searchRows finds every word in any column, nested values too', () => {

@@ -773,8 +773,8 @@ describe('ParametersPage', () => {
     await settle(fixture);
     const codes = () => [...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim());
     expect(codes()).toEqual(['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10']);
-    expect(el.querySelector('.zed-pager')!.textContent).toContain('(23 records)');
-    ([...el.querySelectorAll('.zed-pager button')].find((b) => b.textContent!.trim() === 'Last') as HTMLButtonElement).click();
+    expect(el.querySelector('.zed-pager')!.textContent).toContain('of 23');
+    (el.querySelector('.zed-pager button[aria-label="Page 3"]') as HTMLButtonElement).click();
     await settle(fixture);
     expect(codes()).toEqual(['P21', 'P22', 'P23']);
     const search = el.querySelector('input[aria-label="Search parameters"]') as HTMLInputElement;

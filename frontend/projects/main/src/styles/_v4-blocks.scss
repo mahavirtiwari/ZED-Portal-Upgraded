@@ -120,10 +120,10 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .list-card-head zed-list-search { margin: 0; }
   .list-card .table-responsive { margin: 0; }
   .list-card table.table { margin: 0; border: 0; font-size: 13.5px; }
-  // 2026-11-15 (the user): a dark header row, so that it stands apart from the rows.
-  .list-card table.table > thead > tr, .list-card table.table.table-zed > thead > tr { background: var(--zt-dark, #23656b) !important; }
-  .list-card table.table > thead > tr > th, .list-card table.table.table-zed > thead > tr > th { --bs-table-bg: var(--zt-dark, #23656b); --bs-table-color: #fff; color: #fff !important; background: var(--zt-dark, #23656b) !important; font-weight: 700; font-size: 12.5px; border: 0;
-    border-bottom: 1px solid #e3ecec; padding: 9px 12px; text-align: left; }
+  // 2026-11-17 (approved staff redesign): a light header row (pale teal, dark small capitals) in place of the dark one.
+  .list-card table.table > thead > tr, .list-card table.table.table-zed > thead > tr { background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff) !important; }
+  .list-card table.table > thead > tr > th, .list-card table.table.table-zed > thead > tr > th { --bs-table-bg: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff); --bs-table-color: var(--zt-ink, #173f44); color: var(--zt-ink, #173f44) !important; background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff) !important; font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; border: 0;
+    border-bottom: 1px solid #d6e6e4; padding: 10px 12px; text-align: left; }
   // 2026-11-15 (the user): separating lines that show.
   .list-card table.table > tbody > tr > td { border: 0; border-top: 1px solid #d0dcdd; padding: 10px 12px; vertical-align: middle; text-align: left; }
   .list-card table.table > tbody > tr:first-child > td { border-top: 0; }
@@ -155,10 +155,11 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .page-head .page-sub { font-size: 13.5px; color: #7a8a8b; }
   .page-actions .btn { font-weight: 600; }
   .zed-card { border-color: #dfe9ea; border-radius: 12px; box-shadow: none; }
-  table.table.table-zed > thead > tr { background: var(--zt-dark, #23656b) !important; }
+  // 2026-11-17 (approved staff redesign): the light header row.
+  table.table.table-zed > thead > tr { background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff) !important; }
   table.table.table-zed > thead > tr > th, table.table.table-zed > thead > tr > td {
-    --bs-table-bg: var(--zt-dark, #23656b); --bs-table-color: #fff; background: var(--zt-dark, #23656b) !important; color: #fff !important;
-    font-size: 12.5px; font-weight: 700; border-color: #e3ecec;
+    --bs-table-bg: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff); --bs-table-color: var(--zt-ink, #173f44); background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff) !important; color: var(--zt-ink, #173f44) !important;
+    font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-color: #d6e6e4;
   }
   table.table.table-zed { background: #fff; font-size: 13.5px; border-color: #e3ecec; }
   table.table.table-zed > :not(caption) > * > * { border-color: #d0dcdd; }

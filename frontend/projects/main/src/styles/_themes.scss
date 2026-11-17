@@ -31,8 +31,8 @@ html[data-zed-theme] {
   // Not the menu bar's drop-down tabs and user button (btn-link too): they keep their light text on the dark bar.
   .btn-link:not(.nav-link) { color: var(--zt-dark) !important; }
 
-  // Table headings.
-  .table-zed > thead > tr > th, .table-zed thead th { background: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }
+  // Table headings (2026-11-17: the light header, in the theme's pale tint, with its ink).
+  .table-zed > thead > tr > th, .table-zed thead th { background: color-mix(in srgb, var(--zt-soft) 55%, #fff) !important; color: var(--zt-ink) !important; border-color: var(--zt-soft) !important; }
 
   // Pop-up title bars and their numbers.
   .modal .acc-head, .modal .ed-head { background: var(--zt-dark) !important; }

@@ -105,7 +105,7 @@ describe('SubsidyRegionsPage', () => {
     await settle(fixture);
     const names = () => [...el.querySelectorAll('tbody tr td:nth-child(2)')].map((c) => c.textContent!.trim());
     expect(names().length).toBe(10);
-    expect(el.querySelector('.zed-pager')!.textContent).toContain('(25 records)');
+    expect(el.querySelector('.zed-pager')!.textContent).toContain('Showing 1 to 10 of 25');
     button(el, 'Next').click();
     await settle(fixture);
     expect(names()[0]).toBe('DISTRICT 11');

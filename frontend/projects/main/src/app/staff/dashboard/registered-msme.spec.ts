@@ -55,7 +55,7 @@ describe('RegisteredMsmePage', () => {
     expect(button('Resend Details')).toBeUndefined();
     expect(button('IN-ACTIVE MSME')).toBeUndefined();
     expect(button('Assessment')!.getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Silver');
-    expect([...el.querySelectorAll('select[aria-label="Page"] option')].length).toBe(4);
+    expect([...el.querySelectorAll('.zed-pager button[aria-label^="Page "]')].length).toBe(4);
   });
 
   it('opens the customer history from the ZED ID for the logins that see it', async () => {

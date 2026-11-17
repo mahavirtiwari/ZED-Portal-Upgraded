@@ -89,7 +89,7 @@ describe('MonitoringPage', () => {
   it('pages and searches the loaded list on the client', async () => {
     await openNcTab(false, Array.from({ length: 25 }, (_, i) => unit(i + 1)));
     expect(el.querySelectorAll('tbody tr').length).toBe(10);
-    button('Last')!.click();
+    (el.querySelector('.zed-pager button[aria-label="Page 3"]') as HTMLButtonElement).click();
     await settle();
     expect(el.querySelectorAll('tbody tr').length).toBe(5);
 

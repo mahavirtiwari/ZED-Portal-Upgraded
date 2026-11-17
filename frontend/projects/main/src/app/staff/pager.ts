@@ -186,38 +186,88 @@ export class PagedView<T> implements Pager {
   }
 }
 
-/** "Show N Entries (N records)" and First / Prev / page / Next / Last of the old list pages. */
+/** The page buttons: the first, the last, the current one and its neighbours; 0 marks a gap ("…"). All when 7 or fewer. */
+export function pageWindow(current: number, last: number): number[] {
+  if (last <= 7) return pagesOf(last);
+  const near = [1, last, current - 1, current, current + 1].filter((n) => n >= 1 && n <= last);
+  // Near the ends, show a few more so the row keeps its length (1 2 3 4 … 9 / 1 … 6 7 8 9).
+  if (current <= 3) near.push(2, 3, 4);
+  if (current >= last - 2) near.push(last - 1, last - 2, last - 3);
+  const pages = [...new Set(near)].sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const n of pages) {
+    if (out.length && n - out[out.length - 1] > 1) out.push(n - out[out.length - 1] === 2 ? n - 1 : 0);
+    out.push(n);
+  }
+  return out;
+}
+
+/**
+ * The line under a list. 2026-11-17 (approved staff redesign): "Showing 1 to 10 of 34 · Rows per page [10] · Prev 1 2 … 4
+ * Next" (before: "Show N Entries (N records)" and First / Prev / page / Next / Last). Same inputs; the pager does the paging.
+ */
 @Component({
   selector: 'zed-pager',
   host: { class: 'd-block' },
   template: `
     @let p = pager();
-    <div class="row justify-content-between align-items-center g-2 my-2 zed-pager">
-      <div class="col-sm-6">
-        Show
-        <select class="btn btn-primary" aria-label="Entries per page" (change)="p.setPageSize($any($event.target).value)">
-          @for (n of sizes(); track n) { <option [value]="n" [selected]="n === p.pageSize()">{{ n }}</option> }
-        </select>
-        Entries
-        @if (showCount()) { <span class="ms-2 text-muted">({{ p.total() }} records)</span> }
+    <div class="zed-pager zp">
+      <div class="zp-info">
+        @if (showCount()) { <span class="zp-count" role="status">{{ range() }}</span> }
+        <label class="zp-size">Rows per page
+          <select aria-label="Rows per page" (change)="p.setPageSize($any($event.target).value)">
+            @for (n of sizes(); track n) { <option [value]="n" [selected]="n === p.pageSize()">{{ n }}</option> }
+          </select>
+        </label>
       </div>
-      <nav class="col-sm-auto text-end" aria-label="Pages">
-        <button type="button" class="btn btn-primary me-1" (click)="p.go('first')">First</button>
-        <button type="button" class="btn btn-primary me-1" [disabled]="p.pageNo() <= 1" (click)="p.go('prev')">Prev</button>
-        <select class="btn btn-primary me-1" aria-label="Page" (change)="p.goTo($any($event.target).value)">
-          @for (i of p.pages(); track i) { <option [value]="i" [selected]="i === p.pageNo()">{{ i }}</option> }
-        </select>
-        <button type="button" class="btn btn-primary me-1" [disabled]="p.pageNo() >= p.lastPage()" (click)="p.go('next')">Next</button>
-        <button type="button" class="btn btn-primary" (click)="p.go('last')">Last</button>
+      <nav class="zp-pages" aria-label="Pages">
+        <button type="button" class="zp-btn" [disabled]="current() <= 1" (click)="p.go('prev')">Prev</button>
+        @for (n of window(); track $index) {
+          @if (n === 0) {
+            <span class="zp-gap" aria-hidden="true">…</span>
+          } @else {
+            <button type="button" class="zp-btn zp-num" [class.on]="n === current()" [attr.aria-current]="n === current() ? 'page' : null"
+                    [attr.aria-label]="'Page ' + n" (click)="p.goTo(n)">{{ n }}</button>
+          }
+        }
+        <button type="button" class="zp-btn" [disabled]="current() >= p.lastPage()" (click)="p.go('next')">Next</button>
       </nav>
     </div>
   `,
-  styles: `.zed-pager .btn:disabled { opacity: .6; }`,
+  styles: `
+    .zp { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 8px 0; font-size: 13.5px; color: #5f6f70; }
+    .zp-info { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+    .zp-size { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-weight: 400; }
+    .zp-size select { height: 32px; min-width: 64px; padding: 0 26px 0 10px; border: 1px solid #cfdcdd; border-radius: 8px; background-color: #fff;
+      color: var(--zt-ink, #173f44); font-size: 13px; }
+    .zp-pages { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .zp-btn { min-width: 34px; height: 32px; padding: 0 12px; border: 1px solid #cfdcdd; border-radius: 8px; background: #fff;
+      color: var(--zt-ink, #173f44); font-size: 13px; font-weight: 600; line-height: 1; }
+    .zp-btn:hover:not(:disabled):not(.on) { background: var(--zt-soft, #d4ebe6); border-color: var(--zt-soft, #d4ebe6); }
+    .zp-btn:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
+    .zp-btn:disabled { background: #eef2f2; border-color: #eef2f2; color: #9aa8a9; cursor: default; }
+    .zp-num { padding: 0 8px; }
+    .zp-btn.on { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; }
+    .zp-gap { padding: 0 2px; color: #8a9899; }
+    @media (max-width: 575.98px) { .zp, .zp-info { gap: 8px; } }
+  `,
 })
 export class PagerComponent {
   readonly pager = input.required<Pager>();
   readonly sizes = input<readonly number[]>(PAGE_SIZES);
+  /** "Showing 1 to 10 of 34" (false: the rows-per-page choice and the page buttons only). */
   readonly showCount = input(true);
+
+  /** The page shown (a list that shrank shows its last page). */
+  protected readonly current = computed(() => Math.min(this.pager().pageNo(), this.pager().lastPage()));
+  protected readonly window = computed(() => pageWindow(this.current(), this.pager().lastPage()));
+  protected readonly range = computed(() => {
+    const p = this.pager();
+    const total = p.total();
+    if (!total) return 'No records';
+    const from = (this.current() - 1) * p.pageSize() + 1;
+    return `Showing ${from} to ${Math.min(total, from + p.pageSize() - 1)} of ${total}`;
+  });
 }
 
 /** All the text of a row: its values, nested objects and lists included. */

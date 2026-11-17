@@ -1913,12 +1913,18 @@ p {
         color: #232527;
         margin-left: 10px;
     }
+/* 2026-11-17 (approved staff redesign): a light header row (pale teal, dark small capitals) in place of the teal one. */
 table.table.table-zed thead tr{
-    background: #45A5AD!important;
-    color: #ffffff;
+    background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff)!important;
+    color: var(--zt-ink, #173f44);
 }
 table.table.table-zed thead tr th{
-    font-size:14px;
+    background: transparent;
+    color: var(--zt-ink, #173f44);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 .table-zed .row-data {
     display: flex;
