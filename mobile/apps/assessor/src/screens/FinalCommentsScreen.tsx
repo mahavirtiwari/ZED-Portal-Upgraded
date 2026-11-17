@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { isLatestEntryLogout } from '../attendance';
@@ -34,8 +34,13 @@ export function FinalCommentsScreen() {
   const { params } = useRoute<{ closeMeetingData?: SubmitAssessmentRequest; finalSubmission?: boolean }>();
   const request = params.closeMeetingData;
   const [comment, setComment] = useState('');
+  const [ticked, setTicked] = useState<string[]>([]);
   const onSuccess = useSubmissionSuccess();
   const d = app.details!;
+  // V4 (2026-11-17, approved): the Admin's final submit checklist; every item must be ticked before Submit.
+  const checklist = d.submitChecklist ?? [];
+  const allTicked = checklist.every(i => ticked.includes(i.id));
+  const toggle = (id: string) => setTicked(t => (t.includes(id) ? t.filter(x => x !== id) : [...t, id]));
 
   useEffect(() => {
     if (!request) {
@@ -104,8 +109,11 @@ export function FinalCommentsScreen() {
   };
 
   const onSubmit = async () => {
+    if (!allTicked) return ui.toast('Please tick every item of the checklist before you submit.');
     request.userType = d.userType;
     request.endComment = comment;
+    // Kept with the closing data, so a submission saved on the phone sends the ticks when it syncs.
+    if (d.submitChecklist) request.submitChecklist = checklist.map(i => i.id);
     if (!areAllParametersSubmitted(d)) {
       await saveCloseMeeting(app, request);
       leave('As there are Parameters yet to submit, Close meeting data is saved locally. You can submit later while syncing parameters');
@@ -171,7 +179,30 @@ export function FinalCommentsScreen() {
           placeholder={d.userType === 1 ? 'Add the assessment summary' : 'Add your comments'}
           testID="final-comment"
         />
-        <SubmitButton title="Submit" ready onPress={onSubmit} style={{ marginTop: 8 }} testID="final-submit" />
+        {checklist.length > 0 ? (
+          <View testID="submit-checklist">
+            <SectionLabel label="Before you submit" right={<Text style={z.muted}>{`${checklist.filter(i => ticked.includes(i.id)).length} of ${checklist.length}`}</Text>} />
+            <Card style={styles.checklistCard}>
+              {checklist.map((item, i) => {
+                const on = ticked.includes(item.id);
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => toggle(item.id)}
+                    style={[styles.checkRow, i < checklist.length - 1 && styles.participantDivider]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    testID={`check-${item.id}`}
+                  >
+                    <View style={[styles.checkBox, on && styles.checkBoxOn]}>{on ? <ZIcon name="check" size={14} color="#fff" /> : null}</View>
+                    <Text style={styles.checkText}>{item.text}</Text>
+                  </Pressable>
+                );
+              })}
+            </Card>
+          </View>
+        ) : null}
+        <SubmitButton title="Submit" ready={allTicked} onPress={onSubmit} style={{ marginTop: 8 }} testID="final-submit" />
       </ZScroll>
     </Page>
   );
@@ -187,4 +218,9 @@ const styles = StyleSheet.create({
   photoDone: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.primaryBg, borderRadius: 12, padding: 14, marginBottom: 12 },
   photoDoneTitle: { fontSize: 14, fontWeight: '600', color: C.tPrimary },
   photoThumb: { width: 40, height: 40, borderRadius: 8, marginLeft: 8 },
+  checklistCard: { paddingVertical: 4, marginBottom: 8 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10 },
+  checkBox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: C.tMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12, marginTop: 1 },
+  checkBoxOn: { backgroundColor: C.success, borderColor: C.success },
+  checkText: { flex: 1, fontSize: 13, color: C.tPrimary, lineHeight: 19 },
 });

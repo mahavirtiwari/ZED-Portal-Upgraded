@@ -266,7 +266,14 @@ export type AssessmentDetails = BaseServiceResponse & {
   minimumParameters?: number;
   /** V4 (redesign): the unit's site tour sections, their photo limits and the team's photos uploaded (siteTour.ts). */
   siteTourSections?: SiteTourSectionInfo[] | null;
+  /**
+   * V4 (2026-11-17, approved): the Admin's assessor final submit checklist (Onsite), ticked before the closing meeting (lead) or
+   * the final submission (co-assessor). Missing on assessments downloaded before it existed: nothing is asked then.
+   */
+  submitChecklist?: SubmitChecklistItem[] | null;
 };
+
+export type SubmitChecklistItem = { id: string; text: string };
 
 export type SiteTourSectionInfo = { id?: string | null; no?: number; title?: string | null; hint?: string | null; min?: number; max?: number; uploaded?: number };
 
@@ -282,6 +289,8 @@ export type SubmitAssessmentRequest = BaseServiceRequest & {
   inputComment?: string | null;
   endComment?: string | null;
   addedEvidences?: PhotoInformation[] | null;
+  /** V4 (2026-11-17): the ids of the ticked checklist items (SubmitEndAssessment); left out when no checklist was given. */
+  submitChecklist?: string[];
   userType: number;
 };
 

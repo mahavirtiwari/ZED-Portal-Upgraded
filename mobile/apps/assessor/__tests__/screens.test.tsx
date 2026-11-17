@@ -79,6 +79,40 @@ describe('Assessment Detail (AssessmentOptionsActivity)', () => {
   });
 });
 
+describe('Final submission checklist (V4, 2026-11-17)', () => {
+  it("asks every item of the Admin's checklist before Submit and keeps the ticks with the closing data", async () => {
+    const answer = loginAnswer({ userType: 2 });
+    answer.allottedParameters![0]!.status = IN_PROGRESS;
+    const app = await appWith(answer);
+    app.details!.submitChecklist = [
+      { id: 'coi', text: 'I have no conflict of interest with the unit.' },
+      { id: 'answers', text: 'Every requirement has been assessed.' },
+    ];
+    const request = { saId: SA_ID, zedId: ZED_ID, certificationType: 'Silver', userType: 2 };
+    const r = render(app, 'FinalComments', { closeMeetingData: request, finalSubmission: true });
+    expect(byTestId(r, 'submit-checklist')).toHaveLength(1);
+    expect(texts(r)).toContain('0 of 2');
+
+    // Not all ticked: nothing is submitted or saved (the app says so in a toast).
+    await act(async () => handler(r, 'final-submit').props.onPress());
+    expect((request as { submitChecklist?: string[]; endComment?: string }).submitChecklist).toBeUndefined();
+    expect((request as { endComment?: string }).endComment).toBeUndefined();
+
+    await act(async () => handler(r, 'check-coi').props.onPress());
+    await act(async () => handler(r, 'check-answers').props.onPress());
+    expect(texts(r)).toContain('2 of 2');
+    await act(async () => handler(r, 'final-submit').props.onPress());
+    // Parameters still to sync: saved on the phone with the ticks, sent with SubmitEndAssessment later.
+    expect((request as { submitChecklist?: string[] }).submitChecklist).toEqual(['coi', 'answers']);
+  });
+
+  it('asks nothing for an assessment downloaded before the checklist existed', async () => {
+    const app = await appWith(loginAnswer({ userType: 2 }));
+    const r = render(app, 'FinalComments', { closeMeetingData: { saId: SA_ID, zedId: ZED_ID, certificationType: 'Silver', userType: 2 }, finalSubmission: true });
+    expect(byTestId(r, 'submit-checklist')).toHaveLength(0);
+  });
+});
+
 describe('Assessment Detail (CompanyProfileActivity)', () => {
   it('shows the unit and its schedule; the allocation is done once the parameters are allotted', async () => {
     const app = await appWith();

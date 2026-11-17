@@ -103,6 +103,8 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     if (loginResp.allowFinalSubmit) d.allowFinalSubmit = true;
     // V4: the unit's site tour sections (the Admin may change them) and the team's photos uploaded so far.
     if (loginResp.siteTourSections) d.siteTourSections = loginResp.siteTourSections;
+    // V4 (2026-11-17): the Admin's final submit checklist as the server has it now.
+    if (loginResp.submitChecklist) d.submitChecklist = loginResp.submitChecklist;
     // V4: the evidences listed for each requirement as the server has them now (the answers on the phone stay).
     const listed = new Map<string, RequirementDetails['listedEvidences']>();
     for (const p of loginResp.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r?.listedEvidences) listed.set(String(r.id), r.listedEvidences);
