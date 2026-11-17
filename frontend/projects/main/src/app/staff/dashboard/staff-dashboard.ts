@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet, formatDate } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -7,9 +7,15 @@ import { text } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
-import { exportElement } from './export';
+import { NO_EXPORT, exportElement } from './export';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
 import { levelName as adminLevelName } from '../../msme/shared/levels';
+import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { TableExport } from '../table-export';
+import { AttentionRow } from './attention-row';
+import { DashboardExportDialog } from './export-dialog';
+import { ExportChoice, ExportSection, KeyedSheet, exportName, flattenSheets, sharePercent } from './dashboard-export';
 
 interface Card {
   css: string;
@@ -126,49 +132,48 @@ export const CONSULTANT_TILES = [
   { css: 'panel-consultant', title: 'Consultants', field: 'SiteAssessors' },
 ];
 
+
 /**
  * Staff home dashboard. Port of Views/Dashboard/Index.cshtml: the status cards (scoped to the user by the API). V4, all
  * three portals: instead of the old counts strip, the Power BI pages' "ZED Dashboard" and "ZED Certification" figures
  * (<zed-staff-analytics>, worded for the portal), with the cards inside following the same filters.
+ * 2026-11-17 (approved staff redesign): the shared page head (the date basis, Refresh and Export as its buttons, the
+ * Updated time under the title); "Needs your attention" above the cards; per level one stacked bar and its legend; Export
+ * as a pop-up (sections and Excel / CSV / PDF).
  */
 @Component({
   selector: 'zed-staff-dashboard',
   providers: [dashboardSystemProvider(['dash-registered', 'dash-certified'])],
-  imports: [StaffAnalytics, NgTemplateOutlet, DatePipe, DecimalPipe, DashboardPortalSwitchComponent],
+  imports: [StaffAnalytics, NgTemplateOutlet, DecimalPipe, DashboardPortalSwitchComponent, PageHead, AttentionRow, DashboardExportDialog],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['dash-registered', 'dash-certified']" />
     <div class="dash-export" #exportArea>
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">Dashboard</h3>
-      </div>
-      <div class="page-actions dash-meta">
-        @if (analytics(); as an) {
-          @if (an.filtered()) { <button type="button" class="btn btn-link p-0 dash-reset no-export" (click)="an.reset()">Clear filters</button> }
-          @if (an.data(); as d) { <span class="muted">Updated {{ d.generatedAt | date: 'dd-MM-yyyy HH:mm' }}</span> }
-          <button type="button" class="btn btn-outline-primary no-export" [disabled]="an.loading()" (click)="an.load(true)">Refresh</button>
+    <zed-page-head [crumbs]="crumbs" title="Dashboard" [subtitle]="updated()">
+      @if (analytics(); as an) {
+        @if (an.views.length > 1) {
+          <div class="dash-basis" role="tablist" aria-label="Count by">
+            @for (v of an.views; track v) {
+              <button type="button" role="tab" class="an-basis-tab" [attr.data-view]="v" [class.active]="an.view() === v" [attr.aria-selected]="an.view() === v"
+                      (click)="an.setView(v)">{{ an.basisLabel(v) }}</button>
+            }
+          </div>
         }
-        <div class="dash-export-menu no-export">
-          <button type="button" class="btn btn-primary" [disabled]="exporting()" [attr.aria-expanded]="exportOpen()" aria-haspopup="menu"
-                  (click)="exportOpen.set(!exportOpen())">{{ exporting() ? 'Exporting…' : 'Export' }} <span aria-hidden="true">▾</span></button>
-          @if (exportOpen()) {
-            <ul class="dash-export-list" role="menu">
-              <li><button type="button" role="menuitem" (click)="export('jpeg')">Image (JPEG)</button></li>
-              <li><button type="button" role="menuitem" (click)="export('pdf')">PDF</button></li>
-            </ul>
-          }
-        </div>
-      </div>
-    </div>
-    @if (exportError()) { <div class="alert alert-danger no-export" role="alert">{{ exportError() }}</div> }
+        <button type="button" class="btn btn-ph dash-refresh no-export" [disabled]="an.loading()" (click)="refresh()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" /></svg> Refresh
+        </button>
+        <button type="button" class="btn btn-primary dash-export-btn no-export" [disabled]="!an.data() || exporting()" aria-haspopup="dialog" (click)="openExport()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" /></svg> {{ exporting() ? 'Exporting…' : 'Export' }}
+        </button>
+      }
+    </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">
         {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try again</button>
       </div>
     }
     @if (showConsultantTiles()) {
-      <div class="dash-grid">
+      <div class="dash-grid" data-export="headline">
         @for (tile of consultantTiles; track tile.field) {
           <div class="dash-card dash-tile" [class]="tile.css">
             <h5>{{ tile.title }}</h5>
@@ -178,7 +183,7 @@ export const CONSULTANT_TILES = [
       </div>
     }
     <ng-template #statusCards>
-      <!-- Per level the total in the band, the share of each status as a bar, then the statuses (Consultancy: milestones). -->
+      <!-- Per level the total in the band, the share of each status as one bar and its legend (Consultancy: milestones). -->
       <div class="app-grid">
         @for (card of cardList(); track card.title) {
           @if (card.milestones) {
@@ -187,7 +192,7 @@ export const CONSULTANT_TILES = [
                 <span class="app-level">{{ levelName(card) }}</span>
                 <span class="app-total">
                   <span class="app-total-value" [attr.data-field]="card.lines[0].field">{{ value(card.lines[0].field) }}</span>
-                  <span class="app-total-label">{{ card.lines[0].label }}</span>
+                  <span class="app-total-label">total applications</span>
                 </span>
               </div>
               <div class="app-body">
@@ -214,7 +219,7 @@ export const CONSULTANT_TILES = [
               <span class="app-level">{{ levelName(card) }}</span>
               <span class="app-total">
                 <span class="app-total-value" [attr.data-field]="card.lines[0].field">{{ value(card.lines[0].field) }}</span>
-                <span class="app-total-label">{{ card.lines[0].label }}</span>
+                <span class="app-total-label">total applications</span>
               </span>
             </div>
             <div class="app-body">
@@ -240,82 +245,82 @@ export const CONSULTANT_TILES = [
       </div>
     </ng-template>
 
-    <!-- The status cards sit inside the figures, below the totals, and follow the same filters. -->
-    <zed-staff-analytics #figures (statusCards)="summary.set($event)"><ng-container [ngTemplateOutlet]="statusCards" /></zed-staff-analytics>
+    <!-- The attention row and the status cards sit inside the figures, below the totals; the cards follow the same filters. -->
+    <zed-staff-analytics #figures (statusCards)="summary.set($event)">
+      <zed-attention-row anAttention />
+      <ng-container [ngTemplateOutlet]="statusCards" />
+    </zed-staff-analytics>
     </div>
+    @if (exportOpen()) {
+      <zed-dashboard-export [filters]="exportFilters()" [busy]="exporting()" [error]="exportError()" (export)="runExport($event)" (close)="closeExport()" />
+    }
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
     }
   `,
   styles: `
-    /* Counter cards: one grid of white cards, the level's colour as the top accent (the old panel-heading colours). */
-    /* Main application cards. Status colours: pending amber, NC raised orange, certified green, rejected red (always named). */
-    .app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-    .app-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
-    .app-band { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; color: #fff;
+    /* Head: the date basis as a two-way switch, then Refresh (grey) and Export. */
+    .dash-basis { display: inline-flex; padding: 3px; border-radius: 9px; background: #e8eff0; }
+    .an-basis-tab { border: 0; background: none; border-radius: 7px; padding: 6px 16px; font-size: 13.5px; font-weight: 600; color: var(--zt-ink, #173f44); }
+    .an-basis-tab.active { background: var(--zt-dark, #1f5c61); color: #fff; }
+    .dash-export-btn { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); border-radius: 8px; padding: 8px 18px; text-transform: none; }
+    svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    /* Level cards: the level's colour as the band; one bar of the statuses and a legend under it. Status colours: pending
+       amber, NC raised orange, certified green, rejected grey (always named). */
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .app-card, .dash-card { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+    .app-band { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 18px; color: #fff;
       background: linear-gradient(90deg, var(--accent), var(--accent2, var(--accent))); }
-    .app-level { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+    .app-level { font-size: 14px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
     .app-total { flex: none; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
-    .app-total-value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .app-total-label { font-size: 12px; opacity: .9; white-space: nowrap; }
-    .app-body { padding: 14px 18px 16px; }
-    .app-bar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; background: #eef3f3; margin-bottom: 14px; }
+    .app-total-value { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .app-total-label { font-size: 11.5px; opacity: .92; white-space: nowrap; }
+    .app-body { padding: 16px 18px 14px; }
+    .app-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; background: #eef3f3; margin-bottom: 14px; }
     .app-seg { height: 100%; min-width: 0; }
-    .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .app-stats li { display: grid; grid-template-columns: 10px minmax(0, 1fr); grid-template-rows: 30px auto; column-gap: 8px; row-gap: 2px; align-items: start; }
-    .app-stats li, .ms-list li { padding: 10px 12px; border-radius: 10px; background: #f7fafa; border: 1px solid #edf2f2; }
-    .app-dot { width: 10px; height: 10px; border-radius: 50%; grid-row: 1; margin-top: 2px; }
-    .app-label { font-size: 12px; line-height: 15px; color: #5f6f70; grid-row: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+    .app-stats li { display: grid; grid-template-columns: 8px minmax(0, 1fr); column-gap: 7px; align-items: center; align-content: start; }
+    .app-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .app-label { font-size: 12px; line-height: 1.3; color: #5f6f70; overflow-wrap: anywhere; }
     .app-figure { grid-column: 2; }
-    .app-figure, .ms-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
-    .app-value { font-size: 18px; font-weight: 700; color: #232527; font-variant-numeric: tabular-nums; }
-    .app-share { font-size: 13px; color: #6b7f80; font-variant-numeric: tabular-nums; }
-    .is-pending .app-dot, .app-seg.is-pending { background: #d99a0b; }
-    .is-nc .app-dot, .app-seg.is-nc { background: #e0672a; }
-    .is-certified .app-dot, .app-seg.is-certified { background: #1e8a4c; }
-    .is-rejected .app-dot, .app-seg.is-rejected { background: #cf3b3b; }
+    .app-figure, .ms-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
+    .app-value { font-size: 15px; font-weight: 800; color: var(--zt-ink, #173f44); font-variant-numeric: tabular-nums; }
+    .app-share { font-size: 12px; color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .is-pending .app-dot, .app-seg.is-pending { background: #e08a1e; }
+    .is-nc .app-dot, .app-seg.is-nc { background: #e5603e; }
+    .is-certified .app-dot, .app-seg.is-certified { background: #2e9a5a; }
+    .is-rejected .app-dot, .app-seg.is-rejected { background: #a3adb0; }
     /* Consultancy's milestone cards: per milestone the payments received and the completions, each with its share. */
-    .ms-head, .ms-list li { display: grid; grid-template-columns: 96px 1fr 1fr; gap: 10px; align-items: center; }
-    .ms-head { font-size: 12px; font-weight: 600; color: #5f6f70; padding: 0 12px 6px; }
-    .ms-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-    .ms-no { font-size: 13px; font-weight: 700; color: #23474a; }
-    .ms-cell { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    .ms-head, .ms-list li { display: grid; grid-template-columns: 88px 1fr 1fr; gap: 10px; align-items: center; }
+    .ms-head { font-size: 11.5px; font-weight: 600; color: #5f6f70; padding-bottom: 6px; }
+    .ms-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .ms-no { font-size: 12.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .ms-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .ms-bar { display: block; height: 6px; border-radius: 3px; background: #e6eeee; overflow: hidden; }
-    .ms-bar > span { display: block; height: 100%; background: #d99a0b; }
-    .ms-cell.is-done .ms-bar > span { background: #1e8a4c; }
+    .ms-bar > span { display: block; height: 100%; background: #e08a1e; }
+    .ms-cell.is-done .ms-bar > span { background: #2e9a5a; }
     .dash-export { padding: 4px 2px 10px; }
-    .dash-export-menu { position: relative; }
-    .dash-export-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 160px; list-style: none; margin: 0; padding: 6px;
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; box-shadow: 0 8px 24px rgba(16, 61, 64, .15); }
-    .dash-export-list button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px;
-      font-size: 14px; color: #23474a; }
-    .dash-export-list button:hover, .dash-export-list button:focus-visible { background: #eef6f6; }
-    .dash-meta { display: flex; align-items: center; gap: 14px; font-size: 13px; }
-    .dash-reset { font-weight: 600; }
-    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 18px; }
-    .dash-card {
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; overflow: hidden;
-      box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); padding: 0 16px 12px;
-    }
-    /* The level's colour as the title band (as the old panel headings), white text. */
-    .dash-card h5 {
-      font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 0.3px; margin: 0 -16px 8px; padding: 11px 16px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2, var(--accent)));
-    }
-    .dash-count { font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--accent); padding-bottom: 4px; }
-    .panel-bronze { --accent: #a65f33; --accent2: #c98454; }
-    .panel-silver { --accent: #6c7a80; --accent2: #929fa5; }
-    .panel-gold { --accent: #9a7410; --accent2: #c39a2c; }
-    .panel-zedx { --accent: #2f7c83; --accent2: #45a5ad; }
+    /* Consultancy Master Admin's organisation and consultant counts, as the headline tiles. */
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .dash-card { display: flex; flex-direction: column-reverse; gap: 2px; padding: 14px 16px; border-top: 3px solid var(--accent); }
+    .dash-card h5 { font-size: 13px; font-weight: 600; color: #3b4b4c; margin: 0; }
+    .dash-count { font-size: 24px; font-weight: 800; line-height: 1.15; color: var(--accent); }
+    .panel-bronze { --accent: #b85a35; --accent2: #d98a62; }
+    .panel-silver { --accent: #7d8b92; --accent2: #a7b2b7; }
+    .panel-gold { --accent: #b8890f; --accent2: #d8b443; }
+    .panel-zedx { --accent: #237a80; --accent2: #3fa3a8; }
     .panel-finance { --accent: #5b8a2c; --accent2: #7fae49; }
     .panel-empanel { --accent: #2f8a46; --accent2: #4fae66; }
-    .panel-consultant { --accent: #2f7c83; --accent2: #45a5ad; }
+    .panel-consultant { --accent: #237a80; --accent2: #3fa3a8; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 575.98px) { .dash-basis { display: flex; width: 100%; } .an-basis-tab { flex: 1 1 0; padding: 6px 8px; } }
   `,
 })
 export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
+  private readonly tables = inject(TableExport);
 
+  protected readonly crumbs = staffCrumbs({ label: 'Dashboard' });
   protected readonly system = inject(STAFF_SYSTEM);
   private readonly fixedCards = DASHBOARD_CARDS[this.system];
   /** The fixed cards, then (main portal) one card per level the Admin added, as ZED-X's (2026-11-08). */
@@ -328,27 +333,91 @@ export class StaffDashboardPage {
       ],
     })),
   ]);
-  /** The figures section, whose Clear filters, Updated time and Refresh sit in the page head. */
+  /** The figures section, whose date basis, Updated time and Refresh sit in the page head. */
   protected readonly analytics = viewChild<StaffAnalytics>('figures');
+  private readonly attention = viewChild(AttentionRow);
   private readonly exportArea = viewChild<ElementRef<HTMLElement>>('exportArea');
+  protected readonly updated = computed(() => {
+    const at = this.analytics()?.data()?.generatedAt;
+    return at ? `Updated ${formatDate(at, 'dd-MM-yyyy HH:mm', 'en-US')}` : null;
+  });
   protected readonly exportOpen = signal(false);
   protected readonly exporting = signal(false);
   protected readonly exportError = signal('');
+  protected readonly exportFilters = computed(() => this.analytics()?.exportFilters() ?? []);
 
-  /** The whole dashboard as it is on screen (filters, cards, charts) as a JPEG or a one-page PDF. */
-  protected async export(format: 'jpeg' | 'pdf'): Promise<void> {
-    const el = this.exportArea()?.nativeElement;
-    this.exportOpen.set(false);
-    if (!el || this.exporting()) return;
+  protected refresh(): void {
+    void this.analytics()?.load(true);
+    this.attention()?.refresh();
+  }
+
+  protected openExport(): void {
+    this.exportError.set('');
+    this.exportOpen.set(true);
+  }
+
+  protected closeExport(): void {
+    if (!this.exporting()) this.exportOpen.set(false);
+  }
+
+  /** Excel / CSV: the chosen sections of the loaded figures (TableExport); PDF: the page as on screen with those sections only. */
+  protected async runExport(choice: ExportChoice): Promise<void> {
+    const an = this.analytics();
+    if (!an || this.exporting()) return;
     this.exporting.set(true);
     this.exportError.set('');
+    const name = exportName();
     try {
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      await exportElement(el, format, `ZED-Dashboard-${stamp}`);
+      if (choice.format === 'pdf') {
+        await this.exportPdf(choice.sections, name);
+      } else {
+        const sheets = this.sheets(an, choice.sections);
+        if (choice.format === 'xlsx') await this.tables.xlsx(name, sheets);
+        else this.tables.csv(name, flattenSheets('ZED Dashboard', sheets));
+      }
+      this.exportOpen.set(false);
     } catch {
       this.exportError.set('The dashboard could not be exported. Please try again.');
     } finally {
       this.exporting.set(false);
+    }
+  }
+
+  /** The filters, then the chosen sections in the page's order. */
+  private sheets(an: StaffAnalytics, sections: ExportSection[]): KeyedSheet[] {
+    const has = (s: ExportSection) => sections.includes(s);
+    const out: KeyedSheet[] = [an.filterSheet()];
+    if (has('headline')) {
+      const head = an.headlineSheet();
+      if (this.showConsultantTiles()) head.rows.push(...this.consultantTiles.map((t) => [t.title, this.num(t.field, this.tiles()), null]));
+      out.push(head);
+    }
+    if (has('levels')) out.push(this.levelSheet());
+    if (has('trend')) out.push(...an.trendSheets());
+    if (has('who')) out.push(an.whoSheet());
+    if (has('tables')) out.push(...an.tableSheets());
+    return out;
+  }
+
+  /** Every status card's lines: the total, then each status with its share of the level. */
+  private levelSheet(): KeyedSheet {
+    const rows = this.cardList().flatMap((card) => {
+      const total = this.num(card.lines[0].field);
+      return card.lines.map((l, i) => [this.levelName(card), l.label, this.num(l.field), i ? sharePercent(this.num(l.field), total) : null]);
+    });
+    return { name: 'Applications by level', keys: 2, columns: ['Level', 'Status', 'Count', 'Share of the level (%)'], rows };
+  }
+
+  /** The page as a one-page PDF (today's capture) without the sections left out. */
+  private async exportPdf(sections: ExportSection[], name: string): Promise<void> {
+    const el = this.exportArea()?.nativeElement;
+    if (!el) throw new Error('No dashboard');
+    const left = [...el.querySelectorAll<HTMLElement>('[data-export]')].filter((e) => !sections.includes(e.dataset['export'] as ExportSection));
+    left.forEach((e) => e.classList.add(NO_EXPORT));
+    try {
+      await exportElement(el, 'pdf', name);
+    } finally {
+      left.forEach((e) => e.classList.remove(NO_EXPORT));
     }
   }
   protected readonly consultantTiles = CONSULTANT_TILES;
@@ -413,8 +482,7 @@ export class StaffDashboardPage {
     return card.lines.slice(1).map((l) => `${l.label} ${this.value(l.field)}`).join(', ');
   }
 
-  private num(field: string): number {
-    const s = this.summary();
+  private num(field: string, s = this.summary()): number {
     return s ? Number(text(s, field)) || 0 : 0;
   }
 

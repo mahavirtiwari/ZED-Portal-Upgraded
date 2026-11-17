@@ -1,10 +1,14 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { AuthService } from '@zed/shared';
 import { StaffDashboardPage } from './staff-dashboard';
 import { ClientPager } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { TableExport } from '../table-export';
+import { flattenSheets } from './dashboard-export';
 
 const analytics = (view: 'registered' | 'certified' = 'registered', more: object = {}) => ({
   view,
@@ -36,11 +40,12 @@ describe('StaffDashboardPage', () => {
     fixture.detectChanges();
   }
 
-  async function create(system?: PortalSystem) {
+  async function create(system?: PortalSystem, roleId?: number) {
     await TestBed.configureTestingModule({
       imports: [StaffDashboardPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), ...(system ? [{ provide: STAFF_SYSTEM, useValue: system }] : [])],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), ...(system ? [{ provide: STAFF_SYSTEM, useValue: system }] : [])],
     }).compileComponents();
+    if (roleId) TestBed.inject(AuthService).setUser({ userId: 'U1', userName: 'User', roleId, role: 'Role' });
     fixture = TestBed.createComponent(StaffDashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -68,10 +73,15 @@ describe('StaffDashboardPage', () => {
     await settle();
 
     expect(el.querySelector('.an-tabs')).toBeNull();
-    // Updated time and Refresh in the page head; no second title.
-    expect(text(el.querySelector('.page-head .dash-meta'))).toContain('Updated');
+    // 2026-11-17: the shared page head: Home > Dashboard, the Updated time under the title, the date basis, Refresh and Export.
+    expect([...el.querySelectorAll('zed-page-head .ph-crumb a, zed-page-head .ph-crumb [aria-current]')].map(text)).toEqual(['Home', 'Dashboard']);
+    expect(text(el.querySelector('zed-page-head .ph-title'))).toBe('Dashboard');
+    expect(text(el.querySelector('zed-page-head .ph-sub'))).toMatch(/^Updated 27-10-2026 \d\d:\d\d$/);
+    expect([...el.querySelectorAll('zed-page-head .ph-actions .btn')].map(text)).toEqual(['Refresh', 'Export']);
     expect(el.querySelector('.an h4')).toBeNull();
-    (el.querySelector('.page-head .dash-meta .btn-outline-primary') as HTMLButtonElement).click();
+    // No attention row for a login whose work the server does not count.
+    expect(el.querySelector('zed-attention-row section')).toBeNull();
+    (el.querySelector('zed-page-head .dash-refresh') as HTMLButtonElement).click();
     await settle();
     analyticsCall().flush(analytics());
     await settle();
@@ -92,22 +102,31 @@ describe('StaffDashboardPage', () => {
     const pending = el.querySelector('.an-status .app-card .app-stats li')!;
     expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['Assessment Pending', '3', '(25%)']);
     expect(el.querySelector('.an-status .app-card .app-seg.is-pending')!.getAttribute('style')).toContain('width: 25%');
+    // One stacked bar per level with its legend.
+    expect(el.querySelectorAll('.an-status .app-card')[0].querySelectorAll('.app-bar').length).toBe(1);
+    expect(text(el.querySelector('.an-status .app-total-label'))).toBe('total applications');
     const after = (x: string, y: string) => !!(el.querySelector(x)!.compareDocumentPosition(el.querySelector(y)!) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([after('.an-filters', '.an-kpis'), after('.an-kpis', '.an-status'), after('.an-status', '.an-grid-top')]).toEqual([true, true, true]);
+    expect([after('.an-filters', '.an-kpis'), after('.an-kpis', '.an-status'), after('.an-status', '.an-mid'), after('.an-mid', '.an-ranks')]).toEqual([true, true, true, true]);
+    // Neither month of the range is this month: no "this month" figures.
+    expect(el.querySelector('.an-kpi-sub, .an-kpi-delta')).toBeNull();
 
-    // The level and month charts, the splits and the rankings.
-    // No level chart (the tiles and cards have those numbers) and no notes under the tiles.
-    // The monthly and year-wise trend: registrations and certifications side by side.
-    const trend = el.querySelectorAll('.an-trend .an-card');
-    expect([...trend].map((c) => text(c.querySelector('h5')))).toEqual(['Monthly trend last 12 months of the range', 'Year-wise trend']);
-    expect([...trend[0].querySelectorAll('.gc-label')].map(text)).toEqual(['Dec 25', 'Jan 26']);
-    expect([...trend[0].querySelectorAll('.gc-legend li')].map(text)).toEqual(['Registered', 'Certified']);
-    expect([...trend[1].querySelectorAll('.gc-label')].map(text)).toEqual(['2025', '2026']);
-    // Values on the latest period only (the others on hover).
-    expect([...trend[1].querySelectorAll('.gc-value:not(.is-hidden)')].map(text)).toEqual(['8.8K', '6.1K']);
-    expect(el.querySelector('.an-kpi-note')).toBeNull();
-    // Gender as a donut, as MSME size and social category; Gender, size and social category under More filters.
-    expect([...el.querySelectorAll('.an-splits .an-card')[1].querySelectorAll('.dn-label')].map(text)).toEqual(['Male', 'Female', 'Others']);
+    // The trend: registrations and certifications side by side on a value axis, by month or (Yearly) by year.
+    const trend = el.querySelector('.an-trend')!;
+    expect(text(trend.querySelector('h5'))).toBe('Monthly trend · last 12 months');
+    expect([...trend.querySelectorAll('.gc-label')].map(text)).toEqual(['Dec 25', 'Jan 26']);
+    expect([...trend.querySelectorAll('.an-legend li')].map(text)).toEqual(['Registered', 'Certified']);
+    expect([...trend.querySelectorAll('.gc-ticks span')].map(text)).toEqual(['0', '20,000', '40,000', '60,000', '80,000']);
+    expect(trend.querySelector('.gc-group')!.getAttribute('aria-label')).toBe('Dec 25: Registered 53,478, Certified 41,020');
+    (trend.querySelectorAll('.an-period button')[1] as HTMLButtonElement).click();
+    await settle();
+    expect(text(trend.querySelector('h5'))).toBe('Year-wise trend');
+    expect([...trend.querySelectorAll('.gc-label')].map(text)).toEqual(['2025', '2026']);
+    // Who is registering: size, gender and social category as three stacked bars with their shares.
+    const who = el.querySelectorAll('.an-who zed-stacked-bar');
+    expect([...who].map((b) => text(b.querySelector('.sb-head')))).toEqual(['MSME size', 'Gender', 'Social category']);
+    expect([...who[1].querySelectorAll('.sb-legend li')].map(text)).toEqual(['Male 79%', 'Female 20%', 'Others 1%']);
+    expect([...who[0].querySelectorAll('.sb-legend li')].map(text)).toEqual(['Micro 92%', 'Small 7%', 'Medium 1%']);
+    // Gender, size and social category under More filters.
     expect((el.querySelector('#an-more') as HTMLElement).hidden).toBe(true);
     (el.querySelector('.an-more-btn button') as HTMLButtonElement).click();
     await settle();
@@ -117,20 +136,9 @@ describe('StaffDashboardPage', () => {
     expect([...(el.querySelector('#an-sector') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Manufacturing', 'Services']);
     const top = el.querySelector('.rk-list li')!;
     expect([text(top.querySelector('.rk-rank')), text(top.querySelector('.rk-label')), text(top.querySelector('.rk-value'))]).toEqual(['1', 'GUJARAT', '1,46,518']);
-    // Every row, sortable by count or name; the rank stays the rank by count.
-    const states = el.querySelector('zed-rank-list')!;
-    expect(text(states.querySelector('.rk-title'))).toBe('State (2)');
-    const sortBy = async (v: string) => {
-      const select = states.querySelector('.rk-sort select') as HTMLSelectElement;
-      select.value = v;
-      select.dispatchEvent(new Event('change'));
-      await settle();
-    };
-    const rows = () => [...states.querySelectorAll('.rk-list li')].map((li) => `${text(li.querySelector('.rk-rank'))} ${text(li.querySelector('.rk-label'))}`);
-    await sortBy('low');
-    expect(rows()).toEqual(['2 UTTAR PRADESH', '1 GUJARAT']);
-    await sortBy('name');
-    expect(rows()).toEqual(['1 GUJARAT', '2 UTTAR PRADESH']);
+    expect([...el.querySelectorAll('.an-ranks .rk-title')].map(text)).toEqual(['Top states', 'Top districts', 'Top sectors (two-digit activity)']);
+    // Two states only: no View all.
+    expect(el.querySelector('.an-ranks .rk-more')).toBeNull();
     expect((el.querySelector('#an-district') as HTMLSelectElement).disabled).toBe(true);
 
     // A filter changes the cards too.
@@ -185,14 +193,14 @@ describe('StaffDashboardPage', () => {
     dated.flush(analytics('certified'));
     await settle();
 
-    (el.querySelector('.page-head .dash-reset') as HTMLButtonElement).click();
+    (el.querySelector('.an-filters .dash-reset') as HTMLButtonElement).click();
     await settle();
     const cleared = analyticsCall();
     expect(cleared.request.params.keys()).toEqual(['view']);
     expect(cleared.request.params.get('view')).toBe('registered');
     cleared.flush(analytics());
     await settle();
-    expect(el.querySelector('.page-head .dash-reset')).toBeNull();
+    expect(el.querySelector('.an-filters .dash-reset')).toBeNull();
   });
 
   it('main portal: a state-bound Ministry user keeps the state fixed', async () => {
@@ -238,7 +246,7 @@ describe('StaffDashboardPage', () => {
     expect([...el.querySelectorAll('.an-kpi-label')].map(text))
       .toEqual(['Registered units', 'Surveillance completed', 'Bronze completed', 'Silver completed', 'Gold completed']);
     expect([...el.querySelectorAll('.an-basis-tab')].map(text)).toEqual(['By registration date', 'By surveillance completion date']);
-    expect([...el.querySelectorAll('.an-trend .an-card')[0].querySelectorAll('.gc-legend li')].map(text)).toEqual(['Registered', 'Surveillance completed']);
+    expect([...el.querySelectorAll('.an-trend .an-legend li')].map(text)).toEqual(['Registered', 'Surveillance completed']);
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
     // Bronze surveillance has no NC Raised.
     const bronze = el.querySelector('.an-status .app-card')!;
@@ -281,6 +289,137 @@ describe('StaffDashboardPage', () => {
     expect(gold.request.params.get('certification')).toBe('Gold');
     gold.flush(analytics());
     await settle();
+  });
+
+  it('main portal: the top five of each ranking, View all with the sort', async () => {
+    await create('main');
+    const states = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((s, i) => ({ label: `STATE ${s}`, total: 100 - i * 10 }));
+    analyticsCall().flush(analytics('registered', { states }));
+    await settle();
+    const list = el.querySelector('.an-ranks zed-rank-list')!;
+    const rows = () => [...list.querySelectorAll('.rk-list li')].map((li) => `${text(li.querySelector('.rk-rank'))} ${text(li.querySelector('.rk-label'))}`);
+    expect(rows()).toEqual(['1 STATE A', '2 STATE B', '3 STATE C', '4 STATE D', '5 STATE E']);
+    expect(list.querySelector('.rk-sort')).toBeNull();
+    (list.querySelector('.rk-more') as HTMLButtonElement).click();
+    await settle();
+    expect(rows().length).toBe(7);
+    // Every row, sortable by count or name; the rank stays the rank by count.
+    const sortBy = async (v: string) => {
+      const select = list.querySelector('.rk-sort select') as HTMLSelectElement;
+      select.value = v;
+      select.dispatchEvent(new Event('change'));
+      await settle();
+    };
+    await sortBy('low');
+    expect(rows()[0]).toBe('7 STATE G');
+    await sortBy('name');
+    expect(rows()[0]).toBe('1 STATE A');
+    expect(text(list.querySelector('.rk-more'))).toBe('Show top 5');
+  });
+
+  it("main portal: this month's registrations and certifications on the first two tiles when the range reaches this month", async () => {
+    await create('main');
+    const now = new Date();
+    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    analyticsCall().flush(analytics('registered', { months: [{ period: '2025-01', registered: 10, certified: 5 }, { period, registered: 1312, certified: 1042 }] }));
+    await settle();
+    const tiles = el.querySelectorAll('.an-kpi');
+    expect(text(tiles[0].querySelector('.an-kpi-sub'))).toBe('1,312 this month');
+    expect(text(tiles[1].querySelector('.an-kpi-delta'))).toBe('+1,042');
+    expect(tiles[2].querySelector('.an-kpi-sub, .an-kpi-delta')).toBeNull();
+  });
+
+  it('Needs your attention: the work waiting for a Master Admin, each a link to its page; Refresh counts again', async () => {
+    await create('main', 7);
+    analyticsCall().flush(analytics());
+    http.expectOne('/api/staff/attention').flush({
+      total: 25, items: [
+        { key: 'allot', label: 'Units awaiting allotment', count: 18, link: '/staff/assessment/allot', query: null, tone: 'warn', icon: 'people' },
+        { key: 'nc-overdue', label: 'NC closures overdue', count: 7, link: '/staff/monitoring', query: { tab: 'nc' }, tone: 'bad', icon: 'clock' },
+        { key: 'quality-open', label: 'Quality observations open', count: 0, link: '/staff/quality-observations', query: null, tone: 'info', icon: 'chat' },
+      ],
+    });
+    await settle();
+    const row = el.querySelector('zed-attention-row section')!;
+    expect(text(row.querySelector('h2'))).toBe('Needs your attention');
+    const items = [...row.querySelectorAll('a.at-item')];
+    expect(items.map((a) => text(a))).toEqual(['18Units awaiting allotment', '7NC closures overdue', '0Quality observations open']);
+    expect(items[1].getAttribute('href')).toBe('/staff/monitoring?tab=nc');
+    expect(items[2].classList.contains('is-zero')).toBe(true);
+    // Between the headline tiles and the level cards, and never in an export.
+    expect(!!(el.querySelector('.an-kpis')!.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(!!(row.compareDocumentPosition(el.querySelector('.an-status')!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(row.classList.contains('no-export')).toBe(true);
+
+    (el.querySelector('.dash-refresh') as HTMLButtonElement).click();
+    await settle();
+    analyticsCall().flush(analytics());
+    const again = http.expectOne((r) => r.url === '/api/staff/attention');
+    expect(again.request.params.get('fresh')).toBe('true');
+    again.flush({ total: 0, items: [] });
+    await settle();
+    expect(el.querySelector('zed-attention-row section')).toBeNull();
+  });
+
+  it('Export: a pop-up with the filters, the sections and the format; Excel sends the loaded figures, CSV one table', async () => {
+    await create('main');
+    analyticsCall().flush(analytics());
+    await settle();
+    await choose('#an-state', 'GUJARAT');
+    analyticsCall().flush(analytics());
+    await settle();
+
+    (el.querySelector('.dash-export-btn') as HTMLButtonElement).click();
+    await settle();
+    const dialog = el.querySelector('zed-dashboard-export [role="dialog"]')!;
+    expect(text(dialog.querySelector('h2'))).toBe('Export dashboard');
+    expect([...dialog.querySelectorAll('.xd-chips li')].map(text)).toEqual(['By registration date', 'State: GUJARAT', 'Certification: All']);
+    expect([...dialog.querySelectorAll('.xd-check')].map(text))
+      .toEqual(['Headline numbers', 'Applications by level', 'Monthly and yearly trend', 'MSME size, gender and social category', 'State, district and sector tables']);
+    expect([...dialog.querySelectorAll('.xd-check input')].every((c) => (c as HTMLInputElement).checked)).toBe(true);
+    expect([...dialog.querySelectorAll('.xd-formats button')].map(text)).toEqual(['Excel (.xlsx)', 'CSV', 'PDF']);
+
+    // Excel without the rankings: the filters, then the chosen sections, built from what the page loaded.
+    (dialog.querySelector('[data-section="tables"]') as HTMLInputElement).click();
+    await settle();
+    (dialog.querySelector('.xd-go') as HTMLButtonElement).click();
+    await settle();
+    const post = http.expectOne('/api/staff/export/xlsx');
+    const body = post.request.body as { fileName: string; sheets: { name: string; columns: string[]; rows: unknown[][] }[] };
+    expect(body.fileName).toMatch(/^ZED-Dashboard-\d{12}$/);
+    expect(body.sheets.map((s) => s.name)).toEqual(['Filters', 'Headline numbers', 'Applications by level', 'Monthly trend', 'Yearly trend', 'Who is registering']);
+    expect(body.sheets[0].rows.slice(0, 2)).toEqual([['Count by', 'By registration date'], ['State', 'GUJARAT']]);
+    expect(body.sheets[1].rows[0]).toEqual(['Registered units', 724287, null]);
+    expect(body.sheets[2].rows.slice(0, 2)).toEqual([['Bronze', 'Total Application', 12, null], ['Bronze', 'Assessment Pending', 3, 25]]);
+    expect(body.sheets[3].rows[0]).toEqual(['Dec 2025', 53478, 41020]);
+    expect(body.sheets[5].rows[0]).toEqual(['MSME size', 'Micro', 666594, 92]);
+    const saved = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    const url = vi.fn(() => 'blob:x');
+    Object.assign(URL, { createObjectURL: url, revokeObjectURL: vi.fn() });
+    post.flush(new Blob(['xlsx']));
+    await settle();
+    expect(url).toHaveBeenCalled();
+    expect(el.querySelector('zed-dashboard-export')).toBeNull();
+
+    // CSV: the same sheets as one table, one line per figure.
+    const csv = vi.spyOn(TestBed.inject(TableExport), 'csv').mockImplementation(() => undefined);
+    (el.querySelector('.dash-export-btn') as HTMLButtonElement).click();
+    await settle();
+    (el.querySelector('[data-format="csv"]') as HTMLButtonElement).click();
+    await settle();
+    (el.querySelector('.xd-go') as HTMLButtonElement).click();
+    await settle();
+    expect(csv).toHaveBeenCalledTimes(1);
+    const sheet = csv.mock.calls[0][1];
+    expect(sheet.columns).toEqual(['Section', 'Item', 'Figure', 'Value']);
+    expect(sheet.rows).toContainEqual(['Applications by level', 'Bronze · Assessment Pending', 'Share of the level (%)', 25]);
+    expect(sheet.rows).toContainEqual(['States', '1 · GUJARAT', 'Registered units', 146518]);
+    Object.assign(URL, { createObjectURL: saved.create, revokeObjectURL: saved.revoke });
+  });
+
+  it('flattenSheets: one line per figure, empty figures left out', () => {
+    const t = flattenSheets('X', [{ name: 'Headline numbers', keys: 1, columns: ['Figure', 'Count', 'This month'], rows: [['Registered units', 5, null]] }]);
+    expect(t.rows).toEqual([['Headline numbers', 'Registered units', 'Count', 5]]);
   });
 
   it('shows an error when the dashboard cannot be loaded', async () => {

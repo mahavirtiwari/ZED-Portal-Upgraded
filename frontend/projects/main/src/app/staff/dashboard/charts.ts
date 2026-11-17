@@ -89,160 +89,130 @@ export class ColumnChart {
   }
 }
 
+/** A share as a whole percent ("71%"), "<1%" for a small non-zero one. */
+export function wholePercent(value: number, total: number): string {
+  if (!total || !value) return '0%';
+  const p = Math.round((value / total) * 100);
+  return p < 1 ? '<1%' : `${p}%`;
+}
+
 /**
- * A donut of a few categories, centred, with a legend under it that names each one with its value and share (identity
- * never by colour alone).
+ * 2026-11-17 (approved staff redesign, "Who is registering"): one category split as a single stacked bar with a legend
+ * that names each part with its share (identity never by colour alone); the count is in the tooltip.
  */
 @Component({
-  selector: 'zed-donut-chart',
+  selector: 'zed-stacked-bar',
   template: `
-    <div class="dn">
-      <svg viewBox="0 0 120 120" class="dn-svg" role="img" [attr.aria-label]="ariaLabel()">
-        <circle cx="60" cy="60" r="44" fill="none" stroke="#eef3f3" stroke-width="18" />
-        @for (s of segments(); track s.label; let i = $index) {
-          <circle cx="60" cy="60" r="44" fill="none" [attr.stroke]="s.color" stroke-width="18" [attr.stroke-dasharray]="s.dash" [attr.stroke-dashoffset]="s.offset"
-                  transform="rotate(-90 60 60)" [class.is-dim]="hover() >= 0 && hover() !== i" (mouseenter)="hover.set(i)" (mouseleave)="hover.set(-1)" />
-        }
-        <text x="60" y="57" text-anchor="middle" class="dn-total">{{ centre() }}</text>
-        <text x="60" y="72" text-anchor="middle" class="dn-caption">{{ hover() >= 0 ? items()[hover()].label : 'Total' }}</text>
-      </svg>
-      <ul class="dn-legend">
-        @for (it of items(); track it.label; let i = $index) {
-          <li (mouseenter)="hover.set(i)" (mouseleave)="hover.set(-1)" [class.is-on]="hover() === i">
-            <span class="dn-swatch" [style.background]="it.color"></span>
-            <span class="dn-label">{{ it.label }}</span>
-            <span class="dn-value">{{ format(it.value) }}</span>
-            <span class="dn-share">{{ share(it.value) }}</span>
-          </li>
-        }
-      </ul>
+    <div class="sb">
+      @if (heading()) { <div class="sb-head">{{ heading() }}</div> }
+      @if (sum()) {
+        <div class="sb-bar" role="img" [attr.aria-label]="describe()">
+          @for (it of items(); track it.label) {
+            @if (it.value) { <span [style.width.%]="(it.value / sum()) * 100" [style.background]="it.color" [title]="it.label + ': ' + format(it.value)"></span> }
+          }
+        </div>
+        <ul class="sb-legend">
+          @for (it of items(); track it.label) {
+            <li [title]="format(it.value)"><span class="sb-dot" [style.background]="it.color"></span><span class="sb-label">{{ it.label }}</span>&ngsp;<span class="sb-share">{{ share(it.value) }}</span></li>
+          }
+        </ul>
+      } @else {
+        <div class="sb-empty">No data</div>
+      }
     </div>
   `,
   styles: `
-    /* Centred: a large donut over its legend. */
-    :host { display: flex; align-items: center; justify-content: center; }
-    .dn { display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%; }
-    .dn-svg { flex: 0 0 auto; width: 210px; height: 210px; }
-    .dn-svg circle { transition: opacity .15s; cursor: default; }
-    .dn-svg circle.is-dim { opacity: .35; }
-    .dn-total { font-size: 15px; font-weight: 700; fill: #23474a; }
-    .dn-caption { font-size: 9px; fill: #6b7f80; }
-    .dn-legend { width: 100%; max-width: 340px; list-style: none; margin: 0; padding: 0; }
-    .dn-legend li { display: grid; grid-template-columns: 12px 1fr auto 48px; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 13px; }
-    .dn-legend li.is-on { background: #eef6f6; }
-    .dn-swatch { width: 12px; height: 12px; border-radius: 3px; }
-    .dn-label { color: #232527; }
-    .dn-value { font-weight: 700; color: #23474a; font-variant-numeric: tabular-nums; }
-    .dn-share { color: #6b7f80; text-align: right; font-variant-numeric: tabular-nums; }`,
+    .sb-head { font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); margin-bottom: 7px; }
+    .sb-bar { display: flex; gap: 2px; height: 12px; border-radius: 4px; overflow: hidden; background: #eef3f3; }
+    .sb-bar span { display: block; height: 100%; min-width: 3px; }
+    .sb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; color: #4b5c5d; }
+    .sb-legend li { display: inline-flex; align-items: center; gap: 5px; }
+    .sb-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .sb-share { color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .sb-empty { font-size: 12.5px; color: #6b7f80; padding: 4px 0; }`,
 })
-export class DonutChart {
+export class StackedBar {
   readonly items = input.required<ChartItem[]>();
-  readonly ariaLabel = input('');
-  protected readonly hover = signal(-1);
-  private readonly sum = computed(() => this.items().reduce((a, i) => a + i.value, 0));
-  /** Arcs on a circle of radius 44, a 2px gap between neighbours (only when there are several). */
-  protected readonly segments = computed(() => {
-    const c = 2 * Math.PI * 44;
-    const total = this.sum() || 1;
-    const gap = this.items().filter((i) => i.value > 0).length > 1 ? 2 : 0;
-    let start = 0;
-    return this.items().map((it) => {
-      const len = (it.value / total) * c;
-      const seg = { label: it.label, color: it.color ?? CHART_COLORS[0], dash: `${Math.max(0, len - gap)} ${c}`, offset: -start };
-      start += len;
-      return seg;
-    });
-  });
-  protected centre(): string {
-    const h = this.hover();
-    const v = h >= 0 ? this.items()[h].value : this.sum();
-    return h >= 0 ? percent(v, this.sum()) : formatCount(v);
-  }
+  readonly heading = input('');
+  protected readonly sum = computed(() => this.items().reduce((a, i) => a + i.value, 0));
   protected format(v: number): string {
     return formatCount(v);
   }
   protected share(v: number): string {
-    return percent(v, this.sum());
+    return wholePercent(v, this.sum());
+  }
+  protected describe(): string {
+    return `${this.heading()}: ` + this.items().map((i) => `${i.label} ${this.share(i.value)}`).join(', ');
   }
 }
 
 export type RankSort = 'high' | 'low' | 'name';
 
 /**
- * A ranked list: rank (by count), name, a bar in proportion to the largest, the number; the header's choice sorts by count
- * (highest or lowest first) or by name. V4 2026-11-08: one header style for every list, the first ten rows and Show all.
+ * A ranked list: rank (by count), name, the number and a bar in proportion to the largest. V4 2026-11-17 (approved staff
+ * redesign): the top five under the card's title, "View all" opens every row with the sort (by count, highest or lowest
+ * first, or by name).
  */
 @Component({
   selector: 'zed-rank-list',
   template: `
-    <div class="rk" [style.--head]="color()">
+    <div class="rk">
       <div class="rk-head">
-        <span class="rk-title">{{ heading() }} <small>({{ items().length }})</small></span>
-        <label class="rk-sort">
-          <span class="visually-hidden">Sort {{ heading() }}</span>
-          <select [value]="sort()" (change)="sort.set($any($event.target).value)">
-            <option value="high">Highest first</option>
-            <option value="low">Lowest first</option>
-            <option value="name">A to Z</option>
-          </select>
-        </label>
+        <span class="rk-title">{{ heading() }}</span>
+        @if (all()) {
+          <label class="rk-sort">
+            <span class="visually-hidden">Sort {{ heading() }}</span>
+            <select [value]="sort()" (change)="sort.set($any($event.target).value)">
+              <option value="high">Highest first</option>
+              <option value="low">Lowest first</option>
+              <option value="name">A to Z</option>
+            </select>
+          </label>
+        }
+        @if (sorted().length > limit()) {
+          <button type="button" class="rk-more no-export" [attr.aria-expanded]="all()" (click)="toggle()">{{ all() ? 'Show top ' + limit() : 'View all' }}</button>
+        }
       </div>
-      <div class="rk-cols"><span>#</span><span>{{ heading() }}</span><span>{{ valueHeading() }}</span></div>
       <ol class="rk-list">
         @for (it of shown(); track it.label) {
-          <li [title]="it.label + ': ' + format(it.value)">
+          <li [title]="it.label + ': ' + format(it.value) + ' ' + valueHeading().toLowerCase()">
             <span class="rk-rank">{{ it.rank }}</span>
-            <span class="rk-body">
-              <span class="rk-label">{{ it.label }}</span>
-              <span class="rk-track"><span class="rk-bar" [style.width.%]="width(it.value)"></span></span>
-            </span>
+            <span class="rk-label">{{ it.label }}</span>
             <span class="rk-value">{{ format(it.value) }}</span>
+            <span class="rk-track"><span class="rk-bar" [style.width.%]="width(it.value)"></span></span>
           </li>
         } @empty {
           <li class="rk-empty">No data</li>
         }
       </ol>
-      @if (sorted().length > limit) {
-        <button type="button" class="rk-more" [attr.aria-expanded]="all()" (click)="all.set(!all())">
-          {{ all() ? 'Show top ' + limit : 'Show all ' + sorted().length }} <span aria-hidden="true">{{ all() ? '▴' : '▾' }}</span>
-        </button>
-      }
     </div>
   `,
   styles: `
-    .rk { --head: var(--zt-mid2, #2f7c83); border-radius: 12px; overflow: hidden; border: 1px solid #e4ecec; background: #fff; }
-    .rk-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px 10px; border-top: 3px solid var(--head); }
-    .rk-title { font-size: 15px; font-weight: 700; color: #23474a; }
-    .rk-title small { font-weight: 500; color: #6b7f80; }
-    .rk-sort select { font-size: 12px; border: 1px solid #cbd9da; border-radius: 6px; background: #fff; color: #23474a; padding: 3px 6px; cursor: pointer; }
-    .rk-sort select option { color: #232527; }
-    .rk-cols { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; color: #6b7f80;
-      text-transform: uppercase; letter-spacing: .3px; background: #f7fafa; border-bottom: 1px solid #e4ecec; }
-    .rk-cols span:first-child { text-align: right; }
-    .rk-list { list-style: none; margin: 0; padding: 0 12px; }
-    .rk-more { display: block; width: 100%; border: 0; border-top: 1px solid #eef3f3; background: #f7fafa; color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 600;
-      padding: 8px; cursor: pointer; }
-    .rk-more:hover { background: #eef6f6; }
-    .rk-list li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #eef3f3; }
-    .rk-rank { font-size: 12px; font-weight: 700; color: #6b7f80; text-align: right; font-variant-numeric: tabular-nums; }
-    .rk-body { min-width: 0; }
-    .rk-label { display: block; font-size: 13px; color: #232527; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rk-track { display: block; height: 6px; margin-top: 4px; border-radius: 3px; background: #eef3f3; }
-    .rk-bar { display: block; height: 100%; border-radius: 3px; background: var(--head); min-width: 2px; opacity: .85; }
-    .rk-value { font-size: 13px; font-weight: 700; color: #23474a; font-variant-numeric: tabular-nums; }
+    .rk { --head: var(--zt-mid2, #2a8a8c); height: 100%; border-radius: 12px; border: 1px solid #e1eaea; background: #fff; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
+    .rk-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid #eef3f3; }
+    .rk-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .rk-sort select { font-size: 12px; border: 1px solid #cbd9da; border-radius: 6px; background: #fff; color: #23474a; padding: 3px 6px; }
+    .rk-more { border: 0; background: none; padding: 0; color: var(--zt-dark, #1f5c61); font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .rk-more:hover { text-decoration: underline; }
+    .rk-list { list-style: none; margin: 0; padding: 6px 20px 14px; }
+    .rk-list li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 8px; align-items: center; padding: 7px 0 2px; }
+    .rk-rank { font-size: 12px; color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .rk-label { font-size: 13px; color: #232527; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rk-value { font-size: 13px; font-weight: 700; color: var(--zt-ink, #173f44); font-variant-numeric: tabular-nums; }
+    .rk-track { grid-column: 2 / 4; display: block; height: 4px; margin-top: 5px; border-radius: 2px; background: #eef3f3; }
+    .rk-bar { display: block; height: 100%; border-radius: 2px; background: var(--head); min-width: 2px; }
     .rk-empty { display: block !important; text-align: center; color: #6b7f80; padding: 18px; }`,
 })
 export class RankList {
   readonly items = input.required<ChartItem[]>();
   readonly heading = input('');
+  /** What the numbers count (the rows' tooltip). */
   readonly valueHeading = input('Units');
-  /** The accent (header line and bars). */
-  readonly color = input('#2f7c83');
+  /** Rows before "View all". */
+  readonly limit = input(5);
   protected readonly sort = signal<RankSort>('high');
-  /** The first ten rows; Show all for the rest (no scroll inside the card). */
-  protected readonly limit = 10;
   protected readonly all = signal(false);
-  protected readonly shown = computed(() => (this.all() ? this.sorted() : this.sorted().slice(0, this.limit)));
+  protected readonly shown = computed(() => (this.all() ? this.sorted() : this.sorted().slice(0, this.limit())));
   private readonly max = computed(() => Math.max(1, ...this.items().map((i) => i.value)));
   /** Rows with their rank by count (1 = most), in the chosen order. */
   protected readonly sorted = computed(() => {
@@ -253,6 +223,10 @@ export class RankList {
       default: return ranked;
     }
   });
+  protected toggle(): void {
+    this.all.update((v) => !v);
+    if (!this.all()) this.sort.set('high');
+  }
   protected width(v: number): number {
     return (v / this.max()) * 100;
   }
@@ -267,61 +241,79 @@ export interface TrendPoint {
   values: number[];
 }
 
+/** A round axis top at or above the largest value (1, 2, 2.5, 5 or 10 times a power of ten) and its four steps. */
+export function axisTicks(max: number): number[] {
+  if (max <= 0) return [0, 1, 2, 3, 4];
+  const raw = max / 4;
+  const pow = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow;
+  return [0, 1, 2, 3, 4].map((i) => Math.round(i * step * 100) / 100);
+}
+
 /**
- * Columns in pairs (one per series) with a legend that names the series, the values above the columns and a hover
- * tooltip with every series of the period.
+ * Columns in pairs (one per series) on a value axis with grid lines; a hover or focus tooltip gives every series of the
+ * period. The legend can be left to the card (legend = false).
  */
 @Component({
   selector: 'zed-grouped-column-chart',
   template: `
     <div class="gc">
-      <ul class="gc-legend">
-        @for (s of series(); track s; let i = $index) {
-          <li><span class="gc-swatch" [style.background]="colors()[i]"></span>{{ s }}</li>
-        }
-      </ul>
-      <div class="gc-plot" [style.--cols]="items().length || 1" role="img" [attr.aria-label]="ariaLabel()">
-        @for (it of items(); track it.label; let p = $index) {
-          <div class="gc-group" tabindex="0" (mouseenter)="hover.set(p)" (mouseleave)="hover.set(-1)" (focus)="hover.set(p)" (blur)="hover.set(-1)"
-               [attr.aria-label]="describe(it)">
-            @for (v of it.values; track $index; let i = $index) {
-              <div class="gc-col">
-                <span class="gc-value" [class.is-hidden]="p !== items().length - 1 && hover() !== p">{{ short(v) }}</span>
-                <span class="gc-bar" [style.height.%]="height(v)" [style.background]="colors()[i]" [class.is-dim]="hover() >= 0 && hover() !== p"></span>
+      @if (legend()) {
+        <ul class="gc-legend">
+          @for (s of series(); track s; let i = $index) {
+            <li><span class="gc-swatch" [style.background]="colors()[i]"></span>{{ s }}</li>
+          }
+        </ul>
+      }
+      <div class="gc-frame">
+        <div class="gc-ticks" aria-hidden="true">
+          @for (t of ticks(); track $index) { <span [style.bottom.%]="$index * 25">{{ tick(t) }}</span> }
+        </div>
+        <div class="gc-area">
+          @for (t of ticks(); track $index) { <span class="gc-grid" [style.bottom.%]="$index * 25" aria-hidden="true"></span> }
+          <div class="gc-plot" [style.--cols]="items().length || 1" role="img" [attr.aria-label]="ariaLabel()">
+            @for (it of items(); track it.label; let p = $index) {
+              <div class="gc-group" tabindex="0" (mouseenter)="hover.set(p)" (mouseleave)="hover.set(-1)" (focus)="hover.set(p)" (blur)="hover.set(-1)"
+                   [attr.aria-label]="describe(it)">
+                @for (v of it.values; track $index; let i = $index) {
+                  <span class="gc-bar" [style.height.%]="height(v)" [style.background]="colors()[i]" [class.is-dim]="hover() >= 0 && hover() !== p"></span>
+                }
+                @if (hover() === p) {
+                  <span class="gc-tip" role="tooltip">
+                    <strong>{{ it.label }}</strong>
+                    @for (v of it.values; track $index; let i = $index) {
+                      <span><span class="gc-swatch" [style.background]="colors()[i]"></span>{{ series()[i] }}: {{ format(v) }}</span>
+                    }
+                  </span>
+                }
               </div>
             }
-            @if (hover() === p) {
-              <span class="gc-tip" role="tooltip">
-                <strong>{{ it.label }}</strong>
-                @for (v of it.values; track $index; let i = $index) {
-                  <span><span class="gc-swatch" [style.background]="colors()[i]"></span>{{ series()[i] }}: {{ format(v) }}</span>
-                }
-              </span>
-            }
           </div>
-        }
-      </div>
-      <div class="gc-axis" [style.--cols]="items().length || 1">
-        @for (it of items(); track it.label) { <span class="gc-label">{{ it.label }}</span> }
+          <div class="gc-axis" [style.--cols]="items().length || 1">
+            @for (it of items(); track it.label) { <span class="gc-label">{{ it.label }}</span> }
+          </div>
+        </div>
       </div>
     </div>
   `,
   styles: `
     .gc-legend { display: flex; gap: 18px; list-style: none; margin: 0 0 6px; padding: 0; font-size: 13px; color: #3b4b4c; }
     .gc-legend li { display: flex; align-items: center; gap: 6px; }
-    .gc-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+    .gc-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
     .gc-legend .gc-swatch { margin-right: 0; }
-    .gc-plot { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; align-items: end; height: var(--h, 240px);
-      border-bottom: 1px solid #cbd9da; padding-top: 22px; }
-    .gc-group { position: relative; height: 100%; display: flex; justify-content: center; align-items: flex-end; gap: 2px; outline: none; }
+    .gc-frame { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding-top: 8px; }
+    .gc-ticks { position: relative; height: var(--h, 200px); min-width: 28px; }
+    .gc-ticks span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .gc-area { position: relative; min-width: 0; }
+    .gc-grid { position: absolute; left: 0; right: 0; border-top: 1px solid #edf2f2; }
+    .gc-grid:first-child { border-color: #cbd9da; }
+    .gc-plot { position: relative; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; align-items: end; height: var(--h, 200px); }
+    .gc-group { position: relative; height: 100%; display: flex; justify-content: center; align-items: flex-end; gap: 3px; outline: none; }
     .gc-group:focus-visible { outline: 2px solid #23474a; outline-offset: 2px; border-radius: 4px; }
-    .gc-col { height: 100%; flex: 1 1 0; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
-    .gc-value { font-size: 10.5px; font-weight: 600; color: #23474a; margin-bottom: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .gc-value.is-hidden { visibility: hidden; }
-    .gc-bar { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; transition: opacity .15s; }
+    .gc-bar { flex: 1 1 0; max-width: 18px; min-height: 2px; border-radius: 3px 3px 0 0; transition: opacity .15s; }
     .gc-bar.is-dim { opacity: .45; }
     .gc-axis { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
-    .gc-label { font-size: 12px; color: #5f6f70; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gc-label { font-size: 11.5px; color: #5f6f70; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .gc-tip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 3; white-space: nowrap;
       display: flex; flex-direction: column; gap: 2px; background: #23474a; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,.18); pointer-events: none; }`,
@@ -331,21 +323,22 @@ export class GroupedColumnChart {
   readonly series = input.required<string[]>();
   readonly colors = input<string[]>(CHART_COLORS);
   readonly ariaLabel = input('');
+  /** The series' legend above the plot (false: the card shows it). */
+  readonly legend = input(true);
   protected readonly hover = signal(-1);
-  private readonly max = computed(() => Math.max(1, ...this.items().flatMap((i) => i.values)));
+  protected readonly ticks = computed(() => axisTicks(Math.max(0, ...this.items().flatMap((i) => i.values))));
 
-  /** Up to 86% of the plot: the value above the tallest column stays inside. */
   protected height(v: number): number {
-    return (v / this.max()) * 86;
+    const top = this.ticks()[4] || 1;
+    return Math.min(100, (v / top) * 100);
   }
   protected format(v: number): string {
     return formatCount(v);
   }
-  protected short(v: number): string {
-    if (v >= 1e7) return `${(v / 1e7).toFixed(1)}Cr`;
-    if (v >= 1e5) return `${(v / 1e5).toFixed(1)}L`;
-    if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
-    return String(v);
+  protected tick(v: number): string {
+    if (v >= 1e7) return `${+(v / 1e7).toFixed(1)}Cr`;
+    if (v >= 1e5) return `${+(v / 1e5).toFixed(1)}L`;
+    return formatCount(v);
   }
   protected describe(it: TrendPoint): string {
     return `${it.label}: ` + it.values.map((v, i) => `${this.series()[i]} ${formatCount(v)}`).join(', ');
