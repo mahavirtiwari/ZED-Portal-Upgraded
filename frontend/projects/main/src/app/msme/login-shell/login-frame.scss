@@ -14,7 +14,8 @@ p { margin: 0; }
 .ml-title { font-size: clamp(26px, 2.5vw, 36px); font-weight: 800; letter-spacing: -0.6px; line-height: 1.1; color: var(--ml-ink); margin: 10px 0 10px; }
 .ml-sub { font-size: 17px; color: var(--ml-muted); line-height: 1.5; }
 .ml-banner { display: flex; align-items: center; background: var(--zt-dark, #1f5c61); margin: 26px 0 36px; min-height: 72px; }
-.ml-apna { flex: none; font-size: 28px; font-weight: 800; font-style: italic; letter-spacing: 0; color: #fff; padding: 10px 24px; border-right: 2px solid rgb(255 255 255 / 30%); }
+// 2026-11-17 (the user): the old login banner's lettering, Segoe Print (Windows); Kalam where it is not installed.
+.ml-apna { flex: none; font-family: 'Segoe Print', 'Kalam', cursive; font-size: 26px; font-weight: 700; letter-spacing: 0.3px; line-height: 1.25; color: #fff; padding: 10px 24px; border-right: 2px solid rgb(255 255 255 / 30%); }
 .ml-apna-sub { font-size: 15px; color: #eef6f4; padding: 10px 24px; line-height: 1.4; }
 .ml-label-rule { padding-bottom: 10px; border-bottom: 2px solid var(--zt-dark, #1f5c61); }
 .ml-benefits { list-style: none; padding: 0; margin: 0 0 40px; display: grid; grid-template-columns: 1fr 1fr; }

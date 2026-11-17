@@ -48,8 +48,10 @@ describe('LoginPage', () => {
   it('2026-11-17 (the design): New to ZED? in the band at the foot of the right side, the levels as coloured bars, the footer band', () => {
     expect(el.querySelector('.ml-side > .ml-new')).not.toBeNull();
     expect(el.querySelector('.ml-card .ml-new')).toBeNull();
-    const steps = [...el.querySelectorAll('.ml-lv-box:not(.ml-lv-x) .ml-level')].map((l) => [l.querySelector('.ml-lv-name')!.textContent!.trim(), l.querySelector('small')!.textContent]);
-    expect(steps).toEqual([['Bronze', '01'], ['Silver', '02'], ['Gold', '03']]);
+    // 2026-11-17 (the user): the level's logo and name on its coloured line, no 01 / 02 / 03.
+    const steps = [...el.querySelectorAll('.ml-lv-box:not(.ml-lv-x) .ml-level')].map((l) => l.querySelector('.ml-lv-name')!.textContent!.trim());
+    expect(steps).toEqual(['Bronze', 'Silver', 'Gold']);
+    expect(el.querySelector('.ml-lv-box:not(.ml-lv-x) .ml-level small')).toBeNull();
     // 2026-11-17 (the user): each level with its certification logo.
     expect([...el.querySelectorAll('.ml-lv-name img')].map((i) => i.getAttribute('src'))).toEqual(['/Images/Dashboard/bronze.png', '/Images/Dashboard/silver.png', '/Images/Dashboard/gold.png', '/Images/Dashboard/zedx.svg']);
     expect(el.querySelector('.ml-lv-x .ml-level')!.textContent).toContain('Export');

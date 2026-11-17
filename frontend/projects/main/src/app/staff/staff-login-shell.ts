@@ -58,8 +58,8 @@ import { loginLevels } from '../msme/login-shell/login-shell';
             <div class="ml-levels">
               @if (levels().steps.length) {
                 <ul class="ml-lv-box">
-                  @for (l of levels().steps; track l.name; let i = $index) {
-                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
+                  @for (l of levels().steps; track l.name) {
+                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span></li>
                   }
                 </ul>
               }
