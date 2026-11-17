@@ -11,6 +11,7 @@ namespace Zed.Main.Api.Tests.Staff;
 
 public sealed class DesktopAssessmentTests : IDisposable
 {
+    private static readonly string[] AssessorTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AssessorSubmitKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Base = "/api/staff/assessment/da/ZEDMSME000001/Bronze";
     private readonly TestHost _host = new();
@@ -200,7 +201,7 @@ public sealed class DesktopAssessmentTests : IDisposable
     public async Task Assessor_without_desktop_verification_sub_role_is_forbidden()
     {
         var client = await As("ASSESSORSV");
-        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "Done" });
+        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "Done" });
         Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_ASSESSMENT_DA_FINAL_SUBMIT");
     }
@@ -322,7 +323,7 @@ public sealed class DesktopAssessmentTests : IDisposable
         var client = await As("ASSESSOR1");
         var r = await client.PostAsJsonAsync(Base + "/requirements/11/conformance", new { conformance = "Yes" });
         Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "Done" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "Done" })).StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("SP_ASSESSMENT_DA_UPDATE") || c.Name == "SP_ASSESSMENT_DA_FINAL_SUBMIT");
     }
 
@@ -340,9 +341,9 @@ public sealed class DesktopAssessmentTests : IDisposable
     public async Task Final_submit_uses_the_procedures_nc_decision_and_mails_the_msme_without_a_password()
     {
         var client = await As("ASSESSOR1");
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "" })).StatusCode);
 
-        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "All checked", isNcRaised = "0" });
+        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "All checked", isNcRaised = "0" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var call = DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_FINAL_SUBMIT").Single();
         Assert.Equal(Zed, FakeSql.Arg(call.Args, "ZedId"));
@@ -362,7 +363,7 @@ public sealed class DesktopAssessmentTests : IDisposable
     {
         _host.Sql.Queries[global::Zed.Portal.Features.CertLevels.LevelNcRules.ReadSql] = _ => [new global::Zed.Portal.Features.CertLevels.LevelNcRules.Row("Bronze", 3, 20)];
         var client = await As("ASSESSOR1");
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "All checked", isNcRaised = "0" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "All checked", isNcRaised = "0" })).StatusCode);
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Contains("first attempt out of total 3 attempts", mail.HtmlBody);
         Assert.Contains("(all 3 attempts)", mail.HtmlBody);
@@ -376,7 +377,7 @@ public sealed class DesktopAssessmentTests : IDisposable
         _host.Sql.Procs["SP_ASSESSMENT_DA_CONFIRM_FINAL_SUBMIT"] = _ => FakeSql.Sets(
             [new { AllowFinalSubmit = 0, ErrorMessage = "You may have missed assessment of one or more products. Please review." }], [new { RaisedForNc = 0 }]);
         var client = await As("ASSESSOR1");
-        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "Done" });
+        var r = await client.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, remarks = "Done" });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.Contains("missed assessment of one or more products", await r.ProblemTitle());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_ASSESSMENT_DA_FINAL_SUBMIT");
@@ -403,7 +404,7 @@ public sealed class DesktopAssessmentTests : IDisposable
             return rows;
         };
         var client = await As("ASSESSOR1");
-        var body = new { remarks = "All checked" };
+        var body = new { checklist = AssessorTicks, remarks = "All checked" };
 
         var first = Task.Run(() => client.PostAsJsonAsync(Base + "/final-submit", body));
         Assert.True(submitting.Wait(TimeSpan.FromSeconds(10)));

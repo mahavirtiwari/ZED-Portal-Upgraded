@@ -76,6 +76,7 @@ public static class ReviewTestHost
 
 public sealed class MonitoringReviewTests : IDisposable
 {
+    private static readonly string[] AgencyTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AgencyQcKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Bronze = "/api/staff/monitoring/review/ZEDMSME000001/Bronze";
     private const string Silver = "/api/staff/monitoring/review/ZEDMSME000001/Silver";
@@ -152,7 +153,7 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Equal(("cf_machines", "12"), (Assert.Single(checks.Items).Key, checks.Items[0].Value));
 
         // Not checked yet: no final submit.
-        var unchecked_ = await agency.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true });
+        var unchecked_ = await agency.PostAsJsonAsync(Silver + "/final-submit", new { checklist = AgencyTicks });
         Assert.Contains("not checked 1 answer", await unchecked_.ProblemTitle());
 
         // Not valid: stored for the agency stage, and the final submit waits for the site assessor's correction.
@@ -161,7 +162,7 @@ public sealed class MonitoringReviewTests : IDisposable
         var check = _host.Sql.Calls.Last(c => c.Name == global::Zed.Core.Forms.AppFormChecks.CheckSql);
         Assert.Equal(("No", "AG", "0"), (FakeSql.Arg(check.Args, "Status"), FakeSql.Arg(check.Args, "Stage"), FakeSql.Arg(check.Args, "Round")));
         answers[0] = answers[0] with { ValidStatus = "No", ValidStage = "AG", ValidRound = 0, ValidRemarks = "Count again" };
-        var held = await agency.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true });
+        var held = await agency.PostAsJsonAsync(Silver + "/final-submit", new { checklist = AgencyTicks });
         Assert.Contains("sent back for correction", await held.ProblemTitle());
         Assert.Empty(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
 
@@ -184,7 +185,7 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Empty(_host.Email.Sent);
     }
 
-    private static object Body => new { kind = "product", id = 21, remarks = "ok", exemptionsReviewed = true, qualityChecked = true, confirmed = true, sectionId = 41, comments = "c" };
+    private static object Body => new { kind = "product", id = 21, remarks = "ok", checklist = AgencyTicks, confirmed = true, sectionId = 41, comments = "c" };
 
     // ------------------------------------------------------------------ access
 
@@ -284,11 +285,11 @@ public sealed class MonitoringReviewTests : IDisposable
     }
 
     [Fact]
-    public async Task Final_submit_needs_both_confirmations()
+    public async Task Final_submit_needs_every_item_of_the_agency_checklist()
     {
         var client = await As("AGENCY1");
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = false, qualityChecked = true })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { checklist = new[] { "quality" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { checklist = Array.Empty<string>() })).StatusCode);
         AssertNothingChanged();
     }
 
@@ -296,7 +297,7 @@ public sealed class MonitoringReviewTests : IDisposable
     public async Task Bronze_final_submit_certifies_and_mails_certificate_and_report()
     {
         var client = await As("AGENCY1");
-        var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true, zedId = "ZEDMSME999999" });
+        var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { checklist = AgencyTicks, zedId = "ZEDMSME999999" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
 
         var call = Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
@@ -304,6 +305,11 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Equal("Bronze", FakeSql.Arg(call, "CertificationType"));
         Assert.Equal("AGENCY1", FakeSql.Arg(call, "UserId"));
         Assert.Matches("^[1-9a-z]{4}$", FakeSql.Arg(call, "QrCodeSeqNo"));
+        // 2026-11-17: the agency's ticks recorded with the submission (the desktop items, as worded).
+        var ticks = Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith("INSERT INTO dbo.AssessorComments", StringComparison.Ordinal) && c.Name.Contains("'SubmitChk'"));
+        Assert.Equal(("agency-qc", "Desktop", "Agency", "AGENCY1"),
+            (FakeSql.Arg(ticks.Args, "Checklist"), FakeSql.Arg(ticks.Args, "Stage"), FakeSql.Arg(ticks.Args, "Role"), FakeSql.Arg(ticks.Args, "By")));
+        Assert.StartsWith("1. I have reviewed all the exemptions", FakeSql.Arg(ticks.Args, "Text"));
 
         Assert.Contains(("certificate", Zed, "Bronze"), _docs.Calls);
         // The documents service records the generation status itself.
@@ -328,7 +334,7 @@ public sealed class MonitoringReviewTests : IDisposable
     {
         _records["Silver"] = Record("Silver", 5, 0, "AGENCY1");
         var client = await As("AGENCY1");
-        var r = await client.PostAsJsonAsync(Silver + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true });
+        var r = await client.PostAsJsonAsync(Silver + "/final-submit", new { checklist = AgencyTicks });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
         Assert.Empty(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
@@ -341,7 +347,7 @@ public sealed class MonitoringReviewTests : IDisposable
     {
         _docs.FailCertificates = true;
         var client = await As("AGENCY1");
-        var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true });
+        var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { checklist = AgencyTicks });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Contains("could not be generated", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
         Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
@@ -354,7 +360,7 @@ public sealed class MonitoringReviewTests : IDisposable
     {
         _docs.FailReports = true;
         var client = await As("AGENCY1");
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Bronze + "/final-submit", new { checklist = AgencyTicks })).StatusCode);
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal(["Bronze.pdf"], mail.Attachments!.Select(a => a.FileName));
     }
@@ -380,7 +386,7 @@ public sealed class MonitoringReviewTests : IDisposable
             return rows;
         };
         var client = await As("AGENCY1");
-        var body = new { exemptionsReviewed = true, qualityChecked = true };
+        var body = new { checklist = AgencyTicks };
 
         var first = Task.Run(() => client.PostAsJsonAsync(Bronze + "/final-submit", body));
         Assert.True(submitting.Wait(TimeSpan.FromSeconds(10)));
@@ -498,8 +504,8 @@ public sealed class MonitoringReviewTests : IDisposable
     public async Task Site_final_submit_certifies_silver()
     {
         var client = await As("AGENCYSV");
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = false })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Silver + "/final-submit", new { checklist = new[] { "quality" } })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Silver + "/final-submit", new { checklist = AgencyTicks })).StatusCode);
         var call = Assert.Single(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
         Assert.Equal("Silver", FakeSql.Arg(call, "CertificationType"));
         Assert.Empty(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
@@ -520,7 +526,7 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await master.PostAsJsonAsync(Silver + "/send-back", new { remarks = "x" })).StatusCode);
         _records["Silver"] = Record("Silver", 17, 6, "AGENCYSV", auto: false);
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PostAsJsonAsync(Silver + "/send-back", new { remarks = "x" })).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync(Silver + "/final-submit", new { checklist = AgencyTicks })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await agency.PostAsJsonAsync(Silver + "/reject", new { confirmed = true })).StatusCode);
     }
 

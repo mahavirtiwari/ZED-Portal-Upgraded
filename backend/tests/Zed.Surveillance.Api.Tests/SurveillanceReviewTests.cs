@@ -14,6 +14,7 @@ namespace Zed.Surveillance.Api.Tests;
 /// </summary>
 public sealed class SurveillanceReviewTests : IDisposable
 {
+    private static readonly string[] AgencyTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AgencyQcKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Review = "/api/staff/site-review/ZEDMSME000001/Silver";
     private const string Monitoring = "/api/staff/monitoring/review/ZEDMSME000001";
@@ -207,7 +208,7 @@ public sealed class SurveillanceReviewTests : IDisposable
     public async Task Silver_final_submit_at_15_mails_the_surveillance_certificate_and_links_the_report_page()
     {
         var client = await ReviewTestHost.SignInAsync(App(), "AGENCYSV", UserRole.Agency, Sv);
-        var res = await client.PostAsJsonAsync(Monitoring + "/Silver/final-submit", new { exemptionsReviewed = false, qualityChecked = true });
+        var res = await client.PostAsJsonAsync(Monitoring + "/Silver/final-submit", new { checklist = AgencyTicks });
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MONITORING_RA_FINAL_SUBMIT");
         Assert.Equal([("certificate", Zed, "Silver")], _docs.Calls.ToList());
@@ -226,7 +227,7 @@ public sealed class SurveillanceReviewTests : IDisposable
     public async Task Bronze_desktop_final_submit_uses_the_surveillance_subject()
     {
         var client = await ReviewTestHost.SignInAsync(App(), "AGENCYSV", UserRole.Agency, [SubRoles.DesktopVerification]);
-        var res = await client.PostAsJsonAsync(Monitoring + "/Bronze/final-submit", new { exemptionsReviewed = true, qualityChecked = true });
+        var res = await client.PostAsJsonAsync(Monitoring + "/Bronze/final-submit", new { checklist = AgencyTicks });
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MONITORING_DA_FINAL_SUBMIT");
         Assert.StartsWith("Certificate and Surveillance Report under", Assert.Single(_host.Email.Sent).Subject);
@@ -238,7 +239,7 @@ public sealed class SurveillanceReviewTests : IDisposable
     {
         _records["Silver"] = Record("Silver", 13, 0);
         var client = await ReviewTestHost.SignInAsync(App(), "AGENCYSV", UserRole.Agency, Sv);
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Monitoring + "/Silver/final-submit", new { qualityChecked = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Monitoring + "/Silver/final-submit", new { checklist = AgencyTicks })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Monitoring + "/Silver/reject", new { confirmed = true })).StatusCode);
 
         // Failed NCs (17, NcCount 6): reject, without a report attached on surveillance.

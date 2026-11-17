@@ -281,7 +281,7 @@ describe('RemoteAssessmentPage', () => {
 
     (el.querySelector('.final-submit') as HTMLButtonElement).click();
     await settle(fixture);
-    http.expectOne(BASE + '/final-submit/check').flush({ allowed: true, message: null, raisesNc: true });
+    http.expectOne(BASE + '/final-submit/check').flush({ allowed: true, message: null, raisesNc: true, checklist: [{ id: 'meetings', text: 'Attendance complete.' }] });
     await settle(fixture);
     expect(el.querySelector('.modal')!.textContent).toContain('Non-conformance(s) will be raised');
     const submit = el.querySelector('.modal .submit') as HTMLInputElement;
@@ -293,11 +293,15 @@ describe('RemoteAssessmentPage', () => {
     const confirm = el.querySelector('#finalConfirm') as HTMLInputElement;
     confirm.click();
     await settle(fixture);
+    // 2026-11-17 (approved): every item of the Admin's checklist as well.
+    expect(submit.disabled).toBe(true);
+    (el.querySelector('[data-check="meetings"]') as HTMLInputElement).click();
+    await settle(fixture);
     expect(submit.disabled).toBe(false);
     submit.click();
     await settle(fixture);
     const req = http.expectOne(BASE + '/final-submit');
-    expect(req.request.body).toEqual({ comments: 'Assessment done' });
+    expect(req.request.body).toEqual({ comments: 'Assessment done', checklist: ['meetings'] });
     req.flush({ message: 'Assessment submitted.' });
     await reload();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Assessment submitted.');

@@ -21,6 +21,8 @@ import { ParameterChip, ParameterNav, ParameterProgress, ParameterStatus, parame
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
+import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
@@ -45,7 +47,7 @@ const MAX_FILES = 5;
 interface ConformanceEdit { requirement: Row; conformance: string; remarks: string }
 interface ValidationEdit { row: Row | null; verified: string; remarks: string }
 interface EvidenceEdit { evidence: Row; verified: string; source: string; remarks: string; files: File[] }
-interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed: boolean }
+interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed: boolean; ticked: string[] }
 
 /** A key fact of the assessment summary card (label above, value below; wide facts span two columns). */
 export interface SummaryFact { label: string; value: string; wide?: boolean }
@@ -60,7 +62,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './da-details.css',
@@ -535,7 +537,7 @@ export class DaDetailsPage {
         return;
       }
       this.modalError.set('');
-      this.finalSubmitEdit.set({ check, remarks: '', confirmed: false });
+      this.finalSubmitEdit.set({ check, remarks: '', confirmed: false, ticked: [] });
     } catch (err) {
       this.notice.set({ ok: false, text: apiErrorMessage(err) });
     } finally {
@@ -546,9 +548,14 @@ export class DaDetailsPage {
   protected async finalSubmit(): Promise<void> {
     const e = this.finalSubmitEdit();
     const d = this.data();
-    if (!e || !d || !e.confirmed) return;
+    if (!e || !d || !this.canFinalSubmit(e)) return;
     if (!e.remarks.trim()) return this.modalError.set('Please enter assessor final remarks.');
-    await this.save(this.api.finalSubmit(d.zedId, d.certification, e.remarks.trim()), () => this.finalSubmitEdit.set(null));
+    await this.save(this.api.finalSubmit(d.zedId, d.certification, e.remarks.trim(), e.ticked), () => this.finalSubmitEdit.set(null));
+  }
+
+  /** The fairness box and (2026-11-17) every item of the Admin's assessor final submit checklist ticked. */
+  protected canFinalSubmit(e: FinalSubmitEdit): boolean {
+    return e.confirmed && allTicked(e.check.checklist ?? [], e.ticked);
   }
 
   /** Rows of the round being submitted, for the NC summary of the final-submit pop-up. */

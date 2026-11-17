@@ -311,6 +311,9 @@ public sealed partial class SAController(
             var sections = await UnitSiteTourSectionsAsync(zedId, response.certificationType, ct);
             var counts = SiteTourSections.Count(sections, (await SiteTourSections.PhotosAsync(db, zedId, response.certificationType, ct)).Select(r => (r.PhotoId, r.Name)));
             response.siteTourSections = sections.Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, counts[t.Id])).ToList();
+            // 2026-11-17 (approved): the Admin's assessor final submit checklist (Onsite), ticked before the closing / final submit.
+            response.submitChecklist = (await SubmissionChecklists.AskedAsync(settings, SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Onsite, ct))
+                .Select(i => new SubmitChecklistItem { id = i.Id, text = i.Text }).ToList();
         }
         return new UnitAnswer(response, null, zedId);
     }
@@ -702,13 +705,25 @@ public sealed partial class SAController(
             return NotAllotted(nameof(SubmitEndAssessment), request.saId, request.zedId);
 
         var st = await CheckSaStatusAsync(request.zedId, request.certificationType, request.saId, ct);
+        // 2026-11-17 (approved): every item of the Admin's assessor final submit checklist (Onsite) ticked; an older app (no list
+        // sent) is let through as before.
+        IReadOnlyList<ChecklistItem> asked = [];
+        if (request.submitChecklist is not null)
+        {
+            asked = await SubmissionChecklists.AskedAsync(settings, SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Onsite, ct);
+            if (SubmissionChecklists.Unticked(asked, request.submitChecklist) is { } unticked) return Fail(unticked);
+        }
+        else
+        {
+            log.LogWarning("{SaId}: SubmitEndAssessment of {ZedId} without the submission checklist (older app)", request.saId, request.zedId);
+        }
         if (coAssessor)
         {
             if (st.ClosingMeetingSubmitted) return Fail(Closed + request.zedId);
             if (!st.OpenMeetingSubmitted) return Fail(OpenNotSubmitted + request.zedId);
             if (st.FinalSubmissionDone) return Fail("MSME SA Final Submission done for the ZEDID: " + request.zedId);
             if (!st.AllParametersSyncedByCo) return Fail(NotSynced + request.zedId);
-            return LegacyJson(await SaveMeetingAsync(request, null, null, "Final Submit", request.endComment, ct));
+            return LegacyJson(await RecordChecklistAsync(await SaveMeetingAsync(request, null, null, "Final Submit", request.endComment, ct), request, asked, "Co-assessor", ct));
         }
 
         if (st.ClosingMeetingSubmitted) return Fail(Closed + request.zedId);
@@ -724,8 +739,19 @@ public sealed partial class SAController(
 
         var participants = Participants(request.endParticipants);
         var photos = await SaveMeetingPhotosAsync(request, ct);
-        return LegacyJson(await SaveMeetingAsync(request, participants, photos, "Close Meeting", request.endComment, ct));
+        return LegacyJson(await RecordChecklistAsync(await SaveMeetingAsync(request, participants, photos, "Close Meeting", request.endComment, ct), request, asked,
+            "Lead assessor", ct));
     });
+
+    /// <summary>The ticks of a successful SubmitEndAssessment, recorded with it (stage Onsite).</summary>
+    private async Task<ServiceResponse> RecordChecklistAsync(ServiceResponse saved, SubmitAssessmentRequest request, IReadOnlyList<ChecklistItem> asked, string role,
+        CancellationToken ct)
+    {
+        if (saved.status == "1" && asked.Count > 0)
+            await SubmissionChecklists.TryRecordAsync(db, log, request.zedId!.Trim(), request.certificationType!.Trim(), SubmissionChecklists.AssessorSubmitKind,
+                SubmissionChecklists.Onsite, 0, asked, role, null, request.saId!.Trim(), null, ct);
+        return saved;
+    }
 
     [HttpPost]
     [DeviceBound(MobileApps.SiteAssessor, "saId", "userName")]

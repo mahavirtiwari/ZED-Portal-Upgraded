@@ -13,6 +13,8 @@ namespace Zed.Consultancy.Api.Tests;
 /// <summary>The handholding milestone page and its decisions (Consultancy/Milestones) against fakes of the ZED_CONSULTANT procedures.</summary>
 public sealed class MilestoneReviewTests : IDisposable
 {
+    private static readonly string[] CoTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.CoQcKind.Defaults.Select(i => i.Id)];
+    private static readonly string[] ConsultantTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.ConsultantSubmitKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000836";
     private const string Base = "/api/consultancy/milestones/ZEDMSME000836/Silver";
     private const string Lead = "ZEDCC0015";
@@ -424,14 +426,14 @@ public sealed class MilestoneReviewTests : IDisposable
         var lead = await As(Lead);
         var check = await (await lead.PostAsync(Base + "/consultant/check", null)).Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(check.GetProperty("allowed").GetBoolean());
-        var res = await lead.PostAsJsonAsync(Base + "/consultant/final-submit", new { remarks = "done" });
+        var res = await lead.PostAsJsonAsync(Base + "/consultant/final-submit", new { remarks = "done", checklist = ConsultantTicks });
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
         Assert.Contains("estimated time", await res.ProblemTitle());
         Assert.Empty(CallsTo("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
 
         _host.Sql.Procs["SP_ASSESSMENT_RA_CONFIRM_FINAL_SUBMIT"] = _ => FakeSql.Sets([new { AllowFinalSubmit = 1, ErrorMessage = "" }], [new { RaisedForNc = 0 }]);
         Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/consultant/final-submit", new { remarks = " " })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/consultant/final-submit", new { remarks = "Milestone done" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/consultant/final-submit", new { remarks = "Milestone done", checklist = ConsultantTicks })).StatusCode);
         var call = CallsTo("SP_ASSESSMENT_RA_FINAL_SUBMIT").Single();
         Assert.Equal(Lead, FakeSql.Arg(call, "UserId"));
         Assert.Equal("Milestone done", FakeSql.Arg(call, "AssessorRemarks"));
@@ -465,7 +467,7 @@ public sealed class MilestoneReviewTests : IDisposable
 
         _status = 15;
         Assert.Equal(HttpStatusCode.BadRequest, (await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = false })).StatusCode);
-        var res = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true });
+        var res = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true, checklist = CoTicks });
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var call = CallsTo("SP_MONITORING_RA_FINAL_SUBMIT").Single();
         Assert.Equal(Co, FakeSql.Arg(call, "UserId"));
@@ -488,7 +490,7 @@ public sealed class MilestoneReviewTests : IDisposable
         _status = 15;
         _docs.FailReports = true;
         var co = await As(Co, UserRole.Agency);
-        var res = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true });
+        var res = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true, checklist = CoTicks });
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Null(mail.Attachments);
@@ -535,7 +537,7 @@ public sealed class MilestoneReviewTests : IDisposable
         var r = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true });
         Assert.Equal(global::Zed.Portal.Features.Staff.Quality.QualityObservations.BlockingMessage(1), await r.ProblemTitle());
         Assert.Empty(CallsTo("SP_MONITORING_RA_FINAL_SUBMIT"));
-        Assert.Contains("Action plan not adequate", global::Zed.Portal.Features.Staff.Quality.QualityObservations.CategoriesFor(handholding: true));
+        Assert.Contains(global::Zed.Portal.Features.Staff.Quality.ObservationReasons.DefaultsFor(handholding: true), x => x.Text == "Action plan not adequate");
     }
 
     /// <summary>2026-11-16 (approved): the CO's send-back remark is shown on the page while the milestone is back with the consultants.</summary>

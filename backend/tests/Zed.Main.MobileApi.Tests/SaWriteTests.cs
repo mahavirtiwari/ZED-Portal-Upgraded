@@ -495,6 +495,21 @@ public sealed class SaWriteTests : IDisposable
     }
 
     [Fact]
+    public async Task The_final_submit_checklist_is_checked_and_recorded_when_the_app_sends_it()
+    {
+        // 2026-11-17 (approved): the Admin's assessor final submit checklist (Onsite); an older app (no list) goes through as before.
+        AssertFail(await _t.Json("/SA/SubmitEndAssessment", new { userType = 2, saId = Co, zedId = Zed, certificationType = "Silver", endComment = "done", submitChecklist = new[] { "coi" } }),
+            "Please tick all 5 checklist items before you submit (4 not ticked).");
+        Assert.Empty(_t.CallsTo("SP_SA_APP_INSERT_OPEN_MEETING"));
+
+        var all = global::Zed.Core.Assessment.SubmissionChecklists.AssessorSubmitKind.Defaults.Select(i => i.Id).ToArray();
+        AssertOk(await _t.Json("/SA/SubmitEndAssessment", new { userType = 2, saId = Co, zedId = Zed, certificationType = "Silver", endComment = "done", submitChecklist = all }));
+        var ticks = Assert.Single(_t.Fake.Calls, c => c.Name.StartsWith("INSERT INTO dbo.AssessorComments", StringComparison.Ordinal) && c.Name.Contains("'SubmitChk'"));
+        Assert.Equal(("assessor-submit", "Onsite", "Co-assessor", Co),
+            (AssessorTestHost.Arg(ticks.Args, "Checklist"), AssessorTestHost.Arg(ticks.Args, "Stage"), AssessorTestHost.Arg(ticks.Args, "Role"), AssessorTestHost.Arg(ticks.Args, "By")));
+    }
+
+    [Fact]
     public async Task Closing_meeting_needs_every_site_tour_section_minimum()
     {
         _flags["FinalSubmissionDone"] = true;

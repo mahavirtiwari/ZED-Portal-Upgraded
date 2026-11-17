@@ -24,16 +24,19 @@ public sealed class QualityObservationsController(
     ISqlExecutor db,
     PortalHost host,
     IEmailSender email,
+    IPortalSettings settings,
     ILogger<QualityObservationsController> log) : StaffApiController
 {
     public sealed record UnitView(bool CanRaise, bool CanRespond, bool CanClose, IReadOnlyList<QualityObservations.Observation> Items)
     {
-        /// <summary>The categories of this portal (handholding has its own).</summary>
-        public IReadOnlyList<string> Categories { get; init; } = QualityObservations.Categories;
-        public IReadOnlyList<string> Severities { get; init; } = QualityObservations.Severities;
+        /// <summary>2026-11-17: the Admin's reasons in use on this portal, each with its severity (Admin → Observation reasons).</summary>
+        public IReadOnlyList<ReasonOption> Reasons { get; init; } = [];
     }
 
-    public sealed record RaiseRequest(string? RefType, string? RefId, string? RefLabel, string? Category, string? Severity, string? About, string? Text);
+    public sealed record ReasonOption(string Id, string Text, string Severity);
+
+    /// <param name="Category">The reason's key (or its wording); the severity is the reason's (2026-11-17, the user).</param>
+    public sealed record RaiseRequest(string? RefType, string? RefId, string? RefLabel, string? Category, string? About, string? Text);
 
     public sealed record TextRequest(string? Text);
 
@@ -64,7 +67,10 @@ public sealed class QualityObservationsController(
         if (RoleId == (int)UserRole.DesktopAssessor)
             items = items.Where(o => o.About != "Agency" && string.Equals(o.AboutUserId, UserId, StringComparison.OrdinalIgnoreCase)).ToList();
         var agency = RoleId == (int)UserRole.Agency && Same(record!.CertificationBodyUserId, UserId);
-        return new UnitView(IsMaster, agency, IsMaster, items) { Categories = QualityObservations.CategoriesFor(Milestones) };
+        var reasons = IsMaster
+            ? (await ObservationReasons.LoadAsync(settings, Milestones, ct)).Where(r => r.Active).Select(r => new ReasonOption(r.Id, r.Text, r.Severity)).ToList()
+            : [];
+        return new UnitView(IsMaster, agency, IsMaster, items) { Reasons = reasons };
     }
 
     [HttpPost("{zedId}/{certification}")]
@@ -76,8 +82,9 @@ public sealed class QualityObservationsController(
         var text = AssessmentInput.Text(req.Text);
         if (text is null) return this.Problem400("Please write the observation.");
         if (text.Length > QualityObservations.MaxText) return this.Problem400($"The observation can be up to {QualityObservations.MaxText} characters.");
-        if (Pick(req.Category, QualityObservations.CategoriesFor(Milestones)) is not { } category) return this.Problem400("Please choose the category.");
-        if (Pick(req.Severity, QualityObservations.Severities) is not { } severity) return this.Problem400("Please choose the severity.");
+        if (ObservationReasons.Find(await ObservationReasons.LoadAsync(settings, Milestones, ct), req.Category) is not { } reason)
+            return this.Problem400("Please choose the reason.");
+        var (category, severity) = (reason.Text, reason.Severity);
         if (Pick(req.About, QualityObservations.Abouts) is not { } about) return this.Problem400("Please choose whom the observation is about.");
         var refType = Pick(req.RefType ?? "Overall", QualityObservations.RefTypes);
         if (refType is null) return this.Problem400("Invalid item.");

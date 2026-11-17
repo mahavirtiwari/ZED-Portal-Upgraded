@@ -81,6 +81,8 @@ export interface FinalSubmitCheck {
   allowed: boolean;
   message: string | null;
   raisesNc: boolean;
+  /** 2026-11-17 (approved): the Admin's assessor final submit checklist the pop-up asks (Remote, or Onsite not yet ticked in the app). */
+  checklist?: { id: string; text: string }[];
 }
 
 /** 'Selfie' is surveillance only (the assessor's "Selfie on Site" upload). */
@@ -162,7 +164,7 @@ export class RemoteApi {
     return this.http.post<FinalSubmitCheck>(`${this.base(zedId, certification)}/final-submit/check`, {});
   }
 
-  finalSubmit(zedId: string, certification: string, comments: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/final-submit`, { comments });
+  finalSubmit(zedId: string, certification: string, comments: string, checklist: string[] = []): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/final-submit`, { comments, checklist });
   }
 }

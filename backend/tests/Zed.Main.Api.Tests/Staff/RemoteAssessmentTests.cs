@@ -65,6 +65,7 @@ internal static class RemoteTestUsers
 
 public sealed class RemoteAssessmentTests : IDisposable
 {
+    private static readonly string[] AssessorTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AssessorSubmitKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Base = "/api/staff/remote/" + Zed + "/Silver";
 
@@ -276,7 +277,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         _status = 15;
         var lead = await As("ASSESSOR1");
         Assert.False((await lead.GetFromJsonAsync<JsonElement>(Base)).GetProperty("permissions").GetProperty("canAssess").GetBoolean());
-        Assert.Equal("This remote assessment is not open.", await (await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "x" })).ProblemTitle());
+        Assert.Equal("This remote assessment is not open.", await (await lead.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, comments = "x" })).ProblemTitle());
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"));
         Assert.False(Called("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
     }
@@ -457,12 +458,12 @@ public sealed class RemoteAssessmentTests : IDisposable
         var lead = await As("ASSESSOR1");
         const string onsite = "/api/staff/remote/ZEDMSME000002/Silver";
         // During the app's assessment (status 9) the unit is the app's.
-        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { comments = "Done" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { checklist = AssessorTicks, comments = "Done" })).StatusCode);
 
         // After the closing meeting (status 13): reviewed and submitted on the web, as on the old SaDetails page; no video room.
         _onsiteStatus = 13;
         Assert.Equal(HttpStatusCode.OK, (await lead.GetAsync(onsite)).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { comments = "Site assessment complete" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { checklist = AssessorTicks, comments = "Site assessment complete" })).StatusCode);
         Assert.Equal("ZEDMSME000002", FakeSql.Arg(Call("SP_ASSESSMENT_RA_FINAL_SUBMIT").Args, "ZedId"));
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
@@ -471,18 +472,18 @@ public sealed class RemoteAssessmentTests : IDisposable
     public async Task Final_submit_rechecks_the_procedure_and_sends_the_nc_mail_without_passwords()
     {
         var lead = await As("ASSESSOR1");
-        Assert.Equal("Please enter comments.", await (await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "" })).ProblemTitle());
+        Assert.Equal("Please enter comments.", await (await lead.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, comments = "" })).ProblemTitle());
 
         _confirmAllowed = false;
         var check = await (await lead.PostAsync(Base + "/final-submit/check", null)).Content.ReadFromJsonAsync<JsonElement>();
         Assert.False(check.GetProperty("allowed").GetBoolean());
-        var refused = await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "Done", isNcRaised = "0" });
+        var refused = await lead.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, comments = "Done", isNcRaised = "0" });
         Assert.Equal("You may have missed one or more OFI comments. Please review.", await refused.ProblemTitle());
         Assert.False(Called("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
 
         _confirmAllowed = true;
         _raisesNc = true;
-        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "NCs raised", isNcRaised = "0" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, comments = "NCs raised", isNcRaised = "0" })).StatusCode);
         Assert.Equal("NCs raised", FakeSql.Arg(Call("SP_ASSESSMENT_RA_FINAL_SUBMIT").Args, "AssessorRemarks"));
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Contains("owner@acme.test", mail.To);
@@ -548,11 +549,11 @@ public sealed class RemoteAssessmentTests : IDisposable
     {
         var lead = await As("ASSESSOR1");
         NcRound(nc1Status: 2, openProducts: 1);
-        var refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Reviewed" });
+        var refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { checklist = AssessorTicks, comments = "Reviewed" });
         Assert.Equal("You may have missed assessment of one or more products of this NC round. Please review.", await refused.ProblemTitle());
 
         NcRound(nc1Status: 2, photosSent: 2, photosUnanswered: 2);
-        refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Reviewed" });
+        refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { checklist = AssessorTicks, comments = "Reviewed" });
         Assert.Equal("You may have missed assessment of the site exterior photos of this NC round. Please review.", await refused.ProblemTitle());
         Assert.False(Called("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
 
@@ -563,7 +564,7 @@ public sealed class RemoteAssessmentTests : IDisposable
 
         // All answered and conforming: the NCs close (status 15).
         _host.Sql.Procs["SP_ASSESSMENT_RA_FINAL_SUBMIT"] = _ => { _onsiteStatus = 15; return FakeSql.Sets(); };
-        var closed = await (await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "NCs closed" })).Content.ReadFromJsonAsync<JsonElement>();
+        var closed = await (await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { checklist = AssessorTicks, comments = "NCs closed" })).Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Assessment submitted. The NCs are closed and the assessment goes to the agency.", closed.GetProperty("message").GetString());
         Assert.Empty(_host.Email.Sent);
     }
@@ -584,8 +585,8 @@ public sealed class RemoteAssessmentTests : IDisposable
             return FakeSql.Sets();
         };
         var answers = await Task.WhenAll(
-            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "First" }),
-            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Second" }));
+            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { checklist = AssessorTicks, comments = "First" }),
+            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { checklist = AssessorTicks, comments = "Second" }));
 
         Assert.Equal(1, runs);
         Assert.Single(answers, a => a.StatusCode == HttpStatusCode.OK);

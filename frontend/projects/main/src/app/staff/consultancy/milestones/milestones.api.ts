@@ -152,12 +152,15 @@ export class MilestonesApi {
     return this.http.post<{ allowed: boolean; message: string }>(`${this.base(zedId, level)}/consultant/check`, {});
   }
 
-  consultantFinalSubmit(zedId: string, level: string, remarks: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/consultant/final-submit`, { remarks });
+  /** 2026-11-17: `checklist` = the ids of the ticked items of the consultant final submit checklist. */
+  consultantFinalSubmit(zedId: string, level: string, remarks: string, checklist: string[] = []): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/consultant/final-submit`, { remarks, checklist });
   }
 
-  finalSubmit(zedId: string, level: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/final-submit`, { confirmed: true });
+
+  /** 2026-11-17: `checklist` = the ids of the ticked items of the consultant organisation quality-check checklist. */
+  finalSubmit(zedId: string, level: string, checklist: string[] = []): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/final-submit`, { confirmed: true, checklist });
   }
 
   sendBack(zedId: string, level: string, remarks: string): Observable<MessageResponse> {

@@ -19,6 +19,8 @@ import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
 import { UnitFacts } from '../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
+import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -93,7 +95,7 @@ export const BASIC_INFO: { label: string; da: string; sa: string; yesNo: boolean
 interface Capture { target: PhotoTarget; targetId: number | null; image: string; name: string; fixedName: boolean }
 interface Choice { kind: 'conformance' | 'product' | 'siteExterior'; id: number | null; title: string; value: string; remarks: string; max: number }
 interface TextEdit { kind: 'basicInfo' | 'ofi' | 'meeting'; id: number | null; column: string; title: string; value: string; yesNo: boolean }
-interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed: boolean }
+interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed: boolean; ticked: string[] }
 
 /**
  * The site assessor's remote assessment of a unit. Port of Views/Remote/Index.cshtml: unit
@@ -114,7 +116,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [QualityObservationsPanel, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -633,6 +635,11 @@ export class RemoteAssessmentPage {
     if (ok) this.participant[key] = { name: '', designation: '' };
   }
 
+  /** The fairness box and (2026-11-17) every item of the Admin's assessor final submit checklist ticked. */
+  protected canSubmit(f: FinalSubmitEdit): boolean {
+    return f.confirmed && allTicked(f.check.checklist ?? [], f.ticked);
+  }
+
   protected async openFinalSubmit(): Promise<void> {
     this.notice.set(null);
     this.busy.set(true);
@@ -643,7 +650,7 @@ export class RemoteAssessmentPage {
         return;
       }
       this.modalError.set('');
-      this.finalSubmit.set({ check, comments: '', confirmed: false });
+      this.finalSubmit.set({ check, comments: '', confirmed: false, ticked: [] });
     } catch (err) {
       this.notice.set({ ok: false, text: apiErrorMessage(err) });
     } finally {
@@ -653,14 +660,14 @@ export class RemoteAssessmentPage {
 
   protected async submit(): Promise<void> {
     const f = this.finalSubmit();
-    if (!f || !f.confirmed) return;
+    if (!f || !this.canSubmit(f)) return;
     if (!f.comments.trim()) {
       this.modalError.set('Please enter comments.');
       return;
     }
     let message = 'Assessment submitted.';
     const ok = await this.run(
-      this.api.finalSubmit(this.zedId, this.certification, f.comments.trim()).pipe(tap((r) => (message = r.message || message))),
+      this.api.finalSubmit(this.zedId, this.certification, f.comments.trim(), f.ticked).pipe(tap((r) => (message = r.message || message))),
       () => this.finalSubmit.set(null),
     );
     if (ok) {

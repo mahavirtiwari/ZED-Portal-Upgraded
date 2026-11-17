@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Zed.Core.Assessment;
@@ -162,6 +163,15 @@ public sealed class MilestoneReviewController(
     public sealed record RemarksRequest(string? Remarks);
 
     public sealed record ConfirmRequest(bool Confirmed);
+
+    /// <param name="Checklist">2026-11-17 (approved): the ids of the ticked items of the Admin's consultant final submit checklist.</param>
+    public sealed record ConsultantSubmitRequest(string? Remarks, IReadOnlyList<string>? Checklist = null);
+
+    /// <param name="Checklist">2026-11-17 (approved): the ids of the ticked items of the consultant organisation quality-check
+    /// checklist (it replaced the fixed confirmation box; the box is asked only while the checklist has no item).</param>
+    public sealed record CoFinalSubmitRequest(bool Confirmed, IReadOnlyList<string>? Checklist = null);
+
+    private IPortalSettings Settings => HttpContext.RequestServices.GetRequiredService<IPortalSettings>();
 
     public sealed record CheckResponse(bool Allowed, string Message);
 
@@ -504,11 +514,12 @@ public sealed class MilestoneReviewController(
 
     [HttpPost("consultant/final-submit")]
     [StaffRoles(UserRole.DesktopAssessor)]
-    public async Task<ActionResult<MessageResponse>> ConsultantFinalSubmit(string zedId, string certification, RemarksRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> ConsultantFinalSubmit(string zedId, string certification, ConsultantSubmitRequest req, CancellationToken ct)
     {
         var remarks = AssessmentInput.Text(req.Remarks);
         if (remarks is null) return this.Problem400("Please enter your final comments.");
         if (remarks.Length > MaxRemarks) return this.Problem400($"Comments must be at most {MaxRemarks} characters.");
+        var kind = SubmissionChecklists.ConsultantSubmitKind;
 
         await Decisions.WaitAsync(ct);
         try
@@ -516,6 +527,8 @@ public sealed class MilestoneReviewController(
             var (ctx, error) = await Context(zedId, certification, ct);
             if (error is not null) return error;
             if (!ctx!.CanConsultantFinalSubmit) return Forbidden("Final submit is not available for this milestone in its current status.");
+            var (asked, unticked) = await SubmissionChecklists.CheckAsync(Settings, kind, null, req.Checklist, ct);
+            if (unticked is not null) return this.Problem400(unticked);
             var check = await CheckAsync(ctx, ct);
             if (!check.Allowed) return this.Problem400(check.Message);
 
@@ -527,6 +540,8 @@ public sealed class MilestoneReviewController(
                 UserId = AssessmentInput.Ansi(UserId),
             }, ct);
             log.LogInformation("{UserId} ({Party}) final-submitted milestone {Milestone} of {ZedId} {Level}", UserId, ctx.Party, ctx.Milestone, ctx.ZedId, ctx.Level);
+            await SubmissionChecklists.TryRecordAsync(db, log, ctx.ZedId, ctx.Level, kind, $"Milestone {ctx.Milestone}", ctx.Milestone, asked,
+                ctx.Party == MilestoneParty.Lead ? "Lead consultant" : "Co-consultant", null, ActorId, ActorName, ct);
             return new MessageResponse(ctx.Party == MilestoneParty.Lead
                 ? "Milestone submitted to the Consultant Organisation."
                 : "Your part of the milestone is submitted. The lead consultant submits the milestone.");
@@ -542,20 +557,24 @@ public sealed class MilestoneReviewController(
     /// <summary>Completes the milestone (15 → 16) and mails the milestone report to the MSME, who accepts it on main.</summary>
     [HttpPost("final-submit")]
     [StaffRoles(UserRole.Agency)]
-    public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, ConfirmRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, CoFinalSubmitRequest req, CancellationToken ct)
     {
-        if (!req.Confirmed) return this.Problem400("Please confirm the review of the milestone before final submit.");
+        var kind = SubmissionChecklists.CoQcKind;
         // 2026-11-16 (approved): the ZED team's open major / critical observations wait for the CO's reply.
         if (AssessmentInput.IsId(zedId) && Level(certification) is { } qoLevel
             && await Staff.Quality.QualityObservations.BlockingAsync(db, zedId, qoLevel, log, ct) is > 0 and var open)
             return this.Problem400(Staff.Quality.QualityObservations.BlockingMessage(open));
         MilestoneContext ctx;
+        IReadOnlyList<ChecklistItem> asked;
         await Decisions.WaitAsync(ct);
         try
         {
             var (c, error) = await ForDecision(zedId, certification, ct);
             if (error is not null) return error;
             ctx = c!;
+            (asked, var unticked) = await SubmissionChecklists.CheckAsync(Settings, kind, null, req.Checklist, ct);
+            if (asked.Count == 0 && !req.Confirmed) return this.Problem400("Please confirm the review of the milestone before final submit.");
+            if (unticked is not null) return this.Problem400(unticked);
             await db.ExecuteProcAsync("SP_MONITORING_RA_FINAL_SUBMIT", new
             {
                 UserId = AssessmentInput.Ansi(UserId),
@@ -569,6 +588,8 @@ public sealed class MilestoneReviewController(
         {
             Decisions.Release();
         }
+        await SubmissionChecklists.TryRecordAsync(db, log, ctx.ZedId, ctx.Level, kind, $"Milestone {ctx.Milestone}", ctx.Milestone, asked,
+            "Consultant organisation", UserId, ActorId, ActorName, ct);
 
         var outcome = await MilestoneCompletion.Create(HttpContext.RequestServices).CompletedAsync(ctx.ZedId, ctx.Level, ctx.Milestone, ct);
         return new MessageResponse(

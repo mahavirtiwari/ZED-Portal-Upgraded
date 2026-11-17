@@ -47,6 +47,8 @@
     </ul>
 
     <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+    <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
+    <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
     <div class="tab-content">
       <!-- ================================================= overview -->
       @if (tab() === 1) {
@@ -686,6 +688,8 @@
           @if (dlg === 'consultantSubmit' || dlg === 'sendBack' || dlg === 'meetingRemarks' || dlg === 'finalComments') {
             <label class="form-label" for="milestoneDialogText">{{ dlg === 'sendBack' ? 'Send Back Remarks' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'Remarks' : 'Final Comments' }}<span class="req">*</span></label>
             <textarea id="milestoneDialogText" class="form-control" maxlength="2000" rows="4" [ngModel]="dialogText()" (ngModelChange)="dialogText.set($event)"></textarea>
+          } @else if (dlg === 'coSubmit' && (checklistLoading() || checklist().length)) {
+            <!-- the Admin's consultant organisation quality-check checklist replaces the review box below -->
           } @else {
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="milestoneConfirm" [ngModel]="confirmed()" (ngModelChange)="confirmed.set($event)" />
@@ -693,6 +697,14 @@
                 <zed-text [key]="dlg === 'reject' ? 'staff.consultancy.milestone.reject.checkbox' : 'staff.consultancy.milestone.review.checkbox'" [inline]="true" />
               </label>
             </div>
+          }
+          <!-- 2026-11-17 (approved): the Admin's submission checklist (consultant final submit / consultant organisation quality check). -->
+          @if (dlg === 'consultantSubmit' || dlg === 'coSubmit') {
+            @if (checklistLoading()) {
+              <p class="text-muted mt-2 mb-0">Loading the checklist…</p>
+            } @else if (checklist().length) {
+              <div class="mt-3"><zed-submit-checklist [items]="checklist()" [(ticked)]="ticked" /></div>
+            }
           }
           @if (dialogError()) { <div class="alert alert-danger mt-2" role="alert">{{ dialogError() }}</div> }
         </div>

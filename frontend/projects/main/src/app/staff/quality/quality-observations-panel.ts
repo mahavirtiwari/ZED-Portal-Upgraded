@@ -39,16 +39,21 @@ import { QoTarget, QoUnitView, QualityApi, aboutLabels } from './quality.api';
               <select id="qo-about" class="form-select" name="about" [ngModel]="f.about" (ngModelChange)="patch('about', $event)">
                 @for (a of abouts(); track a) { <option [value]="a">{{ aboutLabel(a) }}</option> }
               </select>
-              <label for="qo-category">Category</label>
+              <!-- 2026-11-17 (approved): the Admin's reasons; the severity comes from the reason. -->
+              <label for="qo-category">Reason</label>
               <select id="qo-category" class="form-select" name="category" [ngModel]="f.category" (ngModelChange)="patch('category', $event)">
                 <option value="">Select</option>
-                @for (c of v.categories; track c) { <option [value]="c">{{ c }}</option> }
+                @for (r of v.reasons; track r.id) { <option [value]="r.id">{{ r.text }}</option> }
               </select>
-              <label for="qo-severity">Severity</label>
-              <select id="qo-severity" class="form-select" name="severity" [ngModel]="f.severity" (ngModelChange)="patch('severity', $event)">
-                <option value="">Select</option>
-                @for (s of v.severities; track s) { <option [value]="s">{{ s }}</option> }
-              </select>
+              <span class="qo-sev-label">Severity</span>
+              <span data-qo-severity>
+                @if (reason(); as r) {
+                  <span class="qo-sev" [class.qo-sev-major]="r.severity === 'Major'" [class.qo-sev-critical]="r.severity === 'Critical'">{{ r.severity }}</span>
+                  <small class="qo-sev-from">from the reason</small>
+                } @else {
+                  <small class="qo-sev-from">Choose the reason</small>
+                }
+              </span>
               <label for="qo-text">Observation</label>
               <textarea id="qo-text" class="form-control" name="text" rows="3" maxlength="2000" [ngModel]="f.text" (ngModelChange)="patch('text', $event)"></textarea>
               <p class="qo-hint">{{ blockingHint }}</p>
@@ -80,6 +85,11 @@ import { QoTarget, QoUnitView, QualityApi, aboutLabels } from './quality.api';
     .qo-hint { font-size: 12px; color: #8a6100; margin: 0; }
     .qo-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .qo-empty { font-size: 13px; color: #5f6f70; margin: 0; }
+    .qo-sev-label { font-weight: 500; }
+    .qo-sev { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #eef2f2; color: #3d4f50; border: 1px solid #d9e2e2; }
+    .qo-sev-major { background: #fdf3e1; color: #8a5a00; border-color: #f2d9a6; }
+    .qo-sev-critical { background: #fdecec; color: #a32d2d; border-color: #f2c4c4; }
+    .qo-sev-from { color: #7a8a8b; margin-left: 6px; }
     @media (max-width: 575.98px) { .qo-form { grid-template-columns: 1fr; } }
   `,
 })
@@ -106,12 +116,17 @@ export class QualityObservationsPanel {
   readonly target = model<QoTarget | null>(null);
 
   protected readonly view = signal<QoUnitView | null>(null);
-  protected readonly form = signal<{ targetKey: string; about: string; category: string; severity: string; text: string } | null>(null);
+  protected readonly form = signal<{ targetKey: string; about: string; category: string; text: string } | null>(null);
   protected readonly busy = signal(false);
   protected readonly notice = signal('');
   protected readonly formError = signal('');
   protected readonly allTargets = computed(() => [this.overall, ...this.targets()]);
   protected readonly openCount = computed(() => (this.view()?.items ?? []).filter((o) => o.status !== 'Closed').length);
+  /** The reason chosen in the form (its severity is shown, not chosen). */
+  protected readonly reason = computed(() => {
+    const id = this.form()?.category;
+    return id ? (this.view()?.reasons ?? []).find((r) => r.id === id) ?? null : null;
+  });
 
   constructor() {
     effect(() => {
@@ -140,10 +155,10 @@ export class QualityObservationsPanel {
   protected start(t: QoTarget | null): void {
     this.formError.set('');
     this.notice.set('');
-    this.form.set({ targetKey: this.key(t ?? this.overall), about: this.abouts()[0] ?? 'Lead', category: '', severity: '', text: '' });
+    this.form.set({ targetKey: this.key(t ?? this.overall), about: this.abouts()[0] ?? 'Lead', category: '', text: '' });
   }
 
-  protected patch(k: 'targetKey' | 'about' | 'category' | 'severity' | 'text', v: string): void {
+  protected patch(k: 'targetKey' | 'about' | 'category' | 'text', v: string): void {
     this.form.update((f) => (f ? { ...f, [k]: v } : f));
   }
 
@@ -155,7 +170,7 @@ export class QualityObservationsPanel {
     this.formError.set('');
     try {
       const r = await firstValueFrom(this.api.raise(this.zedId(), this.certification(), {
-        refType: t.type, refId: t.id, refLabel: t.type === 'Overall' ? null : t.label, category: f.category, severity: f.severity, about: f.about, text: f.text,
+        refType: t.type, refId: t.id, refLabel: t.type === 'Overall' ? null : t.label, category: f.category, about: f.about, text: f.text,
       }));
       this.form.set(null);
       await this.reload(r.message);

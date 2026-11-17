@@ -3,6 +3,7 @@ using System.Globalization;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Zed.Core.Assessment;
@@ -543,7 +544,11 @@ public sealed partial class DesktopAssessmentController(
         return new MessageResponse("Saved");
     }
 
-    public sealed record FinalSubmitCheck(bool Allowed, string? Message, bool RaisesNc);
+    public sealed record FinalSubmitCheck(bool Allowed, string? Message, bool RaisesNc)
+    {
+        /// <summary>2026-11-17 (approved): the items of the Admin's assessor final submit checklist the pop-up asks (Desktop).</summary>
+        public IReadOnlyList<Quality.SubmissionChecklistController.AskedItem> Checklist { get; init; } = [];
+    }
 
     /// <summary>Checks before the final-submit pop-up (ConfirmFinalSubmit).</summary>
     [HttpPost("final-submit/check")]
@@ -554,10 +559,14 @@ public sealed partial class DesktopAssessmentController(
         var (level, record, error) = await ForAssessor(zedId, certification, ct);
         if (error is not null) return error;
         if (!record!.CanFinalSubmit(CurrentUser)) return Forbidden("This assessment cannot be submitted now.");
-        return await WithFormChecks(await Confirm(zedId, level!, ct), zedId, level!, record!, ct);
+        var check = await WithFormChecks(await Confirm(zedId, level!, ct), zedId, level!, record!, ct);
+        var asked = await SubmissionChecklists.AskedAsync(HttpContext.RequestServices.GetRequiredService<IPortalSettings>(),
+            SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Desktop, ct);
+        return check with { Checklist = asked.Select(i => new Quality.SubmissionChecklistController.AskedItem(i.Id, i.Text)).ToList() };
     }
 
-    public sealed record FinalSubmitRequest(string? Remarks);
+    /// <param name="Checklist">2026-11-17 (approved): the ids of the ticked items of the Admin's assessor final submit checklist (Desktop).</param>
+    public sealed record FinalSubmitRequest(string? Remarks, IReadOnlyList<string>? Checklist = null);
 
     /// <summary>
     /// One desktop final submit at a time: SP_ASSESSMENT_DA_FINAL_SUBMIT reads and writes the status without locks, so a
@@ -581,6 +590,10 @@ public sealed partial class DesktopAssessmentController(
         if (remarks is null) return this.Problem400("Please enter assessor final remarks.");
         if (remarks.Length > 2000) return this.Problem400("Remarks must be at most 2000 characters.");
         if (!record!.CanFinalSubmit(CurrentUser)) return Forbidden("This assessment cannot be submitted now.");
+        // 2026-11-17 (approved): every item of the Admin's assessor final submit checklist (Desktop) ticked.
+        var (asked, unticked) = await SubmissionChecklists.CheckAsync(HttpContext.RequestServices.GetRequiredService<IPortalSettings>(),
+            SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Desktop, req.Checklist, ct);
+        if (unticked is not null) return this.Problem400(unticked);
 
         FinalSubmitCheck check;
         await FinalSubmits.WaitAsync(ct);
@@ -598,6 +611,8 @@ public sealed partial class DesktopAssessmentController(
             FinalSubmits.Release();
         }
         log.LogInformation("Assessor {UserId} final-submitted {ZedId} {Certification} (NC raised: {Nc})", UserId, zedId, level, check.RaisesNc);
+        await SubmissionChecklists.TryRecordAsync(db, log, zedId, level!, SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Desktop, record.Nc,
+            asked, "Desktop assessor", record.CertificationBodyUserId, ActorId, ActorName, ct);
         if (check.RaisesNc)
             await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
                 .SendAsync(DesktopAssessmentEmails.Kind.NcRaised, zedId, level!, null, ct);

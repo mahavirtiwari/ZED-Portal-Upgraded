@@ -12,6 +12,7 @@ namespace Zed.Main.Api.Tests.Staff;
 /// </summary>
 public sealed class QualityObservationsTests : IDisposable
 {
+    private static readonly string[] AgencyTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AgencyQcKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Base = "/api/staff/quality-observations";
     private readonly TestHost _host = new();
@@ -54,17 +55,19 @@ public sealed class QualityObservationsTests : IDisposable
     public async Task Master_admin_raises_the_agency_replies_and_the_history_and_ranking_follow()
     {
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
-        Assert.Equal("Please choose the severity.", await (await master.PostAsJsonAsync($"{Base}/{Zed}/Silver",
-            new { category = "Conduct", about = "Lead", text = "x" })).ProblemTitle());
+        Assert.Equal("Please choose the reason.", await (await master.PostAsJsonAsync($"{Base}/{Zed}/Silver",
+            new { category = "No such reason", about = "Lead", text = "x" })).ProblemTitle());
 
         var r = await master.PostAsJsonAsync($"{Base}/{Zed}/Silver", new
         {
-            refType = "Requirement", refId = "51", refLabel = "3.2 Process control", category = "Conformance not justified", severity = "Major",
+            refType = "Requirement", refId = "51", refLabel = "3.2 Process control", category = "Conformance not justified", severity = "Minor",
             about = "Lead", text = "Yes given, but the photo shows no process sheet.",
         });
         r.EnsureSuccessStatusCode();
         var obs = _rows.OfType<QualityObservations.Row>().Single(x => x.AssessmentType == QualityObservations.ObservationType);
         Assert.Equal(("ASSESSOR1", "AGENCY1", "Open"), (obs.QoAboutUserId, obs.QoAgencyId, obs.QoStatus));
+        // 2026-11-17: the severity is the reason's (Admin → Observation reasons), whatever the page sends.
+        Assert.Equal(("Conformance not justified", "Major"), (obs.QoCategory, obs.QoSeverity));
         Assert.Contains(_rows.OfType<QualityObservations.Row>(), x => x.AssessmentType == QualityObservations.EventType && x.QoStatus == "Raised" && x.QoParentId == obs.Id);
         Assert.Contains(_host.Sql.Calls, c => c.Name.StartsWith("INSERT INTO dbo.MsmeHistory", StringComparison.Ordinal));
         var mail = Assert.Single(_host.Email.Sent);
@@ -134,7 +137,7 @@ public sealed class QualityObservationsTests : IDisposable
         _host.Sql.Queries[AssessmentRecords.CertificationSql] = _ =>
             [new { ZedId = Zed, Certification = "Silver", CertificationStatus = 15, NcCount = 0, CertificationBodyUserId = "AGENCY1" }];
         var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
-        var r = await agency.PostAsJsonAsync($"/api/staff/monitoring/review/{Zed}/Silver/final-submit", new { qualityChecked = true });
+        var r = await agency.PostAsJsonAsync($"/api/staff/monitoring/review/{Zed}/Silver/final-submit", new { checklist = AgencyTicks });
         Assert.Equal(QualityObservations.BlockingMessage(2), await r.ProblemTitle());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("FINAL_SUBMIT", StringComparison.Ordinal));
     }

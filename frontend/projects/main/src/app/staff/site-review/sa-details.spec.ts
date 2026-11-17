@@ -153,13 +153,15 @@ describe('SaDetailsPage', () => {
 
     button('Final Submit')!.click();
     await settle();
-    expect(el.querySelector('#reviewExemptions')).toBeNull();
-    el.querySelector<HTMLInputElement>('#reviewQuality')!.click();
+    http.expectOne('/api/staff/submission-checklists/items/agency-qc?stage=Site').flush({ title: 'Agency quality check', items: [{ id: 'quality', text: 'Checked.' }] });
+    await settle();
+    expect(el.querySelector('[data-check="exemptions"]')).toBeNull();
+    el.querySelector<HTMLInputElement>('[data-check="quality"]')!.click();
     await settle();
     Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!.click();
     await settle();
     const req = http.expectOne(REVIEW + '/final-submit');
-    expect(req.request.body).toEqual({ exemptionsReviewed: true, qualityChecked: true });
+    expect(req.request.body).toEqual({ checklist: ['quality'] });
     req.flush({ message: 'Certification completed. The certificate has been mailed to the MSME.' });
     await settle();
     http.expectOne(API).flush(details({ permissions: { review: NO_REVIEW, canWithdrawExemption: false, assessorOnCurrentPortal: false } }));

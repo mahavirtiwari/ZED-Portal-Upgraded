@@ -122,6 +122,8 @@ export interface FinalSubmitCheck {
   allowed: boolean;
   message: string | null;
   raisesNc: boolean;
+  /** 2026-11-17 (approved): the Admin's assessor final submit checklist the pop-up asks (Admin → Submission checklists). */
+  checklist?: { id: string; text: string }[];
 }
 
 export type OpenedType = 'Evidence' | 'SiteExteriorPhoto' | 'ProductPhoto' | 'ProductDescriptionPhoto';
@@ -239,7 +241,7 @@ export class AssessmentApi {
   checkFinalSubmit(zedId: string, certification: string): Observable<FinalSubmitCheck> {
     return this.http.post<FinalSubmitCheck>(`${this.da(zedId, certification)}/final-submit/check`, {});
   }
-  finalSubmit(zedId: string, certification: string, remarks: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/final-submit`, { remarks });
+  finalSubmit(zedId: string, certification: string, remarks: string, checklist: string[] = []): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/final-submit`, { remarks, checklist });
   }
 }

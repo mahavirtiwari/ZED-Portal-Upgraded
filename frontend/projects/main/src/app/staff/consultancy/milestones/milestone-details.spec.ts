@@ -258,13 +258,19 @@ describe('MilestoneDetailsPage', () => {
     await settle();
     http.expectOne(API + '/consultant/check').flush({ allowed: true, message: '' });
     await settle();
+    // 2026-11-17 (approved): the Admin's consultant final submit checklist.
+    http.expectOne('/api/staff/submission-checklists/items/consultant-submit').flush({ title: 'Consultant final submit', items: [{ id: 'coi', text: 'No conflict of interest.' }] });
+    await settle();
     expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
     type('#milestoneDialogText', 'All done');
+    await settle();
+    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    el.querySelector<HTMLInputElement>('[data-check="coi"]')!.click();
     await settle();
     button('SUBMIT')!.click();
     await settle();
     const submit = http.expectOne(API + '/consultant/final-submit');
-    expect(submit.request.body).toEqual({ remarks: 'All done' });
+    expect(submit.request.body).toEqual({ remarks: 'All done', checklist: ['coi'] });
     submit.flush({ message: 'Milestone submitted to the Consultant Organisation.' });
     await settle();
     http.expectOne(API).flush(details({ status: 15, permissions: { ...details().permissions, canEdit: false, canConsultantFinalSubmit: false } }));
@@ -280,13 +286,44 @@ describe('MilestoneDetailsPage', () => {
     expect(button('Reject')).toBeDefined();
     button('Final Submit')!.click();
     await settle();
+    // No item in the Admin's consultant organisation checklist: the fixed review box is asked.
+    http.expectOne('/api/staff/submission-checklists/items/co-qc').flush({ title: 'Consultant organisation quality check', items: [] });
+    await settle();
     expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
     expect(el.querySelector('label[for="milestoneConfirm"] [data-key="staff.consultancy.milestone.review.checkbox"]')).not.toBeNull();
     el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
     await settle();
     button('SUBMIT')!.click();
     await settle();
-    http.expectOne(API + '/final-submit').flush({ message: 'Milestone 1 completed.' });
+    const co = http.expectOne(API + '/final-submit');
+    expect(co.request.body).toEqual({ confirmed: true, checklist: [] });
+    co.flush({ message: 'Milestone 1 completed.' });
+    await settle();
+    http.expectOne(API).flush(details({ status: 16 }));
+    await settle();
+  });
+
+  it("asks the Admin's consultant organisation checklist in place of the review box (2026-11-17)", async () => {
+    await open(details({ party: 'Co', status: 15, permissions: { ...details().permissions, canConsultantFinalSubmit: false, canCoFinalSubmit: true } }));
+    await tab('Closing Meeting');
+    button('Final Submit')!.click();
+    await settle();
+    http.expectOne('/api/staff/submission-checklists/items/co-qc').flush({
+      title: 'Consultant organisation quality check', items: [{ id: 'quality', text: 'Quality checked.' }, { id: 'photos', text: 'Photos checked.' }],
+    });
+    await settle();
+    expect(el.querySelector('#milestoneConfirm')).toBeNull();
+    el.querySelector<HTMLInputElement>('[data-check="quality"]')!.click();
+    await settle();
+    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    el.querySelector<HTMLInputElement>('[data-check="photos"]')!.click();
+    await settle();
+    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(false);
+    button('SUBMIT')!.click();
+    await settle();
+    const co = http.expectOne(API + '/final-submit');
+    expect(co.request.body).toEqual({ confirmed: true, checklist: ['quality', 'photos'] });
+    co.flush({ message: 'Milestone 1 completed.' });
     await settle();
     http.expectOne(API).flush(details({ status: 16 }));
     await settle();

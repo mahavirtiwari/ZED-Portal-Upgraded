@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -65,7 +66,9 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
 
     public sealed record OfiRequest(long SectionId, string? Comments);
 
-    public sealed record FinalSubmitRequest(bool ExemptionsReviewed, bool QualityChecked);
+    /// <param name="Checklist">2026-11-17 (approved): the ids of the ticked items of the Admin's agency quality-check checklist
+    /// (it replaced the fixed exemptions and quality-check boxes).</param>
+    public sealed record FinalSubmitRequest(IReadOnlyList<string>? Checklist);
 
     public sealed record SendBackRequest(string? Remarks);
 
@@ -151,11 +154,15 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     [StaffRoles(UserRole.Agency)]
     public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, FinalSubmitRequest req, CancellationToken ct)
     {
-        var (level, _, stage, error) = await ForAction(zedId, certification, a => a.FinalSubmit, ct);
+        var (level, record, stage, error) = await ForAction(zedId, certification, a => a.FinalSubmit, ct);
         if (error is not null) return error;
         var desktop = stage == ReviewStage.Desktop;
-        if (!req.QualityChecked || (desktop && !req.ExemptionsReviewed))
-            return this.Problem400("Please confirm the review of the assessment before final submit.");
+        // 2026-11-17 (approved): every item of the Admin's agency quality-check checklist at this stage ticked.
+        var settings = HttpContext.RequestServices.GetRequiredService<IPortalSettings>();
+        var checklist = SubmissionChecklists.AgencyQcKind;
+        var checkStage = desktop ? SubmissionChecklists.Desktop : SubmissionChecklists.Site;
+        var (asked, unticked) = await SubmissionChecklists.CheckAsync(settings, checklist, checkStage, req.Checklist, ct);
+        if (unticked is not null) return this.Problem400(unticked);
         // 2026-11-16 (approved): the ZED team's open major / critical observations wait for the agency's reply.
         if (await Quality.QualityObservations.BlockingAsync(db, zedId, level!, log, ct) is > 0 and var open)
             return this.Problem400(Quality.QualityObservations.BlockingMessage(open));
@@ -195,6 +202,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         {
             Decisions.Release();
         }
+        await SubmissionChecklists.TryRecordAsync(db, log, zedId, level!, checklist, checkStage, record!.Nc, asked, "Agency", UserId, ActorId, ActorName, ct);
 
         // Silver/Gold desktop verification only moves on to the site assessment (the old code mailed Bronze only).
         // 2026-11-08: a V4 level assessed at the desktop only is certified here, as Bronze (fix main/14 SP_MONITORING_DA_FINAL_SUBMIT).

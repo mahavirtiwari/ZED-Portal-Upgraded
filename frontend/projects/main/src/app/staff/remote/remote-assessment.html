@@ -68,6 +68,8 @@
       </ul>
 
       <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+      <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
+      <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
       <div class="tab-content">
         <div class="tab-title">
           <div class="numberCircle">{{ currentTab().no }}</div>
@@ -1126,11 +1128,15 @@
             <input type="checkbox" class="form-check-input" id="finalConfirm" name="finalConfirm" [(ngModel)]="f.confirmed" />
             <label class="form-check-label" for="finalConfirm"><zed-text key="staff.assessment.remote.fairConfirm.checkbox" [inline]="true" /></label>
           </div>
+          <!-- 2026-11-17 (approved): the Admin's assessor final submit checklist. -->
+          @if (f.check.checklist?.length) {
+            <div class="mt-3"><zed-submit-checklist [items]="f.check.checklist ?? []" [(ticked)]="f.ticked" /></div>
+          }
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
           <input type="button" class="btn btn-default" value="CANCEL" (click)="finalSubmit.set(null)" />
-          <input type="button" class="btn btn-primary submit" value="SUBMIT" [disabled]="!f.confirmed || busy()" (click)="submit()" />
+          <input type="button" class="btn btn-primary submit" value="SUBMIT" [disabled]="!canSubmit(f) || busy()" (click)="submit()" />
         </div>
       </div>
     </div>

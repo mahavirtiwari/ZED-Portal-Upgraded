@@ -10,6 +10,7 @@ namespace Zed.Surveillance.Api.Tests;
 /// <summary>Bronze surveillance: allotment, desktop assessment, results and monitoring on the Surveillance host.</summary>
 public sealed class AssessmentSurveillanceTests : IDisposable
 {
+    private static readonly string[] AssessorTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AssessorSubmitKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private readonly AssessmentStaff _s = new();
     private object _record = Record(3);
@@ -243,7 +244,7 @@ public sealed class AssessmentSurveillanceTests : IDisposable
         _record = Record(3);
         _s.Sql.Procs["SP_ASSESSMENT_DA_CONFIRM_FINAL_SUBMIT"] = _ => FakeSql.Sets([new { AllowFinalSubmit = 1 }], [new { RaisedForNc = 1 }]);
         var client = await _s.SignInAsync("ASSESSOR1", 3, "DesktopVerification");
-        var res = await client.PostAsJsonAsync($"/api/staff/assessment/da/{Zed}/Bronze/final-submit", new { remarks = "NCs" });
+        var res = await client.PostAsJsonAsync($"/api/staff/assessment/da/{Zed}/Bronze/final-submit", new { checklist = AssessorTicks, remarks = "NCs" });
         res.EnsureSuccessStatusCode();
         var mail = Assert.Single(_s.Email.Sent);
         Assert.StartsWith("First Non-conformance(s) raised for Surveillance Assessment under", mail.Subject);

@@ -68,6 +68,19 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./app-forms').then((m) => m.AppFormsPage),
   },
+  // 2026-11-17 (approved): the checklists ticked before a final submit / quality check, and the observation reasons.
+  {
+    path: 'submission-checklists',
+    title: 'ZED | Submission Checklists',
+    canActivate: [admin],
+    loadComponent: () => import('./submission-checklists').then((m) => m.SubmissionChecklistsPage),
+  },
+  {
+    path: 'observation-reasons',
+    title: 'ZED | Observation Reasons',
+    canActivate: [admin],
+    loadComponent: () => import('./observation-reasons').then((m) => m.ObservationReasonsPage),
+  },
   // New in V4: the site tour sections of the site assessor app and the photos each needs.
   {
     path: 'site-tour-sections',

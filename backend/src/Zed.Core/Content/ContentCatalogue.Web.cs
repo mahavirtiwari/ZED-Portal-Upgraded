@@ -363,10 +363,7 @@ public static partial class ContentCatalogue
             """, "Validity", "SurveillanceAssessments", "Level", "SurveillanceFee"),
 
         // staff/monitoring/review-actions: the agency's pop-ups on the desktop and site review pages (all builds)
-        Web("staff.monitoring.review.exemptionsReviewed.checkbox", "Review final submit: exemptions check box", StaffMonitoring, All,
-            "I have reviewed all the exemptions, and they have been applied correctly."),
-        Web("staff.monitoring.review.qualityChecked.checkbox", "Review final submit: quality check box", StaffMonitoring, All,
-            "I confirm that the quality check of the assessment has been done and relevant amendments made wherever applicable."),
+        // 2026-11-17: the final-submit pop-up's boxes are the Admin's agency quality-check checklist (Admin → Submission checklists).
         Web("staff.monitoring.review.reject.checkbox", "Review reject: check box", StaffMonitoring, All,
             "I confirm that the quality check of the assessment has been done and rejecting the certification."),
 

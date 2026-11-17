@@ -16,6 +16,7 @@ import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterNav } from '../../msme/shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
+import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
@@ -48,7 +49,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [QualityObservationsPanel, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },

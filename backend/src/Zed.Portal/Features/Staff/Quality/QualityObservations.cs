@@ -23,20 +23,7 @@ public static class QualityObservations
     public static readonly string[] Blocking = ["Major", "Critical"];
     public static readonly string[] Abouts = ["Desktop", "Lead", "Co", "Agency"];
     public static readonly string[] RefTypes = ["Overall", "Requirement", "Product", "Photo", "Meeting", "Attendance"];
-    public static readonly string[] Categories =
-    [
-        "Evidence not checked properly", "Conformance not justified", "Photo / location issue", "Remarks incomplete",
-        "Attendance / timeline", "Conduct", "Other",
-    ];
-
-    /// <summary>2026-11-16: handholding (consultancy portal): the consultants' baseline, action plan and reviews.</summary>
-    public static readonly string[] HandholdingCategories =
-    [
-        "Baseline not assessed properly", "Checkpoint answer not justified", "Action plan not adequate", "Progress review not verified",
-        "Photo / location issue", "Remarks incomplete", "Attendance / timeline", "Conduct", "Other",
-    ];
-
-    public static string[] CategoriesFor(bool handholding) => handholding ? HandholdingCategories : Categories;
+    // 2026-11-17 (approved): the reasons (categories) and the severity each carries are the Admin's (ObservationReasons).
 
     public const int MaxText = 2000;
 

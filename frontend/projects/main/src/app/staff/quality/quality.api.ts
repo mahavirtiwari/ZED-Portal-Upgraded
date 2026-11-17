@@ -47,8 +47,16 @@ export interface QoUnitView {
   canRespond: boolean;
   canClose: boolean;
   items: QoObservation[];
-  categories: string[];
-  severities: string[];
+  /** 2026-11-17: the Admin's reasons in use (Admin → Observation reasons), each with the severity it carries (master admin only). */
+  reasons: QoReason[];
+}
+
+export type QoSeverity = 'Minor' | 'Major' | 'Critical';
+
+export interface QoReason {
+  id: string;
+  text: string;
+  severity: QoSeverity;
 }
 
 /** Something on the page an observation can be about. */
@@ -62,8 +70,8 @@ export interface QoRaise {
   refType: string;
   refId: string | null;
   refLabel: string | null;
+  /** The reason's key; the severity is the reason's. */
   category: string;
-  severity: string;
   about: string;
   text: string;
 }
@@ -136,6 +144,45 @@ export class QualityApi {
 
   dashboard(days?: number): Observable<QoDashboard> {
     return this.http.get<QoDashboard>(days ? `${API}/dashboard?days=${days}` : `${API}/dashboard`);
+  }
+}
+
+// ------------------------------------------------------------------ 2026-11-17 (approved): submission checklists
+
+/** An item the pop-up asks (api/staff/submission-checklists/items/{code}, or the final-submit check's "checklist"). */
+export interface ChecklistItem {
+  id: string;
+  text: string;
+}
+
+export type ChecklistCode = 'agency-qc' | 'assessor-submit' | 'co-qc' | 'consultant-submit';
+
+/** The ticks recorded with one submission. */
+export interface ChecklistRecord {
+  id: number;
+  checklist: ChecklistCode | string;
+  title: string;
+  stage: string | null;
+  round: number | null;
+  role: string | null;
+  byName: string | null;
+  at: string | null;
+  items: string[];
+}
+
+const CHECKLIST_API = '/api/staff/submission-checklists';
+
+@Injectable({ providedIn: 'root' })
+export class SubmissionChecklistApi {
+  private readonly http = inject(HttpClient);
+
+  items(code: ChecklistCode, stage?: string): Observable<{ title: string; items: ChecklistItem[] }> {
+    const q = stage ? `?stage=${encodeURIComponent(stage)}` : '';
+    return this.http.get<{ title: string; items: ChecklistItem[] }>(`${CHECKLIST_API}/items/${code}${q}`);
+  }
+
+  records(zedId: string, certification: string): Observable<ChecklistRecord[]> {
+    return this.http.get<ChecklistRecord[]>(`${CHECKLIST_API}/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`);
   }
 }
 

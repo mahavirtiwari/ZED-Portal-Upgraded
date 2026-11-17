@@ -78,9 +78,9 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
         }
         <p class="qo-note">Score = points per {{ words.unit }} with an observation (minor 1, major 3, critical 5); a lower score ranks higher, then the faster reply.</p>
         @if (d.categories.length) {
-          <h4 class="qo-h">By category</h4>
+          <h4 class="qo-h">By reason</h4>
           <table class="table table-zed qo-cats">
-            <thead><tr><th>Category</th><th class="text-center">Observations</th><th class="text-center">Major / critical</th></tr></thead>
+            <thead><tr><th>Reason</th><th class="text-center">Observations</th><th class="text-center">Major / critical</th></tr></thead>
             <tbody>@for (c of d.categories; track c.category) { <tr><td>{{ c.category }}</td><td class="text-center">{{ c.total }}</td><td class="text-center">{{ c.major }}</td></tr> }</tbody>
           </table>
         }

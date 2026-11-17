@@ -43,4 +43,9 @@ public abstract class StaffApiController : ControllerBase
     protected string UserId => CurrentUser.UserId;
     protected int RoleId => CurrentUser.RoleId;
     protected bool IsRole(params UserRole[] roles) => roles.Any(r => (int)r == RoleId);
+
+    /// <summary>Who acts: a sub-user's own ID (an operation admin, an agency's staff) or the login's.</summary>
+    protected string ActorId => CurrentUser.IsSubUser && !string.IsNullOrWhiteSpace(CurrentUser.ActingUserId) ? CurrentUser.ActingUserId! : UserId;
+
+    protected string ActorName => (CurrentUser.IsSubUser ? CurrentUser.ActingUserName : CurrentUser.UserName) ?? ActorId;
 }

@@ -12,6 +12,7 @@ namespace Zed.Surveillance.Api.Tests;
 /// <summary>The surveillance remote page: meeting link, recording links, uploaded meeting photos and selfie.</summary>
 public sealed class SurveillanceRemoteTests : IDisposable
 {
+    private static readonly string[] AssessorTicks = [.. global::Zed.Core.Assessment.SubmissionChecklists.AssessorSubmitKind.Defaults.Select(i => i.Id)];
     private const string Zed = "ZEDMSME000001";
     private const string Base = "/api/staff/remote/" + Zed + "/Silver";
     private const string Link = "https://meet.example/abc-defg-hij";
@@ -211,7 +212,7 @@ public sealed class SurveillanceRemoteTests : IDisposable
         tail.Clear();
         check = await (await lead.PostAsync(Base + "/final-submit/check", null)).Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(check.GetProperty("allowed").GetBoolean());
-        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "Visit complete" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/final-submit", new { checklist = AssessorTicks, comments = "Visit complete" })).StatusCode);
         Assert.Single(CallsTo("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
     }
 

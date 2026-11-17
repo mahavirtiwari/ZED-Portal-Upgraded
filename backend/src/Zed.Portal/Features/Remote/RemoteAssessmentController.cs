@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using Zed.Core.Assessment;
@@ -797,17 +798,37 @@ public sealed partial class RemoteAssessmentController(
 
     // ======================================================================== final submit
 
-    public sealed record FinalSubmitCheck(bool Allowed, string? Message, bool RaisesNc);
+    public sealed record FinalSubmitCheck(bool Allowed, string? Message, bool RaisesNc)
+    {
+        /// <summary>2026-11-17 (approved): the items of the Admin's assessor final submit checklist the pop-up asks.</summary>
+        public IReadOnlyList<Staff.Quality.SubmissionChecklistController.AskedItem> Checklist { get; init; } = [];
+    }
 
     [HttpPost("final-submit/check")]
     public async Task<ActionResult<FinalSubmitCheck>> CheckFinalSubmit(string zedId, string certification, CancellationToken ct)
     {
         var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
-        return await WithFormChecks(await Confirm(zedId, level!, record!, ct), zedId, level!, record!, ct);
+        var check = await WithFormChecks(await Confirm(zedId, level!, record!, ct), zedId, level!, record!, ct);
+        var (_, asked) = await ChecklistAsync(zedId, level!, record!, ct);
+        return check with { Checklist = asked.Select(i => new Staff.Quality.SubmissionChecklistController.AskedItem(i.Id, i.Text)).ToList() };
     }
 
-    public sealed record FinalSubmitRequest(string? Comments);
+    /// <summary>
+    /// 2026-11-17 (approved): the assessor final submit checklist of this page: Remote, or Onsite for a unit reviewed here after the
+    /// app's closing meeting (none when the lead already ticked it in the app for this round).
+    /// </summary>
+    private async Task<(string Stage, IReadOnlyList<ChecklistItem> Asked)> ChecklistAsync(string zedId, string level, RemoteRecord record, CancellationToken ct)
+    {
+        var kind = SubmissionChecklists.AssessorSubmitKind;
+        var stage = OnsiteReview(record) && !InNcRound(record) ? SubmissionChecklists.Onsite : SubmissionChecklists.Remote;
+        if (stage == SubmissionChecklists.Onsite && await SubmissionChecklists.RecordedAsync(db, zedId, level, kind, stage, record.NcCount ?? 0, UserId, ct))
+            return (stage, []);
+        return (stage, await SubmissionChecklists.AskedAsync(HttpContext.RequestServices.GetRequiredService<IPortalSettings>(), kind, stage, ct));
+    }
+
+    /// <param name="Checklist">2026-11-17 (approved): the ids of the ticked items of the assessor final submit checklist.</param>
+    public sealed record FinalSubmitRequest(string? Comments, IReadOnlyList<string>? Checklist = null);
 
     [HttpPost("final-submit")]
     public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, FinalSubmitRequest req, CancellationToken ct)
@@ -817,6 +838,8 @@ public sealed partial class RemoteAssessmentController(
         var comments = AssessmentInput.Text(req.Comments);
         if (comments is null) return this.Problem400("Please enter comments.");
         if (comments.Length > 2000) return this.Problem400("Comments must be at most 2000 characters.");
+        var (checkStage, asked) = await ChecklistAsync(zedId, level!, record!, ct);
+        if (SubmissionChecklists.Unticked(asked, req.Checklist) is { } unticked) return this.Problem400(unticked);
 
         FinalSubmitCheck check;
         RemoteRecord? after;
@@ -841,6 +864,8 @@ public sealed partial class RemoteAssessmentController(
         }
         log.LogInformation("Assessor {UserId} final-submitted the site assessment of {ZedId} {Certification} (NC round {Round}, now status {Status}, NC {Nc})",
             UserId, zedId, level, record!.NcCount ?? 0, after?.CertificationStatus, after?.NcCount);
+        await SubmissionChecklists.TryRecordAsync(db, log, zedId, level!, SubmissionChecklists.AssessorSubmitKind, checkStage, record.NcCount ?? 0, asked,
+            "Lead assessor", null, ActorId, ActorName, ct);
         if (check.RaisesNc)
             await DesktopAssessmentEmails.Create(HttpContext.RequestServices).SendAsync(DesktopAssessmentEmails.Kind.NcRaised, zedId, level!, comments, ct);
         return new MessageResponse(after?.CertificationStatus switch

@@ -39,8 +39,9 @@ export class ReviewApi {
     return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/ofi-comments`, { sectionId: Number(sectionId), comments });
   }
 
-  finalSubmit(zedId: string, certification: string, exemptionsReviewed: boolean, qualityChecked: boolean): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/final-submit`, { exemptionsReviewed, qualityChecked });
+  /** 2026-11-17: `checklist` = the ids of the ticked items of the agency quality-check checklist. */
+  finalSubmit(zedId: string, certification: string, checklist: string[]): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/final-submit`, { checklist });
   }
 
   sendBack(zedId: string, certification: string, remarks: string): Observable<MessageResponse> {

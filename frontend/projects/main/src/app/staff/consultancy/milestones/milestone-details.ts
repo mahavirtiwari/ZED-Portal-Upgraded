@@ -18,6 +18,9 @@ import { PageHead } from '../../../msme/shared/page-head';
 import { levelName } from '../../../msme/shared/levels';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
+import { ChecklistItem, SubmissionChecklistApi } from '../../quality/quality.api';
+import { SubmitChecklist, allTicked } from '../../quality/submit-checklist';
+import { ChecklistRecords } from '../../quality/checklist-records';
 import { QoTarget } from '../../quality/quality.api';
 
 /** Tabs of the old consultancy SaDetails page. */
@@ -173,7 +176,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [QualityObservationsPanel, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -268,6 +271,11 @@ export class MilestoneDetailsPage {
   protected readonly dialogText = signal('');
   protected readonly confirmed = signal(false);
   protected readonly dialogError = signal('');
+  /** 2026-11-17 (approved): the Admin's checklist of the final-submit pop-up (consultant / consultant organisation). */
+  private readonly checklists = inject(SubmissionChecklistApi);
+  protected readonly checklist = signal<ChecklistItem[]>([]);
+  protected readonly checklistLoading = signal(false);
+  protected readonly ticked = signal<string[]>([]);
   /** Parameters tab: the parameter list (status from the basic diagnostic conformance) and the selected parameter. */
   protected readonly pn = new ParameterNav<Row, Row>({
     sections: () => this.data()?.sections ?? [],
@@ -484,17 +492,35 @@ export class MilestoneDetailsPage {
     this.dialogText.set('');
     this.confirmed.set(false);
     this.dialogError.set('');
+    this.checklist.set([]);
+    this.ticked.set([]);
     this.dialog.set(d);
+    if (d === 'consultantSubmit' || d === 'coSubmit') void this.loadChecklist(d === 'coSubmit' ? 'co-qc' : 'consultant-submit');
+  }
+
+  private async loadChecklist(code: 'co-qc' | 'consultant-submit'): Promise<void> {
+    this.checklistLoading.set(true);
+    try {
+      this.checklist.set((await firstValueFrom(this.checklists.items(code))).items);
+    } catch (err) {
+      this.dialogError.set(apiErrorMessage(err));
+    } finally {
+      this.checklistLoading.set(false);
+    }
   }
 
   protected canSubmitDialog(): boolean {
+    const ticked = !this.checklistLoading() && allTicked(this.checklist(), this.ticked());
     switch (this.dialog()) {
       case 'consultantSubmit':
+        return ticked && this.dialogText().trim().length > 0;
+      case 'coSubmit':
+        // The fixed review box is asked only while the Admin's checklist asks nothing.
+        return ticked && (this.checklist().length > 0 || this.confirmed());
       case 'sendBack':
       case 'meetingRemarks':
       case 'finalComments':
         return this.dialogText().trim().length > 0;
-      case 'coSubmit':
       case 'reject':
         return this.confirmed();
       default:
@@ -509,9 +535,9 @@ export class MilestoneDetailsPage {
     const remarks = this.dialogText().trim();
     const call: Observable<{ message: string }> =
       dlg === 'consultantSubmit'
-        ? this.api.consultantFinalSubmit(d.zedId, d.certification, remarks)
+        ? this.api.consultantFinalSubmit(d.zedId, d.certification, remarks, this.ticked())
         : dlg === 'coSubmit'
-          ? this.api.finalSubmit(d.zedId, d.certification)
+          ? this.api.finalSubmit(d.zedId, d.certification, this.ticked())
           : dlg === 'sendBack'
             ? this.api.sendBack(d.zedId, d.certification, remarks)
             : dlg === 'meetingRemarks'

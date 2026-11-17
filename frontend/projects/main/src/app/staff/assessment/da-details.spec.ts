@@ -267,10 +267,32 @@ describe('DaDetailsPage', () => {
 
     button('Final Submit')!.click();
     await settle();
-    http.expectOne(BASE + '/final-submit/check').flush({ allowed: true, message: null, raisesNc: false });
+    http.expectOne(BASE + '/final-submit/check').flush({
+      allowed: true, message: null, raisesNc: false, checklist: [{ id: 'coi', text: 'I have no conflict of interest with the unit.' }],
+    });
     await settle();
     const submit = Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
     expect(submit.disabled).toBe(true);
+
+    // 2026-11-17 (approved): the fairness box and every item of the Admin's checklist, then the ticks go with the submit.
+    el.querySelector<HTMLInputElement>('.modal .checkbox-inline input[type=checkbox]')!.click();
+    await settle();
+    expect(submit.disabled).toBe(true);
+    el.querySelector<HTMLInputElement>('[data-check="coi"]')!.click();
+    await settle();
+    expect(submit.disabled).toBe(false);
+    const remarks = el.querySelector<HTMLTextAreaElement>('#daFsRemarks')!;
+    remarks.value = 'All checked';
+    remarks.dispatchEvent(new Event('input'));
+    await settle();
+    submit.click();
+    await settle();
+    const req = http.expectOne(BASE + '/final-submit');
+    expect(req.request.body).toEqual({ remarks: 'All checked', checklist: ['coi'] });
+    req.flush({ message: 'Assessment submitted.' });
+    await settle();
+    http.expectOne(BASE).flush(details());
+    await settle();
   });
 
   it('lets the allotted agency edit remarks and final submit after both confirmations', async () => {
@@ -308,18 +330,23 @@ describe('DaDetailsPage', () => {
     await settle();
     const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
     expect(submit().disabled).toBe(true);
-    expect(el.querySelector('#reviewQuality')).toBeNull();
-    expect(el.querySelector('label[for="reviewExemptions"] [data-key="staff.monitoring.review.exemptionsReviewed.checkbox"]')).not.toBeNull();
-    el.querySelector<HTMLInputElement>('#reviewExemptions')!.click();
+    // 2026-11-17 (approved): the Admin's agency quality-check checklist of the desktop stage.
+    http.expectOne('/api/staff/submission-checklists/items/agency-qc?stage=Desktop').flush({
+      title: 'Agency quality check',
+      items: [{ id: 'exemptions', text: 'I have reviewed all the exemptions.' }, { id: 'quality', text: 'The quality check is done.' }],
+    });
     await settle();
-    expect(el.querySelector('label[for="reviewQuality"] [data-key="staff.monitoring.review.qualityChecked.checkbox"]')).not.toBeNull();
-    el.querySelector<HTMLInputElement>('#reviewQuality')!.click();
+    expect(el.querySelector('[data-checklist-count]')!.textContent).toContain('0 of 2 ticked');
+    el.querySelector<HTMLInputElement>('[data-check="exemptions"]')!.click();
+    await settle();
+    expect(submit().disabled).toBe(true);
+    el.querySelector<HTMLInputElement>('[data-check="quality"]')!.click();
     await settle();
     expect(submit().disabled).toBe(false);
     submit().click();
     await settle();
     const req = http.expectOne('/api/staff/monitoring/review/ZEDMSME000001/Bronze/final-submit');
-    expect(req.request.body).toEqual({ exemptionsReviewed: true, qualityChecked: true });
+    expect(req.request.body).toEqual({ checklist: ['exemptions', 'quality'] });
     req.flush({ message: 'Certification completed. The certificate has been mailed to the MSME.' });
     await settle();
     http.expectOne(BASE).flush(details({ role: 'Agency', permissions: { canAssess: false, canFinalSubmit: false, canWithdrawExemption: false, review: NO_REVIEW } }));

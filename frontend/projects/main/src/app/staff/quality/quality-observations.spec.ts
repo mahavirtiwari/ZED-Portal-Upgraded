@@ -20,7 +20,7 @@ function obs(overrides: Partial<QoObservation> = {}): QoObservation {
 }
 
 function view(overrides: Partial<QoUnitView> = {}): QoUnitView {
-  return { canRaise: true, canRespond: false, canClose: true, items: [], categories: ['Conformance not justified', 'Other'], severities: ['Minor', 'Major', 'Critical'], ...overrides };
+  return { canRaise: true, canRespond: false, canClose: true, items: [], reasons: [{ id: 'conformance', text: 'Conformance not justified', severity: 'Major' }, { id: 'other', text: 'Other', severity: 'Minor' }], ...overrides };
 }
 
 @Component({
@@ -72,15 +72,18 @@ describe('Quality observations (2026-11-16)', () => {
       e.value = v;
       e.dispatchEvent(new Event(e.tagName === 'SELECT' ? 'change' : 'input'));
     };
-    set('#qo-category', 'Conformance not justified');
-    set('#qo-severity', 'Major');
+    expect(form.querySelector('[data-qo-severity]')!.textContent).toContain('Choose the reason');
+    set('#qo-category', 'conformance');
     set('#qo-text', 'No process sheet in the photo.');
     await settle(f);
+    // 2026-11-17: the severity is the reason's (Admin → Observation reasons), shown, not chosen.
+    expect(form.querySelector('#qo-severity')).toBeNull();
+    expect(form.querySelector('[data-qo-severity]')!.textContent).toContain('Major');
     form.dispatchEvent(new Event('submit'));
     await settle(f);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${API}/ZEDMSME000001/Silver`);
     expect(post.request.body).toEqual({
-      refType: 'Requirement', refId: '51', refLabel: '3.2 Process control', category: 'Conformance not justified', severity: 'Major', about: 'Lead',
+      refType: 'Requirement', refId: '51', refLabel: '3.2 Process control', category: 'conformance', about: 'Lead',
       text: 'No process sheet in the photo.',
     });
     post.flush({ message: 'Observation raised. The agency has been mailed.' });

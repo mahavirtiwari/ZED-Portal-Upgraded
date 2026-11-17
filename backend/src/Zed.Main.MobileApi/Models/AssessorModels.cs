@@ -270,6 +270,18 @@ public sealed class AssessmentDetails : ServiceResponse
     /// has uploaded. Older apps ignore it.
     /// </summary>
     public List<SiteTourSectionInfo>? siteTourSections { get; set; }
+    /// <summary>
+    /// New in V4 (2026-11-17, approved): the items of the Admin's assessor final submit checklist (Onsite) the app asks before the
+    /// closing meeting (lead) or the final submit (co-assessor). Older apps ignore it.
+    /// </summary>
+    public List<SubmitChecklistItem>? submitChecklist { get; set; }
+}
+
+/// <summary>New in V4: one item of the assessor final submit checklist.</summary>
+public sealed class SubmitChecklistItem
+{
+    public string? id { get; set; }
+    public string? text { get; set; }
 }
 
 // ---------- SA requests (DataModels.Requests) ----------
@@ -331,6 +343,11 @@ public sealed class SubmitAssessmentRequest
     public string? inputComment { get; set; }
     public string? endComment { get; set; }
     public List<PhotoInformation>? addedEvidences { get; set; }
+    /// <summary>
+    /// New in V4 (2026-11-17): the ids of the ticked items of the assessor final submit checklist (SubmitEndAssessment). Left out by
+    /// older apps (and by closing data they saved before): then nothing is checked or recorded.
+    /// </summary>
+    public List<string>? submitChecklist { get; set; }
 }
 
 /// <summary>SwachhSurvekshanServices.Models.BasicInformationRequest (: BaseServiceRequest).</summary>

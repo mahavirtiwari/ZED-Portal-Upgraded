@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { ChecklistItem, SubmissionChecklistApi } from '../quality/quality.api';
+import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { RemarksKind, ReviewActions, ReviewApi } from './review.api';
 
 type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
@@ -10,12 +12,12 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
 /**
  * Agency / master-admin buttons of the DA and SA review pages (old DaDetails / SaDetails: "Final Submit",
  * "Send Back to Assessor", "Reject") with their pop-ups. The server decides which actions apply
- * (`actions`); the pop-ups repeat the old confirmations: on the desktop page the exemptions check
- * box, then the quality-check box; on the site page the quality-check box; the rejection box.
+ * (`actions`). 2026-11-17 (approved): the final-submit pop-up asks the Admin's agency quality-check checklist of the stage
+ * (Admin → Submission checklists; it replaced the old exemptions and quality-check boxes); the rejection box stays.
  */
 @Component({
   selector: 'zed-review-actions',
-  imports: [FormsModule, ContentTextComponent],
+  imports: [FormsModule, ContentTextComponent, SubmitChecklist],
   template: `
     @if (actions().finalSubmit) {
       <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="open('finalSubmit')" />
@@ -39,22 +41,15 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
             </div>
             <div class="modal-body">
               @if (d === 'finalSubmit') {
-                <div class="ps-3">
-                  @if (stage() === 'desktop') {
-                    <div class="form-check">
-                      <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewExemptions" name="exemptionsReviewed"
-                        [ngModel]="exemptionsReviewed()" (ngModelChange)="setExemptionsReviewed($event)" />
-                      <label class="form-check-label" for="reviewExemptions" style="display: inline"><zed-text key="staff.monitoring.review.exemptionsReviewed.checkbox" [inline]="true" /></label>
-                    </div>
-                  }
-                  @if (stage() === 'site' || exemptionsReviewed()) {
-                    <div class="form-check mt-2">
-                      <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewQuality" name="qualityChecked"
-                        [ngModel]="qualityChecked()" (ngModelChange)="qualityChecked.set($event)" />
-                      <label class="form-check-label" for="reviewQuality" style="display: inline"><zed-text key="staff.monitoring.review.qualityChecked.checkbox" [inline]="true" /></label>
-                    </div>
-                  }
-                </div>
+                <!-- 2026-11-17 (approved): the Admin's agency quality-check checklist (it replaced the fixed exemptions / quality boxes). -->
+                @if (checklistLoading()) {
+                  <p class="text-muted mb-0">Loading the checklist…</p>
+                } @else if (checklistError()) {
+                  <div class="alert alert-danger mb-0" role="alert">{{ checklistError() }}</div>
+                } @else {
+                  <zed-submit-checklist [items]="checklist()" [(ticked)]="ticked" />
+                  @if (!checklist().length) { <p class="mb-0">Submit the {{ stage() === 'desktop' ? 'desktop verification' : 'site assessment' }} review?</p> }
+                }
               } @else if (d === 'reject') {
                 <div class="form-check ms-3">
                   <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewReject" name="rejectConfirmed"
@@ -95,36 +90,48 @@ export class ReviewActionsBar {
 
   private readonly api = inject(ReviewApi);
   protected readonly dialog = signal<Dialog>(null);
-  protected readonly exemptionsReviewed = signal(false);
-  protected readonly qualityChecked = signal(false);
+  private readonly checklists = inject(SubmissionChecklistApi);
+  protected readonly checklist = signal<ChecklistItem[]>([]);
+  protected readonly checklistLoading = signal(false);
+  protected readonly checklistError = signal('');
+  protected readonly ticked = signal<string[]>([]);
   protected readonly rejectConfirmed = signal(false);
   protected readonly remarks = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
 
   protected open(d: Exclude<Dialog, null>): void {
-    // The old pop-ups started unticked every time they opened.
-    this.exemptionsReviewed.set(false);
-    this.qualityChecked.set(false);
+    // The pop-ups start unticked every time they open.
+    this.ticked.set([]);
     this.rejectConfirmed.set(false);
     this.remarks.set('');
     this.error.set('');
     this.dialog.set(d);
+    if (d === 'finalSubmit') void this.loadChecklist();
+  }
+
+  private async loadChecklist(): Promise<void> {
+    this.checklist.set([]);
+    this.checklistError.set('');
+    this.checklistLoading.set(true);
+    try {
+      const r = await firstValueFrom(this.checklists.items('agency-qc', this.stage() === 'desktop' ? 'Desktop' : 'Site'));
+      this.checklist.set(r.items);
+    } catch (err) {
+      this.checklistError.set(apiErrorMessage(err));
+    } finally {
+      this.checklistLoading.set(false);
+    }
   }
 
   protected close(): void {
     this.dialog.set(null);
   }
 
-  protected setExemptionsReviewed(value: boolean): void {
-    this.exemptionsReviewed.set(value);
-    if (!value) this.qualityChecked.set(false);
-  }
-
   protected canSubmit(): boolean {
     switch (this.dialog()) {
       case 'finalSubmit':
-        return this.qualityChecked() && (this.stage() === 'site' || this.exemptionsReviewed());
+        return !this.checklistLoading() && !this.checklistError() && allTicked(this.checklist(), this.ticked());
       case 'reject':
         return this.rejectConfirmed();
       case 'sendBack':
@@ -141,7 +148,7 @@ export class ReviewActionsBar {
     const level = this.certification();
     const call: Observable<{ message: string }> =
       d === 'finalSubmit'
-        ? this.api.finalSubmit(zedId, level, this.stage() === 'site' || this.exemptionsReviewed(), this.qualityChecked())
+        ? this.api.finalSubmit(zedId, level, this.ticked())
         : d === 'reject'
           ? this.api.reject(zedId, level)
           : this.api.sendBack(zedId, level, this.remarks().trim());

@@ -58,6 +58,8 @@
     </ul>
 
     <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+    <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
+    <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
     <div class="tab-content">
       <div class="tab-title">
         <div class="numberCircle">{{ tab() }}</div>
