@@ -96,7 +96,10 @@
           }
           <div class="net"><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
         </div>
-        <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">PROCEED TO PAY</button>
+        @if (nothingToPay()) {
+          <p class="alert alert-info py-2 small mb-2" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
+        }
+        <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">{{ nothingToPay() ? 'CONFIRM (NOTHING TO PAY)' : 'PROCEED TO PAY' }}</button>
         <button type="button" class="btn btn-link back-link" (click)="back.emit()">BACK TO DASHBOARD</button>
       </section>
     </div>

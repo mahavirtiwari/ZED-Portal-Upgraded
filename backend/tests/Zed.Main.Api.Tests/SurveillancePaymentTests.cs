@@ -21,6 +21,8 @@ public sealed class SurveillancePaymentTests : IDisposable
     private const string Callback = "/api/payments/ccavenue/surveillance-response";
     private const string Orders = "SELECT ZedId, Certification, Amount, PaymentStatus FROM ZED_SURVEILLANCE.dbo.PaymentGatewayTransactions";
     private readonly TestHost _host = new();
+    private const string ZeroStatus = "SELECT PaymentStatus FROM ZED_SURVEILLANCE.dbo.PaymentGatewayTransactions";
+    private readonly ConcurrentBag<string> _paid = [];
 
     /// <summary>Levels whose surveillance fee is unpaid (SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS = 1).</summary>
     private readonly ConcurrentDictionary<string, bool> _open = new(StringComparer.OrdinalIgnoreCase) { ["Bronze"] = true, ["Silver"] = true };
@@ -36,7 +38,7 @@ public sealed class SurveillancePaymentTests : IDisposable
         // Like the procedure: the amount follows the fee row and the TDS choice; the order id is the caller's.
         _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_BASIC_DETAILS"] = args => FakeSql.Sets([new
         {
-            AmountToBePaid = FakeSql.Arg(args, "Tds") switch { "1.5" => "1156.40", "7.5" => "1092.50", _ => "1180.00" },
+            AmountToBePaid = FakeSql.Arg(args, "PaymentRefId") == "21" ? "0.00" : FakeSql.Arg(args, "Tds") switch { "1.5" => "1156.40", "7.5" => "1092.50", _ => "1180.00" },
             TransactionId = FakeSql.Arg(args, "TransactionId"), MerchantParam3 = "Surveillance 1", EnterpriseName = "Acme & Co",
             PAddress = "Plot 4", MobileNo = "9999999999", PledgeEmailId = "pledge@acme.test", PStateName = "UP", PDistrictName = "Kanpur", PPin = "208001",
         }]);
@@ -45,6 +47,13 @@ public sealed class SurveillancePaymentTests : IDisposable
             _open[FakeSql.Arg(args, "Certification")!] = false;
             return FakeSql.Sets();
         };
+        // 2026-11-17: a zero-amount payment is recorded as a paid order of Rs 0 through the gateway procedure.
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"] = args =>
+        {
+            if (FakeSql.Arg(args, "PaymentStatus") == "Success") { _open[FakeSql.Arg(args, "Certification")!] = false; _paid.Add(FakeSql.Arg(args, "TransactionId")!); }
+            return FakeSql.Sets();
+        };
+        _host.Sql.Queries[ZeroStatus] = args => _paid.Contains(FakeSql.Arg(args, "TransactionId")!) ? [new { PaymentStatus = "Success" }] : [new { PaymentStatus = (string?)null }];
         _host.Sql.Procs["SP_SURVEILLANCE_MSME_GET_DETAILS"] = _ => FakeSql.Sets(
             [new { ZedId = Me, PledgeEmailId = "pledge@acme.test", MobileNo = "9999999999", EnterpriseName = "Acme", MileStoneNo = 0 }],
             [new { PaymentReceiptName = "Bronze_Milestone0_Payment_Receipt.pdf", SurveOrReSurve = "Surveillance" }],
@@ -213,15 +222,24 @@ public sealed class SurveillancePaymentTests : IDisposable
         // Without the reward there is something to pay: the gateway path, never the zero path.
         var pay = await client.PostAsJsonAsync($"{Api}/Bronze/checkout", Choices());
         Assert.Equal("gateway", (await pay.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
-        Assert.False(Called("SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS"));
+        Assert.False(_host.Sql.Calls.Any(c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"));
 
-        // With the reward the applicant contribution is 0.
+        // With the reward the applicant contribution is 0: an order of Rs 0, recorded as paid without the gateway
+        // (2026-11-17), and its payment record marked a zero-amount payment.
         var r = await client.PostAsJsonAsync($"{Api}/Bronze/checkout", Choices(reward: true));
         Assert.Equal("paid", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
-        var zero = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS");
-        Assert.Equal("21", FakeSql.Arg(zero.Args, "PaymentRefId"));
-        Assert.Equal("Yes", FakeSql.Arg(zero.Args, "UseCoupon"));
-        Assert.Equal(Me, FakeSql.Arg(zero.Args, "ZedId"));
+        Assert.False(Called("SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS"));
+        var order = _host.Sql.Calls.Last(c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_BASIC_DETAILS");
+        Assert.Equal("21", FakeSql.Arg(order.Args, "PaymentRefId"));
+        Assert.Equal("Yes", FakeSql.Arg(order.Args, "UseCoupon"));
+        Assert.Equal(Me, FakeSql.Arg(order.Args, "ZedId"));
+        var recorded = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS");
+        Assert.Equal(FakeSql.Arg(order.Args, "TransactionId"), FakeSql.Arg(recorded.Args, "TransactionId"));
+        Assert.Equal("Success", FakeSql.Arg(recorded.Args, "PaymentStatus"));
+        Assert.Equal("Zero amount", FakeSql.Arg(recorded.Args, "PgType"));
+        Assert.Equal("0", FakeSql.Arg(recorded.Args, "AmountPaid"));
+        var mark = Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith("UPDATE ZED_SURVEILLANCE.dbo.MsmePaymentInfo SET PaymentType"));
+        Assert.Equal("ZeroAmount", FakeSql.Arg(mark.Args, "PaymentType"));
 
         // Receipt where GenerateReceipt wrote it, confirmation mailed.
         Assert.True(File.Exists(Path.Combine(_host.StorageRoot, "PDFs", "SA", Me, "Bronze_Milestone0_Payment_Receipt.pdf")));
@@ -231,14 +249,36 @@ public sealed class SurveillancePaymentTests : IDisposable
     }
 
     [Fact]
-    public async Task Zero_payment_that_the_procedure_skipped_is_not_reported_as_paid()
+    public async Task Zero_payment_of_silver_after_bronze_is_recorded_without_the_gateway()
     {
-        // ZED_SURVEILLANCE SP_MSME_ZERO_PAYMENT_DETAILS silently does nothing once IsBronzePaymentDone is set.
-        _host.Sql.Procs["SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS"] = _ => FakeSql.Sets();
+        // ZED_SURVEILLANCE's own zero procedure skipped every level once Bronze was paid; the gateway procedure does not.
+        SetDashboard(bronze: 0, silver: 1);
+        var client = await SignedInAsync();
+        var r = await client.PostAsJsonAsync($"{Api}/Silver/checkout", Choices(reward: true));
+        Assert.Equal("paid", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        var recorded = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS");
+        Assert.Equal("Silver", FakeSql.Arg(recorded.Args, "Certification"));
+    }
+
+    [Fact]
+    public async Task Zero_payment_that_the_procedure_did_not_record_is_not_reported_as_paid()
+    {
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"] = _ => FakeSql.Sets();
         var client = await SignedInAsync();
         var r = await client.PostAsJsonAsync($"{Api}/Bronze/checkout", Choices(reward: true));
         Assert.StartsWith("The payment could not be recorded", await r.ProblemTitle());
         Assert.Empty(_host.Email.Sent);
+    }
+
+    [Fact]
+    public async Task Zero_payment_is_refused_when_the_order_is_not_for_nothing()
+    {
+        // e.g. the procedure's hard-coded Rs 1 "test the payment gateway" list.
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_BASIC_DETAILS"] = args => FakeSql.Sets([new { AmountToBePaid = "1.00", TransactionId = FakeSql.Arg(args, "TransactionId") }]);
+        var client = await SignedInAsync();
+        var r = await client.PostAsJsonAsync($"{Api}/Bronze/checkout", Choices(reward: true));
+        Assert.StartsWith("The payment amount could not be confirmed", await r.ProblemTitle());
+        Assert.False(_host.Sql.Calls.Any(c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"));
     }
 
     [Fact]

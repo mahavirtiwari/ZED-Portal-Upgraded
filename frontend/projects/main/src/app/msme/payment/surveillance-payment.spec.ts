@@ -152,7 +152,9 @@ describe('SurveillancePaymentPage', () => {
     button('APPLY REWARD').click();
     await settled();
 
-    button('PROCEED TO PAY').click();
+    // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
+    expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
+    button('CONFIRM (NOTHING TO PAY)').click();
     await settled();
     const req = http.expectOne(`${API}/Bronze/checkout`);
     expect(req.request.body).toEqual({ useReward: true, gstinApplicable: false, gstin: null, tdsDeductible: false, tds: null, tan: null });

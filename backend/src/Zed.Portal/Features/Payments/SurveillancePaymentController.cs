@@ -219,30 +219,19 @@ public sealed class SurveillancePaymentController(
             return this.Problem400(FeeOption.Unreadable);
         }
 
-        // Nothing to pay after subsidy/reward (the old page's condition).
+        // 2026-11-17 (the user): nothing to pay after subsidy/reward goes to no gateway, for every level. Recorded as a paid
+        // order of Rs 0 through the gateway procedures (ZeroAmountPayment): ZED_SURVEILLANCE's zero procedure only recorded
+        // a unit whose Bronze was not yet paid, whatever the level, and opened Silver and Gold as a first Bronze.
         if (due <= 0)
         {
-            // V4 levels (ZED-X): SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS knows Bronze / Silver / Gold only (it answers 0 for
-            // the others, which read as "recorded"), so the round's payment row is counted before and after the procedure.
-            var v4 = LevelSurveillance.IsV4(cert);
-            var before = v4 ? await LevelSurveillance.PaymentsAsync(db, ZedId, cert, ct) : 0;
-            try
-            {
-                await db.ExecuteProcAsync("SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS", choices, ct);
-            }
-            catch (DbException ex)
-            {
-                log.LogWarning(ex, "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS refused {ZedId}/{Certification}", ZedId, cert);
-                return this.Problem400("Payment is already done for this certification.");
-            }
-            // The procedure raises no error when it skips: it only records anything while
-            // ZED_SURVEILLANCE.Msme.IsBronzePaymentDone is not set, whatever the level. Confirm it was recorded.
-            var recorded = v4 ? await LevelSurveillance.PaymentsAsync(db, ZedId, cert, ct) > before : !await PaymentOpenAsync(cert, ct);
-            if (!recorded)
-            {
-                log.LogError("Zero surveillance payment for {ZedId}/{Certification} was not recorded by the procedure", ZedId, cert);
-                return this.Problem400("The payment could not be recorded. Please contact zed.support@qcin.org.");
-            }
+            if (await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Surveillance, ZedId, cert,
+                    orderId => new
+                    {
+                        choices.ZedId, choices.Certification, choices.UseCoupon, choices.UnitGstin, choices.Gstin, choices.TdsDeductible,
+                        choices.Tds, choices.Tan, choices.PaymentRefId, TransactionId = orderId,
+                    },
+                    HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct) is { } refused)
+                return this.Problem400(refused);
             await completion.CompleteAsync(ZedId, cert, postToErp: false, ct);
             return new MsmePaymentController.CheckoutResponse("paid");
         }

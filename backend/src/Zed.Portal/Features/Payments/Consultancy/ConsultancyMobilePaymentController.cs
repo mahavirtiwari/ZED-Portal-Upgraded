@@ -153,8 +153,9 @@ public sealed partial class ConsultancyMobilePaymentController(
     /// <summary>
     /// ConsultancyPayController.SubmitZeroPaymentDetails as the app called it (no session, ZED ID in the
     /// body). Only for a fee row chosen here with nothing to pay: a state-subsidy row (the web page's condition) or a
-    /// milestone paid at milestone 1 (migration 0044); the old action recorded whatever PaymentRefId was sent, for any
-    /// unit and level.
+    /// milestone paid at milestone 1 (migration 0044) through the zero procedure, and since 2026-11-17 (the user) any other
+    /// row with nothing to pay (a 100% subsidy) as a paid order of Rs 0 (<see cref="ZeroAmountPayment"/>); the old action
+    /// recorded whatever PaymentRefId was sent, for any unit and level.
     /// </summary>
     [HttpPost("/ConsultancyPay/SubmitZeroPaymentDetails")]
     [DeviceBound(MobileApps.Msme, "zedId")]
@@ -163,14 +164,17 @@ public sealed partial class ConsultancyMobilePaymentController(
     {
         var (p, error) = await PrepareAsync(model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Choices.Fee.Due is not <= 0m || !(ConsultancyFees.IsStateRow(p.Choices.Fee) || ConsultancyFees.IsPaidAtMilestone1(p.Choices.Fee)))
+        if (p.Choices.Fee.Due is not <= 0m)
         {
-            log.LogWarning("Mobile handholding zero payment refused for {ZedId}/{Level}: fee row {FeeId} is not a zero state-subsidy or paid-at-milestone-1 row",
-                p.Choices.ZedId, p.Choices.Level, p.Choices.Fee.Id);
+            log.LogWarning("Mobile handholding zero payment refused for {ZedId}/{Level}: fee row {FeeId} is not zero", p.Choices.ZedId, p.Choices.Level, p.Choices.Fee.Id);
             return Refuse("Payment is due for this milestone. Please pay online.");
         }
 
-        if (await ConsultancyZeroPayment.RecordAsync(db, p.Choices, p.Milestone, log, ct) is { } refusal) return Refuse(refusal);
+        var refusal = ConsultancyFees.IsStateRow(p.Choices.Fee) || ConsultancyFees.IsPaidAtMilestone1(p.Choices.Fee)
+            ? await ConsultancyZeroPayment.RecordAsync(db, p.Choices, p.Milestone, log, ct)
+            : await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Handholding, p.Choices.ZedId, p.Choices.Level, p.Choices.Args,
+                HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, p.Milestone);
+        if (refusal is not null) return Refuse(refusal);
         await ConsultancyPaymentCompletion.Create(HttpContext.RequestServices).CompleteAsync(p.Choices.ZedId, p.Choices.Level, gateway: false, ct);
         return LegacyContent(Serialize(new ServiceResponse { status = "1" }));
     }

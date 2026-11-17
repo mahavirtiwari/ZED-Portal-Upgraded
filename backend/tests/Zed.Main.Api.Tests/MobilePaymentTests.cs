@@ -472,14 +472,29 @@ public sealed class MobilePaymentTests : IDisposable
     public async Task Surveillance_zero_payment_checks_eligibility_and_confirms_the_record()
     {
         SetSurveillanceFees("0.00");
+        // 2026-11-17: an order of Rs 0 recorded as paid through the gateway procedure (as the web checkout).
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_BASIC_DETAILS"] = args => FakeSql.Sets([new { AmountToBePaid = "0.00", TransactionId = FakeSql.Arg(args, "TransactionId") }]);
+        var paid = new ConcurrentBag<string>();
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"] = args =>
+        {
+            paid.Add(FakeSql.Arg(args, "TransactionId")!);
+            _surveillanceOpen[FakeSql.Arg(args, "Certification")!] = false;
+            return FakeSql.Sets();
+        };
+        _host.Sql.Queries[Zed.Portal.Features.Payments.ZeroAmountPayment.StatusSql(Zed.Portal.Features.Payments.CcAvenueGatewayModule.SurveillanceOrders)] = args =>
+            paid.Contains(FakeSql.Arg(args, "TransactionId")!) ? [new { PaymentStatus = "Success" }] : [new { PaymentStatus = (string?)null }];
+
         var ok = await Json(await Client().PostAsync("/SurveillancePay/SubmitZeroPaymentDetails", new FormUrlEncodedContent(Request(paymentRefId: "22"))));
         Assert.Equal("1", ok.GetProperty("status").GetString());
-        Assert.Equal("22", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS").Args, "PaymentRefId"));
+        Assert.Equal("22", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_BASIC_DETAILS").Args, "PaymentRefId"));
+        var recorded = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS");
+        Assert.Equal(("Success", "Zero amount"), (FakeSql.Arg(recorded.Args, "PaymentStatus"), FakeSql.Arg(recorded.Args, "PgType")));
+        Assert.False(_host.Sql.Calls.Any(c => c.Name == "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS"));
 
         // Now paid: not eligible any more.
         var again = await Json(await Client().PostAsync("/SurveillancePay/SubmitZeroPaymentDetails", new FormUrlEncodedContent(Request(paymentRefId: "22"))));
         Assert.Equal("Surveillance payment is not available for this certification.", again.GetProperty("errorMessage").GetString());
-        Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS");
+        Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS");
     }
 
     [Fact]

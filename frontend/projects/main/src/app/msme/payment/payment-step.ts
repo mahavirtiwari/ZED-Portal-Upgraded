@@ -67,6 +67,14 @@ export class PaymentStep implements OnInit {
     return String(this.fee()[field] ?? '');
   }
 
+  /**
+   * 2026-11-17 (the user): nothing to pay after the subsidy / reward (the server's own test: the contribution after subsidy
+   * is 0). The payment is then recorded without the gateway, as a zero-amount payment; the button says so.
+   */
+  protected nothingToPay(): boolean {
+    return this.n('ApplicantContributionAfterSubsidy') <= 0;
+  }
+
   protected netPayable(): number {
     if (this.tdsDeductible === 'Yes' && this.tds === '1.5') return this.n('NetPaybleTds15');
     if (this.tdsDeductible === 'Yes' && this.tds === '7.5') return this.n('NetPaybleTds75');

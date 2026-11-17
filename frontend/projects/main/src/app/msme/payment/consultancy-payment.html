@@ -145,7 +145,10 @@
 
             <div class="form-actions">
               <a class="btn btn-default" routerLink="/msme/handholding" [queryParams]="{ level: level() }">BACK TO DASHBOARD</a>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
+              @if (nothingToPay()) {
+                <p class="alert alert-info py-2 small mb-2" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
+              }
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ nothingToPay() ? 'CONFIRM (NOTHING TO PAY)' : 'PROCEED TO PAY' }}</button>
             </div>
           </form>
         }

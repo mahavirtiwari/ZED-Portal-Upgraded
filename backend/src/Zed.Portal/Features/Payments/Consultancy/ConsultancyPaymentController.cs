@@ -202,19 +202,18 @@ public sealed class ConsultancyPaymentController(
             return this.Problem400(FeeOption.Unreadable);
         }
 
-        // Nothing to pay: a state-subsidy row with nothing left to pay (the old page's condition), or a milestone paid at
-        // milestone 1 ("pay all at milestone 1", migration 0044).
+        // Nothing to pay: a state-subsidy row with nothing left to pay (the old page's condition) or a milestone paid at
+        // milestone 1 ("pay all at milestone 1", migration 0044) through the zero procedure; 2026-11-17 (the user): any other
+        // row with nothing to pay (a 100% subsidy) goes to no gateway either, recorded as a paid order of Rs 0.
         if (due <= 0)
         {
-            if (!ConsultancyFees.IsStateRow(fee) && !ConsultancyFees.IsPaidAtMilestone1(fee))
-            {
-                // The old page sent this to the gateway with amount 0; the zero procedure only records state-subsidy rows.
-                log.LogError("Handholding fee row {FeeId} for {ZedId}/{Level} has nothing to pay but no state subsidy", fee.Id, ZedId, level);
-                return this.Problem400("The payment amount could not be confirmed. Please contact zed.support@qcin.org.");
-            }
-            return await RecordZeroAsync(choices, state.NextMilestone, ct) is { } error
-                ? this.Problem400(error)
-                : new MsmePaymentController.CheckoutResponse("paid");
+            var refused = ConsultancyFees.IsStateRow(fee) || ConsultancyFees.IsPaidAtMilestone1(fee)
+                ? await ConsultancyZeroPayment.RecordAsync(db, choices, state.NextMilestone, log, ct)
+                : await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Handholding, ZedId, level, choices.Args,
+                    HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, state.NextMilestone);
+            if (refused is not null) return this.Problem400(refused);
+            await ConsultancyPaymentCompletion.Create(HttpContext.RequestServices).CompleteAsync(ZedId, level, gateway: false, ct);
+            return new MsmePaymentController.CheckoutResponse("paid");
         }
 
         var expected = fee.Payable(tds);
@@ -264,18 +263,6 @@ public sealed class ConsultancyPaymentController(
     /// <summary>SP_CONSULTANCY_APP_MSME_STATUS for a unit, with ZED-X and the levels' rule (<see cref="HandholdingEligibility.Apply"/>).</summary>
     internal static async Task<IDictionary<string, object?>?> StatusRowAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         await HandholdingEligibility.StatusAsync(db, zedId, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, ct);
-
-    /// <summary>
-    /// SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS (ZED_CONSULTANT SP_MSME_ZERO_PAYMENT_DETAILS) for a state-subsidy
-    /// row with nothing to pay, then confirm the milestone was opened. Null when recorded, else the message.
-    /// </summary>
-    private async Task<string?> RecordZeroAsync(ConsultancyChoices c, int milestone, CancellationToken ct)
-    {
-        var refusal = await ConsultancyZeroPayment.RecordAsync(db, c, milestone, log, ct);
-        if (refusal is null)
-            await ConsultancyPaymentCompletion.Create(HttpContext.RequestServices).CompleteAsync(c.ZedId, c.Level, gateway: false, ct);
-        return refusal;
-    }
 
     private static Dictionary<string, object?> Pick(FeeOption fee) =>
         FeeFields.ToDictionary(f => f, f => fee.Row.TryGetValue(f, out var v) && v is not DBNull ? v : null);

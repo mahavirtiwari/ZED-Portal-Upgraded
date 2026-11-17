@@ -256,15 +256,30 @@ public sealed class ConsultancyPaymentTests : IDisposable
     }
 
     [Fact]
-    public async Task Zero_amount_is_recorded_only_for_a_state_subsidy_row_with_nothing_to_pay()
+    public async Task Zero_amount_goes_to_no_gateway_for_a_full_subsidy_or_a_state_subsidy_row()
     {
-        // Nothing to pay but no state subsidy: refused (the old page sent ₹0 to the gateway).
+        // 2026-11-17 (the user): a 100% subsidy (nothing to pay, no state subsidy) was refused; it is now an order of Rs 0
+        // recorded as paid through the gateway procedure, without the gateway, and marked a zero-amount payment.
         SetFees(payable: "0.00");
+        _host.Sql.Procs["SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS"] = args =>
+            FakeSql.Sets([new { AmountToBePaid = "0.00", TransactionId = FakeSql.Arg(args, "TransactionId"), MerchantParam3 = "Milestone 2" }]);
+        var paidOrders = new System.Collections.Concurrent.ConcurrentBag<string>();
+        _host.Sql.Procs["SP_CONSULTANCY_MSME_PAYMENT_GATEWAY_DETAILS"] = args =>
+        {
+            paidOrders.Add(FakeSql.Arg(args, "TransactionId")!);
+            return FakeSql.Sets();
+        };
+        _host.Sql.Queries[ZeroAmountPayment.StatusSql(ConsultancyGateway.Orders)] = args =>
+            paidOrders.Contains(FakeSql.Arg(args, "TransactionId")!) ? [new { PaymentStatus = "Success" }] : [new { PaymentStatus = (string?)null }];
         var client = await SignedInAsync();
-        var refused = await client.PostAsJsonAsync($"{Api}/Silver/checkout", Choices());
-        Assert.StartsWith("The payment amount could not be confirmed", await refused.ProblemTitle());
+        var full = await client.PostAsJsonAsync($"{Api}/Silver/checkout", Choices());
+        Assert.Equal("paid", (await full.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
         Assert.False(Called("SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS"));
-        Assert.False(Called("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS"));
+        var recorded = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_CONSULTANCY_MSME_PAYMENT_GATEWAY_DETAILS");
+        Assert.Equal(("Success", "Zero amount", "0"), (FakeSql.Arg(recorded.Args, "PaymentStatus"), FakeSql.Arg(recorded.Args, "PgType"), FakeSql.Arg(recorded.Args, "AmountPaid")));
+        Assert.Contains(_host.Sql.Calls, c => c.Name.StartsWith("UPDATE ZED_CONSULTANT.dbo.MsmePaymentInfo SET PaymentType"));
+        _host.Email.Sent.Clear();
+        _host.Sql.Calls.Clear();
 
         // Andhra Pradesh state subsidy row with nothing left to pay.
         SetFees(payable: "0.00", stateLabel: "(20%)");

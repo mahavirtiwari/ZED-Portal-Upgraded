@@ -223,29 +223,37 @@ public sealed partial class MobilePaymentController(
             return Refuse("Payment is due for this certification. Please pay online.");
         }
 
-        try
+        if (m.Surveillance)
         {
-            await db.ExecuteProcAsync(m.ZeroProc, p.Args(orderId: null, withOrderId: false), ct);
+            // 2026-11-17 (the user): every level, as the web checkout: a paid order of Rs 0 through the gateway procedures
+            // (ZED_SURVEILLANCE's zero procedure only recorded a unit whose Bronze was not yet paid).
+            if (await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Surveillance, p.ZedId, p.Cert, orderId => p.Args(orderId),
+                    HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct) is { } refused)
+                return Refuse(refused);
         }
-        catch (DbException ex)
+        else
         {
-            // The certification procedure raises an error when the level is already paid.
-            log.LogWarning(ex, "{Procedure} refused {ZedId}/{Certification}", m.ZeroProc, p.ZedId, p.Cert);
-            return Refuse("Payment is already done for this certification.");
-        }
+            try
+            {
+                await db.ExecuteProcAsync(m.ZeroProc, p.Args(orderId: null, withOrderId: false), ct);
+            }
+            catch (DbException ex)
+            {
+                // The certification procedure raises an error when the level is already paid.
+                log.LogWarning(ex, "{Procedure} refused {ZedId}/{Certification}", m.ZeroProc, p.ZedId, p.Cert);
+                return Refuse("Payment is already done for this certification.");
+            }
 
-        // Confirm it was recorded: the surveillance procedure skips silently (it checks IsBronzePaymentDone
-        // for every level), so do not report a payment that did not happen. ZED-X has no flag the procedure sets
-        // (SP_V4_CERTIFICATION_PAID sets it in the completion), so its payment row is looked for: before, a recorded ZED-X
-        // payment was reported as failed and the app's retry recorded it again.
-        var recorded = m.Surveillance
-            ? !await SurveillancePaymentOpenAsync(p.ZedId, p.Cert, ct)
-            : (await db.QuerySqlAsync<string>(RecordedSql(p.Cert),
+            // Confirm it was recorded. ZED-X has no flag the procedure sets (SP_V4_CERTIFICATION_PAID sets it in the
+            // completion), so its payment row is looked for: before, a recorded ZED-X payment was reported as failed and the
+            // app's retry recorded it again.
+            var recorded = (await db.QuerySqlAsync<string>(RecordedSql(p.Cert),
                 new { ZedId = new Dapper.DbString { Value = p.ZedId, IsAnsi = true, Length = 50 } }, ct)).Count > 0;
-        if (!recorded)
-        {
-            log.LogError("Mobile {Module} zero payment for {ZedId}/{Certification} was not recorded by the procedure", m.Name, p.ZedId, p.Cert);
-            return Refuse("The payment could not be recorded. Please contact zed.support@qcin.org.");
+            if (!recorded)
+            {
+                log.LogError("Mobile {Module} zero payment for {ZedId}/{Certification} was not recorded by the procedure", m.Name, p.ZedId, p.Cert);
+                return Refuse("The payment could not be recorded. Please contact zed.support@qcin.org.");
+            }
         }
 
         if (m.Surveillance) await surveillanceCompletion.CompleteAsync(p.ZedId, p.Cert, postToErp: false, ct);

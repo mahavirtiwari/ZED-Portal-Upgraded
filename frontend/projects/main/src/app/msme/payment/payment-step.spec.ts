@@ -93,7 +93,9 @@ describe('PaymentStep', () => {
     button('APPLY REWARD').click();
     await settle();
 
-    button('PROCEED TO PAY').click();
+    // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
+    expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
+    button('CONFIRM (NOTHING TO PAY)').click();
     await settle();
     http.expectOne('/api/msme/payments/gstin').flush({ message: 'ok', panMatches: false, gstinPan: 'PQRST6789K', udyamPan: 'ABCDE1234F' });
     await settle();
@@ -122,7 +124,9 @@ describe('PaymentStep', () => {
     button('APPLY REWARD').click();
     await settle();
 
-    button('PROCEED TO PAY').click();
+    // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
+    expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
+    button('CONFIRM (NOTHING TO PAY)').click();
     await settle();
     const req = http.expectOne('/api/msme/payments/Bronze/checkout');
     expect(req.request.body).toEqual({ useReward: true, gstinApplicable: false, gstin: null, tdsDeductible: false, tds: null, tan: null });

@@ -143,9 +143,11 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var (updated, error) = ByMilestone ? ApplyConsultancySubsidy(current, req) : ApplySubsidy(current, req);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
+        // 2026-11-17 (the user): the Andhra Pradesh state fee rows take the share too (ZED_SURVEILLANCE has none).
+        var stateChanged = host.System == PortalSystem.Surveillance ? 0 : await StateFeeSubsidy.ApplyAsync(db, type, current, updated!, ByMilestone, ct);
         loggers.CreateLogger(AuditCategory).LogInformation(
-            "Subsidy share of {EnterpriseType} {Certification} category {Category} saved by {Actor} (all levels {AllLevels}): {Changed} row(s) changed",
-            type, req.AllLevels ? "all" : req.Certification, req.Category, UserId, req.AllLevels, changed);
+            "Subsidy share of {EnterpriseType} {Certification} category {Category} saved by {Actor} (all levels {AllLevels}): {Changed} row(s) changed, {StateChanged} state row(s)",
+            type, req.AllLevels ? "all" : req.Certification, req.Category, UserId, req.AllLevels, changed, stateChanged);
         return new MessageResponse(changed == 0 ? "No changes to save." : "Subsidy share updated.");
     }
 
