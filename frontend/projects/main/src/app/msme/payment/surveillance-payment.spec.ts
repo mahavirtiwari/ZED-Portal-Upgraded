@@ -9,6 +9,7 @@ import { SurveillancePaymentPage } from './surveillance-payment';
 import { SurveillanceOptions } from './surveillance-payment.api';
 
 const API = '/api/msme/surveillance-payments';
+const PROFILE = { msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme Pumps', PAddress: 'Plot 4', PDistrictName: 'Kanpur', PStateName: 'UP', PPin: '208001' }, basicInfo: {}, registeredEmail: null };
 
 function options(overrides: Partial<SurveillanceOptions> = {}): SurveillanceOptions {
   return {
@@ -38,6 +39,15 @@ describe('SurveillancePaymentPage', () => {
   const settled = () => settle(fixture);
   const button = (label: string) =>
     [...el.querySelectorAll('button, a')].find((b) => b.textContent!.trim().startsWith(label)) as HTMLElement;
+  const payButton = () => el.querySelector('.pay-btn') as HTMLButtonElement;
+  const accept = () => button('Accept & proceed') as HTMLButtonElement;
+  /** Ticks the consent of the disclaimer and accepts it. */
+  const acceptDisclaimer = async () => {
+    (el.querySelector('input[name="consent"]') as HTMLInputElement).click();
+    await settled();
+    accept().click();
+    await settled();
+  };
   const choose = (name: string, value: string) => (el.querySelector(`input[name="${name}"][value="${value}"]`) as HTMLInputElement).click();
   const type = (selector: string, value: string) => {
     const input = el.querySelector(selector) as HTMLInputElement;
@@ -52,16 +62,20 @@ describe('SurveillancePaymentPage', () => {
     await settled();
     http.expectOne(`${API}/${level.charAt(0).toUpperCase() + level.slice(1).toLowerCase()}/status`).flush({ certification: level, eligible });
     await settled();
+    if (eligible) {
+      http.expectOne('/api/msme/profile').flush(PROFILE);
+      await settled();
+    }
   }
 
   /** Disclaimer and instructions accepted, fee summary loaded. */
   async function toPayment(o: SurveillanceOptions = options()) {
     await open('bronze');
-    button('ACCEPT & PROCEED').click();
-    await settled();
-    expect(el.textContent).toContain('INSTRUCTIONS');
+    await acceptDisclaimer();
+    expect(el.querySelector('#pdTitle')!.textContent).toBe('Instructions');
+    expect(el.textContent).toContain('Step 1 of 4: read the instructions before payment.');
     expect(el.querySelector('[data-key="msme.surveillance.payment.instructions"]')).not.toBeNull();
-    button('ACCEPT & PROCEED').click();
+    accept().click();
     await settled();
     http.expectOne(`${API}/Bronze/options`).flush(o);
     await settled();
@@ -83,7 +97,7 @@ describe('SurveillancePaymentPage', () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     await open('Silver', false);
     expect(navigate).toHaveBeenCalledWith(['/msme/dashboard']);
-    expect(el.textContent).not.toContain('DISCLAIMER');
+    expect(el.textContent).not.toContain('Disclaimer / declaration');
   });
 
   it('rejects an unknown level without calling the API', async () => {
@@ -95,20 +109,46 @@ describe('SurveillancePaymentPage', () => {
     http.expectNone(() => true);
   });
 
+  it('shows the page head, the four steps, and the disclaimer with the consent and what is being paid for', async () => {
+    await open('bronze');
+    const crumbs = [...el.querySelectorAll('.ph-crumb a, .ph-crumb [aria-current]')].map((c) => c.textContent!.trim());
+    expect(crumbs).toEqual(['Home', 'Certifications', 'Bronze', 'Surveillance payment']);
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Bronze surveillance payment');
+    expect(el.textContent).toContain('Step 1 of 4: read and accept the disclaimer before payment.');
+    expect([...el.querySelectorAll('.st-label')].map((x) => x.textContent!.trim())).toEqual(['Disclaimer', 'Fee & tax details', 'Payment', 'Confirmation']);
+    expect(el.querySelector('.st-step[aria-current="step"] .st-label')!.textContent).toBe('Disclaimer');
+    expect(el.querySelector('#pdTitle')!.textContent).toBe('Disclaimer / declaration');
+    expect(el.querySelector('[data-key="msme.surveillance.payment.disclaimer"]')).not.toBeNull();
+    // The rail: the level's surveillance and the unit (api/msme/profile).
+    expect(el.querySelector('.pd-level')!.textContent).toContain('Bronze Surveillance');
+    expect(el.querySelector('.pd-level')!.textContent).toContain('Acme Pumps · ZEDMSME000001');
+    expect(el.textContent).toContain('accept it on behalf of Acme Pumps');
+    // Accept & proceed waits for the consent.
+    expect(accept().disabled).toBe(true);
+    (el.querySelector('input[name="consent"]') as HTMLInputElement).click();
+    await settled();
+    expect(accept().disabled).toBe(false);
+    expect(button('← Back to dashboard').getAttribute('href')).toBe('/msme/dashboard');
+  });
+
   it('shows the surveillance disclaimer and instructions, then the surveillance fee summary', async () => {
     await open('bronze');
     expect(el.querySelector('[data-key="msme.surveillance.payment.disclaimer"]')).not.toBeNull();
     await toPaymentFromDisclaimer();
+    expect(el.textContent).toContain('Step 2 of 4: confirm tax details and the amount before you pay.');
+    expect(el.querySelector('.st-step[aria-current="step"] .st-label')!.textContent).toBe('Fee & tax details');
+    expect(el.querySelector('.pst-bill')!.textContent).toContain('Plot 4, Kanpur, UP 208001');
+    expect(el.querySelector('.pst-level')!.textContent).toContain('Bronze Surveillance');
     expect(el.textContent).toContain('Surveillance Assessment Fee');
     expect(el.textContent).toContain('1,180.00');
     expect(el.textContent).not.toContain('Andhra Pradesh');
     expect(el.querySelector('.payment-reward-block [data-key="msme.surveillance.payment.joiningReward.note"]')).not.toBeNull();
 
-    button('APPLY REWARD').click();
+    button('Apply reward').click();
     await settled();
     expect(el.textContent).toContain('Reward Applied');
     expect(el.textContent).toContain('Final Certification Fee');
-    button('REMOVE').click();
+    button('Remove').click();
     choose('tdsDeductible', 'Yes');
     await settled();
     choose('tds', '7.5');
@@ -118,9 +158,8 @@ describe('SurveillancePaymentPage', () => {
   });
 
   async function toPaymentFromDisclaimer() {
-    button('ACCEPT & PROCEED').click();
-    await settled();
-    button('ACCEPT & PROCEED').click();
+    await acceptDisclaimer();
+    accept().click();
     await settled();
     http.expectOne(`${API}/Bronze/options`).flush(options());
     await settled();
@@ -134,9 +173,17 @@ describe('SurveillancePaymentPage', () => {
     expect((el.querySelector('input[name="tan"]') as HTMLInputElement).value).toBe('ABCD12345E');
   });
 
+  it('goes back from the fee step to the disclaimer', async () => {
+    await toPayment();
+    expect(payButton().textContent).toContain('Save & proceed to pay');
+    button('← Back to disclaimer').click();
+    await settled();
+    expect(el.querySelector('#pdTitle')!.textContent).toBe('Disclaimer / declaration');
+  });
+
   it('requires the options before calling the API', async () => {
     await toPayment();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     const dialog = el.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain('Error!');
@@ -149,12 +196,13 @@ describe('SurveillancePaymentPage', () => {
     await toPayment();
     choose('unitGstin', 'No');
     choose('tdsDeductible', 'No');
-    button('APPLY REWARD').click();
+    button('Apply reward').click();
     await settled();
 
     // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
     expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
-    button('CONFIRM (NOTHING TO PAY)').click();
+    expect(payButton().textContent!.trim()).toBe('CONFIRM (NOTHING TO PAY)');
+    payButton().click();
     await settled();
     const req = http.expectOne(`${API}/Bronze/checkout`);
     expect(req.request.body).toEqual({ useReward: true, gstinApplicable: false, gstin: null, tdsDeductible: false, tds: null, tan: null });
@@ -172,7 +220,7 @@ describe('SurveillancePaymentPage', () => {
     choose('tdsDeductible', 'No');
     await settled();
 
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     const verify = http.expectOne(`${API}/gstin`);
     expect(verify.request.body).toEqual({ certification: 'Bronze', gstin: '09PQRST6789K1Z2' });
@@ -206,7 +254,7 @@ describe('SurveillancePaymentPage', () => {
     choose('unitGstin', 'No');
     choose('tdsDeductible', 'No');
     await settled();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     http.expectOne(`${API}/Bronze/checkout`).flush({ status: 'gateway', gatewayUrl: 'https://test.ccavenue.com/t', encRequest: 'abc123', accessCode: 'AV1' });
     await settled();
@@ -224,7 +272,7 @@ describe('SurveillancePaymentPage', () => {
     choose('unitGstin', 'No');
     choose('tdsDeductible', 'No');
     await settled();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     http.expectOne(`${API}/Bronze/checkout`).flush(
       { title: 'Surveillance payment is not available for this certification.' },

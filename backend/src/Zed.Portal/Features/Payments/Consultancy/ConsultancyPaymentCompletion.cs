@@ -49,32 +49,19 @@ public sealed class ConsultancyPaymentCompletion(
         string? milestone = null;
         try
         {
-            var sets = await db.QueryProcMultipleAsync("SP_CONSULTANCY_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);
-            var msme = sets[0].FirstOrDefault();
-            var payment = sets[4].FirstOrDefault();
-            milestone = msme?.Text("MileStoneNo") is { Length: > 0 } m && m != "0" ? m : payment?.Text("MileStoneNum");
-            var lines = payment is null ? [] : ConsultancyPaymentSummary.Lines(payment);
+            var details = await LoadAsync(zedId, certification, ct);
+            var msme = details.Msme;
+            milestone = details.Milestone;
             var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
 
-            if (payment is not null)
-                await SaveReceiptAsync(zedId, $"{certification}_Milestone{milestone}_Payment_Receipt.pdf", lines, ct);
+            if (details.Payment is not null)
+                await SaveReceiptAsync(zedId, ReceiptFileName(certification, milestone), details.Lines, ct);
 
-            if (msme?.Text("PledgeEmailId") is { Length: > 0 } to)
-            {
-                var html = await templates.RenderAsync<ConsultancyPaymentConfirmationEmail>(new Dictionary<string, object?>
-                {
-                    [nameof(ConsultancyPaymentConfirmationEmail.ZedId)] = zedId,
-                    [nameof(ConsultancyPaymentConfirmationEmail.Milestone)] = milestone ?? "",
-                    [nameof(ConsultancyPaymentConfirmationEmail.Lines)] = lines,
-                    [nameof(ConsultancyPaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-                });
-                await email.SendAsync(new EmailMessage(to,
-                    $"ZED Handholding Support (Milestone {milestone}) Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);
-            }
+            await SendConfirmationAsync(zedId, details, cc, null, ct);
 
             // Result set 5: the Consultant Organisation of the previous milestone (milestones 2 and 3 only),
             // which the gateway procedure has just allotted to this one.
-            if (gateway && sets[5].FirstOrDefault()?.Text("AutoEmailForAgency") is { Length: > 0 } agency)
+            if (gateway && details.AgencyEmail is { Length: > 0 } agency)
             {
                 var html = await templates.RenderAsync<ConsultancyAllocationEmail>(new Dictionary<string, object?>
                 {
@@ -109,14 +96,80 @@ public sealed class ConsultancyPaymentCompletion(
         }
     }
 
-    private async Task SaveReceiptAsync(string zedId, string fileName, List<SummaryLine> lines, CancellationToken ct)
+    /// <summary>
+    /// The unit's handholding details (result sets 0, 4 and 5 of SP_CONSULTANCY_MSME_GET_DETAILS): the unit, the level's latest
+    /// milestone payment, its milestone (the unit's MileStoneNo, else the payment's MileStoneNum), its summary lines, and the
+    /// Consultant Organisation of the previous milestone.
+    /// </summary>
+    public sealed record Details(
+        IDictionary<string, object?>? Msme, IDictionary<string, object?>? Payment, string? Milestone, List<SummaryLine> Lines, string? AgencyEmail);
+
+    public async Task<Details> LoadAsync(string zedId, string certification, CancellationToken ct)
+    {
+        var sets = await db.QueryProcMultipleAsync("SP_CONSULTANCY_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);
+        var msme = sets[0].FirstOrDefault();
+        var payment = sets[4].FirstOrDefault();
+        var milestone = msme?.Text("MileStoneNo") is { Length: > 0 } m && m != "0" ? m : payment?.Text("MileStoneNum");
+        return new(msme, payment, milestone, payment is null ? [] : ConsultancyPaymentSummary.Lines(payment),
+            sets[5].FirstOrDefault()?.Text("AutoEmailForAgency"));
+    }
+
+    /// <summary>The receipt's file name in PDFs/SA/{ZedId} ({Level}_Milestone{n}_Payment_Receipt.pdf, where GenerateReceipt wrote it).</summary>
+    public static string ReceiptFileName(string certification, string? milestone) => $"{certification}_Milestone{milestone}_Payment_Receipt.pdf";
+
+    /// <summary>Full path of a receipt of this unit (PDFs/SA/{ZedId}/{file}).</summary>
+    public string ReceiptPath(string zedId, string fileName)
     {
         var root = Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
-        var dir = Path.Combine(root, "PDFs", "SA", string.Concat(zedId.Where(char.IsLetterOrDigit)));
-        Directory.CreateDirectory(dir);
-        var pdf = SummaryPdf.Render("Handholding Support Payment Summary", [$"ZED ID: {zedId}", $"Date: {DateTime.Now:MMMM d, yyyy}"], lines,
+        return Path.Combine(root, "PDFs", "SA", string.Concat(zedId.Where(char.IsLetterOrDigit)),
+            string.Concat(fileName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-')));
+    }
+
+    /// <summary>
+    /// 2026-11-17 (the user): "E-mail a copy" of the handholding payment confirmation: the same mail, to the unit's registered
+    /// e-mail only (no office copy), with the receipt and the tax invoice when there is one. The address it went to, or null
+    /// (no e-mail or no payment).
+    /// </summary>
+    public async Task<string?> ResendAsync(string zedId, string certification, string? invoiceFile, CancellationToken ct)
+    {
+        var details = await LoadAsync(zedId, certification, ct);
+        if (details.Payment is null) return null;
+        var receipt = ReceiptPath(zedId, ReceiptFileName(certification, details.Milestone));
+        var attachments = new List<EmailAttachment>
+        {
+            new(Path.GetFileName(receipt), File.Exists(receipt) ? await File.ReadAllBytesAsync(receipt, ct) : RenderReceipt(zedId, details.Lines)),
+        };
+        if (invoiceFile is not null && File.Exists(invoiceFile))
+            attachments.Add(new EmailAttachment(Path.GetFileName(invoiceFile), await File.ReadAllBytesAsync(invoiceFile, ct)));
+        return await SendConfirmationAsync(zedId, details, null, attachments, ct);
+    }
+
+    /// <summary>The confirmation mail to the unit's registered e-mail; the address, or null without one.</summary>
+    private async Task<string?> SendConfirmationAsync(
+        string zedId, Details details, IReadOnlyList<string>? cc, IReadOnlyList<EmailAttachment>? attachments, CancellationToken ct)
+    {
+        if (details.Msme?.Text("PledgeEmailId") is not { Length: > 0 } to) return null;
+        var html = await templates.RenderAsync<ConsultancyPaymentConfirmationEmail>(new Dictionary<string, object?>
+        {
+            [nameof(ConsultancyPaymentConfirmationEmail.ZedId)] = zedId,
+            [nameof(ConsultancyPaymentConfirmationEmail.Milestone)] = details.Milestone ?? "",
+            [nameof(ConsultancyPaymentConfirmationEmail.Lines)] = details.Lines,
+            [nameof(ConsultancyPaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+        });
+        await email.SendAsync(new EmailMessage(to,
+            $"ZED Handholding Support (Milestone {details.Milestone}) Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc, attachments), ct);
+        return to;
+    }
+
+    private static byte[] RenderReceipt(string zedId, List<SummaryLine> lines) =>
+        SummaryPdf.Render("Handholding Support Payment Summary", [$"ZED ID: {zedId}", $"Date: {DateTime.Now:MMMM d, yyyy}"], lines,
             Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "zed-logo.png"));
-        await File.WriteAllBytesAsync(Path.Combine(dir, string.Concat(fileName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-'))), pdf, ct);
+
+    private async Task SaveReceiptAsync(string zedId, string fileName, List<SummaryLine> lines, CancellationToken ct)
+    {
+        var path = ReceiptPath(zedId, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, RenderReceipt(zedId, lines), ct);
     }
 }
 

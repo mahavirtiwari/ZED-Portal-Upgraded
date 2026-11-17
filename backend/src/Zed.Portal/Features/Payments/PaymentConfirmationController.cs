@@ -231,14 +231,14 @@ public sealed class PaymentConfirmationController(
         return null;
     }
 
-    private static decimal? Number(IDictionary<string, object?> p, string column) =>
+    internal static decimal? Number(IDictionary<string, object?> p, string column) =>
         decimal.TryParse(p.Text(column), NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null;
 
-    private static DateTime? Date(IDictionary<string, object?> p, string column) =>
+    internal static DateTime? Date(IDictionary<string, object?> p, string column) =>
         p.TryGetValue(column, out var v) && v is DateTime dt ? dt
             : DateTime.TryParse(p.Text(column), CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
 
-    private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    internal static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     /// <summary>"ka•••@gmail.com": the first two letters of the name, then the domain.</summary>
     internal static string? Mask(string? email)

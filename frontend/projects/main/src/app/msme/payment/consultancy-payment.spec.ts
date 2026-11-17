@@ -5,9 +5,9 @@ import { Router, provideRouter } from '@angular/router';
 import { LevelState } from '../handholding/handholding.api';
 import { ConsultancyPaymentPage } from './consultancy-payment';
 import { ConsultancyOptions } from './consultancy-payment.api';
-import { ConsultancyResultPage } from './consultancy-result';
 
 const API = '/api/msme/consultancy-payments';
+const PROFILE = { msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme Pumps', PAddress: 'Plot 4', PDistrictName: 'Kanpur', PStateName: 'UP', PPin: '208001' }, basicInfo: {}, registeredEmail: null };
 
 function status(overrides: Partial<LevelState> = {}): LevelState {
   return { certification: 'Silver', enabled: true, milestonesStarted: 1, nextMilestone: 2, canPay: true, refusal: null, awaitingAcceptance: null, ...overrides };
@@ -37,6 +37,15 @@ describe('ConsultancyPaymentPage', () => {
   const settled = () => settle(fixture);
   const button = (label: string) =>
     [...el.querySelectorAll('button, a')].find((b) => b.textContent!.trim().startsWith(label)) as HTMLElement;
+  const payButton = () => el.querySelector('.pay-btn') as HTMLButtonElement;
+  const accept = () => button('Accept & proceed') as HTMLButtonElement;
+  /** Ticks the consent of the disclaimer and accepts it. */
+  const acceptDisclaimer = async () => {
+    (el.querySelector('input[name="consent"]') as HTMLInputElement).click();
+    await settled();
+    accept().click();
+    await settled();
+  };
   const choose = (name: string, value: string) => (el.querySelector(`input[name="${name}"][value="${value}"]`) as HTMLInputElement).click();
   const type = (selector: string, value: string) => {
     const input = el.querySelector(selector) as HTMLInputElement;
@@ -51,14 +60,17 @@ describe('ConsultancyPaymentPage', () => {
     await settled();
     http.expectOne(`${API}/Silver/status`).flush(s);
     await settled();
+    if (s.canPay) {
+      http.expectOne('/api/msme/profile').flush(PROFILE);
+      await settled();
+    }
   }
 
   async function toPayment(o: ConsultancyOptions = options()) {
     await open();
-    button('ACCEPT & PROCEED').click();
-    await settled();
+    await acceptDisclaimer();
     expect(el.querySelector('[data-key="msme.handholding.payment.instructions"]')).not.toBeNull();
-    button('ACCEPT & PROCEED').click();
+    accept().click();
     await settled();
     http.expectOne(`${API}/Silver/options`).flush(o);
     await settled();
@@ -79,8 +91,9 @@ describe('ConsultancyPaymentPage', () => {
   it('shows why a milestone cannot be paid instead of the disclaimer', async () => {
     await open('Silver', status({ canPay: false, refusal: 'Milestone 1 must be completed and accepted before Milestone 2 can be paid.' }));
     expect(el.textContent).toContain('Milestone 1 must be completed and accepted');
-    expect(el.textContent).not.toContain('DISCLAIMER');
-    expect(button('BACK TO HANDHOLDING SUPPORT').getAttribute('href')).toBe('/msme/handholding');
+    expect(el.textContent).not.toContain('Disclaimer / declaration');
+    expect(el.querySelector('zed-step-tracker')).toBeNull();
+    expect(button('← Back to Handholding support').getAttribute('href')).toBe('/msme/handholding');
   });
 
   it('rejects Bronze or an unknown level without calling the API', async () => {
@@ -92,26 +105,45 @@ describe('ConsultancyPaymentPage', () => {
     http.expectNone(() => true);
   });
 
+  it('shows the page head, the four steps, and the disclaimer with the consent and the milestone being paid for', async () => {
+    await open();
+    const crumbs = [...el.querySelectorAll('.ph-crumb a, .ph-crumb [aria-current]')];
+    expect(crumbs.map((c) => c.textContent!.trim())).toEqual(['Home', 'Incentives', 'Handholding support', 'Payment']);
+    expect(crumbs[1].getAttribute('href')).toBe('/msme/dashboard#incentives');
+    expect(crumbs[2].getAttribute('href')).toBe('/msme/handholding');
+    expect(el.textContent).toContain('Step 1 of 4: read and accept the disclaimer before payment.');
+    expect([...el.querySelectorAll('.st-label')].map((x) => x.textContent!.trim())).toEqual(['Disclaimer', 'Fee & tax details', 'Payment', 'Confirmation']);
+    const rail = el.querySelector('.pd-rail')!.textContent!;
+    expect(rail).toContain('Silver Handholding support');
+    expect(rail).toContain('Acme Pumps · ZEDMSME000001');
+    expect(rail).toContain('Milestone 2');
+    expect(rail).toContain('Implementation & Progress Review 1');
+    expect(accept().disabled).toBe(true);
+    (el.querySelector('input[name="consent"]') as HTMLInputElement).click();
+    await settled();
+    expect(accept().disabled).toBe(false);
+  });
+
   it('shows the handholding disclaimer, instructions and fee summary of the milestone due', async () => {
     await open();
-    expect(el.textContent).not.toContain('Handholding for Silver Level');   // no level / milestone line, as the live page
     expect(el.querySelector('[data-key="msme.handholding.payment.disclaimer"]')).not.toBeNull();
-    expect(button('BACK').getAttribute('href')).toBe('/msme/handholding?level=Silver');
-    button('ACCEPT & PROCEED').click();
-    await settled();
-    expect(button('BACK').getAttribute('href')).toBe('/msme/handholding?level=Silver');
-    button('ACCEPT & PROCEED').click();
+    expect(button('← Back to Handholding support').getAttribute('href')).toBe('/msme/handholding?level=Silver');
+    await acceptDisclaimer();
+    expect(button('← Back to Handholding support').getAttribute('href')).toBe('/msme/handholding?level=Silver');
+    accept().click();
     await settled();
     http.expectOne(`${API}/Silver/options`).flush(options());
     await settled();
 
+    expect(el.textContent).toContain('Step 2 of 4: confirm tax details and the amount before you pay.');
+    expect(el.querySelector('.pst-level')!.textContent).toContain('Milestone 2: Implementation & Progress Review 1');
+    expect(el.querySelector('.pst-bill')!.textContent).toContain('Acme Pumps');
     expect(el.textContent).toContain('Handholding Fee');
-    expect(el.textContent).toContain('(On Handholding fee)');
+    expect(el.textContent).toContain('On the handholding fee');
     expect(el.textContent).toContain('23,600.00');
-    expect(el.textContent).not.toContain('Implementation & Progress Review 1');
-    expect(button('BACK TO DASHBOARD').getAttribute('href')).toBe('/msme/handholding?level=Silver');
-    expect(el.textContent).not.toContain('APPLY REWARD');
-    expect(el.textContent).not.toContain('Andhra pradesh');
+    expect(button('Back to Handholding support').getAttribute('href')).toBe('/msme/handholding?level=Silver');
+    expect(el.textContent).not.toContain('Apply reward');
+    expect(el.textContent).not.toContain('Andhra Pradesh');
 
     choose('tdsDeductible', 'Yes');
     await settled();
@@ -123,14 +155,14 @@ describe('ConsultancyPaymentPage', () => {
 
   it('shows the Andhra Pradesh subsidy line for a state fee row', async () => {
     await toPayment(options({ stateSubsidy: true, withoutReward: { ...options().withoutReward, StateSubsidyLabel: '(20%)', StateContributionAfterSubsidy: 23600, ApplicantContributionAfterSubsidy: 0 } }));
-    expect(el.textContent).toContain('Andhra pradesh govt Subsidy');
+    expect(el.textContent).toContain('Andhra Pradesh Govt. subsidy');
     expect(el.textContent).toContain('(20%)');
   });
 
   it('says when milestone 1 covers all three milestones, and when a milestone was paid with it', async () => {
     await toPayment(options({ milestone: 1, coversAllMilestones: true }));
     expect(el.querySelector('[data-testid="covers-all"]')!.textContent).toContain('covers all three milestones of Silver');
-    expect(el.textContent).toContain('(Milestones 1, 2 and 3)');
+    expect(el.textContent).toContain('Milestones 1, 2 and 3');
     expect(el.querySelector('[data-testid="paid-at-1"]')).toBeNull();
   });
 
@@ -138,11 +170,14 @@ describe('ConsultancyPaymentPage', () => {
     await toPayment(options({ paidAtMilestone1: true, withoutReward: { Total: 0, ApplicantContributionAfterSubsidy: 0, SubsidyLabel: '(80%)' } }));
     expect(el.querySelector('[data-testid="paid-at-1"]')!.textContent).toContain('Milestone 2 was paid with milestone 1');
     expect(el.querySelector('[data-testid="covers-all"]')).toBeNull();
+    // 2026-11-17: nothing to pay: the button confirms instead (no gateway).
+    expect(el.querySelector('[data-zero-payment]')).not.toBeNull();
+    expect(payButton().textContent!.trim()).toBe('CONFIRM (NOTHING TO PAY)');
   });
 
   it('checks the form, then sends only the choices and the milestone shown to checkout', async () => {
     await toPayment();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     expect(el.textContent).toContain('Please enter required data.');
 
@@ -150,7 +185,7 @@ describe('ConsultancyPaymentPage', () => {
     choose('tdsDeductible', 'No');
     await settled();
     const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => undefined);
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
 
     const req = http.expectOne(`${API}/Silver/checkout`);
@@ -172,7 +207,7 @@ describe('ConsultancyPaymentPage', () => {
     type('input[name="gstin"]', '09pqrst6789k1z2');
     choose('tdsDeductible', 'No');
     await settled();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
 
     http.expectOne(`${API}/gstin`).flush({ message: 'ok', panMatches: false, gstinPan: 'PQRST6789K', udyamPan: 'ABCDE1234F' });
@@ -207,46 +242,10 @@ describe('ConsultancyPaymentPage', () => {
     choose('unitGstin', 'No');
     choose('tdsDeductible', 'No');
     await settled();
-    button('PROCEED TO PAY').click();
+    payButton().click();
     await settled();
     http.expectOne(`${API}/Silver/checkout`).flush({ title: 'The milestone due has changed. Please open the payment page again.' }, { status: 400, statusText: 'Bad Request' });
     await settled();
     expect(el.textContent).toContain('The milestone due has changed.');
-  });
-});
-
-describe('ConsultancyResultPage', () => {
-  async function render(inputs: Record<string, string>) {
-    await TestBed.configureTestingModule({ imports: [ConsultancyResultPage], providers: [provideRouter([])] }).compileComponents();
-    const fixture = TestBed.createComponent(ConsultancyResultPage);
-    for (const [k, v] of Object.entries(inputs)) fixture.componentRef.setInput(k, v);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    return fixture.nativeElement as HTMLElement;
-  }
-
-  it('names the milestone paid and links back to Handholding Support', async () => {
-    const el = await render({ status: 'success', certification: 'Silver', milestone: '2' });
-    expect(el.textContent).toContain('Payment Successful!');
-    expect(el.textContent).toContain('Milestone 2 : Implementation & Progress Review 1');
-    expect(el.querySelector('a')!.getAttribute('href')).toBe('/msme/handholding');
-  });
-
-  it('shows milestone 1', async () => {
-    const el = await render({ status: 'success', certification: 'Gold', milestone: '1' });
-    expect(el.textContent).toContain('ZED Handholding Support Milestone 1: Baseline Diagnostic Study and Handholding Action Plan');
-  });
-
-  it('falls back to a plain message for an unknown milestone', async () => {
-    const el = await render({ status: 'success', milestone: '9' });
-    expect(el.textContent).toContain('Your payment is successful.');
-  });
-
-  it('shows the failure with the message as text', async () => {
-    const el = await render({ status: 'failure', message: '<b>Cancelled</b>' });
-    expect(el.textContent).toContain('Payment Failed');
-    expect(el.textContent).toContain('<b>Cancelled</b>');
-    expect(el.querySelector('b + span b')).toBeNull();
-    expect(el.querySelector('a')!.getAttribute('href')).toBe('/msme/dashboard');
   });
 });

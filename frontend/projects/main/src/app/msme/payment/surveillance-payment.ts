@@ -10,6 +10,10 @@ import { canonicalLevelCode, levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, postToGateway } from './payment.api';
 import { SurveillanceOptions, SurveillancePaymentApi } from './surveillance-payment.api';
 import { PageHead } from '../shared/page-head';
+import { StepTracker, TrackerStep } from '../shared/step-tracker';
+import { ProfileApi } from '../profile/profile.api';
+import { PaymentBilling } from './payment-step';
+import { PayDisclaimer, PayRail, billingOf } from './pay-disclaimer';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
@@ -21,25 +25,19 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  * instructions, payment options and summary, and the PAN mismatch pop-up. The page is only for a
  * level whose surveillance can be paid now (the old Index action sent anything else back to the
  * dashboard); the API checks that again on every call and decides the amount.
+ * 2026-11-17 (the user's apply-and-pay designs, as the certification apply flow): page head with "Step n of 4", the four-step
+ * tracker, the disclaimer card with an explicit consent tick and "You are paying for" on the right, then the fee and tax step
+ * (Yes / No toggles, billing details, the fee summary card beside the form).
  */
 @Component({
   selector: 'zed-surveillance-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead, StepTracker, PayDisclaimer],
   templateUrl: './surveillance-payment.html',
-  styleUrl: './payment-form.scss',
+  styleUrl: './payment-step.scss',
 })
 export class SurveillancePaymentPage implements OnInit {
-  /** 2026-11-14: the three steps of the page, for the step tracker. */
-  protected readonly payStepList = [
-    { key: 'disclaimer', label: 'Disclaimer' },
-    { key: 'instructions', label: 'Instructions' },
-    { key: 'payment', label: 'Payment' },
-  ];
-  protected payStepIndex(step: string): number {
-    return this.payStepList.findIndex((x) => x.key === step);
-  }
-
   private readonly api = inject(SurveillancePaymentApi);
+  private readonly profile = inject(ProfileApi);
   private readonly router = inject(Router);
 
   /** Route parameter (Bronze, Silver, Gold, ZEDX or a level the Admin added; any case). */
@@ -57,6 +55,35 @@ export class SurveillancePaymentPage implements OnInit {
   protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly submitted = signal(false);
   protected readonly panModal = signal(false);
+
+  /** The unit's billing details (api/msme/profile); the card is left out when they cannot be read. */
+  protected readonly billing = signal<PaymentBilling | null>(null);
+
+  protected readonly subtitle = computed(() =>
+    this.step() === 'payment' ? 'Step 2 of 4: confirm tax details and the amount before you pay.'
+      : this.step() === 'instructions' ? 'Step 1 of 4: read the instructions before payment.'
+        : this.step() ? 'Step 1 of 4: read and accept the disclaimer before payment.' : null);
+
+  protected readonly steps = computed<TrackerStep[]>(() => {
+    const atFee = this.step() === 'payment';
+    return [
+      { label: 'Disclaimer', note: atFee ? 'Read and accept' : 'You are here' },
+      { label: 'Fee & tax details', note: atFee ? 'You are here' : 'GSTIN, TDS, coupon' },
+      { label: 'Payment', note: 'Secure gateway' },
+      { label: 'Confirmation', note: 'Receipt and next steps' },
+    ];
+  });
+
+  /** "You are paying for": the level's surveillance assessment. */
+  protected readonly rail = computed<PayRail>(() => ({
+    logo: this.logo(),
+    title: `${this.name()} Surveillance`,
+    sub: this.billing()?.unit ?? null,
+    facts: [
+      { label: 'Payment for', value: 'Surveillance assessment' },
+      { label: 'Certification', value: `${this.name()} Certification` },
+    ],
+  }));
 
   protected gstinApplicable: 'Yes' | 'No' | null = null;
   protected gstin = '';
@@ -86,6 +113,14 @@ export class SurveillancePaymentPage implements OnInit {
       return;
     }
     this.goStep('disclaimer');
+    // The unit's name and address for the rail and the billing card (best effort: the page works without them).
+    firstValueFrom(this.profile.get()).then((p) => this.billing.set(billingOf(p?.msme))).catch(() => undefined);
+  }
+
+  /** The page head's Back: from the fee step to the disclaimer, else to the dashboard. */
+  protected back(): void {
+    if (this.step() === 'payment') this.goStep('disclaimer');
+    else void this.router.navigate(['/msme/dashboard']);
   }
 
   protected goStep(step: Step): void {

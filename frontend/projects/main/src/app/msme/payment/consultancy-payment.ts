@@ -7,9 +7,14 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { handholdingLevel, handholdingLevelName } from '../handholding/handholding.api';
-import { ConsultancyOptions, ConsultancyPaymentApi } from './consultancy-payment.api';
+import { ConsultancyOptions, ConsultancyPaymentApi, milestoneTitle } from './consultancy-payment.api';
 import { FeeRow, postToGateway } from './payment.api';
 import { PageHead } from '../shared/page-head';
+import { StepTracker, TrackerStep } from '../shared/step-tracker';
+import { levelLogo } from '../shared/levels';
+import { ProfileApi } from '../profile/profile.api';
+import { PaymentBilling } from './payment-step';
+import { PayDisclaimer, PayRail, billingOf } from './pay-disclaimer';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
@@ -21,25 +26,19 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  * Frontend/Msme/HandholdingSupport.cshtml (disclaimer, instructions, payment options and summary, PAN
  * mismatch pop-up). The milestone, fee and amount are decided by the API, which re-checks on every call
  * that the milestone can be paid (previous milestone accepted).
+ * 2026-11-17 (the user's apply-and-pay designs, as the certification apply flow): page head with "Step n of 4", the four-step
+ * tracker, the disclaimer card with an explicit consent tick and "You are paying for" (the milestone) on the right, then the fee
+ * and tax step (Yes / No toggles, billing details, the fee summary card beside the form).
  */
 @Component({
   selector: 'zed-consultancy-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead, StepTracker, PayDisclaimer],
   templateUrl: './consultancy-payment.html',
-  styleUrl: './payment-form.scss',
+  styleUrl: './payment-step.scss',
 })
 export class ConsultancyPaymentPage implements OnInit {
-  /** 2026-11-14: the three steps of the page, for the step tracker. */
-  protected readonly payStepList = [
-    { key: 'disclaimer', label: 'Disclaimer' },
-    { key: 'instructions', label: 'Instructions' },
-    { key: 'payment', label: 'Payment' },
-  ];
-  protected payStepIndex(step: string): number {
-    return this.payStepList.findIndex((x) => x.key === step);
-  }
-
   private readonly api = inject(ConsultancyPaymentApi);
+  private readonly profile = inject(ProfileApi);
   private readonly router = inject(Router);
 
   /** Route parameter (Silver or Gold; any case). */
@@ -56,6 +55,38 @@ export class ConsultancyPaymentPage implements OnInit {
   protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly submitted = signal(false);
   protected readonly panModal = signal(false);
+
+  /** The unit's billing details (api/msme/profile); the card is left out when they cannot be read. */
+  protected readonly billing = signal<PaymentBilling | null>(null);
+  protected readonly logo = computed(() => levelLogo(this.level() ?? 'Silver'));
+  /** "Milestone 1: Baseline Diagnostic Study and Handholding Action Plan". */
+  protected readonly milestoneLabel = computed(() => milestoneTitle(this.milestone()));
+
+  protected readonly subtitle = computed(() =>
+    this.step() === 'payment' ? 'Step 2 of 4: confirm tax details and the amount before you pay.'
+      : this.step() === 'instructions' ? 'Step 1 of 4: read the instructions before payment.'
+        : this.step() ? 'Step 1 of 4: read and accept the disclaimer before payment.' : null);
+
+  protected readonly steps = computed<TrackerStep[]>(() => {
+    const atFee = this.step() === 'payment';
+    return [
+      { label: 'Disclaimer', note: atFee ? 'Read and accept' : 'You are here' },
+      { label: 'Fee & tax details', note: atFee ? 'You are here' : 'GSTIN, TDS, coupon' },
+      { label: 'Payment', note: 'Secure gateway' },
+      { label: 'Confirmation', note: 'Receipt and next steps' },
+    ];
+  });
+
+  /** "You are paying for": the level's handholding milestone due. */
+  protected readonly rail = computed<PayRail>(() => ({
+    logo: this.logo(),
+    title: `${this.levelLabel()} Handholding support`,
+    sub: this.billing()?.unit ?? null,
+    facts: [
+      { label: 'Milestone', value: this.milestone() ? `Milestone ${this.milestone()}` : '—' },
+      ...(this.milestoneLabel() ? [{ label: 'Covers', value: this.milestoneLabel()! }] : []),
+    ],
+  }));
 
   protected gstinApplicable: 'Yes' | 'No' | null = null;
   protected gstin = '';
@@ -86,6 +117,14 @@ export class ConsultancyPaymentPage implements OnInit {
     }
     this.milestone.set(status.nextMilestone);
     this.goStep('disclaimer');
+    // The unit's name and address for the rail and the billing card (best effort: the page works without them).
+    firstValueFrom(this.profile.get()).then((p) => this.billing.set(billingOf(p?.msme))).catch(() => undefined);
+  }
+
+  /** The page head's Back: from the fee step to the disclaimer, else to Handholding support. */
+  protected back(): void {
+    if (this.step() === 'payment') this.goStep('disclaimer');
+    else void this.router.navigate(['/msme/handholding'], { queryParams: { level: this.level() } });
   }
 
   protected goStep(step: Step): void {

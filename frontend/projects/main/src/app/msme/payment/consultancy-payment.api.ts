@@ -3,7 +3,24 @@ import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { LevelState } from '../handholding/handholding.api';
-import { CheckoutRequest, CheckoutResponse, GstinResult, PaymentOptions } from './payment.api';
+import { CheckoutRequest, CheckoutResponse, GstinResult, PaymentConfirmation, PaymentOptions } from './payment.api';
+
+/** What each handholding milestone is (the legacy success page's wording). */
+const MILESTONES: Record<number, string> = {
+  1: 'Baseline Diagnostic Study and Handholding Action Plan',
+  2: 'Implementation & Progress Review 1',
+  3: 'Implementation & Progress Review 2',
+};
+
+/** "Baseline Diagnostic Study and Handholding Action Plan" for milestone 1; null for anything else. */
+export function milestoneTitle(milestone: number | null | undefined): string | null {
+  return MILESTONES[milestone ?? 0] ?? null;
+}
+
+/** 2026-11-17: the handholding payment's confirmation (ConsultancyConfirmationController): the certification one plus the milestone. */
+export interface ConsultancyConfirmation extends PaymentConfirmation {
+  milestone: number | null;
+}
 
 export interface ConsultancyOptions extends PaymentOptions {
   /** Milestone the payment is for (decided by the server). */
@@ -46,4 +63,18 @@ export class ConsultancyPaymentApi {
   checkout(certification: string, req: ConsultancyCheckoutRequest): Observable<CheckoutResponse> {
     return this.http.post<CheckoutResponse>(`${this.base}/${encodeURIComponent(certification)}/checkout`, req);
   }
+
+  /** The level's latest milestone payment (404 when there is none, or it is not <code>milestone</code>'s). */
+  confirmation(certification: string, milestone?: number | null): Observable<ConsultancyConfirmation> {
+    return this.http.get<ConsultancyConfirmation>(`${this.base}/${encodeURIComponent(certification)}/confirmation`, { params: milestoneParam(milestone) });
+  }
+
+  /** The confirmation mail again, to the unit's registered e-mail (masked in the answer). */
+  emailCopy(certification: string, milestone?: number | null): Observable<{ sentTo: string }> {
+    return this.http.post<{ sentTo: string }>(`${this.base}/${encodeURIComponent(certification)}/email-copy`, {}, { params: milestoneParam(milestone) });
+  }
+}
+
+function milestoneParam(milestone: number | null | undefined): Record<string, number> {
+  return milestone ? { milestone } : {};
 }
