@@ -16,9 +16,9 @@
 /* 2026-11-17 (the user's design "ZED Login 3a"): flat, square, no card; 2 px light borders. */
 .login-login { --ml-line: #cfe0dc; }
 .login-login .login-form h2, .login-login h2 { font-size: 26px; font-weight: 800; color: #1c2b2d; margin: 0; }
-.ml-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
-.login-login .login-form .ml-heading, .login-login h1.ml-heading { font-size: 40px; font-weight: 800; color: #1c2b2d; margin: 0; letter-spacing: -0.4px; line-height: 1.1; }
-.ml-lead { color: #4d5f61; font-size: 15px; margin: 8px 0 26px; }
+.ml-tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 3px 9px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
+.login-login .login-form .ml-heading, .login-login h1.ml-heading { font-size: 30px; font-weight: 800; color: #1c2b2d; margin: 0; letter-spacing: -0.3px; line-height: 1.15; }
+.ml-lead { color: #4d5f61; font-size: 14px; margin: 6px 0 20px; }
 .login-form label { color: #1c2b2d; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .login-form .form-control { height: 50px; border-radius: 0; border: 2px solid var(--ml-line, #cfe0dc); background: #fff; font-size: 16px; color: #1c2b2d; }
 .login-form .form-control::placeholder { color: #8a9a9c; }
@@ -65,3 +65,16 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .ml-register:hover, .ml-register:focus-visible { background: var(--zt-dark, #1f5c61); color: #fff; }
 @media (max-width: 900px) { .ml-new { padding: 18px 20px; } .login-login .login-form .ml-heading, .login-login h1.ml-heading { font-size: 30px; } .ml-lead { margin-bottom: 18px; } }
 @media (max-width: 480px) { .ml-new { flex-direction: column; align-items: stretch; } .ml-register { justify-content: center; } }
+
+// 2026-11-17 (the user: "fix in one page"): the form tighter when the window is not tall.
+@media (min-width: 901px) and (max-height: 900px) {
+  .ml-tag { margin-bottom: 10px; }
+  .ml-lead { margin: 4px 0 14px; }
+  .login-form .mb-3 { margin-bottom: 12px !important; }
+  .login-form .form-control { height: 44px; }
+  .in-icon, .in-toggle { top: 22px; }
+  .in-toggle { height: 40px; }
+  .ml-two .btn { height: 46px; }
+  .ml-new { padding: 14px 56px 16px; }
+}
+@media (min-width: 901px) and (max-height: 680px) { .ml-new { padding: 10px 56px 12px; } .ml-lead { margin-bottom: 10px; } }

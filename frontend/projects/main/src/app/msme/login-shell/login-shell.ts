@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
-import { PublicLevels } from '../shared/levels';
+import { PublicLevels, levelLogo } from '../shared/levels';
 import { ContentTextComponent } from '../../content/content-text';
 
 /** The live portal's banner (Banner_20220428033601.png, resized); no longer shown on the login pages since 2026-11-14. */
@@ -10,7 +10,8 @@ const LEVEL_COLOURS: Readonly<Record<string, string>> = { BRONZE: '#b0683a', SIL
 
 /** The levels of the login hero: the numbered steps (Bronze, Silver, Gold and any other) and ZED-X (Export) apart, coloured. */
 export function loginLevels(list: readonly { code: string; name: string }[]) {
-  const shown = list.map((l) => ({ ...l, color: LEVEL_COLOURS[l.code.toUpperCase()] ?? 'var(--zt-mid2, #2a8a8c)' }));
+  // 2026-11-17 (the user): each level with its certification logo (the Admin's, else the built-in picture).
+  const shown = list.map((l) => ({ ...l, color: LEVEL_COLOURS[l.code.toUpperCase()] ?? 'var(--zt-mid2, #2a8a8c)', logo: levelLogo(l.code) }));
   return { steps: shown.filter((l) => l.code.toUpperCase() !== 'ZEDX'), export: shown.filter((l) => l.code.toUpperCase() === 'ZEDX') };
 }
 
@@ -78,13 +79,13 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
               @if (levels().steps.length) {
                 <ul class="ml-lv-box">
                   @for (l of levels().steps; track l.name; let i = $index) {
-                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
+                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
                   }
                 </ul>
               }
               @for (l of levels().export; track l.name) {
                 <ul class="ml-lv-box ml-lv-x">
-                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>Export</small></li>
+                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>Export</small></li>
                 </ul>
               }
             </div>

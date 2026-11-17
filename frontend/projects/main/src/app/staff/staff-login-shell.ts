@@ -59,13 +59,13 @@ import { loginLevels } from '../msme/login-shell/login-shell';
               @if (levels().steps.length) {
                 <ul class="ml-lv-box">
                   @for (l of levels().steps; track l.name; let i = $index) {
-                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
+                    <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>{{ (i + 1).toString().padStart(2, '0') }}</small></li>
                   }
                 </ul>
               }
               @for (l of levels().export; track l.name) {
                 <ul class="ml-lv-box ml-lv-x">
-                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><b>{{ l.name }}</b><small>Export</small></li>
+                  <li class="ml-level"><span class="ml-bar" [style.background]="l.color"></span><span class="ml-lv-name"><img [src]="l.logo" alt="" />{{ l.name }}</span><small>Export</small></li>
                 </ul>
               }
             </div>
@@ -98,7 +98,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
   `,
   styleUrl: '../msme/login-shell/login-frame.scss',
   styles: `
-    .ml-tag { align-self: flex-start; display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 10px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
+    .ml-tag { align-self: flex-start; display: inline-block; font-size: 11.5px; font-weight: 600; padding: 3px 9px; background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); margin-bottom: 18px; }
     .ml-quick li { border-bottom: 0 !important; }
     .ml-quick a { text-decoration: none; min-width: 0; }
     .ml-quick a strong { color: var(--zt-dark, #1f5c61); }
@@ -107,6 +107,7 @@ import { loginLevels } from '../msme/login-shell/login-shell';
     .ml-secure strong { display: block; font-size: 15px; font-weight: 800; color: var(--ml-ink); }
     .ml-secure small { display: block; font-size: 13px; color: var(--ml-muted); }
     @media (max-width: 900px) { .ml-secure { padding: 14px 20px; } }
+    @media (min-width: 901px) and (max-height: 900px) { .ml-tag { margin-bottom: 10px; } .ml-secure { padding: 12px 56px 14px; } }
   `,
 })
 export class StaffLoginShell {

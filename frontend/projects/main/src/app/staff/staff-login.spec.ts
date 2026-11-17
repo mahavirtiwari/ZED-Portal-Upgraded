@@ -86,7 +86,7 @@ describe('StaffLoginPage (2026-11-07 design)', () => {
     // 2026-11-17 (the MSME login's design): Login and Forgot password? side by side.
     expect([...el.querySelectorAll('.ml-two .btn')].map((b) => b.textContent!.trim())).toEqual(['Login', 'Forgot password?']);
     expect(el.querySelector('.ml-two a.ml-btn-forgot')!.getAttribute('href')).toBe('/forgot-password');
-    expect([...el.querySelectorAll('.ml-level b')].map((c) => c.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
+    expect([...el.querySelectorAll('.ml-level .ml-lv-name')].map((c) => c.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
     expect(el.querySelector('.ml-lv-x .ml-level small')!.textContent).toBe('Export');
     expect([...el.querySelectorAll('.ml-quick strong')].map((c) => c.textContent!.trim())).toEqual(['MSME login →', 'Register your enterprise →']);
     expect(el.querySelector('.ml-secure')!.textContent).toContain('Authorised users only');
