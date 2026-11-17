@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { AuthService } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ChecklistRecord, SubmissionChecklistApi } from './quality.api';
@@ -54,6 +54,8 @@ export class ChecklistRecords {
 
   protected readonly records = signal<ChecklistRecord[]>([]);
   protected readonly open = signal<number | null>(null);
+  /** There is something to show (2026-11-17: the details pages give the right rail its column only then). */
+  readonly shown = computed(() => this.records().length > 0);
 
   constructor() {
     effect(() => {

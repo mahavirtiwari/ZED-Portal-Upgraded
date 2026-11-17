@@ -378,18 +378,20 @@ describe('DaDetailsPage', () => {
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('not available');
   });
 
-  it('shows the assessment summary as a card of key facts with the location', async () => {
+  it('shows the assessment summary as a three-column card of key facts with the location', async () => {
     await open(details({ msme: { ...details().msme, PlantAddress: 'Plot 4, Industrial Area', Certification: 'Bronze' } }));
     const factEls = Array.from(el.querySelectorAll('.summary .fact'));
     const facts = new Map(factEls.map((f) => [f.querySelector('dt')!.textContent!.trim(), f.querySelector('dd')!.textContent!.replace(/\s+/g, ' ').trim()]));
     expect(facts.get('ZED ID')).toBe('ZEDMSME000001');
-    expect(facts.get('Unit Name')).toBe('Unit 1');
-    expect(facts.get('Agency Name')).toBe('AGENCY1 - Agency One');
+    expect(facts.get('Unit name')).toBe('Unit 1');
+    expect(facts.get('Assessment agency')).toBe('AGENCY1 - Agency One');
     // Empty values show a dash.
-    expect(facts.get('Udyam Registration Number')).toBe('—');
-    expect(facts.get('Desktop Assessor Name')).toBe('—');
-    // The long address spans two columns; the location is one of the facts, with its map link.
-    expect(factEls.find((f) => f.querySelector('dt')!.textContent!.trim() === 'Unit Address')!.classList).toContain('wide');
+    expect(facts.get('Udyam registration')).toBe('—');
+    expect(facts.get('Desktop assessor')).toBe('—');
+    // The long address takes the last row; the location is one of the facts, with its map link.
+    expect(factEls.at(-1)!.querySelector('dt')!.textContent!.trim()).toBe('Unit address');
+    expect(factEls.at(-1)!.classList).toContain('wide');
+    expect(facts.get('Unit address')).toBe('Plot 4, Industrial Area');
     expect(facts.get('Location')).toContain('28.6');
     expect(facts.get('Location')).toContain('77.2');
     const map = el.querySelector<HTMLAnchorElement>('.summary a.map-link')!;
@@ -399,9 +401,35 @@ describe('DaDetailsPage', () => {
     expect(el.querySelector('table.kv')).toBeNull();
   });
 
+  it('opens with the result and the five-step stage tracker, and lists the NC rounds with their dates (design 14)', async () => {
+    await open(details({ msme: { ...details().msme, BasicInfoStatus: '13 Nov 2026', DocVerifiAllot: '13 Nov 2026', CompletedOn: '14 Nov 2026',
+      CertificationStatus: 6, NcCount: 2, SecNcCount: 2, Nc1Raised: '14 Nov 2026', Nc1Submitted: '14 Nov 2026', Nc2Raised: '14 Nov 2026', Nc2Submitted: '14 Nov 2026',
+      IsCertified: true } }));
+    expect(el.querySelector('[data-result]')!.textContent!.trim()).toBe('Certified');
+    const steps = Array.from(el.querySelectorAll('zed-step-tracker .st-step'));
+    expect(steps.map((s) => s.querySelector('.st-label')!.textContent!.trim())).toEqual(['Documents submitted', 'Allotted', 'NCs closed', 'Verified', 'Certified']);
+    expect(steps.every((s) => s.classList.contains('st-done'))).toBe(true);
+    expect(steps[2].querySelector('.st-note')!.textContent!.trim()).toBe('2 of 2');
+    const ncs = Array.from(el.querySelectorAll('[data-nc-card] li')).map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
+    expect(ncs).toEqual(['NC 1 Raised 14 Nov 2026 · Unit replied 14 Nov 2026 Closed', 'NC 2 Raised 14 Nov 2026 · Unit replied 14 Nov 2026 Closed']);
+    expect(Array.from(el.querySelectorAll('.nav-link')).map((b) => b.textContent!.trim())).toEqual(
+      ['Assessment overview', 'Basic information', 'ESG compliance', 'Parameters']);
+  });
+
+  it('does not say Certified without the server saying so, and shows an open NC round', async () => {
+    await open(details({ msme: { ...details().msme, BasicInfoStatus: '13 Nov 2026', DocVerifiAllot: '13 Nov 2026', CertificationStatus: 4, NcCount: 1,
+      SecNcCount: 1, Nc1Raised: '14 Nov 2026' } }));
+    expect(el.querySelector('[data-result]')!.textContent!.trim()).toBe('NC 1 open');
+    const steps = Array.from(el.querySelectorAll('zed-step-tracker .st-step'));
+    expect(steps.map((s) => s.classList.contains('st-done'))).toEqual([true, true, false, false, false]);
+    expect(steps[2].getAttribute('aria-current')).toBe('step');
+    expect(steps[2].querySelector('.st-note')!.textContent!.trim()).toBe('0 of 1');
+    expect(el.querySelector('[data-nc-card] li')!.textContent!.replace(/\s+/g, ' ').trim()).toBe("NC 1 Raised 14 Nov 2026 · Awaiting the unit's reply Open");
+  });
+
   it('numbers the basic information rows 1, 2, 3 in display order', async () => {
     await open(details({ products: [{ ...details().products[0], DescriptionKind: 'pdf', DescriptionUrl: BASE + '/files/desc.pdf', DescriptionOpened: false }] }));
-    tab('Basic Information');
+    tab('Basic information');
     await settle();
     for (const r of http.match((req) => req.url.startsWith('/api/staff/app-form-values'))) r.flush([]);
     await settle();
@@ -538,7 +566,7 @@ describe('DaDetailsPage', () => {
       requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '2', Conformance: 'No', AssessorRemarks: 'Policy is not signed', OpenedFlag: true }],
       ncRounds: [ncRound],
     }));
-    tab('NC1');
+    tab('NC 1');
     await settle();
     const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item'));
     // Only the parameters with requirements in the round.
@@ -592,7 +620,7 @@ describe('DaDetailsPage', () => {
       sections: [], requirements: [], evidences: [],
     };
     await open(details({ msme: { ...details().msme, CertificationStatus: 4, NcCount: 1, SecNcCount: 0 }, ncRounds: [ncRound] }));
-    tab('NC1');
+    tab('NC 1');
     await settle();
     expect(el.textContent).toContain('Basic Information fields found not valid are checked again on the Basic Information tab.');
     expect(Array.from(el.querySelectorAll<HTMLInputElement>('.submit-bar input[type=button]')).map((b) => b.value)).toContain('Final Submit');
@@ -661,7 +689,7 @@ describe('DaDetailsPage (surveillance ESG tab)', () => {
       }),
     );
     await settle();
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.nav-link')).find((b) => b.textContent?.trim() === 'Esg Compliance')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.nav-link')).find((b) => b.textContent?.trim() === 'ESG compliance')!.click();
     await settle();
 
     expect(el.querySelector('.numberCircle')!.textContent!.trim()).toBe('3');

@@ -251,6 +251,8 @@ public sealed class SiteReviewController(
         var moved = main.Text("PhotosPath").Length > 0;
         var qc = DashboardScreens.HidesNames(user, HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
         var msme = Pick(main, MsmeFields);
+        // 2026-11-17 (staff redesign): the page's result and stage tracker show "Certified" only for a certified record.
+        msme["IsCertified"] = record.IsCertified;
         if (!qc)
         {
             foreach (var f in StaffNameFields) msme[f] = Value(main, f);

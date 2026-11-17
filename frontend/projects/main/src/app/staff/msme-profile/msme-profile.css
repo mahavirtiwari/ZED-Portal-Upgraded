@@ -1,0 +1,38 @@
+/* 2026-11-17 (the user's staff design 15): identity header, four fact cards on a two-column grid, the edit history card. */
+.pf-card { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); margin: 0 0 18px; min-width: 0; }
+.pf-identity { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 18px; padding: 18px 22px; }
+.pf-avatar { flex: none; width: 54px; height: 54px; border-radius: 12px; background: #f6d27a; color: #7a4d00; display: grid; place-items: center;
+  font-size: 24px; font-weight: 800; }
+.pf-id-text { flex: 1; min-width: 220px; }
+.pf-name { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.pf-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pf-tag { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dfe7e8; border-radius: 8px; padding: 3px 10px 3px 4px; font-size: 13px;
+  color: #24393b; }
+.pf-tag small { background: #e6f2f3; color: var(--zt-dark, #1f5c61); border-radius: 5px; padding: 2px 7px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; }
+.pf-chip { display: inline-block; border-radius: 12px; padding: 3px 11px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  background: var(--zt-soft, #d4ebe6); color: var(--zt-ink, #173f44); }
+.pf-chip.pf-type { background: #fdf0d8; color: #8a5a00; }
+.pf-links { display: flex; flex-wrap: wrap; gap: 10px; }
+.pf-links .btn { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; font-weight: 600; padding: 8px 18px; }
+.pf-links .btn-ph { background: #e8eff0; border: 0; color: var(--zt-ink, #173f44); }
+.pf-links .btn-ph:hover { background: #dbe7e8; }
+.pf-links svg, .pf-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; align-items: start; }
+.pf-card-h { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #edf2f2; }
+.pf-ico { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #eef6f5; display: grid; place-items: center; color: var(--zt-dark, #1f5c61); }
+.pf-bar { margin: 0; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
+.pf-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 0; padding: 18px 20px; }
+.pf-fact { min-width: 0; }
+.pf-fact.wide { grid-column: 1 / -1; }
+.pf-fact dt { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5f6f70; margin: 0 0 4px; }
+.pf-fact dd { margin: 0; font-size: 14.5px; color: #1b2a2c; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.pf-fact .form-control, .pf-fact .form-select { height: 34px; padding: 4px 8px; font-size: 14px; }
+.pf-show { border: 0; background: none; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--zt-mid2, #2a8a8c); }
+.pf-show:hover, .pf-show:focus-visible { color: var(--zt-dark, #1f5c61); text-decoration: underline; }
+.pf-history-body { padding: 14px 20px 6px; }
+@media (max-width: 991.98px) { .pf-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 479.98px) {
+  .pf-facts { grid-template-columns: minmax(0, 1fr); }
+  .pf-identity { padding: 16px; }
+}

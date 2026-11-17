@@ -102,6 +102,20 @@ describe('SaDetailsPage', () => {
     expect(images.map((i) => i.getAttribute('src'))).toEqual([FILES + 'mobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/9.jpg']);
   });
 
+  it('opens with the result, the site stage tracker, the facts in three columns and the NC rounds (design 14, site)', async () => {
+    await open(details({ msme: { ...details().msme, BasicInfoStatus: '01 Nov 2026', DesktopVerificationCompleted: '03 Nov 2026', AssessmentDate: '10 Nov 2026',
+      CertificationStatus: 16, NcCount: 1, Nc1Raised: '11 Nov 2026', Nc1Submitted: '12 Nov 2026', CompletedOn: '14 Nov 2026', IsCertified: true, PlantAddress: 'Plot 4' } }));
+    expect(el.querySelector('zed-page-head h2')!.textContent!.trim()).toBe('Unit 1 · Silver');
+    expect(el.querySelector('[data-result]')!.textContent!.trim()).toBe('Certified');
+    const steps = Array.from(el.querySelectorAll('zed-step-tracker .st-step'));
+    expect(steps.map((s) => s.querySelector('.st-label')!.textContent!.trim())).toEqual(['Documents submitted', 'Desktop verified', 'Site visit', 'NCs closed', 'Certified']);
+    expect(steps.every((s) => s.classList.contains('st-done'))).toBe(true);
+    const facts = new Map(Array.from(el.querySelectorAll('.summary .fact')).map((f) => [f.querySelector('dt')!.textContent!.trim(), f.querySelector('dd')!.textContent!.trim()]));
+    expect(facts.get('Assessment agency')).toBe('AGENCYSV - Agency SV');
+    expect(facts.get('Unit address')).toBe('Plot 4');
+    expect(el.querySelector('[data-nc-card] li')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('NC 1 Raised 11 Nov 2026 · Unit replied 12 Nov 2026 Closed');
+  });
+
   it("shows each assessor's days with the selfies in a preview and where they were taken (2026-11-16)", async () => {
     const selfie = FILES + 'mobileapi/Attendance/ZEDMSME000001/Silver/55.jpg';
     await open(details({

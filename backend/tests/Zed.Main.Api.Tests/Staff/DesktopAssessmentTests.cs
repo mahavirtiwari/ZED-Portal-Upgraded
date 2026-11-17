@@ -164,6 +164,21 @@ public sealed class DesktopAssessmentTests : IDisposable
         Assert.Equal(expectedRounds, DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_DETAILS_NC").Count());
     }
 
+    /// <summary>2026-11-17 (staff redesign): "Certified" only for status 6 with its desktop certificate number.</summary>
+    [Fact]
+    public async Task Review_page_says_whether_the_record_is_certified()
+    {
+        var client = await As("AGENCY1");
+        Assert.False((await client.GetFromJsonAsync<JsonElement>(Base)).GetProperty("msme").GetProperty("IsCertified").GetBoolean());
+        _record = new
+        {
+            ZedId = Zed, Certification = "Bronze", CertificationStatus = 6, NcCount = 0, NcStatus = 0, Nc1Status = 0, Nc2Status = 0, Nc3Status = 0, Nc4Status = 0,
+            Nc5Status = 0, DesktopAssessorId = "ASSESSOR1", DesktopAccepted = true, DesktopReasonForRejection = (string?)null, CertificationBodyUserId = "AGENCY1",
+            SiteAssessorId = (string?)null, CoAssessorId = (string?)null, DaCertificateNo = "ZED/B/1",
+        };
+        Assert.True((await client.GetFromJsonAsync<JsonElement>(Base)).GetProperty("msme").GetProperty("IsCertified").GetBoolean());
+    }
+
     [Fact]
     public async Task Qc_users_do_not_see_agency_and_assessor_names()
     {

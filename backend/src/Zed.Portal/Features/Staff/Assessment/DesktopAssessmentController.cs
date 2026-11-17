@@ -182,6 +182,8 @@ public sealed partial class DesktopAssessmentController(
 
         var moved = main.Text("PhotosPath").Length > 0;
         var msme = Pick(main, MsmeFields);
+        // 2026-11-17 (staff redesign): the page's result and stage tracker show "Certified" only for a certified record.
+        msme["IsCertified"] = record.IsCertified;
         if (!DashboardScreens.HidesNames(user, host.System))
         {
             foreach (var f in StaffNameFields) msme[f] = Value(main, f);

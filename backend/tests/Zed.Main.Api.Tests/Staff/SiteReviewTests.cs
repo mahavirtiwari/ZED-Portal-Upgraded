@@ -199,6 +199,16 @@ public sealed class SiteReviewTests : IDisposable
         Assert.False(json.GetProperty("permissions").GetProperty("assessorOnCurrentPortal").GetBoolean());
     }
 
+    /// <summary>2026-11-17 (staff redesign): the page says "Certified" only for a certified record (status 16 here).</summary>
+    [Fact]
+    public async Task Review_page_says_whether_the_record_is_certified()
+    {
+        var client = await As("AGENCYSV");
+        Assert.False((await client.GetFromJsonAsync<JsonElement>(Base)).GetProperty("msme").GetProperty("IsCertified").GetBoolean());
+        _record = Record(16, 1);
+        Assert.True((await client.GetFromJsonAsync<JsonElement>(Base)).GetProperty("msme").GetProperty("IsCertified").GetBoolean());
+    }
+
     [Fact]
     public async Task Qc_sees_no_names_and_no_site_data()
     {

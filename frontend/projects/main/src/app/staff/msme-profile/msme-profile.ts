@@ -2,12 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { SamePanUnits } from './same-pan';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { EditHistoryTable } from '../../msme/edit-history/edit-history';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { dashboardSetting } from '../admin-portal';
+import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
 
 export type ProfileRow = Record<string, string | number | boolean | null>;
 
@@ -35,91 +37,92 @@ export function staffProfileLink(zedId: string): string {
 
 type EditField = keyof StaffMsmeProfileUpdate;
 
-/** One label and value of the report; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address). */
+/** One label and value of a card; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address); `mask` = hidden until Show. */
 export interface InfoRow {
   label: string;
   source: 'unit' | 'enterprise';
   field: string;
   edit?: EditField;
   wide?: boolean;
+  mask?: 'pan' | 'email' | 'mobile';
 }
 
-/** One section of the report (2026-11-14, option B approved): a teal bar and two label-value pairs per row. */
+/** One fact card of the profile (2026-11-17, the user's staff design 15: four cards in a two-column grid). */
 export interface InfoSection {
   title: string;
+  icon: 'person' | 'pin' | 'unit' | 'list';
   rows: InfoRow[];
 }
 
-/** The fields of Views/Msme/Profile.cshtml, grouped; Selected Unit and Selected Unit Activity stay separate sections. */
+/**
+ * The fields of Views/Msme/Profile.cshtml, grouped in four cards. The ZED ID and the Udyam number are in the identity header.
+ * PAN, e-mail and mobile are masked until Show.
+ */
 export const PROFILE_SECTIONS: InfoSection[] = [
   {
-    title: 'Owner and Enterprise',
+    title: 'Owner and enterprise',
+    icon: 'person',
     rows: [
-      { label: 'ZED ID', source: 'unit', field: 'ZedId' },
-      { label: 'Udyam Number', source: 'enterprise', field: 'UdyogAadharNo' },
-      { label: 'Owner Name', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
-      { label: 'Enterprise Name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
-      { label: 'Organisation Type', source: 'enterprise', field: 'OrganisationTypeName' },
-      { label: 'Social Category', source: 'enterprise', field: 'SocialCategoryName' },
+      { label: 'Owner name', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
+      { label: 'Enterprise name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
+      { label: 'PAN', source: 'enterprise', field: 'PanNo', mask: 'pan' },
+      { label: 'Enterprise type', source: 'enterprise', field: 'EnterpriseTypee' },
+      { label: 'Organisation type', source: 'enterprise', field: 'OrganisationTypeName' },
+      { label: 'Social category', source: 'enterprise', field: 'SocialCategoryName' },
       { label: 'Gender', source: 'enterprise', field: 'Gender' },
-      { label: 'Physically Handicapped', source: 'enterprise', field: 'PH' },
-      { label: 'Email Id', source: 'enterprise', field: 'EmailId', edit: 'emailId' },
-      { label: 'Mobile No.', source: 'enterprise', field: 'MobileNo' },
-      { label: 'PAN', source: 'enterprise', field: 'PanNo' },
+      { label: 'Physically handicapped', source: 'enterprise', field: 'PH' },
     ],
   },
   {
-    title: 'Address and Business',
+    title: 'Address and business',
+    icon: 'pin',
     rows: [
-      { label: 'Registered Address', source: 'enterprise', field: 'Address', wide: true },
+      { label: 'Registered address', source: 'enterprise', field: 'Address', wide: true },
       { label: 'State', source: 'enterprise', field: 'StateName' },
       { label: 'District', source: 'enterprise', field: 'DistrictName' },
       { label: 'Pincode', source: 'enterprise', field: 'Pincode' },
-      { label: 'DIC Name', source: 'enterprise', field: 'DicName' },
-      { label: 'Major Activity', source: 'enterprise', field: 'MajorActivityName' },
-      { label: 'Enterprise Type', source: 'enterprise', field: 'EnterpriseTypee' },
-      { label: 'Incorporation Date', source: 'unit', field: 'IncorporationDate' },
-      { label: 'Whether Production Commenced', source: 'unit', field: 'WhetherProdCommenced' },
-      { label: 'Commencement Date', source: 'enterprise', field: 'CommmenceDate' },
-      { label: 'Total Employee', source: 'enterprise', field: 'TotalEmp' },
-      { label: 'Applied Date', source: 'enterprise', field: 'AppliedDate' },
+      { label: 'DIC name', source: 'enterprise', field: 'DicName' },
+      { label: 'Registered e-mail', source: 'enterprise', field: 'EmailId', edit: 'emailId', mask: 'email' },
+      { label: 'Mobile', source: 'enterprise', field: 'MobileNo', mask: 'mobile' },
+      { label: 'Major activity', source: 'enterprise', field: 'MajorActivityName' },
+      { label: 'Incorporation date', source: 'unit', field: 'IncorporationDate' },
+      { label: 'Production commenced', source: 'unit', field: 'WhetherProdCommenced' },
+      { label: 'Commencement date', source: 'enterprise', field: 'CommmenceDate' },
+      { label: 'Total employees', source: 'enterprise', field: 'TotalEmp' },
+      { label: 'Applied date', source: 'enterprise', field: 'AppliedDate' },
     ],
   },
   {
-    title: 'Selected Unit',
+    title: 'Selected unit',
+    icon: 'unit',
     rows: [
-      { label: 'Unit Name', source: 'unit', field: 'PUnitName', edit: 'pUnitName', wide: true },
-      { label: 'Unit Address', source: 'unit', field: 'PAddress', wide: true },
+      { label: 'Unit name', source: 'unit', field: 'PUnitName', edit: 'pUnitName' },
+      { label: 'Location', source: 'unit', field: 'PAddress', wide: true },
     ],
   },
   {
-    title: 'Selected Unit Activity',
+    title: 'Selected unit activity (NIC)',
+    icon: 'list',
     rows: [
       { label: 'Activity', source: 'unit', field: 'Activity' },
-      { label: 'NIC 2 Digit', source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
-      { label: 'NIC 4 Digit', source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
-      { label: 'NIC 5 Digit', source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
+      { label: 'NIC 2 digit', source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
+      { label: 'NIC 4 digit', source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
+      { label: 'NIC 5 digit', source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
     ],
   },
 ];
 
-/** A section's rows as table rows: a wide field alone, the others two per row. */
-export function pairRows(rows: InfoRow[]): InfoRow[][] {
-  const out: InfoRow[][] = [];
-  let pending: InfoRow | null = null;
-  for (const r of rows) {
-    if (r.wide) {
-      if (pending) { out.push([pending]); pending = null; }
-      out.push([r]);
-    } else if (pending) {
-      out.push([pending, r]);
-      pending = null;
-    } else {
-      pending = r;
-    }
+/** A value with only its ends showing ("AB•••••34F", "ab•••••@mail.test", "94•••••133"). */
+export function maskValue(value: string, kind: 'pan' | 'email' | 'mobile'): string {
+  const v = value.trim();
+  if (!v) return v;
+  const dots = '•••••';
+  if (kind === 'email') {
+    const at = v.indexOf('@');
+    if (at < 0) return v.slice(0, 2) + dots;
+    return v.slice(0, Math.min(2, at)) + dots + v.slice(at);
   }
-  if (pending) out.push([pending]);
-  return out;
+  return v.length <= 5 ? v.slice(0, 1) + dots : v.slice(0, 2) + dots + v.slice(-3);
 }
 
 /**
@@ -127,35 +130,32 @@ export function pairRows(rows: InfoRow[]): InfoRow[][] {
  * Selected Unit Activity), read through api/staff/msme-profile/{zedId}, which checks the role and, for agencies and
  * assessors, the allotment. On the main portal the SuperAdmin can EDIT PROFILE (names, e-mail, unit name, NIC codes),
  * as on the old page.
+ * 2026-11-17 (the user's staff design 15): an identity header (the unit, its Udyam number, ZED ID, type and levels) with the
+ * links to its ZED ID history and assessment details, the facts in four cards on a two-column grid, PAN / e-mail / mobile
+ * masked until Show.
  */
 @Component({
   selector: 'zed-staff-msme-profile',
-  imports: [FormsModule, EditHistoryTable, SamePanUnits],
+  imports: [FormsModule, RouterLink, EditHistoryTable, SamePanUnits, PageHead],
   templateUrl: './msme-profile.html',
-  styles: `
-    .pf-unit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: -4px 0 14px; }
-    .pf-unit strong { font-size: 18px; color: #1d2b2c; }
-    .pf-unit .pf-id { color: #5f6f70; font-weight: 600; }
-    .pf-chip { display: inline-block; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
-    .pf-section { margin-bottom: 14px; }
-    .pf-bar { background: var(--zt-dark, #23656b); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; margin: 0; }
-    .pf-table { width: 100%; margin: 0; border-collapse: collapse; table-layout: fixed; background: #fff; }
-    .pf-table td { border: 1px solid #e1ecec; padding: 8px 10px; vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
-    .pf-table td.pf-label { background: #f4f8f8; color: #5f6f70; font-weight: 600; width: 20%; }
-    .pf-table td.pf-value { color: #1d2b2c; font-weight: 600; width: 30%; }
-    .pf-table .form-control, .pf-table .form-select { height: 34px; padding: 4px 8px; font-size: 14px; }
-    @media (max-width: 720px) {
-      .pf-table, .pf-table tbody, .pf-table tr, .pf-table td { display: block; width: 100% !important; }
-      .pf-table td.pf-label { border-bottom: 0; padding-bottom: 2px; }
-    }
-  `,
+  styleUrl: './msme-profile.css',
 })
 export class StaffMsmeProfilePage {
   private readonly http = inject(HttpClient);
   private readonly roleId = inject(AuthService).currentUser()?.roleId ?? 0;
   protected readonly zedId = inject(ActivatedRoute).snapshot.paramMap.get('zedId') ?? '';
-  /** The sections of the report, each as table rows of one or two fields. */
-  protected readonly sections = PROFILE_SECTIONS.map((s) => ({ title: s.title, rows: pairRows(s.rows) }));
+  protected readonly sections = PROFILE_SECTIONS;
+  protected readonly crumbs = staffCrumbs({ label: 'MSME Profile' });
+  /** The masked fields shown in full (Show). */
+  protected readonly revealed = signal<ReadonlySet<string>>(new Set());
+  /** ZED ID history: the logins with that screen (Master Admin and the dashboard logins). */
+  protected readonly historyLink = [7, 10, 11, 17].includes(this.roleId) ? ['/staff/history'] : null;
+  /** Assessment details of each level (not on the consultancy portal: handholding has no assessment pages). */
+  protected readonly assessmentLinks = computed(() => {
+    if (PORTAL_SYSTEM === 'consultancy' || ![7, 2, 3, 10, 8, 11, 17].includes(this.roleId)) return [];
+    const levels = this.profile()?.certifications ?? [];
+    return levels.map((c) => ({ level: c, link: ['/staff/assessment/da-details', this.zedId, c], label: levels.length > 1 ? `Assessment details · ${c}` : 'Assessment details' }));
+  });
   protected readonly profile = signal<StaffMsmeProfile | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -254,6 +254,30 @@ export class StaffMsmeProfilePage {
   /** A field's value; the unit address is put together from its parts. */
   protected value(p: StaffMsmeProfile, r: InfoRow): string {
     return r.field === 'PAddress' ? this.unitAddress() : this.show(r.source === 'unit' ? p.unit : p.enterprise, r.field);
+  }
+
+  /** The unit's name for the header: the enterprise, else the unit. */
+  protected name(p: StaffMsmeProfile): string {
+    return this.text(p.enterprise, 'EnterpriseName') || this.text(p.unit, 'PUnitName') || this.zedId;
+  }
+
+  /** A masked field's text: its ends only until Show. */
+  protected masked(p: StaffMsmeProfile, r: InfoRow): string {
+    const v = this.text(r.source === 'unit' ? p.unit : p.enterprise, r.field);
+    if (!v) return '-';
+    return r.mask && !this.revealed().has(r.field) ? maskValue(v, r.mask) : v;
+  }
+
+  protected hasValue(p: StaffMsmeProfile, r: InfoRow): boolean {
+    return !!this.text(r.source === 'unit' ? p.unit : p.enterprise, r.field).trim();
+  }
+
+  protected toggle(field: string): void {
+    this.revealed.update((s) => {
+      const next = new Set(s);
+      if (!next.delete(field)) next.add(field);
+      return next;
+    });
   }
 
   protected back(): void {

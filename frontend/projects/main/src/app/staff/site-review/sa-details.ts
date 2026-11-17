@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { SamePanUnits } from '../msme-profile/same-pan';
 import { FormChecksPanel } from '../assessment/form-checks';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Location } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { AuthService as QoAuth } from '@zed/shared';
@@ -18,6 +19,10 @@ import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread'
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
+import { PageHead } from '../../msme/shared/page-head';
+import { StepTracker } from '../../msme/shared/step-tracker';
+import { staffCrumbs } from '../staff-crumbs';
+import { UNIT_VIEW_STYLES, idName, ncLines, siteStage, unitResult } from '../assessment/da-details.layout';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -49,9 +54,9 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits, PageHead, StepTracker],
   templateUrl: './sa-details.html',
-  styles: [DETAILS_STYLES],
+  styles: [DETAILS_STYLES, UNIT_VIEW_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class SaDetailsPage {
@@ -98,6 +103,48 @@ export class SaDetailsPage {
 
   protected readonly level = computed(() => siteLevel(this.certification()));
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
+
+  // 2026-11-17 (the user's staff design 14, site variant): the shared header with the result, the stage tracker, the facts in
+  // three columns, the NC rounds in one card and the quality observations in the right rail.
+  protected readonly headTitle = computed(() => {
+    const d = this.data();
+    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || 'Assessment details';
+    return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
+  });
+  protected readonly headCrumbs = computed(() => staffCrumbs({ label: text(this.msme(), 'ZedId') || this.data()?.zedId || this.zedId() || 'Unit' }));
+  protected readonly result = computed(() => unitResult(this.msme()));
+  protected readonly stage = computed(() => siteStage(this.msme()));
+  protected readonly ncList = computed(() => ncLines(this.msme()));
+  /** The overview's facts, three to a row (the address and the meeting link are shown after them). */
+  protected readonly facts = computed(() => {
+    const m = this.msme();
+    const v = (c: string) => text(m, c);
+    const facts = [
+      { label: 'ZED ID', value: v('ZedId') },
+      { label: 'Unit name', value: v('PUnitName') },
+      { label: 'Udyam registration', value: v('UdyogAadharNo') },
+      { label: 'Level', value: v('Certification') },
+      { label: 'Mode of assessment', value: v('ModeOfAssessment') },
+      { label: 'Site assessment date', value: v('AssessmentDate') },
+      { label: 'Document submission', value: v('BasicInfoStatus') },
+      { label: 'Verification allocated', value: v('DocVerifiAllot') },
+      { label: 'Desktop verification completed', value: v('DesktopVerificationCompleted') },
+      { label: 'Site assessment completed', value: v('CompletedOn') },
+    ];
+    if (!this.isQc()) {
+      facts.push(
+        { label: 'Assessment agency', value: idName(m, 'CertificationBodyUserId', 'AgencyName') },
+        { label: 'Desktop assessor', value: idName(m, 'DesktopAssessorId', 'DesktopAssessorName') },
+        { label: 'Site assessor', value: idName(m, 'SiteAssessorId', 'SiteAssessorName') },
+      );
+      if (v('CoAssessorId')) facts.push({ label: 'Co-assessor', value: idName(m, 'CoAssessorId', 'CoAssessorName') });
+    }
+    return facts;
+  });
+  private readonly location = inject(Location);
+  protected goBack(): void {
+    this.location.back();
+  }
   protected readonly perms = computed(() => this.data()?.permissions ?? { review: NO_REVIEW, canWithdrawExemption: false, assessorOnCurrentPortal: false });
   protected readonly review = computed(() => this.perms().review ?? NO_REVIEW);
   protected readonly isQc = computed(() => this.data()?.role === 'QC');

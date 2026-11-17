@@ -1,22 +1,10 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Assessment Details</h3>
-    @if (data(); as d) {
-      <p class="page-sub head-ids">
-        <strong class="dash-text-clr">{{ t(msme(), 'ZedId') || d.zedId }}</strong>
-        @if (t(msme(), 'PUnitName')) { <span>{{ t(msme(), 'PUnitName') }}</span> }
-        <span class="zed-chip">{{ t(msme(), 'Certification') || d.certification }}</span>
-      </p>
-    } @else {
-      <p class="page-sub">{{ surveillance ? 'Surveillance assessment of the unit, next to its original certification.' : 'Site assessment of the unit: plan, meetings, site tour, parameters and NC rounds.' }}</p>
-    }
-  </div>
-  <div class="page-actions">
-    <button type="button" class="refresh-link btn btn-default" (click)="refresh()">
-      <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-    </button>
-  </div>
-</div>
+<!-- 2026-11-17 (the user's staff design 14, site variant): the shared header with the unit, its level and the result. -->
+<zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()"
+  [subtitle]="data() ? null : (surveillance ? 'Surveillance assessment of the unit, next to its original certification.' : 'Site assessment of the unit: plan, meetings, site tour, parameters and NC rounds.')">
+  @if (data()) { <span class="uv-chip uv-result" [class]="result().tone" data-result>{{ result().label }}</span> }
+  <button type="button" class="btn btn-ph" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-ph refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+</zed-page-head>
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">
@@ -41,7 +29,7 @@
   }
 
   <div class="zed-tabs">
-    <ul class="nav nav-tabs" role="tablist">
+    <ul class="nav nav-tabs uv-tabs" role="tablist">
       @for (id of [1, 2, 3, 4, 5, 6, 7]; track id) {
         <li class="nav-item" role="presentation">
           <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">{{ tabTitles[id] }}</button>
@@ -57,14 +45,17 @@
       </li>
     </ul>
 
-    <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
-    <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
-    <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
-    <div class="tab-content">
-      <div class="tab-title">
-        <div class="numberCircle">{{ tab() }}</div>
-        <h4>{{ tabTitles[tab()] }}</h4>
-      </div>
+    <!-- The quality observations (and the submission checklists) in a right rail that stays while the tabs change. -->
+    <div class="uv-grid" [class.uv-has-rail]="qo.shown() || cr.shown()">
+    <div class="tab-content uv-main">
+      @if (tab() === 1) {
+        <zed-step-tracker class="uv-tracker" [steps]="stage().steps" [current]="stage().current" label="Stage of the assessment" />
+      } @else {
+        <div class="tab-title">
+          <div class="numberCircle">{{ tab() }}</div>
+          <h4>{{ tabTitles[tab()] }}</h4>
+        </div>
+      }
 
       <!-- ================================================= surveillance: tabs 1-7 with the original certification -->
       @if (surveillance && tab() <= 7) {
@@ -75,60 +66,54 @@
       <!-- ================================================= overview -->
       @if (tab() === 1 && !surveillance) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <div class="overview">
-            <div class="table-responsive">
-              <table class="table table-zed kv">
-                <tbody>
-                  <tr><th>ZEDID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
-                  <tr><th>Unit Name</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
-                  <tr><th>Udyam Registration Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
-                  <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
-                  <tr><th>Document Submission Date</th><td>{{ t(msme(), 'BasicInfoStatus') }}</td></tr>
-                  <tr><th>Document Verification allocated on</th><td>{{ t(msme(), 'DocVerifiAllot') }}</td></tr>
-                  <tr><th>Document Verification Completed on</th><td>{{ t(msme(), 'DesktopVerificationCompleted') }}</td></tr>
-                  <tr><th>Certification</th><td>{{ t(msme(), 'Certification') }}</td></tr>
-                  <tr><th>Mode of Assessment</th><td>{{ t(msme(), 'ModeOfAssessment') }}</td></tr>
-                  <tr><th>Site Assessment Date</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
-                  @for (i of [1, 2, 3, 4, 5]; track i) {
-                    @if (t(msme(), 'Nc' + i + 'Raised')) {
-                      <tr><th>Non-Conformance {{ i }} Raised On</th><td>{{ t(msme(), 'Nc' + i + 'Raised') }}</td></tr>
-                    }
-                    @if (t(msme(), 'Nc' + i + 'Submitted')) {
-                      <tr><th>Non-Conformance {{ i }} Submitted On</th><td>{{ t(msme(), 'Nc' + i + 'Submitted') }}</td></tr>
-                    }
-                  }
-                  <tr><th>Site Assessment Completed On</th><td>{{ t(msme(), 'CompletedOn') }}</td></tr>
-                  @if (d.surveillance?.meetingLink; as link) {
-                    <tr><th>Meeting Link</th><td><a class="btn btn-primary btn-sm" [href]="link" target="_blank" rel="noopener noreferrer">Click here to Join</a></td></tr>
-                  }
-                  @if (!isQc()) {
-                    <tr><th>Agency Name</th><td>{{ t(msme(), 'CertificationBodyUserId') }} - {{ t(msme(), 'AgencyName') }}</td></tr>
-                    <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
-                    <tr><th>Site Assessor Name</th><td>{{ t(msme(), 'SiteAssessorId') }} - {{ t(msme(), 'SiteAssessorName') }}</td></tr>
-                    @if (t(msme(), 'CoAssessorId')) {
-                      <tr><th>Co Assessor Name</th><td>{{ t(msme(), 'CoAssessorId') }} - {{ t(msme(), 'CoAssessorName') }}</td></tr>
-                    }
-                  }
-                </tbody>
-              </table>
+          <section class="uv-card summary" aria-labelledby="saSummaryTitle">
+            <div class="uv-card-head">
+              <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h6M10 16h6" /></svg></span>
+              <h4 id="saSummaryTitle">Assessment summary</h4>
             </div>
-            <div class="locations">
-              <p class="sub-heading">Location</p>
-              @for (loc of [{ title: 'Desktop Assessment', lat: 'Latitude', lng: 'Longitude' }, { title: 'Site Assessment', lat: 'SaLatitude', lng: 'SaLongitude' }]; track loc.title) {
-                <div class="zed-card">
-                  <div class="card-head">
-                    <h4>{{ loc.title }}</h4>
-                    @if (mapUrl(d.location?.[loc.lat], d.location?.[loc.lng]); as href) {
-                      <a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">Click here to view map</a>
-                    }
-                  </div>
-                  <dl class="coords">
-                    <dt>Latitude</dt><dd>{{ t(d.location, loc.lat) }}</dd>
-                    <dt>Longitude</dt><dd>{{ t(d.location, loc.lng) }}</dd>
-                  </dl>
-                </div>
+            <dl class="uv-facts">
+              @for (fc of facts(); track fc.label) {
+                <div class="fact"><dt>{{ fc.label }}</dt><dd>{{ fc.value || '—' }}</dd></div>
               }
-            </div>
+              @if (d.surveillance?.meetingLink; as link) {
+                <div class="fact"><dt>Meeting link</dt><dd><a class="btn btn-primary btn-sm" [href]="link" target="_blank" rel="noopener noreferrer">Click here to Join</a></dd></div>
+              }
+              <div class="fact wide"><dt>Unit address</dt><dd>{{ t(msme(), 'PlantAddress') || '—' }}</dd></div>
+            </dl>
+          </section>
+          @if (ncList().length) {
+            <section class="uv-card" aria-labelledby="saNcTitle" data-nc-card>
+              <div class="uv-card-head">
+                <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>
+                <h4 id="saNcTitle">Non-conformances</h4>
+              </div>
+              <ul class="uv-ncs">
+                @for (nl of ncList(); track nl.round) {
+                  <li>
+                    <b>NC {{ nl.round }}</b>&ngsp;
+                    <span class="d">Raised {{ nl.raised }} · {{ nl.replied ? 'Unit replied ' + nl.replied : "Awaiting the unit's reply" }}</span>
+                    @if (nl.state) {&ngsp;<span class="uv-chip" [class.good]="nl.state === 'Closed'" [class.warn]="nl.state === 'Open'" [class.info]="nl.state === 'Replied'">{{ nl.state }}</span> }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+          <div class="locations">
+            <p class="sub-heading">Location</p>
+            @for (loc of [{ title: 'Desktop Assessment', lat: 'Latitude', lng: 'Longitude' }, { title: 'Site Assessment', lat: 'SaLatitude', lng: 'SaLongitude' }]; track loc.title) {
+              <div class="zed-card">
+                <div class="card-head">
+                  <h4>{{ loc.title }}</h4>
+                  @if (mapUrl(d.location?.[loc.lat], d.location?.[loc.lng]); as href) {
+                    <a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">Click here to view map</a>
+                  }
+                </div>
+                <dl class="coords">
+                  <dt>Latitude</dt><dd>{{ t(d.location, loc.lat) }}</dd>
+                  <dt>Longitude</dt><dd>{{ t(d.location, loc.lng) }}</dd>
+                </dl>
+              </div>
+            }
           </div>
         </div>
       }
@@ -891,6 +876,12 @@
           }
         </div>
       }
+    </div>
+    <aside class="uv-rail" aria-label="Quality observations">
+      <zed-qo-panel #qo [rail]="true" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+      <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
+      <zed-checklist-records #cr [zedId]="d.zedId" [certification]="d.certification" />
+    </aside>
     </div>
   </div>
 

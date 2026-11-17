@@ -9,6 +9,8 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
  * 2026-11-16 (approved): one quality observation: severity, category, what and whom it is about, the text, its time
  * history (raised, replied, closed, reopened, with who and when), and the actions of the viewer (the agency's reply; the
  * ZED team's close / reopen). Used on the review pages' panel and on the Quality observations page.
+ * 2026-11-17 (the user's staff design 14): the severity, category and status as chips, the parameter and whom it is about under
+ * them; Reopen stays disabled until the reason is typed.
  */
 @Component({
   selector: 'zed-qo-item',
@@ -18,17 +20,17 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     <article class="qo" [attr.data-qo]="o.id" [attr.data-status]="o.status">
       <div class="qo-head">
         <span class="qo-chip" [attr.data-sev]="o.severity">{{ o.severity }}</span>
-        <span class="qo-chip cat">{{ o.category }}</span>
-        <span class="qo-status" [attr.data-status]="o.status">{{ o.status }}</span>
-        @if (showUnit()) { <span class="qo-unit">{{ o.zedId }} · {{ o.certification }}</span> }
+        <b class="qo-cat">{{ o.category }}</b>
+        <span class="qo-status" [attr.data-status]="o.status">{{ o.status === 'Responded' ? 'Replied' : o.status }}</span>
       </div>
+      @if (showUnit()) { <div class="qo-unit">{{ o.zedId }} · {{ o.certification }}</div> }
+      <div class="qo-ref">{{ o.refLabel || (o.refType === 'Overall' || !o.refType ? (handholding ? 'Whole milestone' : 'Whole assessment') : o.refType) }}</div>
       <div class="qo-meta">
-        {{ o.refLabel || (o.refType === 'Overall' || !o.refType ? (handholding ? 'Whole milestone' : 'Whole assessment') : o.refType) }}
-        · about {{ aboutLabel(o) }}{{ o.aboutName ? ': ' + o.aboutName : '' }}
+        About {{ aboutLabel(o) }}{{ o.aboutName ? ': ' + o.aboutName : '' }}
         @if (o.stage) { · {{ o.stage }}{{ o.stage === 'NC' && o.round ? ' ' + o.round : '' }} }
       </div>
       <p class="qo-text">{{ o.text }}</p>
-      <button type="button" class="btn btn-link p-0 qo-toggle" (click)="open.set(!open())">{{ open() ? 'Hide' : 'Show' }} history ({{ o.history.length }})</button>
+      <button type="button" class="btn btn-link p-0 qo-toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">{{ open() ? 'Hide' : 'Show' }} history ({{ o.history.length }})</button>
       @if (open()) {
         <ol class="qo-history" data-qo-history>
           @for (h of o.history; track $index) {
@@ -44,17 +46,18 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
         <div class="qo-act">
           <textarea class="form-control" rows="2" maxlength="2000" [attr.aria-label]="'Reply to observation ' + o.id" placeholder="Your reply"
             [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
-          <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.respond(o.id, note().trim()))">REPLY</button>
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.respond(o.id, note().trim()))">Reply</button>
         </div>
       }
       @if (canClose()) {
         <div class="qo-act">
           <textarea class="form-control" rows="1" maxlength="2000" [attr.aria-label]="'Note on observation ' + o.id"
             [placeholder]="o.status === 'Closed' ? 'Why it is reopened (required)' : 'Note (optional)'" [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
+          <!-- Reopen stays disabled until the reason is typed. -->
           @if (o.status === 'Closed') {
-            <button type="button" class="btn btn-outline-danger btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">REOPEN</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">Reopen</button>
           } @else {
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="act(api.close(o.id, note().trim() || null))">CLOSE</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="act(api.close(o.id, note().trim() || null))">Close</button>
           }
         </div>
       }
@@ -62,24 +65,29 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     </article>
   `,
   styles: `
-    .qo { border: 1px solid #e3eaea; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
-    .qo[data-status='Open'] { border-left: 4px solid #d97706; }
-    .qo[data-status='Responded'] { border-left: 4px solid #1b75bb; }
-    .qo[data-status='Closed'] { border-left: 4px solid #2e9e4b; }
-    .qo-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .qo-chip { font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #f2f4f4; color: #3f4754; }
-    .qo-chip[data-sev='Minor'] { background: #e4f0fa; color: #1b75bb; }
-    .qo-chip[data-sev='Major'] { background: #fef3c7; color: #8a6100; }
+    .qo { border: 1px solid #e3eaea; border-left: 4px solid #d97706; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; background: #fff; }
+    .qo[data-status='Responded'] { border-left-color: var(--zt-mid2, #2a8a8c); }
+    .qo[data-status='Closed'] { border-left-color: #2e9e57; background: #fbfdfc; }
+    .qo-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .qo-chip { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 10px; padding: 2px 9px; background: #eef2f2; color: #3f4754; }
+    .qo-chip[data-sev='Minor'] { background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
+    .qo-chip[data-sev='Major'] { background: #fdf3e1; color: #8a5a00; }
     .qo-chip[data-sev='Critical'] { background: #fdecec; color: #a8303a; }
-    .qo-status { margin-left: auto; font-size: 12px; font-weight: 600; color: #5f6f70; }
-    .qo-unit { font-size: 12px; color: var(--zt-mid2, #2f7c83); font-weight: 600; }
-    .qo-meta { font-size: 12px; color: #5f6f70; margin-top: 4px; }
-    .qo-text { margin: 6px 0 2px; white-space: pre-line; }
-    .qo-toggle { font-size: 12px; }
+    .qo-cat { font-size: 13.5px; color: var(--zt-ink, #173f44); min-width: 0; overflow-wrap: anywhere; }
+    .qo-status { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 10px; padding: 2px 9px;
+      background: #fdf3e1; color: #8a5a00; }
+    .qo-status[data-status='Responded'] { background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
+    .qo-status[data-status='Closed'] { background: #e3f4e8; color: #1e7d43; }
+    .qo-unit { font-size: 12px; color: var(--zt-mid2, #2a8a8c); font-weight: 600; margin-top: 4px; }
+    .qo-ref { font-size: 13.5px; color: #24393b; margin-top: 6px; overflow-wrap: anywhere; }
+    .qo-meta { font-size: 12.5px; color: #5f6f70; margin-top: 2px; }
+    .qo-text { margin: 6px 0 4px; font-size: 13.5px; white-space: pre-line; overflow-wrap: anywhere; }
+    .qo-toggle { font-size: 13px; font-weight: 600; color: var(--zt-dark, #1f5c61); text-decoration: none; }
     .qo-history { font-size: 12px; margin: 6px 0 0; padding-left: 18px; color: #3f4754; }
     .qo-times { font-size: 12px; color: #5f6f70; margin-top: 4px; }
-    .qo-act { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
-    .qo-act textarea { min-height: 0; height: auto; font-size: 13px; }
+    .qo-act { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
+    .qo-act textarea { min-height: 0; height: auto; font-size: 13px; border-radius: 8px; }
+    .qo-act .btn { border-radius: 8px; font-weight: 600; white-space: nowrap; }
   `,
 })
 export class QualityObservationItem {

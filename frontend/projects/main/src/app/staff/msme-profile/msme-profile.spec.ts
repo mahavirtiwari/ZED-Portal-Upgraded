@@ -32,8 +32,48 @@ describe('staff MSME profile', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('[data-field="PUnitName"]')?.textContent).toContain('Unit One');
+    // 2026-11-17 (design 15): PAN, e-mail and mobile are masked until Show.
+    expect(el.querySelector('[data-field="PanNo"]')?.textContent).toContain('XX•••••34F');
+    expect(el.querySelector('[data-field="PanNo"]')?.textContent).not.toContain('XXXXXX234F');
+    el.querySelector<HTMLButtonElement>('[data-field="PanNo"] .pf-show')!.click();
+    fixture.detectChanges();
     expect(el.querySelector('[data-field="PanNo"]')?.textContent).toContain('XXXXXX234F');
+    expect(el.querySelector('[data-field="PanNo"] .pf-show')?.textContent?.trim()).toBe('Hide');
+    // Nothing to show: a dash and no Show button.
     expect(el.querySelector('[data-field="EmailId"]')?.textContent).toContain('-');
+    expect(el.querySelector('[data-field="EmailId"] .pf-show')).toBeNull();
+  });
+
+  it('opens with the identity header and its links (design 15)', async () => {
+    const { fixture, http } = create('ZEDMSME000001');
+    http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({
+      unit: { ZedId: 'ZEDMSME000001', PUnitName: 'Pump Engineers' },
+      enterprise: { EnterpriseName: 'Pump Enterprise', UdyogAadharNo: 'UDYAM-UP-16-0001476', EnterpriseTypee: 'Micro', EmailId: 'karan@mail.test', MobileNo: '9412345133' },
+      certifications: ['Bronze'],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const head = el.querySelector('[data-identity]')!;
+    expect(head.querySelector('.pf-name')?.textContent?.trim()).toBe('Pump Enterprise');
+    expect(head.textContent!.replace(/\s+/g, ' ')).toContain('Udyam UDYAM-UP-16-0001476');
+    expect(head.textContent).toContain('ZEDMSME000001');
+    expect([...head.querySelectorAll('.pf-chip')].map((c) => c.textContent?.trim())).toEqual(['Micro', 'Bronze']);
+    const links = [...head.querySelectorAll<HTMLAnchorElement>('.pf-links a')];
+    expect(links.map((a) => a.textContent?.trim())).toEqual(['ZED ID history', 'Assessment details']);
+    expect(links[0].getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
+    expect(links[1].getAttribute('href')).toBe('/staff/assessment/da-details/ZEDMSME000001/Bronze');
+    expect(el.querySelector('[data-field="EmailId"]')?.textContent).toContain('ka•••••@mail.test');
+    expect(el.querySelector('[data-field="MobileNo"]')?.textContent).toContain('94•••••133');
+  });
+
+  it('shows an agency no ZED ID history link', async () => {
+    const { fixture, http } = create('ZEDMSME000001', 2);
+    http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({ unit: { ZedId: 'ZEDMSME000001' }, enterprise: {}, certifications: ['Silver'] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const links = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.pf-links a')].map((a) => a.textContent?.trim());
+    expect(links).toEqual(['Assessment details']);
   });
 
   it('says so when the unit is not allotted to the user', async () => {
@@ -44,7 +84,7 @@ describe('staff MSME profile', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('not allotted to you');
   });
 
-  it('lays the page out as a compact report: the sections, two fields per row', async () => {
+  it('lays the facts out as four cards, two fields per row', async () => {
     const { fixture, http } = create('ZEDMSME000001');
     http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({
       unit: { ZedId: 'ZEDMSME000001', PUnitName: 'Unit One', PAddress: 'Plot 1', PDistrictName: 'Agra', PStateName: 'UP', PPin: '282001' },
@@ -53,16 +93,15 @@ describe('staff MSME profile', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('h3.registration-title')?.textContent?.trim()).toBe('MSME Profile');
+    expect(el.querySelector('zed-page-head h2')?.textContent?.trim()).toBe('MSME Profile');
     expect([...el.querySelectorAll('h4.pf-bar')].map((h) => h.textContent?.trim()).slice(0, 4))
-      .toEqual(['Owner and Enterprise', 'Address and Business', 'Selected Unit', 'Selected Unit Activity']);
-    const labels = [...el.querySelector('table')!.querySelectorAll('td.pf-label')].map((td) => td.textContent?.trim());
-    expect(labels.slice(0, 4)).toEqual(['ZED ID', 'Udyam Number', 'Owner Name', 'Enterprise Name']);
-    expect(el.querySelector('table')!.querySelectorAll('tr')[0].querySelectorAll('td.pf-label').length).toBe(2);
-    expect(el.querySelector('.pf-unit')?.textContent).toContain('Unit One');
+      .toEqual(['Owner and enterprise', 'Address and business', 'Selected unit', 'Selected unit activity (NIC)']);
+    const labels = [...el.querySelector('.pf-grid dl')!.querySelectorAll('dt')].map((dt) => dt.textContent?.trim());
+    expect(labels.slice(0, 4)).toEqual(['Owner name', 'Enterprise name', 'PAN', 'Enterprise type']);
+    expect(el.querySelector('[data-identity]')?.textContent).toContain('Unit One');
     expect(el.querySelector('[data-field="PAddress"]')?.textContent).toContain('Plot 1, Agra, UP, 282001');
     expect(el.textContent).not.toContain('EDIT PROFILE');
-    expect(el.textContent).toContain('Edit History');
+    expect(el.textContent).toContain('Edit history');
   });
 
   it('lets the SuperAdmin edit the legacy fields and saves them', async () => {

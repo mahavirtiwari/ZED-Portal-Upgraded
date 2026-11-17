@@ -1,7 +1,8 @@
-<!-- 2026-11-14 (approved frame A): the shared header; the unit and its level in the title. -->
+<!-- 2026-11-14 (approved frame A): the shared header; the unit and its level in the title. 2026-11-17 (design 14): the result beside it. -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
-  <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  @if (data()) { <span class="uv-chip uv-result" [class]="result().tone" data-result>{{ result().label }}</span> }
+  <button type="button" class="btn btn-ph" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-ph refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
 </zed-page-head>
 
 @if (error()) {
@@ -20,34 +21,28 @@
 
 @if (data(); as d) {
   <div class="zed-tabs">
-    <ul class="nav nav-tabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" [class.active]="tab() === 1" type="button" role="tab" [attr.aria-selected]="tab() === 1" (click)="tab.set(1)">Assessment Overview</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" [class.active]="tab() === 2" type="button" role="tab" [attr.aria-selected]="tab() === 2" (click)="tab.set(2)">Basic Information</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" [class.active]="tab() === 9" type="button" role="tab" [attr.aria-selected]="tab() === 9" (click)="tab.set(9)">Esg Compliance</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" [class.active]="tab() === 3" type="button" role="tab" [attr.aria-selected]="tab() === 3" (click)="tab.set(3)">Parameters</button>
-      </li>
+    <ul class="nav nav-tabs uv-tabs" role="tablist">
+      @for (id of [1, 2, 9, 3]; track id) {
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">{{ tabLabels[id] }}</button>
+        </li>
+      }
       @for (nc of ncTabs(); track nc) {
         <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="tab() === nc + 3" type="button" role="tab" [attr.aria-selected]="tab() === nc + 3" (click)="tab.set(nc + 3)">NC{{ nc }}</button>
+          <button class="nav-link" [class.active]="tab() === nc + 3" type="button" role="tab" [attr.aria-selected]="tab() === nc + 3" (click)="tab.set(nc + 3)">NC {{ nc }}</button>
         </li>
       }
     </ul>
 
-    <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
-    <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
-    <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
-    <div class="tab-content">
-      <div class="tab-title">
-        <div class="numberCircle">{{ tabNumber(tab()) }}</div>
-        <h4>{{ tabTitles[tab()] }}</h4>
-      </div>
+    <!-- 2026-11-17 (design 14): the quality observations (and the submission checklists) in a right rail that stays while the tabs change. -->
+    <div class="uv-grid" [class.uv-has-rail]="qo.shown() || cr.shown()">
+    <div class="tab-content uv-main">
+      @if (tab() !== 1) {
+        <div class="tab-title">
+          <div class="numberCircle">{{ tabNumber(tab()) }}</div>
+          <h4>{{ tabTitles[tab()] }}</h4>
+        </div>
+      }
 
       <!-- ================================================= overview -->
       @if (tab() === 1) {
@@ -55,9 +50,13 @@
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.sitePhotos" box="alert alert-warning" />
           }
-          <section class="zed-card summary" aria-labelledby="daSummaryTitle">
-            <h4 class="summary-title" id="daSummaryTitle">Key facts</h4>
-            <dl class="facts">
+          <zed-step-tracker class="uv-tracker" [steps]="stage().steps" [current]="stage().current" label="Stage of the assessment" />
+          <section class="uv-card summary" aria-labelledby="daSummaryTitle">
+            <div class="uv-card-head">
+              <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h6M10 16h6" /></svg></span>
+              <h4 id="daSummaryTitle">Assessment summary</h4>
+            </div>
+            <dl class="uv-facts facts">
               @for (fc of summaryFacts(); track fc.label) {
                 <div class="fact" [class.wide]="fc.wide">
                   <dt>{{ fc.label }}</dt>
@@ -65,7 +64,7 @@
                 </div>
               }
               <div class="fact">
-                <dt>{{ surveillance() ? 'Surveillance Location' : 'Location' }}</dt>
+                <dt>{{ surveillance() ? 'Surveillance location' : 'Location' }}</dt>
                 <dd class="loc">
                   @if (t(d.location, 'Latitude') || t(d.location, 'Longitude')) {
                     <span><span class="muted">Lat</span> {{ t(d.location, 'Latitude') || '—' }}</span>
@@ -80,7 +79,7 @@
               </div>
               @if (surveillance(); as sv) {
                 <div class="fact">
-                  <dt>Zed Assessment Location</dt>
+                  <dt>ZED assessment location</dt>
                   <dd class="loc">
                     @if (t(sv.zedLocation, 'ZedLatitude') || t(sv.zedLocation, 'ZedLongitude')) {
                       <span><span class="muted">Lat</span> {{ t(sv.zedLocation, 'ZedLatitude') || '—' }}</span>
@@ -94,8 +93,29 @@
                   </dd>
                 </div>
               }
+              <div class="fact wide">
+                <dt>Unit address</dt>
+                <dd>{{ t(msme(), 'PlantAddress') || '—' }}</dd>
+              </div>
             </dl>
           </section>
+          @if (ncList().length) {
+            <section class="uv-card" aria-labelledby="daNcTitle" data-nc-card>
+              <div class="uv-card-head">
+                <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>
+                <h4 id="daNcTitle">Non-conformances</h4>
+              </div>
+              <ul class="uv-ncs">
+                @for (nl of ncList(); track nl.round) {
+                  <li>
+                    <b>NC {{ nl.round }}</b>&ngsp;
+                    <span class="d">Raised {{ nl.raised }} · {{ nl.replied ? 'Unit replied ' + nl.replied : "Awaiting the unit's reply" }}</span>
+                    @if (nl.state) {&ngsp;<span class="uv-chip" [class.good]="nl.state === 'Closed'" [class.warn]="nl.state === 'Open'" [class.info]="nl.state === 'Replied'">{{ nl.state }}</span> }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
         </div>
       }
 
@@ -783,6 +803,12 @@
           </div>
         }
       }
+    </div>
+    <aside class="uv-rail" aria-label="Quality observations">
+      <zed-qo-panel #qo [rail]="true" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+      <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
+      <zed-checklist-records #cr [zedId]="d.zedId" [certification]="d.certification" />
+    </aside>
     </div>
   </div>
 }

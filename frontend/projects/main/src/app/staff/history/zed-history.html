@@ -1,69 +1,123 @@
 <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
 <zed-dashboard-portal-switch [screens]="['history']" />
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ heading }}</h3>
-    <p class="page-sub">The certification journey of a unit, event by event, across the portals.</p>
-  </div>
-</div>
+<!-- 2026-11-17 (the user's staff design 13): the search, then the unit's header, its timeline and the summary beside it. -->
+<zed-page-head [crumbs]="crumbs" [title]="heading" subtitle="The certification journey of a unit, event by event, across the portals." />
 
-<form class="zed-card" (ngSubmit)="search()">
-  <div class="filter-bar">
-    <div class="filter wide">
-      <label class="form-label" for="zedId">ZED ID</label>
-      <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" placeholder="e.g. ZEDMSME000123" [(ngModel)]="zedId" />
-    </div>
-    <div class="filter">
-      <button type="submit" class="btn btn-primary" [disabled]="loading()">Search</button>
-    </div>
+<form class="hs-card hs-search" (ngSubmit)="search()" role="search">
+  <div class="hs-box">
+    <label class="visually-hidden" for="zedId">ZED ID</label>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+    <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" placeholder="ZED ID, e.g. ZEDMSME000123" autocomplete="off" [(ngModel)]="zedId" />
   </div>
+  <button type="submit" class="btn btn-primary hs-go" [disabled]="loading()">Search</button>
+  @if (recent().length) {
+    <div class="hs-recent" role="group" aria-label="Recent searches">
+      <span>Recent:</span>
+      @for (r of recent(); track r) {
+        @if (r !== searched()) { <button type="button" class="hs-pill" (click)="pick(r)">{{ r }}</button> }
+      }
+    </div>
+  }
 </form>
 
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
 @if (events().length) {
-  <div class="history-summary">
-    <div class="hs-item"><small>ZED ID</small><p>{{ searched() }}</p></div>
-    <div class="hs-item"><small>Total Milestones</small><p>{{ events().length }}</p></div>
-    <div class="hs-item"><small>Journey Started</small><p>{{ events()[0].CreatedDate | date: 'dd MMM yyyy' }}</p></div>
-    <div class="hs-item">
-      <small>Current Stage</small>
-      <p>
-        <span class="cert-badge" [class]="'cert-' + ((latest()?.CertificationType || 'na') | lowercase)">{{ latest()?.CertificationType || 'Registration' }}</span>
-        {{ latest()?.label || latest()?.Description }}
-      </p>
+  <section class="hs-card hs-unit" aria-label="Unit" data-unit>
+    <span class="hs-avatar" aria-hidden="true">{{ (unitName() || searched()).charAt(0).toUpperCase() }}</span>
+    <div class="hs-unit-text">
+      <h3>
+        {{ unitName() || searched() }}
+        @if (level(); as l) {
+          <span class="hs-level" [class.on]="l.certified">{{ l.level }}{{ l.certified ? ' certified' : '' }}</span>
+        }
+      </h3>
+      <p>{{ searched() }}@if (unitLine()) { · {{ unitLine() }} }</p>
     </div>
-    <div class="hs-item"><small>Last Updated</small><p>{{ latest()?.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</p></div>
-  </div>
+    <div class="hs-links">
+      <button type="button" class="btn hs-btn" [disabled]="exporting()" (click)="export()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> Export</button>
+      <a class="btn hs-btn" [routerLink]="['/staff/msme-profile', searched()]">MSME profile</a>
+      @if (assessmentLink(); as link) { <a class="btn btn-outline-primary hs-btn-o" [routerLink]="link">Assessment details</a> }
+    </div>
+  </section>
 
-  <div class="zed-card timeline-wrap">
-    @for (g of groups(); track g.title) {
-      <div class="tl-group">
-        <div class="tl-group-head">
-          <span class="cert-badge" [class]="'cert-' + ((g.cert || 'na') | lowercase)">{{ g.title }}</span>
-          <span class="tl-group-range">{{ g.start | date: 'dd MMM yyyy' }} &ndash; {{ g.end | date: 'dd MMM yyyy' }}</span>
-          <span class="tl-group-count">{{ g.events.length }} event(s)</span>
+  <div class="hs-grid">
+    <section class="hs-card" aria-labelledby="hs-events-h">
+      <div class="hs-head">
+        <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
+        <h4 id="hs-events-h">Events</h4>
+        <button type="button" class="hs-sort" [attr.aria-pressed]="newestFirst()" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? 'Newest first' : 'Oldest first' }}</button>
+      </div>
+      <div class="hs-chips">
+        <zed-chip-filter label="By" [chips]="chips()" [(value)]="actor" />
+      </div>
+      <div class="timeline-wrap">
+        @for (g of shownGroups(); track g.title) {
+          <div class="tl-group">
+            <div class="tl-group-head">
+              <span class="cert-badge">{{ g.title }}</span>
+              <span class="tl-group-range">{{ g.start | date: 'dd MMM yyyy' }} &ndash; {{ g.end | date: 'dd MMM yyyy' }}</span>
+              <span class="tl-group-count">{{ g.events.length }} event(s)</span>
+            </div>
+            <ul class="timeline">
+              @for (e of g.events; track $index) {
+                <li class="tl-item" [class.tl-done]="e.done" [class.tl-alert]="e.alert" [attr.data-actor]="e.actor">
+                  <span class="tl-time">{{ e.CreatedDate | date: 'dd MMM yyyy' }}<small>{{ e.CreatedDate | date: 'h:mm a' }}</small></span>
+                  <span class="tl-dot" aria-hidden="true"></span>
+                  <div class="tl-body">
+                    <p class="tl-label">{{ e.label || e.Description }}</p>
+                    <div class="tl-meta">
+                      @if (e.actor) { <span class="tl-actor" [attr.data-actor]="e.actor">{{ e.actor }}</span> }
+                      <span class="tl-source">{{ e.Source_DB }}</span>
+                    </div>
+                    @if (e.label && e.Description) { <p class="tl-desc">{{ e.Description }}</p> }
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        } @empty {
+          <p class="hs-none">No events by {{ actor() }} in this history.</p>
+        }
+      </div>
+    </section>
+
+    <aside class="hs-side">
+      <section class="hs-card history-summary" aria-labelledby="hs-sum-h">
+        <div class="hs-head">
+          <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg></span>
+          <h4 id="hs-sum-h">Summary</h4>
         </div>
-        <ul class="timeline">
-          @for (e of g.events; track $index) {
-            <li class="tl-item" [class.tl-done]="e.done" [class.tl-alert]="e.alert">
-              <div class="tl-dot" aria-hidden="true">{{ e.icon }}</div>
-              <div class="tl-card">
-                <div class="tl-card-top">
-                  @if (e.label) { <span class="tl-label">{{ e.label }}</span> }
-                  <span class="tl-source">{{ e.Source_DB }}</span>
-                  <span class="tl-time">{{ e.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</span>
-                </div>
-                <p class="tl-desc">{{ e.Description }}</p>
-              </div>
+        <dl class="hs-dates">
+          <div><dt>ZED ID</dt><dd>{{ searched() }}</dd></div>
+          @for (k of dates(); track k.label) {
+            <div><dt>{{ k.label }}</dt><dd>{{ k.date | date: 'dd MMM yyyy' }}</dd></div>
+          }
+          <div><dt>Current stage</dt><dd>{{ latest()?.label || latest()?.Description }}</dd></div>
+          <div><dt>Last updated</dt><dd>{{ latest()?.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+          <div><dt>Events</dt><dd>{{ events().length }}</dd></div>
+        </dl>
+      </section>
+      <section class="hs-card" aria-labelledby="hs-by-h">
+        <div class="hs-head">
+          <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M3 20c.8-3.5 3-5 6-5s5.2 1.5 6 5M16 4.5a3.5 3.5 0 0 1 0 7M18 15c1.6.6 2.6 2.2 3 5" /></svg></span>
+          <h4 id="hs-by-h">By whom</h4>
+        </div>
+        <ul class="hs-bars">
+          @for (a of actors; track a) {
+            <li [attr.data-actor]="a">
+              <span>{{ a }}</span>
+              <span class="hs-bar"><span [style.width.%]="(counts()[a] / maxCount()) * 100"></span></span>
+              <b>{{ counts()[a] }}</b>
             </li>
           }
         </ul>
-      </div>
-    }
+      </section>
+    </aside>
   </div>
 } @else if (loaded() && !loading() && !error()) {
-  <div class="zed-card no-history"><p>No certification history found for this unit.</p></div>
+  <div class="hs-card no-history"><p>No certification history found for this unit.</p></div>
 }
 
 @if (loading()) {

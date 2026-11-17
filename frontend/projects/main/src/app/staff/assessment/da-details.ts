@@ -24,6 +24,12 @@ import { QualityObservationsPanel } from '../quality/quality-observations-panel'
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
+import { StepTracker } from '../../msme/shared/step-tracker';
+import { staffCrumbs } from '../staff-crumbs';
+import { UNIT_VIEW_STYLES, desktopStage, idName, ncLines, unitResult } from './da-details.layout';
+
+/** 2026-11-17 (the user's staff design 14): the tab bar's names. */
+export const TAB_LABELS: Record<number, string> = { 1: 'Assessment overview', 2: 'Basic information', 9: 'ESG compliance', 3: 'Parameters' };
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -62,9 +68,9 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker],
   templateUrl: './da-details.html',
-  styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
+  styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES, UNIT_VIEW_STYLES],
   styleUrl: './da-details.css',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
@@ -80,6 +86,7 @@ export class DaDetailsPage {
   protected readonly f = flag;
   protected readonly n = num;
   protected readonly tabTitles = TAB_TITLES;
+  protected readonly tabLabels = TAB_LABELS;
   protected readonly tabNumber = (id: number) => (this.surveillanceSystem ? SURVEILLANCE_TAB_NUMBERS[id] ?? id : id);
 
   protected readonly data = signal<DaDetails | null>(null);
@@ -126,11 +133,14 @@ export class DaDetailsPage {
     const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || 'Assessment details';
     return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
   });
-  protected readonly headCrumbs = computed(() => [
-    { label: 'Home', link: '/staff' },
+  protected readonly headCrumbs = computed(() => staffCrumbs(
     { label: 'Desktop verification', link: '/staff/assessment/da-verification' },
     { label: text(this.msme(), 'ZedId') || this.data()?.zedId || 'Unit' },
-  ]);
+  ));
+  /** 2026-11-17 (design 14): the result beside the title, the stage tracker and the NC rounds, from the record's columns. */
+  protected readonly result = computed(() => unitResult(this.msme()));
+  protected readonly stage = computed(() => desktopStage(this.msme()));
+  protected readonly ncList = computed(() => ncLines(this.msme()));
   private readonly location = inject(Location);
   protected goBack(): void {
     this.location.back();
@@ -172,28 +182,26 @@ export class DaDetailsPage {
     return Number.isFinite(lat) && Number.isFinite(lng) && l?.['ZedLatitude'] ? `https://www.google.com/maps?q=${lat},${lng}` : '';
   });
 
-  /** The key facts of the "Assessment Summary" card, in the order of the old two-column table. */
+  /**
+   * The key facts of the "Assessment summary" card, three to a row (2026-11-17, design 14); the NC dates are in the
+   * non-conformances card; the address takes the whole last row.
+   */
   protected readonly summaryFacts = computed<SummaryFact[]>(() => {
     const m = this.msme();
     const v = (column: string) => text(m, column);
-    const pair = (a: string, b: string) => [v(a), v(b)].filter(Boolean).join(' - ');
     const facts: SummaryFact[] = [
       { label: 'ZED ID', value: v('ZedId') },
-      { label: 'Unit Name', value: v('PUnitName') },
-      { label: 'Udyam Registration Number', value: v('UdyogAadharNo') },
-      { label: 'Unit Address', value: v('PlantAddress'), wide: true },
-      { label: 'Document Submission Date', value: v('BasicInfoStatus') },
-      { label: 'Document Verification allocated on', value: v('DocVerifiAllot') },
+      { label: 'Unit name', value: v('PUnitName') },
+      { label: 'Udyam registration', value: v('UdyogAadharNo') },
+      { label: 'Level', value: v('Certification') },
+      { label: 'Document submission', value: v('BasicInfoStatus') },
+      { label: 'Verification allocated', value: v('DocVerifiAllot') },
+      { label: 'Completed', value: v('CompletedOn') },
     ];
-    for (const i of [1, 2, 3, 4, 5]) {
-      if (v(`Nc${i}Raised`)) facts.push({ label: `Non-Conformance ${i} Raised On`, value: v(`Nc${i}Raised`) });
-      if (v(`Nc${i}Submitted`)) facts.push({ label: `Non-Conformance ${i} Submitted On`, value: v(`Nc${i}Submitted`) });
-    }
-    facts.push({ label: 'Document Verification Completed on', value: v('CompletedOn') }, { label: 'Certification', value: v('Certification') });
     if (!this.isQc()) {
       facts.push(
-        { label: 'Agency Name', value: pair('CertificationBodyUserId', 'AgencyName') },
-        { label: 'Desktop Assessor Name', value: pair('DesktopAssessorId', 'DesktopAssessorName') },
+        { label: 'Assessment agency', value: idName(m, 'CertificationBodyUserId', 'AgencyName') },
+        { label: 'Desktop assessor', value: idName(m, 'DesktopAssessorId', 'DesktopAssessorName') },
       );
     }
     return facts;
