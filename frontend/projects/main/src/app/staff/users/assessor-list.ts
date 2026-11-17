@@ -1,4 +1,4 @@
-import { ContentTextComponent } from '../../content/content-text';
+import { ContentService } from '../../content/content-text';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -8,19 +8,22 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { LABELS } from '../../portal-labels';
 import { STAFF_SYSTEM } from '../staff-menu';
-import { AssessorRow, BlockHistoryEntry, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
+import { AssessorRow, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { ClientPager, PagerComponent } from '../pager';
-import { ScopeItem, scopeChips } from './assessor-scope';
+import { ScopeItem } from './assessor-scope';
 import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { ListCount, ListCounts } from '../list-counts';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { ToastService } from '../toast';
+import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 
-/** Which assessors the list shows: the status tiles, the type tabs and the sector type / agency drop-downs. */
+/** Which assessors the list shows: the status tiles, the type chips and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
 type SectorFilter = '' | SectorActivity | 'none';
-
-/** Block (a reason; the open assessments it leaves) or the block history (2026-11-08). */
-type Dialog =
-  | { kind: 'block'; row: AssessorRow; reason: string; open: number | null }
-  | { kind: 'history'; row: AssessorRow; entries: BlockHistoryEntry[] | null };
 
 /** Two letters for the round badge beside a name (first and last word). */
 export function initialsOf(name: string | null | undefined): string {
@@ -38,124 +41,178 @@ export function assessorTypeLabel(type: string | null | undefined): string {
   }
 }
 
+/** The levels of an assessor as medals (Bronze, Silver, Gold, ZED-X) with the modes beneath ("Desktop · Onsite"). */
+export interface LevelMedals {
+  items: { code: string; title: string }[];
+  modes: string;
+  /** "Bronze: Desktop; Silver: Desktop, Onsite" for screen readers. */
+  aria: string;
+}
+
+/** 2026-11-17 (approved staff-04): "levels show as medal icons with the modes beneath". */
+export function levelMedals(v: unknown): LevelMedals {
+  const list = (Array.isArray(v) ? (v as ScopeItem[]) : []).filter((x) => x.modes?.length);
+  const order = ['Desktop', 'Remote', 'Onsite'];
+  const modes = new Set(list.flatMap((x) => x.modes));
+  const items = list.map((x) => {
+    const name = x.level === 'ZEDX' ? 'ZED-X' : x.level;
+    const code = x.level.toLowerCase().replace(/[^a-z]/g, '');
+    return { code: ['bronze', 'silver', 'gold', 'zedx'].includes(code) ? code : 'other', title: `${name}: ${x.modes.join(', ')}` };
+  });
+  return {
+    items,
+    modes: [...order.filter((m) => modes.has(m)), ...[...modes].filter((m) => !order.includes(m))].join(' · '),
+    aria: items.map((i) => i.title).join('; '),
+  };
+}
+
+const BLOCK_NOTE_KEY = 'staff.users.assessorBlock.note';
+
 /**
- * MasterAdmin list of all assessors (optionally of one agency, `?agencyId=`, and verification type,
- * `?type=DA|SA|FA`). Port of Views/User/AssessorList.cshtml: search, page size and paging in the page. V4 layout: tiles
- * with all, active and blocked assessors (a click filters), pill tabs per assessor type with their counts, the sector type
- * and agency drop-downs beside the search box, a row per assessor with initials, the type and sector type as chips,
- * contact with icons and the agency under its ID, status badges, and a card per assessor on phones.
+ * The block notice of the Admin's Texts (Admin → Texts, `staff.users.assessorBlock.note`) as plain text for the block
+ * confirmation; the standard wording until the texts arrive, '' when the Admin hid it.
+ */
+export function assessorBlockNote(content: ContentService, consultancy: boolean): string {
+  const t = content.text(BLOCK_NOTE_KEY);
+  if (t && !t.enabled) return '';
+  if (t?.html) {
+    const plain = typeof DOMParser !== 'undefined'
+      ? new DOMParser().parseFromString(t.html, 'text/html').body.textContent ?? ''
+      : t.html.replace(/<[^>]*>/g, ' ');
+    return plain.replace(/\s+/g, ' ').trim();
+  }
+  return `The login can't sign in on the web or the app, and can't be allotted or carry out any ${consultancy ? 'consultancy' : 'assessment'} until unblocked.`;
+}
+
+/**
+ * The "Block …?" confirmation of an assessor / consultant (popup-03): what blocking does, the open assessments it leaves
+ * (`assessorOpenAssessments`; "not known" when the count could not be read) and a required reason (kept in the history and
+ * e-mailed; the server always sends the mail).
+ */
+export function assessorBlockAsk(name: string, userId: string, open: number | null, note: string, consultancy: boolean, reAllots: string): ConfirmAsk {
+  const word = consultancy ? 'consultant' : 'assessor';
+  const work = consultancy ? 'case' : 'assessment';
+  const openLine = open === null
+    ? `Open ${work}s allotted to this ${word}: not known.`
+    : open === 0
+      ? `No ${work} allotted to this ${word} is open.`
+      : `${open} ${work}${open === 1 ? '' : 's'} allotted to this ${word} ${open === 1 ? 'is' : 'are'} still open. ${reAllots.charAt(0).toUpperCase() + reAllots.slice(1)} will need to re-allot ${open === 1 ? 'it' : 'them'}.`;
+  return {
+    title: `Block ${name || userId}?`,
+    message: `${name || userId} (${userId}). ${note ? note + ' ' : ''}${openLine} Nothing is deleted; the reason is kept in the history and e-mailed to the ${word}.`,
+    confirmLabel: `Block ${word}`,
+    danger: true,
+    reason: {
+      label: 'Reason for blocking', placeholder: 'Shown in the history and e-mailed', maxLength: 2000,
+      requiredMessage: 'Please enter the reason for blocking.',
+    },
+  };
+}
+
+/**
+ * MasterAdmin list of all assessors (optionally of one agency, `?agencyId=`, and verification type, `?type=DA|SA|FA`).
+ * Port of Views/User/AssessorList.cshtml: search, page size and paging in the page. 2026-11-17 (approved staff-04): the
+ * shared head and counts (all, active, blocked; a click filters), the search with the sector type and agency drop-downs
+ * (and type chips when the list has more than one type), a row per assessor with its levels as medals, the sector, the
+ * masked contact (no PAN), the agency and status, View plus a row menu (Send reset link, View history, Block / Unblock)
+ * whose actions confirm first and end with a toast; the block history opens in the side panel. Cards on phones.
  */
 @Component({
   selector: 'zed-staff-assessor-list',
-  imports: [FormsModule, RouterLink, PagerComponent, DatePipe, ContentTextComponent, PageHead, ReasonDialog],
+  imports: [
+    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel,
+  ],
   template: `
-    <!-- 2026-11-14 (approved frame A): the shared header. -->
-    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: consultancy ? 'Consultants' : labels.assessors }]"
-                   [title]="(consultancy ? 'Consultants' : labels.assessors) + (agencyId ? ' of ' + agencyId : '')" />
+    <zed-page-head [crumbs]="crumbs" [title]="noun + (agencyId ? ' of ' + agencyId : '')" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
 
-    <div class="as-stats" role="group" [attr.aria-label]="noun + ' by status'">
-      @for (t of tiles(); track t.key) {
-        <button type="button" class="as-stat" [class]="'tile-' + t.key" [class.is-on]="status() === t.key" [attr.aria-pressed]="status() === t.key" (click)="setStatus(t.key)">
-          <span class="as-stat-count">{{ t.count }}</span>
-          <span class="as-stat-label">{{ t.label }}</span>
-        </button>
+    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="noun + ' by status'" (pick)="setStatus($any($event.key))" />
+
+    <div class="zed-card as-bar">
+      <label class="as-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
+        <input type="search" class="form-control" maxlength="50" placeholder="Search ID, name, mobile, e-mail or agency" aria-label="Search assessors"
+               [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
+      </label>
+      @if (!consultancy) {
+        <select class="form-select as-select" aria-label="Sector type" [ngModel]="sector()" (ngModelChange)="setSector($event)">
+          <option value="">All sector types</option>
+          @for (s of sectorOptions(); track s.value) { <option [value]="s.value">{{ s.label }} ({{ s.count }})</option> }
+        </select>
+      }
+      @if (agencies().length > 1) {
+        <select class="form-select as-select as-agency" [attr.aria-label]="labels.agency" [ngModel]="agency()" (ngModelChange)="setAgency($event)">
+          <option value="">All {{ labels.agencies.toLowerCase() }}</option>
+          @for (a of agencies(); track a.id) { <option [value]="a.id">{{ a.name }} ({{ a.count }})</option> }
+        </select>
+      }
+      <span class="as-showing">{{ pager.total() }} of {{ rows().length }} {{ noun.toLowerCase() }}</span>
+      @if (!consultancy && types().length > 1) {
+        <zed-chip-filter class="as-types" label="Type" [chips]="typeChips()" [value]="level()" (valueChange)="setLevel($event)" />
       }
     </div>
 
     <div class="zed-card as-list">
-      @if (!consultancy && types().length > 1) {
-        <div class="as-tabs" role="tablist" aria-label="Assessor type">
-          <button type="button" role="tab" class="as-tab" [class.active]="!level()" [attr.aria-selected]="!level()" (click)="setLevel('')">
-            All types <span class="tab-count">{{ rows().length }}</span>
-          </button>
-          @for (t of types(); track t.value) {
-            <button type="button" role="tab" class="as-tab" [class.active]="level() === t.value" [attr.aria-selected]="level() === t.value" (click)="setLevel(t.value)">
-              {{ t.label }} <span class="tab-count">{{ t.count }}</span>
-            </button>
-          }
-        </div>
-      }
-      <div class="as-toolbar">
-        <input type="search" class="form-control as-search" maxlength="50" placeholder="Search ID, name, mobile, e-mail or agency" aria-label="Search assessors"
-               [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
-        @if (!consultancy) {
-          <select class="form-select as-select" aria-label="Sector type" [ngModel]="sector()" (ngModelChange)="setSector($event)">
-            <option value="">All sector types</option>
-            @for (s of sectorOptions(); track s.value) { <option [value]="s.value">{{ s.label }} ({{ s.count }})</option> }
-          </select>
-        }
-        @if (agencies().length > 1) {
-          <select class="form-select as-select as-agency" [attr.aria-label]="labels.agency" [ngModel]="agency()" (ngModelChange)="setAgency($event)">
-            <option value="">All {{ labels.agencies.toLowerCase() }}</option>
-            @for (a of agencies(); track a.id) { <option [value]="a.id">{{ a.name }} ({{ a.count }})</option> }
-          </select>
-        }
-        <span class="muted as-showing">{{ pager.total() }} of {{ rows().length }} {{ noun.toLowerCase() }}</span>
-      </div>
-
       <div class="table-responsive">
         <table class="table table-zed as-table">
           <thead>
             <tr>
-              <th class="text-center" style="width: 56px">S.No</th>
               @if (consultancy) {
                 <!-- ZEDCS_CONSULTANCY Frontend/User/AssessorList.cshtml -->
+                <th class="text-center" style="width: 56px">S.No</th>
                 <th>Consultant Details</th>
                 <th>Consultant Organisation Details</th>
                 <th class="text-center">No. Of Consulting Completed</th>
+                <th class="text-center">Status</th>
+                <th class="text-end">Action(s)</th>
               } @else {
-                <th>Assessor Details</th>
-                <th>Type and Sector</th>
+                <th>Assessor</th>
+                <th>Levels and modes</th>
+                <th>Sector</th>
                 <th>Contact</th>
-                <th>{{ labels.agency }} Details</th>
+                <th>Agency</th>
+                <th class="text-center">Status</th>
+                <th class="text-end">Actions</th>
               }
-              <th class="text-center" style="width: 100px">Status</th>
-              <th class="text-center" style="width: 140px">Action(s)</th>
             </tr>
           </thead>
           <tbody>
             @for (s of page(); track s.UserId) {
-              <tr class="filterClass" [class.is-blocked]="!s.IsActive">
-                <td class="text-center as-sno">{{ s.RowNumber }}</td>
-                <td class="as-person-cell">
+              <tr [class.is-blocked]="!s.IsActive">
+                @if (consultancy) { <td class="text-center as-sno">{{ s.RowNumber }}</td> }
+                <td class="as-person">
                   <div class="as-user">
                     <span class="as-avatar" aria-hidden="true">{{ initials(s.UserName) }}</span>
-                    <span class="as-who">
-                      <span class="as-name">{{ s.UserName }}</span>
-                      <span class="as-id">{{ s.UserId }}@if (s.PanNo) { · PAN {{ s.PanNo }} }</span>
-                    </span>
-                    <span class="status-badge as-badge-phone" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
+                    <span class="as-who"><span class="as-name">{{ s.UserName }}</span><span class="as-id">{{ s.UserId }}</span></span>
                   </div>
                   @if (consultancy) {
-                    <div class="as-contact as-contact-under">
-                      @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> } @else { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span> }
-                      @if (s.Email) { <span class="as-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ s.Email }}</span> }
-                      @if (s.Address) { <span class="as-address clamp-2" [title]="s.Address">{{ s.Address }}</span> }
+                    <div class="as-contact as-under">
+                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
+                      @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
                     </div>
                   }
                 </td>
                 @if (!consultancy) {
-                  <td class="as-type-cell" data-label="Type and Sector">
-                    @for (c of chips(s.Assessments); track c) { <span class="zed-chip">{{ c }}</span> } @empty { <span class="zed-chip">{{ typeLabel(s.AssessorType) }}</span> }
-                    @if (s.SectorActivity) {
-                      <span class="sector-chip" [class]="'sector-' + s.SectorActivity.toLowerCase()">{{ s.SectorActivity }}</span>
+                  <td class="as-levels" data-label="Levels and modes">
+                    @let m = medals(s.Assessments);
+                    @if (m.items.length) {
+                      <span class="lv-row" role="img" [attr.aria-label]="m.aria">
+                        @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true">Z</span> }
+                      </span>
+                      <span class="as-sub">{{ m.modes }}</span>
                     } @else {
-                      <span class="sector-chip sector-none">Sector type not set</span>
+                      <span class="as-type">{{ typeLabel(s.AssessorType) }}</span>
                     }
                   </td>
+                  <td data-label="Sector"><span class="as-pill" [class.is-none]="!s.SectorActivity">{{ s.SectorActivity || 'Not set' }}</span></td>
                   <td class="as-contact" data-label="Contact">
-                    @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> } @else { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span> }
-                    @if (s.Email) { <span class="as-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ s.Email }}</span> }
-                    @if (s.Address) { <span class="as-address clamp-2" [title]="s.Address">{{ s.Address }}</span> }
+                    <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
+                    @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
                   </td>
                 }
-                <td class="as-agency-cell" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">
+                <td class="as-agency" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">
                   <span class="as-agency-name">{{ s.AgencyUserName }}</span>
                   <span class="as-id">{{ s.AgencyUserId }}</span>
                 </td>
@@ -165,7 +222,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                     <div>Milestone 1: <strong>0</strong></div><div>Milestone 2: <strong>0</strong></div><div>Milestone 3: <strong>0</strong></div>
                   </td>
                 }
-                <td class="text-center as-status-cell">
+                <td class="text-center as-status" data-label="Status">
                   <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
                   @if (!s.IsActive && (s.BlockReason || s.BlockedOn)) {
                     <small class="as-block-note" data-block-note>
@@ -174,17 +231,10 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                     </small>
                   }
                 </td>
-                <td class="text-center as-actions-cell">
-                  <div class="row-actions justify-content-center">
+                <td class="as-actions">
+                  <div class="as-btns">
                     <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
-                    <!-- V4 addition (not on the old consultancy list): Reset Link. -->
-                    @if (s.IsActive) {
-                      <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
-                      <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="openBlock(s)">Block</button>
-                    } @else {
-                      <button type="button" class="btn btn-outline-success" [disabled]="busy()" (click)="unblock(s)">Unblock</button>
-                    }
-                    <button type="button" class="btn btn-default" [disabled]="busy()" (click)="openHistory(s)"><i class="fa fa-history" aria-hidden="true"></i> History</button>
+                    <zed-row-menu [items]="s.IsActive ? menuActive : menuBlocked" [label]="'More actions for ' + (s.UserName || s.UserId)" (picked)="pick($event, s)" />
                   </div>
                 </td>
               </tr>
@@ -207,162 +257,82 @@ export function assessorTypeLabel(type: string | null | undefined): string {
       </div>
       <zed-pager [pager]="pager" />
     </div>
-    @if (dialog(); as d) {
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="as-dialog-title" (click)="close()">
-        <div class="modal-dialog modal-popup" (click)="$event.stopPropagation()">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 class="registration-title m-0" id="as-dialog-title">
-                {{ d.kind === 'block' ? 'Block ' + (consultancy ? 'Consultant' : labels.assessor) : 'History: ' + d.row.UserName + ' (' + d.row.UserId + ')' }}
-              </h3>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
-            </div>
-            @if (d.kind === 'block') {
-              <form (ngSubmit)="block()" novalidate>
-                <div class="modal-body">
-                  <p class="muted"><strong>{{ d.row.UserName }} ({{ d.row.UserId }})</strong></p>
-                  <zed-text key="staff.users.assessorBlock.note" box="muted"><p class="muted">The login can't sign in on the web or the app, and can't be allotted or carry out
-                    any {{ consultancy ? 'consultancy' : 'assessment' }} until unblocked.</p></zed-text>
-                  @if (d.open) {
-                    <div class="alert alert-warning py-2" role="status" data-open-warning>
-                      {{ d.open }} {{ consultancy ? 'case' : 'assessment' }}{{ d.open === 1 ? '' : 's' }} allotted to this {{ consultancy ? 'consultant' : labels.assessor.toLowerCase() }}
-                      {{ d.open === 1 ? 'is' : 'are' }} still open. The {{ consultancy ? 'organisation' : labels.agency.toLowerCase() }} will need to re-allot {{ d.open === 1 ? 'it' : 'them' }}.
-                    </div>
-                  }
-                  <label class="form-label" for="as-block-reason">Reason<span class="req">*</span></label>
-                  <textarea id="as-block-reason" name="reason" class="form-control" rows="3" maxlength="2000" [(ngModel)]="d.reason"
-                            placeholder="Why the login is blocked"></textarea>
-                  @if (dialogError()) { <span class="help-block" role="alert">{{ dialogError() }}</span> }
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-                  <button type="submit" class="btn btn-danger" [disabled]="busy()">Block</button>
-                </div>
-              </form>
-            } @else {
-              <div class="modal-body">
-                @if (d.entries === null) {
-                  <p class="muted">Loading…</p>
-                } @else {
-                  <ol class="as-history">
-                    @for (e of d.entries; track $index) {
-                      <li [class.is-blocked]="e.action === 'Blocked'">
-                        <strong>{{ e.action }}</strong>
-                        <span class="muted d-block">{{ e.actionDate | date: 'dd MMM yyyy, h:mm a' }}{{ e.actionBy ? ' · by ' + e.actionBy + roleName(e.actionByRole) : '' }}</span>
-                        @if (e.reason) { <span class="d-block">“{{ e.reason }}”</span> }
-                      </li>
-                    } @empty {
-                      <li class="as-history-empty">No block or unblock recorded yet.</li>
-                    }
-                  </ol>
-                }
-              </div>
-              <div class="modal-footer"><button type="button" class="btn btn-default" (click)="close()">Close</button></div>
-            }
-          </div>
-        </div>
-      </div>
-      <div class="modal-backdrop show"></div>
+
+    @if (resetFor(); as r) {
+      <zed-confirm-dialog [ask]="r.ask" [busy]="busy()" [failed]="dialogError()" (confirmed)="sendReset(r.row)" (cancel)="closeDialogs()" />
+    }
+    @if (blockFor(); as b) {
+      <zed-confirm-dialog [ask]="b.ask" [busy]="busy()" [failed]="dialogError()" inputId="as-block-reason" (confirmed)="block(b.row, $event)" (cancel)="closeDialogs()" />
+    }
+    @if (reasonAsk(); as r) {
+      <zed-reason-dialog [ask]="r" [busy]="busy()" [failed]="dialogError()" (confirmed)="unblockWithReason(r, $event)" (cancel)="closeDialogs()" />
+    }
+    @if (historyFor(); as h) {
+      <zed-user-history [subtitle]="(h.row.UserName || h.row.UserId) + ' · ' + h.row.UserId" [items]="h.items" [error]="h.error"
+                        [fileName]="'history-' + h.row.UserId" (closed)="historyFor.set(null)" />
     }
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
     }
-    @if (reasonAsk(); as r) {
-      <zed-reason-dialog [ask]="r" [busy]="false" (confirmed)="unblockWithReason(r, $event)" (cancel)="reasonAsk.set(null)" />
-    }
   `,
   styles: `
-    .as-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .as-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 18px; text-align: left; min-width: 0;
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 1px 2px rgba(35,71,74,.05); cursor: pointer; }
-    .as-stat:hover { border-color: #45a5ad; }
-    .as-stat.is-on { border-color: #45a5ad; box-shadow: inset 0 0 0 1px #45a5ad; background: #eef6f6; }
-    .as-stat-count { font-size: 26px; font-weight: 700; color: #23474a; line-height: 1.1; }
-    .as-stat.tile-active .as-stat-count { color: #1e7a3c; }
-    .as-stat.tile-blocked .as-stat-count { color: #a8303a; }
-    .as-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
-
-    .as-list { padding: 16px; }
-    .as-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
-      color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .as-tab:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
-    .as-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
-    .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
-    .as-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
-    .as-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
-    .as-search { flex: 1 1 260px; max-width: 380px; }
-    .as-select { flex: 0 1 210px; width: auto; min-width: 0; }
+    .as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 16px; margin-bottom: 16px; }
+    .as-search { position: relative; flex: 1 1 280px; max-width: 400px; margin: 0; }
+    .as-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6b7f80; stroke-width: 2; }
+    .as-search input { padding-left: 36px; }
+    .as-select { flex: 0 1 220px; width: auto; min-width: 0; }
     .as-agency { flex-basis: 260px; }
-    .as-showing { font-size: 13px; margin-left: auto; }
+    .as-showing { margin-left: auto; font-size: 13px; color: #5f6f70; }
+    .as-types { flex-basis: 100%; }
 
-    .as-table { margin-bottom: 8px; }
+    .as-list { padding: 0; overflow: hidden; }
+    .as-table { margin: 0; }
+    .as-table th:first-child, .as-table td:first-child { padding-left: 14px; }
     .as-table td { vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
     .as-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
-    .as-table tr.is-blocked td { background: #fbf7f7; }
     .as-sno { color: #5f6f70; }
-    .as-user { display: flex; align-items: center; gap: 12px; min-width: 175px; }
-    .as-who { min-width: 0; }
-    .as-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); font-weight: 700; font-size: 13px; letter-spacing: .03em; }
-    tr.is-blocked .as-avatar { background: #f3e9e9; color: #9b4a4a; }
-    .as-name { display: block; font-weight: 600; color: #232527; }
-    .as-id { display: block; font-size: 12px; color: #6b7f80; letter-spacing: .3px; }
-    .as-badge-phone { display: none; }
-    .as-type-cell { min-width: 140px; }
-    .as-type-cell .zed-chip { margin: 0 0 4px; white-space: nowrap; }
-    .sector-chip { display: table; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; background: #e6f6ec; color: #1e7a3c; }
-    .sector-chip.sector-services { background: #f1f0fb; color: #3f3a7a; }
-    .sector-chip.sector-both { background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
-    .sector-chip.sector-none { background: #fff4d6; color: #8a6100; }
-    .as-contact { min-width: 230px; }
-    .as-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; }
-    .as-contact .as-mail { font-size: 13px; color: #5f6f70; }
-    .as-contact .as-address { display: -webkit-box; font-size: 12px; color: #6b7f80; line-height: 1.45; margin-top: 2px; }
-    .as-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
-    .as-contact-under { margin: 8px 0 0 50px; min-width: 0; }
-    .clamp-2 { -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .as-agency-cell { min-width: 150px; }
-    .as-agency-name { display: block; font-weight: 600; color: #23474a; }
-    .as-actions-cell { overflow-wrap: normal !important; }
-    .as-actions-cell .row-actions { flex-wrap: nowrap; }
-    .as-actions-cell .btn { white-space: nowrap; }
+    .as-user { display: flex; align-items: center; gap: 12px; min-width: 170px; }
+    .as-who, .as-agency, .as-contact { min-width: 0; display: flex; flex-direction: column; }
+    .as-avatar { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--zt-soft, #d4ebe6);
+      color: var(--zt-ink, #173f44); font-weight: 700; font-size: 12.5px; }
+    tr.is-blocked .as-avatar { background: #f6e3e1; color: #a8303a; }
+    .as-name, .as-agency-name { font-weight: 700; color: var(--zt-ink, #173f44); }
+    .as-id, .as-sub { font-size: 12.5px; color: #5f6f70; }
+    .as-contact { min-width: 150px; }
+    .as-under { margin: 6px 0 0 46px; }
+    .lv-row { display: flex; gap: 5px; margin-bottom: 3px; }
+    .lv { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10.5px; font-weight: 800;
+      background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 0 0 1.5px rgba(0,0,0,.12); }
+    .lv-bronze { background: #c46a3c; }
+    .lv-silver { background: #9aa4aa; }
+    .lv-gold { background: #d2a12a; }
+    .as-type { font-size: 13px; color: #3d5254; }
+    .as-pill { display: inline-block; padding: 3px 11px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .as-pill.is-none { background: #fff4d6; color: #8a6100; }
+    .no-mobile { color: #8a6100; }
+    .as-block-note { display: block; margin-top: 4px; font-size: 12px; color: #6b5a5a; }
+    .as-btns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+    .as-btns .btn { white-space: nowrap; }
     .no-data .btn-link { font-weight: 600; }
+    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 
     @media (max-width: 767.98px) {
-      .as-stats { gap: 8px; }
-      .as-stat { padding: 10px 12px; }
-      .as-stat-count { font-size: 22px; }
-      .as-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
       .as-search, .as-select { flex: 1 1 100%; max-width: none; }
       .as-showing { margin-left: 0; }
-      .as-table { min-width: 0; }
+      .as-list { background: none; border: 0; box-shadow: none; }
       .as-table thead { display: none; }
-      .as-table, .as-table tbody, .as-table tr, .as-table td { display: block; width: 100%; box-sizing: border-box; }
-      .as-table tr { border: 1px solid #dfe9ea; border-radius: 12px; margin-bottom: 12px; padding: 4px 12px; overflow: hidden; }
+      .as-table, .as-table tbody, .as-table tr, .as-table td { display: block; width: 100%; }
+      .as-table tr { position: relative; background: #fff; border: 1px solid #e1eaea; border-radius: 12px; margin-bottom: 12px; padding: 8px 14px; }
       .as-table tr.empty-row { border: 0; padding: 0; }
-      .as-table td { border: 0; padding: 6px 0; text-align: left !important; }
-      .as-table tr.is-blocked { background: #fbf7f7; }
-      .as-table tr.is-blocked td, .as-table tbody tr:hover td { background: transparent; }
-      .as-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
-      .as-sno, .as-status-cell { display: none !important; }
-      .as-user { min-width: 0; }
-      .as-who { flex: 1 1 auto; }
-      .as-badge-phone { display: inline-block; }
-      .as-type-cell .zed-chip { margin: 0 6px 0 0; }
-      .sector-chip { display: inline-block; }
-      .as-contact, .as-agency-cell, .as-type-cell { min-width: 0; }
-      .as-contact-under { margin-left: 0; }
-      .as-actions-cell .row-actions { flex-wrap: wrap; justify-content: flex-start !important; }
+      .as-table td, .as-table td:first-child { border: 0; padding: 5px 0; text-align: left !important; }
+      .as-table tbody tr:hover td { background: transparent; }
+      .as-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; font-weight: 700; color: #5f6f70; text-transform: uppercase; }
+      .as-sno { display: none !important; }
+      .as-user { min-width: 0; padding-right: 44px; }
+      .as-under { margin-left: 0; }
+      .as-btns { justify-content: flex-start; }
+      .as-btns zed-row-menu { position: absolute; top: 12px; right: 12px; }
     }
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .as-block-note { display: block; margin-top: 4px; font-size: 12px; color: #6b5a5a; overflow-wrap: anywhere; }
-    .as-history { list-style: none; margin: 0; padding: 0; }
-    .as-history li { position: relative; padding: 8px 0 8px 22px; border-bottom: 1px solid #eef1f2; font-size: 14px; }
-    .as-history li::before { content: ''; position: absolute; left: 4px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #1e7a3c; }
-    .as-history li.is-blocked::before { background: #a8303a; }
-    .as-history li.as-history-empty { padding-left: 0; color: #5f6f70; }
-    .as-history li.as-history-empty::before { display: none; }
   `,
 })
 export class AssessorListPage {
@@ -370,7 +340,10 @@ export class AssessorListPage {
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly labels = LABELS[this.system];
   protected readonly noun = this.consultancy ? 'Consultants' : this.labels.assessors;
+  protected readonly crumbs = staffCrumbs({ label: this.noun });
   private readonly api = inject(UsersApi);
+  private readonly toast = inject(ToastService);
+  private readonly content = inject(ContentService);
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
 
   protected readonly agencyId = this.query.get('agencyId') ?? '';
@@ -387,22 +360,38 @@ export class AssessorListPage {
   protected readonly page = this.pager.page;
   protected readonly loading = signal(true);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly busy = signal(false);
-  protected readonly dialog = signal<Dialog | null>(null);
+  /** The server's refusal, shown in the open confirmation. */
   protected readonly dialogError = signal('');
+  protected readonly resetFor = signal<{ row: AssessorRow; ask: ConfirmAsk } | null>(null);
+  protected readonly blockFor = signal<{ row: AssessorRow; ask: ConfirmAsk } | null>(null);
+  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
+  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
+  protected readonly historyFor = signal<{ row: AssessorRow; items: HistoryItem[] | null; error: string } | null>(null);
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
-  /** 2026-11-14: the levels and modes the assessor may do. */
-  protected readonly chips = (v: unknown) => scopeChips(Array.isArray(v) ? (v as ScopeItem[]) : null);
+  protected readonly medals = levelMedals;
+  protected readonly mobile = maskMobile;
+  protected readonly email = maskEmail;
 
-  protected readonly tiles = computed(() => {
+  private readonly word = this.consultancy ? 'consultant' : 'assessor';
+  protected readonly menuActive: RowMenuItem[] = [
+    { key: 'reset', label: 'Send reset link', icon: 'mail' },
+    { key: 'history', label: 'View history', icon: 'history' },
+    { key: 'block', label: 'Block ' + this.word, icon: 'lock', danger: true },
+  ];
+  protected readonly menuBlocked: RowMenuItem[] = [
+    { key: 'history', label: 'View history', icon: 'history' },
+    { key: 'unblock', label: 'Unblock ' + this.word, icon: 'unlock' },
+  ];
+
+  protected readonly tiles = computed<ListCount[]>(() => {
     const rows = this.rows();
     const active = rows.filter((r) => r.IsActive).length;
     return [
-      { key: 'all' as const, label: 'All ' + this.noun.toLowerCase(), count: rows.length },
-      { key: 'active' as const, label: 'Active', count: active },
-      { key: 'blocked' as const, label: 'Blocked', count: rows.length - active },
+      { key: 'all', label: 'All ' + this.noun.toLowerCase(), value: rows.length },
+      { key: 'active', label: 'Active', value: active, tone: 'good' },
+      { key: 'blocked', label: 'Blocked', value: rows.length - active, tone: 'bad' },
     ];
   });
 
@@ -414,6 +403,10 @@ export class AssessorListPage {
       .sort(([a], [b]) => (a === 'BronzeAssessor' ? -1 : b === 'BronzeAssessor' ? 1 : a.localeCompare(b)))
       .map(([value, count]) => ({ value, label: assessorTypeLabel(value), count }));
   });
+  protected readonly typeChips = computed<FilterChip[]>(() => [
+    { key: '', label: 'All types', count: this.rows().length },
+    ...this.types().map((t) => ({ key: t.value, label: t.label, count: t.count })),
+  ]);
 
   protected readonly sectorOptions = computed(() => {
     const rows = this.rows();
@@ -483,88 +476,85 @@ export class AssessorListPage {
     this.pager.set(this.filtered());
   }
 
+  /** A row menu choice: each one confirms first (reset link, block, unblock) or opens the history panel. */
+  protected pick(key: string, s: AssessorRow): void {
+    if (this.busy()) return;
+    this.dialogError.set('');
+    switch (key) {
+      case 'reset': this.resetFor.set({ row: s, ask: resetLinkAsk(s.UserName, s.UserId, s.Email) }); break;
+      case 'block': void this.openBlock(s); break;
+      case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: s.UserId, userName: s.UserName ?? null }); break;
+      case 'history': void this.openHistory(s); break;
+    }
+  }
+
+  protected closeDialogs(): void {
+    if (this.busy()) return;
+    this.resetFor.set(null);
+    this.blockFor.set(null);
+    this.reasonAsk.set(null);
+    this.dialogError.set('');
+  }
+
   /** E-mails the assessor a link to set a new password. */
   protected async sendReset(s: AssessorRow): Promise<void> {
-    if (!window.confirm(RESET_CONFIRM)) return;
+    await this.act(this.api.passwordReset('assessors', s.UserId), (m) => {
+      this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(m, s.Email));
+      return false;
+    });
+  }
+
+  /** The block confirmation, with the open assessments it leaves (read first; "not known" when it cannot be). */
+  private async openBlock(s: AssessorRow): Promise<void> {
     this.busy.set(true);
-    this.error.set('');
-    this.success.set('');
+    assessorBlockNote(this.content, this.consultancy); // starts loading the Admin's texts while the count is read
+    let open: number | null = null;
     try {
-      this.success.set((await firstValueFrom(this.api.passwordReset('assessors', s.UserId))).message);
-    } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      open = (await firstValueFrom(this.api.assessorOpenAssessments(s.UserId))).count ?? null;
+    } catch {
+      /* shown as "not known" */
     } finally {
       this.busy.set(false);
     }
+    const reAllots = 'the ' + (this.consultancy ? 'organisation' : this.labels.agency.toLowerCase());
+    this.blockFor.set({ row: s, ask: assessorBlockAsk(s.UserName, s.UserId, open, assessorBlockNote(this.content, this.consultancy), this.consultancy, reAllots) });
   }
 
-  protected async openBlock(s: AssessorRow): Promise<void> {
-    this.success.set('');
-    this.dialogError.set('');
-    this.dialog.set({ kind: 'block', row: s, reason: '', open: null });
-    try {
-      const open = (await firstValueFrom(this.api.assessorOpenAssessments(s.UserId))).count;
-      const d = this.dialog();
-      if (d?.kind === 'block' && d.row === s) this.dialog.set({ ...d, open });
-    } catch {
-      /* the warning is optional */
-    }
-  }
-
-  protected async block(): Promise<void> {
-    const d = this.dialog();
-    if (d?.kind !== 'block') return;
-    if (!d.reason.trim()) {
-      this.dialogError.set('Please enter the reason for blocking.');
-      return;
-    }
-    if (await this.act(this.api.block('assessors', d.row.UserId, d.reason.trim()), true)) this.dialog.set(null);
-  }
-
-  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
-  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
-
-  protected unblock(s: AssessorRow): void {
-    this.reasonAsk.set({ action: 'unblock', userId: s.UserId, userName: s.UserName ?? null });
+  protected async block(s: AssessorRow, reason: string): Promise<void> {
+    await this.act(this.api.block('assessors', s.UserId, reason), (m) => {
+      this.toast.success(`${this.consultancy ? 'Consultant' : this.labels.assessor} blocked`, m);
+      return true;
+    });
   }
 
   protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
-    await this.act(this.api.unblock('assessors', r.userId, reason), false);
-    this.reasonAsk.set(null);
+    await this.act(this.api.unblock('assessors', r.userId, reason), (m) => {
+      this.toast.success(`${this.consultancy ? 'Consultant' : this.labels.assessor} unblocked`, m);
+      return true;
+    });
   }
 
-  protected async openHistory(s: AssessorRow): Promise<void> {
-    this.dialogError.set('');
-    this.dialog.set({ kind: 'history', row: s, entries: null });
+  private async openHistory(s: AssessorRow): Promise<void> {
+    this.historyFor.set({ row: s, items: null, error: '' });
     try {
       const entries = await firstValueFrom(this.api.assessorHistory(s.UserId));
-      const d = this.dialog();
-      if (d?.kind === 'history' && d.row === s) this.dialog.set({ ...d, entries });
+      if (this.historyFor()?.row === s) this.historyFor.set({ row: s, items: blockHistoryItems(entries, this.consultancy ? 'organisation' : 'agency'), error: '' });
     } catch (err) {
-      this.dialog.set(null);
-      this.error.set(apiErrorMessage(err));
+      if (this.historyFor()?.row === s) this.historyFor.set({ row: s, items: [], error: apiErrorMessage(err) });
     }
   }
 
-  protected close(): void {
-    if (!this.busy()) this.dialog.set(null);
-  }
-
-  protected roleName(role: number | null): string {
-    return role === 7 ? ' (Master Admin)' : role === 2 ? (this.consultancy ? ' (organisation)' : ' (agency)') : role === 1 ? ' (Admin)' : '';
-  }
-
-  private async act(call: ReturnType<UsersApi['unblock']>, inDialog: boolean): Promise<boolean> {
+  /** Runs a confirmed action: done → the toast (and a reload when `done` says so), the pop-up closes; refused → in the pop-up. */
+  private async act(call: ReturnType<UsersApi['unblock']>, done: (message: string) => boolean): Promise<void> {
     this.busy.set(true);
-    this.error.set('');
-    this.success.set('');
+    this.dialogError.set('');
     try {
-      this.success.set((await firstValueFrom(call)).message);
-      await this.load();
-      return true;
+      const reload = done((await firstValueFrom(call)).message);
+      this.busy.set(false);
+      this.closeDialogs();
+      if (reload) await this.load();
     } catch (err) {
-      (inDialog ? this.dialogError : this.error).set(apiErrorMessage(err));
-      return false;
+      this.dialogError.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }

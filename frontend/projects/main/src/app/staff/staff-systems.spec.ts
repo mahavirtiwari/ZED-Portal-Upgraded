@@ -90,10 +90,10 @@ describe('staff pages per system', () => {
     ]);
     await settle();
     expect(el.querySelector('h2')!.textContent).toBe('Consultant Organisations');
-    // V4 layout: the ID under the organisation's name, the SPOC with it.
-    expect(headers()).toEqual(['Consultant Organisation and SPOC', 'No. of Consultant', 'Status', 'Actions']);
+    // 2026-11-17 redesign: the ID under the organisation's name, the SPOC in its own column (masked contact).
+    expect(headers()).toEqual(['Consultant Organisation', 'SPOC', 'No. of Consultant', 'Status', 'Actions']);
     const row = el.querySelector('tbody tr')!;
-    expect(row.querySelectorAll('td').length).toBe(4);
+    expect(row.querySelectorAll('td').length).toBe(5);
     for (const value of ['ZEDCO0001', 'CO One', 'Spoc', '7', 'Active']) expect(row.textContent).toContain(value);
     expect(el.textContent).not.toContain('DA');
   });

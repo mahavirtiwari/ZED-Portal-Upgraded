@@ -1,14 +1,21 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PageHead } from '../../msme/shared/page-head';
 import { PORTAL_SYSTEM } from '../../portal-system';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { staffCrumbs } from '../staff-crumbs';
 import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
+import { ToastService } from '../toast';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
+import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { MultiSelect, MultiSelectOption } from './multi-select';
+import { ReasonAsk, ReasonDialog } from './reason-dialog';
+import { resetLinkAsk, sentTo } from './user-display';
 import { AssessmentModeName, AssessorAssessment, LevelModes, Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
 
 interface AssessorModel {
@@ -64,73 +71,21 @@ function emptyAssessor(): AssessorModel {
  * (initials, ID, certificate, type, sector type and status) above a saved assessor, numbered sections (type and
  * certificate, contact, ID proof, what the assessor assesses, block reason), the type, ID proof and sector type as choice
  * chips, the lookup in a shaded box that names the professional found, and a sticky save bar showing unsaved changes.
+ * 2026-11-17 (approved staff redesign, staff-05): the staff page head (crumbs, a "View only" tag, Block / Unblock, Reset link,
+ * History and Back), each action confirmed in a pop-up and reported in a toast; a right rail (the agency, the coverage
+ * collapsed to counts with "View all", the open assessments count) that stacks under the form on narrow screens.
  */
 @Component({
   selector: 'zed-staff-assessor-form',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel],
   styleUrl: './assessor-form-scope.scss',
   templateUrl: './assessor-form.html',
-  styles: `
-    fieldset { min-width: 0; }
-    .form-grid > .top { align-self: start; padding-top: 8px; }
-    .readonly { background-color: #eef1f2 !important; }
-    .help-block { color: #a94442; font-size: 13px; }
-    .af-label { font-weight: 600; color: #3b4b4c; font-size: 14px; }
-    .form-grid .form-control.af-short { max-width: 160px; }
-    .form-grid .form-control.af-mid { max-width: 320px; }
-
-    .af-profile { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 16px; padding: 16px 20px; }
-    .af-avatar { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); font-weight: 700; font-size: 16px; letter-spacing: .03em; }
-    .af-who { flex: 1 1 220px; min-width: 0; }
-    .af-name { display: block; font-size: 18px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
-    .af-id { display: block; font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
-    .af-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-    .af-tags .zed-chip { margin: 0; }
-    .af-sector { background: #f1f0fb; color: #3f3a7a; }
-
-    .af-section { padding: 18px 20px 20px; }
-    .af-head { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #23474a; margin: 0 0 16px; }
-    .af-no { flex: none; width: 28px; height: 28px; border-radius: 50%; background: #45a5ad; color: #fff; font-size: 14px; display: grid; place-items: center; }
-    .af-hint { font-size: 13px; color: #5f6f70; margin: 0 0 10px; }
-
-    /* Choice chips: one radio per pill (assessor type, ID proof, sector type). */
-    .af-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 38px; align-items: center; }
-    .af-chip { position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 16px; border-radius: 6px;
-      border: 1px solid #cbd9da; background: #fff; color: var(--zt-mid2, #2f7c83); font-weight: 600; font-size: 14px; cursor: pointer; }
-    .af-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
-    .af-chip::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #9fbfc1; background: #fff; box-sizing: border-box; }
-    .af-chip:hover { background: #eef6f6; border-color: #45a5ad; }
-    .af-chip.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
-    .af-chip.active::before { border: 4px solid #fff; background: var(--zt-dark, #23656b); }
-    .af-chip:has(input:focus-visible) { outline: 2px solid var(--zt-mid2, #2f7c83); outline-offset: 2px; }
-    .af-chip.is-off { opacity: .5; cursor: not-allowed; background: #f4f6f6; }
-    fieldset:disabled .af-chip { cursor: default; }
-    fieldset:disabled .af-chip:not(.active) { background: #f4f6f6; color: #7d8c8d; }
-
-    .lookup { background: #f5fafa; border: 1px solid #e1eded; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
-    .af-found { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #e6f6ec; color: #1e7a3c; font-size: 14px; }
-    .af-found .af-avatar { flex-basis: 40px; width: 40px; height: 40px; font-size: 14px; }
-    #selfieimg { max-height: 90px; border-radius: 8px; }
-
-    /* Save bar: stays at the bottom of the window while there are changes. */
-    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; padding: 12px 16px;
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
-    .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
-    .save-bar > span { flex: 1 1 180px; min-width: 0; }
-    .unsaved { font-weight: 600; color: #8a6100; }
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    @media (max-width: 767.98px) {
-      .af-section { padding: 14px; }
-      .form-grid .form-control.af-short, .form-grid .form-control.af-mid { max-width: none; }
-      .lookup .filter-bar > .filter { max-width: none; flex-basis: 100%; }
-    }
-  `,
 })
 export class AssessorFormPage {
   private readonly api = inject(UsersApi);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   protected readonly userId: string | null = inject(ActivatedRoute).snapshot.paramMap.get('userId');
   protected readonly isAgency = this.auth.currentUser()?.roleId === StaffRole.Agency;
@@ -167,7 +122,6 @@ export class AssessorFormPage {
     return !agency || agency === 'Both' || agency === a;
   }
   protected readonly error = signal('');
-  protected readonly success = signal('');
   /** Status of a saved assessor (shown on the profile card); null for a new one. */
   protected readonly isActive = signal<boolean | null>(null);
   /** A field was changed since the page loaded or was last saved (the save bar says so). */
@@ -180,6 +134,167 @@ export class AssessorFormPage {
 
   constructor() {
     void this.load();
+  }
+
+  // ---- 2026-11-17 (staff-05): page head, actions and right rail ----
+
+  /** Who may block, unblock, send a reset link and see the history (StaffAssessorsController: Agency and MasterAdmin). */
+  protected readonly managesLogin = this.isAgency || this.auth.currentUser()?.roleId === StaffRole.MasterAdmin;
+
+  protected get crumbs() {
+    return staffCrumbs({ label: this.consultancy ? 'Consultants/Experts' : 'Assessors', link: this.backLink }, { label: this.userId ?? 'Add' });
+  }
+
+  /** The head's actions: a saved assessor, once loaded. */
+  protected get actions(): boolean {
+    return !this.isNew && this.managesLogin && this.isActive() !== null;
+  }
+
+  /** The agency the assessor belongs to (the details carry its ID only). */
+  protected readonly agencyUserId = signal<string | null>(null);
+
+  /** The agency's own name when the agency itself looks at its assessor. */
+  protected get agencyName(): string | null {
+    const me = this.auth.currentUser();
+    return this.isAgency && me && me.userId === this.agencyUserId() ? me.userName || null : null;
+  }
+
+  protected get agencyWord(): string {
+    return this.consultancy ? 'Consultant Organisation' : 'Assessment agency';
+  }
+
+  /** Assessments allotted to the assessor and not certified yet (null: not known; the rail block is hidden). */
+  protected readonly openCount = signal<number | null>(null);
+
+  private async loadOpenCount(): Promise<void> {
+    try {
+      this.openCount.set((await firstValueFrom(this.api.assessorOpenAssessments(this.userId!))).count ?? null);
+    } catch {
+      /* optional: the rail block and the pop-up line stay hidden */
+    }
+  }
+
+  protected openWords(n: number): string {
+    return `${n} ${this.consultancy ? 'case' : 'assessment'}${n === 1 ? '' : 's'}`;
+  }
+
+  /** Coverage: the states, sectors and areas collapse to a count or the first one, until "View all". */
+  protected readonly coverageOpen = signal(false);
+
+  protected labelsOf(values: readonly string[], options: readonly MultiSelectOption[]): string[] {
+    return values.map((v) => options.find((o) => o.value === v)?.label ?? v);
+  }
+
+  protected firstOf(values: readonly string[], options: readonly MultiSelectOption[]): string {
+    if (!values.length) return 'None selected';
+    const first = this.labelsOf(values.slice(0, 1), options)[0];
+    return values.length > 1 ? `${first} +${values.length - 1} more` : first;
+  }
+
+  /** The confirmation open: block (with its reason) or the reset link. */
+  protected readonly confirming = signal<'block' | 'reset' | null>(null);
+  protected readonly confirmBusy = signal(false);
+  protected readonly confirmFailed = signal('');
+
+  protected readonly confirmAsk = computed<ConfirmAsk | null>(() => {
+    const kind = this.confirming();
+    const name = this.model.userName || this.userId!;
+    if (kind === 'reset') return resetLinkAsk(this.model.userName, this.userId!, this.model.emailId);
+    if (kind !== 'block') return null;
+    const n = this.openCount();
+    const who = this.consultancy ? 'consultant/expert' : 'assessor';
+    const open = n
+      ? ` ${this.openWords(n)} allotted to this ${who} ${n === 1 ? 'is' : 'are'} still open; ${this.isAgency ? 'you' : 'the ' + (this.consultancy ? 'organisation' : 'agency')} will need to re-allot ${n === 1 ? 'it' : 'them'}.`
+      : '';
+    return {
+      title: `Block ${name}?`,
+      message: `${name} (${this.userId}) will not be able to sign in.${open} Nothing is deleted; you can unblock at any time.`,
+      confirmLabel: 'Block ' + this.noun.toLowerCase(),
+      danger: true,
+      reason: {
+        label: 'Reason for blocking', placeholder: `Shown in the ${who}'s history`, requiredMessage: 'Please enter the reason for blocking.', maxLength: 2000,
+        hint: `Kept in the history and e-mailed to the ${who}.`,
+      },
+    };
+  });
+
+  protected ask(kind: 'block' | 'reset'): void {
+    this.confirmFailed.set('');
+    this.confirming.set(kind);
+  }
+
+  protected closeConfirm(): void {
+    if (!this.confirmBusy()) this.confirming.set(null);
+  }
+
+  protected async confirmed(reason: string): Promise<void> {
+    const kind = this.confirming();
+    if (!kind || !this.userId) return;
+    this.confirmBusy.set(true);
+    this.confirmFailed.set('');
+    try {
+      if (kind === 'block') {
+        const r = await firstValueFrom(this.api.block('assessors', this.userId, reason));
+        this.isActive.set(false);
+        this.model.reasonForRejection = reason;
+        this.toast.success(this.noun + ' blocked', r.message);
+      } else {
+        const r = await firstValueFrom(this.api.passwordReset('assessors', this.userId));
+        this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(r.message, this.model.emailId));
+      }
+      this.confirming.set(null);
+    } catch (err) {
+      this.confirmFailed.set(apiErrorMessage(err));
+    } finally {
+      this.confirmBusy.set(false);
+    }
+  }
+
+  /** Unblock keeps the reason pop-up of the lists (zed-reason-dialog). */
+  protected readonly unblockAsk = signal<ReasonAsk | null>(null);
+
+  protected askUnblock(): void {
+    this.confirmFailed.set('');
+    this.unblockAsk.set({ action: 'unblock', userId: this.userId!, userName: this.model.userName || null });
+  }
+
+  protected closeUnblock(): void {
+    if (!this.confirmBusy()) this.unblockAsk.set(null);
+  }
+
+  protected async unblock(reason: string): Promise<void> {
+    if (!this.userId) return;
+    this.confirmBusy.set(true);
+    this.confirmFailed.set('');
+    try {
+      const r = await firstValueFrom(this.api.unblock('assessors', this.userId, reason));
+      this.isActive.set(true);
+      this.model.reasonForRejection = reason;
+      this.toast.success(this.noun + ' unblocked', r.message);
+      this.unblockAsk.set(null);
+    } catch (err) {
+      this.confirmFailed.set(apiErrorMessage(err));
+    } finally {
+      this.confirmBusy.set(false);
+    }
+  }
+
+  /** The block / unblock history side panel (null items while loading). */
+  protected readonly historyOpen = signal(false);
+  protected readonly historyItems = signal<HistoryItem[] | null>(null);
+  protected readonly historyError = signal('');
+
+  protected async openHistory(): Promise<void> {
+    if (!this.userId) return;
+    this.historyItems.set(null);
+    this.historyError.set('');
+    this.historyOpen.set(true);
+    try {
+      const entries = await firstValueFrom(this.api.assessorHistory(this.userId));
+      this.historyItems.set(blockHistoryItems(entries, this.consultancy ? 'organisation' : 'agency'));
+    } catch (err) {
+      this.historyError.set(apiErrorMessage(err));
+    }
   }
 
   /** Main (2026-11-14, approved): the levels of the grid and their modes. */
@@ -348,7 +463,9 @@ export class AssessorFormPage {
         this.panNo.set(a.panNo ?? null);
         this.storedIdProofType.set(a.idProofType);
         this.isActive.set(a.isActive);
+        this.agencyUserId.set(a.agencyUserId ?? null);
         this.canEdit.set(a.canEdit && this.isAgency);
+        void this.loadOpenCount();
       }
     } catch (err) {
       this.error.set(apiErrorMessage(err));
@@ -405,7 +522,6 @@ export class AssessorFormPage {
     if (!this.canEdit()) return;
     this.submitted.set(true);
     this.error.set('');
-    this.success.set('');
     const m = this.model;
     if (this.isNew && this.typed && [m.userName, m.emailId, m.mobileNo].some((v) => !v.trim())) {
       this.error.set('Please enter the name, e-mail and mobile number.');
@@ -473,7 +589,7 @@ export class AssessorFormPage {
             ...(this.consultancy || !this.levels().length ? {} : { assessments: this.ticks() }),
           }),
         );
-        this.success.set(r.message);
+        this.toast.success(this.noun + ' updated', r.message);
         this.dirty.set(false);
       }
     } catch (err) {

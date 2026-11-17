@@ -1,15 +1,23 @@
-import { ContentTextComponent } from '../../content/content-text';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ReasonAsk, ReasonDialog } from './reason-dialog';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { AgencyLevel, AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi, agencyLevels, rowValue } from './users.api';
-import { LABELS } from '../../portal-labels';
-import { PagedView, PagerComponent } from '../pager';
-import { STAFF_SYSTEM } from '../staff-menu';
+import { ContentService, fillText } from '../../content/content-text';
 import { PageHead } from '../../msme/shared/page-head';
+import { LABELS } from '../../portal-labels';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { ListCount, ListCounts } from '../list-counts';
+import { PagedView, PagerComponent } from '../pager';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { staffCrumbs } from '../staff-crumbs';
+import { STAFF_SYSTEM } from '../staff-menu';
+import { ToastService } from '../toast';
+import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
+import { ReasonAsk, ReasonDialog } from './reason-dialog';
+import { initialsOf, maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { AgencyLevel, AgencyRow, SECTOR_ACTIVITIES, SectorActivity, UsersApi, agencyLevels, rowValue } from './users.api';
 
 /** 'levels': Agency level allocation (2026-11-08; before, the Bronze Assessment Agencies page). */
 type Mode = 'all' | 'levels';
@@ -18,119 +26,93 @@ type StatusFilter = 'all' | 'on' | 'off';
 /** Main: the sector type filter ('none' = not set yet). */
 type SectorFilter = 'all' | SectorActivity | 'none';
 
-interface Dialog {
-  kind: 'block' | 'disable-level';
+/** A confirmation of the page: block, send a reset link, or turn a level on / off. */
+interface Pending {
+  kind: 'block' | 'reset' | 'level';
   agency: AgencyRow;
-  text: string;
-  level?: { code: AgencyLevel; name: string };
+  ask: ConfirmAsk;
+  level?: { code: AgencyLevel; name: string; allow: boolean };
 }
 
+const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
+
 /**
- * MasterAdmin list of assessment agencies. Port of Views/User/AssessmentAgencies.cshtml (block /
- * unblock, edit) and BronzeAssessmentAgencies.cshtml (enable / disable Bronze assessments); the
- * route's `data.mode` ('all' | 'bronze') picks the page. Actions are POSTs (the old page used GET links). V4 layout: the
- * counts on top, search with a status filter (and on Main a sector type filter with its counts), each agency with its
- * initials, ID and address, categories and sector type as chips, the status as a badge; a card per agency on phones.
+ * MasterAdmin list of assessment agencies. Port of Views/User/AssessmentAgencies.cshtml (block / unblock, edit) and
+ * BronzeAssessmentAgencies.cshtml (enable / disable the levels); the route's `data.mode` ('all' | 'levels') picks the page.
+ * 2026-11-17 (approved staff redesign, staff-01 / staff-03, pop-ups 01, 03, 04, 08, 09): counts that filter, chip filters,
+ * a light table where each row has Edit and Assessors plus a ⋮ menu (reset link, history, block / unblock, each confirmed),
+ * the SPOC mobile and e-mail masked (full on the agency's page), toasts for completed actions; the levels page has one
+ * switch per level in its own column: on asks to confirm, off asks for the reason (e-mailed to the agency).
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent, PageHead, ReasonDialog],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel],
   templateUrl: './agencies.html',
   styles: `
-    .ag-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
-    .stat-value.is-on { color: #1e7a3c; }
-    .stat-value.is-off { color: #a8303a; }
-    .stat-label { font-size: 13px; color: #5f6f70; }
-
-    .list-card { padding: 16px; }
-    .list-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; }
-    .list-toolbar .search { flex: 1 1 260px; max-width: 380px; }
-    .seg-group { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-    .seg-label { font-size: 13px; font-weight: 600; color: #5f6f70; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
-    .seg .n { font-weight: 400; opacity: .85; }
-
-    .ag-table { min-width: 940px; margin-bottom: 8px; }
+    .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; margin-bottom: 16px; }
+    .ag-search { position: relative; flex: 1 1 260px; max-width: 340px; }
+    .ag-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #7b8b8c; stroke-width: 2; }
+    .ag-search input { padding-left: 36px; height: 38px; border-radius: 8px; }
+    .ag-card { padding: 0; overflow: hidden; }
+    .ag-table { min-width: 960px; margin: 0; }
     .ag-table td { vertical-align: middle; overflow-wrap: anywhere; }
-    .ag-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .ag-table tr.is-off .ag-name { color: #5f6f70; }
-    .col-cat { width: 220px; }
-    .col-count { width: 96px; }
-    .col-status { width: 112px; }
-    .col-actions { width: 300px; }
     .ag { display: flex; gap: 12px; align-items: flex-start; }
-    .initials { flex: 0 0 38px; height: 38px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 14px; font-weight: 700; }
+    .initials { flex: 0 0 34px; height: 34px; border-radius: 50%; background: #e6f1ef; color: var(--zt-ink, #173f44); display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
     tr.is-off .initials { background: #eef1f2; color: #8a9899; }
-    .ag-text { min-width: 0; }
-    .ag-name { display: block; font-weight: 700; color: #232527; }
-    .ag-id { display: inline-block; margin: 1px 0 2px; font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: var(--zt-mid2, #2f7c83); }
-    .ag-text small { display: block; font-size: 13px; }
-    .contact { margin-top: 4px; }
-    .contact strong { color: #23474a; font-weight: 600; white-space: nowrap; }
-    .contact > * + * { margin-left: 4px; }
+    .ag-text { min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; color: #5f6f70; }
+    .ag-name { font-size: 14px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .spoc { display: flex; flex-direction: column; font-size: 12.5px; color: #5f6f70; }
+    .spoc strong { font-size: 14px; color: var(--zt-ink, #173f44); }
     .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-    .chips .zed-chip { margin: 0; }
-    .zed-chip.is-bronze { background: #f6ece0; color: #7a4a14; }
-    .lv-stat-sub { font-size: 12px; color: #a8303a; margin-left: 6px; font-weight: 600; }
-    .lv-stat-sub.none { color: #8a9899; font-weight: 400; }
-    /* 2026-11-13 (approved): the levels in two rows of two, the row button shape (30 px, rounded 8). */
-    .lv-row { display: inline-grid; grid-template-columns: repeat(2, minmax(110px, 1fr)); gap: 6px; }
-    .lv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border-radius: 8px; padding: 0 12px; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; border: 1px solid; background: #fff; }
-    .lv.on { background: #e8f5ec; color: #1e7a3c; border-color: #9ccfac; }
-    .lv.on:hover { background: #d8eedf; }
-    .lv.off { background: #fbeaec; color: #a8303a; border-color: #e5a9b0; }
-    .lv.off:hover { background: #f6dade; }
-    .lv:disabled { opacity: .6; cursor: default; }
-    .lv-reasons { margin-top: 6px; font-size: 12px; color: #5f6f70; }
-    .lv-reasons span { display: block; overflow-wrap: anywhere; }
-    .col-levels { width: 420px; }
-    .zed-chip.is-sector { background: #f1f0fb; color: #3f3a7a; }
-    .zed-chip.is-unset { background: #fff4d6; color: #8a6100; }
-    .count { font-size: 18px; font-weight: 700; color: #23474a; }
-    .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .chips span { padding: 3px 10px; border-radius: 12px; background: #e6f1ef; color: var(--zt-ink, #173f44); font-size: 12px; font-weight: 600; }
+    .chips .is-sector { background: #eef1f2; color: #4f6061; }
+    .chips .is-unset { background: #fff4d6; color: #8a6100; }
+    .count { font-size: 15px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .acts { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+    .acts .btn { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; font-weight: 600; }
+    .lv-cell { text-align: center; }
+    .sw { position: relative; width: 40px; height: 22px; border: 0; border-radius: 11px; background: #d5dcdd; padding: 0; transition: background .15s; }
+    .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+    .sw.on { background: #2e9e57; }
+    .sw.on::after { left: 21px; }
+    .sw:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
+    .sw:disabled { opacity: .6; }
+    .lv-state { display: block; font-size: 12px; color: #5f6f70; margin-top: 2px; }
+    .lv-why { display: block; max-width: 160px; margin: 2px auto 0; font-size: 11.5px; color: #8a6100; }
     .no-data .btn { margin-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-
-    @media (max-width: 991.98px) { .ag-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    /* Phones: a card per agency. */
     @media (max-width: 767.98px) {
-      .list-card { padding: 12px; }
-      .list-toolbar .search { max-width: none; }
-      .seg-group { flex-wrap: wrap; }
+      .ag-search { max-width: none; }
       .ag-table { min-width: 0; }
       .ag-table thead { display: none; }
       .ag-table, .ag-table tbody, .ag-table tr, .ag-table td { display: block; width: 100%; box-sizing: border-box; }
-      .ag-table tr { border: 1px solid #dfe9ea; border-radius: 12px; margin-bottom: 12px; padding: 6px 12px; }
-      .ag-table tr.empty-row { border: 0; padding: 0; }
-      .ag-table td { border: 0 !important; padding: 6px 0; text-align: left !important; }
-      .ag-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
+      .ag-table tr { border-bottom: 1px solid #e1eaea; padding: 8px 14px; }
+      .ag-table td { border: 0 !important; padding: 5px 0; text-align: left !important; }
+      .ag-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; font-weight: 700; color: #5f6f70; text-transform: uppercase; }
       .ag-table td.half { display: inline-block; width: 50%; vertical-align: top; }
-      .status-stack { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
-      .row-actions { justify-content: flex-start !important; }
+      .acts { justify-content: flex-start; }
+      .lv-why { margin: 2px 0 0; }
     }
   `,
 })
 export class AgenciesPage {
   private readonly api = inject(UsersApi);
+  private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
+  private readonly content = inject(ContentService);
 
   protected readonly mode: Mode = ['bronze', 'levels'].includes(inject(ActivatedRoute).snapshot.data['mode']) ? 'levels' : 'all';
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly labels = LABELS[this.system];
   protected readonly title = this.mode === 'levels' ? 'Agency Level Allocation' : this.labels.agencies;
-  protected readonly subtitle =
-    this.mode === 'levels'
-      ? 'Choose which certification levels each agency can be allotted. Disabling asks for a reason, and the agency gets an e-mail.'
-      : `The ${this.labels.agencies.toLowerCase()} of the portal, with their SPOC and ${this.labels.assessors.toLowerCase()}.`;
+  protected readonly crumbs = staffCrumbs({ label: this.title });
+  protected readonly subtitle = this.mode === 'levels' ? 'Choose which certification levels each agency can be allotted.' : null;
   /** Every level (Administration → Certification Levels, the Admin's too; 2026-11-08), and any the server's rows name. */
   protected readonly levels = computed(() => agencyLevels(this.agencies()));
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
+  protected readonly word = this.consultancy ? 'organisation' : 'agency';
 
   protected readonly agencies = signal<AgencyRow[]>([]);
   protected readonly search = signal('');
@@ -138,10 +120,14 @@ export class AgenciesPage {
   protected readonly sector = signal<SectorFilter>('all');
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
-  protected readonly dialog = signal<Dialog | null>(null);
-  protected readonly dialogError = signal('');
   protected readonly saving = signal(false);
+  /** The open confirmation and the server's refusal shown in it. */
+  protected readonly pending = signal<Pending | null>(null);
+  protected readonly failed = signal('');
+  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
+  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
+  /** The history side panel (popup-08): the agency and its entries (null while loading). */
+  protected readonly history = signal<{ agency: AgencyRow; items: HistoryItem[] | null; error: string } | null>(null);
 
   /** Of the whole list (not the filtered one). */
   protected readonly stats = computed(() => {
@@ -150,27 +136,33 @@ export class AgenciesPage {
     const assessors = list.reduce((n, a) => n + (a.NoOfUsers ?? 0), 0);
     return { total: list.length, on, off: list.length - on, assessors };
   });
-  /** Levels page: per level, the agencies that may and may not be allotted it. */
-  protected readonly levelStats = computed(() =>
-    this.levels().map((l) => {
-      const on = this.agencies().filter((a) => this.allowed(a, l.code)).length;
-      return { ...l, on, off: this.agencies().length - on };
-    }),
-  );
-  protected readonly statusFilters: { key: StatusFilter; label: string }[] =
+  protected readonly counts = computed<ListCount[]>(() => {
+    if (this.mode === 'levels') {
+      return this.levels().map((l) => {
+        const on = this.agencies().filter((a) => this.allowed(a, l.code)).length;
+        return { key: 'level-' + l.code, label: `${l.name} enabled`, value: on, sub: `${this.agencies().length - on} off` };
+      });
+    }
+    const s = this.stats();
+    return [
+      { key: 'all', label: this.consultancy ? 'Organisations' : 'Agencies', value: s.total },
+      { key: 'on', label: 'Active', value: s.on, tone: 'good' },
+      { key: 'off', label: 'In-active', value: s.off, tone: 'bad' },
+      { key: 'assessors', label: this.labels.assessors, value: s.assessors },
+    ];
+  });
+  protected readonly statusChips: FilterChip[] =
     this.mode === 'levels'
       ? [{ key: 'all', label: 'All' }, { key: 'off', label: 'Any level off' }, { key: 'on', label: 'All levels on' }]
-      : [{ key: 'all', label: 'All' }, { key: 'on', label: 'Active' }, { key: 'off', label: 'In-Active' }];
-  protected readonly sectorFilters: { key: SectorFilter; label: string }[] = [
-    { key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), { key: 'none', label: 'Not set' },
-  ];
-  protected readonly sectorCounts = computed(() => {
+      : [{ key: 'all', label: 'All' }, { key: 'on', label: 'Active' }, { key: 'off', label: 'In-active' }];
+  protected readonly sectorChips = computed<FilterChip[]>(() => {
     const counts: Record<SectorFilter, number> = { all: 0, Manufacturing: 0, Services: 0, Both: 0, none: 0 };
     for (const a of this.agencies()) {
       counts.all++;
       counts[a.SectorActivity ?? 'none']++;
     }
-    return counts;
+    return [{ key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), { key: 'none', label: 'Not set' }]
+      .map((c) => ({ ...c, count: counts[c.key as SectorFilter] }));
   });
   protected readonly filtering = computed(() => !!this.search().trim() || this.status() !== 'all' || this.sector() !== 'all');
 
@@ -187,11 +179,15 @@ export class AgenciesPage {
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() => this.filtered());
+  protected readonly maskEmail = maskEmail;
+  protected readonly maskMobile = maskMobile;
+  protected readonly initials = initialsOf;
 
   constructor() {
     // Message of the form page after creating an agency.
     const message = (globalThis.history?.state as { message?: unknown } | null)?.message;
-    if (typeof message === 'string') this.success.set(message);
+    if (typeof message === 'string') this.toast.success(message);
+    if (this.mode === 'levels') this.disableNote({ UserName: '' } as AgencyRow, ''); // starts loading the Admin's texts
     void this.load();
   }
 
@@ -210,32 +206,142 @@ export class AgenciesPage {
     return (rowValue(reasons, level) as string | null | undefined) || null;
   }
 
-  /** A level switch: disabling asks for a reason; enabling asks to confirm. */
-  protected async toggleLevel(a: AgencyRow, level: { code: AgencyLevel; name: string }): Promise<void> {
-    if (this.allowed(a, level.code)) {
-      this.success.set('');
-      this.dialogError.set('');
-      this.dialog.set({ kind: 'disable-level', agency: a, text: '', level: { code: level.code, name: level.name } });
-      return;
-    }
-    if (!window.confirm(`Are you sure that you want to enable ${level.name} assessments for ${a.UserName}?`)) return;
-    await this.run(this.api.levelAssessments(a.UserId, level.code, true, ''), false);
-  }
-
-  /** Up to two letters of the name for the row's badge (without Pvt, Ltd and the like). */
-  protected initials(name: string): string {
-    const words = (name ?? '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w && !/^(pvt|ltd|llp|co|of|the|and)$/i.test(w));
-    return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?';
-  }
-
   protected categories(a: AgencyRow): string[] {
     return [a.DesktopVerfi, a.SiteVerifi, a.FinanceVerfi].filter((c): c is string => !!c);
+  }
+
+  protected setStatus(key: string): void {
+    this.status.set(key as StatusFilter);
+  }
+
+  protected setSector(key: string): void {
+    this.sector.set(key as SectorFilter);
+  }
+
+  /** A tile: the status tiles filter; Assessors opens their list. */
+  protected pickCount(c: ListCount): void {
+    if (c.key === 'assessors') void this.router.navigateByUrl('/staff/users/assessors');
+    else this.status.set((c.key ?? 'all') as StatusFilter);
   }
 
   protected clearFilters(): void {
     this.search.set('');
     this.status.set('all');
     this.sector.set('all');
+  }
+
+  protected menu(a: AgencyRow): RowMenuItem[] {
+    const assessors = this.consultancy ? 'View consultants' : `View ${this.labels.assessors.toLowerCase()}`;
+    const items: RowMenuItem[] = [
+      { key: 'edit', label: `Edit ${this.word}`, icon: 'edit' },
+      { key: 'assessors', label: assessors, icon: 'people' },
+    ];
+    if (a.IsActive) items.push({ key: 'reset', label: 'Send reset link', icon: 'mail' });
+    items.push({ key: 'history', label: 'View history', icon: 'history' });
+    items.push(a.IsActive ? { key: 'block', label: `Block ${this.word}`, icon: 'lock', danger: true } : { key: 'unblock', label: `Unblock ${this.word}`, icon: 'unlock' });
+    return items;
+  }
+
+  protected picked(a: AgencyRow, key: string): void {
+    switch (key) {
+      case 'edit': void this.router.navigate(['/staff/users/agencies', a.UserId]); break;
+      case 'assessors': void this.router.navigate(['/staff/users/assessors'], { queryParams: { agencyId: a.UserId } }); break;
+      case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email) }); break;
+      case 'history': void this.openHistory(a); break;
+      case 'block': this.ask({ kind: 'block', agency: a, ask: this.blockAsk(a) }); break;
+      case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: a.UserId, userName: a.UserName ?? null }); break;
+    }
+  }
+
+  /** popup-03: what blocking does, in plain words, and a required reason. */
+  private blockAsk(a: AgencyRow): ConfirmAsk {
+    return {
+      title: `Block ${a.UserName || a.UserId}?`,
+      message: `${a.UserName || a.UserId} (${a.UserId}) cannot sign in until it is unblocked. Nothing is deleted; you can unblock the ${this.word} at any time. ` +
+        `The reason is kept in its history and e-mailed to the ${this.word}.`,
+      confirmLabel: `Block ${this.word}`,
+      danger: true,
+      reason: { label: 'Reason for blocking', placeholder: `Shown in the ${this.word}'s history`, maxLength: 2000 },
+    };
+  }
+
+  /** A level switch (popup-09): turning it on confirms; turning it off asks for the reason, which is e-mailed to the agency. */
+  protected toggleLevel(a: AgencyRow, level: { code: AgencyLevel; name: string }): void {
+    const allow = !this.allowed(a, level.code);
+    const n = level.name;
+    const ask: ConfirmAsk = allow
+      ? {
+          title: `Turn on ${n} for this agency?`,
+          message: `${a.UserName} (${a.UserId}) can be allotted new ${n} assessments again.`,
+          confirmLabel: `Turn on ${n}`,
+          cancelLabel: `Keep ${n} off`,
+        }
+      : {
+          title: `Turn off ${n} for this agency?`,
+          message: [this.disableNote(a, n), `You can turn ${n} back on at any time. The reason is e-mailed to the agency.`].filter(Boolean).join(' '),
+          confirmLabel: `Turn off ${n}`,
+          cancelLabel: `Keep ${n} on`,
+          reason: { label: 'Reason', placeholder: `Why ${n} assessments are turned off`, maxLength: 2000 },
+        };
+    this.ask({ kind: 'level', agency: a, ask, level: { code: level.code, name: n, allow } });
+  }
+
+  /** The Admin's text (Admin → Texts, staff.users.agencyLevel.disableNote) as plain text; '' when the Admin hid it. */
+  private disableNote(a: AgencyRow, level: string): string {
+    const t = this.content.text(DISABLE_NOTE_KEY);
+    if (t && !t.enabled) return '';
+    if (t?.html) {
+      const html = fillText(t.html, { Agency: a.UserName, Level: level });
+      const plain = typeof DOMParser !== 'undefined' ? new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '' : html.replace(/<[^>]*>/g, ' ');
+      return plain.replace(/\s+/g, ' ').trim();
+    }
+    return `${a.UserName} won't be allotted new ${level} assessments. Work already allotted continues.`;
+  }
+
+  private ask(p: Pending): void {
+    this.failed.set('');
+    this.pending.set(p);
+  }
+
+  /** The confirmation's answer: the call, then a toast; a refusal stays in the pop-up. */
+  protected async confirmed(reason: string): Promise<void> {
+    const p = this.pending();
+    if (!p) return;
+    const id = p.agency.UserId;
+    const call =
+      p.kind === 'block' ? this.api.block('agencies', id, reason)
+      : p.kind === 'reset' ? this.api.passwordReset('agencies', id)
+      : this.api.levelAssessments(id, p.level!.code, p.level!.allow, p.level!.allow ? '' : reason);
+    const message = await this.run(call, this.failed);
+    if (message === null) return;
+    this.pending.set(null);
+    if (p.kind === 'reset') this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(message, p.agency.Email));
+    else if (p.kind === 'block') this.toast.success(`${p.agency.UserName} blocked`, message);
+    else this.toast.success(`${p.level!.name} turned ${p.level!.allow ? 'on' : 'off'}`, message);
+  }
+
+  protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
+    const message = await this.run(this.api.unblock('agencies', r.userId, reason), this.failed);
+    if (message === null) return;
+    this.reasonAsk.set(null);
+    this.toast.success(`${r.userName || r.userId} unblocked`, message);
+  }
+
+  protected closeAsk(): void {
+    if (this.saving()) return;
+    this.pending.set(null);
+    this.reasonAsk.set(null);
+    this.failed.set('');
+  }
+
+  protected async openHistory(a: AgencyRow): Promise<void> {
+    this.history.set({ agency: a, items: null, error: '' });
+    try {
+      const items = blockHistoryItems(await firstValueFrom(this.api.agencyHistory(a.UserId)), this.word);
+      if (this.history()?.agency === a) this.history.set({ agency: a, items, error: '' });
+    } catch (err) {
+      if (this.history()?.agency === a) this.history.set({ agency: a, items: [], error: apiErrorMessage(err) });
+    }
   }
 
   protected async load(): Promise<void> {
@@ -250,60 +356,17 @@ export class AgenciesPage {
     }
   }
 
-  protected open(kind: Dialog['kind'], agency: AgencyRow): void {
-    this.success.set('');
-    this.dialogError.set('');
-    this.dialog.set({ kind, agency, text: '' });
-  }
-
-  protected close(): void {
-    this.dialog.set(null);
-  }
-
-  protected async submitDialog(): Promise<void> {
-    const d = this.dialog();
-    if (!d) return;
-    const text = d.text.trim();
-    if (!text) {
-      this.dialogError.set('This is required.');
-      return;
-    }
-    const id = d.agency.UserId;
-    const call =
-      d.kind === 'block' ? this.api.block('agencies', id, text) : this.api.levelAssessments(id, d.level!.code, false, text);
-    if (await this.run(call, true)) this.dialog.set(null);
-  }
-
-  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
-  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
-
-  protected unblock(a: AgencyRow): void {
-    this.reasonAsk.set({ action: 'unblock', userId: a.UserId, userName: a.UserName ?? null });
-  }
-
-  protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
-    await this.run(this.api.unblock('agencies', r.userId, reason), false);
-    this.reasonAsk.set(null);
-  }
-
-  /** E-mails the agency a link to set a new password. */
-  protected async sendReset(a: AgencyRow): Promise<void> {
-    if (!window.confirm(RESET_CONFIRM)) return;
-    await this.run(this.api.passwordReset('agencies', a.UserId), false);
-  }
-
-  private async run(call: Observable<MessageResponse>, inDialog: boolean): Promise<boolean> {
+  /** The answer's message, or null after showing the refusal in `failed`. */
+  private async run(call: Observable<MessageResponse>, failed: typeof this.failed): Promise<string | null> {
     this.saving.set(true);
-    this.error.set('');
-    this.success.set('');
+    failed.set('');
     try {
       const r = await firstValueFrom(call);
-      this.success.set(r.message);
-      await this.load();
-      return true;
+      void this.load();
+      return r.message;
     } catch (err) {
-      (inDialog ? this.dialogError : this.error).set(apiErrorMessage(err));
-      return false;
+      failed.set(apiErrorMessage(err));
+      return null;
     } finally {
       this.saving.set(false);
     }

@@ -1,18 +1,18 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ title }}</h3>
-    <p class="page-sub">{{ subtitle }}</p>
-  </div>
-  <div class="page-actions">
-    @if (!canEdit() && !loading()) { <span class="status-badge is-info">View only</span> }
-    <a [routerLink]="backLink" class="btn btn-default">BACK</a>
-  </div>
-</div>
+<zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
+  @if (!canEdit() && !loading()) { <span class="status-badge is-info af-view-only">View only</span> }
+  @if (actions) {
+    @if (isActive()) {
+      <button type="button" class="btn btn-outline-danger" data-act="block" (click)="ask('block')">Block</button>
+    } @else {
+      <button type="button" class="btn btn-outline-primary" data-act="unblock" (click)="askUnblock()">Unblock</button>
+    }
+    <button type="button" class="btn btn-outline-primary" data-act="reset" (click)="ask('reset')">Reset link</button>
+    <button type="button" class="btn btn-ph" data-act="history" (click)="openHistory()">History</button>
+  }
+  <a [routerLink]="backLink" class="btn btn-ph" data-back>Back</a>
+</zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
-}
-@if (success()) {
-  <div class="alert alert-success" role="status"><strong>{{ success() }}</strong></div>
 }
 
 @if (!isNew && model.userName) {
@@ -23,15 +23,17 @@
       <span class="af-id"><strong>{{ userId }}</strong>@if (model.certificateNo) { · Certificate {{ model.certificateNo }} }@if (panNo()) { · PAN {{ panNo() }} }</span>
     </div>
     <div class="af-tags">
-      @if (model.assessorType) { <span class="zed-chip">{{ typeLabel(model.assessorType) }}</span> }
-      @if (!consultancy && model.sectorActivity) { <span class="zed-chip af-sector">{{ model.sectorActivity }}</span> }
       @if (isActive() !== null) {
         <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">{{ isActive() ? 'Active' : 'Blocked' }}</span>
       }
+      @if (model.assessorType) { <span class="zed-chip">{{ typeLabel(model.assessorType) }}</span> }
+      @if (!consultancy && model.sectorActivity) { <span class="zed-chip af-sector">{{ model.sectorActivity }}</span> }
     </div>
   </div>
 }
 
+<div class="af-layout" [class.has-rail]="!isNew && isActive() !== null">
+<div class="af-main">
 <form class="af-form" (ngSubmit)="submit()" (input)="markDirty($event)" (change)="markDirty($event)" novalidate>
   <fieldset [disabled]="!canEdit()">
     @if (!isNew && levels().length) {
@@ -231,6 +233,62 @@
 
 @if (showsMobile && !loading() && userId) {
   <zed-assessor-mobile [userId]="userId" system="main" />
+}
+</div>
+
+@if (!isNew && isActive() !== null) {
+  <aside class="af-rail" [attr.aria-label]="'About this ' + noun.toLowerCase()">
+    @if (agencyUserId(); as agency) {
+      <section class="zed-card af-card" data-rail="agency">
+        <h4 class="af-card-head">{{ agencyWord }}</h4>
+        <div class="af-agency">
+          <span class="af-avatar af-sm" aria-hidden="true">{{ initials(agencyName || agency) }}</span>
+          <span class="af-who">
+            <span class="af-name">{{ agencyName || agency }}</span>
+            @if (agencyName) { <span class="af-id">{{ agency }}</span> }
+          </span>
+          @if (!isAgency) { <a class="af-link" [routerLink]="['/staff/users/agencies', agency]">Open</a> }
+        </div>
+      </section>
+    }
+    <section class="zed-card af-card" data-rail="coverage">
+      <h4 class="af-card-head">Coverage
+        <button type="button" class="btn btn-link af-link" [attr.aria-expanded]="coverageOpen()" (click)="coverageOpen.set(!coverageOpen())">{{ coverageOpen() ? 'Show less' : 'View all' }}</button>
+      </h4>
+      <dl class="af-cover">
+        @if (showStates) {
+          <dt>States</dt>
+          <dd>{{ model.states.length ? model.states.length + ' of ' + states().length + ' selected' : 'None selected' }}
+            @if (coverageOpen() && model.states.length) { <small>{{ model.states.join(', ') }}</small> }</dd>
+        }
+        <dt>NIC sectors</dt>
+        <dd>{{ firstOf(model.nicSectors, sectors()) }}
+          @if (coverageOpen() && model.nicSectors.length > 1) { <small>{{ labelsOf(model.nicSectors, sectors()).join(', ') }}</small> }</dd>
+        <dt>Areas of knowledge</dt>
+        <dd>{{ firstOf(model.areasOfKnowledge, areas()) }}
+          @if (coverageOpen() && model.areasOfKnowledge.length > 1) { <small>{{ labelsOf(model.areasOfKnowledge, areas()).join(', ') }}</small> }</dd>
+      </dl>
+    </section>
+    @if (openCount() !== null) {
+      <section class="zed-card af-card" data-rail="open">
+        <h4 class="af-card-head">Open {{ consultancy ? 'cases' : 'assessments' }}</h4>
+        @let n = openCount()!;
+        <p class="af-open">@if (n) { <strong>{{ openWords(n) }}</strong> allotted and not certified yet. } @else { None: nothing allotted is open. }</p>
+      </section>
+    }
+  </aside>
+}
+</div>
+
+@if (confirmAsk(); as a) {
+  <zed-confirm-dialog [ask]="a" [busy]="confirmBusy()" [failed]="confirmFailed()" (confirmed)="confirmed($event)" (cancel)="closeConfirm()" />
+}
+@if (unblockAsk(); as u) {
+  <zed-reason-dialog [ask]="u" [busy]="confirmBusy()" [failed]="confirmFailed()" (confirmed)="unblock($event)" (cancel)="closeUnblock()" />
+}
+@if (historyOpen()) {
+  <zed-user-history [subtitle]="(model.userName || userId) + ' · ' + userId" [items]="historyItems()" [error]="historyError()"
+                    [fileName]="'history-' + userId" (closed)="historyOpen.set(false)" />
 }
 
 @if (loading() || saving() || searching()) {

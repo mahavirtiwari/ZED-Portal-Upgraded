@@ -2,6 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ToastService } from '../toast';
 import { AccountsPage } from './accounts';
 import { SubUsersPage } from './sub-users';
 
@@ -17,8 +19,10 @@ describe('User management', () => {
     fixture.detectChanges();
   }
 
-  async function create<T>(component: Type<T>) {
-    await TestBed.configureTestingModule({ imports: [component], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+  async function create<T>(component: Type<T>, mode?: string) {
+    await TestBed.configureTestingModule({ imports: [component], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] }).compileComponents();
+    // The NEFT Admins page: the route's data mode 'neft'.
+    if (mode) Object.assign(TestBed.inject(ActivatedRoute).snapshot.data, { mode });
     fixture = TestBed.createComponent(component);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -33,6 +37,35 @@ describe('User management', () => {
     input.dispatchEvent(new Event(input instanceof HTMLSelectElement ? 'change' : 'input'));
   };
   const submit = () => (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+  const toasts = () => TestBed.inject(ToastService).toasts().map((t) => `${t.title}: ${t.message ?? ''}`);
+  /** Opens a row's menu (the three dots) and picks the item with this text. */
+  const pickMenu = async (row: Element, item: string) => {
+    (row.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    const found = [...el.querySelectorAll<HTMLButtonElement>('.rm-item')].find((b) => b.textContent!.trim() === item);
+    expect(found, `menu item ${item}`).toBeTruthy();
+    found!.click();
+    await settle();
+  };
+  const menuItems = async (row: Element) => {
+    (row.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    const items = [...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim());
+    (row.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle();
+    return items;
+  };
+  const confirmDialog = () => el.querySelector('zed-confirm-dialog') as HTMLElement | null;
+  const confirm = async (reason?: string) => {
+    if (reason !== undefined) {
+      const box = confirmDialog()!.querySelector('textarea') as HTMLTextAreaElement;
+      box.value = reason;
+      box.dispatchEvent(new Event('input'));
+      await settle();
+    }
+    (confirmDialog()!.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+  };
 
   afterEach(() => http.verify());
 
@@ -96,7 +129,8 @@ describe('User management', () => {
       http.expectOne('/api/staff/accounts').flush(list);
       await settle();
       expect(el.querySelector('.modal')).toBeNull();
-      expect(el.querySelector('.alert-success')!.textContent).toContain('DFOUP02 created');
+      expect(el.querySelector('.alert-success')).toBeNull();
+      expect(toasts()).toContain('Login added: MSME DFO login DFOUP02 created.');
     });
 
     it('gives a Master Admin its category, levels and states, and lists them under the login (2026-11-07)', async () => {
@@ -231,7 +265,7 @@ describe('User management', () => {
       expect(el.querySelector('tbody .acc-id')!.textContent).toBe('DFO9');
       expect(el.querySelector('.acc-state')!.textContent).toBe('UTTAR PRADESH');
       expect(el.querySelector('.acc-showing')!.textContent).toContain('1 of 2 logins');
-      expect([...el.querySelectorAll('.acc-stat-count')].map((c) => c.textContent)).toEqual(['1', '1', '0']);
+      expect([...el.querySelectorAll('zed-list-counts .lc-item b')].map((c) => c.textContent)).toEqual(['1', '1', '0']);
 
       button('+ Add Login').click();
       await settle();
@@ -266,12 +300,12 @@ describe('User management', () => {
         ],
       });
       await settle();
-      const tiles = () => [...el.querySelectorAll('.acc-stat')].map((t) => `${t.querySelector('.acc-stat-count')!.textContent} ${t.querySelector('.acc-stat-label')!.textContent}`);
+      const tiles = () => [...el.querySelectorAll('zed-list-counts .lc-item')].map((t) => `${t.querySelector('b')!.textContent} ${t.querySelector('.lc-label')!.textContent!.trim()}`);
       expect(tiles()).toEqual(['2 All logins', '1 Active', '1 Blocked']);
       expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['User', 'Login Type', 'Contact', 'Status', 'Actions']);
       expect([...el.querySelectorAll('.acc-avatar')].map((a) => a.textContent!.trim())).toEqual(['MA', 'ZE']);
 
-      (el.querySelectorAll('.acc-stat')[2] as HTMLButtonElement).click();
+      (el.querySelectorAll('zed-list-counts .lc-btn')[2] as HTMLButtonElement).click();
       await settle();
       expect(el.querySelectorAll('tbody tr').length).toBe(1);
       expect(el.querySelector('tbody .acc-id')!.textContent).toBe('ZEDV4MA02');
@@ -283,6 +317,135 @@ describe('User management', () => {
       button('Show all logins').click();
       await settle();
       expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    });
+  });
+
+  describe('AccountsPage (NEFT Admins, 2026-11-17 redesign)', () => {
+    const types = [{ roleId: 6, label: 'NEFT Admin', needsState: false }];
+    const neftList = {
+      types,
+      states: [],
+      accounts: [
+        { userId: 'NEFT01', userName: 'Neft Desk', roleId: 6, email: 'neft.desk@zed.test', mobileNo: '9876543210', stateCode: 'ALL', isActive: true },
+        { userId: 'NEFT00', userName: 'Old Desk', roleId: 6, email: 'old@zed.test', mobileNo: null, stateCode: 'ALL', isActive: false },
+      ],
+    };
+
+    it('shows the empty state with three steps and adds the first NEFT admin in the short pop-up', async () => {
+      await create(AccountsPage, 'neft');
+      http.expectOne('/api/staff/neft-admins').flush({ types, states: [], accounts: [] });
+      await settle();
+      expect(el.querySelector('.ph-title')!.textContent).toBe('NEFT Admins');
+      expect(el.querySelector('.ph-crumb [aria-current]')!.textContent).toBe('NEFT Admins');
+      expect([...el.querySelectorAll('zed-list-counts .lc-item')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['0 All logins', '0 Active', '0 Blocked']);
+      expect(el.querySelector('.nf-empty h4')!.textContent).toBe('No NEFT desk logins yet');
+      expect([...el.querySelectorAll('.nf-steps b')].map((b) => b.textContent)).toEqual(['1 Add the login', '2 Login details are e-mailed', '3 One desk for every state']);
+      expect(el.querySelector('table')).toBeNull();
+      // Not the Admin's page: no portal switch, no login type tabs.
+      expect(el.querySelector('zed-portal-switch')).toBeNull();
+      expect(el.querySelector('.acc-tabs')).toBeNull();
+
+      button('+ Add the first login').click();
+      await settle();
+      expect(el.querySelector('#account-title')!.textContent).toBe('Add NEFT admin');
+      expect((el.querySelector('#nf-type') as HTMLSelectElement).disabled).toBe(true);
+      expect(el.querySelector('#nf-type')!.textContent!.trim()).toBe('NEFT Admin');
+      expect(el.querySelector('.nf-note')!.textContent).toContain('The login details are e-mailed to this address');
+      expect(el.querySelector('.modal .choice-card')).toBeNull();
+      type('#acc-id', 'NEFT02');
+      type('#acc-name', 'Neft Two');
+      type('#acc-email', 'two@zed.test');
+      type('#acc-mobile', '9876543211');
+      await settle();
+      submit();
+      await settle();
+      const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/neft-admins');
+      expect(post.request.body).toEqual({ userId: 'NEFT02', roleId: 6, userName: 'Neft Two', email: 'two@zed.test', mobileNo: '9876543211', stateCode: null });
+      post.flush({ message: 'NEFT Admin login NEFT02 created. The login details have been sent to two@zed.test.' });
+      await settle();
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      expect(el.querySelector('.modal')).toBeNull();
+      expect(toasts()[0]).toContain('Login added: NEFT Admin login NEFT02 created.');
+      expect(el.querySelector('.nf-empty')).toBeNull();
+      expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    });
+
+    it('masks the contact, keeps Edit on the row and sends a new password from the row menu after a confirmation', async () => {
+      await create(AccountsPage, 'neft');
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['User', 'Contact', 'Status', 'Actions']);
+      const row = el.querySelectorAll('tbody tr')[0];
+      expect(row.querySelector('.acc-mobile')!.textContent).toBe('98•••••210');
+      expect(row.querySelector('.acc-mail')!.textContent).toBe('ne•••••@zed.test');
+      expect(el.textContent).not.toContain('neft.desk@zed.test');
+      expect([...row.querySelectorAll('.acc-actions-cell button.btn')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
+      expect(await menuItems(row)).toEqual(['Send new password', 'Block login']);
+      expect(await menuItems(el.querySelectorAll('tbody tr')[1])).toEqual(['Unblock login']);
+
+      await pickMenu(row, 'Send new password');
+      expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Send a new password?');
+      expect(confirmDialog()!.textContent).toContain('Neft Desk (NEFT01) gets a new password by e-mail at ne•••••@zed.test.');
+      await confirm();
+      const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/neft-admins/NEFT01/reset-password');
+      expect(req.request.body).toBeNull();
+      req.flush({ message: 'A new password has been sent to neft.desk@zed.test.' });
+      await settle();
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      expect(confirmDialog()).toBeNull();
+      expect(toasts()).toContain('New password sent: E-mailed to ne•••••@zed.test');
+
+      // Edit shows the full values in the pop-up.
+      button('Edit').click();
+      await settle();
+      expect(el.querySelector('#account-title')!.textContent).toBe('Edit NEFT admin');
+      expect((el.querySelector('#acc-email') as HTMLInputElement).value).toBe('neft.desk@zed.test');
+      expect(el.querySelector('#acc-id')).toBeNull();
+      button('Cancel').click();
+      await settle();
+    });
+
+    it('blocks with a required reason in the confirmation and unblocks with the reason pop-up', async () => {
+      await create(AccountsPage, 'neft');
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      await pickMenu(el.querySelectorAll('tbody tr')[0], 'Block login');
+      expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Block Neft Desk?');
+      expect(confirmDialog()!.querySelector('.cd-ok')!.classList).toContain('btn-danger');
+      await confirm();
+      http.expectNone('/api/staff/neft-admins/NEFT01/block');
+      expect(confirmDialog()!.textContent).toContain('Please enter the reason.');
+      await confirm('Left the desk');
+      const block = http.expectOne('/api/staff/neft-admins/NEFT01/block');
+      expect(block.request.body).toEqual({ reason: 'Left the desk' });
+      block.flush({ title: 'Not allowed.' }, { status: 400, statusText: 'Bad Request' });
+      await settle();
+      expect(confirmDialog()!.textContent).toContain('Not allowed.');
+      await confirm();
+      http.expectOne('/api/staff/neft-admins/NEFT01/block').flush({ message: 'Login blocked.' });
+      await settle();
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      expect(confirmDialog()).toBeNull();
+      expect(toasts()).toContain('Login blocked: Neft Desk (NEFT01) can no longer sign in. The reason was e-mailed.');
+
+      await pickMenu(el.querySelectorAll('tbody tr')[1], 'Unblock login');
+      expect(el.querySelector('zed-reason-dialog h3')!.textContent).toContain('Unblock Old Desk');
+      const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
+      box.value = 'Back on the desk';
+      box.dispatchEvent(new Event('input'));
+      await settle();
+      (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await settle();
+      const unblock = http.expectOne('/api/staff/neft-admins/NEFT00/unblock');
+      expect(unblock.request.body).toEqual({ reason: 'Back on the desk' });
+      unblock.flush({ message: 'Login unblocked.' });
+      await settle();
+      http.expectOne('/api/staff/neft-admins').flush(neftList);
+      await settle();
+      expect(toasts()).toContain('Login unblocked: Old Desk (NEFT00) can sign in again. The reason was e-mailed.');
     });
   });
 
@@ -300,7 +463,8 @@ describe('User management', () => {
       await create(SubUsersPage);
       http.expectOne('/api/staff/sub-users').flush(list);
       await settle();
-      expect(el.querySelector('h3')!.textContent).toBe('Sub-Users');
+      expect(el.querySelector('.ph-title')!.textContent).toBe('Sub-Users');
+      expect(el.querySelector('.ph-crumb [aria-current]')!.textContent).toBe('Sub-Users');
       expect(el.querySelector('tbody')!.textContent).toContain('Reports');
 
       button('+ Add Sub-User').click();
@@ -317,7 +481,8 @@ describe('User management', () => {
       await settle();
       http.expectOne('/api/staff/sub-users').flush(list);
       await settle();
-      expect(el.querySelector('.alert-success')!.textContent).toContain('AG1S02');
+      expect(el.querySelector('.alert-success')).toBeNull();
+      expect(toasts()).toContain('Sub-User added: Sub-User AG1S02 created.');
     });
 
     it('gives an agency sub-user states, and an operation admin states and agencies (2026-11-16)', async () => {
@@ -389,8 +554,8 @@ describe('User management', () => {
         ],
       });
       await settle();
-      expect(el.querySelector('h3')!.textContent).toBe('Operation Admins');
-      const tiles = () => [...el.querySelectorAll('.su-stat')].map((t) => `${t.querySelector('.su-stat-count')!.textContent} ${t.querySelector('.su-stat-label')!.textContent}`);
+      expect(el.querySelector('.ph-title')!.textContent).toBe('Operation Admins');
+      const tiles = () => [...el.querySelectorAll('zed-list-counts .lc-item')].map((t) => `${t.querySelector('b')!.textContent} ${t.querySelector('.lc-label')!.textContent!.trim()}`);
       expect(tiles()).toEqual(['3 All logins', '1 Active', '1 Locked', '1 Blocked']);
       expect([...el.querySelectorAll('.su-avatar')].map((a) => a.textContent!.trim())).toEqual(['PN', 'RO', 'AS']);
       const rows = () => [...el.querySelectorAll('tbody tr')];
@@ -399,7 +564,7 @@ describe('User management', () => {
       expect(rows()[1].querySelector('.su-screens')!.textContent!.trim()).toBe('All 6 screens');
       expect(rows()[0].querySelector('.su-never')!.textContent).toBe('Never signed in');
 
-      (el.querySelectorAll('.su-stat')[3] as HTMLButtonElement).click();
+      (el.querySelectorAll('zed-list-counts .lc-btn')[3] as HTMLButtonElement).click();
       await settle();
       expect(rows().length).toBe(1);
       expect(el.querySelector('tbody .su-id')!.textContent).toBe('MA1S03');
@@ -423,18 +588,134 @@ describe('User management', () => {
       await settle();
       const given = () => el.querySelector('.su-given')!.textContent;
       expect(given()).toBe('0 of 2 given');
-      button('Select all').click();
+      // The screens' own Select all / Clear (the scope's multi-selects have theirs).
+      const bulk = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('.su-bulk button')].find((b) => b.textContent!.trim() === label)!;
+      bulk('Select all').click();
       await settle();
       expect(given()).toBe('2 of 2 given');
       expect((el.querySelector('#perm-monitoring') as HTMLInputElement).checked).toBe(true);
       expect(el.querySelector('label[for="perm-reports"]')!.classList).toContain('active');
-      button('Clear').click();
+      bulk('Clear').click();
       await settle();
       expect(given()).toBe('0 of 2 given');
       expect((el.querySelector('#perm-reports') as HTMLInputElement).checked).toBe(false);
       expect(el.querySelector('#sub-active')).toBeNull();
-      button('CANCEL').click();
+      button('Cancel').click();
       await settle();
+    });
+
+    describe('row menu (2026-11-17 redesign)', () => {
+      const opList = {
+        accountType: 'Operation Admin',
+        permissions: list.permissions,
+        users: [
+          { ...list.users[0], userId: 'MA1S01', userName: 'Priya Nair', mobileNo: '9876543210', permissions: ['monitoring'] },
+          { ...list.users[0], userId: 'MA1S02', userName: 'Rohan', email: 'rohan@zed.test', locked: true },
+          { ...list.users[0], userId: 'MA1S03', userName: 'Arjun', isActive: false, states: ['28'] },
+        ],
+      };
+      const row = (i: number) => el.querySelectorAll('tbody tr')[i];
+
+      it('masks the contact and offers a new password, Unlock only on a locked login, and Block / Unblock', async () => {
+        await create(SubUsersPage);
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        expect([...row(0).querySelectorAll('.su-contact span')].map((s) => s.textContent)).toEqual(['98•••••210', 'ra•••••@zed.test']);
+        expect(el.textContent).not.toContain('ravi@zed.test');
+        expect(row(1).querySelector('.su-status-cell .status-badge svg.su-lock')).not.toBeNull();
+        expect(row(1).querySelector('.su-status-cell')!.textContent!.trim()).toBe('Locked');
+        expect([...row(0).querySelectorAll('.su-actions button.btn')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
+        expect(await menuItems(row(0))).toEqual(['Send new password', 'Block login']);
+        expect(await menuItems(row(1))).toEqual(['Unlock (send new password)', 'Block login']);
+        expect(await menuItems(row(2))).toEqual(['Send new password', 'Unblock login']);
+      });
+
+      it('sends a new password after the confirmation, and unlocks a locked login the same way', async () => {
+        await create(SubUsersPage);
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        await pickMenu(row(0), 'Send new password');
+        expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Send a new password?');
+        expect(confirmDialog()!.textContent).toContain('Priya Nair (MA1S01) gets a new password by e-mail at ra•••••@zed.test.');
+        // Cancel: nothing is sent.
+        (confirmDialog()!.querySelector('.btn-default') as HTMLButtonElement).click();
+        await settle();
+        expect(confirmDialog()).toBeNull();
+        http.expectNone('/api/staff/sub-users/MA1S01/reset-password');
+
+        await pickMenu(row(0), 'Send new password');
+        await confirm();
+        const reset = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/sub-users/MA1S01/reset-password');
+        expect(reset.request.body).toBeNull();
+        reset.flush({ message: 'A new password has been sent to ravi@zed.test.' });
+        await settle();
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        expect(toasts()).toContain('New password sent: New password e-mailed to ra•••••@zed.test');
+
+        await pickMenu(row(1), 'Unlock (send new password)');
+        expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Unlock Rohan?');
+        expect(confirmDialog()!.textContent).toContain('The lock is lifted at once');
+        await confirm();
+        http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/sub-users/MA1S02/reset-password').flush({ message: 'A new password has been sent to rohan@zed.test.' });
+        await settle();
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        expect(toasts()).toContain('Login unlocked: New password e-mailed to ro•••••@zed.test');
+      });
+
+      it('blocks (a red confirmation, no reason: the API takes none) and unblocks with the same update as Edit', async () => {
+        await create(SubUsersPage);
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        await pickMenu(row(0), 'Block login');
+        expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Block Priya Nair?');
+        expect(confirmDialog()!.querySelector('.cd-ok')!.classList).toContain('btn-danger');
+        expect(confirmDialog()!.querySelector('textarea')).toBeNull();
+        await confirm();
+        const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/sub-users/MA1S01');
+        expect(put.request.body).toEqual({ userName: 'Priya Nair', email: 'ravi@zed.test', mobileNo: '9876543210', permissions: ['monitoring'], isActive: false, states: [], agencies: [] });
+        put.flush({ title: 'Please select at least one screen.' }, { status: 400, statusText: 'Bad Request' });
+        await settle();
+        expect(confirmDialog()!.textContent).toContain('Please select at least one screen.');
+        await confirm();
+        http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/sub-users/MA1S01').flush({ message: 'Operation Admin MA1S01 updated.' });
+        await settle();
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        expect(confirmDialog()).toBeNull();
+        expect(toasts()).toContain('Login blocked: Priya Nair (MA1S01) can no longer sign in.');
+
+        await pickMenu(row(2), 'Unblock login');
+        expect(confirmDialog()!.querySelector('.cd-ok')!.classList).not.toContain('btn-danger');
+        await confirm();
+        const unblock = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/sub-users/MA1S03');
+        expect(unblock.request.body).toMatchObject({ isActive: true, states: ['28'], permissions: ['reports'] });
+        unblock.flush({ message: 'Operation Admin MA1S03 updated.' });
+        await settle();
+        http.expectOne('/api/staff/sub-users').flush(opList);
+        await settle();
+        expect(toasts()).toContain('Login unblocked: Arjun (MA1S03) can sign in again.');
+      });
+
+      it('opens the two-column pop-up: details and scope on the left, the screens on the right', async () => {
+        await create(SubUsersPage);
+        http.expectOne('/api/staff/sub-users').flush({ ...opList, agencies: [{ code: 'AGENCY1', name: 'Acme Assessors' }] });
+        await settle();
+        button('+ Add Operation Admin').click();
+        await settle();
+        const cols = el.querySelectorAll('.su-body > .su-col');
+        expect(cols.length).toBe(2);
+        expect(cols[0].querySelector('#sub-name')).not.toBeNull();
+        expect(cols[0].querySelector('[data-scope-agencies]')).not.toBeNull();
+        expect(cols[1].querySelector('#perm-monitoring')).not.toBeNull();
+        expect(cols[1].querySelector('.su-note')!.textContent).toContain('Work done by an operation admin is recorded under your login.');
+        expect(el.querySelector('.su-foot')!.textContent).toContain('Fields marked * are required.');
+        expect(button('Add operation admin')).toBeTruthy();
+        button('Cancel').click();
+        await settle();
+        expect(el.querySelector('.modal')).toBeNull();
+      });
     });
   });
 });

@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { ToastService } from '../toast';
 import { AgencyFormPage } from './agency-form';
 
 describe('AgencyFormPage', () => {
@@ -51,7 +52,7 @@ describe('AgencyFormPage', () => {
     await create(null);
     http.expectOne('/api/staff/users/agencies/options').flush(options);
     await settle();
-    expect(el.querySelector('h3')!.textContent).toContain('Add Assessment Agency');
+    expect(el.querySelector('h2')!.textContent).toContain('Add Assessment Agency');
     expect(el.querySelector('#reasonForRejection')).toBeNull();
     expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Orgnising Partner --', 'Partner Two - [OP2]']);
 
@@ -135,7 +136,7 @@ describe('AgencyFormPage', () => {
       siteVerification: false, financialVerification: false, reasonForRejection: 'Old reason', isActive: true, sectorActivity: 'Both',
     });
     await settle();
-    expect(el.querySelector('h3')!.textContent).toContain('Update Assessment Agency Details');
+    expect(el.querySelector('h2')!.textContent).toContain('Update Assessment Agency Details');
     expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Orgnising Partner --', 'Partner One']);
     expect((el.querySelector('#reasonForRejection') as HTMLTextAreaElement).value).toBe('Old reason');
     expect(el.querySelector('.login-id')!.textContent).toContain('ZEDAA0001');
@@ -155,7 +156,52 @@ describe('AgencyFormPage', () => {
     expect(req.request.body).toMatchObject({ orgPartnerId: 'OP1', states: ['DELHI'], nicSectors: ['24'], sectorActivity: 'Both' });
     req.flush({ message: 'User updated successfully.' });
     await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('User updated successfully.');
+    expect(TestBed.inject(ToastService).toasts().at(-1)).toMatchObject({ tone: 'success', message: 'User updated successfully.' });
+    expect(el.querySelector('.alert-success')).toBeNull();
     expect(el.querySelector('.save-bar')!.classList).not.toContain('is-dirty');
+  });
+
+  it('ticks each section as it becomes valid, checks the formats as you type and says what happens on submit (2026-11-17)', async () => {
+    await create(null);
+    http.expectOne('/api/staff/users/agencies/options').flush(options);
+    await settle();
+    const ticks = () => [...el.querySelectorAll('.af-step')].map((s) => s.classList.contains('done'));
+    const bar = () => el.querySelector('.save-bar')!.textContent!;
+    expect([...el.querySelectorAll('.af-step strong')].map((s) => s.textContent)).toEqual(['Agency', 'SPOC contact', 'Coverage']);
+    expect(ticks()).toEqual([false, false, false]);
+    expect(bar()).toContain('0 of 3 sections complete. Finish Agency to create the agency.');
+    expect(el.querySelector('.af-rail')!.textContent).toContain('On submit');
+    expect(el.querySelector('.af-rail')!.textContent).toContain('Levels are switched on in Agency Level Allocation.');
+    expect(el.querySelector('#sec-login')).toBeNull();
+
+    await type('#pinCode', '1100');
+    expect(el.querySelector('#pinCode')!.parentElement!.textContent).toContain('Enter the 6 digit PIN code.');
+    await type('#mobileNo', '98765');
+    expect(el.querySelector('#mobileNo')!.parentElement!.textContent).toContain('Enter the 10 digit mobile number.');
+    await type('#emailId', 'not-mail');
+    expect(el.querySelector('#emailId')!.parentElement!.textContent).toContain('Enter a valid e-mail address.');
+    await type('#gstNumber', 'GST-1');
+    expect(el.querySelector('#gstNumber')!.parentElement!.textContent).toContain('Letters and digits only, up to 20.');
+
+    await type('#userName', 'New Agency');
+    await type('#address', 'Addr');
+    await type('#pinCode', '110001');
+    await type('#gstNumber', '');
+    expect(ticks()).toEqual([true, false, false]);
+    expect(bar()).toContain('1 of 3 sections complete. Finish SPOC contact to create the agency.');
+    await type('#spocName', 'Spoc');
+    await type('#emailId', 'a@b.test');
+    // An invalid mobile keeps the section open and refuses the submit before the server.
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter valid data.');
+    http.expectNone('/api/staff/users/agencies');
+    await type('#mobileNo', '9876543210');
+    expect(ticks()).toEqual([true, true, false]);
+    (el.querySelector('input[name=desktopVerification]') as HTMLInputElement).click();
+    ([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.textContent!.trim() === 'Both') as HTMLInputElement).click();
+    await settle();
+    expect(ticks()).toEqual([true, true, true]);
+    expect(bar()).toContain('Create agency');
   });
 });

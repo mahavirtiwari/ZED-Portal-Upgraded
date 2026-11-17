@@ -7,6 +7,23 @@ import { MultiSelect, MultiSelectOption } from './multi-select';
 import { AgencyRequest, CodeName, District, OrgPartner, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { PageHead } from '../../msme/shared/page-head';
+import { staffCrumbs } from '../staff-crumbs';
+import { ToastService } from '../toast';
+
+/** The server's formats (StaffUserRules): shown as you type, so they are fixed before submit. */
+const PIN = /^\d{6}$/;
+const MOBILE = /^\d{10}$/;
+const GST = /^[0-9A-Za-z]{1,20}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** One section of the progress list on the left. */
+interface FormSection {
+  id: string;
+  label: string;
+  hint: string;
+  done: boolean;
+}
 
 function emptyAgency(): AgencyRequest {
   return {
@@ -24,49 +41,73 @@ function emptyAgency(): AgencyRequest {
  * auto-allotted TU applications from. V4 layout: numbered section cards (organisation, SPOC contact, coverage, category,
  * login), sector type and categories as choice cards with a one-line explanation, and a sticky save bar that shows
  * unsaved changes and the last error.
+ * 2026-11-17 (approved staff redesign, staff-02): the sections listed on the left with a tick as each becomes valid, the
+ * category under Coverage, "On submit" (what happens next) on the right, PIN / GSTIN / e-mail / mobile checked as you type
+ * against the server's formats, and the save bar says how many sections are complete. Every field and rule is kept; the
+ * Login section (User ID, status, reason for block) is shown when updating.
  */
 @Component({
   selector: 'zed-staff-agency-form',
-  imports: [FormsModule, RouterLink, MultiSelect],
+  imports: [FormsModule, RouterLink, MultiSelect, PageHead],
   templateUrl: './agency-form.html',
   styles: `
-    .req-note { font-size: 13px; color: #5f6f70; margin: -6px 0 10px; }
-    .form-section { padding: 0; overflow: hidden; }
-    .section-head { display: flex; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid #dfe9ea; background: var(--zt-pale, #f7fbfb); }
-    .step { flex: 0 0 30px; height: 30px; border-radius: 50%; background: #45a5ad; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
-    .section-head h4 { margin: 0; font-size: 16px; font-weight: 700; color: #23474a; }
-    .section-head p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
-    .form-section > .form-grid, .form-section > .choice-grid, .form-section > .login-note { margin: 18px 20px; }
-    .form-section > .form-grid.mt-3 { margin-top: 0 !important; }
-    .short { max-width: 280px; }
-    /* The old skin writes span.label in capitals; here it is a field label like the others. */
-    .form-grid > span.label { text-transform: none; letter-spacing: normal; padding: 0; font-size: 14px; font-weight: 600; color: #3b4b4c; }
-    .choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
-    .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0;
-      cursor: pointer; font-weight: 400; color: #232527; background: #fff; text-transform: none; }
-    .choice-card:hover { border-color: #9ccdd1; }
-    .choice-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
-    .choice-card.locked { cursor: not-allowed; background: #f6f7f7; }
-    .choice-card.locked .choice-name { color: #8a9899; }
-    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
-    .choice-name { display: block; font-weight: 700; color: #23474a; }
-    .choice-card small { display: block; font-size: 12.5px; line-height: 1.4; margin-top: 2px; }
+    .af { display: grid; grid-template-columns: 240px minmax(0, 1fr) 260px; gap: 20px; align-items: start; }
+    .af-left, .af-rail { position: sticky; top: 12px; }
+    .af-nav { padding: 8px; margin: 0; }
+    .af-step { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px; border: 0; border-radius: 10px; background: none; text-align: left; }
+    .af-step:hover { background: #f2f8f7; }
+    .af-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 2px solid #c9d6d7; color: #5f6f70; font-size: 12px; font-weight: 700; }
+    .af-step.done .af-dot { background: #2e9e57; border-color: #2e9e57; }
+    .af-dot svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .af-step-text { display: flex; flex-direction: column; min-width: 0; }
+    .af-step-text strong { font-size: 14px; color: var(--zt-ink, #173f44); }
+    .af-step-text small { font-size: 12px; color: #5f6f70; }
+    .req-note { margin: 10px 4px 0; font-size: 12.5px; color: #5f6f70; }
+    .form-section { padding: 0; overflow: hidden; scroll-margin-top: 12px; }
+    .section-head { display: flex; align-items: center; gap: 10px; margin: 0; padding: 14px 20px; border-bottom: 1px solid #e6eeee; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .step { width: 26px; height: 26px; border-radius: 8px; background: #e6f1ef; display: grid; place-items: center; font-size: 13px; }
+    .fs-body { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 14px; }
+    .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .fld > label, .lbl { margin: 0; font-size: 13.5px; font-weight: 600; color: #3b4b4c; text-transform: none; }
+    .fld-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .fs-note { align-self: end; margin: 0 0 10px; font-size: 12.5px; color: #5f6f70; }
+    .fs-hint { font-size: 12.5px; color: #5f6f70; }
+    .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef3f3; }
+    .seg label { position: relative; flex: 1; margin: 0; padding: 7px 14px; border-radius: 8px; text-align: center; cursor: pointer; color: #5f6f70; font-weight: 600; }
+    .seg label.active { background: #fff; color: var(--zt-ink, #173f44); box-shadow: inset 0 0 0 2px var(--zt-dark, #1f5c61); }
+    .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+    .seg label:focus-within { outline: 2px solid var(--zt-mid2, #2a8a8c); }
+    .checks { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+    .chk { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-weight: 600; color: #24393b; cursor: pointer; text-transform: none; }
+    .chk .form-check-input { flex: none; float: none; margin: 2px 0 0; }
+    .chk small { display: block; font-weight: 400; color: #8a6100; }
+    .chk.locked { color: #8a9899; cursor: not-allowed; }
     .login-id { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: var(--zt-mid2, #2f7c83); }
-    .login-note { padding: 10px 14px; border-radius: 10px; background: #eef6f6; color: #23474a; font-size: 14px; }
-    .help-block { color: #a94442; font-size: 13px; }
-
-    /* Save bar: stays at the bottom of the window. */
-    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 18px; padding: 12px 16px;
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
+    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, monospace; color: var(--zt-mid2, #2a8a8c); }
+    .af-rail { padding: 16px 18px; margin: 0; }
+    .af-rail h4 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .af-rail ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #3d5254; }
+    .af-rail li::marker { color: var(--zt-mid2, #2a8a8c); }
+    .help-block { color: #a94442; font-size: 12.5px; }
+    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 18px; padding: 12px 18px;
+      background: #fff; border: 1px solid #e1eaea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
     .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
+    .save-bar .btn { min-width: 110px; height: 40px; font-weight: 700; }
+    .save-progress { font-size: 13.5px; color: #3d5254; }
+    .save-progress.all { color: #1e6b3c; font-weight: 600; }
     .unsaved { font-weight: 600; color: #8a6100; }
     .save-error { font-weight: 600; color: #a8303a; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 1199.98px) {
+      .af { grid-template-columns: 220px minmax(0, 1fr); }
+      .af-rail { position: static; grid-column: 2; }
+    }
     @media (max-width: 767.98px) {
-      .section-head { padding: 12px 14px; }
-      .form-section > .form-grid, .form-section > .choice-grid, .form-section > .login-note { margin: 14px; }
-      .short { max-width: none; }
+      .af { grid-template-columns: minmax(0, 1fr); }
+      .af-left { position: static; }
+      .af-rail { grid-column: auto; }
+      .fld-row { grid-template-columns: minmax(0, 1fr); }
+      .fs-body, .section-head { padding-left: 14px; padding-right: 14px; }
       .save-bar > span { flex-basis: 100%; }
     }
   `,
@@ -74,11 +115,25 @@ function emptyAgency(): AgencyRequest {
 export class AgencyFormPage {
   private readonly api = inject(UsersApi);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   protected readonly userId: string | null = inject(ActivatedRoute).snapshot.paramMap.get('userId');
   protected readonly isEdit = !!this.userId;
   protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
   protected readonly labels = PORTAL_LABELS;
+  protected readonly word = this.consultancy ? 'organisation' : 'agency';
+  protected readonly title = this.isEdit ? `Update ${PORTAL_LABELS.agency} Details` : `Add ${PORTAL_LABELS.agency}`;
+  protected readonly crumbs = staffCrumbs({ label: PORTAL_LABELS.agencies, link: '/staff/users/agencies' }, { label: this.userId ?? 'Add' });
+  protected readonly subtitle = this.isEdit
+    ? `Details, categories and applicable states of the ${PORTAL_LABELS.agency.toLowerCase()}.`
+    : 'The login ID is generated and the login details are e-mailed to the SPOC.';
+  /** The right rail: what happens on submit / update. */
+  protected readonly railPoints = this.isEdit
+    ? ['Changes apply as soon as you update.', 'The SPOC e-mail address is where login details and messages go.',
+       'Block, unblock and reset links are on the list (⋮ menu).', 'Levels are switched in Agency Level Allocation.']
+    : [`A login ID is generated for the ${this.consultancy ? 'organisation' : 'agency'}.`, 'The login details are e-mailed to the SPOC.',
+       `The ${this.consultancy ? 'organisation' : 'agency'} can then add its ${PORTAL_LABELS.assessors.toLowerCase()}.`,
+       ...(this.consultancy ? [] : ['Levels are switched on in Agency Level Allocation.'])];
   protected readonly tuStates = signal<CodeName[]>([]);
   protected readonly districts = signal<MultiSelectOption[]>([]);
 
@@ -97,7 +152,6 @@ export class AgencyFormPage {
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   /** Something was changed since the page loaded or was last saved (shown in the save bar). */
   protected readonly dirty = signal(false);
   /** Edit: the account's status as loaded (null while loading or when adding). */
@@ -199,6 +253,54 @@ export class AgencyFormPage {
     return this.isEdit ? p.name : `${p.name} - [${p.userId}]`;
   }
 
+  /** The sections and whether each is complete (ticks on the left). */
+  protected sections(): FormSection[] {
+    const m = this.model;
+    const list: FormSection[] = [
+      { id: 'sec-org', label: this.consultancy ? 'Organisation' : 'Agency', hint: 'Name, address, GSTIN',
+        done: !!m.userName.trim() && !!m.address.trim() && PIN.test(m.pinCode.trim()) && this.gstOk() },
+      { id: 'sec-spoc', label: 'SPOC contact', hint: 'Login and messages go here',
+        done: !!m.spocName.trim() && EMAIL.test(m.emailId.trim()) && MOBILE.test(m.mobileNo.trim()) },
+      { id: 'sec-cover', label: 'Coverage', hint: 'States, sectors, category',
+        done: (m.desktopVerification || m.siteVerification || m.financialVerification) && (this.consultancy || !!m.sectorActivity) },
+    ];
+    if (this.isEdit) list.push({ id: 'sec-login', label: 'Login', hint: 'User ID, status', done: true });
+    return list;
+  }
+
+  protected doneCount(): number {
+    return this.sections().filter((s) => s.done).length;
+  }
+
+  protected progressText(): string {
+    const list = this.sections();
+    const next = list.find((s) => !s.done);
+    return next
+      ? `${this.doneCount()} of ${list.length} sections complete. Finish ${next.label} to create the ${this.word}.`
+      : `All ${list.length} sections complete. Create the ${this.word}.`;
+  }
+
+  protected goTo(id: string): void {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private gstOk(): boolean {
+    const g = (this.model.gstNumber ?? '').trim();
+    return !g || GST.test(g);
+  }
+
+  /** A field's message: its format as soon as something is typed, "required" after a submit. */
+  protected fieldError(field: 'pinCode' | 'gstNumber' | 'emailId' | 'mobileNo'): string {
+    const v = (this.model[field] ?? '').trim();
+    if (!v) return this.submitted() && field !== 'gstNumber' ? { pinCode: 'This is required.', emailId: 'Email required.', mobileNo: 'Mobile No required.' }[field] : '';
+    switch (field) {
+      case 'pinCode': return PIN.test(v) ? '' : 'Enter the 6 digit PIN code.';
+      case 'gstNumber': return this.gstOk() ? '' : 'Letters and digits only, up to 20.';
+      case 'emailId': return EMAIL.test(v) ? '' : 'Enter a valid e-mail address.';
+      case 'mobileNo': return MOBILE.test(v) ? '' : 'Enter the 10 digit mobile number.';
+    }
+  }
+
   protected missing(value: string): boolean {
     return this.submitted() && !value.trim();
   }
@@ -206,9 +308,9 @@ export class AgencyFormPage {
   protected async submit(): Promise<void> {
     this.submitted.set(true);
     this.error.set('');
-    this.success.set('');
     const m = this.model;
-    if ([m.userName, m.spocName, m.emailId, m.mobileNo, m.address, m.pinCode].some((v) => !v.trim())) {
+    if ([m.userName, m.spocName, m.emailId, m.mobileNo, m.address, m.pinCode].some((v) => !v.trim()) ||
+        (['pinCode', 'gstNumber', 'emailId', 'mobileNo'] as const).some((f) => this.fieldError(f))) {
       this.error.set('Please enter valid data.');
       return;
     }
@@ -226,7 +328,7 @@ export class AgencyFormPage {
     this.saving.set(true);
     try {
       if (this.userId) {
-        this.success.set((await firstValueFrom(this.api.updateAgency(this.userId, body))).message);
+        this.toast.success(`${m.userName} updated`, (await firstValueFrom(this.api.updateAgency(this.userId, body))).message);
         this.dirty.set(false);
       } else {
         const r = await firstValueFrom(this.api.createAgency(body));

@@ -8,6 +8,13 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { MultiSelect } from '../users/multi-select';
 import { ReasonAsk, ReasonDialog } from '../users/reason-dialog';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { ToastService } from '../toast';
+import { staffCrumbs } from '../staff-crumbs';
+import { maskEmail, maskMobile } from '../users/user-display';
 
 interface AccountType {
   roleId: number;
@@ -112,51 +119,58 @@ const typeHints: Readonly<Record<number, string>> = {
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog],
   template: `
-    <div class="page-head">
-      <div>
-        @if (neft) {
-          <h3 class="registration-title">NEFT Admins</h3>
-          <p class="page-sub">The national NEFT desk: one login for the NEFT reimbursements of every state, financial assistance and Technology Upgradation. The password is generated and e-mailed to the user.</p>
-        } @else {
+    @if (neft) {
+      <!-- 2026-11-17 (approved staff-07): the page head with the main action, the counts, an empty state, the list with a row menu. -->
+      <zed-page-head [crumbs]="crumbs" title="NEFT Admins"
+                     subtitle="The national NEFT desk: one login for NEFT reimbursements of every state, financial assistance and Technology Upgradation.">
+        <button type="button" class="btn btn-primary" (click)="add()">+ Add NEFT admin</button>
+      </zed-page-head>
+    } @else {
+      <div class="page-head">
+        <div>
           <h3 class="registration-title">User Management</h3>
           <p class="page-sub">Master Admin, Ministry, MSME DFO and dashboard logins; the password is generated and e-mailed to the user.</p>
-        }
+        </div>
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" (click)="add()">+ Add Login</button>
+        </div>
       </div>
-      <div class="page-actions">
-        <button type="button" class="btn btn-primary" (click)="add()">{{ neft ? '+ Add NEFT Admin' : '+ Add Login' }}</button>
-      </div>
-    </div>
-    <!-- One Admin (V4): the portal whose settings these are (each portal has its own logins). -->
-    @if (!neft) {
+      <!-- One Admin (V4): the portal whose settings these are (each portal has its own logins). -->
       <zed-portal-switch />
     }
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
-    <div class="acc-stats" role="group" aria-label="Logins by status">
-      @for (t of tiles(); track t.key) {
-        <button type="button" class="acc-stat" [class]="'tile-' + t.key" [class.is-on]="status() === t.key" [attr.aria-pressed]="status() === t.key" (click)="status.set(t.key)">
-          <span class="acc-stat-count">{{ t.count }}</span>
-          <span class="acc-stat-label">{{ t.label }}</span>
-        </button>
-      }
-    </div>
+    <!-- All, active and blocked logins (of the chosen login type); a click filters. 2026-11-17: the shared count tiles. -->
+    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="neft ? 'NEFT Admin logins by status' : 'Logins by status'" (pick)="pickStatus($event.key)" />
+    @if (neft && loaded() && !accounts().length) {
+      <section class="zed-card nf-empty" aria-labelledby="nf-empty-title">
+        <span class="nf-icon nf-big" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="bankIcon" /></svg></span>
+        <h4 id="nf-empty-title">No NEFT desk logins yet</h4>
+        <p>Add the first login. The login details are e-mailed to the user.</p>
+        <button type="button" class="btn btn-primary" (click)="add()">+ Add the first login</button>
+        <ol class="nf-steps">
+          <li><b>1 Add the login</b><small>Name, e-mail and mobile of the NEFT desk user.</small></li>
+          <li><b>2 Login details are e-mailed</b><small>You never see or set the password; the e-mail tells the user how to sign in.</small></li>
+          <li><b>3 One desk for every state</b><small>Reimbursements, financial assistance and Technology Upgradation.</small></li>
+        </ol>
+      </section>
+    } @else {
     <div class="zed-card acc-list">
-      <div class="acc-tabs" role="tablist" aria-label="Login types">
-        <button type="button" role="tab" class="acc-tab" [class.active]="!filter()" [attr.aria-selected]="!filter()" (click)="filter.set(0)">
-          All login types <span class="tab-count">{{ accounts().length }}</span>
-        </button>
-        @for (t of types(); track t.roleId) {
-          <button type="button" role="tab" class="acc-tab" [class.active]="filter() === t.roleId" [attr.aria-selected]="filter() === t.roleId" (click)="filter.set(t.roleId)">
-            {{ t.label }} <span class="tab-count">{{ countOf(t.roleId) }}</span>
+      @if (!neft) {
+        <div class="acc-tabs" role="tablist" aria-label="Login types">
+          <button type="button" role="tab" class="acc-tab" [class.active]="!filter()" [attr.aria-selected]="!filter()" (click)="filter.set(0)">
+            All login types <span class="tab-count">{{ accounts().length }}</span>
           </button>
-        }
-      </div>
+          @for (t of types(); track t.roleId) {
+            <button type="button" role="tab" class="acc-tab" [class.active]="filter() === t.roleId" [attr.aria-selected]="filter() === t.roleId" (click)="filter.set(t.roleId)">
+              {{ t.label }} <span class="tab-count">{{ countOf(t.roleId) }}</span>
+            </button>
+          }
+        </div>
+      }
       <div class="acc-toolbar">
         <input id="acc-search" type="search" class="form-control acc-search" placeholder="Search user ID, name, e-mail or mobile" aria-label="Search logins"
                [ngModel]="search()" (ngModelChange)="search.set($event)" />
@@ -166,7 +180,7 @@ const typeHints: Readonly<Record<number, string>> = {
         <table class="table table-zed acc-table">
           <thead>
             <tr>
-              <th>User</th><th class="text-center">Login Type</th><th>Contact</th>
+              <th>User</th>@if (!neft) {<th class="text-center">Login Type</th>}<th>Contact</th>
               <th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 140px">Actions</th>
             </tr>
           </thead>
@@ -183,26 +197,31 @@ const typeHints: Readonly<Record<number, string>> = {
                     <span class="status-badge acc-badge-phone" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span>
                   </div>
                 </td>
-                <td class="text-center acc-type-cell" data-label="Login Type">
-                  <span class="zed-chip">{{ typeLabel(a.roleId) }}</span>
-                  @if (stateName(a.stateCode); as s) { <span class="acc-state">{{ s }}</span> }
-                  @if (scopeText(a); as sc) { <span class="acc-state acc-scope" title="Scope of this login">{{ sc }}</span> }
-                </td>
+                @if (!neft) {
+                  <td class="text-center acc-type-cell" data-label="Login Type">
+                    <span class="zed-chip">{{ typeLabel(a.roleId) }}</span>
+                    @if (stateName(a.stateCode); as s) { <span class="acc-state">{{ s }}</span> }
+                    @if (scopeText(a); as sc) { <span class="acc-state acc-scope" title="Scope of this login">{{ sc }}</span> }
+                  </td>
+                }
+                <!-- The NEFT Admins list masks the mobile and e-mail (the user's decision, 2026-11-17); the pop-up has the full values. -->
                 <td class="acc-contact" data-label="Contact">
                   @if (a.mobileNo) {
-                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ a.mobileNo }}</span>
+                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ neft ? mobileOf(a) : a.mobileNo }}</span>
                   } @else {
                     <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span>
                   }
                   @if (a.email) {
-                    <span class="acc-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ a.email }}</span>
+                    <span class="acc-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ neft ? mailOf(a) : a.email }}</span>
                   }
                 </td>
                 <td class="text-center acc-status-cell"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span></td>
                 <td class="text-center acc-actions-cell">
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" (click)="edit(a)">Edit</button>
-                    @if (a.isActive) {
+                    @if (neft) {
+                      <zed-row-menu [items]="menuOf(a)" [label]="'More actions for ' + (a.userName || a.userId)" (picked)="picked(a, $event)" />
+                    } @else if (a.isActive) {
                       <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="act(a, 'reset-password')">Reset Password</button>
                       <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">Block</button>
                     } @else {
@@ -214,7 +233,7 @@ const typeHints: Readonly<Record<number, string>> = {
             } @empty {
               @if (!busy()) {
                 <tr class="empty-row">
-                  <td colspan="5" style="padding: 0">
+                  <td [attr.colspan]="neft ? 4 : 5" style="padding: 0">
                     <div class="no-data acc-empty">
                       @if (search() || filter() || status() !== 'all') {
                         No login matches the filters.
@@ -233,8 +252,67 @@ const typeHints: Readonly<Record<number, string>> = {
       </div>
       <zed-pager [pager]="view" />
     </div>
+    }
 
-    @if (form(); as f) {
+    @if (neft && form(); as f) {
+      <!-- 2026-11-17 (approved popup-11): a short pop-up; it says what happens after saving. -->
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <div class="modal-dialog modal-popup acc-dialog nf-dialog">
+          <div class="modal-content acc-content">
+            <div class="modal-header nf-head">
+              <span class="nf-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="bankIcon" /></svg></span>
+              <div>
+                <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit NEFT admin' : 'Add NEFT admin' }}</h3>
+                <small class="nf-sub">{{ editing() ? editing() + ' · the national NEFT desk' : 'One login for the national NEFT desk.' }}</small>
+              </div>
+              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+            </div>
+            <form class="acc-form" (ngSubmit)="save()" novalidate>
+              <div class="modal-body acc-body">
+                <div class="acc-fields">
+                  @if (!editing()) {
+                    <div class="acc-field">
+                      <label for="acc-id">User ID<span class="req">*</span></label>
+                      <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" placeholder="4 to 50 letters and digits"
+                             [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
+                    </div>
+                  }
+                  <div class="acc-field">
+                    <label for="nf-type">Login type</label>
+                    <select class="form-select" id="nf-type" name="nfType" disabled><option>{{ typeLabel(f.roleId ?? 0) }}</option></select>
+                  </div>
+                  <div class="acc-field nf-wide">
+                    <label for="acc-name">Name<span class="req">*</span></label>
+                    <input class="form-control" id="acc-name" name="userName" maxlength="100" placeholder="Full name" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                  </div>
+                  <div class="acc-field nf-wide">
+                    <label for="acc-email">E-mail<span class="req">*</span></label>
+                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" placeholder="name@organisation.in" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                  </div>
+                  <div class="acc-field">
+                    <label for="acc-mobile">Mobile number<span class="req">*</span></label>
+                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" placeholder="10 digits" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                  </div>
+                </div>
+                @if (!editing()) {
+                  <p class="nf-note"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>
+                    The login details are e-mailed to this address; you never see or set the password.</p>
+                }
+                @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
+              </div>
+              <div class="modal-footer acc-foot">
+                <span class="acc-foot-note"><span class="req">*</span> required</span>
+                <span class="acc-foot-actions">
+                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Save changes' : 'Add NEFT admin' }}</button>
+                </span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    } @else if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="account-title">
         <!-- 2026-11-15 (design approved): a wide pop-up, dark title bar, numbered sections side by side, a fixed save bar. -->
         <div class="modal-dialog modal-popup acc-dialog" [class.acc-wide]="scopeType() || screensType()">
@@ -430,20 +508,14 @@ const typeHints: Readonly<Record<number, string>> = {
     @if (reasonAsk(); as r) {
       <zed-reason-dialog [ask]="r" [busy]="busy()" [failed]="reasonError()" (confirmed)="blockOrUnblock(r, $event)" (cancel)="reasonAsk.set(null)" />
     }
+    @if (pending(); as p) {
+      <zed-confirm-dialog [ask]="p.ask" [busy]="busy()" [failed]="reasonError()" (confirmed)="confirmed(p, $event)" (cancel)="pending.set(null)" />
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
   styles: `
-    .acc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .acc-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 18px; text-align: left; min-width: 0;
-      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 1px 2px rgba(35,71,74,.05); cursor: pointer; }
-    .acc-stat:hover { border-color: #45a5ad; }
-    .acc-stat.is-on { border-color: #45a5ad; box-shadow: inset 0 0 0 1px #45a5ad; background: #eef6f6; }
-    .acc-stat-count { font-size: 26px; font-weight: 700; color: #23474a; line-height: 1.1; }
-    .acc-stat.tile-active .acc-stat-count { color: #1e7a3c; }
-    .acc-stat.tile-blocked .acc-stat-count { color: #a8303a; }
-    .acc-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
     .acc-list { padding: 16px; }
     .acc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
     .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
@@ -478,7 +550,6 @@ const typeHints: Readonly<Record<number, string>> = {
 
     /* The Add / Edit login pop-up's layout (2026-11-15): styles/_v4-skin.scss, "User Management pop-up" (the size budget). */
     .acc-section { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #23474a; text-transform: none; }
-    .acc-section + .form-grid { margin-top: 0; }
     .acc-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
     .choice-card:hover { border-color: #45a5ad; }
@@ -489,12 +560,27 @@ const typeHints: Readonly<Record<number, string>> = {
     .choice-card strong { color: #23474a; }
     .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .acc-type-fixed .zed-chip { margin: 0; }
-    .acc-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); font-size: 13px; }
+    /* NEFT Admins (2026-11-17): the empty state with its three steps, and the short pop-up (the rest: the skin's acc-* pop-up). */
+    .nf-empty { padding: 32px 24px 22px; text-align: center; }
+    .nf-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; background: #e3f0ee; color: var(--zt-dark, #1f5c61); }
+    .nf-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+    .nf-big { width: 72px; height: 72px; border-radius: 50%; }
+    .nf-big svg { width: 32px; height: 32px; }
+    .nf-empty h4 { margin: 16px 0 6px; font-size: 19px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .nf-empty p { margin: 0 0 16px; color: #5f6f70; }
+    .nf-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 26px 0 0; padding: 18px 0 0; border-top: 1px solid #e1eaea; list-style: none; text-align: left; }
+    .nf-steps b { display: block; font-size: 14px; color: var(--zt-ink, #173f44); }
+    .nf-steps small, .nf-sub { font-size: 12.5px; color: #5f6f70; }
+    .modal .modal-dialog.nf-dialog { max-width: 540px; }
+    .modal .nf-head { gap: 12px; align-items: center; }
+    .nf-head > div { flex: 1; min-width: 0; }
+    .modal .nf-dialog .acc-body { background: #fff; }
+    .nf-wide { grid-column: 1 / -1; }
+    .nf-note { display: flex; gap: 10px; margin: 16px 0 0; padding: 12px 14px; border-radius: 10px; background: #e8f3f2; color: var(--zt-ink, #173f44); font-size: 13px; }
+    .nf-note svg { flex: none; width: 15px; height: 15px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 1.4; }
+    .acc-actions-cell zed-row-menu { vertical-align: middle; }
 
     @media (max-width: 767.98px) {
-      .acc-stats { gap: 8px; }
-      .acc-stat { padding: 10px 12px; }
-      .acc-stat-count { font-size: 22px; }
       .acc-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
       .acc-search { max-width: none; }
       .acc-table { min-width: 0; }
@@ -512,7 +598,7 @@ const typeHints: Readonly<Record<number, string>> = {
       .acc-status-cell { display: none !important; }
       .acc-contact { min-width: 0; }
       .acc-actions-cell .row-actions { flex-wrap: wrap; justify-content: flex-start !important; }
-      .acc-types { grid-template-columns: minmax(0, 1fr); }
+      .acc-types, .nf-steps { grid-template-columns: minmax(0, 1fr); }
     }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     /* The scope of a Master Admin / Ministry login. */
@@ -550,6 +636,12 @@ export class AccountsPage {
   /** The Master Admin's NEFT Admins page (route data mode 'neft'): the same list and pop-up, its own API. */
   protected readonly neft = inject(ActivatedRoute, { optional: true })?.snapshot.data['mode'] === 'neft';
   private readonly api = this.neft ? NEFT_API : API;
+  private readonly toast = inject(ToastService);
+  protected readonly crumbs = staffCrumbs({ label: 'NEFT Admins' });
+  /** A bank (NEFT): the pop-up's and the empty state's icon. */
+  protected readonly bankIcon = 'M3 10h18L12 4zM5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20.5h18';
+  /** The list has loaded once (the NEFT Admins' empty state waits for it). */
+  protected readonly loaded = signal(false);
 
   protected readonly types = signal<AccountType[]>([]);
   protected readonly states = signal<{ code: string; name: string }[]>([]);
@@ -567,13 +659,13 @@ export class AccountsPage {
     );
   });
   /** The tiles above the list: all, active and blocked logins of the chosen login type; a click filters by status. */
-  protected readonly tiles = computed(() => {
+  protected readonly tiles = computed<ListCount[]>(() => {
     const ofType = this.accounts().filter((a) => !this.filter() || a.roleId === this.filter());
     const active = ofType.filter((a) => a.isActive).length;
     return [
-      { key: 'all' as const, label: 'All logins', count: ofType.length },
-      { key: 'active' as const, label: 'Active', count: active },
-      { key: 'blocked' as const, label: 'Blocked', count: ofType.length - active },
+      { key: 'all', label: 'All logins', value: ofType.length },
+      { key: 'active', label: 'Active', value: active, tone: 'good' },
+      { key: 'blocked', label: 'Blocked', value: ofType.length - active, tone: 'bad' },
     ];
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
@@ -613,7 +705,6 @@ export class AccountsPage {
   protected readonly sectorScopes = SECTOR_SCOPES;
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   protected readonly formError = signal('');
 
   constructor() {
@@ -638,6 +729,30 @@ export class AccountsPage {
     const words = (a.userName ?? '').trim().split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
     const letters = words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? a.userId).slice(0, 2);
     return letters.toUpperCase();
+  }
+
+  protected pickStatus(key: string | undefined): void {
+    this.status.set(key === 'active' || key === 'blocked' ? key : 'all');
+  }
+
+  /** The NEFT Admins list: the masked mobile and e-mail (the record's pop-up has the full values). */
+  protected mobileOf(a: Account): string {
+    return maskMobile(a.mobileNo);
+  }
+
+  protected mailOf(a: Account): string {
+    return maskEmail(a.email);
+  }
+
+  /** A NEFT Admin's row menu: a new password, then block (red) or unblock. */
+  protected menuOf(a: Account): RowMenuItem[] {
+    return a.isActive
+      ? [{ key: 'reset-password', label: 'Send new password', icon: 'mail' }, { key: 'block', label: 'Block login', icon: 'lock', danger: true }]
+      : [{ key: 'unblock', label: 'Unblock login', icon: 'unlock' }];
+  }
+
+  protected picked(a: Account, key: string): void {
+    if (key === 'reset-password' || key === 'block' || key === 'unblock') this.act(a, key);
   }
 
   protected clearFilters(): void {
@@ -788,7 +903,7 @@ export class AccountsPage {
     };
     await this.run(
       () => (id ? this.http.put<MessageResponse>(`${this.api}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(this.api, body)),
-      true,
+      !id,
     );
   }
 
@@ -796,25 +911,46 @@ export class AccountsPage {
   protected readonly reasonAsk = signal<ReasonAsk | null>(null);
   protected readonly reasonError = signal('');
 
-  protected async act(a: Account, action: 'block' | 'unblock' | 'reset-password'): Promise<void> {
-    if (action !== 'reset-password') {
-      this.reasonError.set('');
+  /**
+   * 2026-11-17 (the user): Reset Password and the NEFT Admin's Block confirm in the shared pop-up (no more browser
+   * confirm); the block asks for its reason (recorded and e-mailed). The other blocks and every unblock keep the reason pop-up.
+   */
+  protected readonly pending = signal<{ ask: ConfirmAsk; account: Account; action: 'reset-password' | 'block' } | null>(null);
+
+  protected act(a: Account, action: 'block' | 'unblock' | 'reset-password'): void {
+    this.reasonError.set('');
+    const name = a.userName || a.userId;
+    if (action === 'reset-password') {
+      const to = maskEmail(a.email);
+      this.pending.set({ account: a, action, ask: {
+        title: 'Send a new password?',
+        message: `${name} (${a.userId}) gets a new password by e-mail${to ? ' at ' + to : ''}. The current password stops working at once.`,
+        confirmLabel: 'Send new password',
+      } });
+    } else if (action === 'block' && this.neft) {
+      this.pending.set({ account: a, action, ask: {
+        title: `Block ${name}?`,
+        message: 'The NEFT desk login cannot sign in until it is unblocked. Nothing is deleted; you can unblock it at any time.',
+        confirmLabel: 'Block login',
+        danger: true,
+        reason: { label: 'Reason for blocking', placeholder: "Shown in the login's history", maxLength: 2000, hint: 'Kept in its history and e-mailed to the user.' },
+      } });
+    } else {
       this.reasonAsk.set({ action, userId: a.userId, userName: a.userName ?? null });
-      return;
     }
-    const who = `${a.userId}${a.userName ? ' (' + a.userName + ')' : ''}`;
-    if (!window.confirm(`Reset the password of ${who}? A new password is e-mailed to the user.`)) return;
-    await this.run(() => this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(a.userId)}/${action}`, null), false);
   }
 
-  protected async blockOrUnblock(r: ReasonAsk, reason: string): Promise<void> {
+  protected async confirmed(p: { account: Account; action: 'reset-password' | 'block' }, reason: string): Promise<void> {
+    if (p.action === 'block') {
+      await this.blockOrUnblock({ action: 'block', userId: p.account.userId, userName: p.account.userName }, reason);
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
-      const done = await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(r.userId)}/${r.action}`, { reason }));
-      this.reasonAsk.set(null);
-      this.success.set(done.message);
+      await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(p.account.userId)}/reset-password`, null));
+      this.pending.set(null);
+      this.toast.success('New password sent', 'E-mailed to ' + (maskEmail(p.account.email) || 'the registered e-mail address'));
       await this.load();
     } catch (err) {
       this.reasonError.set(apiErrorMessage(err));
@@ -823,18 +959,35 @@ export class AccountsPage {
     }
   }
 
-  private async run(call: () => Observable<MessageResponse>, fromForm: boolean): Promise<void> {
+  protected async blockOrUnblock(r: ReasonAsk, reason: string): Promise<void> {
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
+    try {
+      await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(r.userId)}/${r.action}`, { reason }));
+      this.reasonAsk.set(null);
+      this.pending.set(null);
+      const block = r.action === 'block';
+      this.toast.success(block ? 'Login blocked' : 'Login unblocked',
+        `${r.userName || r.userId} (${r.userId}) ${block ? 'can no longer sign in' : 'can sign in again'}. The reason was e-mailed.`);
+      await this.load();
+    } catch (err) {
+      this.reasonError.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private async run(call: () => Observable<MessageResponse>, added: boolean): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
     this.formError.set('');
     try {
       const r = await firstValueFrom(call());
-      if (fromForm) this.close();
-      this.success.set(r.message);
+      this.close();
+      this.toast.success(added ? 'Login added' : 'Login updated', r.message);
       await this.load();
     } catch (err) {
-      (fromForm ? this.formError : this.error).set(apiErrorMessage(err));
+      this.formError.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }
@@ -849,6 +1002,7 @@ export class AccountsPage {
       this.accounts.set(r.accounts);
       this.levels.set(r.levels ?? []);
       this.screenOptions.set(r.screens ?? []);
+      this.loaded.set(true);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

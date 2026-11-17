@@ -198,6 +198,9 @@ describe('Registered mobile on the assessor page', () => {
     await settle(fixture);
     http.expectOne('/api/staff/users/assessors/ZEDAS0001').flush({ ...assessor, canEdit: roleId === StaffRole.Agency });
     await settle(fixture);
+    // The rail's open assessments count (2026-11-17).
+    http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: null });
+    await settle(fixture);
     return { fixture, http, el: fixture.nativeElement as HTMLElement };
   }
 

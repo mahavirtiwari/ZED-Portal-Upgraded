@@ -333,6 +333,21 @@ export interface AssessorUpdateRequest {
 
 export type ManagedKind = 'agencies' | 'assessors';
 
+/**
+ * 2026-11-17 (Password Reset Link): who a MasterAdmin's link would go to (GET api/staff/password-reset/{userId}, read-only,
+ * scoped like the send): the masked address only, and the send's refusal up front when it cannot be sent.
+ */
+export interface ResetTarget {
+  userId: string;
+  userName: string;
+  roleId: number;
+  role: string;
+  isActive: boolean;
+  maskedEmail: string | null;
+  canSend: boolean;
+  reason: string | null;
+}
+
 /** Asked before an administrator sends a password reset link. */
 export const RESET_CONFIRM =
   'Send this user a link to set a new password? It goes to the user’s registered e-mail address; you do not see or set the password.';
@@ -430,6 +445,11 @@ export class UsersApi {
   /** Every block and unblock of an assessor / consultant, latest first. */
   assessorHistory(userId: string): Observable<BlockHistoryEntry[]> {
     return this.http.get<BlockHistoryEntry[]>(`${this.base}/assessors/${encodeURIComponent(userId)}/history`);
+  }
+
+  /** 2026-11-17: every block and unblock of an agency / Consultant Organisation, latest first (MasterAdmin). */
+  agencyHistory(userId: string): Observable<BlockHistoryEntry[]> {
+    return this.http.get<BlockHistoryEntry[]>(`${this.base}/agencies/${encodeURIComponent(userId)}/history`);
   }
 
   /** Its assessments not certified yet (null when not known). */

@@ -276,7 +276,7 @@ describe('AssessorFormPage', () => {
     await create(StaffRole.Agency, null, true, ['SiteVerification']);
     http.expectOne('/api/staff/users/assessors/options').flush(options);
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Add Consultant/Expert');
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Add Consultant/Expert');
     expect(el.querySelector('#assessorType-label')!.textContent).toContain('Consultant/Expert');
     expect([...el.querySelectorAll('input[name=assessorType]')].map((i) => i.closest('label')!.textContent!.trim())).toEqual(['Consultant/Expert', 'Technical Expert']);
     expect(el.querySelector('label[for="userName"]')!.textContent).toContain('Consultant/Expert Name');
@@ -301,20 +301,22 @@ describe('AssessorFormPage', () => {
       nicSectors: [], areasOfKnowledge: [], reasonForRejection: null, isActive: true, agencyUserId: 'AGENCY1', canEdit: false,
     });
     await settle(fixture);
+    // The rail's open assessments count (assessor-form.spec.ts).
+    http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: null });
     // The registered mobile card (assessor-mobile.spec.ts) loads below the form.
     http.expectOne('/api/staff/assessor-mobile/ZEDAS0001').flush({ userId: 'ZEDAS0001', device: null, signIns: [] });
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Assessor Details');
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Assessor Details');
     expect((el.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBe(true);
     expect([...el.querySelectorAll('button')].some((b) => ['Create', 'Update'].includes(b.textContent!.trim()))).toBe(false);
     expect((el.querySelector('#idProofNumber') as HTMLInputElement).placeholder).toBe('XXXXXXXX9012');
-    expect(el.querySelector('.page-actions a')!.getAttribute('href')).toBe('/staff/users/assessors');
+    expect(el.querySelector('zed-page-head a[data-back]')!.getAttribute('href')).toBe('/staff/users/assessors');
     // The profile card, the chosen ID proof chip and no save bar.
     const profile = el.querySelector('.af-profile')!.textContent!;
     expect(profile).toContain('Asha');
     expect(profile).toContain('Certificate AS1');
     expect(profile).toContain('Active');
-    expect(el.querySelector('.page-actions')!.textContent).toContain('View only');
+    expect(el.querySelector('zed-page-head')!.textContent).toContain('View only');
     expect(el.querySelector('.af-chip.active')!.textContent!.trim()).toBe('Aadhaar Card');
     expect(el.querySelector('.save-bar')).toBeNull();
   });
@@ -329,7 +331,9 @@ describe('AssessorFormPage', () => {
       nicSectors: [], areasOfKnowledge: [], reasonForRejection: null, isActive: true, agencyUserId: 'AGENCY1', canEdit: true, sectorActivity: 'Manufacturing',
     });
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Update Assessor Details');
+    http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: 0 });
+    await settle(fixture);
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Update Assessor Details');
     expect(el.querySelector('.af-avatar')!.textContent!.trim()).toBe('AR');
     expect([...el.querySelectorAll('.af-head')].map((h) => h.textContent!.trim())).toEqual(['1Contact details', '2ID proof', '3What the assessor assesses', '4Block reason']);
     expect(saveNote()).toBe('No unsaved changes.');
@@ -362,7 +366,8 @@ describe('AssessorFormPage', () => {
     expect(req.request.body).toMatchObject({ address: 'New Street', idProofType: 'Aadhaar Card', idProofNumber: '', sectorActivity: 'Manufacturing', mobileNo: '9123456780' });
     req.flush({ message: 'Updated.' });
     await settle(fixture);
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Updated.');
+    // 2026-11-17: a toast instead of the green alert (assessor-form.spec.ts).
+    expect(el.querySelector('.alert-success')).toBeNull();
     expect(saveNote()).toBe('No unsaved changes.');
   });
 });
@@ -376,6 +381,22 @@ describe('MyAssessorsPage', () => {
     Id: 1, UserId: id, UserName: `${id} name`, Address: 'Addr', MobileNo: '9000000001', Email: 'x@z.test', IdStatus: 'Active', IsActive: true,
     AssessorType: 'BronzeAssessor', IsCertAttached: 0, IdProofNumber: 'XXXXXXXX9012', PhotoPath: null, ...extra,
   });
+  /** The 2026-11-17 row menu: opens it and gives its item labels. */
+  const menuOf = async (tr: Element) => {
+    (tr.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    return [...tr.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim());
+  };
+  const choose = async (tr: Element, label: string) => {
+    if (!tr.querySelector('.rm-item')) await menuOf(tr);
+    ([...tr.querySelectorAll('.rm-item')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement).click();
+    await settle(fixture);
+  };
+  const submit = async (selector = 'zed-confirm-dialog form') => {
+    (el.querySelector(selector) as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+  };
+  const toasts = async () => TestBed.inject((await import('../toast')).ToastService).toasts();
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [MyAssessorsPage], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] }).compileComponents();
@@ -387,37 +408,46 @@ describe('MyAssessorsPage', () => {
 
   afterEach(() => http.verify());
 
-  it('hides UnBlock while the certificate is attached elsewhere and has no Mobile No button', async () => {
+  it('offers no Unblock while the certificate is attached elsewhere, masks the contact and shows no ID proof or PAN', async () => {
     http.expectOne('/api/staff/users/assessors/mine').flush([
-      row('ZEDBA0001', { IsActive: false, IsCertAttached: 1 }),
+      row('ZEDBA0001', { IsActive: false, IsCertAttached: 1, PanNo: 'ABCDE1234F' }),
       row('ZEDBA0002', { IsActive: false }),
+      row('ZEDBA0003'),
     ]);
     await settle(fixture);
     const rows = el.querySelectorAll('tbody tr');
-    expect(rows[0].textContent).not.toContain('UnBlock');
-    expect(rows[1].textContent).toContain('UnBlock');
-    expect(rows[0].textContent).toContain('XXXXXXXX9012');
+    expect(await menuOf(rows[0])).toEqual(['View history']);
+    expect(await menuOf(rows[1])).toEqual(['View history', 'Unblock assessor']);
+    expect(await menuOf(rows[2])).toEqual(['Send reset link', 'View history', 'Block assessor']);
     expect(rows[0].textContent).toContain('attached to another active Bronze Assessor');
     expect(rows[1].textContent).not.toContain('attached to another');
-
-    // 2026-11-13: the mobile number is changed on the edit page, not from the list.
-    expect([...rows[0].querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Mobile No')).toBe(false);
+    expect(rows[0].textContent).not.toContain('XXXXXXXX9012');
+    expect(rows[0].textContent).not.toContain('ABCDE1234F');
+    expect([...rows[0].querySelectorAll('.ma-contact span')].map((s) => s.textContent!.trim())).toEqual(['90•••••001', 'x•••••@z.test']);
+    expect(rows[0].textContent).not.toContain('9000000001');
+    // Two buttons at most: Edit and the menu (the mobile number is changed on the edit page).
+    expect([...rows[2].querySelectorAll('.ma-btns > a, .ma-btns > button')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
+    expect(rows[2].querySelector('.ma-btns a')!.getAttribute('href')).toBe('/staff/users/assessors/ZEDBA0003');
   });
 
-  it('counts the assessors, filters them by status and search, and shows initials and chips', async () => {
+  it('counts the assessors, filters them by status and search, and shows initials, medals and the sector', async () => {
     http.expectOne('/api/staff/users/assessors/mine').flush([
       row('ZEDBA0001', { UserName: 'Asha Rao', SectorActivity: 'Services' }),
-      row('ZEDAS0002', { AssessorType: 'Assessor' }),
+      row('ZEDAS0002', { AssessorType: 'Assessor', Assessments: [{ level: 'Bronze', modes: ['Desktop'] }, { level: 'Silver', modes: ['Onsite', 'Desktop'] }] }),
       row('ZEDBA0003', { IsActive: false, IdStatus: 'Blocked' }),
     ]);
     await settle(fixture);
-    expect([...el.querySelectorAll('.ma-stat-count')].map((c) => c.textContent!.trim())).toEqual(['3', '2', '1']);
-    const first = el.querySelector('tbody tr')!;
+    expect([...el.querySelectorAll('zed-list-counts .lc-item b')].map((c) => c.textContent!.trim())).toEqual(['3', '2', '1']);
+    const [first, second] = [...el.querySelectorAll('tbody tr')];
     expect(first.querySelector('.ma-avatar')!.textContent!.trim()).toBe('AR');
-    expect([...first.querySelectorAll('.zed-chip, .sector-chip')].map((c) => c.textContent!.trim())).toEqual(['Bronze Assessor', 'Services']);
-    expect(el.querySelectorAll('tbody tr')[1].textContent).toContain('Sector type not set');
+    expect(first.querySelector('.ma-type')!.textContent!.trim()).toBe('Bronze Assessor');
+    expect(first.querySelector('.ma-pill')!.textContent!.trim()).toBe('Services');
+    expect(second.querySelector('.ma-pill')!.textContent!.trim()).toBe('Not set');
+    expect([...second.querySelectorAll('.lv')].map((m) => m.className)).toEqual(['lv lv-bronze', 'lv lv-silver']);
+    expect(second.querySelector('.lv-row')!.getAttribute('aria-label')).toBe('Bronze: Desktop; Silver: Onsite, Desktop');
+    expect(second.querySelector('.ma-levels .ma-sub')!.textContent!.trim()).toBe('Desktop · Onsite');
 
-    ([...el.querySelectorAll('.ma-stat')].find((t) => t.textContent!.includes('Blocked')) as HTMLButtonElement).click();
+    ([...el.querySelectorAll('zed-list-counts button')].find((t) => t.textContent!.includes('Blocked')) as HTMLButtonElement).click();
     await settle(fixture);
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
     expect(el.querySelector('tbody tr')!.textContent).toContain('ZEDBA0003');
@@ -439,10 +469,108 @@ describe('MyAssessorsPage', () => {
     expect(el.querySelector('.ma-empty')!.textContent).toContain('No assessors yet');
     expect(el.querySelector('.ma-empty a')!.getAttribute('href')).toBe('/staff/users/assessors/new');
   });
+
+  it('sends a reset link from the row menu after the confirmation and confirms it with a toast', async () => {
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001', { UserName: 'Asha Rao', Email: 'asha@sample.in' })]);
+    await settle(fixture);
+    await choose(el.querySelector('tbody tr')!, 'Send reset link');
+    const dialog = el.querySelector('zed-confirm-dialog')!;
+    expect(dialog.querySelector('h3')!.textContent).toContain('Send password reset link?');
+    expect(dialog.textContent).toContain('Asha Rao (ZEDBA0001) gets a link to set a new password at as•••••@sample.in');
+    await submit();
+    http.expectOne('/api/staff/users/assessors/ZEDBA0001/password-reset').flush({ message: 'A link to set a new password was e-mailed (a***@sample.in).' });
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
+    expect(el.querySelector('.alert-success')).toBeNull();
+    expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Reset link sent', message: 'E-mailed to a***@sample.in' });
+  });
+
+  it('blocks from the row menu with the open assessments and a required reason, and keeps a refusal in the pop-up', async () => {
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001', { UserName: 'Asha Rao' })]);
+    await settle(fixture);
+    await choose(el.querySelector('tbody tr')!, 'Block assessor');
+    http.expectOne('/api/staff/users/assessors/ZEDBA0001/open-assessments').flush({ count: 2 });
+    await settle(fixture);
+    const dialog = () => el.querySelector('zed-confirm-dialog')!;
+    expect(dialog().querySelector('h3')!.textContent).toContain('Block Asha Rao?');
+    expect(dialog().textContent).toContain('2 assessments allotted to this assessor are still open. You will need to re-allot them.');
+    expect(dialog().querySelector('.cd-ok')!.textContent!.trim()).toBe('Block assessor');
+    expect(dialog().querySelector('.cd-ok')!.classList).toContain('btn-danger');
+    await submit();
+    expect(dialog().textContent).toContain('Please enter the reason for blocking.');
+    const reason = el.querySelector('#assessor-reason') as HTMLTextAreaElement;
+    reason.value = ' Certificate expired ';
+    reason.dispatchEvent(new Event('input'));
+    await submit();
+    const refused = http.expectOne('/api/staff/users/assessors/ZEDBA0001/block');
+    expect(refused.request.body).toEqual({ reason: 'Certificate expired' });
+    refused.flush({ title: 'The assessor is on an open assessment.' }, { status: 400, statusText: 'Bad Request' });
+    await settle(fixture);
+    expect(dialog().querySelector('.help-block')!.textContent).toContain('The assessor is on an open assessment.');
+    await submit();
+    http.expectOne('/api/staff/users/assessors/ZEDBA0001/block').flush({ message: 'User Blocked successful' });
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001', { IsActive: false, IdStatus: 'Blocked' })]);
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
+    expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Assessor blocked', message: 'User Blocked successful' });
+  });
+
+  it('says the open assessments are not known when they cannot be counted', async () => {
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001')]);
+    await settle(fixture);
+    await choose(el.querySelector('tbody tr')!, 'Block assessor');
+    http.expectOne('/api/staff/users/assessors/ZEDBA0001/open-assessments').flush({ count: null });
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('Open assessments allotted to this assessor: not known.');
+  });
+
+  it('unblocks with a reason and shows the block history in the side panel', async () => {
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0002', { UserName: 'Ravi Kumar', IsActive: false, IdStatus: 'Blocked' })]);
+    await settle(fixture);
+    await choose(el.querySelector('tbody tr')!, 'Unblock assessor');
+    const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
+    box.value = 'Certificate renewed';
+    box.dispatchEvent(new Event('input'));
+    await submit('zed-reason-dialog form');
+    const unblock = http.expectOne('/api/staff/users/assessors/ZEDBA0002/unblock');
+    expect(unblock.request.body).toEqual({ reason: 'Certificate renewed' });
+    unblock.flush({ message: 'User UnBlocked successful' });
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0002', { UserName: 'Ravi Kumar' })]);
+    await settle(fixture);
+    expect(el.querySelector('zed-reason-dialog')).toBeNull();
+    expect((await toasts()).at(-1)).toMatchObject({ title: 'Assessor unblocked' });
+
+    await choose(el.querySelector('tbody tr')!, 'View history');
+    expect(el.querySelector('zed-user-history small')!.textContent).toBe('Ravi Kumar · ZEDBA0002');
+    http.expectOne('/api/staff/users/assessors/ZEDBA0002/history').flush([
+      { action: 'Unblocked', reason: 'Certificate renewed', actionBy: 'AGENCY1', actionByRole: 2, actionDate: '2026-11-17T10:15:00' },
+    ]);
+    await settle(fixture);
+    const item = [...el.querySelector('zed-user-history .hp-list li')!.children].map((c) => c.textContent!.trim());
+    expect(item).toEqual(['Unblocked', 'By AGENCY1 (agency) · Reason: Certificate renewed', '17 Nov 2026, 10:15']);
+    (el.querySelector('zed-user-history .hp-close') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('zed-user-history')).toBeNull();
+  });
+
+  it("shows the Add form's answer as a toast", async () => {
+    globalThis.history.replaceState({ message: 'Assessor ZEDBA0009 added.' }, '');
+    try {
+      const second = TestBed.createComponent(MyAssessorsPage);
+      await settle(second);
+      http.match('/api/staff/users/assessors/mine').forEach((r) => r.flush([]));
+      expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Assessor added', message: 'Assessor ZEDBA0009 added.' });
+      expect((second.nativeElement as HTMLElement).querySelector('.alert-success')).toBeNull();
+    } finally {
+      globalThis.history.replaceState(null, '');
+    }
+  });
 });
 
 describe('MyAssessorsPage (consultancy)', () => {
-  it('offers UnBlock for every blocked user', async () => {
+  it('offers Unblock for every blocked user', async () => {
     await TestBed.configureTestingModule({
       imports: [MyAssessorsPage],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: STAFF_SYSTEM, useValue: 'consultancy' }],
@@ -454,107 +582,141 @@ describe('MyAssessorsPage (consultancy)', () => {
       { Id: 1, UserId: 'ZEDCC0001', UserName: 'C1', IdStatus: 'Blocked', IsActive: false, IsCertAttached: 1, UserType: 'Consultant' },
     ]);
     await settle(fixture);
-    expect((fixture.nativeElement as HTMLElement).querySelector('tbody tr')!.textContent).toContain('UnBlock');
+    const tr = (fixture.nativeElement as HTMLElement).querySelector('tbody tr')!;
+    expect(tr.textContent).toContain('Consultant');
+    (tr.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...tr.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View history', 'Unblock consultant']);
     http.verify();
   });
 });
 
 describe('AssessorListPage', () => {
-  it('blocks an assessor with a reason, unblocks one and shows the history (2026-11-08)', async () => {
+  async function create(query: Record<string, string> = {}) {
     await TestBed.configureTestingModule({
       imports: [AssessorListPage],
       providers: [
         provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(AssessorListPage);
     const http = TestBed.inject(HttpTestingController);
     await settle(fixture);
+    const el: HTMLElement = fixture.nativeElement;
+    const choose = async (tr: Element, label: string) => {
+      (tr.querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+      await settle(fixture);
+      ([...tr.querySelectorAll('.rm-item')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement).click();
+      await settle(fixture);
+    };
+    const submit = async (selector = 'zed-confirm-dialog form') => {
+      (el.querySelector(selector) as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await settle(fixture);
+    };
+    const toasts = async () => TestBed.inject((await import('../toast')).ToastService).toasts();
+    return { fixture, http, el, choose, submit, toasts };
+  }
+
+  it('blocks an assessor with a reason after showing its open assessments, unblocks one and shows the history panel', async () => {
+    const { fixture, http, el, choose, submit, toasts } = await create();
     const list = [
       { RowNumber: 1, Id: 1, UserId: 'ZEDDA01', UserName: 'Desk One', IsActive: true, IdStatus: 'Active' },
       { RowNumber: 2, Id: 2, UserId: 'ZEDSA02', UserName: 'Site Two', IsActive: false, IdStatus: 'Blocked', BlockReason: 'Report quality complaints', BlockedOn: '2026-11-06T15:42:00' },
     ];
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
     await settle(fixture);
-    const el: HTMLElement = fixture.nativeElement;
-    const rowButton = (row: number, label: string) =>
-      [...el.querySelectorAll('tbody tr')[row].querySelectorAll('button')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
-    expect(el.querySelectorAll('tbody tr')[1].querySelector('[data-block-note]')!.textContent!.replace(/\s+/g, ' ')).toContain('“Report quality complaints” · 06 Nov 2026');
-    expect(rowButton(0, 'Unblock')).toBeUndefined();
-    expect(rowButton(1, 'Block')).toBeUndefined();
+    const tr = (i: number) => el.querySelectorAll('tbody tr')[i];
+    expect(tr(1).querySelector('[data-block-note]')!.textContent!.replace(/\s+/g, ' ')).toContain('“Report quality complaints” · 06 Nov 2026');
+    // View stays visible; Reset link, History and Block / Unblock are in the row menu.
+    expect([...tr(0).querySelectorAll('.as-btns > a, .as-btns > button')].map((b) => b.textContent!.trim())).toEqual(['View']);
+    expect(tr(0).querySelector('.as-btns a')!.getAttribute('href')).toBe('/staff/users/assessors/ZEDDA01');
 
-    // Block: the open assessments, then a reason.
-    rowButton(0, 'Block').click();
-    await settle(fixture);
+    // Block: the open assessments are read first, then the confirmation asks for a reason.
+    await choose(tr(0), 'Block assessor');
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
     http.expectOne('/api/staff/users/assessors/ZEDDA01/open-assessments').flush({ count: 2 });
     await settle(fixture);
-    expect(el.querySelector('[data-open-warning]')!.textContent).toContain('2 assessments allotted to this assessor are still open');
-    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
-    await settle(fixture);
-    expect(el.querySelector('.modal')!.textContent).toContain('Please enter the reason for blocking.');
+    const dialog = el.querySelector('zed-confirm-dialog')!;
+    expect(dialog.querySelector('h3')!.textContent).toContain('Block Desk One?');
+    expect(dialog.textContent).toContain('2 assessments allotted to this assessor are still open. The assessment agency will need to re-allot them.');
+    expect(dialog.textContent).toContain("The login can't sign in on the web or the app");
+    await submit();
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('Please enter the reason for blocking.');
     const reason = el.querySelector('#as-block-reason') as HTMLTextAreaElement;
     reason.value = 'Certificate expired';
     reason.dispatchEvent(new Event('input'));
-    await settle(fixture);
-    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
-    await settle(fixture);
+    await submit();
     const block = http.expectOne('/api/staff/users/assessors/ZEDDA01/block');
     expect(block.request.body).toEqual({ reason: 'Certificate expired' });
     block.flush({ message: 'User Blocked successful' });
     await settle(fixture);
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
     await settle(fixture);
-    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
+    expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Assessor blocked', message: 'User Blocked successful' });
+    expect(el.querySelector('.alert-success')).toBeNull();
 
     // Unblock with its reason (2026-11-16).
-    rowButton(1, 'Unblock').click();
-    await settle(fixture);
+    await choose(tr(1), 'Unblock assessor');
     const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
     box.value = 'Certificate renewed';
     box.dispatchEvent(new Event('input'));
-    await settle(fixture);
-    (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
-    await settle(fixture);
+    await submit('zed-reason-dialog form');
     const unblock = http.expectOne('/api/staff/users/assessors/ZEDSA02/unblock');
     expect(unblock.request.body).toEqual({ reason: 'Certificate renewed' });
     unblock.flush({ message: 'User UnBlocked successful' });
     await settle(fixture);
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
     await settle(fixture);
+    expect((await toasts()).at(-1)).toMatchObject({ title: 'Assessor unblocked' });
 
-    // History.
-    rowButton(1, 'History').click();
-    await settle(fixture);
+    // History: the side panel (popup-08).
+    await choose(tr(1), 'View history');
+    expect(el.querySelector('zed-user-history .hp-none')!.textContent).toContain('Loading');
     http.expectOne('/api/staff/users/assessors/ZEDSA02/history').flush([
       { action: 'Blocked', reason: 'Report quality complaints', actionBy: 'MASTER1', actionByRole: 7, actionDate: '2026-11-06T15:42:00' },
       { action: 'Unblocked', reason: null, actionBy: 'ZEDV4AG01', actionByRole: 2, actionDate: '2026-09-12T11:05:00' },
     ]);
     await settle(fixture);
-    const items = [...el.querySelectorAll('.as-history li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
-    expect(items[0]).toMatch(/^Blocked\s*06 Nov 2026, 3:42 PM · by MASTER1 \(Master Admin\)\s*“Report quality complaints”$/);
-    expect(items[1]).toMatch(/^Unblocked\s*12 Sept? 2026, 11:05 AM · by ZEDV4AG01 \(agency\)$/);
+    expect(el.querySelector('zed-user-history small')!.textContent).toBe('Site Two · ZEDSA02');
+    const items = [...el.querySelectorAll('zed-user-history .hp-list li')].map((li) =>
+      [...li.children].map((c) => c.textContent!.trim()).join(' | '));
+    expect(items[0]).toBe('Blocked | By MASTER1 (Master Admin) · Reason: Report quality complaints | 06 Nov 2026, 15:42');
+    expect(items[1]).toMatch(/^Unblocked \| By ZEDV4AG01 \(agency\) \| 12 Sept? 2026, 11:05$/);
+    expect(el.querySelector('zed-user-history .hp-list li')!.className).toBe('is-bad');
     http.verify();
-    vi.restoreAllMocks();
+  });
+
+  it('sends a reset link after the confirmation and shows a refusal in the pop-up', async () => {
+    const { fixture, http, el, choose, submit, toasts } = await create();
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush([
+      { RowNumber: 1, Id: 1, UserId: 'ZEDBA01', UserName: 'Asha Rao', Email: 'asha@sample.in', IsActive: true, IdStatus: 'Active' },
+    ]);
+    await settle(fixture);
+    await choose(el.querySelector('tbody tr')!, 'Send reset link');
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('at as•••••@sample.in');
+    await submit();
+    http.expectOne('/api/staff/users/assessors/ZEDBA01/password-reset').flush({ title: 'No e-mail address is saved.' }, { status: 400, statusText: 'Bad Request' });
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog .help-block')!.textContent).toContain('No e-mail address is saved.');
+    await submit();
+    http.expectOne('/api/staff/users/assessors/ZEDBA01/password-reset').flush({ message: 'Link sent.' });
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
+    // No address in the answer: the list's masked address.
+    expect((await toasts()).at(-1)).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to as•••••@sample.in' });
+    http.verify();
   });
 
   it('passes the agency and type filters and pages the result', async () => {
-    await TestBed.configureTestingModule({
-      imports: [AssessorListPage],
-      providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ agencyId: 'ZEDAA0001', type: 'DA' }) } } },
-      ],
-    }).compileComponents();
-    const fixture = TestBed.createComponent(AssessorListPage);
-    const http = TestBed.inject(HttpTestingController);
-    await settle(fixture);
+    const { fixture, http, el } = await create({ agencyId: 'ZEDAA0001', type: 'DA' });
     const req = http.expectOne((r) => r.url === '/api/staff/users/assessors');
     expect(req.request.params.get('agencyId')).toBe('ZEDAA0001');
     expect(req.request.params.get('type')).toBe('DA');
     req.flush(Array.from({ length: 25 }, (_, i) => ({ RowNumber: i + 1, Id: i, UserId: `ZEDAS${i}`, UserName: `A${i}`, IsActive: true })));
     await settle(fixture);
-    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('h2')!.textContent).toBe('Assessors of ZEDAA0001');
     expect(el.querySelectorAll('tbody tr').length).toBe(20);
     ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Next') as HTMLButtonElement).click();
     await settle(fixture);
@@ -562,58 +724,71 @@ describe('AssessorListPage', () => {
     http.verify();
   });
 
-  it('counts the assessors and filters them by status, type, sector type and agency', async () => {
-    await TestBed.configureTestingModule({
-      imports: [AssessorListPage],
-      providers: [
-        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
-      ],
-    }).compileComponents();
-    const fixture = TestBed.createComponent(AssessorListPage);
-    const http = TestBed.inject(HttpTestingController);
+  it('masks the contact and leaves the PAN out', async () => {
+    const { fixture, http, el } = await create();
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush([
+      { RowNumber: 1, Id: 1, UserId: 'ZEDBA01', UserName: 'Ravi', MobileNo: '9876543210', Email: 'ravi@sample.in', PanNo: 'ABCDE1234F', IsActive: true, IdStatus: 'Active' },
+      { RowNumber: 2, Id: 2, UserId: 'ZEDBA02', UserName: 'Asha', MobileNo: null, Email: null, IsActive: true, IdStatus: 'Active' },
+    ]);
     await settle(fixture);
+    const [first, second] = [...el.querySelectorAll('tbody tr')];
+    expect([...first.querySelectorAll('.as-contact span')].map((s) => s.textContent!.trim())).toEqual(['98•••••210', 'ra•••••@sample.in']);
+    expect(second.querySelector('.as-contact')!.textContent!.trim()).toBe('Mobile not saved');
+    expect(el.querySelector('tbody')!.textContent).not.toContain('ABCDE1234F');
+    expect(el.querySelector('tbody')!.textContent).not.toContain('9876543210');
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Levels and modes', 'Sector', 'Contact', 'Agency', 'Status', 'Actions']);
+    http.verify();
+  });
+
+  it('counts the assessors and filters them by status, type, sector type and agency', async () => {
+    const { fixture, http, el } = await create();
     const a = (i: number, extra: Partial<AssessorRow>): AssessorRow => ({
       RowNumber: i, Id: i, UserId: `ZEDAS000${i}`, UserName: `Assessor ${i}`, MobileNo: null, Email: null, Address: null, IdStatus: 'Active', IsActive: true,
       AssessorType: 'BronzeAssessor', SectorActivity: 'Manufacturing', AgencyUserId: 'ZEDAA0001', AgencyUserName: 'Alpha Quality', ...extra,
     });
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush([
       a(1, { UserName: 'Ravi Kumar' }),
-      a(2, { AssessorType: 'Assessor', SectorActivity: 'Services' }),
+      a(2, { AssessorType: 'Assessor', SectorActivity: 'Services', Assessments: [{ level: 'Gold', modes: ['Remote'] }, { level: 'ZEDX', modes: ['Onsite'] }] }),
       a(3, { IsActive: false, IdStatus: 'Blocked', SectorActivity: null, AgencyUserId: 'ZEDAA0002', AgencyUserName: 'Beta Audits' }),
       a(4, { AssessorType: 'Assessor', SectorActivity: 'Both', AgencyUserId: 'ZEDAA0002', AgencyUserName: 'Beta Audits' }),
     ]);
     await settle(fixture);
-    const el: HTMLElement = fixture.nativeElement;
     const rows = () => [...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('.as-id')?.textContent?.trim());
-    const choose = async (label: string, value: string) => {
+    const pickOption = async (label: string, value: string) => {
       const select = el.querySelector(`select[aria-label="${label}"]`) as HTMLSelectElement;
       select.value = value;
       select.dispatchEvent(new Event('change'));
       await settle(fixture);
     };
-    expect([...el.querySelectorAll('.as-stat-count')].map((c) => c.textContent!.trim())).toEqual(['4', '3', '1']);
-    expect([...el.querySelectorAll('.as-tab')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All types 4', 'Bronze Assessor 2', 'Assessor 2']);
-    const first = el.querySelector('tbody tr')!;
+    const tile = (label: string) => [...el.querySelectorAll('zed-list-counts button')].find((t) => t.textContent!.includes(label)) as HTMLButtonElement;
+    expect([...el.querySelectorAll('zed-list-counts .lc-item b')].map((c) => c.textContent!.trim())).toEqual(['4', '3', '1']);
+    expect(tile('All').getAttribute('aria-pressed')).toBe('true');
+    expect([...el.querySelectorAll('zed-chip-filter .cf-chip')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All types 4', 'Bronze Assessor 2', 'Assessor 2']);
+    const [first, second, third] = [...el.querySelectorAll('tbody tr')];
     expect(first.querySelector('.as-avatar')!.textContent!.trim()).toBe('RK');
-    expect([...first.querySelectorAll('.zed-chip, .sector-chip')].map((c) => c.textContent!.trim())).toEqual(['Bronze Assessor', 'Manufacturing']);
-    expect(el.querySelectorAll('tbody tr')[2].textContent).toContain('Sector type not set');
+    expect(first.querySelector('.as-type')!.textContent!.trim()).toBe('Bronze Assessor');
+    expect(first.querySelector('.as-pill')!.textContent!.trim()).toBe('Manufacturing');
+    expect([...second.querySelectorAll('.lv')].map((m) => [m.className, m.getAttribute('title')])).toEqual([['lv lv-gold', 'Gold: Remote'], ['lv lv-zedx', 'ZED-X: Onsite']]);
+    expect(second.querySelector('.as-levels .as-sub')!.textContent!.trim()).toBe('Remote · Onsite');
+    expect(third.querySelector('.as-pill')!.textContent!.trim()).toBe('Not set');
+    expect([...first.querySelector('.as-agency')!.children].map((c) => c.textContent!.trim())).toEqual(['Alpha Quality', 'ZEDAA0001']);
 
-    ([...el.querySelectorAll('.as-stat')].find((t) => t.textContent!.includes('Blocked')) as HTMLButtonElement).click();
+    tile('Blocked').click();
     await settle(fixture);
     expect(rows()).toEqual(['ZEDAS0003']);
+    expect(tile('Blocked').getAttribute('aria-pressed')).toBe('true');
 
-    ([...el.querySelectorAll('.as-stat')].find((t) => t.textContent!.includes('All')) as HTMLButtonElement).click();
+    tile('All').click();
     await settle(fixture);
-    ([...el.querySelectorAll('.as-tab')].find((t) => t.textContent!.includes('Bronze Assessor')) as HTMLButtonElement).click();
+    ([...el.querySelectorAll('zed-chip-filter .cf-chip')].find((t) => t.textContent!.includes('Bronze Assessor')) as HTMLButtonElement).click();
     await settle(fixture);
     expect(rows()).toEqual(['ZEDAS0001', 'ZEDAS0003']);
 
-    await choose('Sector type', 'none');
+    await pickOption('Sector type', 'none');
     expect(rows()).toEqual(['ZEDAS0003']);
 
-    await choose('Sector type', 'Manufacturing');
-    await choose('Assessment Agency', 'ZEDAA0002');
+    await pickOption('Sector type', 'Manufacturing');
+    await pickOption('Assessment Agency', 'ZEDAA0002');
     expect(el.querySelector('tbody .no-data')!.textContent).toContain('No assessor matches the filters.');
     ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Show all') as HTMLButtonElement).click();
     await settle(fixture);

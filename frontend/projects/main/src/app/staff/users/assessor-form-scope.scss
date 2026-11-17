@@ -1,9 +1,89 @@
+// The assessor page (Add / Update / view). 2026-11-17 (staff-05): the form and a right rail that stacks under it below 992px.
+fieldset { min-width: 0; }
+.form-grid > .top { align-self: start; padding-top: 8px; }
+.readonly { background-color: #eef1f2 !important; }
+.help-block { color: #a94442; font-size: 13px; }
+.af-label { font-weight: 600; color: #3b4b4c; font-size: 14px; }
+.form-grid .form-control.af-short { max-width: 160px; }
+.form-grid .form-control.af-mid { max-width: 320px; }
+.af-view-only { align-self: center; }
+
+.af-profile { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 16px; padding: 16px 20px; }
+.af-avatar { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); font-weight: 700; font-size: 16px; }
+.af-who { flex: 1 1 220px; min-width: 0; }
+.af-name { display: block; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
+.af-id { display: block; font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+.af-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.af-tags .zed-chip { margin: 0; }
+.af-sector { background: #f1f0fb; color: #3f3a7a; }
+
+.af-layout.has-rail { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 0 20px; align-items: start; }
+.af-main { min-width: 0; }
+.af-card { padding: 0; overflow: hidden; }
+.af-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 14px 18px; border-bottom: 1px solid #e6eeee;
+  font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
+.af-link { padding: 0; font-size: 14px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); text-decoration: none; }
+.af-agency { display: flex; align-items: center; gap: 12px; padding: 16px 18px; }
+.af-agency .af-who { flex-basis: 0; }
+.af-agency .af-name { font-size: 15px; }
+.af-avatar.af-sm { flex-basis: 40px; width: 40px; height: 40px; font-size: 14px; color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); }
+.af-cover { margin: 0; padding: 4px 18px 14px; }
+.af-cover dt { margin-top: 12px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #5f6f70; }
+.af-cover dd { margin: 2px 0 0; padding-bottom: 10px; border-bottom: 1px solid #eef3f3; font-size: 14px; color: #1d2b2c; overflow-wrap: anywhere; }
+.af-cover dd:last-child { border-bottom: 0; padding-bottom: 0; }
+.af-cover small { display: block; margin-top: 4px; color: #5f6f70; font-size: 12.5px; }
+.af-open { margin: 0; padding: 16px 18px; font-size: 14px; color: #3d5254; }
+.af-open strong { color: var(--zt-ink, #173f44); }
+
+.af-section { padding: 18px 20px 20px; }
+.af-head { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); margin: 0 0 16px; }
+.af-no { flex: none; width: 28px; height: 28px; border-radius: 50%; background: #45a5ad; color: #fff; font-size: 14px; display: grid; place-items: center; }
+.af-hint { font-size: 13px; color: #5f6f70; margin: 0 0 10px; }
+
+// Choice chips: one radio per pill (assessor type, ID proof, sector type).
+.af-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 38px; align-items: center; }
+.af-chip { position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 16px; border-radius: 6px;
+  border: 1px solid #cbd9da; background: #fff; color: var(--zt-mid2, #2a8a8c); font-weight: 600; font-size: 14px; cursor: pointer; }
+.af-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.af-chip::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #9fbfc1; background: #fff; box-sizing: border-box; }
+.af-chip:hover { background: #eef6f6; border-color: #45a5ad; }
+.af-chip.active { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; }
+.af-chip.active::before { border: 4px solid #fff; background: var(--zt-dark, #1f5c61); }
+.af-chip:has(input:focus-visible) { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
+.af-chip.is-off { opacity: .5; cursor: not-allowed; background: #f4f6f6; }
+fieldset:disabled .af-chip { cursor: default; }
+fieldset:disabled .af-chip:not(.active) { background: #f4f6f6; color: #7d8c8d; }
+
+.lookup { background: #f5fafa; border: 1px solid #e1eded; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+.af-found { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #e6f6ec; color: #1e7a3c; font-size: 14px; }
+.af-found .af-avatar { flex-basis: 40px; width: 40px; height: 40px; font-size: 14px; }
+#selfieimg { max-height: 90px; border-radius: 8px; }
+
 // 2026-11-14 (approved): the levels x modes grid of an assessor (Users.AssessmentModes).
 .af-scope-table { width: 100%; max-width: 560px; border-collapse: collapse; font-size: 14px; }
 .af-scope-table th, .af-scope-table td { border: 1px solid #e1ecec; padding: 8px 10px; text-align: center; }
 .af-scope-table thead th { background: #f4f8f8; color: #5f6f70; font-weight: 700; }
 .af-scope-table tbody th { text-align: left; font-weight: 700; color: #1d2b2c; }
 .af-scope-table .form-check-input { width: 18px; height: 18px; margin: 0; float: none; cursor: pointer; }
-.af-scope-table .form-check-input:checked { background-color: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); }
+.af-scope-table .form-check-input:checked { background-color: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); }
 .af-scope-na { color: #9bb7b9; font-size: 12px; }
 .af-scope-note { color: #5f6f70; font-size: 12.5px; margin: 8px 0 0; }
+
+// Save bar: stays at the bottom of the window while there are changes.
+.save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; padding: 12px 16px;
+  background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, .08); }
+.save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
+.save-bar > span { flex: 1 1 180px; min-width: 0; }
+.unsaved { font-weight: 600; color: #8a6100; }
+.loadingdiv { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+
+@media (max-width: 991.98px) {
+  .af-layout.has-rail { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767.98px) {
+  .af-section { padding: 14px; }
+  .form-grid .form-control.af-short, .form-grid .form-control.af-mid { max-width: none; }
+  .lookup .filter-bar > .filter { max-width: none; flex-basis: 100%; }
+  .af-scope { overflow-x: auto; }
+}
