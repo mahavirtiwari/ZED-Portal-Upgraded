@@ -1,0 +1,119 @@
+<!-- 2026-11-18 (approved design "Expenditure monitoring", section 3 and 4). -->
+<zed-page-head [crumbs]="crumbs" title="Expenditure">
+  @if (views().length > 1) {
+    <div class="xp-tabs" role="group" aria-label="View">
+      <button type="button" [class.on]="view() === 'agencies'" [attr.aria-pressed]="view() === 'agencies'" (click)="setView('agencies')">Assessment agencies</button>
+      <button type="button" [class.on]="view() === 'organisations'" [attr.aria-pressed]="view() === 'organisations'" (click)="setView('organisations')">Consultant organisations</button>
+    </div>
+  }
+  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">Refresh</button>
+  <button type="button" class="btn btn-primary" [disabled]="!data()" (click)="export()">Export</button>
+</zed-page-head>
+
+@if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+
+<div class="zed-card xp-bar">
+  <label>{{ word() }}
+    <select class="form-select" name="party" [ngModel]="partyId()" (ngModelChange)="partyId.set($event); load()">
+      <option value="">{{ consultant() ? 'All organisations' : 'All agencies' }}</option>
+      @for (p of parties(); track p.code) { <option [value]="p.code">{{ p.name }}</option> }
+    </select>
+  </label>
+  <label>Level
+    <select class="form-select" name="level" [ngModel]="level()" (ngModelChange)="level.set($event); load()">
+      <option value="">All levels</option>
+      @for (l of data()?.levels ?? []; track l.code) { <option [value]="l.code">{{ l.name }}</option> }
+    </select>
+  </label>
+  <label>State
+    <select class="form-select" name="state" [ngModel]="state()" (ngModelChange)="state.set($event); load()">
+      <option value="">All states</option>
+      @for (s of data()?.states ?? []; track s) { <option [value]="s">{{ s }}</option> }
+    </select>
+  </label>
+  <label>From <input type="date" class="form-control" name="from" [ngModel]="from()" (ngModelChange)="from.set($event); load()" /></label>
+  <label>To <input type="date" class="form-control" name="to" [ngModel]="to()" (ngModelChange)="to.set($event); load()" /></label>
+  @if (filtering()) { <button type="button" class="xp-clear" (click)="clearAll()">Clear all</button> }
+</div>
+
+<zed-list-counts [counts]="counts()" label="Expenditure in figures" />
+
+<div class="zed-card xp-card">
+  <div class="table-responsive">
+    <table class="table table-zed xp-table">
+      <thead>
+        <tr>
+          <th>{{ word() }}</th><th>Level</th><th>PO</th>
+          @if (consultant()) { <th class="num">Milestones</th> }
+          @else { <th class="num">Completed</th><th class="num">Rejected</th><th class="num">Surv.</th> }
+          <th class="num">Balance</th><th class="num">Payable</th><th class="num">Invoiced</th><th class="num">Outstanding</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of rowsView.page(); track r.partyId + r.level) {
+          @let p = pill(r);
+          <tr>
+            <td><b>{{ r.partyName }}</b><small>{{ r.partyId }}</small></td>
+            <td>{{ r.levelName }}</td>
+            <td>{{ r.poLabel ?? 'No PO' }}@if (r.poCases) { <small>{{ r.poCases }} cases</small> }</td>
+            @if (consultant()) { <td class="num">{{ r.milestones }}</td> }
+            @else { <td class="num">{{ r.completed }}</td><td class="num">{{ r.rejected }}</td><td class="num">{{ r.surveillance }}</td> }
+            <td class="num">
+              @if (r.poState === 'Stopped' || r.poState === 'Low') { <span class="status-badge" [class]="p.tone">{{ p.text }}</span> }
+              @else { {{ r.balance ?? '—' }} }
+            </td>
+            <td class="num"><b>{{ money(r.payable) }}</b></td>
+            <td class="num">{{ money(r.invoiced) }}</td>
+            <td class="num" [class.owe]="r.outstanding > 0">{{ money(r.outstanding) }}</td>
+            <td class="num"><button type="button" class="btn btn-default btn-sm" (click)="openCases(r)">Cases</button></td>
+          </tr>
+        } @empty {
+          <tr><td [attr.colspan]="consultant() ? 9 : 11" style="padding: 0">
+            <div class="no-data">{{ loading() ? 'Loading…' : filtering() ? 'Nothing matches the filters.' : 'No case counted and no purchase order yet.' }}</div>
+          </td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <zed-pager [pager]="rowsView" />
+</div>
+
+<div class="zed-card xp-card">
+  <h2>Monthly invoices</h2>
+  <div class="table-responsive">
+    <table class="table table-zed xp-table">
+      <thead><tr><th>{{ word() }}</th><th>Month</th><th>Invoice</th><th class="num">Cases</th><th class="num">Amount (incl. GST)</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        @for (i of invoices(); track i.id) {
+          <tr>
+            <td>{{ i.partyName }}</td>
+            <td>{{ i.monthLabel }}</td>
+            <td>{{ i.invoiceNo }}<small>{{ date(i.invoiceDate) }} · PDF</small></td>
+            <td class="num">{{ i.portalCases }}</td>
+            <td class="num">{{ money(i.invoiceAmount) }}</td>
+            <td><span class="status-badge" [class]="tone(i.status)">{{ i.status }}</span>
+              @if (i.status === 'Approved') { <small>ERP: {{ (i.erpExport || 'pending').toLowerCase() }}</small> }
+              @else if (i.status === 'Returned' && i.remarks) { <small>{{ i.remarks }}</small> }</td>
+            <td class="num">
+              <button type="button" [class]="i.canReview ? 'btn btn-outline-primary btn-sm' : 'btn btn-default btn-sm'" (click)="reviewing.set(i.id)">
+                {{ i.canReview ? 'Review' : 'View' }}</button>
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="7" style="padding: 0"><div class="no-data">No invoice uploaded yet.</div></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (casesOf(); as c) {
+  <zed-expenditure-cases [filter]="c.filter" [portal]="portal()" [title]="c.row.partyName + ' · ' + c.row.levelName" [subtitle]="c.row.partyId"
+                         (closed)="casesOf.set(null)" />
+}
+@if (reviewing(); as id) {
+  <zed-invoice-review [invoiceId]="id" [portal]="portal()" (closed)="reviewed($event)" />
+}
+@if (loading()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

@@ -98,6 +98,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   ...SITE_REVIEW_ROUTES,
   { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+  // 2026-11-18 (approved design "Expenditure monitoring"): the Expenditure tab and the agencies' monthly invoices.
+  { path: 'expenditure', loadChildren: () => import('./staff/expenditure/expenditure.routes').then((m) => m.EXPENDITURE_ROUTES) },
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
   { path: 'user-management', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.USER_MANAGEMENT_ROUTES) },
   { path: 'sub-users', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.SUB_USERS_ROUTES) },
@@ -449,6 +451,8 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
 /** Consultancy (handholding) staff screens. */
 const CONSULTANCY_STAFF_CHILDREN: Routes = [
   ...SYSTEM_COMMON_STAFF_CHILDREN,
+  // 2026-11-18 (approved design "Expenditure monitoring"): the Expenditure tab and the agencies' monthly invoices.
+  { path: 'expenditure', loadChildren: () => import('./staff/expenditure/expenditure.routes').then((m) => m.EXPENDITURE_ROUTES) },
   // New in V4: the documents and videos the Admin gave to this account type (Admin → Documents/Videos).
   { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
   // No questionnaire here: ZED_CONSULTANT has no section tables (its live Questionaire pages failed too). The Admin's

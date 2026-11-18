@@ -33,7 +33,11 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
 
     /// <param name="SectorActivity">V4: Manufacturing, Services or Both (null: not set, no limit).</param>
     /// <param name="Assessments">2026-11-14: the levels and modes the assessor may do (<see cref="Users.AssessorScope"/>).</param>
-    public sealed record Person(string UserId, string UserName, string? SectorActivity = null, IReadOnlyList<Users.AssessorScope.Item>? Assessments = null);
+    /// <param name="PoStopped">2026-11-18 (expenditure monitoring): the agency's (organisation's) purchase order for this level is used
+    /// up, so it cannot be allotted this level (<paramref name="PoMessage"/> says why); <paramref name="PoLeft"/>: its PO cases left
+    /// (null: no PO for the level, no limit).</param>
+    public sealed record Person(string UserId, string UserName, string? SectorActivity = null, IReadOnlyList<Users.AssessorScope.Item>? Assessments = null,
+        bool PoStopped = false, string? PoMessage = null, int? PoLeft = null);
 
     /// <summary>Allot screen (Assessment/Allot): records waiting for an agency or re-allotment.</summary>
     [HttpGet("allot")]
@@ -189,6 +193,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
 
         var agency = (await AgenciesFor(zedId!, level, ct)).FirstOrDefault(a => string.Equals(a.UserId, agencyUserId, StringComparison.OrdinalIgnoreCase));
         if (agency is null) return "Please select valid data.";
+        // 2026-11-18 (expenditure monitoring): no allotment beyond the agency's purchase order for the level.
+        if (agency.PoStopped) return agency.PoMessage;
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
             new { ZedId = zedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
@@ -220,8 +226,19 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
         // V4 (2026-11-08): not the agencies the Master Admin disabled this level for (Silver, Gold, ZED-X; Bronze is in the procedure).
         var disabled = host.System == PortalSystem.Main ? await Users.AgencyLevels.DisabledAsync(db, level, log, ct) : [];
+        // 2026-11-18 (expenditure monitoring): each agency's PO for the level; a used-up PO stops its allotment (main, Consultancy).
+        var po = (await Expenditure.PoLimits.StatusAsync(db, host, null, level, log, ct))
+            .ToDictionary(s => s.PartyId, StringComparer.OrdinalIgnoreCase);
+        var levelName = Zed.Core.Data.LevelRegistry.NameOf(level);
         return rows.Where(r => AllotmentLists.Flag(r, column) && !disabled.Contains(r.Text("UserId").Trim()))
-            .Select(r => new Person(r.Text("UserId"), r.Text("UserName"), activities.GetValueOrDefault(r.Text("UserId"))))
+            .Select(r =>
+            {
+                var id = r.Text("UserId");
+                var s = po.GetValueOrDefault(id.Trim());
+                return new Person(id, r.Text("UserName"), activities.GetValueOrDefault(id), PoStopped: s?.Stopped == true,
+                    PoMessage: s?.Stopped == true ? Expenditure.PoLimits.StoppedMessage(s, r.Text("UserName"), levelName) : null,
+                    PoLeft: s?.HasPo == true ? s.Left : null);
+            })
             .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category));
     }
 }

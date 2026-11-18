@@ -27,6 +27,12 @@
   }
 </div>
 
+@if (poFor(); as po) {
+  <!-- 2026-11-18 (expenditure monitoring): the purchase orders of the agency (organisation) chosen in its row. -->
+  <div class="text-end mb-1"><button type="button" class="btn btn-default btn-sm" (click)="poFor.set(null)">Close purchase orders</button></div>
+  <zed-po-card [partyId]="po.UserId" [partyName]="po.UserName || po.UserId" [word]="word" />
+}
+
 <div class="zed-card ag-card">
   <div class="table-responsive">
     <table class="table table-zed ag-table" [class.is-levels]="mode === 'levels'">
@@ -53,6 +59,9 @@
                 <div class="ag-text">
                   <strong class="ag-name">{{ a.UserName }}</strong>
                   <span class="ag-id">{{ a.UserId }}</span>
+                  @if (mode === 'levels') {
+                    <button type="button" class="btn btn-default btn-sm align-self-start" [attr.aria-label]="'Purchase orders of ' + a.UserName" (click)="poFor.set(a)">Purchase orders</button>
+                  }
                   @let addr = a.Address || a.Pincode ? (a.Address ?? '') + (a.Address && a.Pincode ? ' ' : '') + (a.Pincode ?? '') : 'Address not saved';
                   <span class="ag-addr" [title]="addr">{{ addr }}</span>
                 </div>

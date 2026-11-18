@@ -84,10 +84,10 @@ describe('AgenciesPage', () => {
 
     (first.querySelector('.rm-btn') as HTMLButtonElement).click();
     await settle();
-    expect([...first.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Edit agency', 'View assessors', 'Send reset link', 'View history', 'Block agency']);
+    expect([...first.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Edit agency', 'View assessors', 'Send reset link', 'View history', 'Purchase orders', 'Block agency']);
     (rows()[1].querySelector('.rm-btn') as HTMLButtonElement).click();
     await settle();
-    expect([...rows()[1].querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Edit agency', 'View assessors', 'View history', 'Unblock agency']);
+    expect([...rows()[1].querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Edit agency', 'View assessors', 'View history', 'Purchase orders', 'Unblock agency']);
   });
 
   it('sends a reset link only after the confirmation and confirms it with a toast', async () => {

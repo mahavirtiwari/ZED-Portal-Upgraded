@@ -43,7 +43,8 @@ public static class SubUserPermissions
         // MasterAdmin ("operation admins")
         new("users", "Agencies / organisations and their assessors", UserRole.MasterAdmin, All, None,
             ["/staff/users/agencies", "/staff/users/bronze-agencies", "/staff/users/assessors", "/staff/users/surveillance-agencies", "/staff/users/surveillance-assessors"],
-            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users"]),
+            // 2026-11-18: the purchase orders card on Agency Level Allocation / the Consultant Organisations page.
+            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users", "/api/staff/expenditure/po"]),
         new("payments", "Payment Received", UserRole.MasterAdmin, All, None,
             ["/staff/payments-received"], ["/api/staff/dashboard/payments-received"]),
         new("allot", "Allotment", UserRole.MasterAdmin, All, None,
@@ -63,6 +64,9 @@ public static class SubUserPermissions
             ["/staff/quality-observations"], ["/api/staff/quality-observations"]),
         new("incentive-upload", "Upload API Incentives", UserRole.MasterAdmin, Main, None,
             ["/staff/incentives/upload"], ["/api/staff/schemes/incentives/upload", "/api/staff/schemes/incentives/template"]),
+        // 2026-11-18 (approved): Expenditure (cases, payable, POs, the monthly invoices' review).
+        new("expenditure", "Expenditure", UserRole.MasterAdmin, [PortalSystem.Main, PortalSystem.Consultancy], None,
+            ["/staff/expenditure"], ["/api/staff/expenditure"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
 
@@ -84,6 +88,9 @@ public static class SubUserPermissions
             ["/staff/reports"], ["/api/staff/reports"]),
         new("financial-assistance", "Financial Assistance verification", UserRole.Agency, Main, [SubRoles.FinancialVerification],
             ["/staff/financial-assistance"], ["/api/staff/schemes/fa"]),
+        // 2026-11-18 (approved): the agency's / organisation's monthly invoices (upload, status, its own PDFs).
+        new("invoices", "Invoices", UserRole.Agency, [PortalSystem.Main, PortalSystem.Consultancy], None,
+            ["/staff/expenditure/invoices"], ["/api/staff/expenditure/my", "/api/staff/expenditure/invoices"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.Agency, Consultancy, [SubRoles.FinancialVerification],
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
     ];

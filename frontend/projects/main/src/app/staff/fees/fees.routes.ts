@@ -14,4 +14,9 @@ export const FEES_ROUTES: Routes = [
     path: '', title: PORTAL_SYSTEM === 'consultancy' ? 'ZED | Handholding Payments' : PORTAL_SYSTEM === 'main' ? 'ZED | Payments' : 'ZED | Fee Structure',
     canActivate: [admin], loadComponent: () => import('./fees-host').then((m) => m.FeesHostPage),
   },
+  // 2026-11-18 (approved design "Expenditure monitoring"): what the agencies and consultant organisations are paid per case.
+  {
+    path: 'expenditure-rates', title: 'ZED | Expenditure Rates',
+    canActivate: [admin], loadComponent: () => import('./expenditure-rates').then((m) => m.ExpenditureRatesPage),
+  },
 ];

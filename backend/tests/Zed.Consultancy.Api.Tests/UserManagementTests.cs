@@ -35,10 +35,10 @@ public sealed class UserManagementTests : IDisposable
     {
         var agency = await _staff.SignInAsync("AGENCY1", 2, "DesktopVerification", "SiteVerification", "FinancialVerification");
         var a = await agency.GetFromJsonAsync<JsonElement>("/api/staff/sub-users");
-        Assert.Equal(["monitoring", "assessors", "sa-allotment", "results", "reports", "technology-upgradation"], Strings(a.GetProperty("permissions"), "key"));
+        Assert.Equal(["monitoring", "assessors", "sa-allotment", "results", "reports", "invoices", "technology-upgradation"], Strings(a.GetProperty("permissions"), "key"));
         var master = await _staff.SignInAsync("MASTER1", 7);
         var m = await master.GetFromJsonAsync<JsonElement>("/api/staff/sub-users");
-        Assert.Equal(["users", "payments", "allot", "monitoring", "results", "password-reset", "quality-observations", "technology-upgradation"], Strings(m.GetProperty("permissions"), "key"));
+        Assert.Equal(["users", "payments", "allot", "monitoring", "results", "password-reset", "quality-observations", "expenditure", "technology-upgradation"], Strings(m.GetProperty("permissions"), "key"));
     }
 
     [Fact]

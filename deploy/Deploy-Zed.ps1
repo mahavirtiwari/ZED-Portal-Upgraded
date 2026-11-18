@@ -158,6 +158,9 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT'); Name = '0095 zero-amount payment record'; Test = (Has-Text 'dbo.SP_MSME_ZERO_PAYMENT_DETAILS' 'PaymentType = ''ZeroAmount''') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0096 submission checklists'; Test = "COL_LENGTH('dbo.AssessorComments', 'QoCategory') >= 300" }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0097 notification bell'; Test = (Has-Col 'dbo.Msme' 'NotificationsSeenOn') }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0098 expenditure monitoring'; Test = (Has-Col 'dbo.MsmeCertifications' 'ExpCountedOn') }
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0098 expenditure tables'; Test = "OBJECT_ID('dbo.ExpenditureRates', 'U') IS NOT NULL AND OBJECT_ID('dbo.ExpenditureInvoices', 'U') IS NOT NULL" }
+        @{ Dbs = @('ZED_CONSULTANT'); Name = '0098 expenditure monitoring'; Test = (Has-Col 'dbo.MsmeCertifications' 'ExpM1CountedOn') + " AND OBJECT_ID('dbo.ExpenditureInvoices', 'U') IS NOT NULL" }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

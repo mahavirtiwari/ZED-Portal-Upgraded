@@ -73,6 +73,26 @@ describe('assessment list pages', () => {
 
   const chip = (el: HTMLElement, label: string) => [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')].find((b) => b.textContent!.includes(label))!;
 
+  it('Allot: an agency whose PO for the level is used up is shown stopped and cannot be chosen (2026-11-18)', async () => {
+    const fixture = await create(AllotPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: allotRows() });
+    await settle(fixture);
+    (el.querySelectorAll('tbody tr')[1].querySelector('.al-act') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot/agencies').flush([
+      { userId: 'AGENCY1', userName: 'Agency One', poStopped: true, poMessage: 'Allotment to Agency One for Bronze has stopped.', poLeft: 0 },
+      { userId: 'AGENCY2', userName: 'Agency Two', poStopped: false, poLeft: 4 },
+    ]);
+    await settle(fixture);
+    const opts = [...el.querySelectorAll<HTMLElement>('.modal .ad-opt')];
+    expect(opts[0].textContent).toContain('Agency Two');
+    expect(opts[0].textContent).toContain('PO: 4 left');
+    expect(opts[1].textContent).toContain('PO used up — allotment stopped');
+    expect(opts[1].querySelector<HTMLInputElement>('input[type=radio]')!.disabled).toBe(true);
+    expect(opts[1].getAttribute('title')).toContain('has stopped');
+  });
+
   it('Allot: two tabs with counts, oldest payment first, the eligible agencies and the single allotment', async () => {
     const fixture = await create(AllotPage);
     const el: HTMLElement = fixture.nativeElement;

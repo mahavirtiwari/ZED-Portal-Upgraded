@@ -80,6 +80,11 @@ interface Choice {
   userName: string;
   /** How many of the chosen units this agency may take (the API's list for each unit). */
   takes: number;
+  /** 2026-11-18 (expenditure monitoring): its PO for the level is used up: allotment stopped (why: `poMessage`). */
+  stopped: boolean;
+  poMessage: string | null;
+  /** The PO's cases left (null: no PO, no limit). */
+  poLeft: number | null;
 }
 
 /** Most units in one bulk allotment (the API's limit). */
@@ -138,10 +143,12 @@ export const BULK_LIMIT = 100;
                 </div>
                 <div class="ad-list" role="radiogroup" [attr.aria-label]="chooseLabel">
                   @for (a of shown(); track a.userId) {
-                    <label class="ad-opt" [class.on]="choice() === a.userId">
-                      <input type="radio" name="adAgency" [value]="a.userId" [checked]="choice() === a.userId" (change)="choice.set(a.userId)" />
+                    <label class="ad-opt" [class.on]="choice() === a.userId" [attr.title]="a.poMessage">
+                      <input type="radio" name="adAgency" [value]="a.userId" [checked]="choice() === a.userId" [disabled]="a.stopped && !a.takes" (change)="choice.set(a.userId)" />
                       <span class="ad-name"><b>{{ a.userName }}</b><small>{{ a.userId }}</small></span>
                       @if (one() && t(one()!, 'PStateName')) { <span class="chip is-good">Covers {{ t(one()!, 'PStateName') }}</span> }
+                      @if (a.stopped) { <span class="chip is-bad">PO used up — allotment stopped</span> }
+                      @else if (a.poLeft !== null && a.poLeft <= 10) { <span class="chip is-warn">PO: {{ a.poLeft }} left</span> }
                       @if (units().length > 1) {
                         <span class="chip" [class.is-good]="a.takes === units().length" [class.is-warn]="a.takes < units().length">May take {{ a.takes }} of {{ units().length }}</span>
                       }
@@ -295,12 +302,16 @@ export class AllotDialog {
       for (const list of lists) {
         for (const p of list) {
           const key = p.userId.toUpperCase();
-          const c = all.get(key);
-          if (c) c.takes++;
-          else all.set(key, { userId: p.userId, userName: p.userName, takes: 1 });
+          const c = all.get(key) ?? { userId: p.userId, userName: p.userName, takes: 0, stopped: false, poMessage: null, poLeft: null };
+          if (p.poStopped) {
+            c.stopped = true;
+            c.poMessage = p.poMessage ?? null;
+          } else c.takes++;
+          if (p.poLeft !== null && p.poLeft !== undefined) c.poLeft = c.poLeft === null ? p.poLeft : Math.min(c.poLeft, p.poLeft);
+          all.set(key, c);
         }
       }
-      this.agencies.set([...all.values()].sort((a, b) => b.takes - a.takes || a.userName.localeCompare(b.userName)));
+      this.agencies.set([...all.values()].sort((a, b) => Number(a.stopped && !a.takes) - Number(b.stopped && !b.takes) || b.takes - a.takes || a.userName.localeCompare(b.userName)));
       this.choice.set('');
     } catch (err) {
       this.error.set(apiErrorMessage(err));

@@ -14,6 +14,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { staffCrumbs } from '../staff-crumbs';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { ToastService } from '../toast';
+import { PoCard } from '../expenditure/po-card';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { initialsOf, maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
@@ -46,7 +47,7 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel, PoCard],
   templateUrl: './agencies.html',
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-01 / staff-03 column widths (fixed layout, the
@@ -123,6 +124,8 @@ export class AgenciesPage {
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly word = this.consultancy ? 'organisation' : 'agency';
+  /** 2026-11-18 (expenditure monitoring): the agency (organisation) whose purchase orders card is open. */
+  protected readonly poFor = signal<AgencyRow | null>(null);
 
   protected readonly agencies = signal<AgencyRow[]>([]);
   protected readonly search = signal('');
@@ -251,6 +254,7 @@ export class AgenciesPage {
     ];
     if (a.IsActive) items.push({ key: 'reset', label: 'Send reset link', icon: 'mail' });
     items.push({ key: 'history', label: 'View history', icon: 'history' });
+    items.push({ key: 'po', label: 'Purchase orders', icon: 'file' });
     items.push(a.IsActive ? { key: 'block', label: `Block ${this.word}`, icon: 'lock', danger: true } : { key: 'unblock', label: `Unblock ${this.word}`, icon: 'unlock' });
     return items;
   }
@@ -261,6 +265,7 @@ export class AgenciesPage {
       case 'assessors': void this.router.navigate(['/staff/users/assessors'], { queryParams: { agencyId: a.UserId } }); break;
       case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email, this.consultancy ? 'Consultant organisation' : 'Assessment agency') }); break;
       case 'history': void this.openHistory(a); break;
+      case 'po': this.poFor.set(a); break;
       case 'block': this.ask({ kind: 'block', agency: a, ask: this.blockAsk(a) }); break;
       case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: a.UserId, userName: a.UserName ?? null }); break;
     }

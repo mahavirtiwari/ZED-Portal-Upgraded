@@ -4,7 +4,8 @@ import { Component, computed, input, output } from '@angular/core';
 /** One count of the strip: a number and what it counts. */
 export interface ListCount {
   label: string;
-  value: number;
+  /** A count, or a formatted figure (2026-11-18: the Expenditure tab's "₹ 41.6 L"). */
+  value: number | string;
   /** Colours the number: 'warn' (waiting on you), 'bad' (NC, rejected), 'good' (done), 'info'. */
   tone?: 'warn' | 'bad' | 'good' | 'info';
   /** A short line beside the label (e.g. "312 this month"). */

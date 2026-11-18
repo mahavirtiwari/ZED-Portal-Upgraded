@@ -16,6 +16,12 @@ export interface Person {
   sectorActivity?: string | null;
   /** 2026-11-14: the levels and modes the assessor may do (absent = not limited, e.g. surveillance). */
   assessments?: { level: string; modes: string[] }[] | null;
+  /** 2026-11-18 (expenditure monitoring, allot/agencies): the agency's PO for the level is used up, so allotment stopped. */
+  poStopped?: boolean;
+  /** Why (shown on the agency). */
+  poMessage?: string | null;
+  /** The PO's cases left; null without a PO (no limit). */
+  poLeft?: number | null;
 }
 
 /** Whether a person with this sector type may assess a unit of this category (as the server checks). */
