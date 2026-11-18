@@ -12,6 +12,9 @@ export interface ExportChoice {
 /**
  * The sections, in the page's order. The design's "Unit-level rows" is not offered: the dashboard loads counts only, not
  * the units (the Registered MSME list exports those).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): checked again: the one unit list the API has
+ * (api/staff/dashboard/registered-msme, at most 1,000 rows a page) filters by state, level, size and gender only, not by
+ * district, social category, sector, date basis or dates, so it cannot give the units the dashboard's filters select.
  */
 export const EXPORT_SECTIONS: readonly { key: ExportSection; label: string }[] = [
   { key: 'headline', label: 'Headline numbers' },

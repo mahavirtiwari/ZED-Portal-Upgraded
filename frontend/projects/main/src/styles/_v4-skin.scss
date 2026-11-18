@@ -67,21 +67,23 @@ h4.registration-title, h5.registration-title { font-size: 18px; line-height: 26p
 }
 // Header rows, also the rows the old pages marked with "btn-default". 2026-11-17 (approved staff redesign): a light header
 // (pale teal, dark small capitals) in place of the teal one, as the applicant pages.
-$head-bg: color-mix(in srgb, var(--zt-soft, #d4ebe6) 55%, #fff);
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' #e6f1f2 (a tint of the theme's teal) and 10.5px
+// capitals in #1b4f53.
+$head-bg: color-mix(in srgb, var(--zt-mid, #45a5ad) 14%, #fff);
 .table > thead > tr > th,
 .table > thead > tr > td,
 .table > thead > tr.btn-default > th,
 table.table.table-zed thead tr th {
   --bs-table-bg: #{$head-bg};
-  --bs-table-color: var(--zt-ink, #173f44);
+  --bs-table-color: #1b4f53;
   background-color: $head-bg !important;
-  color: var(--zt-ink, #173f44) !important;
-  font-size: 11.5px;
+  color: #1b4f53 !important;
+  font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: normal;
-  border-color: #d6e6e4 !important;
+  border-color: #dde7e8 !important;
 }
 .table > thead > tr.btn-default { background: $head-bg !important; }
 .table-responsive { border-radius: $radius; margin-bottom: 16px; }
@@ -142,8 +144,8 @@ table.table.table-zed thead tr th {
   min-height: 40px;
   line-height: 1.5;
   padding: 8px 12px;
-  border: 1px solid $input-line;
-  border-radius: 8px;
+  border: 1px solid #b9cdcf;
+  border-radius: 9px;
   font-size: 14px;
   color: $text;
   background-color: #fff;
@@ -165,35 +167,56 @@ input[type='file'].form-control { padding: 6px 8px; }
 .form-check-input:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); border-color: $teal; }
 
 // ---- Buttons ---------------------------------------------------------------------------------------------------
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' buttons. Words in their own case (the old site
+// wrote .btn-primary and .btn-default in capitals), 36px tall (32px small), 9px corners, 13.5px bold, an icon beside the text.
+// The main action solid teal; the secondary one (Edit) white with a teal outline; the quiet ones (Cancel, Refresh, Clear,
+// "Assessors") light grey (#e7eeee). Not the link buttons, which stay inline text.
 .btn {
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 14px;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-transform: none;
+  letter-spacing: normal;
   box-shadow: none;
   top: 0 !important;
   transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
+.btn:not(.btn-link) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 7px 18px; line-height: 20px; }
+.btn:not(.btn-link) > img, .btn:not(.btn-link) > svg { flex: none; width: 16px; height: 16px; }
 .btn:hover { box-shadow: 0 2px 6px rgba(16, 61, 64, 0.15); }
 .btn:focus-visible { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.3); }
-.btn-sm { border-radius: 6px; font-size: 13px; }
+.btn-sm { border-radius: 9px; font-size: 12.5px; }
+.btn-sm:not(.btn-link) { min-height: 32px; padding: 5px 12px; }
 // 2026-11-13 (option B, approved): every button filled. The main action solid teal (var(--zt-dark, #23656b), 6.4:1 with white text).
 .btn-primary,
-.btn-primary:focus { background-color: var(--zt-dark, #23656b); border: 1px solid var(--zt-dark, #23656b); color: #fff; }
-.btn-primary:hover { background-color: var(--zt-dark, var(--zt-ink, #174a4e)); border-color: var(--zt-dark, var(--zt-ink, #174a4e)); color: #fff; filter: none; }
+.btn-primary:focus { background-color: var(--zt-dark, #24666b); border: 1px solid var(--zt-dark, #24666b); color: #fff; }
+.btn-primary:hover { background-color: color-mix(in srgb, var(--zt-dark, #24666b) 82%, #000); border-color: color-mix(in srgb, var(--zt-dark, #24666b) 82%, #000); color: #fff; filter: none; }
 .btn-primary:disabled, .btn-primary.disabled { background-color: #9fc5c8; border-color: #9fc5c8; color: #fff; }
-// The old grey "default" button (BACK, CANCEL, RESET, BLOCK): a quiet outlined button.
+// The old grey "default" button (BACK, CANCEL, RESET, BLOCK): the designs' quiet grey button.
 .btn.btn-default,
 .btn.btn-default:focus,
 input.btn-default {
-  background-color: #e6eded !important;
-  color: #24393b !important;
-  border: 1px solid #e6eded !important;
+  background-color: #e7eeee !important;
+  color: #17373b !important;
+  border: 1px solid #e7eeee !important;
 }
-.btn.btn-default:hover, input.btn-default:hover { background-color: #d6e2e3 !important; border-color: #d6e2e3 !important; color: #17292b !important; }
-.btn.btn-danger { background-color: #d64550; border-color: #d64550; color: #fff; }
-.btn.btn-danger:hover { background-color: #c13a45; border-color: #c13a45; }
-.btn.btn-outline-danger { color: #8f1f15; border: 1px solid #fde3e1; background: #fde3e1; }
-.btn.btn-outline-danger:hover { background: #f9cfcb; border-color: #f9cfcb; color: #7a1a11; }
+.btn.btn-default:hover, input.btn-default:hover { background-color: #d9e3e3 !important; border-color: #d9e3e3 !important; color: #10292c !important; }
+.btn.btn-outline-secondary, .btn.btn-light, .btn.btn-secondary { color: #17373b; border: 1px solid #e7eeee; background: #e7eeee; }
+.btn.btn-outline-secondary:hover, .btn.btn-light:hover, .btn.btn-secondary:hover { color: #10292c; border-color: #d9e3e3; background: #d9e3e3; }
+// The secondary action: white, a 1.5px teal outline, teal text; chosen (tabs, stage filters), solid teal.
+.btn.btn-outline-primary { color: var(--zt-dark, #24666b); border: 1.5px solid var(--zt-dark, #24666b); background: #fff; }
+.btn.btn-outline-primary:not(.btn-link) { padding: 6.5px 17.5px; }
+.btn-sm.btn-outline-primary:not(.btn-link) { padding: 4.5px 11.5px; }
+.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); background: #e6f2f3; }
+.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { color: #fff; border-color: var(--zt-dark, #24666b); background: var(--zt-dark, #24666b); }
+.btn.btn-danger { background-color: #c8473c; border-color: #c8473c; color: #fff; }
+.btn.btn-danger:hover { background-color: #b03d33; border-color: #b03d33; }
+.btn.btn-outline-danger { color: #c8473c; border: 1px solid #fbe9e7; background: #fbe9e7; }
+.btn.btn-outline-danger:hover { background: #f7d6d2; border-color: #f7d6d2; color: #a8362c; }
+.btn.btn-outline-warning { color: #9a5f06; border: 1px solid #fdf2dc; background: #fdf2dc; }
+.btn.btn-outline-warning:hover { color: #7e4e05; border-color: #fbe6bd; background: #fbe6bd; }
+.btn.btn-outline-success { color: #2f9e58; border: 1px solid #e5f5ea; background: #e5f5ea; }
+.btn.btn-outline-success:hover { color: #25804a; border-color: #d0ecd9; background: #d0ecd9; }
 // Rows the old pages marked red (a reason for rejection, overdue): a soft red tint, not a solid red bar.
 .table > tbody > tr.btn-danger > *,
 .table > tbody > tr > td.btn-danger,
@@ -235,13 +258,15 @@ input.btn-default {
 .zed-tabs .tab-content { background: #fff; border: 1px solid $line; border-top: 0; border-radius: 0 0 12px 12px; padding: 16px; }
 
 // ---- Pop-ups ---------------------------------------------------------------------------------------------------
-.modal-content { border: 0; border-radius: 14px; box-shadow: 0 12px 40px rgba(16, 61, 64, 0.25); overflow: hidden; }
-.modal-header { background: $teal-tint; border-bottom: 1px solid $line; padding: 14px 18px; }
-.modal-header .modal-title, .modal-header .modal-title strong { color: $teal-ink; font-weight: 700; font-size: 17px; }
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' pop-ups: 16px corners, a white head with an 18px
+// title, a darker veil. Pop-ups with their own dark head (acc-head, su-head...) keep it.
+.modal-content { border: 0; border-radius: 16px; box-shadow: 0 12px 40px rgba(16, 61, 64, 0.25); overflow: hidden; }
+.modal-header { background: #fff; border-bottom: 1px solid #dde7e8; padding: 18px 24px; }
+.modal-header .modal-title, .modal-header .modal-title strong { color: #17373b; font-weight: 700; font-size: 18px; }
 .modal-header .close, .modal-header .btn-close { color: $teal-ink; opacity: 0.8; }
 .modal-body { padding: 18px; }
 .modal-footer { border-top: 1px solid $line; padding: 12px 18px; gap: 8px; }
-.modal-backdrop.show { opacity: 0.45; }
+.modal-backdrop.show { background-color: #0f2326; opacity: 0.56; }
 // Pop-ups with a form: wider, labels in normal case, a narrow label column, fields that grow. (The old styles fixed
 // every pop-up field at 50px, so a description box showed three lines, and made the labels grey capitals.)
 @media (min-width: 768px) {
@@ -305,3 +330,83 @@ input.btn-default {
 @media (max-width: 991.98px) { .acc-cols.has-side { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 640px) { .acc-side .acc-scope-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
 @media (max-width: 575.98px) { .acc-fields { grid-template-columns: minmax(0, 1fr); } .modal .modal-dialog.modal-popup.acc-dialog.acc-wide { width: auto; } }
+
+// ---- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' shared blocks ----------------------------------
+// (D:\ZED Portal SVG\Staff_Agency_Assessors, e.g. staff-20-operation-admins, staff-01-assessment-agencies.) .staff-page twice: heavier
+// than the staff-only rules of _v4-blocks.scss (.staff-page.staff-page, .list-v2), which load before this file.
+$card-line: #dde7e8;
+$card-shadow: 0 3px 10px rgba(0, 0, 0, 0.09);
+.staff-page.staff-page {
+  // The page head (zed-page-head): the crumb 17px under the menu, 8px above the 24px title; the page's button beside the title.
+  .ph { margin: 0 0 20px; }
+  .ph-crumb { gap: 7px; margin-bottom: 8px; font-size: 12.5px; font-weight: 500; line-height: 1.4; color: #6f8487; }
+  .ph-crumb a { color: #6f8487; }
+  .ph-crumb a:hover { color: var(--zt-dark, #24666b); }
+  .ph-crumb [aria-current] { color: var(--zt-dark, #24666b); font-weight: 700; }
+  .ph-title { font-size: 24px; line-height: 1.25; color: #1b4f53; }
+  .ph-sub { margin-top: 3px; font-size: 13.5px; font-weight: 500; color: #6f8487; }
+  .ph-actions { padding-top: 21px; }
+  .ph-actions .btn { font-weight: 700; }
+  // The pages that keep their own title row.
+  .page-head .registration-title { font-size: 24px; line-height: 1.25; color: #1b4f53; }
+  .page-head .page-sub { font-size: 13.5px; font-weight: 500; color: #6f8487; }
+
+  // White cards: 14px corners, the designs' soft shadow.
+  .zed-card, .list-card { border: 1px solid $card-line; border-radius: 14px; box-shadow: $card-shadow; }
+  .zed-card > zed-pager, .list-card zed-pager { padding: 4px 16px; }
+
+  // Tables (the V4 lists, table-zed): the light 42px head row, 13.5px rows with 16px of air, lines between the rows only, the
+  // secondary lines 11.5px grey; the table in a white card unless it is already in one.
+  table.table.table-zed, .list-card table.table { font-size: 13.5px; color: #17373b; border-color: $card-line; }
+  table.table.table-zed > thead > tr, .list-card table.table > thead > tr { background: $head-bg !important; }
+  table.table.table-zed > thead > tr > th, table.table.table-zed > thead > tr > td, .list-card table.table > thead > tr > th {
+    --bs-table-bg: #{$head-bg}; --bs-table-color: #1b4f53; padding: 13px 14px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.5px; line-height: 16px;
+    background: $head-bg !important; color: #1b4f53 !important; border: 0 solid $card-line; border-bottom-width: 1px;
+  }
+  table.table.table-zed > tbody > tr > td, .list-card table.table > tbody > tr > td { padding: 16px 14px; border: 0 solid $card-line; border-top-width: 1px; }
+  table.table.table-zed > tbody > tr:first-child > td, .list-card table.table > tbody > tr:first-child > td { border-top-width: 0; }
+  table.table.table-zed > tbody > tr:hover > td, .list-card table.table > tbody > tr:hover > td { --bs-table-bg-state: #f4fafa; background: #f4fafa; }
+  .table-responsive:has(> table.table-zed) { border: 1px solid $card-line; border-radius: 14px; box-shadow: $card-shadow; }
+  :is(.zed-card, .list-card) .table-responsive:has(> table.table-zed) { border: 0; border-radius: 0; box-shadow: none; }
+  .unit-cell b { font-size: 13.5px; font-weight: 700; color: #17373b; }
+  .unit-cell small, .sub { font-size: 11.5px; font-weight: 500; color: #6f8487; }
+
+  // Status pills: small tinted capitals (ACTIVE green, LOCKED / waiting amber, BLOCKED / rejected red, IN-ACTIVE / off grey).
+  .status-badge, .list-card .chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 22px; padding: 3px 11px; border-radius: 11px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; line-height: 1.3; text-transform: uppercase;
+  }
+  .status-badge svg, .list-card .chip svg { flex: none; width: 11px; height: 11px; }
+  .status-badge:is(.is-active, .is-success), .list-card .chip.is-good { background: #e5f5ea; color: #2f9e58; }
+  .status-badge.is-inactive, .list-card .chip:not(.is-good, .is-warn, .is-bad, .is-info) { background: #ecf0f0; color: #6f8487; }
+  .status-badge.is-pending, .list-card .chip.is-warn { background: #fdf2dc; color: #9a5f06; }
+  .status-badge:is(.is-rejected, .is-danger), .list-card .chip.is-bad { background: #fbe9e7; color: #c8473c; }
+  .status-badge.is-info, .list-card .chip.is-info { background: #e6f2f3; color: var(--zt-dark, #24666b); }
+  // Tags in the cells (screens, categories): teal tint pills, in their own case.
+  .zed-chip { min-height: 22px; padding: 4px 10px; border-radius: 11px; background: #e6f2f3; color: var(--zt-dark, #24666b); font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.4px; line-height: 14px; }
+
+  // Row buttons side by side (Edit, "Assessors", the row menu), 32px, in their own colours: the 112px solid teal row buttons of
+  // 2026-11-14 are replaced by the designs' outlined Edit and grey quiet buttons; the other actions go into the row menu.
+  .row-actions { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+  td.text-center .row-actions { justify-content: center; }
+  td.text-end .row-actions { justify-content: flex-end; }
+  .row-actions .btn:not(.btn-link), td.text-center > .btn:not(.btn-link) {
+    display: inline-flex; width: auto; min-height: 32px; height: auto; margin: 0; padding: 4px 12px; font-size: 12.5px; font-weight: 700; line-height: 1.2;
+    border-radius: 9px; white-space: nowrap;
+  }
+  td.text-center > .btn:not(.btn-link) { margin: 3px 2px; }
+  td.text-center > .btn:not(.btn-link) + .btn:not(.btn-link) { margin-top: 3px; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-primary {
+    padding: 3.5px 11.5px; background: #fff !important; border: 1.5px solid var(--zt-dark, #24666b) !important; color: var(--zt-dark, #24666b) !important;
+  }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-primary:is(:hover, :focus-visible) { background: #e6f2f3 !important; }
+  :is(.row-actions .btn, td.text-center > .btn):is(.btn-default, .btn-outline-secondary, .btn-light, .btn-secondary) {
+    background: #e7eeee !important; border: 1px solid #e7eeee !important; color: #17373b !important;
+  }
+  :is(.row-actions .btn, td.text-center > .btn):is(.btn-default, .btn-outline-secondary, .btn-light, .btn-secondary):hover { background: #d9e3e3 !important; border-color: #d9e3e3 !important; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-danger { background: #fbe9e7 !important; border-color: #fbe9e7 !important; color: #c8473c !important; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-danger { background: #c8473c !important; border-color: #c8473c !important; color: #fff !important; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-warning { background: #fdf2dc !important; border-color: #fdf2dc !important; color: #9a5f06 !important; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-success { background: #e5f5ea !important; border-color: #e5f5ea !important; color: #2f9e58 !important; }
+}

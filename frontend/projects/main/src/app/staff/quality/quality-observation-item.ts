@@ -11,6 +11,9 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
  * ZED team's close / reopen). Used on the review pages' panel and on the Quality observations page.
  * 2026-11-17 (the user's staff design 14): the severity, category and status as chips, the parameter and whom it is about under
  * them; Reopen stays disabled until the reason is typed.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-14a rail): the severity and status chips on the first line
+ * (the status no longer drops under a long title), the category on its own line; the close / reopen note a single-line field
+ * with a grey Reopen beside it.
  */
 @Component({
   selector: 'zed-qo-item',
@@ -20,9 +23,9 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     <article class="qo" [attr.data-qo]="o.id" [attr.data-status]="o.status">
       <div class="qo-head">
         <span class="qo-chip" [attr.data-sev]="o.severity">{{ o.severity }}</span>
-        <b class="qo-cat">{{ o.category }}</b>
         <span class="qo-status" [attr.data-status]="o.status">{{ o.status === 'Responded' ? 'Replied' : o.status }}</span>
       </div>
+      <b class="qo-cat">{{ o.category }}</b>
       @if (showUnit()) { <div class="qo-unit">{{ o.zedId }} · {{ o.certification }}</div> }
       <div class="qo-ref">{{ o.refLabel || (o.refType === 'Overall' || !o.refType ? (handholding ? 'Whole milestone' : 'Whole assessment') : o.refType) }}</div>
       <div class="qo-meta">
@@ -51,11 +54,11 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
       }
       @if (canClose()) {
         <div class="qo-act">
-          <textarea class="form-control" rows="1" maxlength="2000" [attr.aria-label]="'Note on observation ' + o.id"
-            [placeholder]="o.status === 'Closed' ? 'Why it is reopened (required)' : 'Note (optional)'" [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
+          <input type="text" class="form-control qo-note" maxlength="2000" [attr.aria-label]="'Note on observation ' + o.id"
+            [placeholder]="o.status === 'Closed' ? 'Why it is reopened' : 'Note (optional)'" [value]="note()" (input)="note.set($any($event.target).value)" />
           <!-- Reopen stays disabled until the reason is typed. -->
           @if (o.status === 'Closed') {
-            <button type="button" class="btn btn-outline-danger btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">Reopen</button>
+            <button type="button" class="btn btn-light btn-sm qo-reopen" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">Reopen</button>
           } @else {
             <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="act(api.close(o.id, note().trim() || null))">Close</button>
           }
@@ -73,13 +76,13 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     .qo-chip[data-sev='Minor'] { background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
     .qo-chip[data-sev='Major'] { background: #fdf3e1; color: #8a5a00; }
     .qo-chip[data-sev='Critical'] { background: #fdecec; color: #a8303a; }
-    .qo-cat { font-size: 13.5px; color: var(--zt-ink, #173f44); min-width: 0; overflow-wrap: anywhere; }
+    .qo-cat { display: block; margin-top: 8px; font-size: 13.5px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; }
     .qo-status { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 10px; padding: 2px 9px;
       background: #fdf3e1; color: #8a5a00; }
     .qo-status[data-status='Responded'] { background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
     .qo-status[data-status='Closed'] { background: #e3f4e8; color: #1e7d43; }
     .qo-unit { font-size: 12px; color: var(--zt-mid2, #2a8a8c); font-weight: 600; margin-top: 4px; }
-    .qo-ref { font-size: 13.5px; color: #24393b; margin-top: 6px; overflow-wrap: anywhere; }
+    .qo-ref { font-size: 12.5px; font-weight: 500; color: #17373b; margin-top: 2px; overflow-wrap: anywhere; }
     .qo-meta { font-size: 12.5px; color: #5f6f70; margin-top: 2px; }
     .qo-text { margin: 6px 0 4px; font-size: 13.5px; white-space: pre-line; overflow-wrap: anywhere; }
     .qo-toggle { font-size: 13px; font-weight: 600; color: var(--zt-dark, #1f5c61); text-decoration: none; }
@@ -87,6 +90,8 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     .qo-times { font-size: 12px; color: #5f6f70; margin-top: 4px; }
     .qo-act { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
     .qo-act textarea { min-height: 0; height: auto; font-size: 13px; border-radius: 8px; }
+    .qo-act .qo-note { height: 30px; font-size: 12.5px; border-radius: 8px; }
+    .qo-act .qo-reopen { min-width: 76px; height: 30px; background: #e3e9e9; border-color: #e3e9e9; color: #17373b; }
     .qo-act .btn { border-radius: 8px; font-weight: 600; white-space: nowrap; }
   `,
 })

@@ -120,7 +120,7 @@ describe('AppFormsPage', () => {
     pick('fieldLevels', 'ZED-X');
     pick('fieldSectors', '62 - IT services');
     await settle();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body).toEqual({
@@ -151,7 +151,7 @@ describe('AppFormsPage', () => {
     await settle();
     expect(dialog.querySelector('[aria-label="Column 2 photos"]')).toBeTruthy();
     expect(dialog.querySelector('#fieldValidated')).toBeNull();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
     expect(post.request.body).toEqual(expect.objectContaining({
@@ -188,7 +188,7 @@ describe('AppFormsPage', () => {
     await settle();
     (dialog.querySelector('#fieldRequired') as HTMLInputElement).click();
     await settle();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
     expect(post.request.body).toEqual({
@@ -198,7 +198,7 @@ describe('AppFormsPage', () => {
     post.flush({ title: 'Please add at least one choice.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
     expect(el.querySelector('[role=dialog] .alert-danger')).toBeTruthy();
-    button('SAVE', el.querySelector('[role=dialog]')!).click();
+    button('Save', el.querySelector('[role=dialog]')!).click();
     await settle();
     http.expectOne((r) => r.method === 'POST').flush({ message: 'Field added.', key: 'cf_sector_of_the_unit' });
     await reloaded('Field added.');
@@ -225,7 +225,7 @@ describe('AppFormsPage', () => {
     expect(std.checked).toBe(false);
     std.click();
     await settle();
-    button('SAVE', el.querySelector('[role=dialog]')!).click();
+    button('Save', el.querySelector('[role=dialog]')!).click();
     await settle();
     const stdPut = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect([stdPut.request.body.key, stdPut.request.body.validationRequired]).toEqual(['auditsConducted', true]);
@@ -239,7 +239,7 @@ describe('AppFormsPage', () => {
     await settle();
     expect(el.querySelector('[role=dialog] #fieldValidated')).toBeNull();
     expect(el.querySelector('[role=dialog] [data-no-validation]')!.textContent).toContain('already checks');
-    button('CANCEL', el.querySelector('[role=dialog]')!).click();
+    button('Cancel', el.querySelector('[role=dialog]')!).click();
     await settle();
 
     button('Edit', row('cf_sector')).click();
@@ -250,7 +250,7 @@ describe('AppFormsPage', () => {
     expect(toggle.checked).toBe(true);
     toggle.click();
     await settle();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body.validationRequired).toBe(false);
@@ -270,7 +270,7 @@ describe('AppFormsPage', () => {
     button('Every level', dialog).click();
     await settle();
     expect(dialog.querySelector('#fieldLevels')).toBeNull();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body.levels).toEqual([]);

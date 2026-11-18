@@ -205,6 +205,8 @@ export function pageWindow(current: number, last: number): number[] {
 /**
  * The line under a list. 2026-11-17 (approved staff redesign): "Showing 1 to 10 of 34 · Rows per page [10] · Prev 1 2 … 4
  * Next" (before: "Show N Entries (N records)" and First / Prev / page / Next / Last). Same inputs; the pager does the paging.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' sizes: 12.5px grey text, 30px boxes with 8px corners,
+ * Prev and Next 70px wide, a disabled one on light grey.
  */
 @Component({
   selector: 'zed-pager',
@@ -235,19 +237,19 @@ export function pageWindow(current: number, last: number): number[] {
     </div>
   `,
   styles: `
-    .zp { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 8px 0; font-size: 13.5px; color: #5f6f70; }
+    .zp { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 8px 0; font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .zp-info { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
-    .zp-size { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-weight: 400; }
-    .zp-size select { height: 32px; min-width: 64px; padding: 0 26px 0 10px; border: 1px solid #cfdcdd; border-radius: 8px; background-color: #fff;
-      color: var(--zt-ink, #173f44); font-size: 13px; }
+    .zp-size { display: inline-flex; align-items: center; gap: 10px; margin: 0; font-weight: 500; }
+    .zp-size select { height: 30px; min-width: 58px; padding: 0 24px 0 12px; border: 1px solid #dde7e8; border-radius: 8px; background-color: #fff;
+      color: #17373b; font-size: 12.5px; font-weight: 600; }
     .zp-pages { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-    .zp-btn { min-width: 34px; height: 32px; padding: 0 12px; border: 1px solid #cfdcdd; border-radius: 8px; background: #fff;
-      color: var(--zt-ink, #173f44); font-size: 13px; font-weight: 600; line-height: 1; }
-    .zp-btn:hover:not(:disabled):not(.on) { background: var(--zt-soft, #d4ebe6); border-color: var(--zt-soft, #d4ebe6); }
+    .zp-btn { min-width: 70px; height: 30px; padding: 0 12px; border: 1px solid #dde7e8; border-radius: 8px; background: #fff;
+      color: #17373b; font-size: 12.5px; font-weight: 600; line-height: 1; }
+    .zp-btn:hover:not(:disabled):not(.on) { background: #e6f2f3; border-color: #c9dadb; }
     .zp-btn:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
-    .zp-btn:disabled { background: #eef2f2; border-color: #eef2f2; color: #9aa8a9; cursor: default; }
-    .zp-num { padding: 0 8px; }
-    .zp-btn.on { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; }
+    .zp-btn:disabled { background: #f3f6f6; border-color: #dde7e8; color: #9aadaf; cursor: default; }
+    .zp-num { min-width: 32px; padding: 0 8px; }
+    .zp-btn.on { background: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); color: #fff; font-weight: 700; }
     .zp-gap { padding: 0 2px; color: #8a9899; }
     @media (max-width: 575.98px) { .zp, .zp-info { gap: 8px; } }
   `,
@@ -290,6 +292,8 @@ export function searchRows<T>(rows: readonly T[], query: string): readonly T[] {
 /**
  * The search box above a list (V4: on every staff list, as User Management): searches as you type, with the number of
  * rows found. The screen filters its rows with searchRows() before paging them.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the box starts at the left of its place (it was pushed to the
+ * right of a wider place, which left a gap before it in the search cards) and is the designs' 340 x 38.
  */
 @Component({
   selector: 'zed-list-search',
@@ -307,11 +311,13 @@ export function searchRows<T>(rows: readonly T[], query: string): readonly T[] {
     }
   `,
   styles: `
-    :host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 12px; }
-    .list-search-box { position: relative; width: 300px; max-width: 100%; }
-    .list-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #7d8c8d; pointer-events: none; }
-    .list-search-box .form-control { max-width: none; width: 100%; padding-left: 34px; }
-    .list-search-found { font-size: 13px; color: #5f6f70; }
+    :host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 10px; margin: 0 0 12px; }
+    .list-search-box { position: relative; width: 340px; max-width: 100%; }
+    .list-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6f8487; pointer-events: none; }
+    .list-search-box .form-control { max-width: none; width: 100%; height: 38px; min-height: 38px; padding: 0 12px 0 36px; border: 1.2px solid #b9cdcf;
+      border-radius: 9px; font-size: 13px; background-image: none; }
+    .list-search-box .form-control::placeholder { color: #9aadaf; }
+    .list-search-found { font-size: 12.5px; color: #6f8487; }
     @media (max-width: 575.98px) { .list-search-box { width: 100%; } }
   `,
 })

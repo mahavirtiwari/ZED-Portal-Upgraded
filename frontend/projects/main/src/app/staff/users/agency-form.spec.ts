@@ -54,7 +54,7 @@ describe('AgencyFormPage', () => {
     await settle();
     expect(el.querySelector('h2')!.textContent).toContain('Add Assessment Agency');
     expect(el.querySelector('#reasonForRejection')).toBeNull();
-    expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Orgnising Partner --', 'Partner Two - [OP2]']);
+    expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Organising Partner --', 'Partner Two - [OP2]']);
 
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
@@ -137,7 +137,7 @@ describe('AgencyFormPage', () => {
     });
     await settle();
     expect(el.querySelector('h2')!.textContent).toContain('Update Assessment Agency Details');
-    expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Orgnising Partner --', 'Partner One']);
+    expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Organising Partner --', 'Partner One']);
     expect((el.querySelector('#reasonForRejection') as HTMLTextAreaElement).value).toBe('Old reason');
     expect(el.querySelector('.login-id')!.textContent).toContain('ZEDAA0001');
     expect(el.querySelector('.login-id .status-badge')!.textContent).toContain('Active');

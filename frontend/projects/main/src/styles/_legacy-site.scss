@@ -1045,7 +1045,9 @@ p {
 .micro {
     background-color: #F6CB8B;
 }
-.small {
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): only the "Small" enterprise badge; Bootstrap's ".small" text
+// (e.g. the same-PAN pop-up's "p.small.text-muted") turned yellow.
+.entp-label.small {
     background-color: #E6E96E;
 }
 .medium {
@@ -3153,11 +3155,13 @@ datepicker input[readonly] {
         -webkit-box-direction: normal;
         flex-flow: row wrap;
     }
-footer {
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the site's dark footer bar only, not the <footer> of a side
+// panel, pop-up or card inside the page (the History panel's foot turned dark).
+footer:not(main footer, aside footer, dialog footer, .modal footer, [role='dialog'] footer) {
     background-color: #232527;
     color: #fff;
 }
-footer small {
+footer:not(main footer, aside footer, dialog footer, .modal footer, [role='dialog'] footer) small {
         font-weight:400;
     }
 .footer {

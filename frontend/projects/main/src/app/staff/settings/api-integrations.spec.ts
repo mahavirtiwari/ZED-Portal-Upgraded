@@ -186,7 +186,7 @@ describe('ApiIntegrationsPage', () => {
     expect(shown).toContain('ABCDEF0123');
     expect(shown).toContain('a2V5');
     expect(el.querySelector('.modal .alert-warning')!.textContent).toContain('not shown again');
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'DONE') as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Done') as HTMLButtonElement).click();
     await settle();
     expect(el.textContent).not.toContain('ABCDEF0123');
   });

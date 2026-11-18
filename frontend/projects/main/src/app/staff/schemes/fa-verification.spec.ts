@@ -62,16 +62,16 @@ describe('FaVerificationPage', () => {
 
     expect(el.textContent).toContain('Certification Details');
     expect(el.textContent).toContain('Quality');
-    const view = button('VIEW')[0] as HTMLAnchorElement;
+    const view = button('View')[0] as HTMLAnchorElement;
     expect(view.getAttribute('href')).toBe(`${base}/Bronze/documents/1`);
-    expect(button('VALIDATE').length).toBe(0);
+    expect(button('Validate').length).toBe(0);
 
     view.addEventListener('click', (e) => e.preventDefault());
     view.click();
     await settle();
-    expect(button('VALIDATE').length).toBe(1);
+    expect(button('Validate').length).toBe(1);
 
-    button('VALIDATE')[0].click();
+    button('Validate')[0].click();
     await settle();
     (el.querySelector('input[value="Yes"]') as HTMLInputElement).dispatchEvent(new Event('change'));
     await settle();
@@ -108,7 +108,7 @@ describe('FaVerificationPage', () => {
     await create(StaffRole.DesktopAssessor);
     http.expectOne(base).flush([app({ documents: [doc(1, 'Copy of Certificate', { opened: true })] })]);
     await settle();
-    button('VALIDATE')[0].click();
+    button('Validate')[0].click();
     await settle();
     (el.querySelector('input[value="Yes"]') as HTMLInputElement).dispatchEvent(new Event('change'));
     await settle();
@@ -140,7 +140,7 @@ describe('FaVerificationPage', () => {
     await settle();
     expect(button('Edit Account Details').length).toBe(0);
 
-    button('ACCEPT')[0].click();
+    button('Accept')[0].click();
     await settle();
     expect(el.querySelector('#decisionTitle')).toBeNull();
     const req = http.expectOne(`${base}/Bronze/decision`);
@@ -150,7 +150,7 @@ describe('FaVerificationPage', () => {
     await settle();
     http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 4, IsApproved: 1 } })]);
     await settle();
-    expect(el.textContent).toContain('ACCEPTED');
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Accepted');
     expect(toast).toHaveBeenCalledWith('Application approved.');
   });
 
@@ -159,17 +159,17 @@ describe('FaVerificationPage', () => {
     http.expectOne(base).flush([app({ canValidate: false, canDecide: true, canEditAccount: false })]);
     await settle();
 
-    button('REJECT')[0].click();
+    button('Reject')[0].click();
     await settle();
     expect(el.querySelector('#decisionTitle')!.textContent!.trim()).toBe('Confirm Final Submit');
-    const submit = button('SUBMIT')[0] as HTMLButtonElement;
+    const submit = button('Submit')[0] as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
     expect(el.querySelector('label[for="faConfirm"] [data-key="staff.schemes.faVerification.dataCorrect.checkbox"]')).not.toBeNull();
     const confirm = el.querySelector('#faConfirm') as HTMLInputElement;
     confirm.checked = true;
     confirm.dispatchEvent(new Event('change'));
     await settle();
-    (button('SUBMIT')[0] as HTMLButtonElement).click();
+    (button('Submit')[0] as HTMLButtonElement).click();
     await settle();
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('enter the comments');
 
@@ -177,7 +177,7 @@ describe('FaVerificationPage', () => {
     comments.value = 'Invoice does not match';
     comments.dispatchEvent(new Event('input'));
     await settle();
-    (button('SUBMIT')[0] as HTMLButtonElement).click();
+    (button('Submit')[0] as HTMLButtonElement).click();
     await settle();
     const req = http.expectOne(`${base}/Bronze/decision`);
     expect(req.request.body).toEqual({ decision: 'reject', comments: 'Invoice does not match' });
@@ -185,7 +185,7 @@ describe('FaVerificationPage', () => {
     await settle();
     http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 5, IsApproved: 2 } })]);
     await settle();
-    expect(el.textContent).toContain('REJECTED');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Rejected');
   });
 
   it('edits the reimbursement account when allowed', async () => {

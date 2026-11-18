@@ -59,7 +59,7 @@ interface OtherList {
       </div>
       <div class="page-actions">
         <zed-excel-tools [api]="'/api/staff/masters/' + kind" [title]="labels.title" [fileName]="kind" (applied)="load(true)" />
-        <button type="button" class="btn btn-primary" (click)="openAdd()">+ ADD {{ labels.one.toUpperCase() }}</button>
+        <button type="button" class="btn btn-primary" (click)="openAdd()">+ Add {{ labels.one.toLowerCase() }}</button>
       </div>
     </div>
 
@@ -83,7 +83,7 @@ interface OtherList {
       @if (outOfStep() > 0) {
         <div class="alert alert-info sync-bar" role="status">
           <span><strong>{{ outOfStep() }}</strong> {{ outOfStep() === 1 ? 'sector is' : 'sectors are' }} missing or different on the other portals.</span>
-          <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="syncAll()">MAKE ALL PORTALS THE SAME</button>
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="syncAll()">Make all portals the same</button>
         </div>
       }
       @for (o of otherPortals; track o.key) {
@@ -204,8 +204,8 @@ interface OtherList {
                 @if (addError()) { <span class="help-block d-block mt-2" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(false)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">SAVE</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
               </div>
             </form>
           </div>
@@ -244,8 +244,8 @@ interface OtherList {
                 @if (editError()) { <span class="help-block d-block mt-2" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">UPDATE</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Update</button>
               </div>
             </form>
           </div>

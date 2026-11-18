@@ -51,6 +51,17 @@ export interface ListFilter {
   allotmentType?: string;
 }
 
+/** 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the count cards of Completed (staff-11) and Rejected (staff-12). */
+export interface ResultCounts {
+  total: number;
+  certifiedThisMonth: number;
+  surveillanceDue90: number;
+  duplicates: number;
+  /** Rejected on main: back on the Allot list / allotted again; null elsewhere. */
+  waitingReallot: number | null;
+  reallotted: number | null;
+}
+
 export interface ResultsFilter {
   state?: string;
   certification?: string;
@@ -194,6 +205,11 @@ export class AssessmentApi {
   // Completed / rejected
   results(kind: 'completed' | 'rejected', filter: ResultsFilter): Observable<PageResponse> {
     return this.http.get<PageResponse>(`${this.base}/${kind}`, { params: params(filter) });
+  }
+
+  /** The count cards for the filter (its page is ignored). */
+  resultCounts(kind: 'completed' | 'rejected', filter: ResultsFilter): Observable<ResultCounts> {
+    return this.http.get<ResultCounts>(`${this.base}/${kind}/counts`, { params: params({ ...filter, pageNo: undefined, pageSize: undefined }) });
   }
 
   // Review page

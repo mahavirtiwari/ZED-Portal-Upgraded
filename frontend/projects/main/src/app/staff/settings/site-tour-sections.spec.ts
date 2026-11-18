@@ -89,7 +89,7 @@ describe('SiteTourSectionsPage', () => {
     await settle();
     expect(dialog().querySelector('h3')!.textContent).toContain('Add section');
     // Nothing is sent while the form breaks the rules.
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     expect(dialog().querySelector('#sectionNameError')!.textContent).toContain('Enter the section name.');
     await type(field('sectionName'), '3 Paint Shop');
@@ -105,7 +105,7 @@ describe('SiteTourSectionsPage', () => {
     await type(field('sectionMax'), '2');
     await type(field('sectionMin'), '4');
     expect(dialog().querySelector('#sectionMinError')!.textContent).toContain('cannot be more than the maximum');
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     http.expectNone((r) => r.method === 'PUT');
 
@@ -116,7 +116,7 @@ describe('SiteTourSectionsPage', () => {
     pick('Gold');
     await settle();
     expect(dialog().textContent).toContain('Asked for Gold, of units of every sector.');
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
     expect(put.request.body).toEqual({
@@ -126,7 +126,7 @@ describe('SiteTourSectionsPage', () => {
     put.flush({ title: 'The sections could not be saved.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
     expect(dialog().querySelector('.alert-danger')!.textContent).toContain('The sections could not be saved.');
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     http.expectOne((r) => r.method === 'PUT').flush({ message: 'Site tour sections saved.' });
     await reloaded('Site tour sections saved.');
@@ -150,7 +150,7 @@ describe('SiteTourSectionsPage', () => {
     await settle();
     (dialog().querySelector('#sectionActive') as HTMLInputElement).click();
     await settle();
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
     expect(put.request.body.sections[1]).toEqual({
@@ -171,7 +171,7 @@ describe('SiteTourSectionsPage', () => {
     (dialog().querySelector('#sectionActive') as HTMLInputElement).click();
     await settle();
     expect(dialog().textContent).toContain('At least one section must be in use.');
-    button('SAVE', dialog()).click();
+    button('Save', dialog()).click();
     await settle();
     http.expectNone((r) => r.method === 'PUT');
   });

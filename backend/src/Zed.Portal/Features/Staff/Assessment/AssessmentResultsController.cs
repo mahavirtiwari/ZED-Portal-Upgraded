@@ -23,6 +23,11 @@ namespace Zed.Portal.Features.Staff.Assessment;
 /// Completed rows carry ReasonForRejection (all three procedures return it): the old Completed pages coloured those rows red.
 /// Rejected rows carry it too (2026-11-17, approved redesign: the "Reason for rejection" column).
 /// </para>
+/// <para>
+/// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): <c>completed/counts</c> and <c>rejected/counts</c>, the designs'
+/// count cards (staff-11: completed, certified this month, surveillance due in 90 days, duplicates flagged; staff-12: rejected,
+/// waiting to be re-allotted, re-allotted), worked out from every row of the same filter (the list itself stays paged).
+/// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [Route("api/staff/assessment")]
@@ -62,6 +67,69 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
     /// <summary>Status 6 of SP_MONITORING_GET_LIST(_PAGINATION).</summary>
     private const int CompletedStatus = 6;
 
+    /// <summary>Most rows the counts read (the paged procedure's page size for them).</summary>
+    internal const int CountLimit = 100_000;
+
+    /// <summary>
+    /// The count cards. <paramref name="WaitingReallot"/> and <paramref name="Reallotted"/> (Rejected, main only): rejected records whose
+    /// unit's level is back on the Allot list (CertificationStatus 2 or 3) or allotted again (past 3, not rejected); null elsewhere.
+    /// </summary>
+    public sealed record CountsResponse(int Total, int CertifiedThisMonth, int SurveillanceDue90, int Duplicates, int? WaitingReallot, int? Reallotted);
+
+    [HttpGet("completed/counts")]
+    public Task<ActionResult<CountsResponse>> CompletedCounts(
+        string? state, string? certification, string? size, string? gender, string? searchBy, string? search, CancellationToken ct) =>
+        Counts(CompletedStatus, state, certification, size, gender, searchBy, search, ct);
+
+    [HttpGet("rejected/counts")]
+    public async Task<ActionResult<CountsResponse>> RejectedCounts(
+        string? state, string? certification, string? size, string? gender, string? searchBy, string? search, CancellationToken ct)
+    {
+        if (host.System == PortalSystem.Consultancy) return NotFound();
+        return await Counts(99, state, certification, size, gender, searchBy, search, ct);
+    }
+
+    /// <summary>The live record's status of each unit and level (the rejected copies are ZedId_D_n / _R_n rows of the same table).</summary>
+    internal const string LiveStatusSql = "SELECT ZedId, Certification, CertificationStatus FROM dbo.MsmeCertifications WHERE ZedId IN @ZedIds;";
+
+    public sealed record LiveRow(string? ZedId, string? Certification, int? CertificationStatus);
+
+    private async Task<ActionResult<CountsResponse>> Counts(
+        int status, string? state, string? certification, string? size, string? gender, string? searchBy, string? search, CancellationToken ct)
+    {
+        var res = await List(status, state, certification, size, gender, searchBy, search, 1, null, ct, all: true);
+        if (res.Value is not { } page) return res.Result!;
+        var rows = page.Rows;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(330));
+        int certifiedThisMonth = 0, due = 0, duplicates = 0;
+        foreach (var r in rows)
+        {
+            if (Day(r, "CertificationStatusDate") is { } c && c.Year == today.Year && c.Month == today.Month) certifiedThisMonth++;
+            if (Day(r, "FirstSurveDueDate") is { } d && d >= today && d <= today.AddDays(90)) due++;
+            if (int.TryParse(r.Text("SameUdyamAddress"), out var n) && n > 0) duplicates++;
+        }
+        int? waiting = null, reallotted = null;
+        if (status == 99 && host.System == PortalSystem.Main && rows.Count > 0)
+        {
+            var keys = rows.Select(r => (Id: r.Text("ZedId").Split('_')[0].Trim(), Level: r.Text("Certification").Trim())).Where(k => AssessmentInput.IsId(k.Id)).ToList();
+            var live = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var chunk in keys.Select(k => k.Id).Distinct(StringComparer.OrdinalIgnoreCase).Chunk(1000))
+                foreach (var l in await db.QuerySqlAsync<LiveRow>(LiveStatusSql, new { ZedIds = chunk }, ct))
+                    if (l.CertificationStatus is { } cs) live[$"{l.ZedId?.Trim()}|{l.Certification?.Trim()}"] = cs;
+            waiting = keys.Count(k => live.TryGetValue($"{k.Id}|{k.Level}", out var cs) && cs is 2 or 3);
+            reallotted = keys.Count(k => live.TryGetValue($"{k.Id}|{k.Level}", out var cs) && cs > 3 && cs != 99);
+        }
+        return new CountsResponse(page.TotalCount, certifiedThisMonth, due, duplicates, waiting, reallotted);
+    }
+
+    /// <summary>A date of the list ("November 13, 2026" as the procedures format it, or an ISO date).</summary>
+    private static DateOnly? Day(IDictionary<string, object?> row, string field)
+    {
+        if (row.TryGetValue(field, out var v) && v is DateTime dt) return DateOnly.FromDateTime(dt);
+        return DateTime.TryParse(row.Text(field), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d)
+            ? DateOnly.FromDateTime(d) : null;
+    }
+
     [HttpGet("completed")]
     public Task<ActionResult<PageResponse>> Completed(
         string? state, string? certification, string? size, string? gender, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct) =>
@@ -78,7 +146,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
 
     private async Task<ActionResult<PageResponse>> List(
         int status, string? state, string? certification, string? size, string? gender, string? searchBy, string? search, int? pageNo, int? pageSize,
-        CancellationToken ct)
+        CancellationToken ct, bool all = false)
     {
         // Agencies use these screens with desktop or site verification (menu: either sub-role).
         var user = CurrentUser;
@@ -94,7 +162,8 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         var text = AssessmentInput.Text(search);
         if (text?.Length > 50) return this.Problem400("Search text must be at most 50 characters.");
         var page = Math.Max(pageNo ?? 1, 1);
-        var size2 = pageSize is 10 or 20 or 50 or 100 or 200 ? pageSize.Value : 20;
+        // all: every row for the counts (at most CountLimit); the query string's page sizes stay 10 to 200.
+        var size2 = all ? CountLimit : pageSize is 10 or 20 or 50 or 100 or 200 ? pageSize.Value : 20;
 
         // Main's paginated procedure has @Gender but its condition is commented out (and main's pages had no Gender filter).
         if (host.System != PortalSystem.Main || (await HttpContext.LoginScopeAsync(ct)).IsLimited)

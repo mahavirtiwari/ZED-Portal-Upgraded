@@ -56,12 +56,16 @@ export function submittedValues(data: string | null): string[] {
 /**
  * The applicant's change history (new in V4): every change made in the MSME login on the web and in the MSME app, newest
  * first, with what was submitted. Used by the MSME (Edit History) and by the overseeing staff (MSME profile).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): <code>layout="table"</code> (the staff MSME profile):
+ * one row per change with its date and time, an uppercase type pill (Profile, Password, Certification, Payments, by the same
+ * rules as the server's filters), the one-line summary and "Show details" at the right; rounded filter chips; the same paging.
+ * The MSME's own page keeps the timeline.
  */
 @Component({
   selector: 'zed-edit-history-table',
   imports: [DatePipe, PagerComponent],
   template: `
-    <div class="eh-filters" role="group" aria-label="Show changes">
+    <div class="eh-filters" [class.eh-round]="layout() === 'table'" role="group" aria-label="Show changes">
       @for (k of kinds; track k.key) {
         <button type="button" class="eh-chip" [class.active]="kind() === k.key" [attr.aria-pressed]="kind() === k.key" (click)="setKind(k.key)">{{ k.label }}</button>
       }
@@ -69,6 +73,30 @@ export function submittedValues(data: string | null): string[] {
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
+    @if (layout() === 'table') {
+      <div class="eh-table" data-eh-table>
+        @for (r of rows(); track r.id) {
+          <div class="eh-row">
+            <span class="eh-at">{{ r.at | date: 'd MMM y, HH:mm' }}</span>
+            <span class="eh-type">@if (typeOf(r.action); as ty) { <span class="eh-pill" [attr.data-type]="ty">{{ ty }}</span> }</span>
+            <span class="eh-sum">{{ title(r.action) }}@if (r.result !== 'Success') {&ngsp;<span class="status-badge is-rejected">Not saved</span>}
+              @if (r.message) { <small>{{ r.message }}</small> }</span>
+            @if (values(r).length || (showOrigin() && r.ipAddress)) {
+              <button type="button" class="eh-more" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
+                {{ open() === r.id ? 'Hide details' : 'Show details' }}</button>
+            } @else { <span></span> }
+            @if (open() === r.id) {
+              <ul class="list-unstyled small mb-0 values eh-vals">
+                <li class="text-muted">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}@if (showOrigin() && r.ipAddress) { · IP {{ r.ipAddress }} }</li>
+                @for (v of values(r); track $index) { <li>{{ v }}</li> }
+              </ul>
+            }
+          </div>
+        } @empty {
+          @if (!loading()) { <div class="no-data">No changes recorded yet</div> }
+        }
+      </div>
+    } @else {
     <div class="timeline" [class.is-empty]="!rows().length">
       @for (r of rows(); track r.id; let i = $index) {
         @if (i === 0 || dayOf(rows()[i - 1].at) !== dayOf(r.at)) {
@@ -101,6 +129,7 @@ export function submittedValues(data: string | null): string[] {
         @if (!loading()) { <div class="no-data">No changes recorded yet</div> }
       }
     </div>
+    }
     <zed-pager [pager]="pager" />
   `,
   styles: `
@@ -119,6 +148,20 @@ export function submittedValues(data: string | null): string[] {
     .eh-time { color: #7a7d80; font-size: 0.9rem; }
     .eh-message { font-size: 0.9rem; margin-top: 2px; }
     .values { max-width: 520px; word-break: break-word; background: #f7f8f9; border-radius: 6px; padding: 6px 10px; }
+    .eh-round { margin: 0; padding: 14px 20px; border-bottom: 1px solid #edf2f2; }
+    .eh-round .eh-chip { height: 32px; padding: 0 14px; border: 1px solid #dde7e8; border-radius: 16px; background: #fff; font-size: 13px; color: #17373b; }
+    .eh-round .eh-chip.active { background: #24666b; border-color: #24666b; color: #fff; font-weight: 700; }
+    .eh-row { display: grid; grid-template-columns: 166px 150px minmax(0, 1fr) auto; align-items: center; gap: 4px 0; padding: 14px 24px; border-bottom: 1px solid #edf2f2; }
+    .eh-at { font-size: 12.5px; color: #6f8487; }
+    .eh-pill { display: inline-block; padding: 3px 16px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+    .eh-pill[data-type='Profile'] { background: #e6f2f3; color: #24666b; }
+    .eh-pill[data-type='Certification'] { background: #e5f5ea; color: #2f9e58; }
+    .eh-pill[data-type='Payments'] { background: #fdf2dc; color: #9a5f06; }
+    .eh-sum { font-size: 13.5px; font-weight: 500; color: #17373b; min-width: 0; overflow-wrap: anywhere; }
+    .eh-sum small { display: block; font-size: 12px; color: #6f8487; }
+    .eh-more { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 700; color: #24666b; white-space: nowrap; }
+    .eh-vals { grid-column: 3 / -1; margin-top: 8px !important; }
+    @media (max-width: 767.98px) { .eh-row { grid-template-columns: minmax(0, 1fr) auto; } .eh-vals { grid-column: 1 / -1; } }
   `,
 })
 export class EditHistoryTable {
@@ -126,6 +169,8 @@ export class EditHistoryTable {
   readonly url = input.required<string>();
   /** Staff see the IP address too. */
   readonly showOrigin = input(false);
+  /** 2026-11-18: 'table' (staff MSME profile, staff-15) or the MSME's timeline. */
+  readonly layout = input<'timeline' | 'table'>('timeline');
 
   private readonly http = inject(HttpClient);
   protected readonly rows = signal<EditItem[]>([]);
@@ -169,6 +214,16 @@ export class EditHistoryTable {
   protected title(action: string): string {
     const t = action.replace(/^(App|Web)\s*:\s*/i, '').trim();
     return t ? t.charAt(0).toUpperCase() + t.slice(1) : action;
+  }
+
+  /** The change's type pill, by the server's filter rules (MsmeEditHistoryController.Kinds); '' when none applies. */
+  protected typeOf(action: string): string {
+    const a = action.replace(/^(App|Web)\s*:\s*/i, '').toLowerCase();
+    if (a.startsWith('profile:')) return 'Profile';
+    if (a.includes('password')) return 'Password';
+    if (a.includes('certification')) return 'Certification';
+    if (a.includes('payment')) return 'Payments';
+    return '';
   }
 
   protected dayOf(at: string): string {

@@ -174,6 +174,10 @@ describe('FaSubmissionsPage', () => {
     expect([req.request.params.get('level'), req.request.params.get('agency')]).toEqual(['Silver', 'AG1']);
     req.flush({ rows: [], counts: NO });
     await settle();
+    // 2026-11-18: one "Registered" dropdown; "custom dates" shows the two date boxes.
+    expect(el.querySelector('#fa-from')).toBeNull();
+    select('#fa-when', 'custom');
+    await settle();
     const from = el.querySelector('#fa-from') as HTMLInputElement;
     from.value = '2026-10-01';
     from.dispatchEvent(new Event('input'));

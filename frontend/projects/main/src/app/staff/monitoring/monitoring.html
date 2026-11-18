@@ -1,26 +1,32 @@
 <!-- 2026-11-17 (approved staff-10): the page head, the stages as clickable tiles, the filters, the list with a Due column and a row menu. -->
+<!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): no subtitle, Refresh with its icon, a chevron on the stage tiles,
+     the search icon on the left, fixed-width drop-downs, "Sorted by days left" at the right end, "Assessment dates" and "Due" without
+     an arrow, the level as a medal. -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+  <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />Refresh</button>
 </zed-page-head>
-<zed-list-counts [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" label="Stages" (pick)="pickStage($event.key)" />
+<zed-list-counts class="mo-stages" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" label="Stages" (pick)="pickStage($event.key)" />
 
 <div class="zed-card mo-filters">
-  <input type="search" id="monitoringSearch" class="form-control mo-q" maxlength="50" aria-label="Search ZED ID, unit, agency or assessor"
-         [placeholder]="consultancy ? 'Search ZED ID, unit, CO or consultant' : 'Search ZED ID, unit, agency or assessor'"
-         [ngModel]="search()" (ngModelChange)="search.set($event)" />
-  <select id="certification" class="form-select" aria-label="Certification level"
+  <div class="mo-q">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+    <input type="search" id="monitoringSearch" class="form-control" maxlength="50" aria-label="Search ZED ID, unit, agency or assessor"
+           [placeholder]="consultancy ? 'Search ZED ID, unit, CO or consultant' : 'Search ZED ID, unit, agency or assessor'"
+           [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  </div>
+  <select id="certification" class="form-select mo-lv" aria-label="Certification level"
           [ngModel]="certification()" (ngModelChange)="setCertification($event)">
     <option value="">All levels</option>
     @for (l of levels(); track l) {
       <option [value]="l">{{ levelName(l) }}</option>
     }
   </select>
-  <select id="monitoringAgency" class="form-select" [attr.aria-label]="consultancy ? 'CO' : 'Agency'" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
+  <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? 'CO' : 'Agency'" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
     <option value="">{{ consultancy ? 'All COs' : 'All agencies' }}</option>
     @for (a of agencies(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }
   </select>
   @if (!consultancy) {
-    <select id="monitoringMode" class="form-select" aria-label="Mode of assessment" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
+    <select id="monitoringMode" class="form-select mo-md" aria-label="Mode of assessment" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
       <option value="">All modes</option>
       @for (m of modes(); track m[0]) { <option [value]="m[0]">{{ m[1] }}</option> }
     </select>
@@ -60,13 +66,9 @@
           <th>Mode</th>
           <th>Assessor</th>
           @if (main) { <th class="text-center">Duplicates</th> }
-          @if (canManage()) {
-            <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} dates / NC closure</th>
-          } @else {
-            <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} dates</th>
-          }
+          <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} dates</th>
           <th [attr.aria-sort]="dueSort() === 1 ? 'ascending' : dueSort() === -1 ? 'descending' : 'none'">
-            <button type="button" class="mo-due-h" (click)="toggleDueSort()">Due {{ dueSort() === 1 ? '▲' : dueSort() === -1 ? '▼' : '' }}</button>
+            <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? 'Sorted by days left' : dueSort() === -1 ? 'Most days left first' : 'Sort by days left'" (click)="toggleDueSort()">Due</button>
           </th>
           <th class="text-end">Actions</th>
         </tr>
@@ -82,16 +84,16 @@
             <small [title]="t(s, 'UnitAddress')">{{ s['UnitAddress'] }}</small>
           </td>
           <td>
-            <span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ levelName(t(s, 'Certification')) }}</span>
+            <zed-level-medal [level]="t(s, 'Certification')" />
             @if (surveillance) { <small class="sub">{{ s['SurveillanceNo'] }}</small> }
           </td>
-          <td>
+          <td class="mo-name">
             <b>{{ s['AgencyName'] }}</b>
             <small class="sub">{{ s['CertificationBodyUserId'] }}</small>
           </td>
           @if (consultancy) {
             <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span></td>
-            <td class="stack">
+            <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
             <td class="stack text-nowrap">
@@ -103,11 +105,11 @@
             </td>
           } @else {
             <td><span class="chip is-info">{{ mode(s) }}</span></td>
-            <td class="stack">
+            <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
             @if (main) {
-              <td class="text-center"><b [class.mo-dup]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</b></td>
+              <td class="text-center"><b class="mo-dupn" [class.mo-dup]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] ?? 0 }}</b></td>
             }
             <td class="stack text-nowrap">
               <!-- Surveillance: the master admin's column has no allotment date (that portal's page). -->

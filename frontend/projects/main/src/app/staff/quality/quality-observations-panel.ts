@@ -22,6 +22,10 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
  * down): what it is about, whose work (a switch), the reason (category) and its severity as three cards showing the points;
  * the severity stays the one the Admin set for the reason (shown, not chosen). With <code>rail</code> the panel is the right
  * rail of the details pages. <code>shown()</code> tells the page whether there is a panel at all.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-14a/b rail and pop-up 06): "All" and "This tab" (or "This
+ * parameter") chips when the page gives a <code>scope</code>; the rail grows with its content (no scrollbar of its own); the pop-up
+ * fits a 639px window (at most the window less 32px, its body scrolling inside, the header always in view) with a 3-row (60px)
+ * observation box; 40px title-case footer buttons and a white header with the 32px grey close button.
  */
 @Component({
   selector: 'zed-qo-panel',
@@ -41,8 +45,14 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
             <button type="button" class="btn btn-primary btn-sm qo-add" (click)="start(null)">+ Observation</button>
           }
         </div>
+        @if (scope(); as sc) {
+          <div class="qo-chips" role="group" aria-label="Show">
+            <button type="button" [class.on]="!scoped()" [attr.aria-pressed]="!scoped()" (click)="scoped.set(false)">All <span>{{ v.items.length }}</span></button>
+            <button type="button" [class.on]="scoped()" [attr.aria-pressed]="scoped()" (click)="scoped.set(true)">{{ sc.label }} <span>{{ inScope().length }}</span></button>
+          </div>
+        }
         <div class="qo-list">
-          @for (o of v.items; track o.id) {
+          @for (o of shownItems(); track o.id) {
             <zed-qo-item [item]="o" [canRespond]="v.canRespond" [canClose]="v.canClose" (changed)="reload($event)" />
           } @empty {
             <p class="qo-empty">No observations yet.</p>
@@ -116,7 +126,12 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
   `,
   styles: `
     :host { display: block; }
-    .qo-panel { border: 1px solid #e1eaea; background: #fff; border-radius: 12px; margin: 12px 0; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); }
+    .qo-panel { border: 1px solid #dde7e8; background: #fff; border-radius: 14px; margin: 12px 0; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.09); }
+    .qo-chips { display: flex; gap: 8px; padding: 10px 18px 0; }
+    .qo-chips button { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 1px solid #dde7e8; border-radius: 16px; background: #fff; font-size: 13px; color: #17373b; }
+    .qo-chips span { min-width: 26px; border-radius: 10px; background: #ecf0f0; font-size: 10.5px; font-weight: 700; line-height: 20px; color: #6f8487; }
+    .qo-chips .on { background: #24666b; border-color: #24666b; color: #fff; font-weight: 700; }
+    .qo-chips .on span { background: #3f8a90; color: #fff; }
     .qo-rail { margin: 0 0 16px; }
     .qo-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #edf2f2; }
     .qo-head h4 { margin: 0; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
@@ -124,18 +139,20 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
     .qo-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
     .qo-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 18px 4px; }
     .qo-bar small { font-size: 13px; color: #5f6f70; }
-    .qo-add { border-radius: 8px; font-weight: 600; padding: 6px 14px; }
+    .qo-add { min-height: 32px; border-radius: 9px; font-weight: 700; padding: 6px 14px; }
     .qo-list { padding: 8px 14px 6px; }
     .qo-empty { font-size: 13px; color: #5f6f70; margin: 0 4px 8px; }
-    .qo-dlg { max-width: 640px; }
-    .qo-dlg .modal-content { border: 0; border-radius: 14px; overflow: hidden; }
-    .qo-dlg-head { display: flex; align-items: flex-start; gap: 14px; padding: 18px 22px; border-bottom: 1px solid #edf2f2; }
+    .qo-dlg { max-width: 660px; margin: 16px auto; min-height: calc(100% - 32px); }
+    .qo-dlg .modal-content { display: flex; flex-direction: column; max-height: calc(100vh - 32px); border: 0; border-radius: 14px; overflow: hidden; }
+    .qo-dlg form { min-height: 0; }
+    .qo-dlg-head { flex: none; display: flex; align-items: flex-start; gap: 14px; padding: 18px 22px; background: #fff; border-bottom: 1px solid #edf2f2; }
     .qo-dlg-t { flex: 1; min-width: 0; }
     .qo-dlg-t h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .qo-dlg-t p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
     .qo-x { border: 0; background: #eef2f2; border-radius: 8px; width: 32px; height: 32px; font-size: 20px; line-height: 1; color: #3d4f50; }
-    .qo-dlg-body { padding: 14px 22px 18px; display: flex; flex-direction: column; }
-    .qo-dlg-body label, .qo-l { font-size: 13px; color: #3d4f50; margin: 10px 0 5px; font-weight: 600; }
+    .qo-dlg-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 8px 28px 16px; display: flex; flex-direction: column; }
+    .qo-dlg-body label, .qo-l { font-size: 12.5px; color: #3d5559; margin: 10px 0 5px; font-weight: 600; }
+    .qo-dlg-body textarea { height: 60px; min-height: 60px; resize: vertical; }
     .req { color: #c0392b; }
     .qo-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; align-self: flex-start; background: #eef2f2; border-radius: 10px; padding: 3px; }
     .qo-seg button { border: 1px solid transparent; background: none; border-radius: 8px; padding: 6px 16px; font-size: 13.5px; color: #3d4f50; }
@@ -151,8 +168,9 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
     .qo-sev-card.on .qo-dot { border-color: currentColor; box-shadow: inset 0 0 0 3px #fff; background: currentColor; }
     .qo-sev-note { color: #5f6f70; margin-top: 5px; font-size: 12px; }
     .qo-warn { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; background: #fdf3e1; color: #8a5a00; font-size: 13px; }
-    .qo-dlg-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid #edf2f2; }
-    .qo-dlg-foot .btn { border-radius: 8px; padding: 8px 20px; font-weight: 600; }
+    .qo-dlg-foot { flex: none; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 28px; border-top: 1px solid #edf2f2; }
+    .qo-dlg-foot .btn { min-height: 40px; border-radius: 9px; padding: 0 22px; font-weight: 700; }
+    .qo-dlg-foot .btn-default { min-width: 110px; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
     @media (max-width: 575.98px) { .qo-sevs { grid-template-columns: minmax(0, 1fr); } .qo-dlg-head, .qo-dlg-body, .qo-dlg-foot { padding-left: 16px; padding-right: 16px; } }
   `,
 })
@@ -185,6 +203,17 @@ export class QualityObservationsPanel {
   readonly abouts = input<string[]>(['Lead', 'Co', 'Desktop', 'Agency']);
   /** Set by the page's "+ Observation" button of an item: opens the pop-up on it. */
   readonly target = model<QoTarget | null>(null);
+  /**
+   * 2026-11-18: the page's part shown now ("This tab", "This parameter") and its items (refType|refId keys; "Overall|" for the
+   * whole assessment). Without it there are no chips.
+   */
+  readonly scope = input<{ label: string; keys: string[] } | null>(null);
+  protected readonly scoped = signal(false);
+  protected readonly inScope = computed(() => {
+    const keys = new Set(this.scope()?.keys ?? []);
+    return (this.view()?.items ?? []).filter((o) => keys.has(`${o.refType || 'Overall'}|${o.refType && o.refType !== 'Overall' ? o.refId ?? '' : ''}`));
+  });
+  protected readonly shownItems = computed(() => (this.scope() && this.scoped() ? this.inScope() : this.view()?.items ?? []));
 
   protected readonly view = signal<QoUnitView | null>(null);
   protected readonly form = signal<{ targetKey: string; about: string; category: string; text: string } | null>(null);

@@ -175,7 +175,7 @@ import { maskEmail, maskMobile } from '../users/user-display';
     .ra-id { display: block; font-size: 12.5px; font-weight: 700; }
     .ra-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
     .ra-btns { display: inline-flex; gap: 6px; }
-    .ra-btns .btn, .ra-act { font-weight: 600; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the buttons keep the skin's 700 weight. */
     .ra-act { margin-right: 6px; }
   `,
 })

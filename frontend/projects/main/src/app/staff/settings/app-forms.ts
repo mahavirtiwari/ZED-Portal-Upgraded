@@ -475,8 +475,8 @@ const TYPE_GLYPHS: Record<string, string> = {
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="CANCEL" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="SAVE" [disabled]="busy()" (click)="save(e)" />
+              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
+              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
             </div>
           </div>
         </div>

@@ -273,7 +273,7 @@ describe('User management', () => {
       // An MSME DFO has states (several), not one state.
       expect(el.querySelector('#acc-state')).toBeNull();
       expect(el.querySelector('.acc-scope-states zed-multi-select')).not.toBeNull();
-      button('CANCEL').click();
+      button('Cancel').click();
       await settle();
 
       button('Edit').click();
@@ -281,7 +281,7 @@ describe('User management', () => {
       expect(el.querySelector('.modal .choice-card')).toBeNull();
       expect(el.querySelector('.acc-type-fixed')!.textContent).toContain('MSME DFO');
       expect(el.querySelector('.acc-scope-states zed-multi-select')).not.toBeNull();
-      button('CANCEL').click();
+      button('Cancel').click();
       await settle();
 
       tabs()[0].click();

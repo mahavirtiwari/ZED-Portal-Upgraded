@@ -334,7 +334,7 @@ export class MyAssessorsPage {
     if (this.saving()) return;
     this.dialogError.set('');
     switch (key) {
-      case 'reset': this.resetFor.set({ row: u, ask: resetLinkAsk(u.UserName, u.UserId, u.Email) }); break;
+      case 'reset': this.resetFor.set({ row: u, ask: resetLinkAsk(u.UserName, u.UserId, u.Email, this.labels.assessor) }); break;
       case 'block': void this.openBlock(u); break;
       case 'unblock': if (this.canUnblock(u)) this.reasonAsk.set({ action: 'unblock', userId: u.UserId, userName: u.UserName ?? null }); break;
       case 'history': void this.openHistory(u); break;

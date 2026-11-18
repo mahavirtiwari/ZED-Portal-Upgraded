@@ -616,8 +616,8 @@ const API = '/api/staff/settings/levels';
                 @if (editError()) { <div class="alert alert-danger help-block mt-3 mb-0" role="alert">{{ editError() }}</div> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ e.isNew ? 'ADD LEVEL' : 'UPDATE' }}</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ e.isNew ? 'Add level' : 'Update' }}</button>
               </div>
             </form>
           </div>

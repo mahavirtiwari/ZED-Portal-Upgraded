@@ -1,15 +1,8 @@
+<!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-05: only Back in the title row; the identity card
+     holds the status, type, sector and "View only" pills and the Block / Reset link / History buttons; PAN, e-mail and mobile
+     masked in the view (full values only in the agency's edit fields); a compact contact card when the page cannot edit. -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  @if (!canEdit() && !loading()) { <span class="status-badge is-info af-view-only">View only</span> }
-  @if (actions) {
-    @if (isActive()) {
-      <button type="button" class="btn btn-outline-danger" data-act="block" (click)="ask('block')">Block</button>
-    } @else {
-      <button type="button" class="btn btn-outline-primary" data-act="unblock" (click)="askUnblock()">Unblock</button>
-    }
-    <button type="button" class="btn btn-outline-primary" data-act="reset" (click)="ask('reset')">Reset link</button>
-    <button type="button" class="btn btn-ph" data-act="history" (click)="openHistory()">History</button>
-  }
-  <a [routerLink]="backLink" class="btn btn-ph" data-back>Back</a>
+  <a [routerLink]="backLink" class="btn btn-default" data-back><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.back" /></svg>Back</a>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
@@ -20,15 +13,29 @@
     <span class="af-avatar" aria-hidden="true">{{ initials(model.userName) }}</span>
     <div class="af-who">
       <span class="af-name">{{ model.userName }}</span>
-      <span class="af-id"><strong>{{ userId }}</strong>@if (model.certificateNo) { · Certificate {{ model.certificateNo }} }@if (panNo()) { · PAN {{ panNo() }} }</span>
+      <span class="af-id">{{ userId }}@if (model.certificateNo) { · Certificate no. {{ model.certificateNo }} }@if (panNo()) { · PAN {{ canEdit() ? panNo() : maskPan(panNo()) }} }</span>
+      <div class="af-tags">
+        @if (isActive() !== null) {
+          <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">@if (isActive()) {<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.check" /></svg>}{{ isActive() ? 'Active' : 'Blocked' }}</span>
+        }
+        @if (model.assessorType) { <span class="status-badge is-info">{{ typeLabel(model.assessorType) }}</span> }
+        @if (!consultancy && model.sectorActivity) { <span class="status-badge is-inactive">{{ model.sectorActivity }}</span> }
+        @if (!canEdit() && !loading()) {
+          <span class="status-badge is-pending af-view-only"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>View only</span>
+        }
+      </div>
     </div>
-    <div class="af-tags">
-      @if (isActive() !== null) {
-        <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">{{ isActive() ? 'Active' : 'Blocked' }}</span>
-      }
-      @if (model.assessorType) { <span class="zed-chip">{{ typeLabel(model.assessorType) }}</span> }
-      @if (!consultancy && model.sectorActivity) { <span class="zed-chip af-sector">{{ model.sectorActivity }}</span> }
-    </div>
+    @if (actions) {
+      <div class="af-acts">
+        @if (isActive()) {
+          <button type="button" class="btn af-btn-danger" data-act="block" (click)="ask('block')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>Block</button>
+        } @else {
+          <button type="button" class="btn btn-outline-primary" data-act="unblock" (click)="askUnblock()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.unlock" /></svg>Unblock</button>
+        }
+        <button type="button" class="btn btn-outline-primary" data-act="reset" (click)="ask('reset')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.mail" /></svg>Reset link</button>
+        <button type="button" class="btn btn-default" data-act="history" (click)="openHistory()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.clock" /></svg>History</button>
+      </div>
+    }
   </div>
 }
 
@@ -38,7 +45,7 @@
   <fieldset [disabled]="!canEdit()">
     @if (!isNew && levels().length) {
       <section class="zed-card af-section">
-        <h4 class="af-head">Assessments this assessor can do</h4>
+        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.shield" /></svg></span>Assessments this {{ noun.toLowerCase() }} can do</h4>
         <ng-container *ngTemplateOutlet="scopeGrid" />
       </section>
     }
@@ -64,7 +71,7 @@
           @if (submitted() && !model.assessorType) { <span class="help-block">Please tick at least one level and mode.</span> }
         }
         @if (model.assessorType && verifyOff) {
-          <!-- Verification off (Admin -> Settings -> Professional Verification): the details are typed, no SEARCH. -->
+          <!-- Verification off (Admin -> Settings -> Professional Verification): the details are typed, no Search. -->
           <div class="alert alert-warning mt-3 mb-3" role="note">Verification is off: enter the {{ consultancy ? 'consultant/expert' : 'assessor' }}'s details as on the certificate.</div>
           <div class="form-grid">
             <label for="certificateNo">Certificate Number<span class="req">*</span></label>
@@ -83,7 +90,7 @@
         }
         @if (model.assessorType && searches) {
           <div class="lookup">
-            <p class="af-hint">{{ byApi ? 'Enter the certificate number and the PAN, then SEARCH.' : 'Enter the certificate number and the e-mail registered with it, then SEARCH.' }}</p>
+            <p class="af-hint">{{ byApi ? 'Enter the certificate number and the PAN, then Search.' : 'Enter the certificate number and the e-mail registered with it, then Search.' }}</p>
             <div class="filter-bar">
               <div class="filter">
                 <label class="form-label" for="certificateNo">Certificate Number@if (byApi) {<span class="req">*</span>}</label>
@@ -101,7 +108,7 @@
                   <input id="professionalEmail" name="professionalEmail" type="email" class="form-control" maxlength="100" [(ngModel)]="model.professionalEmail" />
                 </div>
               }
-              <button type="button" class="btn btn-primary" [disabled]="searching()" (click)="searchProfessional()">SEARCH</button>
+              <button type="button" class="btn btn-primary" [disabled]="searching()" (click)="searchProfessional()">Search</button>
             </div>
             @if (lookupDone) {
               <div class="af-found" role="status">
@@ -118,109 +125,126 @@
       </section>
     }
 
-    <section class="zed-card af-section">
-      <h4 class="af-head"><span class="af-no">{{ first + 1 }}</span>Contact details</h4>
-      <div class="form-grid">
-        <label for="userName">{{ noun }} Name@if (typesIdentity) {<span class="req">*</span>}</label>
-        @if (typesIdentity) {
-          <div>
-            <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" />
-            @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
-          </div>
-        } @else {
-          <input id="userName" name="userName" class="form-control readonly" readonly [ngModel]="model.userName" />
-        }
-        <label for="emailId">{{ noun }} Email ID@if (typesIdentity) {<span class="req">*</span>}</label>
-        @if (typesIdentity) {
-          <div>
-            <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" />
-            @if (missing(model.emailId)) { <span class="help-block">This is required.</span> }
-          </div>
-        } @else {
-          <input id="emailId" name="emailId" class="form-control readonly" readonly [ngModel]="model.emailId" />
-        }
-        <label for="mobileNo">{{ noun }} Mobile Number@if (typesIdentity || editsMobile) {<span class="req">*</span>}</label>
-        @if (typesIdentity || editsMobile) {
-          <div>
-            <input id="mobileNo" name="mobileNo" class="form-control af-mid" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" />
-            @if (missing(model.mobileNo)) { <span class="help-block">This is required.</span> }
-          </div>
-        } @else {
-          <input id="mobileNo" name="mobileNo" class="form-control readonly" readonly [ngModel]="model.mobileNo" />
-        }
-        <label class="top" for="address">{{ noun }} Address<span class="req">*</span></label>
-        <div>
-          <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address"></textarea>
-          @if (missing(model.address)) { <span class="help-block">This is required.</span> }
-        </div>
-        <label for="pinCode">PinCode<span class="req">*</span></label>
-        <div>
-          <input id="pinCode" name="pinCode" class="form-control af-short" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" />
-          @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
-        </div>
-      </div>
-    </section>
-
-    <section class="zed-card af-section">
-      <h4 class="af-head"><span class="af-no">{{ first + 2 }}</span>ID proof</h4>
-      <div class="form-grid">
-        <span class="af-label" id="idProofType-label">ID Proof<span class="req">*</span></span>
-        <div>
-          <div class="af-chips" role="radiogroup" aria-labelledby="idProofType-label">
-            @for (p of idProofs; track p) {
-              <label class="af-chip" [class.active]="model.idProofType === p"><input type="radio" name="idProofType" [value]="p" [(ngModel)]="model.idProofType" /> {{ p }}</label>
-            }
-          </div>
-          @if (submitted() && !model.idProofType) { <span class="help-block">Id Proof required.</span> }
-        </div>
-        @if (model.idProofType) {
-          <label for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? 'Aadhaar Card Number' : 'PAN Card Number' }}</label>
-          <div>
-            <input id="idProofNumber" name="idProofNumber" class="form-control af-mid" maxlength="20" autocomplete="off"
-                   [placeholder]="idProofPlaceholder" [(ngModel)]="model.idProofNumber" />
-            @if (canEdit() && idProofPlaceholder) { <small class="muted d-block mt-1">Only the last digits of the saved number are shown.</small> }
-          </div>
-        }
-      </div>
-    </section>
-
-    <section class="zed-card af-section">
-      <h4 class="af-head"><span class="af-no">{{ first + 3 }}</span>What the {{ noun.toLowerCase() }} assesses</h4>
-      <div class="form-grid">
-        @if (showStates) {
-          <label class="top" for="states">Applicable States</label>
-          <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" (valueChange)="dirty.set(true)" />
-        }
-        <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
-        <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" (valueChange)="dirty.set(true)" />
-        @if (!consultancy) {
-          <span class="af-label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
-          <div>
-            <div class="af-chips" role="radiogroup" aria-labelledby="sectorActivity-label">
-              <!-- attr.disabled per radio: [disabled] with ngModel would disable the whole group (one control per name). -->
-              @for (a of activities; track a.value) {
-                <label class="af-chip" [class.active]="model.sectorActivity === a.value" [class.is-off]="!allowed(a.value)"><input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value"
-                       [attr.disabled]="!canEdit() || !allowed(a.value) ? '' : null" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
-              }
-            </div>
-            @if (agencyActivity() && agencyActivity() !== 'Both') { <small class="text-muted d-block mt-1">Your agency assesses {{ agencyActivity() }} only.</small> }
-            @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
-          </div>
-        }
-        <label class="top" for="areas">Area of Knowledge and Expertise</label>
-        <zed-multi-select inputId="areas" label="Area of Knowledge and Expertise" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
-      </div>
-    </section>
-
-    @if (!isNew) {
+    @if (viewOnly) {
+      <section class="zed-card af-section af-view" data-view="contact">
+        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>Contact details</h4>
+        <dl class="af-facts">
+          <div><dt>{{ noun }} name</dt><dd>{{ model.userName || '—' }}</dd></div>
+          <div><dt>E-mail ID</dt><dd data-view="email">{{ maskEmail(model.emailId) || 'Not saved' }}</dd></div>
+          <div><dt>Mobile number</dt><dd data-view="mobile">{{ maskMobile(model.mobileNo) || 'Not saved' }}</dd></div>
+          <div><dt>Address</dt><dd>{{ model.address || '—' }}</dd></div>
+          <div><dt>PIN code</dt><dd>{{ model.pinCode || '—' }}</dd></div>
+          <div><dt>ID proof</dt><dd data-view="id-proof">{{ idProofLine }}</dd></div>
+          @if (!isActive() && model.reasonForRejection) {
+            <div class="af-wide"><dt>Reason for block</dt><dd data-view="block-reason">{{ model.reasonForRejection }}</dd></div>
+          }
+        </dl>
+      </section>
+    } @else {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">{{ first + 4 }}</span>Block reason</h4>
+        <h4 class="af-head"><span class="af-no">{{ first + 1 }}</span>Contact details</h4>
         <div class="form-grid">
-          <label class="top" for="reasonForRejection">Reason for Block</label>
-          <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
-                    [(ngModel)]="model.reasonForRejection"></textarea>
+          <label for="userName">{{ noun }} name@if (typesIdentity) {<span class="req">*</span>}</label>
+          @if (typesIdentity) {
+            <div>
+              <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" />
+              @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
+            </div>
+          } @else {
+            <input id="userName" name="userName" class="form-control readonly" readonly [ngModel]="model.userName" />
+          }
+          <label for="emailId">{{ noun }} e-mail ID@if (typesIdentity) {<span class="req">*</span>}</label>
+          @if (typesIdentity) {
+            <div>
+              <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" />
+              @if (missing(model.emailId)) { <span class="help-block">This is required.</span> }
+            </div>
+          } @else {
+            <input id="emailId" name="emailId" class="form-control readonly" readonly [ngModel]="model.emailId" />
+          }
+          <label for="mobileNo">{{ noun }} mobile number@if (typesIdentity || editsMobile) {<span class="req">*</span>}</label>
+          @if (typesIdentity || editsMobile) {
+            <div>
+              <input id="mobileNo" name="mobileNo" class="form-control af-mid" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" />
+              @if (missing(model.mobileNo)) { <span class="help-block">This is required.</span> }
+            </div>
+          } @else {
+            <input id="mobileNo" name="mobileNo" class="form-control readonly" readonly [ngModel]="model.mobileNo" />
+          }
+          <label class="top" for="address">{{ noun }} address<span class="req">*</span></label>
+          <div>
+            <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address"></textarea>
+            @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+          </div>
+          <label for="pinCode">PIN code<span class="req">*</span></label>
+          <div>
+            <input id="pinCode" name="pinCode" class="form-control af-short" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" />
+            @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
+          </div>
         </div>
       </section>
+
+      <section class="zed-card af-section">
+        <h4 class="af-head"><span class="af-no">{{ first + 2 }}</span>ID proof</h4>
+        <div class="form-grid">
+          <span class="af-label" id="idProofType-label">ID Proof<span class="req">*</span></span>
+          <div>
+            <div class="af-chips" role="radiogroup" aria-labelledby="idProofType-label">
+              @for (p of idProofs; track p) {
+                <label class="af-chip" [class.active]="model.idProofType === p"><input type="radio" name="idProofType" [value]="p" [(ngModel)]="model.idProofType" /> {{ p }}</label>
+              }
+            </div>
+            @if (submitted() && !model.idProofType) { <span class="help-block">Id Proof required.</span> }
+          </div>
+          @if (model.idProofType) {
+            <label for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? 'Aadhaar Card Number' : 'PAN Card Number' }}</label>
+            <div>
+              <input id="idProofNumber" name="idProofNumber" class="form-control af-mid" maxlength="20" autocomplete="off"
+                     [placeholder]="idProofPlaceholder" [(ngModel)]="model.idProofNumber" />
+              @if (canEdit() && idProofPlaceholder) { <small class="muted d-block mt-1">Only the last digits of the saved number are shown.</small> }
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="zed-card af-section">
+        <h4 class="af-head"><span class="af-no">{{ first + 3 }}</span>What the {{ noun.toLowerCase() }} assesses</h4>
+        <div class="form-grid">
+          @if (showStates) {
+            <label class="top" for="states">Applicable States</label>
+            <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" (valueChange)="dirty.set(true)" />
+          }
+          <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
+          <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" (valueChange)="dirty.set(true)" />
+          @if (!consultancy) {
+            <span class="af-label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
+            <div>
+              <div class="af-chips" role="radiogroup" aria-labelledby="sectorActivity-label">
+                <!-- attr.disabled per radio: [disabled] with ngModel would disable the whole group (one control per name). -->
+                @for (a of activities; track a.value) {
+                  <label class="af-chip" [class.active]="model.sectorActivity === a.value" [class.is-off]="!allowed(a.value)"><input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value"
+                         [attr.disabled]="!canEdit() || !allowed(a.value) ? '' : null" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
+                }
+              </div>
+              @if (agencyActivity() && agencyActivity() !== 'Both') { <small class="text-muted d-block mt-1">Your agency assesses {{ agencyActivity() }} only.</small> }
+              @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+            </div>
+          }
+          <label class="top" for="areas">Area of Knowledge and Expertise</label>
+          <zed-multi-select inputId="areas" label="Area of Knowledge and Expertise" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
+        </div>
+      </section>
+
+      @if (!isNew) {
+        <section class="zed-card af-section">
+          <h4 class="af-head"><span class="af-no">{{ first + 4 }}</span>Block reason</h4>
+          <div class="form-grid">
+            <label class="top" for="reasonForRejection">Reason for block</label>
+            <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
+                      [(ngModel)]="model.reasonForRejection"></textarea>
+          </div>
+        </section>
+      }
     }
   </fieldset>
   @if (canEdit()) {
@@ -240,7 +264,7 @@
   <aside class="af-rail" [attr.aria-label]="'About this ' + noun.toLowerCase()">
     @if (agencyUserId(); as agency) {
       <section class="zed-card af-card" data-rail="agency">
-        <h4 class="af-card-head">{{ agencyWord }}</h4>
+        <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.building" /></svg></span>{{ agencyWord }}</h4>
         <div class="af-agency">
           <span class="af-avatar af-sm" aria-hidden="true">{{ initials(agencyName || agency) }}</span>
           <span class="af-who">
@@ -252,7 +276,7 @@
       </section>
     }
     <section class="zed-card af-card" data-rail="coverage">
-      <h4 class="af-card-head">Coverage
+      <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.pin" /></svg></span>Coverage
         <button type="button" class="btn btn-link af-link" [attr.aria-expanded]="coverageOpen()" (click)="coverageOpen.set(!coverageOpen())">{{ coverageOpen() ? 'Show less' : 'View all' }}</button>
       </h4>
       <dl class="af-cover">
@@ -271,7 +295,7 @@
     </section>
     @if (openCount() !== null) {
       <section class="zed-card af-card" data-rail="open">
-        <h4 class="af-card-head">Open {{ consultancy ? 'cases' : 'assessments' }}</h4>
+        <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.clock" /></svg></span>Open {{ consultancy ? 'cases' : 'assessments' }}</h4>
         @let n = openCount()!;
         <p class="af-open">@if (n) { <strong>{{ openWords(n) }}</strong> allotted and not certified yet. } @else { None: nothing allotted is open. }</p>
       </section>
@@ -303,7 +327,7 @@
       <tbody>
         @for (l of levels(); track l.code) {
           <tr>
-            <th scope="row">{{ l.name }}</th>
+            <th scope="row"><span [class]="'af-medal m-' + medal(l.code)" aria-hidden="true">Z</span>{{ l.name }}</th>
             @for (m of modes; track m) {
               <td>
                 @if (l.modes.includes(m)) {
@@ -318,6 +342,6 @@
         }
       </tbody>
     </table>
-    <p class="af-scope-note">The modes come from each level's assessment (Administration → Certification Levels). The allotment lists offer the assessor only for the levels and modes ticked here.</p>
+    <p class="af-scope-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.info" /></svg>Allotment lists offer this {{ noun.toLowerCase() }} only for the levels and modes ticked here (modes from Administration → Certification Levels).</p>
   </div>
 </ng-template>

@@ -66,7 +66,7 @@ describe('SubmissionChecklistsPage', () => {
     button(el, 'Add item').click();
     await settle(fixture);
     const dialog = el.querySelector('[role=dialog]') as HTMLElement;
-    button(dialog, 'SAVE').click();
+    button(dialog, 'Save').click();
     await settle(fixture);
     expect(dialog.textContent).toContain('Enter the item.');
 
@@ -75,7 +75,7 @@ describe('SubmissionChecklistsPage', () => {
     text.dispatchEvent(new Event('input'));
     (dialog.querySelector('[data-stage="Desktop"]') as HTMLInputElement).click();
     await settle(fixture);
-    button(dialog, 'SAVE').click();
+    button(dialog, 'Save').click();
     await settle(fixture);
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/agency-qc`);
     expect(put.request.body.items.map((i: { id: string }) => i.id)).toEqual(['exemptions', 'photos', 'old', 'nc-remarks-are-complete']);
@@ -103,7 +103,7 @@ describe('SubmissionChecklistsPage', () => {
     (dialog.querySelector('[data-stage="Desktop"]') as HTMLInputElement).click();
     await settle(fixture);
     expect(dialog.textContent).toContain('Choose where it is asked.');
-    button(dialog, 'SAVE').click();
+    button(dialog, 'Save').click();
     await settle(fixture);
   });
 
@@ -169,7 +169,7 @@ describe('ObservationReasonsPage', () => {
     await settle(fixture);
     (el.querySelector('#reasonActive') as HTMLInputElement).click();
     await settle(fixture);
-    button(el.querySelector('[role=dialog]')!, 'SAVE').click();
+    button(el.querySelector('[role=dialog]')!, 'Save').click();
     await settle(fixture);
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
     expect(put.request.body.reasons[2]).toEqual({ id: 'other', text: 'Late reporting', severity: 'Major', active: true });

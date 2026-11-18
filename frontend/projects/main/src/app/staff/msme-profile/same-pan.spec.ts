@@ -31,7 +31,10 @@ describe('SamePanUnits (2026-11-17)', () => {
 
   it('warns and opens the list by itself the first time, with masked ZED IDs and full names and addresses', async () => {
     const el = await render(answer);
-    expect(el.querySelector('[data-same-pan]')!.textContent).toContain('2 other ZED units are registered with PAN ABCDE1234F');
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the strip masks the PAN and lists the units inline.
+    expect(el.querySelector('[data-same-pan]')!.textContent).toContain('2 other ZED units are registered with PAN AB•••••34F');
+    expect(el.querySelectorAll('[data-same-pan] .sp-list li').length).toBe(2);
+    expect(el.querySelector('.sp-intro')!.textContent).toContain('ABCDE1234F');
     const rows = [...el.querySelectorAll('[data-same-pan-list] tbody tr')].map((r) => [...r.children].map((c) => c.textContent!.trim()));
     expect(rows).toEqual([
       ['ZEDM•••102', 'Acme Unit 1', 'Plot-4, Industrial Area, Kanpur 208001'],

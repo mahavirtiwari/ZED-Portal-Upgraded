@@ -26,7 +26,7 @@ const assessor = {
   userId: 'ZEDAS0001', userName: 'Asha Rao', emailId: 'asha@zed.test', mobileNo: '9000000001', address: 'Street', pinCode: '560001',
   assessorType: 'Assessor', certificateNo: 'AS1', idProofType: 'Aadhaar Card', idProofNumberMasked: 'XXXXXXXX9012', states: ['DELHI'],
   nicSectors: ['10', '24'], areasOfKnowledge: ['Quality'], reasonForRejection: null, isActive: true, agencyUserId: 'AGENCY1', canEdit: false,
-  sectorActivity: 'Manufacturing',
+  sectorActivity: 'Manufacturing', panNo: null as string | null,
 };
 
 describe('AssessorFormPage (staff-05 redesign)', () => {
@@ -62,6 +62,8 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     http.expectOne(`${BASE}/${userId}`).flush({ ...assessor, canEdit: roleId === StaffRole.Agency, ...details });
     await settle(fixture);
     http.expectOne(`${BASE}/${userId}/open-assessments`).flush({ count: open });
+    // 2026-11-18: the Master Admin's agencies, for the agency's name on the rail.
+    http.match((r) => r.url === '/api/staff/users/agencies').forEach((r) => r.flush([{ UserId: 'AGENCY1', UserName: 'Mahavir Agency' }]));
     // The registered mobile card of the Master Admin (assessor-mobile.spec.ts).
     http.match((r) => r.url.startsWith('/api/staff/assessor-mobile/')).forEach((r) => r.flush({ userId, device: null, signIns: [] }));
     await settle(fixture);
@@ -84,18 +86,26 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     await settle(fixture);
   }
 
-  it('shows the crumbs, the View only tag, the actions and the right rail to the Master Admin, with the full e-mail and mobile', async () => {
-    await open(StaffRole.MasterAdmin, 'ZEDAS0001');
+  it('shows the crumbs, the View only tag, the actions in the identity card and the right rail to the Master Admin, with masked contact details', async () => {
+    await open(StaffRole.MasterAdmin, 'ZEDAS0001', { panNo: 'ABCDE1234F' });
     expect([...head().querySelectorAll('.ph-crumb a, .ph-crumb span:not(.ph-sep)')].map((c) => c.textContent!.trim())).toEqual(['Home', 'Assessors', 'ZEDAS0001']);
-    expect(head().querySelector('.ph-title')!.textContent).toContain('Assessor Details');
-    expect(head().querySelector('.af-view-only')!.textContent!.trim()).toBe('View only');
-    expect([...head().querySelectorAll('.ph-actions .btn')].map((b) => b.textContent!.trim())).toEqual(['Block', 'Reset link', 'History', 'Back']);
-    // No masking on the record's own page.
-    expect((el.querySelector('#emailId') as HTMLInputElement).value).toBe('asha@zed.test');
-    expect((el.querySelector('#mobileNo') as HTMLInputElement).value).toBe('9000000001');
+    expect(head().querySelector('.ph-title')!.textContent).toContain('Assessor details');
+    // 2026-11-18 (staff-05): only Back in the title row; the pills and actions sit in the identity card.
+    expect([...head().querySelectorAll('.ph-actions .btn')].map((b) => b.textContent!.trim())).toEqual(['Back']);
+    const card = el.querySelector('.af-profile')!;
+    expect(card.querySelector('.af-view-only')!.textContent!.trim()).toBe('View only');
+    expect([...card.querySelectorAll('.af-acts .btn')].map((b) => b.textContent!.trim())).toEqual(['Block', 'Reset link', 'History']);
+    expect(card.querySelector('.af-id')!.textContent).toContain('PAN AB•••••34F');
+    expect(card.textContent).not.toContain('ABCDE1234F');
+    // The view masks the e-mail and the mobile (no edit fields).
+    expect(el.querySelector('#emailId')).toBeNull();
+    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('as•••••@zed.test');
+    expect(el.querySelector('[data-view="mobile"]')!.textContent!.trim()).toBe('90•••••001');
+    expect(el.querySelector('[data-view="id-proof"]')!.textContent!.trim()).toBe('Aadhaar card · •••••9012');
 
     const agency = el.querySelector('[data-rail="agency"]')!;
     expect(agency.textContent).toContain('Assessment agency');
+    expect(agency.querySelector('.af-name')!.textContent!.trim()).toBe('Mahavir Agency');
     expect(agency.textContent).toContain('AGENCY1');
     expect(agency.querySelector('a')!.getAttribute('href')).toBe('/staff/users/agencies/AGENCY1');
 
@@ -134,7 +144,7 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     expect(el.querySelector('.af-profile .status-badge')!.textContent!.trim()).toBe('Blocked');
     expect(act('block')).toBeNull();
     expect(act('unblock')).not.toBeNull();
-    expect((el.querySelector('#reasonForRejection') as HTMLTextAreaElement).value).toBe('Left the agency');
+    expect(el.querySelector('[data-view="block-reason"]')!.textContent!.trim()).toBe('Left the agency');
   });
 
   it("keeps the pop-up open with the server's refusal; without a known count the pop-up and the rail say nothing about open assessments", async () => {
@@ -155,7 +165,7 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     act('reset')!.click();
     await settle(fixture);
     expect(dialog()!.querySelector('h3')!.textContent!.trim()).toBe('Send password reset link?');
-    expect(dialog()!.textContent).toContain('Asha Rao (ZEDAS0001) gets a link');
+    expect(dialog()!.querySelector('.cd-person')!.textContent).toContain('Assessor · ZEDAS0001');
     expect(dialog()!.querySelector('textarea')).toBeNull();
     await confirm();
     const req = http.expectOne(`${BASE}/ZEDAS0001/password-reset`);
@@ -202,7 +212,10 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
 
   it("the agency: its own name on the agency card (no Open link), no View only tag, and a toast after Update", async () => {
     await open(StaffRole.Agency, 'ZEDAS0001');
-    expect(head().querySelector('.af-view-only')).toBeNull();
+    expect(el.querySelector('.af-view-only')).toBeNull();
+    // The agency edits: the full values stay in its edit fields.
+    expect((el.querySelector('#emailId') as HTMLInputElement).value).toBe('asha@zed.test');
+    expect((el.querySelector('#mobileNo') as HTMLInputElement).value).toBe('9000000001');
     expect([...head().querySelectorAll('.ph-crumb a')].map((a) => a.getAttribute('href'))).toEqual(['/staff', '/staff/users/my-assessors']);
     const agency = el.querySelector('[data-rail="agency"]')!;
     expect(agency.querySelector('.af-name')!.textContent!.trim()).toBe('Acme Agency');

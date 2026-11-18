@@ -1,18 +1,43 @@
 /* Desktop assessment details: summary card, light section bars and tables, parameters layout (list + requirement cards). */
-.muted { color: #5f6f70; }
-
-/* Data tables inside the page: light header instead of solid teal. */
-.table > thead > tr > th { --bs-table-bg: #e8f2f3; --bs-table-color: #1b3b3e; background-color: #e8f2f3 !important; color: #1b3b3e !important; border-color: #dce7e8 !important; }
+.muted { color: #6f8487; }
+.table > thead > tr > th { --bs-table-bg: #f3f8f8; --bs-table-color: #1b4f53; background-color: #f3f8f8 !important; color: #1b4f53 !important; border-color: #dde7e8 !important; }
 .table > :not(caption) > * > * { padding: 9px 11px; }
-
-/* Section headings: light bar with a teal left edge (was black). */
 .panel.panel-black { background: #e8f2f3; color: #1b3b3e; border: 0; border-left: 3px solid #23656b; border-radius: 6px; box-shadow: none; overflow: visible; }
 .panel-black .panel-body { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #1b3b3e; }
 .info-i { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #2f8a92; color: #fff; font: italic 700 12px/1 Georgia, serif; cursor: help; }
 .z-tooltip:focus-within .tooltiptext { visibility: visible; }
 .z-tooltip .tooltiptext { font-weight: 400; z-index: 30; }
-
-/* 2026-11-17 (design 14): the summary, NC and rail layout are UNIT_VIEW_STYLES (da-details.layout.ts), shared with the site review page. */
-
 .nc-tag { font-weight: 700; color: #23656b; margin-right: 6px; }
+
+/* 2026-11-18 (the user: staff pages 'not aligned with SVG files', the new staff-14 series 14a-14d). */
+.uv-hb { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.uv-back { transform: rotate(180deg); }
+.uv-link { font-size: 13px; font-weight: 700; color: #24666b; background: none; border: 0; padding: 0; text-decoration: none; }
+.ov-medal { display: inline-flex; flex-direction: row-reverse; }
+/* Overview: the four link cards and the NC tracker. */
+.ov-links { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.ov-link { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; text-align: left; background: #fff; border: 1px solid #dde7e8; border-radius: 14px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .09); color: #17373b; }
+.ov-link:hover:not(:disabled) { border-color: #24666b; }
+.ov-link-head { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 8px; font-size: 13.5px; font-weight: 700; }
+.ov-link-head::after { content: ''; margin-left: auto; width: 7px; height: 7px; border: solid #9aadaf; border-width: 1.6px 1.6px 0 0; transform: rotate(45deg); }
+.ov-link .uv-ico { width: 34px; height: 34px; border-radius: 9px; }
+.ov-link b { font-size: 18px; font-weight: 800; }
+.ov-link small { font-size: 12px; font-weight: 500; color: #2f9e58; }
+.ov-link small.warn { color: #c8473c; }
+.ov-link small.muted { color: #6f8487; }
+.ov-track { width: 100%; font-size: 13.5px; }
+.ov-track th { padding: 10px 14px; background: #f3f8f8; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #1b4f53; border-bottom: 1px solid #dde7e8; }
+.ov-track th small { display: block; font-size: 9.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #6f8487; }
+.ov-track td { padding: 10px 14px; border-bottom: 1px solid #edf2f2; }
+.ov-track td b, .bi-raw b { display: block; font-weight: 700; color: #17373b; }
+.ov-track td small { font-size: 11.5px; color: #6f8487; }
+.ov-track .c { text-align: center; width: 92px; }
+.ov-track .e { text-align: right; }
+.ov-dot { display: inline-block; width: 20px; height: 20px; border-radius: 50%; vertical-align: middle; background: #2f9e58; }
+.ov-dot[data-s='rejected'] { background: #c8473c; }
+.ov-dot[data-s='open'] { background: #e0a020; }
+.ov-dot[data-s='none'] { width: 12px; height: 2.5px; border-radius: 1px; background: #d5dfe0; }
+.ov-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; padding: 12px 20px; font-size: 12.5px; color: #3d5559; }
+@media (max-width: 991.98px) { .ov-links { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

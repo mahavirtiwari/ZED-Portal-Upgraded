@@ -66,10 +66,10 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="CANCEL" (click)="close()" />
+              <input type="button" class="btn btn-default" value="Cancel" (click)="close()" />
               <!-- REJECT is the final destructive confirmation: solid red once it can be sent. -->
               <input type="button" class="btn" [class.btn-primary]="canSubmit() && d !== 'reject'" [class.btn-danger]="canSubmit() && d === 'reject'" [class.btn-default]="!canSubmit()"
-                [value]="d === 'reject' ? 'REJECT' : 'SUBMIT'" [disabled]="!canSubmit() || busy()" (click)="submit()" />
+                [value]="d === 'reject' ? 'Reject' : 'Submit'" [disabled]="!canSubmit() || busy()" (click)="submit()" />
             </div>
           </div>
         </div>
@@ -193,8 +193,8 @@ export interface RemarksTarget {
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="CANCEL" (click)="closed.emit()" />
-              <input type="button" class="btn btn-primary" value="UPDATE" [disabled]="busy()" (click)="save(tg)" />
+              <input type="button" class="btn btn-default" value="Cancel" (click)="closed.emit()" />
+              <input type="button" class="btn btn-primary" value="Update" [disabled]="busy()" (click)="save(tg)" />
             </div>
           </div>
         </div>

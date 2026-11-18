@@ -178,7 +178,8 @@ describe('Quality observations (2026-11-16)', () => {
     await settle(f);
     const reopen = () => [...el.querySelectorAll<HTMLButtonElement>('[data-qo="101"] button')].find((b) => b.textContent!.trim() === 'Reopen')!;
     expect(reopen().disabled).toBe(true);
-    const box = el.querySelector<HTMLTextAreaElement>('[data-qo="101"] textarea')!;
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the reopen reason is a single-line field (staff-14a).
+    const box = el.querySelector<HTMLInputElement>('[data-qo="101"] input.qo-note')!;
     box.value = 'Location stamp still missing.';
     box.dispatchEvent(new Event('input'));
     await settle(f);
@@ -229,7 +230,9 @@ describe('Quality observations (2026-11-16)', () => {
     await settle(f);
     expect(el.querySelector('[data-qo-tiles]')!.textContent).toContain('3 days');
     const cells = [...el.querySelectorAll('[data-qo-rank="Assessment agencies"] tbody tr td')].map((td) => td.textContent!.replace(/\s+/g, ' ').trim());
-    expect(cells).toEqual(['1', 'Acme AG1', '2', '1', '1', '1 / 2 / 0', '1', '10 h', '3 days', '3.5']);
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-19's eight columns; the average times on the score's tooltip.
+    expect(cells).toEqual(['1', 'Acme AG1', '2', '1', '1', '1 / 2 / 0', '1', '3.5']);
+    expect(el.querySelector('[data-qo-rank="Assessment agencies"] td.qo-big')!.getAttribute('title')).toBe('Avg. reply 10 h · avg. close 3 days');
     expect(el.querySelector('[data-qo-rank="Assessors"]')!.textContent).toContain('R Sharma');
     // The open count is coloured; the category is a bar with its major / critical share; the scoring rule has its card.
     expect(el.querySelector('[data-qo-rank="Assessment agencies"] .qo-open.on')!.textContent!.trim()).toBe('1');

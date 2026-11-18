@@ -16,9 +16,15 @@ export interface StaffDocument {
   downloadUrl: string | null;
   videoUrl: string | null;
   createdDate: string | null;
+  /** The file's name (2026-11-18), for its type ("PDF"); absent from older APIs. */
+  fileName?: string | null;
 }
 
-type DocType = 'all' | 'file' | 'video';
+type DocKind = 'file' | 'video' | 'link';
+type DocType = 'all' | DocKind;
+
+/** A link the Admin entered is a video when it points to a video site or a video file; any other page is a link. */
+const VIDEO_URL = /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i;
 
 /**
  * Documents (new in V4): the documents and videos the Admin gave to this account type (Admin → Documents/Videos;
@@ -26,6 +32,10 @@ type DocType = 'all' | 'file' | 'video';
  * <p>2026-11-17 (approved redesign): one row per document with its type, description and date, and a type filter with
  * counts beside the search. Only the types the API has (files and videos); the design's "Links" filter and the file size
  * are not shown: the API has no link type and returns no size.</p>
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-18 — the search icon on the left, the chips without a
+ * "Type" label and with "Links" (a link that is not a video site or video file), the badge with the real type (PDF, DOCX, VIDEO,
+ * LINK; from the file name), the meta "PDF · Added 10 Nov 2026" / "Video" / "Opens in a new tab" (the API has no size), the
+ * 14.5px dark title, and 130×36 grey buttons with icons: Download, Watch, Open.</p>
  */
 @Component({
   selector: 'zed-staff-role-documents',
@@ -38,25 +48,40 @@ type DocType = 'all' | 'file' | 'video';
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     <div class="sd-bar">
-      <input class="form-control sd-q" type="search" placeholder="Search documents" aria-label="Search documents" maxlength="100"
-             [ngModel]="search()" (ngModelChange)="search.set($event)" />
-      <zed-chip-filter label="Type" [chips]="chips()" [value]="type()" (valueChange)="type.set($any($event))" />
+      <label class="sd-q">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+        <input class="form-control" type="search" placeholder="Search documents" aria-label="Search documents" maxlength="100"
+               [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </label>
+      <zed-chip-filter class="sd-chips" label="Type" [chips]="chips()" [value]="type()" (valueChange)="type.set($any($event))" />
     </div>
     <div class="sd-list">
       @for (d of shown(); track d.id) {
+        @let k = kindOf(d);
         <div class="sd-item">
-          <span class="sd-kind" [class.video]="!!d.videoUrl" aria-hidden="true">{{ d.videoUrl ? 'Video' : 'File' }}</span>
+          <span class="sd-kind" [class.is-video]="k === 'video'" [class.is-link]="k === 'link'" aria-hidden="true">{{ badge(d) }}</span>
           <div class="sd-main">
             <strong>{{ d.documentName }}</strong>
             @if (d.description) { <p class="mb-0">{{ d.description }}</p> }
           </div>
           <span class="sd-meta">
-            @if (d.videoUrl) { Video · opens in a new tab } @else { File@if (d.createdDate) { · Added {{ d.createdDate | date: 'dd MMM yyyy' }}} }
+            @switch (k) {
+              @case ('video') { Video }
+              @case ('link') { Opens in a new tab }
+              @default { {{ badge(d) }}@if (d.createdDate) { · Added {{ d.createdDate | date: 'dd MMM yyyy' }}} }
+            }
           </span>
-          @if (d.videoUrl) {
-            <a class="btn sd-btn" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">▷</span> Watch</a>
+          @if (k !== 'file') {
+            <a class="btn sd-btn" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">
+              @if (k === 'video') {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l13 8-13 8V4z" /></svg>Watch
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>Open
+              }
+            </a>
           } @else if (d.downloadUrl) {
-            <a class="btn sd-btn" [href]="d.downloadUrl" target="_blank" rel="noopener"><span aria-hidden="true">↓</span> Download</a>
+            <a class="btn sd-btn" [href]="d.downloadUrl" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download</a>
           }
         </div>
       } @empty {
@@ -65,24 +90,31 @@ type DocType = 'all' | 'file' | 'video';
     </div>
   `,
   styles: `
-    .sd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
-    .sd-q { flex: 0 1 400px; min-width: 220px; }
-    .sd-list { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; overflow: hidden; }
-    .sd-item { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; padding: 16px 20px; }
-    .sd-item + .sd-item { border-top: 1px solid #e6eeee; }
-    .sd-kind { flex: none; width: 58px; padding: 9px 0; border-radius: 8px; text-align: center; font-size: 11.5px; font-weight: 800; text-transform: uppercase;
-      letter-spacing: .4px; background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 60%, #fff); color: var(--zt-dark, #1f5c61); }
-    .sd-kind.video { background: #fdf1dc; color: #a86a12; }
+    .sd-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 20px; }
+    .sd-q { position: relative; flex: 0 1 400px; min-width: 220px; margin: 0; }
+    svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .sd-q svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); color: #6f8487; pointer-events: none; }
+    .sd-q .form-control { width: 100%; height: 38px; padding: 0 12px 0 36px; border: 1.2px solid #b9cdcf; border-radius: 9px; font-size: 13px; background-image: none; }
+    .sd-chips ::ng-deep .cf-label { display: none; }
+    .sd-list { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); overflow: hidden; }
+    .sd-item { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; min-height: 78px; padding: 12px 24px; }
+    .sd-item + .sd-item { border-top: 1px solid #dde7e8; }
+    .sd-kind { flex: none; width: 58px; height: 38px; display: grid; place-items: center; border-radius: 8px; font-size: 10.5px; font-weight: 800;
+      text-transform: uppercase; background: #e6f2f3; color: #24666b; }
+    .sd-kind.is-video { background: #fdf2dc; color: #9a5f06; }
+    .sd-kind.is-link { background: #ecf0f0; color: #6f8487; }
     .sd-main { flex: 1 1 260px; min-width: 0; }
-    .sd-main strong { display: block; color: var(--zt-ink, #173f44); font-size: 15px; overflow-wrap: anywhere; }
-    .sd-main p { font-size: 13.5px; color: #3d5254; }
-    .sd-meta { font-size: 12.5px; color: #5f6f70; white-space: nowrap; }
-    .sd-btn { min-width: 128px; background: #eef4f4; color: var(--zt-ink, #173f44); font-weight: 700; border-radius: 8px; }
-    .sd-btn:hover { background: var(--zt-soft, #d4ebe6); }
+    .sd-main strong { display: block; color: #17373b; font-size: 14.5px; font-weight: 700; overflow-wrap: anywhere; }
+    .sd-main p { margin-top: 2px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .sd-meta { font-size: 12px; font-weight: 500; color: #6f8487; white-space: nowrap; }
+    .sd-btn { width: 130px; min-height: 36px; gap: 6px; background: #e7eeee; border: 1px solid #e7eeee; color: #17373b; font-size: 13px; font-weight: 700; border-radius: 9px; }
+    .sd-btn svg { width: 16px; height: 16px; }
+    .sd-btn:hover { background: #d9e3e3; border-color: #d9e3e3; color: #10292c; }
     .sd-list .no-data { margin: 0; border: 0; }
     @media (max-width: 575.98px) {
-      .sd-meta { white-space: normal; flex: 1 1 100%; padding-left: 76px; }
-      .sd-btn { margin-left: 76px; }
+      .sd-item { padding: 12px 16px; }
+      .sd-meta { white-space: normal; flex: 1 1 100%; padding-left: 78px; }
+      .sd-btn { margin-left: 78px; }
     }
   `,
 })
@@ -97,20 +129,35 @@ export class StaffRoleDocumentsPage {
     const q = this.search().trim().toLowerCase();
     return this.documents().filter((d) => !q || d.documentName.toLowerCase().includes(q) || (d.description ?? '').toLowerCase().includes(q));
   });
-  /** All / Files / Videos, with the counts of the documents that match the search. */
+  /** All / Files / Videos / Links, with the counts of the documents that match the search. */
   protected readonly chips = computed<FilterChip[]>(() => {
     const list = this.matching();
-    const videos = list.filter((d) => !!d.videoUrl).length;
+    const count = (k: DocKind) => list.filter((d) => this.kindOf(d) === k).length;
     return [
       { key: 'all', label: 'All', count: list.length },
-      { key: 'file', label: 'Files', count: list.length - videos },
-      { key: 'video', label: 'Videos', count: videos },
+      { key: 'file', label: 'Files', count: count('file') },
+      { key: 'video', label: 'Videos', count: count('video') },
+      { key: 'link', label: 'Links', count: count('link') },
     ];
   });
   protected readonly shown = computed(() => {
     const t = this.type();
-    return this.matching().filter((d) => t === 'all' || (t === 'video') === !!d.videoUrl);
+    return this.matching().filter((d) => t === 'all' || this.kindOf(d) === t);
   });
+
+  /** A file, a video (a video site or file) or a link (any other page). */
+  protected kindOf(d: StaffDocument): DocKind {
+    if (!d.videoUrl) return 'file';
+    return VIDEO_URL.test(d.videoUrl) ? 'video' : 'link';
+  }
+
+  /** The badge: the file's type from its name ("PDF", "DOCX"), "Video" or "Link"; "File" when the name has no type. */
+  protected badge(d: StaffDocument): string {
+    const k = this.kindOf(d);
+    if (k !== 'file') return k === 'video' ? 'Video' : 'Link';
+    const ext = /\.([a-z0-9]{2,5})$/i.exec((d.fileName ?? '').trim())?.[1];
+    return ext ? ext.toUpperCase() : 'File';
+  }
   protected readonly loaded = signal(false);
   protected readonly error = signal('');
 

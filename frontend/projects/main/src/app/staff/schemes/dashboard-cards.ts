@@ -213,8 +213,8 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">UPDATE</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">Update</button>
               </div>
             </form>
           </div>

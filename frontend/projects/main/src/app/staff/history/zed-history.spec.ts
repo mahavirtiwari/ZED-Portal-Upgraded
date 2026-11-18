@@ -131,7 +131,12 @@ describe('ZedHistoryPage', () => {
     // No profile: the header shows the ZED ID.
     expect(el.querySelector('[data-unit] h3')!.textContent).toContain('ZEDMSME000001');
     const chips = [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')];
-    expect(chips.map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All 4', 'MSME 1', 'Agency 1', 'Assessor 1', 'ZED 0']);
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the chips add up; the untagged line has the "Other" chip.
+    expect(chips.map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All 4', 'MSME 1', 'Agency 1', 'Assessor 1', 'ZED 0', 'Other 1']);
+    chips[5].click();
+    await settle();
+    expect(el.querySelectorAll('.tl-item').length).toBe(1);
+    expect(el.querySelector('.tl-item')!.hasAttribute('data-actor')).toBe(false);
     chips[3].click();
     await settle();
     expect([...el.querySelectorAll('.tl-item')].map((i) => i.getAttribute('data-actor'))).toEqual(['Assessor']);
@@ -150,6 +155,14 @@ describe('ZedHistoryPage', () => {
     await settle();
     http.expectOne('/api/staff/history/ZEDMSME000001').flush([]);
     await settle();
+  });
+
+  // 2026-11-18: "Recent:" only when a recent ZED ID other than the one shown is there.
+  it('hides "Recent:" when the only recent ZED ID is the one shown', async () => {
+    await search('ZEDMSME000003');
+    http.expectOne('/api/staff/history/ZEDMSME000003').flush([]);
+    await settle();
+    expect(el.querySelector('.hs-recent')).toBeNull();
   });
 
   it('exports the events through the staff export', async () => {

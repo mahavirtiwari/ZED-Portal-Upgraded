@@ -60,6 +60,11 @@ export interface IncentiveApplied {
  * check" only checks the file (upload/check) and opens the check results: rows read, rows ready to save, rows with errors
  * (row, column, value, problem) and a CSV of the rejected rows. "Save N valid rows" sends the same file to upload/apply,
  * which checks it again and saves only its valid rows. The design's "Recent uploads" is not shown: no upload log is kept.</p>
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-17 and staff-popup-10 — an 856px column and a 420px
+ * rail, cards with a 30px icon tile and a divided head, grey column chips, the upload-tray icon, "You are here" under the current
+ * step, the template button with its download icon; the check results 900px wide with a white head (icon tile, 32px close), the
+ * three tiles, the errors table in its card and a divided footer. The rows with errors download as .xlsx (to correct and upload
+ * again).</p>
  */
 @Component({
   selector: 'zed-staff-incentive-upload',
@@ -67,19 +72,20 @@ export interface IncentiveApplied {
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs" title="Incentives Upload" subtitle="Upload the API incentives workbook; every row is checked before anything is saved.">
-      <a class="btn btn-outline-primary" href="/api/staff/schemes/incentives/template">Download template</a>
+      <a class="btn btn-outline-primary" href="/api/staff/schemes/incentives/template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download template</a>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
     }
     <div class="iu-grid">
       <div class="iu-main">
-        <zed-step-tracker [steps]="steps" [current]="step()" label="Upload steps" />
+        <zed-step-tracker [steps]="steps()" [current]="step()" label="Upload steps" />
         @if (!saved()) {
           <div class="zed-card iu-card">
             <label class="iu-drop" for="incFile" [class.over]="dragging()" (dragover)="over($event)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
               <input id="incFile" type="file" class="visually-hidden" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="pick($event)" />
-              <span class="iu-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" /></svg></span>
+              <span class="iu-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" /></svg></span>
               @if (file(); as f) {
                 <b>{{ f.name }}</b><small>{{ f.size / 1024 | number: '1.0-0' }} KB · choose another file or drop it here</small>
               } @else {
@@ -125,32 +131,32 @@ export interface IncentiveApplied {
             <button type="button" class="btn btn-default" (click)="reset()">Upload another file</button>
           </div>
         }
-        <div class="zed-card iu-card">
-          <h3 class="iu-h">Columns the workbook must have</h3>
-          <div class="iu-cols">@for (c of columns; track c) { <span>{{ c }}</span> }</div>
-          <p class="sub mb-0">Dates as dd-mm-yyyy or Excel dates.</p>
-        </div>
+        <section class="zed-card iu-box" aria-labelledby="iu-cols-h">
+          <h3 class="iu-h" id="iu-cols-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg></span>Columns the workbook must have</h3>
+          <div class="iu-body">
+            <div class="iu-cols">@for (c of columns; track c) { <span>{{ c }}</span> }</div>
+            <p class="sub mb-0">Dates as dd-mm-yyyy or Excel dates.</p>
+          </div>
+        </section>
       </div>
-      <aside class="zed-card iu-card iu-side">
-        <h3 class="iu-h">Before you upload</h3>
-        <ul class="iu-tips">
+      <aside class="zed-card iu-box iu-side" aria-labelledby="iu-tips-h">
+        <h3 class="iu-h" id="iu-tips-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" /></svg></span>Before you upload</h3>
+        <ul class="iu-body iu-tips">
           <li>Use the latest template; column names must match exactly.</li>
           <li>One incentive per row, with the unit's Udyam number.</li>
           <li>Amounts as numbers, without commas or the rupee sign.</li>
-          <li>Rows with errors are not saved; rows uploaded before are skipped.</li>
         </ul>
       </aside>
     </div>
 
     @if (result(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="iuTitle">
-        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable iu-dialog">
           <div class="modal-content iu-pop">
-            <div class="modal-header">
-              <div class="w-100 d-flex justify-content-between align-items-start gap-2">
-                <div><h3 class="registration-title m-0" id="iuTitle">Check results</h3><small class="sub">{{ c.fileName }} · checked {{ checkedAt() | date: 'dd MMM yyyy, HH:mm' }}</small></div>
-                <button type="button" class="btn btn-link p-0 iu-x" aria-label="Close" (click)="cancel()">×</button>
-              </div>
+            <div class="iu-pop-head">
+              <span class="iu-tile iu-tile-lg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg></span>
+              <div class="iu-pop-t"><h3 class="m-0" id="iuTitle">Check results</h3><small>{{ c.fileName }} · uploaded {{ checkedAt() | date: 'dd MMM yyyy, HH:mm' }}</small></div>
+              <button type="button" class="iu-x" aria-label="Close" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div class="modal-body">
               <div class="iu-tiles">
@@ -164,9 +170,9 @@ export interface IncentiveApplied {
               @if (c.errors.length) {
                 <div class="iu-errhead">
                   <span>Rows with errors</span>
-                  <button type="button" class="btn btn-link p-0" (click)="downloadRejected()">Download the {{ c.invalid | number }} rows (.csv)</button>
+                  <button type="button" class="btn btn-link p-0" (click)="downloadRejected()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download the {{ c.invalid | number }} rows (.xlsx)</button>
                 </div>
-                <div class="list-card">
+                <div class="list-card iu-errs">
                   <div class="table-responsive">
                     <table class="table table-zed">
                       <thead><tr><th>Row</th><th>Column</th><th>Value</th><th>Problem</th></tr></thead>
@@ -185,12 +191,12 @@ export interface IncentiveApplied {
               }
               @if (applyError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ applyError() }}</div> }
             </div>
-            <div class="modal-footer justify-content-between">
+            <div class="iu-pop-foot">
               <span class="sub">Nothing is saved until you confirm.</span>
               <div class="d-flex gap-2">
                 <button type="button" class="btn btn-default" (click)="cancel()">Cancel upload</button>
                 <button type="button" class="btn btn-primary" [disabled]="busy() || !c.valid" (click)="apply()">
-                  {{ busy() ? 'Saving…' : 'Save ' + (c.valid | number) + ' valid row' + (c.valid === 1 ? '' : 's') }}</button>
+                  {{ busy() ? 'Saving…' : 'Save ' + (c.valid | number) + ' row' + (c.valid === 1 ? '' : 's') }}</button>
               </div>
             </div>
           </div>
@@ -200,42 +206,69 @@ export interface IncentiveApplied {
     }
   `,
   styles: `
-    .iu-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+    .iu-grid { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; align-items: start; }
     .iu-main { display: grid; gap: 16px; min-width: 0; }
-    .iu-card { padding: 18px 20px; margin: 0; }
-    .iu-drop { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 16px; margin: 0; border: 2px dashed var(--zt-mid2, #2a8a8c);
-      border-radius: 12px; background: #fbfdfd; text-align: center; cursor: pointer; }
-    .iu-drop.over, .iu-drop:hover { background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 40%, #fff); }
-    .iu-drop:focus-within { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
-    .iu-drop b { color: var(--zt-ink, #173f44); overflow-wrap: anywhere; }
-    .iu-drop small { color: #5f6f70; }
-    .iu-icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--zt-soft, #d4ebe6) 70%, #fff); }
-    .iu-icon svg { width: 20px; height: 20px; fill: none; stroke: var(--zt-dark, #1f5c61); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .iu-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; }
-    .iu-h { font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); margin: 0 0 12px; }
-    .iu-cols { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-    .iu-cols span { padding: 4px 10px; border-radius: 6px; background: #eef4f4; color: var(--zt-ink, #173f44); font-size: 13px; }
-    .iu-tips { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; font-size: 13.5px; }
-    .iu-tips li { position: relative; padding-left: 26px; }
-    .iu-tips li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 50%; background: #2e9e57; color: #fff;
+    .iu-card { padding: 24px; margin: 0; }
+    .iu-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 150px; justify-content: center; padding: 20px 16px; margin: 0;
+      border: 1.5px dashed #3ba3ad; border-radius: 12px; background: #f6fbfb; text-align: center; cursor: pointer; }
+    .iu-drop.over, .iu-drop:hover { background: #ecf6f6; }
+    .iu-drop:focus-within { outline: 2px solid #3ba3ad; outline-offset: 2px; }
+    .iu-drop b { margin-top: 8px; font-size: 15px; color: #17373b; overflow-wrap: anywhere; }
+    .iu-drop small { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .iu-icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; }
+    svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .iu-icon svg { width: 20px; height: 20px; color: #24666b; }
+    .iu-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 16px; }
+    .iu-foot .btn { min-width: 180px; min-height: 42px; }
+    .iu-box { padding: 0; margin: 0; overflow: hidden; }
+    .iu-h { display: flex; align-items: center; gap: 12px; margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
+    .iu-tile { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
+    .iu-tile svg { width: 16px; height: 16px; }
+    .iu-body { padding: 16px 24px 20px; }
+    .iu-cols { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .iu-cols span { padding: 4px 11px; border-radius: 6px; background: #eef3f3; color: #17373b; font-size: 12px; font-weight: 600; line-height: 18px; }
+    .iu-tips { list-style: none; margin: 0; display: grid; gap: 12px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .iu-tips li { position: relative; padding-left: 34px; }
+    .iu-tips li::before { content: '✓'; position: absolute; left: 0; top: 0; width: 18px; height: 18px; border-radius: 50%; background: #2f9e58; color: #fff;
       font-size: 11px; font-weight: 700; display: grid; place-items: center; }
-    .sub { color: #5f6f70; font-size: 13px; }
+    .sub { color: #6f8487; font-size: 12.5px; font-weight: 500; }
     .uploaded td { font-size: 13px; white-space: nowrap; }
-    .iu-pop { border-radius: 12px; }
-    .iu-x { font-size: 24px; line-height: 1; color: #5f6f70 !important; text-decoration: none; }
-    .iu-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-    .iu-tiles > div { border: 1px solid #dfe9ea; border-radius: 10px; padding: 12px 14px; background: #f7fbfb; }
-    .iu-tiles .ok { background: #eaf6ee; border-color: #cfe8d7; }
-    .iu-tiles .bad { background: #fdeeee; border-color: #f3d3d0; }
-    .iu-tiles b { display: block; font-size: 22px; font-weight: 800; color: var(--zt-ink, #173f44); }
-    .iu-tiles .ok b { color: #1e8a4c; }
-    .iu-tiles .bad b { color: #c0392b; }
-    .iu-tiles span { font-size: 13px; color: #5f6f70; }
-    .iu-errhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin: 6px 0 8px; font-size: 12px;
-      font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--zt-ink, #173f44); }
-    .iu-errhead .btn-link { font-size: 13px; font-weight: 700; text-transform: none; letter-spacing: 0; }
+    .iu-dialog { max-width: 900px; }
+    .iu-pop { border: 0; border-radius: 16px; }
+    .iu-pop-head { display: flex; align-items: center; gap: 14px; padding: 20px 24px 18px; border-bottom: 1px solid #dde7e8; }
+    .iu-tile-lg { width: 40px; height: 40px; border-radius: 10px; }
+    .iu-tile-lg svg { width: 20px; height: 20px; }
+    .iu-pop-t { flex: 1; min-width: 0; }
+    .iu-pop-t h3 { font-size: 18px; font-weight: 700; color: #17373b; }
+    .iu-pop-t small { font-size: 12.5px; font-weight: 500; color: #6f8487; overflow-wrap: anywhere; }
+    .iu-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #eef3f3; color: #17373b; display: grid; place-items: center; }
+    .iu-x svg { width: 16px; height: 16px; }
+    .iu-x:hover { background: #e1eaea; }
+    .iu-pop .modal-body { padding: 20px 28px; }
+    .iu-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .iu-tiles > div { border: 1px solid #dde7e8; border-radius: 12px; padding: 14px 18px; background: #f6fbfb; }
+    .iu-tiles .ok { background: #e5f5ea; }
+    .iu-tiles .bad { background: #fbe9e7; }
+    .iu-tiles b { display: block; font-size: 22px; font-weight: 800; color: #24666b; line-height: 1.3; }
+    .iu-tiles .ok b { color: #2f9e58; }
+    .iu-tiles .bad b { color: #c8473c; }
+    .iu-tiles span { font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .iu-errhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin: 4px 0 8px; font-size: 10.5px;
+      font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #6f8487; }
+    .iu-errhead .btn-link { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 0; font-size: 12.5px; font-weight: 700; color: #24666b;
+      text-transform: none; letter-spacing: 0; text-decoration: none; }
+    .iu-errhead .btn-link svg { width: 14px; height: 14px; }
+    .iu-errs { border-radius: 14px; }
+    .iu-errs td { font-size: 12.5px; color: #3d5559; }
+    .iu-errs td:first-child { width: 80px; color: #17373b; }
+    .iu-errs td:nth-child(2) { width: 190px; }
+    .iu-errs td:nth-child(3) { width: 220px; font-size: 11.5px; color: #6f8487; }
+    .iu-pop-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 28px; border-top: 1px solid #dde7e8; }
+    .iu-pop-foot .btn { min-height: 40px; min-width: 150px; }
+    .iu-pop-foot .btn-primary { min-width: 180px; }
+    @media (max-width: 1199.98px) { .iu-grid { grid-template-columns: minmax(0, 1fr) 340px; } }
     @media (max-width: 991.98px) { .iu-grid { grid-template-columns: minmax(0, 1fr); } }
-    @media (max-width: 575.98px) { .iu-tiles b { font-size: 18px; } .iu-tiles { gap: 8px; } }
+    @media (max-width: 575.98px) { .iu-tiles b { font-size: 18px; } .iu-tiles { gap: 8px; } .iu-pop .modal-body, .iu-pop-foot { padding-left: 16px; padding-right: 16px; } }
   `,
 })
 export class IncentiveUploadPage {
@@ -245,11 +278,15 @@ export class IncentiveUploadPage {
 
   protected readonly crumbs = staffCrumbs({ label: 'Upload API Incentives' });
   protected readonly columns = COLUMNS;
-  protected readonly steps: TrackerStep[] = [
-    { label: 'Choose the workbook', note: 'Upload' },
-    { label: 'Check every row', note: 'Errors listed by row' },
-    { label: 'Save', note: 'Only valid rows' },
-  ];
+  /** 2026-11-18: "You are here" under the current step (staff-17). */
+  protected readonly steps = computed<TrackerStep[]>(() => {
+    const now = this.step();
+    return [
+      { label: 'Choose the workbook', note: now === 0 ? 'You are here' : 'The .xlsx file' },
+      { label: 'Check every row', note: now === 1 ? 'You are here' : 'Errors listed by row' },
+      { label: 'Save', note: now === 3 ? 'Saved' : 'Only valid rows' },
+    ];
+  });
   protected readonly file = signal<File | null>(null);
   protected readonly dragging = signal(false);
   protected readonly busy = signal(false);
@@ -336,15 +373,21 @@ export class IncentiveUploadPage {
   }
 
   /** The rejected rows as written, with their problems, to correct and upload again. */
-  protected downloadRejected(): void {
+  protected async downloadRejected(): Promise<void> {
     const c = this.result();
     if (!c) return;
     const base = c.fileName.replace(/\.xlsx$/i, '') || 'incentives';
-    this.exporter.csv(`${base}-rows-with-errors`, {
-      name: 'Rows with errors',
-      columns: ['Row', ...c.columns, 'Problems'],
-      rows: c.rejected.map((r) => [r.row, ...r.cells, r.problems]),
-    });
+    this.applyError.set('');
+    try {
+      // 2026-11-18: as .xlsx (staff-popup-10), the format the upload takes back once corrected.
+      await this.exporter.xlsx(`${base}-rows-with-errors`, [{
+        name: 'Rows with errors',
+        columns: ['Row', ...c.columns, 'Problems'],
+        rows: c.rejected.map((r) => [r.row, ...r.cells, r.problems]),
+      }]);
+    } catch (err) {
+      this.applyError.set(apiErrorMessage(err));
+    }
   }
 
   protected reset(): void {

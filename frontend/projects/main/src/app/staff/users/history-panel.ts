@@ -27,6 +27,9 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
  * visible behind it: each entry says what changed, who did it and why, with a CSV download. Today the portal records the
  * blocks and unblocks of a login (UserBlockHistory); allotments, reset links and profile edits are not kept per login, so
  * the panel shows the status entries only (the type filters of the design appear once there is more than one type).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-08 values: 520px, 19px title, a grey square close
+ * button, 6px coloured dots on a 2px line, 14 / 12.5 / 11.5px entry lines, and a white footer with a top line (a div, not a
+ * <code>footer</code>: the site's global footer rule painted it dark): Download (CSV) outlined with its icon, Close grey.
  */
 @Component({
   selector: 'zed-user-history',
@@ -39,7 +42,7 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
           <h3 id="hp-title">History</h3>
           <small>{{ subtitle() }}</small>
         </div>
-        <button type="button" class="hp-x" aria-label="Close history" (click)="closed.emit()">×</button>
+        <button type="button" class="hp-x" aria-label="Close history" (click)="closed.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
       </header>
       <div class="hp-body">
         @if (error()) {
@@ -61,33 +64,38 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
           <p class="hp-note">Blocks and unblocks are recorded with their reason. Allotments, reset links and profile edits are not kept in this history.</p>
         }
       </div>
-      <footer class="hp-foot">
-        <button type="button" class="btn btn-outline-primary" [disabled]="!items()?.length" (click)="download()">Download (CSV)</button>
-        <button type="button" class="btn btn-ph hp-close" (click)="closed.emit()">Close</button>
-      </footer>
+      <div class="hp-foot">
+        <button type="button" class="btn btn-outline-primary hp-csv" [disabled]="!items()?.length" (click)="download()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3" /></svg>Download (CSV)</button>
+        <button type="button" class="btn btn-default hp-close" (click)="closed.emit()">Close</button>
+      </div>
     </aside>
   `,
   styles: `
-    .hp-back { position: fixed; inset: 0; z-index: 1065; background: rgba(23, 47, 50, 0.45); }
+    .hp-back { position: fixed; inset: 0; z-index: 1065; background: rgba(15, 35, 38, 0.56); }
     .hp { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1066; width: min(520px, 100vw); display: flex; flex-direction: column; background: #fff;
       box-shadow: -12px 0 32px rgba(16, 61, 64, 0.2); }
-    .hp-head { display: flex; justify-content: space-between; gap: 12px; padding: 22px 24px 14px; border-bottom: 1px solid #e6eeee; }
-    .hp-head h3 { margin: 0; font-size: 20px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .hp-head small { color: #5f6f70; overflow-wrap: anywhere; }
-    .hp-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #eef3f3; font-size: 22px; line-height: 1; color: var(--zt-ink, #173f44); }
-    .hp-body { flex: 1; overflow: auto; padding: 18px 24px; }
-    .hp-list { list-style: none; margin: 0; padding: 0 0 0 22px; border-left: 2px solid #e6eeee; }
-    .hp-list li { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 0 18px 6px; font-size: 13.5px; color: #3d5254; overflow-wrap: anywhere; }
-    .hp-list li::before { content: ''; position: absolute; left: -29px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--zt-mid2, #2a8a8c);
-      box-shadow: 0 0 0 3px #fff; }
-    .hp-list li.is-good::before { background: #2e9e57; }
-    .hp-list li.is-bad::before { background: #c0392b; }
-    .hp-list strong { color: var(--zt-ink, #173f44); font-size: 14.5px; }
-    .hp-list small { color: #5f6f70; font-size: 12.5px; }
+    .hp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 24px 28px 20px; border-bottom: 1px solid #dde7e8; }
+    .hp-head h3 { margin: 0; font-size: 19px; font-weight: 700; color: #17373b; }
+    .hp-head small { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 500; color: #6f8487; overflow-wrap: anywhere; }
+    .hp-x { flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; background: #eef3f3; color: #17373b; }
+    .hp-x svg, .hp-csv svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .hp-x svg { width: 16px; height: 16px; }
+    .hp-body { flex: 1; overflow: auto; padding: 24px 28px; }
+    .hp-list { list-style: none; margin: 0 0 0 15px; padding: 0 0 0 21px; border-left: 2px solid #dde7e8; }
+    .hp-list li { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 0 0 22px; font-size: 12.5px; font-weight: 500; color: #3d5559; overflow-wrap: anywhere; }
+    .hp-list li::before { content: ''; position: absolute; left: -29px; top: 3px; width: 12px; height: 12px; border-radius: 50%; background: #3ba3ad; box-shadow: 0 0 0 2px #fff; }
+    .hp-list li.is-good::before { background: #2f9e58; }
+    .hp-list li.is-bad::before { background: #c8473c; }
+    .hp-list strong { font-size: 14px; font-weight: 700; color: #17373b; }
+    .hp-list small { font-size: 11.5px; color: #6f8487; }
     .hp-list li.hp-none::before { display: none; }
-    .hp-none { color: #5f6f70; }
-    .hp-note { margin: 4px 0 0; font-size: 12.5px; color: #5f6f70; }
-    .hp-foot { display: flex; justify-content: space-between; gap: 12px; padding: 14px 24px; border-top: 1px solid #e6eeee; }
+    .hp-none { color: #6f8487; }
+    .hp-note { margin: 4px 0 0; font-size: 12px; font-weight: 500; color: #6f8487; }
+    .hp-foot { flex: none; display: flex; justify-content: space-between; gap: 12px; padding: 14px 28px; border-top: 1px solid #dde7e8; background: #fff; color: inherit; }
+    .hp-foot .btn { min-height: 40px; }
+    .hp-csv { min-width: 180px; }
+    .hp-csv svg { width: 16px; height: 16px; }
+    .hp-close { min-width: 100px; }
   `,
 })
 export class UserHistoryPanel {

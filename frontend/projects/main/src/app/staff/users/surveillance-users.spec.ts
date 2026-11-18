@@ -196,7 +196,8 @@ describe('surveillance agencies and assessors', () => {
     const { fixture, http, el } = await agencies();
     await choose(fixture, el.querySelector('tbody tr')!, 'Send reset link');
     expect(el.querySelector('zed-confirm-dialog h3')!.textContent).toContain('Send password reset link?');
-    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('Acme (ZEDAA0001) gets a link to set a new password at a•••••@acme.test');
+    const person = el.querySelector('zed-confirm-dialog .cd-person')!.textContent!;
+    for (const part of ['Acme', 'Surveillance agency · ZEDAA0001', 'a•••••@acme.test']) expect(person).toContain(part);
     await submit(fixture);
     http.expectOne('/api/staff/surveillance-users/agencies/ZEDAA0001/password-reset').flush({ message: 'Link sent (s***@acme.test).' });
     await settle(fixture);

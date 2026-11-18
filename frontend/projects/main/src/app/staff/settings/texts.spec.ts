@@ -61,7 +61,7 @@ describe('TextsPage', () => {
     button('{{Fee}}', dialog).click();
     (dialog.querySelector('#textEnabled') as HTMLInputElement).click();
     await settle();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/msme.payment.disclaimer`);
     expect(put.request.body).toEqual({ enabled: false, bodyHtml: '<p>Standard fee Rs. {{Fee}}</p>{{Fee}}' });
@@ -92,7 +92,7 @@ describe('TextsPage', () => {
     expect(body.selectionStart).toBe(at + '{{Fee}}'.length);
     expect(dialog.querySelector('.preview p')!.textContent).toBe('Fee: Rs. [Fee]');
 
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/msme.payment.disclaimer`);
     // What is saved keeps the fields; only the preview fills them.
@@ -131,7 +131,7 @@ describe('TextsPage', () => {
     button('Desktop', dialog).click();
     await settle();
     expect(dialog.querySelector('.page-frame')!.classList).not.toContain('phone');
-    button('CANCEL', dialog).click();
+    button('Cancel', dialog).click();
     await settle();
   });
 

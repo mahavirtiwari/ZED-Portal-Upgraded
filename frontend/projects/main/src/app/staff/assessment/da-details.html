@@ -1,8 +1,10 @@
-<!-- 2026-11-14 (approved frame A): the shared header; the unit and its level in the title. 2026-11-17 (design 14): the result beside it. -->
+<!-- 2026-11-14 (approved frame A): the shared header; the unit and its level in the title. 2026-11-17 (design 14): the result beside it.
+     2026-11-18 (the user: staff pages 'not aligned with SVG files', the new staff-14 series 14a-14d): Back and Refresh with 16px icons;
+     five tabs in a white card with their counts and "Desktop · assessor · agency" at the right; the NC tabs are one tab. -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
   @if (data()) { <span class="uv-chip uv-result" [class]="result().tone" data-result>{{ result().label }}</span> }
-  <button type="button" class="btn btn-ph" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
-  <button type="button" class="btn btn-ph refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  <button type="button" class="btn btn-ph uv-hb" (click)="goBack()"><zed-dash-icon name="arrow" [size]="16" class="uv-back" /> Back</button>
+  <button type="button" class="btn btn-ph uv-hb refresh-link" (click)="refresh()"><zed-dash-icon name="refresh" [size]="16" /> Refresh</button>
 </zed-page-head>
 
 @if (error()) {
@@ -24,20 +26,27 @@
     <ul class="nav nav-tabs uv-tabs" role="tablist">
       @for (id of [1, 2, 9, 3]; track id) {
         <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">{{ tabLabels[id] }}</button>
+          <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">
+            <span class="uv-tab-name">{{ tabLabels[id] }}</span>
+            @if (id === 2) { <span class="uv-tab-n">{{ basicItems }} items</span> }
+            @if (id === 3) { <span class="uv-tab-n">{{ completeCount() }} of {{ d.sections.length }}</span> }
+          </button>
         </li>
       }
-      @for (nc of ncTabs(); track nc) {
+      @if (ncTabs().length) {
         <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="tab() === nc + 3" type="button" role="tab" [attr.aria-selected]="tab() === nc + 3" (click)="tab.set(nc + 3)">NC {{ nc }}</button>
+          <button class="nav-link" [class.active]="ncTab()" type="button" role="tab" [attr.aria-selected]="ncTab()" (click)="openNc()">
+            <span class="uv-tab-name">{{ tabLabels[4] }}</span><span class="uv-tab-n">{{ ncTabs().length }} {{ ncTabs().length === 1 ? 'round' : 'rounds' }}</span>
+          </button>
         </li>
       }
+      <li class="uv-meta" role="presentation">{{ metaLine() }}</li>
     </ul>
 
     <!-- 2026-11-17 (design 14): the quality observations (and the submission checklists) in a right rail that stays while the tabs change. -->
     <div class="uv-grid" [class.uv-has-rail]="qo.shown() || cr.shown()">
     <div class="tab-content uv-main">
-      @if (tab() !== 1) {
+      @if (tab() === 9) {
         <div class="tab-title">
           <div class="numberCircle">{{ tabNumber(tab()) }}</div>
           <h4>{{ tabTitles[tab()] }}</h4>
@@ -55,27 +64,35 @@
             <div class="uv-card-head">
               <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h6M10 16h6" /></svg></span>
               <h4 id="daSummaryTitle">Assessment summary</h4>
+              @if (historyLink()) { <a class="uv-link" routerLink="/staff/history" [queryParams]="{ zedId: d.zedId }">ZED ID history</a> }
             </div>
             <dl class="uv-facts facts">
               @for (fc of summaryFacts(); track fc.label) {
                 <div class="fact" [class.wide]="fc.wide">
                   <dt>{{ fc.label }}</dt>
-                  <dd>{{ fc.value || '—' }}</dd>
+                  <dd>
+                    @if (fc.medal && fc.value) { <zed-level-medal [level]="fc.value" class="ov-medal" /> } @else { {{ fc.value || '—' }} }
+                    @if (fc.sub) { <small>{{ fc.sub }}</small> }
+                  </dd>
                 </div>
               }
               <div class="fact">
                 <dt>{{ surveillance() ? 'Surveillance location' : 'Location' }}</dt>
                 <dd class="loc">
                   @if (t(d.location, 'Latitude') || t(d.location, 'Longitude')) {
-                    <span><span class="muted">Lat</span> {{ t(d.location, 'Latitude') || '—' }}</span>
-                    <span><span class="muted">Long</span> {{ t(d.location, 'Longitude') || '—' }}</span>
+                    <span>{{ t(d.location, 'Latitude') || '—' }}, {{ t(d.location, 'Longitude') || '—' }}</span>
                   } @else {
                     <span>—</span>
                   }
                   @if (mapUrl()) {
-                    <a class="map-link" [href]="mapUrl()" target="_blank" rel="noopener">Map</a>
+                    <a class="map-link" [href]="mapUrl()" target="_blank" rel="noopener">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>Map</a>
                   }
                 </dd>
+              </div>
+              <div class="fact">
+                <dt>Result</dt>
+                <dd><span class="uv-chip" [class]="'uv-chip ' + result().tone">{{ result().label }}</span></dd>
               </div>
               @if (surveillance(); as sv) {
                 <div class="fact">
@@ -99,11 +116,36 @@
               </div>
             </dl>
           </section>
+          <!-- 2026-11-18 (staff-14a): four cards that open the other tabs, with their headline result. -->
+          <div class="ov-links">
+            <button type="button" class="ov-link" (click)="tab.set(2)">
+              <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h6M10 16h6" /></svg></span>Basic information</span>
+              <b>{{ basicItems }} items</b>
+              <small [class.warn]="basicRaisedCount()">{{ basicRaisedCount() ? basicRaisedCount() + ' raised as NC' : 'None raised as NC' }}</small>
+            </button>
+            <button type="button" class="ov-link" (click)="tab.set(9)">
+              <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" /></svg></span>ESG compliance</span>
+              <b>Checklist</b>
+              <small class="muted">Open the tab to review</small>
+            </button>
+            <button type="button" class="ov-link" (click)="tab.set(3)">
+              <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>Parameters</span>
+              <b>{{ completeCount() }} of {{ d.sections.length }}</b>
+              <small [class.warn]="paramCounts().no">{{ paramCounts().yes }} conform@if (paramCounts().no) {, {{ paramCounts().no }} raised as NC}</small>
+            </button>
+            <button type="button" class="ov-link" [disabled]="!ncTabs().length" (click)="openNc()">
+              <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>Non-conformances</span>
+              <b>{{ ncTabs().length ? ncTabs().length + ' of 5 rounds' : 'None' }}</b>
+              <small [class.warn]="trackerOpen()">{{ !tracker().length ? 'No item raised' : trackerOpen() ? trackerOpen() + ' not closed' : 'All items closed' }}</small>
+            </button>
+          </div>
           @if (ncList().length) {
             <section class="uv-card" aria-labelledby="daNcTitle" data-nc-card>
               <div class="uv-card-head">
                 <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>
-                <h4 id="daNcTitle">Non-conformances</h4>
+                <h4 id="daNcTitle">Non-conformance tracker</h4>
+                <span class="uv-chip info">Up to 5 rounds</span>
+                <button type="button" class="uv-link" (click)="openNc('req')">Open non-conformances</button>
               </div>
               <ul class="uv-ncs">
                 @for (nl of ncList(); track nl.round) {
@@ -114,12 +156,40 @@
                   </li>
                 }
               </ul>
+              @if (tracker().length) {
+                <div class="table-responsive">
+                  <table class="ov-track" aria-label="Items across the rounds">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        @for (r of tracker()[0].rounds; track r.round) { <th class="c">NC {{ r.round }}<small>{{ r.round === ncTabs().at(-1) ? 'Final round' : 'Closed' }}</small></th> }
+                        <th class="e">Outcome</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (i of tracker(); track i.key) {
+                        <tr>
+                          <td><b>{{ i.title }}</b><small>{{ i.group }}</small></td>
+                          @for (r of i.rounds; track r.round) {
+                            <td class="c"><span class="ov-dot" [attr.data-s]="r.state" [title]="'NC ' + r.round + ': ' + stateLabel[r.state]" role="img" [attr.aria-label]="'NC ' + r.round + ': ' + stateLabel[r.state]"></span></td>
+                          }
+                          <td class="e"><span class="uv-chip" [class.good]="i.outcome === 'accepted'" [class.bad]="i.outcome === 'rejected'" [class.warn]="i.outcome === 'open'">{{ i.outcome === 'accepted' ? 'Closed' : stateLabel[i.outcome] }}</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <p class="ov-legend"><span class="ov-dot" data-s="accepted"></span> Accepted <span class="ov-dot" data-s="rejected"></span> Not accepted, carried to the next round <span class="ov-dot" data-s="none"></span> Round not needed</p>
+              }
             </section>
           }
         </div>
       }
 
       <!-- ================================================= basic information -->
+      <!-- 2026-11-18 (staff-14d): the S.No / Description / Responses table became grouped cards (photos, products, business details,
+           raw materials) numbered as the unit's form (1 to 11); items not accepted are outlined red with "Raised in NC 1"; the same
+           buttons as before (Validate / Edit, Edit Remarks). -->
       @if (tab() === 2) {
         <div class="tab-pane fade show active" role="tabpanel">
           @if (isAssessorRole()) {
@@ -127,121 +197,156 @@
           }
           <!-- 2026-11-17: the other ZED units of the same PAN, before the site exterior photos. -->
           <zed-same-pan [zedId]="zedId()" />
-          <div class="table-responsive">
-          <table class="table table-bordered table-zed basic-info">
-            <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 28%">Description</th><th>Responses</th></tr></thead>
-            <tbody>
-              <tr>
-                <td class="text-center">1</td>
-                <td>MSME Representative Selfie</td>
-                <td>
-                  <div class="photo-grid">
+          @let se = siteExterior()[0];
+          @let seRaised = t(se, 'IsVerified') === 'No';
+          <div class="bi-bar">
+            <div class="bi-chips" role="group" aria-label="Show">
+              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'all'" [attr.aria-pressed]="basicFilter() === 'all'" (click)="basicFilter.set('all')">All <span>{{ basicItems }}</span></button>
+              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'attention'" [attr.aria-pressed]="basicFilter() === 'attention'" (click)="basicFilter.set('attention')">Needs attention <span>{{ basicRaisedCount() }}</span></button>
+              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'accepted'" [attr.aria-pressed]="basicFilter() === 'accepted'" (click)="basicFilter.set('accepted')">Accepted <span>{{ basicItems - basicRaisedCount() }}</span></button>
+            </div>
+            @if (t(msme(), 'BasicInfoStatus')) { <span class="bi-when">Submitted by the unit on {{ t(msme(), 'BasicInfoStatus') }}</span> }
+          </div>
+
+          @if (basicShown(false) || basicShown(seRaised)) {
+            <h5 class="bi-group">Photos</h5>
+            <div class="bi-photos basic-info">
+              @if (basicShown(false)) {
+                <section class="bi-card" data-item="1">
+                  <div class="bi-thumb">
+                    <span class="bi-no">1</span>
                     @for (p of selfies(); track t(p, 'Id')) {
-                      <div class="evidence-img">
-                        <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'])"><img [src]="t(p, 'Url')" alt="Selfie" /></button>
-                      </div>
-                    }
+                      <button type="button" class="bi-img" (click)="openImage(p['Url'])"><img [src]="t(p, 'Url')" alt="Selfie" /></button>
+                    } @empty { <span class="bi-img bi-none" aria-hidden="true"></span> }
                   </div>
-                </td>
-              </tr>
-              <tr>
-                <td class="text-center">2</td>
-                <td>Site Exterior Photos</td>
-                <td>
-                  <div class="photo-grid">
+                  <div class="bi-body">
+                    <h6>MSME representative selfie</h6>
+                    <span class="uv-chip" [class.good]="selfies().length">{{ selfies().length ? 'Photo uploaded' : 'No photo' }}</span>
+                  </div>
+                </section>
+              }
+              @if (basicShown(seRaised)) {
+                <section class="bi-card" [class.raised]="seRaised" data-item="2">
+                  <div class="bi-thumb">
+                    <span class="bi-no">2</span>
                     @for (p of siteExterior(); track t(p, 'Id')) {
-                      <div class="evidence-img">
-                        <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'], 'SiteExteriorPhoto', p)"><img [src]="t(p, 'Url')" alt="Site exterior" /></button>
-                      </div>
-                    }
-                    <div class="photo-verdict">
-                      @let se = siteExterior()[0];
-                      @if (t(se, 'IsVerified')) {
-                        <div><span class="muted">Verified:</span> {{ t(se, 'IsVerified') }}</div>
-                        <div><span class="muted">Assessor Remarks:</span> {{ t(se, 'AssessorRemarks') }}</div>
-                        @if (review().editRemarks) {
-                          <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('photo', se)" />
-                        }
-                      }
-                      @if (se && canChange(0) && n(se, 'DocumentOpenedTime') === 0) {
-                        <input type="button" [value]="t(se, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(se, 'IsVerified')" [class.btn-outline-primary]="!!t(se, 'IsVerified')" (click)="editSiteExterior(se)" />
-                      }
-                    </div>
+                      <button type="button" class="bi-img" (click)="openImage(p['Url'], 'SiteExteriorPhoto', p)"><img [src]="t(p, 'Url')" alt="Site exterior" /></button>
+                    } @empty { <span class="bi-img bi-none" aria-hidden="true"></span> }
                   </div>
-                </td>
-              </tr>
-              <tr><td class="text-center">3</td><td>Whether 3rd Party Financial Audits are conducted?</td><td>{{ t(msme(), 'AuditsConducted') }}</td></tr>
-              <tr>
-                <td class="text-center">4</td>
-                <td>Product manufactured</td>
-                <td>
-                  <table class="table table-striped inner">
-                    <thead>
-                      <tr><th>Product Name</th><th class="text-center">Whether Exported</th><th>Product Photo</th><th>Product Description Photo</th><th class="text-center">Conformance</th><th>Assessor Remarks</th></tr>
-                    </thead>
+                  <div class="bi-body photo-verdict">
+                    <h6>Site exterior photos @if (seRaised && ncTabs().length) { <button type="button" class="bi-nc" (click)="openNc('round', 1)">Raised in NC 1</button> }</h6>
+                    @if (t(se, 'IsVerified')) {
+                      <span class="uv-chip" [class.good]="!seRaised" [class.bad]="seRaised">Verified: {{ t(se, 'IsVerified') }}</span>
+                      <span class="bi-label">Assessor remarks</span>
+                      <p>{{ t(se, 'AssessorRemarks') || 'No remarks recorded' }}</p>
+                      @if (review().editRemarks) {
+                        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('photo', se)" />
+                      }
+                    } @else {
+                      <span class="uv-chip">Not checked</span>
+                    }
+                    @if (se && canChange(0) && n(se, 'DocumentOpenedTime') === 0) {
+                      <input type="button" [value]="t(se, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(se, 'IsVerified')" [class.btn-outline-primary]="!!t(se, 'IsVerified')" (click)="editSiteExterior(se)" />
+                    }
+                  </div>
+                </section>
+              }
+            </div>
+          }
+
+          <h5 class="bi-group">Products manufactured</h5>
+          @for (p of d.products; track t(p, 'Id'); let i = $index) {
+            @let pRaised = t(p, 'IsVerified') === 'No';
+            @if (basicShown(pRaised)) {
+              <section class="bi-card bi-product" [class.raised]="pRaised" [attr.data-item]="i === 0 ? 4 : null">
+                <div class="bi-pname">
+                  @if (i === 0) { <span class="bi-no">4</span> }
+                  <h6>{{ t(p, 'ProductName') }}</h6>
+                  <span class="uv-chip info">Exported: {{ t(p, 'Exported') || '—' }}</span>
+                  <small>Product {{ i + 1 }} of {{ d.products.length }}</small>
+                </div>
+                <div class="bi-pics">
+                  <figure>
+                    @if (t(p, 'PhotoUrl')) {
+                      <button type="button" class="bi-img sm" (click)="openImage(p['PhotoUrl'], 'ProductPhoto', p)"><img [src]="t(p, 'PhotoUrl')" alt="Product" /></button>
+                    } @else { <span class="bi-img sm bi-none" aria-hidden="true"></span> }
+                    <figcaption>Product photo</figcaption>
+                  </figure>
+                  <figure>
+                    @if (t(p, 'DescriptionKind') === 'pdf') {
+                      <a class="pdf-link" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)">
+                        <span class="pdf-chip" [class.opened]="f(p, 'DescriptionOpened')"><span class="pdf-tag">PDF</span>View PDF</span>
+                      </a>
+                    } @else if (t(p, 'DescriptionKind') === 'image') {
+                      <button type="button" class="bi-img sm" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" alt="Product description" /></button>
+                    } @else { <span class="bi-img sm bi-none" aria-hidden="true"></span> }
+                    <figcaption>Description photo</figcaption>
+                  </figure>
+                </div>
+                <div class="bi-verdict">
+                  <span class="bi-label">Conformance</span>
+                  @if (t(p, 'IsVerified')) { <span class="uv-chip" [class.good]="!pRaised" [class.bad]="pRaised">{{ t(p, 'IsVerified') }}</span> } @else { <span class="uv-chip">Not checked</span> }
+                  @if (canChange(0) && (t(p, 'IsVerified') || (f(p, 'ProductOpened') && f(p, 'DescriptionOpened')))) {
+                    <input type="button" [value]="t(p, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(p, 'IsVerified')" [class.btn-outline-primary]="!!t(p, 'IsVerified')" (click)="editProduct(p)" />
+                  }
+                </div>
+                <div class="bi-remarks">
+                  <span class="bi-label">Assessor remarks</span>
+                  <p>{{ t(p, 'AssessorRemarks') || 'No remarks recorded' }}</p>
+                  @if (review().editRemarks) {
+                    <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('product', p)" />
+                  }
+                  @if (pRaised && ncTabs().length) { <button type="button" class="bi-nc" (click)="openNc('round', 1)">Raised in NC 1</button> }
+                </div>
+              </section>
+            }
+          } @empty {
+            <p class="muted">No products given.</p>
+          }
+
+          @if (basicShown(false)) {
+            <div class="bi-cols">
+              <section class="uv-card">
+                <div class="uv-card-head">
+                  <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 21V5l7-2v18M12 9h7v12M8 9h1M8 13h1M8 17h1M15 13h1M15 17h1M3 21h18" /></svg></span>
+                  <h4>Business details</h4>
+                </div>
+                <dl class="bi-list">
+                  <div data-item="3"><dt><span>3</span>Third-party financial audits</dt><dd>{{ t(msme(), 'AuditsConducted') || '—' }}</dd></div>
+                  <div data-item="5"><dt><span>5</span>Key domestic customers</dt><dd>{{ t(msme(), 'DomesticCustomers') || 'None stated' }}</dd></div>
+                  <div data-item="6"><dt><span>6</span>Key international customers</dt><dd>{{ t(msme(), 'InternationalCustomers') || 'None stated' }}</dd></div>
+                  <div data-item="8"><dt><span>8</span>Processes outsourced</dt><dd>{{ t(msme(), 'OutsourcedProcesses') || 'None stated' }}</dd></div>
+                  <div data-item="9"><dt><span>9</span>Energy sources used</dt><dd>{{ t(msme(), 'EnergySources') || '—' }}</dd></div>
+                  <div data-item="10"><dt><span>10</span>Monthly manufacturing capacity</dt><dd>{{ t(msme(), 'ManufacturingCapacityValue') }} {{ t(msme(), 'ManufacturingCapacityUnits') }}</dd></div>
+                  <div data-item="11">
+                    <dt><span>11</span>Monthly utilisation</dt>
+                    <dd>{{ t(msme(), 'MonthlyUtilizationValue') }} {{ t(msme(), 'MonthlyUtilizationUnits') }}@if (aboveCapacity()) {&ngsp;<span class="uv-chip warn">Above capacity</span>}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section class="uv-card">
+                <div class="uv-card-head">
+                  <span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
+                  <h4>Raw materials</h4>
+                </div>
+                <dl class="bi-list">
+                  <div data-item="7"><dt><span>7</span>Is raw material imported?</dt><dd><span class="uv-chip" [class.info]="t(msme(), 'RawMaterialImported') === 'Yes'">{{ t(msme(), 'RawMaterialImported') || '—' }}</span></dd></div>
+                </dl>
+                @if (t(msme(), 'RawMaterialImported') === 'Yes') {
+                  <table class="bi-raw">
+                    <thead><tr><th>Raw material</th><th class="c">% imported</th><th class="e">Country</th></tr></thead>
                     <tbody>
-                      @for (p of d.products; track t(p, 'Id')) {
-                        <tr>
-                          <td>{{ t(p, 'ProductName') }}</td>
-                          <td class="text-center">{{ t(p, 'Exported') }}</td>
-                          <td>
-                            @if (t(p, 'PhotoUrl')) {
-                              <button type="button" class="btn btn-link p-0" (click)="openImage(p['PhotoUrl'], 'ProductPhoto', p)"><img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /></button>
-                            }
-                          </td>
-                          <td>
-                            @if (t(p, 'DescriptionKind') === 'pdf') {
-                              <a class="pdf-link" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)">
-                                <span class="pdf-chip" [class.opened]="f(p, 'DescriptionOpened')"><span class="pdf-tag">PDF</span>View PDF</span>
-                              </a>
-                            } @else if (t(p, 'DescriptionKind') === 'image') {
-                              <button type="button" class="btn btn-link p-0" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" /></button>
-                            }
-                          </td>
-                          <td class="text-center">
-                            {{ t(p, 'IsVerified') }}
-                            @if (canChange(0) && (t(p, 'IsVerified') || (f(p, 'ProductOpened') && f(p, 'DescriptionOpened')))) {
-                              <input type="button" [value]="t(p, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(p, 'IsVerified')" [class.btn-outline-primary]="!!t(p, 'IsVerified')" (click)="editProduct(p)" />
-                            }
-                          </td>
-                          <td>
-                            {{ t(p, 'AssessorRemarks') }}
-                            @if (review().editRemarks) {
-                              <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('product', p)" />
-                            }
-                          </td>
-                        </tr>
+                      @for (r of d.rawMaterials; track $index) {
+                        <tr><td><b>{{ t(r, 'RawMaterialName') }}</b></td><td class="c">{{ t(r, 'Percentage') }}</td><td class="e">{{ t(r, 'CountryName') }}</td></tr>
                       }
                     </tbody>
                   </table>
-                </td>
-              </tr>
-              <tr><td class="text-center">5</td><td>Key Domestic Customers</td><td>{{ t(msme(), 'DomesticCustomers') }}</td></tr>
-              <tr><td class="text-center">6</td><td>Key International Customers</td><td>{{ t(msme(), 'InternationalCustomers') }}</td></tr>
-              <tr><td class="text-center">7</td><td>Whether Raw Material is Imported?</td><td>{{ t(msme(), 'RawMaterialImported') }}</td></tr>
-              @if (t(msme(), 'RawMaterialImported') === 'Yes') {
-                <tr>
-                  <td class="text-center"></td>
-                  <td>Raw Materials</td>
-                  <td>
-                    <table class="table table-striped inner">
-                      <thead><tr><th>Raw Material Name</th><th>% of Raw Material Imported</th><th>Name of Country</th></tr></thead>
-                      <tbody>
-                        @for (r of d.rawMaterials; track $index) {
-                          <tr><td>{{ t(r, 'RawMaterialName') }}</td><td>{{ t(r, 'Percentage') }}</td><td>{{ t(r, 'CountryName') }}</td></tr>
-                        }
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              }
-              <tr><td class="text-center">8</td><td>Processed Outsourced, if any?</td><td>{{ t(msme(), 'OutsourcedProcesses') }}</td></tr>
-              <tr><td class="text-center">9</td><td>Energy Source(s) Used</td><td>{{ t(msme(), 'EnergySources') }}</td></tr>
-              <tr><td class="text-center">10</td><td>monthly Manufacturing Capacity</td><td>{{ t(msme(), 'ManufacturingCapacityValue') }} {{ t(msme(), 'ManufacturingCapacityUnits') }}</td></tr>
-              <tr><td class="text-center">11</td><td>Monthly Utilization</td><td>{{ t(msme(), 'MonthlyUtilizationValue') }} {{ t(msme(), 'MonthlyUtilizationUnits') }}</td></tr>
-            </tbody>
-          </table>
-          </div>
+                  <p class="bi-count">{{ d.rawMaterials.length }} raw {{ d.rawMaterials.length === 1 ? 'material' : 'materials' }} listed</p>
+                }
+                <p class="bi-note">Item numbers match the unit's form (1 to 11), so remarks and NCs can be traced back to it.</p>
+              </section>
+            </div>
+          }
           @if (surveillance(); as sv) {
             <table class="table table-bordered table-zed" aria-label="Surveillance responses">
               <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 28%">Description</th><th>Responses</th></tr></thead>
@@ -316,12 +421,18 @@
           @let cur = activeSection();
           <div class="zp-layout">
             <nav class="zp-nav" aria-labelledby="daParamNavTitle">
-              <div class="zp-nav-head" id="daParamNavTitle">Parameters · {{ completeCount() }} of {{ d.sections.length }} complete</div>
+              <!-- 2026-11-18 (staff-14b): "Parameters" with "N of M complete", a progress bar and the conform / does-not counts. -->
+              <div class="zp-nav-head" id="daParamNavTitle">Parameters <span class="zp-nav-done">{{ completeCount() }} of {{ d.sections.length }} complete</span></div>
+              <div class="zp-nav-sum">
+                <span class="zp-bar" aria-hidden="true"><span [style.width.%]="d.sections.length ? (completeCount() / d.sections.length) * 100 : 0"></span></span>
+                <span class="uv-chip good">{{ paramCounts().yes }} conform</span>
+                @if (paramCounts().no) { <span class="uv-chip bad zp-x">{{ paramCounts().no }} does not</span> }
+              </div>
               <div class="zp-nav-list">
                 @for (s of d.sections; track t(s, 'Id')) {
                   @let st = navStatus(s);
                   @let pg = sectionProgress(s);
-                  <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="selectSection(s)">
+                  <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.data-v]="st" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="selectSection(s)">
                     <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
@@ -342,6 +453,7 @@
                     <div class="zp-head-title">
                       <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                       <h5>{{ t(s, 'SectionName') }}</h5>
+                      <small class="zp-head-sub">Parameter {{ sectionIndex() }} of {{ d.sections.length }} · {{ requirementsOf(s, d.requirements).length }} requirements</small>
                       @if (t(s, 'iButton')) {
                         <span class="zp-info" tabindex="0">
                           <span class="zp-info-i" role="img" aria-label="Information">i</span>
@@ -349,6 +461,10 @@
                         </span>
                       }
                       @if (exempted(s)) { <span class="zp-tag">Exempted</span> }
+                    </div>
+                    <div class="zp-steps">
+                      <button type="button" class="zp-step" aria-label="Previous parameter" [disabled]="sectionIndex() <= 1" (click)="stepSection(-1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
+                      <button type="button" class="zp-step" aria-label="Next parameter" [disabled]="sectionIndex() >= d.sections.length" (click)="stepSection(1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
                     </div>
                     <div class="zp-head-status">
                       <span class="zp-label">Conformance</span>
@@ -383,13 +499,18 @@
                   @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
                     @let withCheckpoints = hasCheckpoints(r);
                     @let rst = requirementStatus(r);
-                    <article class="zp-req" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
+                    @let closed = closedReqs().has(t(r, 'Id'));
+                    <article class="zp-req" [class.zp-closed]="closed" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
                       <div class="zp-req-title">
                         <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
                         <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
                         <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
                         <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
-                        @if (qoMaster()) { <button type="button" class="btn btn-link btn-sm p-0 qo-add" (click)="observe(r)">+ Observation</button> }
+                        @if (qoMaster()) { <button type="button" class="btn btn-outline-primary btn-sm qo-add" (click)="observe(r)">+ Observation</button> }
+                        <button type="button" class="zp-fold" [attr.aria-expanded]="!closed" [attr.aria-label]="(closed ? 'Open ' : 'Close ') + t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" (click)="toggleReq(t(r, 'Id'))">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+                        </button>
+                        @if (closed) { <small class="zp-fold-sum">{{ optionsOf(r, d.options).length }} checkpoints · {{ evidencesOf(r, d.evidences).length }} documents</small> }
                       </div>
 
                       <!-- 2026-11-14 (approved): each checkpoint with its answer and its own evidences under it; evidences not tied
@@ -501,8 +622,100 @@
       }
 
       <!-- ================================================= NC rounds -->
+      <!-- 2026-11-18 (staff-14c): one Non-conformances tab: the summary card, "By requirement" (each item with its NC 1 to NC 5
+           track, its conversation on opening) or "By round" (the round's page as before, with its buttons), the round chips. -->
+      @if (ncTab()) {
+        <section class="nc-sum" aria-labelledby="ncSumTitle">
+          <span class="nc-sum-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>
+          <div class="nc-sum-text">
+            <h4 id="ncSumTitle">Non-conformances
+              @if (tracker().length) { <span class="uv-chip" [class.good]="!trackerOpen()" [class.warn]="trackerOpen()">{{ trackerOpen() ? trackerOpen() + ' not closed' : 'All closed' }}</span> }
+            </h4>
+            <p>A requirement can be raised again in each of the 5 rounds.</p>
+          </div>
+          <dl class="nc-stats">
+            <div><dt>{{ tracker().length }}</dt><dd>items</dd></div>
+            <div><dt>{{ tracker().length ? sumRaised() : 0 }}</dt><dd>NCs raised</dd></div>
+            <div class="warn"><dt>{{ ncTabs().length }} of 5</dt><dd>rounds used</dd></div>
+            <div class="good" [class.bad]="trackerOpen()"><dt>{{ trackerOpen() }}</dt><dd>open</dd></div>
+          </dl>
+        </section>
+        <div class="nc-bar">
+          <div class="nc-views" role="group" aria-label="View">
+            <button type="button" [class.on]="ncView() === 'req'" [attr.aria-pressed]="ncView() === 'req'" (click)="ncView.set('req')">By requirement</button>
+            <button type="button" [class.on]="ncView() === 'round'" [attr.aria-pressed]="ncView() === 'round'" (click)="ncView.set('round')">By round</button>
+          </div>
+          <div class="bi-chips" role="group" aria-label="Round">
+            @if (ncView() === 'req') {
+              <button type="button" class="bi-chip" [class.on]="!ncFilter()" (click)="ncFilter.set(0)">All <span>{{ tracker().length }}</span></button>
+            }
+            @for (k of ncTabs(); track k) {
+              @let on = ncView() === 'req' ? ncFilter() === k : tab() === k + 3;
+              <button type="button" class="bi-chip nc-chip" [class.on]="on" [attr.aria-pressed]="on" (click)="ncView() === 'req' ? ncFilter.set(k) : tab.set(k + 3)">NC {{ k }} <span>{{ roundCount(k) }}</span></button>
+            }
+          </div>
+          @if (ncView() === 'req' && shownTrack().length) {
+            <button type="button" class="uv-link nc-all" (click)="collapseAllNc()">{{ ncOpenCards().size ? 'Collapse all' : 'Open all' }}</button>
+          }
+        </div>
+        @if (ncView() === 'req') {
+          @for (i of shownTrack(); track i.key; let x = $index) {
+            @let open = ncOpenCards().has(i.key);
+            <article class="nc-card" [class.open]="open" [attr.data-v]="i.outcome" [attr.data-track]="i.key">
+              <div class="nc-card-head">
+                <span class="nc-no">{{ x + 1 }}</span>
+                <div class="nc-card-title"><small>{{ i.group }}</small><b>{{ i.title }}</b></div>
+                <span class="uv-chip" [class.good]="i.outcome === 'accepted'" [class.bad]="i.outcome === 'rejected'" [class.warn]="i.outcome === 'open'">
+                  {{ i.outcome === 'accepted' ? 'Resolved in NC ' + i.last : i.outcome === 'rejected' ? 'Not accepted in NC ' + i.last : 'Open in NC ' + i.last }}</span>
+                <button type="button" class="zp-fold" [attr.aria-expanded]="open" [attr.aria-label]="(open ? 'Close ' : 'Open ') + i.title" (click)="toggleNcCard(i.key)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+              </div>
+              <ol class="nc-track">
+                @for (r of i.rounds; track r.round) {
+                  <li [attr.data-s]="r.state">
+                    @if (r.state === 'none') {
+                      <b>NC {{ r.round }}</b><span>Not needed</span>
+                    } @else {
+                      <button type="button" (click)="openNc('round', r.round)" [attr.aria-label]="'Open NC ' + r.round">
+                        <span class="ov-dot" [attr.data-s]="r.state" aria-hidden="true"></span>
+                        <b>NC {{ r.round }}</b><span>{{ stateLabel[r.state] }}</span>
+                        @if (r.date) { <small>{{ r.date }}</small> }
+                      </button>
+                    }
+                  </li>
+                }
+              </ol>
+              @if (open && i.kind === 'requirement') {
+                <div class="nc-thread">
+                  <h6>Conversation on this requirement</h6>
+                  @for (m of trackThread(i); track $index) {
+                    <div class="nc-step" [attr.data-from]="m.from">
+                      <span class="nc-step-who">{{ m.from === 'msme' ? 'Unit replied' : 'Assessor' }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</span>
+                      @if (m.conformance) { <span class="uv-chip" [class.good]="m.conformance === 'Yes'" [class.bad]="m.conformance === 'No'">Conformance: {{ m.conformance }}</span> }
+                      @if (m.text) { <p>{{ m.text }}</p> }
+                      @for (fl of m.files; track $index) { <a class="pdf-link" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ fl.name || 'View PDF' }}</span></a> }
+                      @for (p of m.pictures; track $index) { <button type="button" class="zp-pic" (click)="openImage(p.url)"><img [src]="p.url" [alt]="p.name || 'Picture'" /></button> }
+                    </div>
+                  } @empty {
+                    <p class="muted">No messages yet.</p>
+                  }
+                  <button type="button" class="uv-link" (click)="openNc('round', i.last)">Open NC {{ i.last }}</button>
+                </div>
+              } @else if (open) {
+                <div class="nc-thread"><button type="button" class="uv-link" (click)="openNc('round', i.last)">Open NC {{ i.last }}</button></div>
+              }
+            </article>
+          } @empty {
+            <p class="muted nc-none">No item was raised as a non-conformance{{ ncFilter() ? ' in NC ' + ncFilter() : '' }}. Basic Information fields found not valid are checked again on the Basic Information tab.</p>
+          }
+          @if (perms().canFinalSubmit && currentRound() > 0 && ncTabs().includes(currentRound())) {
+            <p class="nc-hint">The NC {{ currentRound() }} answers and its Final Submit are on <button type="button" class="uv-link" (click)="openNc('round', currentRound())">By round · NC {{ currentRound() }}</button>.</p>
+          }
+        }
+      }
       @for (nc of ncTabs(); track nc) {
-        @if (tab() === nc + 3) {
+        @if (tab() === nc + 3 && ncView() === 'round') {
           @let rd = round(nc);
           <div class="tab-pane fade show active" role="tabpanel">
             @if (noRows(previousPhotos(nc), 'IsVerified').length > 0) {
@@ -805,7 +1018,7 @@
       }
     </div>
     <aside class="uv-rail" aria-label="Quality observations">
-      <zed-qo-panel #qo [rail]="true" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+      <zed-qo-panel #qo [rail]="true" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [scope]="qoScope()" [(target)]="qoTarget" />
       <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
       <zed-checklist-records #cr [zedId]="d.zedId" [certification]="d.certification" />
     </aside>
@@ -850,8 +1063,8 @@
             @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="CANCEL" (click)="conformanceEdit.set(null)" />
-            <input type="submit" class="btn btn-primary" value="SUBMIT" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" value="Cancel" (click)="conformanceEdit.set(null)" />
+            <input type="submit" class="btn btn-primary" value="Submit" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -1027,8 +1240,8 @@
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
-          <input type="button" class="btn btn-default" value="CANCEL" (click)="finalSubmitEdit.set(null)" />
-          <input type="button" class="btn btn-primary" value="SUBMIT" [disabled]="!canFinalSubmit(e) || busy()" (click)="finalSubmit()" />
+          <input type="button" class="btn btn-default" value="Cancel" (click)="finalSubmitEdit.set(null)" />
+          <input type="button" class="btn btn-primary" value="Submit" [disabled]="!canFinalSubmit(e) || busy()" (click)="finalSubmit()" />
         </div>
       </div>
     </div>

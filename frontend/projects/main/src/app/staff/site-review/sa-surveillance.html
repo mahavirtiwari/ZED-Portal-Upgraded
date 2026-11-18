@@ -177,7 +177,7 @@
                             @for (pp of q.onsite; track $index) {
                               <div class="row-data">
                                 <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ q.fixedName || pp.name }}</span></div>
-                                <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">View</button>
                               </div>
                             }
                           </td>
@@ -189,7 +189,7 @@
                           @for (pp of q.surveillance; track $index) {
                             <div class="row-data">
                               <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ pp.name }}</span></div>
-                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
+                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">View</button>
                             </div>
                           }
                         </td>

@@ -77,14 +77,14 @@ describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', ()
     expect(pop.querySelector('#alreadyUploaded')!.textContent).toContain('1 row(s) were uploaded before');
     expect(el.querySelector('.st-now .st-label')!.textContent).toContain('Check every row');
 
-    const csv = vi.spyOn(TestBed.inject(TableExport), 'csv').mockImplementation(() => undefined);
-    button('Download the 1 rows (.csv)')!.click();
-    const [name, sheet] = csv.mock.calls[0];
+    const csv = vi.spyOn(TestBed.inject(TableExport), 'xlsx').mockResolvedValue(undefined);
+    button('Download the 1 rows (.xlsx)')!.click();
+    const [name, [sheet]] = csv.mock.calls[0];
     expect(name).toBe('incentives-nov-rows-with-errors');
     expect(sheet.columns).toEqual(['Row', 'UdyamNo', 'Certificateno', 'Pin', 'Problems']);
     expect(sheet.rows[0]).toEqual([3, 'UDYAM-UP-29-0003915', null, '208001', 'DisbursedDate: Invalid date (dd-mm-yyyy).']);
 
-    button('Save 2 valid rows')!.click();
+    button('Save 2 rows')!.click();
     await settle();
     const apply = http.expectOne(INCENTIVE_APPLY_API);
     expect((apply.request.body as FormData).get('file')).toBeTruthy();
@@ -121,7 +121,7 @@ describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', ()
     await settle();
     http.expectOne(INCENTIVE_CHECK_API).flush({ ...check, valid: 1 });
     await settle();
-    button('Save 1 valid row')!.click();
+    button('Save 1 row')!.click();
     await settle();
     http.expectOne(INCENTIVE_APPLY_API).flush({ title: 'No row can be saved: every row has errors.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
@@ -139,6 +139,6 @@ describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', ()
     await settle();
     http.expectOne(INCENTIVE_CHECK_API).flush({ ...check, valid: 0, alreadyUploaded: 0 });
     await settle();
-    expect(button('Save 0 valid rows')!.disabled).toBe(true);
+    expect(button('Save 0 rows')!.disabled).toBe(true);
   });
 });

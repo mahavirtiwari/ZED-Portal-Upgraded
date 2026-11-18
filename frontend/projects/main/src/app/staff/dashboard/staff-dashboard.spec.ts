@@ -10,13 +10,25 @@ import { STAFF_SYSTEM } from '../staff-menu';
 import { TableExport } from '../table-export';
 import { flattenSheets } from './dashboard-export';
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** The month n months before this one: yyyy-MM, "Sep" and "Sep 2026" (the trend always ends with this month, 2026-11-18). */
+const monthsAgo = (n: number) => {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - n);
+  const name = MONTH_NAMES[d.getMonth()];
+  return { period: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, short: name, full: `${name} ${d.getFullYear()}` };
+};
+const M2 = monthsAgo(2);
+const M1 = monthsAgo(1);
+
 const analytics = (view: 'registered' | 'certified' = 'registered', more: object = {}) => ({
   view,
   totals: { registered: 724287, certified: 512808, bronze: 500112, silver: 7735, gold: 4961, zedx: 64 },
   sizes: [{ label: 'Micro', total: 666594 }, { label: 'Small', total: 50485 }, { label: 'Medium', total: 7207 }],
   genders: [{ label: 'male', total: 574614 }, { label: 'female', total: 141933 }, { label: 'OTHERS', total: 7739 }],
   socialCategories: [{ label: 'General', total: 378031 }, { label: 'OBC', total: 297002 }],
-  months: [{ period: '2025-12', registered: 53478, certified: 41020 }, { period: '2026-01', registered: 8810, certified: 6120 }],
+  months: [{ period: M2.period, registered: 53478, certified: 41020 }, { period: M1.period, registered: 8810, certified: 6120 }],
   years: [{ period: '2025', registered: 400000, certified: 300000 }, { period: '2026', registered: 8810, certified: 6120 }],
   states: [{ label: 'GUJARAT', total: 146518 }, { label: 'UTTAR PRADESH', total: 122101 }],
   districts: [{ label: 'SURAT', total: 57498 }],
@@ -100,7 +112,7 @@ describe('StaffDashboardPage', () => {
     expect(el.querySelector('.an-status [data-field="ZedxTotal"]')!.textContent).toBe('4');
     // Each status with its share of the level's applications in brackets (3 of 12 pending = 25%).
     const pending = el.querySelector('.an-status .app-card .app-stats li')!;
-    expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['Assessment Pending', '3', '(25%)']);
+    expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['Assessment pending', '3', '(25%)']);
     expect(el.querySelector('.an-status .app-card .app-seg.is-pending')!.getAttribute('style')).toContain('width: 25%');
     // One stacked bar per level with its legend.
     expect(el.querySelectorAll('.an-status .app-card')[0].querySelectorAll('.app-bar').length).toBe(1);
@@ -108,15 +120,20 @@ describe('StaffDashboardPage', () => {
     const after = (x: string, y: string) => !!(el.querySelector(x)!.compareDocumentPosition(el.querySelector(y)!) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect([after('.an-filters', '.an-kpis'), after('.an-kpis', '.an-status'), after('.an-status', '.an-mid'), after('.an-mid', '.an-ranks')]).toEqual([true, true, true, true]);
     // Neither month of the range is this month: no "this month" figures.
-    expect(el.querySelector('.an-kpi-sub, .an-kpi-delta')).toBeNull();
+    expect(el.querySelector('.an-kpi-note')).toBeNull();
 
     // The trend: registrations and certifications side by side on a value axis, by month or (Yearly) by year.
     const trend = el.querySelector('.an-trend')!;
     expect(text(trend.querySelector('h5'))).toBe('Monthly trend · last 12 months');
-    expect([...trend.querySelectorAll('.gc-label')].map(text)).toEqual(['Dec 25', 'Jan 26']);
+    // 2026-11-18: always the last 12 months, named by month ("Nov"), the months without figures as 0.
+    const labels = [...trend.querySelectorAll('.gc-label')].map(text);
+    expect(labels.length).toBe(12);
+    expect(labels.slice(9)).toEqual([M2.short, M1.short, monthsAgo(0).short]);
     expect([...trend.querySelectorAll('.an-legend li')].map(text)).toEqual(['Registered', 'Certified']);
     expect([...trend.querySelectorAll('.gc-ticks span')].map(text)).toEqual(['0', '20,000', '40,000', '60,000', '80,000']);
-    expect(trend.querySelector('.gc-group')!.getAttribute('aria-label')).toBe('Dec 25: Registered 53,478, Certified 41,020');
+    const groups = trend.querySelectorAll('.gc-group');
+    expect(groups[9].getAttribute('aria-label')).toBe(`${M2.full}: Registered 53,478, Certified 41,020`);
+    expect(groups[0].getAttribute('aria-label')).toBe(`${monthsAgo(11).full}: Registered 0, Certified 0`);
     (trend.querySelectorAll('.an-period button')[1] as HTMLButtonElement).click();
     await settle();
     expect(text(trend.querySelector('h5'))).toBe('Year-wise trend');
@@ -136,8 +153,10 @@ describe('StaffDashboardPage', () => {
     expect([...(el.querySelector('#an-sector') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Manufacturing', 'Services']);
     const top = el.querySelector('.rk-list li')!;
     expect([text(top.querySelector('.rk-rank')), text(top.querySelector('.rk-label')), text(top.querySelector('.rk-value'))]).toEqual(['1', 'GUJARAT', '1,46,518']);
+    // 2026-11-18: "13-Manufacture of textiles" as "13 Textiles" (staff-00).
+    expect(text(el.querySelectorAll('.an-ranks zed-rank-list')[2].querySelector('.rk-label'))).toBe('13 Textiles');
     expect([...el.querySelectorAll('.an-ranks .rk-title')].map(text)).toEqual(['Top states', 'Top districts', 'Top sectors (two-digit activity)']);
-    // Two states only: no View all.
+    // Two states only: no View All (it opens the full list in the card; there is no separate page).
     expect(el.querySelector('.an-ranks .rk-more')).toBeNull();
     expect((el.querySelector('#an-district') as HTMLSelectElement).disabled).toBe(true);
 
@@ -200,7 +219,9 @@ describe('StaffDashboardPage', () => {
     expect(cleared.request.params.get('view')).toBe('registered');
     cleared.flush(analytics());
     await settle();
-    expect(el.querySelector('.an-filters .dash-reset')).toBeNull();
+    // 2026-11-18: Clear All is always there (staff-00), disabled with nothing to clear.
+    expect((el.querySelector('.an-filters .dash-reset') as HTMLButtonElement).disabled).toBe(true);
+    expect(text(el.querySelector('.an-filters .dash-reset'))).toBe('Clear All');
   });
 
   it('main portal: a state-bound Ministry user keeps the state fixed', async () => {
@@ -222,7 +243,7 @@ describe('StaffDashboardPage', () => {
     services.flush(analytics());
     await settle();
     expect([...el.querySelectorAll('.an-chip')].map(text)).toContain('Sector: Services ×');
-    expect(text(el.querySelector('.an-more-btn button'))).toContain('More filters (1)');
+    expect(text(el.querySelector('.an-more-btn button'))).toContain('More Filters (1)');
 
     // A login limited to Manufacturing: the filter shows Manufacturing and cannot be changed.
     await choose('#an-sector', '');
@@ -250,7 +271,7 @@ describe('StaffDashboardPage', () => {
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
     // Bronze surveillance has no NC Raised.
     const bronze = el.querySelector('.an-status .app-card')!;
-    expect([...bronze.querySelectorAll('.app-label')].map(text)).toEqual(['Surveillance Pending', 'Surveillance Completed', 'Rejected']);
+    expect([...bronze.querySelectorAll('.app-label')].map(text)).toEqual(['Surveillance pending', 'Surveillance completed', 'Rejected']);
     expect(text(bronze.querySelector('.app-stats li .app-share'))).toBe('(40%)');
     expect(el.querySelector('[data-field="SaSilverNcRaised"]')!.textContent).toBe('1');
   });
@@ -314,7 +335,7 @@ describe('StaffDashboardPage', () => {
     expect(rows()[0]).toBe('7 STATE G');
     await sortBy('name');
     expect(rows()[0]).toBe('1 STATE A');
-    expect(text(list.querySelector('.rk-more'))).toBe('Show top 5');
+    expect(text(list.querySelector('.rk-more'))).toBe('Show Top 5');
   });
 
   it("main portal: this month's registrations and certifications on the first two tiles when the range reaches this month", async () => {
@@ -324,17 +345,20 @@ describe('StaffDashboardPage', () => {
     analyticsCall().flush(analytics('registered', { months: [{ period: '2025-01', registered: 10, certified: 5 }, { period, registered: 1312, certified: 1042 }] }));
     await settle();
     const tiles = el.querySelectorAll('.an-kpi');
-    expect(text(tiles[0].querySelector('.an-kpi-sub'))).toBe('1,312 this month');
-    expect(text(tiles[1].querySelector('.an-kpi-delta'))).toBe('+1,042');
-    expect(tiles[2].querySelector('.an-kpi-sub, .an-kpi-delta')).toBeNull();
+    // 2026-11-18: green, right on the label line: "+1,312 this month" and "+1,042" (staff-00).
+    expect(text(tiles[0].querySelector('.an-kpi-note'))).toBe('+1,312 this month');
+    expect(text(tiles[1].querySelector('.an-kpi-note'))).toBe('+1,042');
+    expect(tiles[1].querySelector('.an-kpi-note')!.getAttribute('title')).toBe('+1,042 this month');
+    expect(tiles[2].querySelector('.an-kpi-note')).toBeNull();
   });
 
   it('Needs your attention: the work waiting for a Master Admin, each a link to its page; Refresh counts again', async () => {
     await create('main', 7);
     analyticsCall().flush(analytics());
     http.expectOne('/api/staff/attention').flush({
-      total: 25, items: [
+      total: 29, items: [
         { key: 'allot', label: 'Units awaiting allotment', count: 18, link: '/staff/assessment/allot', query: null, tone: 'warn', icon: 'people' },
+        { key: 'reallot', label: 'Rejected, to re-allot', count: 4, link: '/staff/assessment/allot', query: { type: 'REALLOT' }, tone: 'warn', icon: 'refresh' },
         { key: 'nc-overdue', label: 'NC closures overdue', count: 7, link: '/staff/monitoring', query: { tab: 'nc' }, tone: 'bad', icon: 'clock' },
         { key: 'quality-open', label: 'Quality observations open', count: 0, link: '/staff/quality-observations', query: null, tone: 'info', icon: 'chat' },
       ],
@@ -343,7 +367,8 @@ describe('StaffDashboardPage', () => {
     const row = el.querySelector('zed-attention-row section')!;
     expect(text(row.querySelector('h2'))).toBe('Needs your attention');
     const items = [...row.querySelectorAll('a.at-item')];
-    expect(items.map((a) => text(a))).toEqual(['18Units awaiting allotment', '7NC closures overdue', '0Quality observations open']);
+    // 2026-11-18: staff-00's order (re-allotment last); a count of 0 keeps its colours.
+    expect(items.map((a) => text(a))).toEqual(['18Units awaiting allotment', '7NC closures overdue', '0Quality observations open', '4Rejected, to re-allot']);
     expect(items[1].getAttribute('href')).toBe('/staff/monitoring?tab=nc');
     expect(items[2].classList.contains('is-zero')).toBe(true);
     // Between the headline tiles and the level cards, and never in an export.
@@ -390,8 +415,8 @@ describe('StaffDashboardPage', () => {
     expect(body.sheets.map((s) => s.name)).toEqual(['Filters', 'Headline numbers', 'Applications by level', 'Monthly trend', 'Yearly trend', 'Who is registering']);
     expect(body.sheets[0].rows.slice(0, 2)).toEqual([['Count by', 'By registration date'], ['State', 'GUJARAT']]);
     expect(body.sheets[1].rows[0]).toEqual(['Registered units', 724287, null]);
-    expect(body.sheets[2].rows.slice(0, 2)).toEqual([['Bronze', 'Total Application', 12, null], ['Bronze', 'Assessment Pending', 3, 25]]);
-    expect(body.sheets[3].rows[0]).toEqual(['Dec 2025', 53478, 41020]);
+    expect(body.sheets[2].rows.slice(0, 2)).toEqual([['Bronze', 'Total applications', 12, null], ['Bronze', 'Assessment pending', 3, 25]]);
+    expect(body.sheets[3].rows[0]).toEqual([M2.full, 53478, 41020]);
     expect(body.sheets[5].rows[0]).toEqual(['MSME size', 'Micro', 666594, 92]);
     const saved = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
     const url = vi.fn(() => 'blob:x');
@@ -412,7 +437,7 @@ describe('StaffDashboardPage', () => {
     expect(csv).toHaveBeenCalledTimes(1);
     const sheet = csv.mock.calls[0][1];
     expect(sheet.columns).toEqual(['Section', 'Item', 'Figure', 'Value']);
-    expect(sheet.rows).toContainEqual(['Applications by level', 'Bronze · Assessment Pending', 'Share of the level (%)', 25]);
+    expect(sheet.rows).toContainEqual(['Applications by level', 'Bronze · Assessment pending', 'Share of the level (%)', 25]);
     expect(sheet.rows).toContainEqual(['States', '1 · GUJARAT', 'Registered units', 146518]);
     Object.assign(URL, { createObjectURL: saved.create, revokeObjectURL: saved.revoke });
   });

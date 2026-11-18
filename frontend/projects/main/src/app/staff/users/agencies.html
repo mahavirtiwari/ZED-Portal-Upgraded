@@ -1,4 +1,6 @@
-<!-- 2026-11-17 (approved staff redesign, staff-01 / staff-03). -->
+<!-- 2026-11-17 (approved staff redesign, staff-01 / staff-03).
+     2026-11-18 (the user: staff pages 'not aligned with SVG files'): fixed column widths as staff-01 / staff-03 (the long address
+     clamped to one line), no wrapping row buttons, "Assessors" as the quiet grey button, 150px level columns. -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
   @if (mode === 'all') { <a routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add {{ word }}</a> }
 </zed-page-head>
@@ -27,18 +29,18 @@
 
 <div class="zed-card ag-card">
   <div class="table-responsive">
-    <table class="table table-zed ag-table">
+    <table class="table table-zed ag-table" [class.is-levels]="mode === 'levels'">
       <thead>
         <tr>
-          <th>{{ consultancy ? 'Consultant Organisation' : 'Agency' }}</th>
-          @if (mode === 'all') { <th>SPOC</th> }
-          @if (!consultancy) { <th>Category and sector type</th> }
+          <th class="c-ag">{{ consultancy ? 'Consultant Organisation' : 'Agency' }}</th>
+          @if (mode === 'all') { <th class="c-spoc">SPOC</th> }
+          @if (!consultancy) { <th class="c-cat">Category and sector type</th> }
           @if (mode === 'levels') {
-            @for (l of levels(); track l.code) { <th class="text-center">{{ l.name }}</th> }
+            @for (l of levels(); track l.code) { <th class="text-center c-lv">{{ l.name }}</th> }
           } @else {
-            <th class="text-center">{{ consultancy ? 'No. of Consultant' : labels.assessors }}</th>
-            <th class="text-center">Status</th>
-            <th class="text-end">Actions</th>
+            <th class="text-center c-n">{{ consultancy ? 'No. of Consultant' : labels.assessors }}</th>
+            <th class="text-center c-st">Status</th>
+            <th class="text-end c-act">Actions</th>
           }
         </tr>
       </thead>
@@ -51,14 +53,15 @@
                 <div class="ag-text">
                   <strong class="ag-name">{{ a.UserName }}</strong>
                   <span class="ag-id">{{ a.UserId }}</span>
-                  <span>{{ a.Address || a.Pincode ? (a.Address ?? '') + (a.Address && a.Pincode ? ' ' : '') + (a.Pincode ?? '') : 'Address not saved' }}</span>
+                  @let addr = a.Address || a.Pincode ? (a.Address ?? '') + (a.Address && a.Pincode ? ' ' : '') + (a.Pincode ?? '') : 'Address not saved';
+                  <span class="ag-addr" [title]="addr">{{ addr }}</span>
                 </div>
               </div>
             </td>
             @if (mode === 'all') {
               <td data-label="SPOC">
                 <div class="spoc">
-                  <strong>{{ a.SpocName || '—' }}</strong>
+                  <strong [title]="a.SpocName || ''">{{ a.SpocName || '—' }}</strong>
                   <span>{{ a.MobileNo ? maskMobile(a.MobileNo) : 'Mobile not saved' }}</span>
                   @if (a.Email) { <span>{{ maskEmail(a.Email) }}</span> }
                 </div>
@@ -91,10 +94,10 @@
               <td class="text-center half" data-label="Status">
                 <span class="status-badge" [class.is-active]="a.IsActive" [class.is-rejected]="!a.IsActive">{{ a.IdStatus }}</span>
               </td>
-              <td>
-                <div class="acts">
+              <td class="text-end">
+                <div class="acts row-actions">
                   <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-outline-primary">Edit</a>
-                  <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-ph">{{ consultancy ? 'Consultants' : labels.assessors }}</a>
+                  <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default">{{ consultancy ? 'Consultants' : labels.assessors }}</a>
                   <zed-row-menu [items]="menu(a)" [label]="'More actions for ' + a.UserName" (picked)="picked(a, $event)" />
                 </div>
               </td>

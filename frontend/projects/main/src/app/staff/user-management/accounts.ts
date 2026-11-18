@@ -150,10 +150,11 @@ const typeHints: Readonly<Record<number, string>> = {
         <span class="nf-icon nf-big" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="bankIcon" /></svg></span>
         <h4 id="nf-empty-title">No NEFT desk logins yet</h4>
         <p>Add the first login. The login details are e-mailed to the user.</p>
-        <button type="button" class="btn btn-primary" (click)="add()">+ Add the first login</button>
+        <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): a 200 x 42 button; each step on one line, as staff-07. -->
+        <button type="button" class="btn btn-primary nf-first" (click)="add()">+ Add the first login</button>
         <ol class="nf-steps">
           <li><b>1 Add the login</b><small>Name, e-mail and mobile of the NEFT desk user.</small></li>
-          <li><b>2 Login details are e-mailed</b><small>You never see or set the password; the e-mail tells the user how to sign in.</small></li>
+          <li><b>2 Login details are e-mailed</b><small>You never see or set the password.</small></li>
           <li><b>3 One desk for every state</b><small>Reimbursements, financial assistance and Technology Upgradation.</small></li>
         </ol>
       </section>
@@ -255,7 +256,10 @@ const typeHints: Readonly<Record<number, string>> = {
     }
 
     @if (neft && form(); as f) {
-      <!-- 2026-11-17 (approved popup-11): a short pop-up; it says what happens after saving. -->
+      <!-- 2026-11-17 (approved popup-11): a short pop-up; it says what happens after saving.
+           2026-11-18 (the user: staff pages 'not aligned with SVG files'): 560px, a white head with a grey square close button,
+           Name and E-mail on full rows, Mobile number beside Login type, the User ID the API needs on its own row, a two-line
+           note, 40px buttons. Mobile stays required: the NEFT Admin API refuses a login without a valid mobile number. -->
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="account-title">
         <div class="modal-dialog modal-popup acc-dialog nf-dialog">
           <div class="modal-content acc-content">
@@ -265,22 +269,11 @@ const typeHints: Readonly<Record<number, string>> = {
                 <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit NEFT admin' : 'Add NEFT admin' }}</h3>
                 <small class="nf-sub">{{ editing() ? editing() + ' · the national NEFT desk' : 'One login for the national NEFT desk.' }}</small>
               </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+              <button type="button" class="nf-x" aria-label="Close" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
             </div>
             <form class="acc-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body acc-body">
                 <div class="acc-fields">
-                  @if (!editing()) {
-                    <div class="acc-field">
-                      <label for="acc-id">User ID<span class="req">*</span></label>
-                      <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" placeholder="4 to 50 letters and digits"
-                             [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
-                    </div>
-                  }
-                  <div class="acc-field">
-                    <label for="nf-type">Login type</label>
-                    <select class="form-select" id="nf-type" name="nfType" disabled><option>{{ typeLabel(f.roleId ?? 0) }}</option></select>
-                  </div>
                   <div class="acc-field nf-wide">
                     <label for="acc-name">Name<span class="req">*</span></label>
                     <input class="form-control" id="acc-name" name="userName" maxlength="100" placeholder="Full name" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
@@ -293,15 +286,25 @@ const typeHints: Readonly<Record<number, string>> = {
                     <label for="acc-mobile">Mobile number<span class="req">*</span></label>
                     <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" placeholder="10 digits" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
                   </div>
+                  <div class="acc-field">
+                    <label class="nf-quiet" for="nf-type">Login type</label>
+                    <select class="form-select" id="nf-type" name="nfType" disabled><option>{{ typeLabel(f.roleId ?? 0) }}</option></select>
+                  </div>
+                  @if (!editing()) {
+                    <div class="acc-field nf-wide">
+                      <label for="acc-id">User ID<span class="req">*</span></label>
+                      <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" placeholder="4 to 50 letters and digits"
+                             [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
+                    </div>
+                  }
                 </div>
                 @if (!editing()) {
                   <p class="nf-note"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>
-                    The login details are e-mailed to this address; you never see or set the password.</p>
+                    <span>The login details are e-mailed to this address; you never see or set the password. The user signs in with the User ID above.</span></p>
                 }
                 @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
               </div>
-              <div class="modal-footer acc-foot">
-                <span class="acc-foot-note"><span class="req">*</span> required</span>
+              <div class="modal-footer acc-foot nf-foot">
                 <span class="acc-foot-actions">
                   <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
                   <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Save changes' : 'Add NEFT admin' }}</button>
@@ -495,8 +498,8 @@ const typeHints: Readonly<Record<number, string>> = {
               <div class="modal-footer acc-foot">
                 <span class="acc-foot-note"><span class="req">*</span> required@if (!editing()) { · a password is generated and e-mailed to the user }</span>
                 <span class="acc-foot-actions">
-                  <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'UPDATE' : 'SAVE' }}</button>
+                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Update' : 'Save' }}</button>
                 </span>
               </div>
             </form>
@@ -515,6 +518,7 @@ const typeHints: Readonly<Record<number, string>> = {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  styleUrl: './accounts-neft.css',
   styles: `
     .acc-list { padding: 16px; }
     .acc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -560,24 +564,6 @@ const typeHints: Readonly<Record<number, string>> = {
     .choice-card strong { color: #23474a; }
     .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .acc-type-fixed .zed-chip { margin: 0; }
-    /* NEFT Admins (2026-11-17): the empty state with its three steps, and the short pop-up (the rest: the skin's acc-* pop-up). */
-    .nf-empty { padding: 32px 24px 22px; text-align: center; }
-    .nf-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; background: #e3f0ee; color: var(--zt-dark, #1f5c61); }
-    .nf-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
-    .nf-big { width: 72px; height: 72px; border-radius: 50%; }
-    .nf-big svg { width: 32px; height: 32px; }
-    .nf-empty h4 { margin: 16px 0 6px; font-size: 19px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .nf-empty p { margin: 0 0 16px; color: #5f6f70; }
-    .nf-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 26px 0 0; padding: 18px 0 0; border-top: 1px solid #e1eaea; list-style: none; text-align: left; }
-    .nf-steps b { display: block; font-size: 14px; color: var(--zt-ink, #173f44); }
-    .nf-steps small, .nf-sub { font-size: 12.5px; color: #5f6f70; }
-    .modal .modal-dialog.nf-dialog { max-width: 540px; }
-    .modal .nf-head { gap: 12px; align-items: center; }
-    .nf-head > div { flex: 1; min-width: 0; }
-    .modal .nf-dialog .acc-body { background: #fff; }
-    .nf-wide { grid-column: 1 / -1; }
-    .nf-note { display: flex; gap: 10px; margin: 16px 0 0; padding: 12px 14px; border-radius: 10px; background: #e8f3f2; color: var(--zt-ink, #173f44); font-size: 13px; }
-    .nf-note svg { flex: none; width: 15px; height: 15px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 1.4; }
     .acc-actions-cell zed-row-menu { vertical-align: middle; }
 
     @media (max-width: 767.98px) {

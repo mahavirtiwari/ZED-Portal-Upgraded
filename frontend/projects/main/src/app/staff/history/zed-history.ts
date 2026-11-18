@@ -72,6 +72,8 @@ function meta(row: HistoryRow): { label: string; icon: string; alert?: boolean; 
 }
 
 export const HISTORY_ACTORS: HistoryActor[] = ['MSME', 'Agency', 'Assessor', 'ZED'];
+/** The chip of the events no portal is named for. */
+export const OTHER = 'Other';
 
 /** The searched ZED IDs kept in this browser (newest first). */
 export const RECENT_KEY = 'zed.staff.history.recent';
@@ -146,6 +148,9 @@ export function keyDates(events: TimelineEvent[]): KeyDate[] {
  * with its MSME profile / assessment details links and the Export, each event tagged with who did it (MSME, Agency,
  * Assessor, ZED; untagged when the line does not say) with filter chips, newest first, the key dates and the counts by
  * actor beside it, and the last searched ZED IDs beside the box (this browser only).
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): the chips add up: the events no portal is named for
+ * (e.g. the handholding lines) get their own "Other" chip and rail bar, so All = the sum of the others; "Recent:" only when
+ * there is a recent ZED ID to show; no "By" label; "By portal" in the rail; "✓ … certified" in the unit's header.</p>
  */
 @Component({
   selector: 'zed-staff-zed-history',
@@ -187,16 +192,21 @@ export class ZedHistoryPage {
     for (const a of HISTORY_ACTORS) out[a] = this.events().filter((e) => e.actor === a).length;
     return out;
   });
-  protected readonly maxCount = computed(() => Math.max(1, ...HISTORY_ACTORS.map((a) => this.counts()[a])));
+  /** Events whose line names no portal (the "Other" chip; shown only when there are some). */
+  protected readonly others = computed(() => this.events().filter((e) => !e.actor).length);
+  protected readonly maxCount = computed(() => Math.max(1, this.others(), ...HISTORY_ACTORS.map((a) => this.counts()[a])));
   protected readonly chips = computed<FilterChip[]>(() => [
     { key: '', label: 'All', count: this.events().length },
     ...HISTORY_ACTORS.map((a) => ({ key: a, label: a, count: this.counts()[a] })),
+    ...(this.others() ? [{ key: OTHER, label: OTHER, count: this.others() }] : []),
   ]);
+  /** The recent ZED IDs other than the one shown ("Recent:" is hidden when there is none). */
+  protected readonly recentShown = computed(() => this.recent().filter((r) => r !== this.searched()));
   /** The timeline as shown: the actor chosen, newest (or oldest) first, still grouped by level and phase. */
   protected readonly shownGroups = computed(() => {
     const a = this.actor();
     const groups = this.groups()
-      .map((g) => ({ ...g, events: a ? g.events.filter((e) => e.actor === a) : g.events }))
+      .map((g) => ({ ...g, events: a ? g.events.filter((e) => (a === OTHER ? !e.actor : e.actor === a)) : g.events }))
       .filter((g) => g.events.length);
     return this.newestFirst() ? groups.reverse().map((g) => ({ ...g, events: [...g.events].reverse() })) : groups;
   });

@@ -176,7 +176,10 @@ describe('MonitoringPage', () => {
   it('lets master admin extend the NC closure date and reloads', async () => {
     await setup();
     await openNcTab(true);
-    expect(el.querySelector('thead')!.textContent).toContain('NC closure');
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-10's header reads "Assessment dates" for everyone; the
+    // master admin's column still shows the NC closure date (below).
+    expect(el.querySelector('thead')!.textContent).toContain('Assessment dates');
+    expect(el.querySelector('thead')!.textContent).not.toContain('NC closure');
     const row = el.querySelector('tbody tr')!;
     expect(await openMenu(row)).toEqual(['Assessment details', 'View MSME profile', 'Extend NC final closure date', 'Step back to NC1']);
     await pick('Extend NC');

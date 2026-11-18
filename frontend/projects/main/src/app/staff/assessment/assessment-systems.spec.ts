@@ -40,7 +40,13 @@ describe('assessment pages per system', () => {
     return fixture;
   }
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // 2026-11-18: main's Completed / Rejected also read their count cards.
+    for (const r of http.match((r) => r.url.endsWith('/counts'))) {
+      r.flush({ total: 0, certifiedThisMonth: 0, surveillanceDue90: 0, duplicates: 0, waitingReallot: null, reallotted: null });
+    }
+    http.verify();
+  });
 
   const reallotTab = (el: HTMLElement) => [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')].find((b) => b.textContent!.includes('To re-allot'))!;
 

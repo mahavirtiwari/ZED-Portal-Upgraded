@@ -91,9 +91,9 @@ function addressProblem(value: string): string {
       <div class="form-actions">
         @if (dirty()) {
           <span class="unsaved me-auto">Not saved yet.</span>
-          <button type="button" class="btn btn-default" [disabled]="busy()" (click)="undo()">CANCEL</button>
+          <button type="button" class="btn btn-default" [disabled]="busy()" (click)="undo()">Cancel</button>
         }
-        <button type="submit" class="btn btn-primary" [disabled]="busy() || !dirty()">SAVE</button>
+        <button type="submit" class="btn btn-primary" [disabled]="busy() || !dirty()">Save</button>
       </div>
     </form>
   `,

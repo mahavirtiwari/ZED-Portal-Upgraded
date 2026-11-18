@@ -1,9 +1,9 @@
 <!-- 2026-11-17 (the user's staff design 15): the shared header, then the unit's identity with its links. -->
 <zed-page-head [crumbs]="crumbs" title="MSME Profile">
   @if (profile() && canEdit && !editing()) {
-    <button type="button" class="btn btn-primary" (click)="startEdit()">EDIT PROFILE</button>
+    <button type="button" class="btn btn-primary" (click)="startEdit()">Edit Profile</button>
   }
-  <button type="button" class="btn btn-ph" (click)="back()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-ph pf-back" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> Back</button>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -45,8 +45,8 @@
 
 @if (profile(); as p) {
   <div class="pf-grid">
-    @for (s of sections; track s.title; let i = $index) {
-      <section class="pf-card" [attr.aria-labelledby]="'pf-sec-' + i">
+    @for (s of sections.concat([more]); track s.title; let i = $index) {
+      <section class="pf-card" [class.pf-full]="s.full" [attr.aria-labelledby]="'pf-sec-' + i">
         <div class="pf-card-h">
           <span class="pf-ico" aria-hidden="true">
             @switch (s.icon) {
@@ -58,6 +58,9 @@
           </span>
           <h4 class="pf-bar" [id]="'pf-sec-' + i">{{ s.title }}</h4>
         </div>
+        @if (s.icon === 'list' && !s.full && !editing()) {
+          <p class="pf-nic" data-nic>@let nic = nicLine(p);{{ nic.path }}@if (nic.leaf) {&ngsp;<span>{{ nic.leaf }}</span> }</p>
+        } @else {
         <dl class="pf-facts">
           @for (r of s.rows; track r.field) {
             <div class="pf-fact" [class.wide]="r.wide">
@@ -85,14 +88,15 @@
             </div>
           }
         </dl>
+        }
       </section>
     }
   </div>
 
   @if (editing()) {
     <div class="form-actions mb-3">
-      <button type="button" class="btn btn-default" (click)="cancelEdit()">CANCEL</button>
-      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="update()">UPDATE</button>
+      <button type="button" class="btn btn-default" (click)="cancelEdit()">Cancel</button>
+      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="update()">Update</button>
     </div>
   }
 
@@ -103,7 +107,7 @@
         <h4 class="pf-bar" id="pf-history-h">Edit history (changes made by the applicant)</h4>
       </div>
       <div class="pf-history-body">
-        <zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" />
+        <zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" layout="table" />
       </div>
     </section>
   }

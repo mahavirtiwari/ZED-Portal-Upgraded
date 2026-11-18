@@ -45,6 +45,8 @@ export interface InfoRow {
   edit?: EditField;
   wide?: boolean;
   mask?: 'pan' | 'email' | 'mobile';
+  /** A second field shown after the first ("Uttar Pradesh · Basti"). */
+  also?: string;
 }
 
 /** One fact card of the profile (2026-11-17, the user's staff design 15: four cards in a two-column grid). */
@@ -52,6 +54,8 @@ export interface InfoSection {
   title: string;
   icon: 'person' | 'pin' | 'unit' | 'list';
   rows: InfoRow[];
+  /** The full-width card under the two-column grid. */
+  full?: boolean;
 }
 
 /**
@@ -59,6 +63,8 @@ export interface InfoSection {
  * PAN, e-mail and mobile are masked until Show.
  */
 export const PROFILE_SECTIONS: InfoSection[] = [
+  // 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): the four cards hold the design's fields, side by side
+  // at equal heights; the other registration fields are kept in a full-width card under them.
   {
     title: 'Owner and enterprise',
     icon: 'person',
@@ -67,29 +73,18 @@ export const PROFILE_SECTIONS: InfoSection[] = [
       { label: 'Enterprise name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
       { label: 'PAN', source: 'enterprise', field: 'PanNo', mask: 'pan' },
       { label: 'Enterprise type', source: 'enterprise', field: 'EnterpriseTypee' },
-      { label: 'Organisation type', source: 'enterprise', field: 'OrganisationTypeName' },
-      { label: 'Social category', source: 'enterprise', field: 'SocialCategoryName' },
       { label: 'Gender', source: 'enterprise', field: 'Gender' },
-      { label: 'Physically handicapped', source: 'enterprise', field: 'PH' },
+      { label: 'Social category', source: 'enterprise', field: 'SocialCategoryName' },
     ],
   },
   {
     title: 'Address and business',
     icon: 'pin',
     rows: [
-      { label: 'Registered address', source: 'enterprise', field: 'Address', wide: true },
-      { label: 'State', source: 'enterprise', field: 'StateName' },
-      { label: 'District', source: 'enterprise', field: 'DistrictName' },
-      { label: 'Pincode', source: 'enterprise', field: 'Pincode' },
-      { label: 'DIC name', source: 'enterprise', field: 'DicName' },
+      { label: 'Registered address', source: 'enterprise', field: 'Address' },
+      { label: 'State / District', source: 'enterprise', field: 'StateName', also: 'DistrictName' },
       { label: 'Registered e-mail', source: 'enterprise', field: 'EmailId', edit: 'emailId', mask: 'email' },
       { label: 'Mobile', source: 'enterprise', field: 'MobileNo', mask: 'mobile' },
-      { label: 'Major activity', source: 'enterprise', field: 'MajorActivityName' },
-      { label: 'Incorporation date', source: 'unit', field: 'IncorporationDate' },
-      { label: 'Production commenced', source: 'unit', field: 'WhetherProdCommenced' },
-      { label: 'Commencement date', source: 'enterprise', field: 'CommmenceDate' },
-      { label: 'Total employees', source: 'enterprise', field: 'TotalEmp' },
-      { label: 'Applied date', source: 'enterprise', field: 'AppliedDate' },
     ],
   },
   {
@@ -97,7 +92,7 @@ export const PROFILE_SECTIONS: InfoSection[] = [
     icon: 'unit',
     rows: [
       { label: 'Unit name', source: 'unit', field: 'PUnitName', edit: 'pUnitName' },
-      { label: 'Location', source: 'unit', field: 'PAddress', wide: true },
+      { label: 'Location', source: 'unit', field: 'PAddress' },
     ],
   },
   {
@@ -108,6 +103,23 @@ export const PROFILE_SECTIONS: InfoSection[] = [
       { label: 'NIC 2 digit', source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
       { label: 'NIC 4 digit', source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
       { label: 'NIC 5 digit', source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
+    ],
+  },
+  {
+    title: 'Other registration details',
+    icon: 'list',
+    full: true,
+    rows: [
+      { label: 'Organisation type', source: 'enterprise', field: 'OrganisationTypeName' },
+      { label: 'Physically handicapped', source: 'enterprise', field: 'PH' },
+      { label: 'Pincode', source: 'enterprise', field: 'Pincode' },
+      { label: 'DIC name', source: 'enterprise', field: 'DicName' },
+      { label: 'Major activity', source: 'enterprise', field: 'MajorActivityName' },
+      { label: 'Incorporation date', source: 'unit', field: 'IncorporationDate' },
+      { label: 'Production commenced', source: 'unit', field: 'WhetherProdCommenced' },
+      { label: 'Commencement date', source: 'enterprise', field: 'CommmenceDate' },
+      { label: 'Total employees', source: 'enterprise', field: 'TotalEmp' },
+      { label: 'Applied date', source: 'enterprise', field: 'AppliedDate' },
     ],
   },
 ];
@@ -133,6 +145,8 @@ export function maskValue(value: string, kind: 'pan' | 'email' | 'mobile'): stri
  * 2026-11-17 (the user's staff design 15): an identity header (the unit, its Udyam number, ZED ID, type and levels) with the
  * links to its ZED ID history and assessment details, the facts in four cards on a two-column grid, PAN / e-mail / mobile
  * masked until Show.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): equal-height card pairs with the design's fields (the
+ * others in a full-width card below), the NIC activity as one line, Back with its icon, the edit history as a table with paging.
  */
 @Component({
   selector: 'zed-staff-msme-profile',
@@ -144,7 +158,8 @@ export class StaffMsmeProfilePage {
   private readonly http = inject(HttpClient);
   private readonly roleId = inject(AuthService).currentUser()?.roleId ?? 0;
   protected readonly zedId = inject(ActivatedRoute).snapshot.paramMap.get('zedId') ?? '';
-  protected readonly sections = PROFILE_SECTIONS;
+  protected readonly sections = PROFILE_SECTIONS.filter((x) => !x.full);
+  protected readonly more = PROFILE_SECTIONS.find((x) => x.full)!;
   protected readonly crumbs = staffCrumbs({ label: 'MSME Profile' });
   /** The masked fields shown in full (Show). */
   protected readonly revealed = signal<ReadonlySet<string>>(new Set());
@@ -253,7 +268,19 @@ export class StaffMsmeProfilePage {
 
   /** A field's value; the unit address is put together from its parts. */
   protected value(p: StaffMsmeProfile, r: InfoRow): string {
-    return r.field === 'PAddress' ? this.unitAddress() : this.show(r.source === 'unit' ? p.unit : p.enterprise, r.field);
+    if (r.field === 'PAddress') return this.unitAddress();
+    const row = r.source === 'unit' ? p.unit : p.enterprise;
+    if (r.also) return [this.text(row, r.field), this.text(row, r.also)].filter((x) => x.trim()).join(' · ') || '-';
+    return this.show(row, r.field);
+  }
+
+  /** staff-15: the NIC activity as one line ("Manufacturing › 10 Food products › 1020 …" and the 5-digit code under it). */
+  protected nicLine(p: StaffMsmeProfile): { path: string; leaf: string } {
+    const u = p.unit;
+    return {
+      path: ['Activity', 'TwoDigitActivity', 'FourDigitActivity'].map((f) => this.text(u, f).trim()).filter(Boolean).join(' › ') || '-',
+      leaf: this.text(u, 'FiveDigitActivity').trim(),
+    };
   }
 
   /** The unit's name for the header: the enterprise, else the unit. */

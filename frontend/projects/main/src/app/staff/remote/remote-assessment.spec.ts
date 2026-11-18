@@ -210,7 +210,7 @@ describe('RemoteAssessmentPage', () => {
     await settle(fixture);
     el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')!.click();
     await settle(fixture);
-    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value=SUBMIT]')!.click();
+    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value=Submit]')!.click();
     await settle(fixture);
     const req = http.expectOne(BASE + '/requirements/51/checkpoints');
     expect(req.request.body).toEqual({ answers: [{ id: 701, answer: 'Partial', actions: ['Display the policy'], remarks: null }], remarks: null });

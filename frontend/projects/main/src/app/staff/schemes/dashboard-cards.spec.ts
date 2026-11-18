@@ -84,7 +84,7 @@ describe('DashboardCardsPage', () => {
     expect(preview.querySelector('h6')!.textContent).toBe('Welcome Reward');
     expect(preview.querySelector('.pv-card')!.classList).toContain('is-faded');
     expect(preview.textContent).toContain('MSMEs do not see this card.');
-    button(el.querySelector('.modal')!, 'CANCEL').click();
+    button(el.querySelector('.modal')!, 'Cancel').click();
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
   });

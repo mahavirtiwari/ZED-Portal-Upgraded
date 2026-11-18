@@ -100,8 +100,10 @@ describe('staff MSME profile', () => {
     expect(labels.slice(0, 4)).toEqual(['Owner name', 'Enterprise name', 'PAN', 'Enterprise type']);
     expect(el.querySelector('[data-identity]')?.textContent).toContain('Unit One');
     expect(el.querySelector('[data-field="PAddress"]')?.textContent).toContain('Plot 1, Agra, UP, 282001');
-    expect(el.textContent).not.toContain('EDIT PROFILE');
+    expect(el.textContent).not.toContain('Edit Profile');
     expect(el.textContent).toContain('Edit history');
+    // The other registration fields are kept, in a full-width card under the four.
+    expect([...el.querySelectorAll('h4.pf-bar')].map((h) => h.textContent?.trim())).toContain('Other registration details');
   });
 
   it('lets the SuperAdmin edit the legacy fields and saves them', async () => {
@@ -116,7 +118,9 @@ describe('staff MSME profile', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const button = (text: string) => [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
-    button('EDIT PROFILE')!.click();
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-15's NIC line, the 5-digit code under it.
+    expect(el.querySelector('[data-nic]')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('10-Food › 1010 10101');
+    button('Edit Profile')!.click();
     http.expectOne('/api/staff/msme-profile/sectors').flush(['24-Basic metals']);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -131,10 +135,10 @@ describe('staff MSME profile', () => {
     expect(owner.value).toBe('Owner');
     owner.value = 'New Owner';
     owner.dispatchEvent(new Event('input'));
-    expect(button('CANCEL')).toBeTruthy();
-    expect(button('EDIT PROFILE')).toBeUndefined();
+    expect(button('Cancel')).toBeTruthy();
+    expect(button('Edit Profile')).toBeUndefined();
 
-    button('UPDATE')!.click();
+    button('Update')!.click();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/msme-profile/ZEDMSME000001');
     expect(put.request.body).toEqual({
       ownerName: 'New Owner', enterpriseName: 'Ent', emailId: 'a@b.test', pUnitName: 'Unit One',
@@ -158,11 +162,11 @@ describe('staff MSME profile', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const button = (text: string) => [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
-    button('EDIT PROFILE')!.click();
+    button('Edit Profile')!.click();
     http.expectOne('/api/staff/msme-profile/sectors').flush([]);
     await fixture.whenStable();
     fixture.detectChanges();
-    button('CANCEL')!.click();
+    button('Cancel')!.click();
     fixture.detectChanges();
     expect(el.querySelector('input.form-control')).toBeNull();
     http.expectNone((r) => r.method === 'PUT');

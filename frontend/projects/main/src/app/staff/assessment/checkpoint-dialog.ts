@@ -160,7 +160,7 @@ const TITLES: Record<CheckpointStage, string> = {
       <div class="cp-inline" data-checkpoints-inline>
         <ng-container [ngTemplateOutlet]="body" />
         <div class="cp-inline-actions">
-          <input type="button" class="btn btn-primary btn-sm" value="SAVE CHECKPOINTS" [disabled]="busy()" (click)="submit()" />
+          <input type="button" class="btn btn-primary btn-sm" value="Save Checkpoints" [disabled]="busy()" (click)="submit()" />
         </div>
       </div>
     } @else {
@@ -178,8 +178,8 @@ const TITLES: Record<CheckpointStage, string> = {
             <ng-container [ngTemplateOutlet]="body" />
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="CANCEL" (click)="closed.emit()" />
-            <input type="button" class="btn btn-primary" value="SUBMIT" [disabled]="busy()" (click)="submit()" />
+            <input type="button" class="btn btn-default" value="Cancel" (click)="closed.emit()" />
+            <input type="button" class="btn btn-primary" value="Submit" [disabled]="busy()" (click)="submit()" />
           </div>
         </div>
       </div>

@@ -53,8 +53,9 @@ describe('DaDetailsPage', () => {
     );
   }
 
+  // 2026-11-18 (the new staff-14 series): a tab is named by its .uv-tab-name (its count pill beside it).
   function tab(label: string) {
-    Array.from(el.querySelectorAll<HTMLButtonElement>('.nav-link')).find((b) => b.textContent?.trim() === label)!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.nav-link')).find((b) => (b.querySelector('.uv-tab-name') ?? b).textContent?.trim() === label)!.click();
   }
 
   async function open(data: DaDetails) {
@@ -87,7 +88,7 @@ describe('DaDetailsPage', () => {
     await open(details());
     const text = el.textContent!.replace(/\s+/g, ' ');
     expect(text).toContain('ZEDMSME000001');
-    expect(text).toContain('AGENCY1 - Agency One');
+    expect(text).toContain('Agency One AGENCY1');
 
     tab('Parameters');
     await settle();
@@ -148,7 +149,7 @@ describe('DaDetailsPage', () => {
 
     el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=No]')!.click();
     await settle();
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     expect(el.querySelector('zed-checkpoint-dialog .alert-danger')!.textContent).toContain('Checkpoint 1: please tick the actions needed.');
     http.expectNone(BASE + '/requirements/11/checkpoints');
@@ -156,7 +157,7 @@ describe('DaDetailsPage', () => {
     el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')!.click();
     await settle();
     expect(el.querySelector('.cp-result')!.textContent).toContain('Not conforming');
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     const req = http.expectOne(BASE + '/requirements/11/checkpoints');
     expect(req.request.body).toEqual({
@@ -271,7 +272,7 @@ describe('DaDetailsPage', () => {
       allowed: true, message: null, raisesNc: false, checklist: [{ id: 'coi', text: 'I have no conflict of interest with the unit.' }],
     });
     await settle();
-    const submit = Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
+    const submit = Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'Submit')!;
     expect(submit.disabled).toBe(true);
 
     // 2026-11-17 (approved): the fairness box and every item of the Admin's checklist, then the ticks go with the submit.
@@ -317,7 +318,7 @@ describe('DaDetailsPage', () => {
     text.value = 'Checked by agency';
     text.dispatchEvent(new Event('input'));
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const remarks = http.expectOne('/api/staff/monitoring/review/ZEDMSME000001/Bronze/remarks');
     expect(remarks.request.body).toEqual({ kind: 'requirement', id: 11, remarks: 'Checked by agency' });
@@ -328,7 +329,7 @@ describe('DaDetailsPage', () => {
 
     button('Final Submit')!.click();
     await settle();
-    const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
+    const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'Submit')!;
     expect(submit().disabled).toBe(true);
     // 2026-11-17 (approved): the Admin's agency quality-check checklist of the desktop stage.
     http.expectOne('/api/staff/submission-checklists/items/agency-qc?stage=Desktop').flush({
@@ -363,7 +364,7 @@ describe('DaDetailsPage', () => {
     await settle();
     button('Send Back to Assessor')!.click();
     await settle();
-    const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
+    const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'Submit')!;
     expect(submit().disabled).toBe(true);
     const text = el.querySelector<HTMLTextAreaElement>('#reviewSendBack')!;
     text.value = 'Please recheck';
@@ -384,7 +385,8 @@ describe('DaDetailsPage', () => {
     const facts = new Map(factEls.map((f) => [f.querySelector('dt')!.textContent!.trim(), f.querySelector('dd')!.textContent!.replace(/\s+/g, ' ').trim()]));
     expect(facts.get('ZED ID')).toBe('ZEDMSME000001');
     expect(facts.get('Unit name')).toBe('Unit 1');
-    expect(facts.get('Assessment agency')).toBe('AGENCY1 - Agency One');
+    // 2026-11-18 (staff-14a): the name, its ID beside it.
+    expect(facts.get('Assessment agency')).toBe('Agency One AGENCY1');
     // Empty values show a dash.
     expect(facts.get('Udyam registration')).toBe('—');
     expect(facts.get('Desktop assessor')).toBe('—');
@@ -412,7 +414,7 @@ describe('DaDetailsPage', () => {
     expect(steps[2].querySelector('.st-note')!.textContent!.trim()).toBe('2 of 2');
     const ncs = Array.from(el.querySelectorAll('[data-nc-card] li')).map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
     expect(ncs).toEqual(['NC 1 Raised 14 Nov 2026 · Unit replied 14 Nov 2026 Closed', 'NC 2 Raised 14 Nov 2026 · Unit replied 14 Nov 2026 Closed']);
-    expect(Array.from(el.querySelectorAll('.nav-link')).map((b) => b.textContent!.trim())).toEqual(
+    expect(Array.from(el.querySelectorAll('.nav-link .uv-tab-name')).map((b) => b.textContent!.trim())).toEqual(
       ['Assessment overview', 'Basic information', 'ESG compliance', 'Parameters']);
   });
 
@@ -433,9 +435,9 @@ describe('DaDetailsPage', () => {
     await settle();
     for (const r of http.match((req) => req.url.startsWith('/api/staff/app-form-values'))) r.flush([]);
     await settle();
-    const rows = Array.from(el.querySelectorAll<HTMLTableRowElement>('table.basic-info > tbody > tr'));
-    const numbers = rows.map((r) => r.cells[0].textContent!.trim()).filter(Boolean);
-    expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']);
+    // 2026-11-18 (staff-14d): grouped cards, each item numbered as the unit's form.
+    const numbers = Array.from(el.querySelectorAll('[data-item]')).map((r) => Number(r.getAttribute('data-item'))).sort((a, b) => a - b);
+    expect(numbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     // The product description PDF is a chip, not the missing pdf-icon image.
     const chip = el.querySelector<HTMLAnchorElement>('a[href$="/files/desc.pdf"]')!;
     expect(chip.querySelector('.pdf-chip .pdf-tag')!.textContent).toBe('PDF');
@@ -520,7 +522,7 @@ describe('DaDetailsPage', () => {
     // Progress: requirements with a conformance out of all; an exempted parameter says so and counts as complete.
     expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirements', 'Exempted', '2 of 2 requirements', '1 of 2 requirements']);
     expect(items.map((i) => i.querySelector<HTMLElement>('.zp-bar > span')!.style.width)).toEqual(['0%', '100%', '100%', '50%']);
-    expect(el.querySelector('.zp-nav .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 4 complete');
+    expect(el.querySelector('.zp-nav .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters 2 of 4 complete');
 
     // The first parameter is shown by default, one at a time.
     expect(items[0].classList).toContain('active');
@@ -566,7 +568,7 @@ describe('DaDetailsPage', () => {
       requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '2', Conformance: 'No', AssessorRemarks: 'Policy is not signed', OpenedFlag: true }],
       ncRounds: [ncRound],
     }));
-    tab('NC 1');
+    tab('Non-conformances');
     await settle();
     const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item'));
     // Only the parameters with requirements in the round.
@@ -620,7 +622,7 @@ describe('DaDetailsPage', () => {
       sections: [], requirements: [], evidences: [],
     };
     await open(details({ msme: { ...details().msme, CertificationStatus: 4, NcCount: 1, SecNcCount: 0 }, ncRounds: [ncRound] }));
-    tab('NC 1');
+    tab('Non-conformances');
     await settle();
     expect(el.textContent).toContain('Basic Information fields found not valid are checked again on the Basic Information tab.');
     expect(Array.from(el.querySelectorAll<HTMLInputElement>('.submit-bar input[type=button]')).map((b) => b.value)).toContain('Final Submit');

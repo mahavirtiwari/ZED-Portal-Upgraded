@@ -126,7 +126,7 @@ describe('RequirementsPage', () => {
     type(el, '#cp-1', 'Communicated?');
     (el.querySelectorAll('.cp .tick input')[1] as HTMLInputElement).click();
     await settle(fixture);
-    buttonByText(el, 'SAVE REQUIREMENT').click();
+    buttonByText(el, 'Save requirement').click();
     await settle(fixture);
     const req = http.expectOne(`${BASE}/checklist`);
     expect(req.request.method).toBe('POST');
@@ -156,7 +156,7 @@ describe('RequirementsPage', () => {
     expect(el.querySelector('.file')!.textContent).toBe('sample_20261030_abcd1234.pdf');
     type(el, '#cp-0', 'Are roles defined?');
     await settle(fixture);
-    buttonByText(el, 'UPDATE REQUIREMENT').click();
+    buttonByText(el, 'Update requirement').click();
     await settle(fixture);
     const req = http.expectOne(`${BASE}/11/checklist`);
     expect(req.request.method).toBe('PUT');
@@ -190,18 +190,18 @@ describe('RequirementsPage', () => {
   it('asks for the requirement, the checkpoint text and a web address for the video before saving', async () => {
     (el.querySelector('.add-requirement') as HTMLButtonElement).click();
     await settle(fixture);
-    buttonByText(el, 'SAVE REQUIREMENT').click();
+    buttonByText(el, 'Save requirement').click();
     await settle(fixture);
     expect(el.querySelector('.help-block')!.textContent).toContain('Please enter the requirement.');
     type(el, '#requirementName', 'Roles are defined');
     await settle(fixture);
-    buttonByText(el, 'SAVE REQUIREMENT').click();
+    buttonByText(el, 'Save requirement').click();
     await settle(fixture);
     expect(el.querySelector('.help-block')!.textContent).toContain('Please write checkpoint 1');
     type(el, '#cp-0', 'Defined?');
     type(el, '#video', 'youtube.com/watch');
     await settle(fixture);
-    buttonByText(el, 'SAVE REQUIREMENT').click();
+    buttonByText(el, 'Save requirement').click();
     await settle(fixture);
     expect(el.querySelector('.help-block')!.textContent).toContain('video link');
     http.expectNone(`${BASE}/checklist`);

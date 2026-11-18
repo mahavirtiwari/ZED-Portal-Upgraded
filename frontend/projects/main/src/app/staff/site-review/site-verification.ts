@@ -36,7 +36,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
           @for (s of view.page(); track $index) {
             <tr>
               <td class="text-center">{{ view.serial($index) }}</td>
-              <td class="text-center"><div class="row-actions justify-content-center"><a class="btn btn-primary" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]">ASSESS</a></div></td>
+              <td class="text-center"><div class="row-actions justify-content-center"><a class="btn btn-primary" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]">Assess</a></div></td>
               <td class="text-center"><strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong></td>
               <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
               <td>{{ t(s, 'CertificationBodyUserId') }}<br />{{ t(s, 'AssessorName') }}</td>

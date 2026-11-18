@@ -10,12 +10,10 @@
     <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" placeholder="ZED ID, e.g. ZEDMSME000123" autocomplete="off" [(ngModel)]="zedId" />
   </div>
   <button type="submit" class="btn btn-primary hs-go" [disabled]="loading()">Search</button>
-  @if (recent().length) {
+  @if (recentShown().length) {
     <div class="hs-recent" role="group" aria-label="Recent searches">
       <span>Recent:</span>
-      @for (r of recent(); track r) {
-        @if (r !== searched()) { <button type="button" class="hs-pill" (click)="pick(r)">{{ r }}</button> }
-      }
+      @for (r of recentShown(); track r) { <button type="button" class="hs-pill" (click)="pick(r)">{{ r }}</button> }
     </div>
   }
 </form>
@@ -29,7 +27,7 @@
       <h3>
         {{ unitName() || searched() }}
         @if (level(); as l) {
-          <span class="hs-level" [class.on]="l.certified">{{ l.level }}{{ l.certified ? ' certified' : '' }}</span>
+          <span class="hs-level" [class.on]="l.certified">@if (l.certified) {<span aria-hidden="true">✓&nbsp;</span>}{{ l.level }}{{ l.certified ? ' certified' : '' }}</span>
         }
       </h3>
       <p>{{ searched() }}@if (unitLine()) { · {{ unitLine() }} }</p>
@@ -50,7 +48,7 @@
         <button type="button" class="hs-sort" [attr.aria-pressed]="newestFirst()" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? 'Newest first' : 'Oldest first' }}</button>
       </div>
       <div class="hs-chips">
-        <zed-chip-filter label="By" [chips]="chips()" [(value)]="actor" />
+        <zed-chip-filter label="By portal" [chips]="chips()" [(value)]="actor" />
       </div>
       <div class="timeline-wrap">
         @for (g of shownGroups(); track g.title) {
@@ -78,7 +76,7 @@
             </ul>
           </div>
         } @empty {
-          <p class="hs-none">No events by {{ actor() }} in this history.</p>
+          <p class="hs-none">No {{ actor() === 'Other' ? 'other' : actor() }} events in this history.</p>
         }
       </div>
     </section>
@@ -102,7 +100,7 @@
       <section class="hs-card" aria-labelledby="hs-by-h">
         <div class="hs-head">
           <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M3 20c.8-3.5 3-5 6-5s5.2 1.5 6 5M16 4.5a3.5 3.5 0 0 1 0 7M18 15c1.6.6 2.6 2.2 3 5" /></svg></span>
-          <h4 id="hs-by-h">By whom</h4>
+          <h4 id="hs-by-h">By portal</h4>
         </div>
         <ul class="hs-bars">
           @for (a of actors; track a) {
@@ -111,6 +109,9 @@
               <span class="hs-bar"><span [style.width.%]="(counts()[a] / maxCount()) * 100"></span></span>
               <b>{{ counts()[a] }}</b>
             </li>
+          }
+          @if (others()) {
+            <li data-actor="Other"><span>Other</span><span class="hs-bar"><span [style.width.%]="(others() / maxCount()) * 100"></span></span><b>{{ others() }}</b></li>
           }
         </ul>
       </section>

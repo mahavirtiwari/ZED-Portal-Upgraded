@@ -27,11 +27,14 @@ public sealed class StaffRoleDocumentsController(
 {
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
-    public sealed record MyDocument(int Id, string DocumentName, string? Description, string? DownloadUrl, string? VideoUrl, DateTime? CreatedDate);
+    /// <param name="FileName">2026-11-18 (the user: staff pages 'not aligned with SVG files'): the stored file's name, for its type
+    /// on the staff Documents page ("PDF").</param>
+    public sealed record MyDocument(int Id, string DocumentName, string? Description, string? DownloadUrl, string? VideoUrl, DateTime? CreatedDate,
+        string? FileName = null);
 
     [HttpGet]
     public async Task<IReadOnlyList<MyDocument>> List(CancellationToken ct) =>
-        (await MineAsync(ct)).Select(d => new MyDocument(d.Id, d.DocumentName, d.Description, d.DownloadUrl, d.VideoUrl, d.CreatedDate)).ToList();
+        (await MineAsync(ct)).Select(d => new MyDocument(d.Id, d.DocumentName, d.Description, d.DownloadUrl, d.VideoUrl, d.CreatedDate, d.FileName)).ToList();
 
     /// <summary>A file of a document given to this account type (any other answers 404).</summary>
     [HttpGet("{id:int}/file")]

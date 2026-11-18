@@ -52,10 +52,11 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
 };
 
 /** "Who is registering": the parts of each bar in a fixed order of shades (the API sorts by count); beyond four: grey. */
-const SPLIT_COLORS = ['var(--zt-dark, #1f5c61)', '#3aa6ad', '#a9d8d6', '#d5e3e3'];
-const GENDER_COLORS: Record<string, string> = { male: 'var(--zt-dark, #1f5c61)', female: '#e39a7e', others: '#c4cfd0' };
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-00's shades for the splits and the trend.
+const SPLIT_COLORS = ['#24666b', '#3ba3ad', '#a9d6da', '#d9eaeb'];
+const GENDER_COLORS: Record<string, string> = { male: '#24666b', female: '#e39a78', others: '#c9d5d6' };
 /** The trend's series: registrations (teal) and completions (green), as the approved design. */
-const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
+const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
 
 /**
  * Staff dashboard figures (all three portals, worded by ANALYTICS_WORDS): the ministry's Power BI "ZED Dashboard" and "ZED
@@ -65,6 +66,11 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
  * figures when the range reaches this month; what the page projects with [anAttention] (Needs your attention), then the status
  * cards (the page's content); the monthly / yearly trend beside "Who is registering" (size, gender and social category as
  * stacked bars); the top states, districts and two-digit activities with View all.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-00: the filters in one 38px row (State 210,
+ * District 210, Certification 190, two 150 dates, More Filters 150, Clear All at the right, always shown); 80px headline
+ * tiles in the design's colours with this month's figure (green, "+312 this month") right-aligned on the label line; the
+ * monthly trend always over the last 12 months (empty months as 0) with the Monthly / Yearly switch small at the right;
+ * "10 Food products" style sector names.
  */
 @Component({
   selector: 'zed-staff-analytics',
@@ -102,14 +108,14 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
               <input id="an-to" type="date" class="form-control" aria-label="To" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
             </div>
           </div>
-          <div class="filter an-more-btn no-export">
+          <div class="an-more-btn no-export">
             <button type="button" class="btn an-more-toggle" [attr.aria-expanded]="moreOpen()" aria-controls="an-more" (click)="moreOpen.set(!moreOpen())">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-              More filters{{ moreCount() ? ' (' + moreCount() + ')' : '' }}
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+              More Filters{{ moreCount() ? ' (' + moreCount() + ')' : '' }}
             </button>
           </div>
-          <div class="filter an-clear no-export">
-            @if (filtered()) { <button type="button" class="btn btn-link dash-reset" (click)="reset()">Clear all</button> }
+          <div class="an-clear no-export">
+            <button type="button" class="btn btn-link dash-reset" [disabled]="!filtered()" (click)="reset()">Clear All</button>
           </div>
         </div>
         <div class="filter-bar an-filters an-more" id="an-more" [hidden]="!moreOpen()">
@@ -123,14 +129,14 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
             </select>
           </div>
           <div class="filter">
-            <label class="form-label" for="an-size">MSME Size</label>
+            <label class="form-label" for="an-size">MSME size</label>
             <select id="an-size" class="form-select" [ngModel]="filter().size ?? ''" (ngModelChange)="set('size', $event)">
               <option value="">All</option>
               @for (s of sizes; track s) { <option [value]="s">{{ s }}</option> }
             </select>
           </div>
           <div class="filter">
-            <label class="form-label" for="an-social">Social Category</label>
+            <label class="form-label" for="an-social">Social category</label>
             <select id="an-social" class="form-select" [ngModel]="filter().socialCategory ?? ''" (ngModelChange)="set('socialCategory', $event)">
               <option value="">All</option>
               @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
@@ -160,7 +166,7 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
       </div>
 
       @if (error()) {
-        <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">Try again</button></div>
+        <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">Try Again</button></div>
       }
 
       @if (data()) {
@@ -168,8 +174,8 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
           @for (k of kpis(); track k.label) {
             <div class="an-kpi" [style.--accent]="k.color">
               <span class="an-kpi-value">{{ k.value }}</span>
-              <span class="an-kpi-line"><span class="an-kpi-label">{{ k.label }}</span>@if (k.sub) {&ngsp;<small class="an-kpi-sub">{{ k.sub }}</small>}</span>
-              @if (k.delta) { <span class="an-kpi-delta" [title]="k.delta + ' this month'">{{ k.delta }}</span> }
+              <span class="an-kpi-line"><span class="an-kpi-label" [title]="k.label">{{ k.label }}</span>
+                @if (k.note) { <span class="an-kpi-note" [attr.title]="k.tip">{{ k.note }}</span> }</span>
             </div>
           }
         </div>
@@ -189,13 +195,14 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
             <div class="an-card-head">
               <span class="an-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" /></svg></span>
               <h5>{{ yearly() ? 'Year-wise trend' : 'Monthly trend · last 12 months' }}</h5>
+              <ul class="an-legend">
+                @for (s of trendSeries; track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
+              </ul>
+              <!-- The approved Monthly / Yearly switch (not in staff-00): small, after the legend. -->
               <div class="an-period no-export" role="group" aria-label="Trend by">
                 <button type="button" [class.on]="!yearly()" [attr.aria-pressed]="!yearly()" (click)="yearly.set(false)">Monthly</button>
                 <button type="button" [class.on]="yearly()" [attr.aria-pressed]="yearly()" (click)="yearly.set(true)">Yearly</button>
               </div>
-              <ul class="an-legend">
-                @for (s of trendSeries; track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
-              </ul>
             </div>
             @if (trend().length) {
               <zed-grouped-column-chart [items]="trend()" [series]="trendSeries" [colors]="trendColors" [legend]="false"
@@ -218,7 +225,7 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
         <div class="an-ranks" data-export="tables">
           <zed-rank-list heading="Top states" [valueHeading]="unitWord()" [items]="ranked(d.states)" />
           <zed-rank-list heading="Top districts" [valueHeading]="unitWord()" [items]="ranked(d.districts)" />
-          <zed-rank-list heading="Top sectors (two-digit activity)" [valueHeading]="unitWord()" [items]="ranked(d.activities)" />
+          <zed-rank-list heading="Top sectors (two-digit activity)" [valueHeading]="unitWord()" [items]="ranked(d.activities, true)" />
         </div>
       } @else if (loading()) {
         <div class="an-loading" role="status">Loading the figures…</div>
@@ -228,54 +235,57 @@ const TREND_COLORS = ['#3aa0ad', '#2e9a5a'];
   styles: `
     .an.is-busy .an-kpis, .an.is-busy .an-mid, .an.is-busy .an-ranks { opacity: .55; transition: opacity .15s; }
     .an-status.is-hidden { display: none; }
-    .an-box, .an-kpi, .an-card { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-    .an-box { padding: 12px 16px; margin-bottom: 16px; }
-    .an-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.8fr) auto auto; gap: 10px 14px; align-items: end; }
-    .an-filters .filter { max-width: none; min-width: 0; }
-    .an-filters .form-select, .an-filters .form-control { padding-left: 10px; padding-right: 28px; }
-    .an-more { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 12px; padding: 12px; background: #f7fafa; border-radius: 10px; }
+    .an-box, .an-kpi, .an-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(16, 61, 64, .06); }
+    .an-box { padding: 10px 16px 9px; margin-bottom: 16px; }
+    .an-filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
+    .an-filters > .filter { flex: 0 1 210px; min-width: 150px; max-width: none; }
+    .an-filters > .filter:nth-child(3) { flex-basis: 190px; }
+    .an-filters > .an-range { flex: 0 1 336px; }
+    .an .form-label { display: block; margin-bottom: 5px; font-size: 11.5px; font-weight: 600; line-height: 14px; color: #6f8487; }
+    .an .form-select, .an .form-control { min-height: 38px; height: 38px; padding: 0 28px 0 12px; font-size: 13px; font-weight: 500; color: #17373b; border-color: #b9cdcf; }
+    .an .form-select:disabled { background-color: #f3f6f6; border-color: #dde7e8; color: #6f8487; }
+    .an-more { margin-top: 12px; padding: 12px; background: #f7fafa; border-radius: 10px; }
     .an-more[hidden] { display: none; }
-    .an-range-inputs { display: flex; align-items: center; gap: 6px; }
-    .an-range-inputs .form-control { min-width: 0; padding-right: 8px; }
-    .an-range-to { font-size: 13px; color: #5f6f70; }
-    .an-more-toggle { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: #e8eff0; color: var(--zt-ink, #173f44); font-weight: 600; border: 0; }
+    .an-range-inputs { display: flex; align-items: center; gap: 12px; }
+    .an-range-inputs .form-control { flex: 1 1 150px; min-width: 0; padding-right: 8px; }
+    .an-range-to { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .an-more-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 150px; height: 38px; padding: 0 14px; white-space: nowrap;
+      background: #e7eeee; color: #17373b; font-size: 13.5px; font-weight: 700; border: 0; border-radius: 9px; text-transform: none; }
     .an-more-toggle:hover { background: #dbe7e8; }
-    svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .dash-reset { font-weight: 600; color: #4b5c5d; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
+    svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .an-clear { margin-left: auto; align-self: center; padding-top: 19px; }
+    .dash-reset { font-size: 12.5px; font-weight: 700; color: #6f8487; white-space: nowrap; padding: 4px; text-decoration: none; text-transform: none; }
+    .dash-reset:disabled { color: #6f8487; opacity: .6; }
     .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .an-chip { display: inline-flex; align-items: center; gap: 4px; background: #eef6f6; color: #23474a; border: 1px solid #d3e6e7; border-radius: 999px;
       padding: 2px 4px 2px 10px; font-size: 12px; font-weight: 600; }
     .an-chip button { border: 0; background: none; color: var(--zt-mid2, #2a8a8c); font-size: 15px; line-height: 1; padding: 0 4px; }
-    .an-kpis { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-    .an-kpi { --accent: var(--zt-dark, #1f5c61); position: relative; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; min-width: 0; }
-    .an-kpi-value { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1.15; font-variant-numeric: tabular-nums; }
-    .an-kpi-line { font-size: 13px; color: #3b4b4c; padding-right: 44px; }
-    .an-kpi-sub { color: var(--zt-mid2, #2a8a8c); font-size: 11.5px; font-weight: 600; }
-    .an-kpi-delta { position: absolute; right: 14px; bottom: 14px; font-size: 12px; font-weight: 700; color: #1e8a4c; }
-    .an-h, .an-card h5 { font-size: 15px; font-weight: 700; color: var(--zt-ink, #173f44); margin: 0; }
-    .an-h { font-size: 12px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #4b5c5d; margin-bottom: 10px; }
-    .an-status { margin-bottom: 18px; }
-    .an-mid { display: grid; grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; }
-    .an-card { min-width: 0; padding: 0 20px 18px; }
-    .an-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin: 0 -20px 14px; padding: 12px 20px; border-bottom: 1px solid #eef3f3; }
-    .an-card-head h5 { flex: 1; min-width: 160px; }
-    .an-ic { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #eef5f4; color: var(--zt-mid2, #2a8a8c); }
-    .an-period { display: inline-flex; padding: 2px; border-radius: 8px; background: #eef3f3; }
-    .an-period button { border: 0; background: none; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; color: #4b5c5d; }
-    .an-period button.on { background: #fff; color: var(--zt-ink, #173f44); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-    .an-legend { display: flex; gap: 14px; list-style: none; margin: 0; padding: 0; font-size: 12.5px; color: #3b4b4c; }
-    .an-legend li { display: flex; align-items: center; gap: 6px; }
-    .an-legend span { width: 9px; height: 9px; border-radius: 50%; }
-    .an-splits { display: grid; gap: 18px; }
-    .an-ranks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
+    .an-kpis { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .an-kpi { --accent: #24666b; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 80px; padding: 8px 16px 8px 18px; min-width: 0; }
+    .an-kpi-value { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 28px; font-variant-numeric: tabular-nums; }
+    .an-kpi-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; line-height: 17px; }
+    .an-kpi-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .an-kpi-note { margin-left: auto; flex: none; font-size: 11px; font-weight: 600; color: #2f9e58; white-space: nowrap; }
+    .an-h { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #6f8487; margin: 0 0 10px; }
+    .an-card h5 { flex: 1; min-width: 160px; font-size: 16px; font-weight: 700; color: #17373b; margin: 0; }
+    .an-status { margin-bottom: 20px; }
+    .an-mid { display: grid; grid-template-columns: minmax(0, 2.04fr) minmax(0, 1fr); gap: 20px; margin-bottom: 20px; }
+    .an-card { min-width: 0; padding: 0 24px 18px 20px; --h: 170px; }
+    .an-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 56px; margin: 0 -24px 16px -20px; padding: 8px 24px 8px 20px; border-bottom: 1px solid #dde7e8; }
+    .an-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #e6f2f3; color: #24666b; }
+    .an-period { display: inline-flex; padding: 2px; border-radius: 7px; background: #f1f5f5; }
+    .an-period button { border: 0; background: none; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: #6f8487; }
+    .an-period button.on { background: #fff; color: #17373b; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+    .an-legend { display: flex; gap: 22px; list-style: none; margin: 0 4px 0 0; padding: 0; font-size: 12px; font-weight: 600; color: #3d5559; }
+    .an-legend li { display: flex; align-items: center; gap: 7px; }
+    .an-legend span { width: 10px; height: 10px; border-radius: 50%; }
+    .an-splits { display: grid; gap: 18px; padding-left: 4px; }
+    .an-ranks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-bottom: 18px; }
     .no-data, .an-loading { padding: 40px; text-align: center; color: #6b7f80; }
-    @media (max-width: 1199.98px) {
-      .an-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .an-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } .an-range { grid-column: span 2; }
-    }
+    @media (max-width: 1199.98px) { .an-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 991.98px) { .an-mid, .an-ranks { grid-template-columns: 1fr; } }
-    @media (max-width: 767.98px) { .an-kpis, .an-filters, .an-more { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 479.98px) { .an-filters, .an-more { grid-template-columns: 1fr; } .an-range { grid-column: auto; } }`,
+    @media (max-width: 767.98px) { .an-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 479.98px) { .an-filters > .filter, .an-filters > .an-range { flex: 1 1 100%; } .an-clear { padding-top: 0; } }`,
 })
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
@@ -342,18 +352,21 @@ export class StaffAnalytics {
     if (!t) return [];
     const k = this.words.kpis;
     const m = this.thisMonth();
-    const tile = (label: string, n: number, color: string, month?: number) => ({
-      label, n, value: formatCount(n), color, month: month ?? null,
-      sub: label === k[0] && month !== undefined ? `${formatCount(month)} this month` : null,
-      delta: label === k[1] && month !== undefined ? `+${formatCount(month)}` : null,
-    });
+    // This month's figure, right on the label line: "+312 this month" (registered), "+1,042" (completed).
+    const tile = (label: string, n: number, color: string, month?: number) => {
+      const plus = month === undefined ? null : `+${formatCount(month)}`;
+      return {
+        label, n, value: formatCount(n), color, month: month ?? null, tip: plus ? `${plus} this month` : null,
+        note: plus && label === k[0] ? `${plus} this month` : plus && label === k[1] ? plus : null,
+      };
+    };
     return [
-      tile(k[0], t.registered, 'var(--zt-dark, #1f5c61)', m?.registered),
-      tile(k[1], t.certified, '#2e9a5a', m?.certified),
+      tile(k[0], t.registered, '#24666b', m?.registered),
+      tile(k[1], t.certified, '#2f9e58', m?.certified),
       tile(k[2], t.bronze, this.words.certifications.includes('Bronze') ? LEVEL_COLORS['Bronze'] : '#6250d6'),
-      tile(k[3], t.silver, '#7c8a90'),
-      tile(k[4], t.gold, '#b8890f'),
-      ...(k[5] ? [tile(k[5], t.zedx ?? 0, 'var(--zt-mid2, #2a8a8c)')] : []),
+      tile(k[3], t.silver, LEVEL_COLORS['Silver']),
+      tile(k[4], t.gold, LEVEL_COLORS['Gold']),
+      ...(k[5] ? [tile(k[5], t.zedx ?? 0, '#3c8f99')] : []),
     ];
   });
 
@@ -361,9 +374,20 @@ export class StaffAnalytics {
   protected readonly trendSeries = ['Registered', this.words.completed];
   protected readonly trendColors = TREND_COLORS;
 
-  protected readonly months = computed<TrendPoint[]>(() =>
-    (this.data()?.months ?? []).map((m) => ({ label: monthLabel(m.period, false), values: [m.registered, m.certified] })),
-  );
+  /**
+   * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): always the 12 months up to the To date's month (else
+   * this month), named "Nov" under the axis ("Nov 2026" in the tooltip); a month without figures is drawn as 0.
+   */
+  protected readonly months = computed<TrendPoint[]>(() => {
+    const byPeriod = new Map((this.data()?.months ?? []).map((m) => [m.period, m]));
+    const to = this.filter().to;
+    const end = to ? new Date(+to.slice(0, 4), +to.slice(5, 7) - 1, 1) : new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(end.getFullYear(), end.getMonth() - 11 + i, 1);
+      const m = byPeriod.get(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      return { label: MONTHS[d.getMonth()], tip: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`, values: [m?.registered ?? 0, m?.certified ?? 0] };
+    });
+  });
   protected readonly years = computed<TrendPoint[]>(() =>
     (this.data()?.years ?? []).map((y) => ({ label: y.period, values: [y.registered, y.certified] })),
   );
@@ -382,8 +406,9 @@ export class StaffAnalytics {
     return items.map((it, i) => ({ label: it.label, value: it.total, color: SPLIT_COLORS[i] ?? '#9aa9ab' }));
   }
 
-  protected ranked(items: CountItem[]): ChartItem[] {
-    return items.map((it) => ({ label: it.label, value: it.total }));
+  /** activity: "10-Manufacture of food products" shown as "10 Food products" (the export keeps the full name). */
+  protected ranked(items: CountItem[], activity = false): ChartItem[] {
+    return items.map((it) => ({ label: activity ? activityLabel(it.label) : it.label, value: it.total }));
   }
 
   /** The date basis as the head's switch says it. */
@@ -513,6 +538,12 @@ export class StaffAnalytics {
   private shown(key: FilterKey, v: string): string {
     return key === 'gender' ? genderLabel(v) : v;
   }
+}
+
+/** "10-Manufacture of food products" -> "10 Food products"; other names as they are. */
+export function activityLabel(v: string): string {
+  const m = /^(\d{2})\s*-\s*(?:manufacture of\s+)?(.+)$/i.exec(v.trim());
+  return m ? `${m[1]} ${m[2].charAt(0).toUpperCase()}${m[2].slice(1)}` : v;
 }
 
 function genderLabel(v: string): string {

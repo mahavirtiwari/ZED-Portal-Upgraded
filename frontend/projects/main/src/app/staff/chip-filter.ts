@@ -25,16 +25,19 @@ export interface FilterChip {
     </div>
   `,
   styles: `
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' chips: 32px pills, 12.5px, the label in grey, the
+       count in a small grey pill (a lighter teal one on the chosen chip). */
     :host { display: inline-block; max-width: 100%; }
     .cf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .cf-label { margin-right: 4px; font-size: 13.5px; color: #5f6f70; }
-    .cf-chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border: 1px solid #d5e1e2; border-radius: 17px;
-      background: #fff; color: var(--zt-ink, #173f44); font-size: 13.5px; font-weight: 600; line-height: 1; white-space: nowrap; }
-    .cf-chip:hover:not(.on) { background: #f2f8f7; border-color: var(--zt-soft, #d4ebe6); }
+    .cf-label { margin-right: 4px; font-size: 12.5px; font-weight: 600; color: #6f8487; }
+    .cf-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border: 1px solid #dde7e8; border-radius: 16px;
+      background: #fff; color: #17373b; font-size: 12.5px; font-weight: 500; line-height: 1; white-space: nowrap; }
+    .cf-chip:hover:not(.on) { background: #f2f8f7; border-color: #c9dadb; }
     .cf-chip:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
-    .cf-chip.on { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); color: #fff; }
-    .cf-n { min-width: 22px; padding: 2px 7px; border-radius: 10px; background: #eef2f2; color: #5f6f70; font-size: 11.5px; font-weight: 700; text-align: center; }
-    .cf-chip.on .cf-n { background: rgba(255, 255, 255, 0.22); color: #fff; }
+    .cf-chip.on { background: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); color: #fff; font-weight: 700; }
+    .cf-n { min-width: 26px; height: 20px; margin-right: -6px; padding: 0 7px; border-radius: 10px; background: #ecf0f0; color: #6f8487; font-size: 10.5px;
+      font-weight: 700; line-height: 20px; text-align: center; }
+    .cf-chip.on .cf-n { background: rgba(255, 255, 255, 0.14); color: #fff; }
   `,
 })
 export class ChipFilter {

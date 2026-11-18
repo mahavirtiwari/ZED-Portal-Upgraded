@@ -269,13 +269,13 @@
             }
 
             @if (statusAlert(app); as s) {
-              <div class="alert mt-3" [class.alert-success]="s === 'ACCEPTED'" [class.alert-danger]="s === 'REJECTED'">{{ s }}</div>
+              <div class="alert mt-3" [class.alert-success]="s === 'ACCEPTED'" [class.alert-danger]="s === 'REJECTED'">{{ s === 'ACCEPTED' ? 'Accepted' : 'Rejected' }}</div>
             }
             @if (app.canDecide) {
               <div class="form-actions">
-                <button type="button" class="btn btn-outline-danger" (click)="openDecision('reject')">REJECT</button>
+                <button type="button" class="btn btn-outline-danger" (click)="openDecision('reject')">Reject</button>
                 @if (app.canApprove) {
-                  <button type="button" class="btn btn-primary" (click)="openDecision('approve')">ACCEPT</button>
+                  <button type="button" class="btn btn-primary" (click)="openDecision('approve')">Accept</button>
                 }
               </div>
             }
@@ -345,8 +345,8 @@
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-default" (click)="closeDialogs()">CANCEL</button>
-                  <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">SUBMIT</button>
+                  <button type="button" class="btn btn-default" (click)="closeDialogs()">Cancel</button>
+                  <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">Submit</button>
                 </div>
               </div>
             </div>
@@ -374,7 +374,7 @@
       <img class="thumb" [src]="p.url" alt="" />
       <span><strong>{{ p.name }}</strong> captured at {{ p.timeStamp }}</span>
     </div>
-    <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(p.url)">VIEW</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(p.url)">View</button>
   </div>
 </ng-template>
 
@@ -450,9 +450,9 @@
             <span>captured at {{ doc.timeStamp }}</span>
           </div>
           @if (doc.isPdf) {
-            <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
+            <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">View</a>
           } @else {
-            <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc.url, doc)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc.url, doc)">View</button>
           }
         </div>
       }
@@ -483,7 +483,7 @@
             }
           </div>
           @if ($any(app).canValidate && opened(doc)) {
-            <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
+            <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'Validate' }}</button>
           }
         </div>
       }

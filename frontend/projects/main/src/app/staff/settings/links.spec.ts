@@ -116,7 +116,7 @@ describe('LinksPage', () => {
     expect(card('lgd').querySelector('.help-block')!.textContent).toContain('is not a web address');
     http.expectNone((r) => r.method === 'PUT');
 
-    (Array.from(card('lgd').querySelectorAll('button')).find((b) => b.textContent!.trim() === 'CANCEL') as HTMLButtonElement).click();
+    (Array.from(card('lgd').querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Cancel') as HTMLButtonElement).click();
     await settle();
     expect(address('lgd').value).toBe('https://lgd.example.org/download');
     expect(card('lgd').querySelector('.help-block')).toBeNull();

@@ -1,0 +1,31 @@
+/* NEFT Admins (staff-07, popup-11). 2026-11-18 (the user: staff pages 'not aligned with SVG files'): moved out of accounts.ts to keep
+   each stylesheet under the 8 kB budget. */
+/* NEFT Admins (2026-11-17): the empty state with its three steps, and the short pop-up (the rest: the skin's acc-* pop-up). */
+/* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-07 / popup-11 values. */
+.nf-empty { padding: 32px 24px 26px; text-align: center; }
+.nf-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: inline-grid; place-items: center; background: #e6f2f3; color: #24666b; }
+.nf-icon svg, .nf-x svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.nf-big { width: 72px; height: 72px; border-radius: 50%; }
+.nf-big svg { width: 32px; height: 32px; }
+.nf-empty h4 { margin: 16px 0 6px; font-size: 19px; font-weight: 700; color: #17373b; }
+.nf-empty p { margin: 0 0 16px; font-size: 13.5px; font-weight: 500; color: #6f8487; }
+.nf-first { min-width: 200px; min-height: 42px; }
+.nf-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0 0; padding: 20px 0 0; border-top: 1px solid #dde7e8; list-style: none; text-align: left; }
+.nf-steps b { display: block; font-size: 13.5px; color: #17373b; }
+.nf-steps small, .nf-sub { font-size: 12px; font-weight: 500; color: #6f8487; }
+.modal .modal-dialog.nf-dialog { max-width: 560px; }
+.modal .nf-head { display: flex; gap: 14px; align-items: flex-start; padding: 20px 24px 18px; background: #fff; }
+.nf-head > div { flex: 1; min-width: 0; }
+.nf-head .registration-title { font-size: 18px; color: #17373b; }
+.nf-x { flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; background: #eef3f3; color: #17373b; }
+.nf-x svg { width: 16px; height: 16px; stroke-width: 2; }
+.modal .nf-dialog .acc-body { background: #fff; padding: 24px 28px 18px; }
+.modal .nf-dialog .acc-field label { font-size: 12.5px; font-weight: 600; color: #17373b; }
+.modal .nf-dialog .acc-field label.nf-quiet { font-size: 11.5px; color: #6f8487; }
+.nf-dialog .acc-field .form-control, .nf-dialog .acc-field .form-select { height: 40px; border-radius: 9px; font-size: 13px; }
+.nf-wide { grid-column: 1 / -1; }
+.nf-note { display: flex; align-items: center; gap: 12px; min-height: 64px; margin: 20px 0 0; padding: 12px 16px; border-radius: 10px; background: #e6f2f3; color: #17373b; font-size: 12.5px; font-weight: 500; }
+.nf-note svg { flex: none; width: 16px; height: 16px; fill: none; stroke: #24666b; stroke-width: 1.4; }
+.modal .nf-foot { justify-content: flex-end; padding: 14px 28px; }
+.nf-foot .btn { min-height: 40px; min-width: 110px; }
+.nf-foot .btn-primary { min-width: 170px; }

@@ -156,7 +156,7 @@ describe('SaDetailsPage', () => {
     text.value = 'Improve records';
     text.dispatchEvent(new Event('input'));
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const ofi = http.expectOne(REVIEW + '/ofi-comments');
     expect(ofi.request.body).toEqual({ sectionId: 41, comments: 'Improve records' });
@@ -172,7 +172,7 @@ describe('SaDetailsPage', () => {
     expect(el.querySelector('[data-check="exemptions"]')).toBeNull();
     el.querySelector<HTMLInputElement>('[data-check="quality"]')!.click();
     await settle();
-    Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'Submit')!.click();
     await settle();
     const req = http.expectOne(REVIEW + '/final-submit');
     expect(req.request.body).toEqual({ checklist: ['quality'] });
@@ -193,7 +193,7 @@ describe('SaDetailsPage', () => {
     // The site page's pop-up is "Remarks" (SaDetails.cshtml #AgencyRemarks), not the desktop page's "Agency Remarks".
     expect(el.querySelector('#reviewRemarksTitle')!.textContent!.trim()).toBe('Remarks');
     expect(el.querySelector('label[for=reviewRemarksText]')!.textContent!.trim()).toBe('Remarks*');
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const meeting = http.expectOne(REVIEW + '/remarks');
     expect(meeting.request.body).toEqual({ kind: 'meeting', id: 71, remarks: 'Opening done' });
@@ -207,7 +207,7 @@ describe('SaDetailsPage', () => {
     expect(el.textContent).toContain('NC comments');
     button('Edit Remarks')!.click();
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const nc = http.expectOne(REVIEW + '/remarks');
     expect(nc.request.body).toEqual({ kind: 'nc-comments', id: 81, remarks: 'NC comments' });
@@ -512,7 +512,7 @@ describe('SaDetailsPage (surveillance)', () => {
     edits()[0].click();
     await settle();
     expect(el.querySelector<HTMLTextAreaElement>('#reviewRemarksText')!.value).toBe('Policy outdated');
-    Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).find((b) => b.value === 'UPDATE')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).find((b) => b.value === 'Update')!.click();
     await settle();
     const req = http.expectOne(REVIEW + '/remarks');
     expect(req.request.body).toEqual({ kind: 'requirement', id: 11, remarks: 'Policy outdated' });

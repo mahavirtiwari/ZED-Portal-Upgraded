@@ -67,7 +67,7 @@ describe('SubsidyRegionsPage', () => {
     http.expectOne(url).flush({ ...data, otherPortals: [{ portal: 'Surveillance', districts: 3 }] });
     await settle(fixture);
     expect(el.querySelector('.copy-bar')!.textContent!.replace(/\s+/g, ' ')).toContain('Surveillance: 3 districts differ.');
-    button(el, 'UPDATE THEM NOW').click();
+    button(el, 'Update them now').click();
     await settle(fixture);
     const copy = http.expectOne(`${url}/copy`);
     expect(copy.request.method).toBe('POST');

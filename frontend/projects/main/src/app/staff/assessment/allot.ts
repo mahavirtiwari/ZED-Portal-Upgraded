@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { ASSESSMENT_SYSTEM, Expanded, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { LevelMedal } from './level-medal';
 import { AssessmentApi, ListFilter, Row } from './assessment.api';
 import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
@@ -90,6 +91,9 @@ export const BULK_LIMIT = 100;
  * agency says how many of them it may take. One unit posts the single allotment (POST allot); several post allot/bulk, which
  * applies the same checks to each unit and answers per unit. The design's suggested agency, open load, due date and note
  * are not shown: the API has none of them.
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-05's search with its icon on the left, "Covers
+ * <state>" on each agency (the API offers only agencies of the unit's state), the 32px grey close button, 40px title-case footer
+ * buttons and "The agency SPOC is told by e-mail."</p>
  */
 @Component({
   selector: 'zed-allot-dialog',
@@ -108,7 +112,9 @@ export const BULK_LIMIT = 100;
                 <p>{{ units().length }} units selected</p>
               }
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
+            <button type="button" class="ad-x" aria-label="Close" (click)="closed.emit()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            </button>
           </div>
 
           @if (results(); as r) {
@@ -120,18 +126,22 @@ export const BULK_LIMIT = 100;
                 }
               </ul>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-primary" (click)="closed.emit()">Close</button></div>
+            <div class="modal-footer ad-foot"><button type="button" class="btn btn-primary" (click)="closed.emit()">Close</button></div>
           } @else {
             <div class="modal-body ad-body">
               <div class="ad-pick">
                 <label class="form-label" for="adSearch">{{ chooseLabel }}</label>
-                <input id="adSearch" type="search" class="form-control" maxlength="60" autocomplete="off" [placeholder]="'Search ' + party + ' name or ID'"
-                       [ngModel]="q()" (ngModelChange)="q.set($event)" />
+                <div class="ad-q">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+                  <input id="adSearch" type="search" class="form-control" maxlength="60" autocomplete="off" [placeholder]="'Search ' + party + ' name or ID'"
+                         [ngModel]="q()" (ngModelChange)="q.set($event)" />
+                </div>
                 <div class="ad-list" role="radiogroup" [attr.aria-label]="chooseLabel">
                   @for (a of shown(); track a.userId) {
                     <label class="ad-opt" [class.on]="choice() === a.userId">
                       <input type="radio" name="adAgency" [value]="a.userId" [checked]="choice() === a.userId" (change)="choice.set(a.userId)" />
                       <span class="ad-name"><b>{{ a.userName }}</b><small>{{ a.userId }}</small></span>
+                      @if (one() && t(one()!, 'PStateName')) { <span class="chip is-good">Covers {{ t(one()!, 'PStateName') }}</span> }
                       @if (units().length > 1) {
                         <span class="chip" [class.is-good]="a.takes === units().length" [class.is-warn]="a.takes < units().length">May take {{ a.takes }} of {{ units().length }}</span>
                       }
@@ -162,8 +172,8 @@ export const BULK_LIMIT = 100;
             </div>
             @if (error()) { <div class="alert alert-danger mx-3" role="alert">{{ error() }}</div> }
             <div class="modal-footer ad-foot">
-              <small class="muted">The {{ party }} is told by e-mail.</small>
-              <button type="button" class="btn btn-light" (click)="closed.emit()">Cancel</button>
+              <small class="muted">The {{ party }} SPOC is told by e-mail.</small>
+              <button type="button" class="btn btn-light ad-cancel" (click)="closed.emit()">Cancel</button>
               <button type="button" class="btn btn-primary" [disabled]="busy() || loading()" (click)="allot()">Allot to {{ party }}</button>
             </div>
           }
@@ -179,12 +189,20 @@ export const BULK_LIMIT = 100;
     .ad-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--zt-soft, #d4ebe6); }
     .ad-icon svg { width: 20px; fill: none; stroke: var(--zt-dark, #1f5c61); stroke-width: 1.8; }
     .ad-title { flex: 1; min-width: 0; }
-    .ad-title h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .ad-title p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .ad-title h2 { margin: 0; font-size: 18px; font-weight: 700; color: #17373b; }
+    .ad-title p { margin: 2px 0 0; font-size: 12.5px; color: #6f8487; overflow-wrap: anywhere; }
+    .ad-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #eef3f3; display: grid; place-items: center; }
+    .ad-x svg, .ad-q svg { width: 16px; fill: none; stroke: #17373b; stroke-width: 2; stroke-linecap: round; }
+    .ad-q { position: relative; }
+    .ad-q svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); stroke: #6f8487; }
+    .ad-q input { padding-left: 36px; background-image: none !important; }
     .ad-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 0; padding: 0; }
     .ad-pick { padding: 18px 22px; }
     .ad-list { display: grid; gap: 10px; margin-top: 12px; max-height: 340px; overflow: auto; }
-    .ad-opt { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea; border-radius: 10px; cursor: pointer; font-weight: 400; }
+    .ad-opt { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea; border-radius: 12px; cursor: pointer; font-weight: 400; }
+    .ad-opt .chip { flex: none; padding: 3px 10px; border-radius: 11px; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+    .ad-opt .chip.is-good { background: #e5f5ea; color: #2f9e58; }
+    .ad-opt .chip.is-warn { background: #fdf2dc; color: #9a5f06; }
     .ad-opt.on { border: 2px solid var(--zt-dark, #1f5c61); padding: 11px 13px; background: #f4faf9; }
     .ad-opt input { accent-color: var(--zt-dark, #1f5c61); }
     .ad-name { flex: 1; min-width: 0; }
@@ -203,7 +221,9 @@ export const BULK_LIMIT = 100;
     .ad-res li::before { content: '✓ '; color: #1e8a4c; font-weight: 700; }
     .ad-res li.no::before { content: '✕ '; color: #c0392b; }
     .ad-res li.no small { color: #c0392b; }
-    .ad-foot { gap: 10px; }
+    .ad-foot { gap: 12px; padding: 14px 28px; }
+    .ad-foot .btn { min-height: 40px; padding: 0 22px; font-weight: 700; }
+    .ad-foot .ad-cancel { min-width: 110px; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
     .ad-foot small { margin-right: auto; }
     .ad-none { margin: 8px 0; }
     @media (max-width: 767.98px) { .ad-body { grid-template-columns: minmax(0, 1fr); } .ad-side { border-left: 0; border-top: 1px solid #e6eeee; } }
@@ -340,15 +360,17 @@ type Tab = 'allot' | 'reallot';
  * header bell opens them with ?type=ALLOT|REALLOT), a Waiting column from the payment date sorted oldest first, district and
  * state instead of the address, the row's other actions in its menu, and bulk allotment: tick units, "Allot N units", one
  * agency in the pop-up.</p>
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-09, no Refresh in the title row (the list reloads
+ * after each allotment) and no "Show" label before the tabs; the search with its icon on the left and the drop-downs at the
+ * design's fixed widths; the level as a medal. The "Suggested agency" column is not shown: the list has no suggestion or open
+ * load per agency (the pop-up lists the agencies that may take the unit).</p>
  */
 @Component({
   selector: 'zed-staff-allot',
-  imports: [FormsModule, PagerComponent, PageHead, ChipFilter, RowMenu, AllotDialog],
+  imports: [FormsModule, PagerComponent, PageHead, ChipFilter, RowMenu, AllotDialog, LevelMedal],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-      <button type="button" class="btn btn-ph" (click)="load(true)">Refresh</button>
-    </zed-page-head>
+    <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle" />
 
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
@@ -358,8 +380,11 @@ type Tab = 'allot' | 'reallot';
     </div>
 
     <div class="zed-card al-filters">
-      <input type="search" id="allotSearch" class="form-control al-q" maxlength="50" placeholder="Search ZED ID, unit or SPOC" aria-label="Search ZED ID, unit or SPOC"
-             [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <div class="al-q">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+        <input type="search" id="allotSearch" class="form-control" maxlength="50" placeholder="Search ZED ID, unit or SPOC" aria-label="Search ZED ID, unit or SPOC"
+               [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </div>
       <select class="form-select" id="allotState" aria-label="State" [(ngModel)]="filter.state" (ngModelChange)="load()">
         <option value="">All states</option>
         @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
@@ -417,7 +442,7 @@ type Tab = 'allot' | 'reallot';
                   @if (main && t(s, 'UdyamStatus') === 'Duplicate') { <span class="chip is-warn">Duplicate Udyam</span> }
                 </td>
                 <td>
-                  <span class="lv-tag" [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ levelName(t(s, 'Certification')) }}</span>
+                  <zed-level-medal [level]="t(s, 'Certification')" />
                   @if (consultancy) { <small class="sub">Milestone {{ t(s, 'NcCount') }}</small> }
                   @if (surveillance) { <small class="sub">{{ t(s, 'SurveillanceNo') }}</small> }
                 </td>
@@ -465,7 +490,11 @@ type Tab = 'allot' | 'reallot';
   styles: `
     .al-tabs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
     .al-sort { font-weight: 600; color: var(--zt-dark, #1f5c61); text-decoration: none; padding: 0; }
-    .al-filters { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(120px, 1fr)); gap: 10px; padding: 12px 14px; margin-bottom: 12px; }
+    .al-tabs ::ng-deep .cf-label { display: none; }
+    .al-filters { display: grid; grid-template-columns: 320px 190px 170px 150px 150px; gap: 12px; padding: 12px 14px; margin-bottom: 12px; }
+    .al-q { position: relative; }
+    .al-q svg { position: absolute; left: 12px; top: 50%; width: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
+    .al-q input { padding-left: 36px; background-image: none !important; }
     .al-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 10px 16px; margin-bottom: 12px; border-radius: 12px;
       background: var(--zt-dark, #1f5c61); color: #fff; }
     .al-go { background: #a8e0b8; color: var(--zt-ink, #173f44); font-weight: 700; border: 0; padding: 7px 26px; }
@@ -475,7 +504,7 @@ type Tab = 'allot' | 'reallot';
     .al-ck .form-check-input { width: 18px; height: 18px; margin: 0; }
     tr.al-on > td { background: #f2f9f8; }
     tr.al-flag > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
-    .al-id { display: block; font-size: 12.5px; font-weight: 700; }
+    .al-id { display: block; font-size: 11.5px; font-weight: 700; color: #24666b; }
     .al-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
     .unit-cell { min-width: 200px; }
     .al-reason { min-width: 180px; max-width: 320px; white-space: pre-wrap; }
@@ -484,7 +513,7 @@ type Tab = 'allot' | 'reallot';
     .al-act { min-width: 82px; margin-right: 6px; font-weight: 600; }
     .al-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
     .al-act.re-allot:hover { background: #ffe6b5; border-color: #ffe6b5; }
-    @media (max-width: 991.98px) { .al-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .al-q { grid-column: 1 / -1; } }
+    @media (max-width: 1199.98px) { .al-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .al-q { grid-column: 1 / -1; } }
   `,
 })
 export class AllotPage {

@@ -237,8 +237,8 @@ describe('Consultancy technology pages', () => {
     await create(TuVerificationPage, StaffRole.MasterAdmin, { zedId: 'ZEDMSME000500', level: 'Silver' });
     http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([application({ canDecide: true, canApprove: false, canEditAmounts: false, canEditAccount: false, hasReport: false })]);
     await settle();
-    expect(button('REJECT').length).toBe(1);
-    expect(button('ACCEPT').length).toBe(0);
+    expect(button('Reject').length).toBe(1);
+    expect(button('Accept').length).toBe(0);
     expect(el.textContent).not.toContain('Download TU Report');
   });
 
@@ -248,9 +248,9 @@ describe('Consultancy technology pages', () => {
       canValidate: true, canDecide: false, canEditAmounts: false, canEditAccount: false, hasReport: false, details: { IsApproved: 1 },
     })]);
     await settle();
-    expect(button('ACCEPT').length).toBe(0);
-    expect(button('REJECT').length).toBe(0);
-    expect(el.textContent).toContain('ACCEPTED');
+    expect(button('Accept').length).toBe(0);
+    expect(button('Reject').length).toBe(0);
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Accepted');
   });
 
   it('shows the Bronze certificate and its Details of Expenditure, and Gold under one accordion', async () => {
@@ -303,7 +303,7 @@ describe('Consultancy technology pages', () => {
       details: { VerificationStatus: 4, EligibleAmount: '1' },
     })]);
     await settle();
-    expect(el.textContent).toContain('ACCEPTED');
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Accepted');
     await expand('Attendance');
     expect(el.textContent).toContain('Day 1');
     expect(el.textContent).toContain('7 (30 Minutes)');
@@ -332,7 +332,7 @@ describe('Consultancy technology pages', () => {
     boxes[2].click();
     await settle();
     expect((el.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).disabled).toBe(true);
-    button('PROCEED')[0].click();
+    button('Proceed')[0].click();
     await settle();
     expect((button('Submit')[0] as HTMLButtonElement).disabled).toBe(true);
     expect(el.querySelector('label[for="recConfirm"] [data-key="staff.consultancy.technologyRecommendation.fairConfirm.checkbox"]')).not.toBeNull();
@@ -366,7 +366,7 @@ describe('Consultancy technology pages', () => {
     (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
     await settle();
     expect(text(el.querySelector('.counter-block')!)).toBe('Selected: 1/10');
-    expect(button('PROCEED').length).toBe(0);
+    expect(button('Proceed').length).toBe(0);
     expect(el.textContent).toContain('Recommendation of Gold is in progress.');
   });
 });

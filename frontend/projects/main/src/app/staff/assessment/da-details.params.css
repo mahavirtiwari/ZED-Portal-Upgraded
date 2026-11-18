@@ -1,0 +1,37 @@
+/* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-14b. */
+/* Parameters (staff-14b), over the shared _zed-parameters look. */
+.zp-layout { gap: 16px; }
+.zp-nav { border-color: #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(0, 0, 0, .09); }
+.zp-nav-head { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 18px 8px; background: #fff; color: #17373b; font-size: 15px; }
+.zp-nav-done { font-size: 12px; font-weight: 600; color: #2f9e58; }
+.zp-nav-sum { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 14px; border-bottom: 1px solid #edf2f2; }
+.zp-nav-sum .zp-bar { width: 100%; height: 6px; margin-bottom: 4px; }
+.zp-nav-sum .zp-bar span { background: #2f9e58; }
+.zp-x::before { content: '\2715'; }
+.zp-nav-item { padding: 10px 12px; border-radius: 12px; }
+.zp-nav-item .zp-num { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #eef3f3; color: #17373b; }
+.zp-nav-item[data-v='No'] .zp-num { background: #fff; border: 1.5px solid #c8473c; color: #c8473c; }
+.zp-nav-item.active { background: #e6f2f3; box-shadow: inset 5px 0 0 #24666b; outline: 1.5px solid #24666b; }
+.zp-nav-item.active .zp-num { background: #24666b; color: #fff; }
+.zp-nav-item .zp-bar { display: none; }
+.zp-nav-name { font-size: 13.5px; font-weight: 700; color: #17373b; }
+.zp-head { padding: 20px; margin-bottom: 14px; background: #fff; color: #17373b; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(0, 0, 0, .09); }
+.zp-head-title h5 { color: #17373b; font-size: 19px; }
+.zp-head .zp-num { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #24666b; color: #fff; font-size: 19px; }
+.zp-head-sub { flex-basis: 100%; margin-left: 54px; margin-top: -10px; font-size: 13px; color: #6f8487; }
+.zp-head-status { flex-direction: column; align-items: flex-end; padding-left: 16px; border-left: 1px solid #edf2f2; }
+.zp-head-status .zp-label { color: #3d5559; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+.zp-steps { display: flex; gap: 6px; margin-left: auto; }
+.zp-step, .zp-fold { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #dde7e8; border-radius: 9px; background: #fff; }
+.zp-fold { width: 32px; height: 32px; border: 0; border-radius: 8px; background: #eef3f3; }
+.zp-step svg, .zp-fold svg { width: 16px; fill: none; stroke: #17373b; stroke-width: 2; stroke-linecap: round; }
+.zp-step:disabled { opacity: .4; }
+.zp-req { border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 3px 10px rgba(0, 0, 0, .09); }
+.zp-req:not(.zp-closed) { border: 1.5px solid #24666b; }
+.zp-closed .zp-req-body, .zp-closed .zp-foot { display: none; }
+.zp-closed .zp-fold svg { transform: rotate(180deg); }
+.zp-fold-sum { flex-basis: 100%; text-align: right; font-size: 12px; color: #6f8487; }
+.zp-req .zp-code { min-width: 42px; height: 26px; display: inline-grid; place-items: center; border-radius: 7px; background: #17373b; color: #fff; }
+.zp-closed .zp-code { background: #eef3f3; color: #17373b; }
+.qo-add { min-height: 32px; font-weight: 700; }
+

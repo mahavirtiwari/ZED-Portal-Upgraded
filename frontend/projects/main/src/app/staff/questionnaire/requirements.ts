@@ -93,7 +93,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
             <zed-excel-tools [api]="api.levelRequirementsUrl(sectionType)" [title]="'Requirements of all ' + levelLabel() + ' parameters'"
                              [fileName]="'requirements-' + sectionType.toLowerCase() + '-all-parameters'" (applied)="load()" /></span>
         }
-        <a class="btn btn-default" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; BACK</a>
+        <a class="btn btn-default" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; Back</a>
       </div>
     </div>
 
@@ -244,8 +244,8 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
               <div class="foot">
                 <button type="button" class="btn btn-add-checkpoint" (click)="f.checkpoints.push(newCheckpoint()); touch()">+ Add checkpoint</button>
                 <span>
-                  <button type="button" class="btn btn-default" (click)="closeForm()">CANCEL</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="saving() || d.checklistReady === false">{{ f.id ? 'UPDATE REQUIREMENT' : 'SAVE REQUIREMENT' }}</button>
+                  <button type="button" class="btn btn-default" (click)="closeForm()">Cancel</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="saving() || d.checklistReady === false">{{ f.id ? 'Update requirement' : 'Save requirement' }}</button>
                 </span>
               </div>
             </form>
@@ -254,9 +254,9 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
               <div class="det-head">
                 <h4><span class="req-code">{{ d.sectionCode }}.{{ q.requirementCode }}</span> {{ q.requirementName?.trim() || 'Requirement ' + d.sectionCode + '.' + q.requirementCode }}</h4>
                 <span class="det-actions">
-                  <button type="button" class="btn btn-outline-primary btn-sm edit-requirement" [disabled]="d.checklistReady === false" (click)="edit(q)">EDIT</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm edit-requirement" [disabled]="d.checklistReady === false" (click)="edit(q)">Edit</button>
                   @if (q.canRemove) {
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-requirement" (click)="removeRequirement(q)">DELETE</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-requirement" (click)="removeRequirement(q)">Delete</button>
                   }
                 </span>
               </div>

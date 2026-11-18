@@ -478,7 +478,7 @@ export class SurveillanceUsersPage {
     if (this.busy()) return;
     this.dialogError.set('');
     switch (key) {
-      case 'reset': this.resetFor.set({ target: t, ask: resetLinkAsk(t.name, t.userId, t.email) }); break;
+      case 'reset': this.resetFor.set({ target: t, ask: resetLinkAsk(t.name, t.userId, t.email, t.kind === 'agencies' ? 'Surveillance agency' : 'Assessor') }); break;
       case 'block': this.blockFor.set({ target: t, ask: this.blockAsk(t) }); break;
       case 'unblock':
         this.unblockKind = t.kind;

@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
 
 /** The small line icons a menu item can show. */
-export type RowMenuIcon = 'edit' | 'people' | 'mail' | 'history' | 'lock' | 'unlock' | 'eye' | 'download' | 'trash' | 'refresh';
+export type RowMenuIcon = 'edit' | 'people' | 'mail' | 'history' | 'lock' | 'unlock' | 'eye' | 'download' | 'trash' | 'refresh' | 'award' | 'file';
 
 /** One action of a row menu. A danger item (block, delete) is red and set apart below a line. */
 export interface RowMenuItem {
@@ -23,6 +23,9 @@ const ICONS: Record<RowMenuIcon, string> = {
   download: 'M12 3v12M7 10l5 5 5-5M4 21h16',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14',
   refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-11's ribbon (pledge certificate) and document (report).
+  award: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.5 14l-1.5 8 5-3 5 3-1.5-8',
+  file: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6',
 };
 
 /**
@@ -53,21 +56,25 @@ const ICONS: Record<RowMenuIcon, string> = {
     }
   `,
   styles: `
-    :host { display: inline-block; }
-    .rm-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #d5e1e2; border-radius: 8px; background: #fff; color: var(--zt-ink, #173f44); }
-    .rm-btn:hover, .rm-btn[aria-expanded='true'] { border-color: var(--zt-dark, #1f5c61); background: #f4faf9; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' kebab, a 32px grey square (pale teal and outlined
+       while open), and the menu: 36px rows, teal icons, the chosen row on pale teal, the red actions under a line. */
+    :host { display: inline-block; vertical-align: middle; }
+    .rm-btn { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border: 1.5px solid #e7eeee; border-radius: 8px; background: #e7eeee; color: #17373b; }
+    .rm-btn:hover, .rm-btn[aria-expanded='true'] { border-color: var(--zt-dark, #24666b); background: #e6f2f3; color: var(--zt-dark, #24666b); }
     .rm-btn:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
     .rm-btn svg { width: 18px; height: 18px; fill: currentColor; }
-    .rm-menu { position: fixed; z-index: 1060; min-width: 220px; max-width: min(320px, calc(100vw - 16px)); padding: 6px; background: #fff;
-      border: 1px solid #e1eaea; border-radius: 10px; box-shadow: 0 12px 32px rgba(16, 61, 64, 0.18); text-align: left; }
-    .rm-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border: 0; border-radius: 7px; background: none;
-      color: #24393b; font-size: 13.5px; font-weight: 500; text-align: left; }
-    .rm-item:hover:not(:disabled), .rm-item:focus-visible { background: #eef6f5; outline: none; }
+    .rm-menu { position: fixed; z-index: 1060; min-width: 230px; max-width: min(320px, calc(100vw - 16px)); padding: 6px; background: #fff;
+      border: 1px solid #dde7e8; border-radius: 12px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.09), 0 12px 32px rgba(16, 61, 64, 0.12); text-align: left; }
+    .rm-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 12px; border: 0; border-radius: 8px; background: none;
+      color: #17373b; font-size: 13px; font-weight: 500; text-align: left; }
+    .rm-item:hover:not(:disabled), .rm-item:focus-visible { background: #e6f2f3; font-weight: 600; outline: none; }
     .rm-item:disabled { color: #9aa8a9; }
-    .rm-item svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .rm-item.danger { color: #c0392b; }
-    .rm-item.danger:hover:not(:disabled), .rm-item.danger:focus-visible { background: #fdf0ee; }
-    .rm-sep { height: 1px; margin: 6px 4px; background: #e6eeee; }
+    .rm-item svg { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--zt-dark, #24666b); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .rm-item:disabled svg { stroke: currentColor; }
+    .rm-item.danger { color: #c8473c; }
+    .rm-item.danger svg { stroke: currentColor; }
+    .rm-item.danger:hover:not(:disabled), .rm-item.danger:focus-visible { background: #fbe9e7; }
+    .rm-sep { height: 1px; margin: 6px 4px; background: #dde7e8; }
   `,
 })
 export class RowMenu {

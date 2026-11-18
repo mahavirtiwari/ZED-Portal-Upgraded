@@ -20,7 +20,11 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
  * observations per assessment: minor 1, major 3, critical 5; then the faster reply), and the list to close / reopen. An
  * agency: its observations to reply to. The figures come from each observation's time history.
  * 2026-11-17 (the user's staff design 19): the CSV in the title row, the rankings on the left with the open counts coloured,
- * "By category" as bars (the major / critical share in amber) and "How the score works" beside them. The header bell opens
+ * "By category" as bars (the major / critical share in amber) and "How the score works" beside them.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-19): the ranking tables have the design's eight columns
+ * (the average reply and close times are on the score's tooltip and in the CSV, no longer two extra columns that made the
+ * headers and names wrap); no header wraps; values 12.5px, rank / open / score 16/800, the score with one decimal; the
+ * Dashboard / Observations switch 36px at 13px. The header bell opens
  * the list with <code>?status=Open</code>.
  */
 @Component({
@@ -69,7 +73,7 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
               <div class="table-responsive qo-card">
                 <table class="table table-zed qo-rank" [attr.data-qo-rank]="block.title">
                   <thead><tr><th>Rank</th><th>Name</th><th class="text-center">{{ words.units }}</th><th class="text-center">Open</th><th class="text-center">Closed</th>
-                    <th class="text-center">Minor / Major / Critical</th><th class="text-center">Reopened</th><th class="text-center">Avg. reply</th><th class="text-center">Avg. close</th><th class="text-center">Score</th></tr></thead>
+                    <th class="text-center">Minor / Major / Critical</th><th class="text-center">Reopened</th><th class="text-center">Score</th></tr></thead>
                   <tbody>
                     @for (s of block.rows; track s.userId) {
                       <tr>
@@ -80,12 +84,10 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
                         <td class="text-center">{{ s.closed }}</td>
                         <td class="text-center">{{ s.minor }} / {{ s.major }} / {{ s.critical }}</td>
                         <td class="text-center">{{ s.reopens }}</td>
-                        <td class="text-center">{{ hours(s.avgReplyHours) }}</td>
-                        <td class="text-center">{{ hours(s.avgCloseHours) }}</td>
-                        <td class="text-center"><b>{{ s.score }}</b></td>
+                        <td class="text-center qo-big" [title]="'Avg. reply ' + hours(s.avgReplyHours) + ' · avg. close ' + hours(s.avgCloseHours)"><b>{{ score(s.score) }}</b></td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="10" class="text-center muted">No observations in this period.</td></tr>
+                      <tr><td colspan="8" class="text-center muted">No observations in this period.</td></tr>
                     }
                   </tbody>
                 </table>
@@ -136,14 +138,15 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
     .qo-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 16px; }
     .qo-filters .form-select { width: auto; min-width: 190px; border-radius: 8px; }
     .qo-seg { display: inline-flex; background: #e8eff0; border-radius: 10px; padding: 3px; }
-    .qo-seg button { border: 0; background: none; border-radius: 8px; padding: 7px 22px; font-weight: 600; color: var(--zt-ink, #173f44); }
+    .qo-seg button { height: 30px; border: 0; background: none; border-radius: 8px; padding: 0 22px; font-size: 13px; font-weight: 500; color: #17373b; }
+    .qo-seg button.on { font-weight: 700; }
     .qo-seg button.on { background: var(--zt-dark, #1f5c61); color: #fff; }
     .qo-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0 0 18px; }
     .qo-tile, .qo-card { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); }
     .qo-tile { padding: 14px 16px; display: flex; flex-direction: column; }
     .qo-tile b { font-size: 24px; font-weight: 800; color: var(--zt-ink, #173f44); line-height: 1.15; }
     .qo-tile span { font-size: 13px; color: #5f6f70; font-weight: 600; }
-    .qo-tile.warn b, .qo-open.on { color: #b26a00; }
+    .qo-tile.warn b, .qo-rank .qo-open.on { color: #9a5f06; }
     .qo-tile.ok b { color: #1e8a4c; }
     .qo-grid { display: grid; gap: 20px; align-items: start; }
     @media (min-width: 1200px) { .qo-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
@@ -151,8 +154,11 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
     .qo-h { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; color: #4a5c5e; }
     .qo-main .qo-card { margin-bottom: 18px; overflow: auto; }
     .qo-rank { margin: 0; }
-    .qo-rank td { vertical-align: middle; }
-    .qo-name { font-weight: 600; color: var(--zt-ink, #173f44); }
+    .qo-rank th { white-space: nowrap; }
+    .qo-rank td { vertical-align: middle; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .qo-rank td:first-child, .qo-rank td.qo-big, .qo-rank .qo-open { font-size: 16px; font-weight: 800; color: #17373b; }
+    .qo-name { font-size: 13.5px; font-weight: 700; color: #17373b; white-space: nowrap; }
+    .qo-rank td small { font-size: 11.5px; }
     .qo-open { font-weight: 700; }
     .qo-box { margin-bottom: 18px; }
     .qo-box-h { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #edf2f2; }
@@ -221,6 +227,11 @@ export class QualityObservationsPage {
       }
     });
     void this.load();
+  }
+
+  /** staff-19: the score with one decimal ("1.1", "3.0"). */
+  protected score(v: number | null): string {
+    return typeof v === 'number' && Number.isFinite(v) ? v.toFixed(1) : '—';
   }
 
   protected hours(h: number | null): string {

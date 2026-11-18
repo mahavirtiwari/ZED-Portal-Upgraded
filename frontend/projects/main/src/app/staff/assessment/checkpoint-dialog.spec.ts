@@ -38,7 +38,7 @@ describe('CheckpointDialog', () => {
   }
 
   const pick = (code: string, value: string) => el.querySelector<HTMLInputElement>(`section[data-checkpoint="${code}"] input[value=${value}]`)!.click();
-  const submit = () => el.querySelector<HTMLInputElement>('input[value=SUBMIT]')!.click();
+  const submit = () => el.querySelector<HTMLInputElement>('input[value=Submit]')!.click();
   const problem = () => el.querySelector('.alert-danger')?.textContent?.trim() ?? '';
 
   beforeEach(() => TestBed.configureTestingModule({ imports: [Host] }).compileComponents());
@@ -98,7 +98,7 @@ describe('CheckpointDialog', () => {
     expect(el.textContent!.replace(/\s+/g, ' ')).toContain('Desktop assessor: Yes');
     expect(el.querySelector<HTMLInputElement>('input[value=No]')!.checked).toBe(true);
     expect(el.querySelector<HTMLInputElement>('input[type=checkbox]:checked')!.parentElement!.textContent).toContain('Display it');
-    el.querySelector<HTMLInputElement>('input[value=CANCEL]')!.click();
+    el.querySelector<HTMLInputElement>('input[value=Cancel]')!.click();
     expect(fixture.componentInstance.closed()).toBe(true);
   });
 });

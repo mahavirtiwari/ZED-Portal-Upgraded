@@ -1,0 +1,54 @@
+/* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the Add / Edit pop-up of popup-02 (split from sub-users.ts to keep
+   each stylesheet under the 8 kB budget). */
+.modal > .modal-dialog.su-dialog { max-width: 980px; width: calc(100% - 32px); }
+.su-content { max-height: calc(100vh - 2rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; }
+.su-head { display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px 18px; border-bottom: 1px solid #dde7e8; background: #fff; flex: none; }
+.su-head > div { flex: 1; min-width: 0; }
+.su-head h3 { font-size: 18px; font-weight: 700; color: #17373b; }
+.su-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
+.su-icon svg, .su-x svg, .su-note svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.su-icon svg { width: 20px; height: 20px; }
+.su-x { flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; background: #eef3f3; color: #17373b; }
+.su-x svg { width: 16px; height: 16px; }
+.su-sub, .su-foot-note, .su-hint { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+.su-hint { font-size: 12px; }
+.su-form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.modal .su-dialog .su-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 0; overflow-y: auto; min-height: 0; }
+.su-col { padding: 16px 28px 18px; min-width: 0; }
+.su-col + .su-col { border-left: 1px solid #dde7e8; }
+.su-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.modal .su-dialog .su-field > label:not(.su-label) { margin: 0; font-size: 12.5px; font-weight: 600; color: #17373b; }
+.su-field .form-control { height: 40px; border-radius: 9px; font-size: 13px; }
+.modal .su-dialog .su-label { margin: 0; font-size: 11.5px; font-weight: 600; color: #6f8487; }
+.su-label small { font-weight: 500; }
+.su-section { margin: 18px 0 8px; font-size: 10.5px; font-weight: 800; color: #6f8487; text-transform: uppercase; letter-spacing: .9px; }
+.su-hint { margin: 0; }
+.su-screens-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 12px; }
+.su-screens-head h4 { margin: 0; font-size: 12.5px; font-weight: 600; color: #17373b; }
+.su-given { font-weight: 500; color: #6f8487; font-size: 12px; margin-left: 10px; }
+.su-bulk { font-size: 12px; color: #24666b; }
+.su-bulk .btn-link { min-height: 0; font-size: 12px; font-weight: 600; color: #24666b; text-decoration: none; }
+.su-perms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.toggle-card { display: flex; gap: 10px; align-items: center; min-height: 42px; border: 1px solid #dde7e8; border-radius: 9px; padding: 0 12px; margin: 0; cursor: pointer; }
+.toggle-card:hover { border-color: #24666b; }
+.toggle-card.active { border: 1.5px solid #24666b; background: #f6fbfb; }
+/* The skin makes pop-up labels bold; on these cards only the names that are meant to be are. */
+.modal .modal-popup label.toggle-card { font-size: 12.5px; font-weight: 500; color: #17373b; }
+.modal .modal-popup label.toggle-card.active { font-weight: 600; }
+.su-perm-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toggle-card.form-switch { padding-left: 12px; }
+.toggle-card.form-switch .form-check-input { flex: none; float: none; margin: 0; width: 40px; height: 22px; }
+.toggle-card.form-switch .form-check-input:checked { background-color: #2f9e58; border-color: #2f9e58; }
+.toggle-card strong { color: #17373b; }
+.su-note { display: flex; gap: 12px; margin: 24px 0 0; padding: 14px 16px; border-radius: 10px; background: #e6f2f3; color: #17373b; font-size: 12px; font-weight: 500; }
+.su-note svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: #24666b; }
+.modal .su-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid #dde7e8; padding: 14px 28px; flex: none; }
+.su-foot-actions { display: inline-flex; gap: 10px; }
+.su-foot .btn { min-height: 40px; min-width: 110px; }
+.su-foot .btn-primary { min-width: 210px; }
+@media (max-width: 767.98px) {
+  .modal .su-dialog .su-body { grid-template-columns: minmax(0, 1fr); }
+  .su-col + .su-col { border-left: 0; border-top: 1px solid #dde7e8; }
+  .su-col { padding: 14px 16px; }
+}
+@media (max-width: 479.98px) { .su-perms { grid-template-columns: minmax(0, 1fr); } }

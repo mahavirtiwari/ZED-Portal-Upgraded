@@ -15,7 +15,8 @@ export interface ChartItem {
 export const CHART_COLORS = ['#00909a', '#eb6834', '#6250d6', '#eda100'];
 
 /** Bronze, Silver and Gold keep their own colours (identity of the level), always with their name beside them. */
-export const LEVEL_COLORS: Record<string, string> = { Bronze: '#b0683a', Silver: '#8a979c', Gold: '#c99a1e' };
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the dashboard design's level colours.
+export const LEVEL_COLORS: Record<string, string> = { Bronze: '#c9714f', Silver: '#7b838a', Gold: '#c9a23f' };
 
 export const formatCount = (n: number) => n.toLocaleString('en-IN');
 
@@ -99,6 +100,8 @@ export function wholePercent(value: number, total: number): string {
 /**
  * 2026-11-17 (approved staff redesign, "Who is registering"): one category split as a single stacked bar with a legend
  * that names each part with its share (identity never by colour alone); the count is in the tooltip.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-00: a 12px bar of separate rounded parts 2px
+ * apart, 12.5/700 heading, 11/500 grey legend.
  */
 @Component({
   selector: 'zed-stacked-bar',
@@ -122,13 +125,13 @@ export function wholePercent(value: number, total: number): string {
     </div>
   `,
   styles: `
-    .sb-head { font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); margin-bottom: 7px; }
-    .sb-bar { display: flex; gap: 2px; height: 12px; border-radius: 4px; overflow: hidden; background: #eef3f3; }
-    .sb-bar span { display: block; height: 100%; min-width: 3px; }
-    .sb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; color: #4b5c5d; }
+    .sb-head { font-size: 12.5px; font-weight: 700; color: #17373b; margin-bottom: 7px; }
+    .sb-bar { display: flex; gap: 2px; height: 12px; }
+    .sb-bar span { display: block; height: 100%; min-width: 2px; border-radius: 3px; }
+    .sb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 10px 0 0; padding: 0; font-size: 11px; font-weight: 500; color: #6f8487; }
     .sb-legend li { display: inline-flex; align-items: center; gap: 5px; }
     .sb-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-    .sb-share { color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .sb-share { font-variant-numeric: tabular-nums; }
     .sb-empty { font-size: 12.5px; color: #6b7f80; padding: 4px 0; }`,
 })
 export class StackedBar {
@@ -152,6 +155,8 @@ export type RankSort = 'high' | 'low' | 'name';
  * A ranked list: rank (by count), name, the number and a bar in proportion to the largest. V4 2026-11-17 (approved staff
  * redesign): the top five under the card's title, "View all" opens every row with the sort (by count, highest or lowest
  * first, or by name).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-00: 16/700 title, 12/700 rank, 13/600 name,
+ * a 5px light-teal bar; "View All" (title case) opens the full list in the card (there is no separate full-list page).
  */
 @Component({
   selector: 'zed-rank-list',
@@ -170,7 +175,7 @@ export type RankSort = 'high' | 'low' | 'name';
           </label>
         }
         @if (sorted().length > limit()) {
-          <button type="button" class="rk-more no-export" [attr.aria-expanded]="all()" (click)="toggle()">{{ all() ? 'Show top ' + limit() : 'View all' }}</button>
+          <button type="button" class="rk-more no-export" [attr.aria-expanded]="all()" (click)="toggle()">{{ all() ? 'Show Top ' + limit() : 'View All' }}</button>
         }
       </div>
       <ol class="rk-list">
@@ -188,19 +193,19 @@ export type RankSort = 'high' | 'low' | 'name';
     </div>
   `,
   styles: `
-    .rk { --head: var(--zt-mid2, #2a8a8c); height: 100%; border-radius: 12px; border: 1px solid #e1eaea; background: #fff; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-    .rk-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid #eef3f3; }
-    .rk-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .rk { height: 100%; border-radius: 14px; border: 1px solid #dde7e8; background: #fff; box-shadow: 0 3px 10px rgba(16, 61, 64, .06); }
+    .rk-head { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 24px; border-bottom: 1px solid #dde7e8; }
+    .rk-title { flex: 1; min-width: 0; font-size: 16px; font-weight: 700; color: #17373b; }
     .rk-sort select { font-size: 12px; border: 1px solid #cbd9da; border-radius: 6px; background: #fff; color: #23474a; padding: 3px 6px; }
-    .rk-more { border: 0; background: none; padding: 0; color: var(--zt-dark, #1f5c61); font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .rk-more { border: 0; background: none; padding: 0; color: #24666b; font-size: 13px; font-weight: 700; white-space: nowrap; }
     .rk-more:hover { text-decoration: underline; }
-    .rk-list { list-style: none; margin: 0; padding: 6px 20px 14px; }
-    .rk-list li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; column-gap: 8px; align-items: center; padding: 7px 0 2px; }
-    .rk-rank { font-size: 12px; color: #6b7f80; font-variant-numeric: tabular-nums; }
-    .rk-label { font-size: 13px; color: #232527; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rk-value { font-size: 13px; font-weight: 700; color: var(--zt-ink, #173f44); font-variant-numeric: tabular-nums; }
-    .rk-track { grid-column: 2 / 4; display: block; height: 4px; margin-top: 5px; border-radius: 2px; background: #eef3f3; }
-    .rk-bar { display: block; height: 100%; border-radius: 2px; background: var(--head); min-width: 2px; }
+    .rk-list { list-style: none; margin: 0; padding: 4px 24px 16px; }
+    .rk-list li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; padding: 10px 0 0; line-height: 16px; }
+    .rk-rank { font-size: 12px; font-weight: 700; color: #6f8487; font-variant-numeric: tabular-nums; }
+    .rk-label { font-size: 13px; font-weight: 600; color: #17373b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rk-value { padding-left: 8px; font-size: 13px; font-weight: 700; color: #17373b; font-variant-numeric: tabular-nums; }
+    .rk-track { grid-column: 2 / 4; display: block; height: 5px; margin-top: 4px; border-radius: 3px; background: #e9efef; }
+    .rk-bar { display: block; height: 100%; border-radius: 3px; background: #3ba3ad; min-width: 2px; }
     .rk-empty { display: block !important; text-align: center; color: #6b7f80; padding: 18px; }`,
 })
 export class RankList {
@@ -238,21 +243,27 @@ export class RankList {
 /** One period of a two-series trend (registrations and certifications). */
 export interface TrendPoint {
   label: string;
+  /** The period in full for the tooltip and screen readers ("Nov 2026" under an axis label "Nov"). */
+  tip?: string;
   values: number[];
 }
 
-/** A round axis top at or above the largest value (1, 2, 2.5, 5 or 10 times a power of ten) and its four steps. */
+/**
+ * A round axis top at or above the largest value (1, 2, 2.5, 5 or 10 times a power of ten) and its four steps.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): whole steps only (counts of units: no 0.5 or 2.5).
+ */
 export function axisTicks(max: number): number[] {
   if (max <= 0) return [0, 1, 2, 3, 4];
   const raw = max / 4;
   const pow = 10 ** Math.floor(Math.log10(raw));
-  const step = ([1, 2, 2.5, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow;
-  return [0, 1, 2, 3, 4].map((i) => Math.round(i * step * 100) / 100);
+  const step = Math.max(1, Math.ceil(([1, 2, 2.5, 5, 10].find((m) => m * pow >= raw) ?? 10) * pow));
+  return [0, 1, 2, 3, 4].map((i) => i * step);
 }
 
 /**
  * Columns in pairs (one per series) on a value axis with grid lines; a hover or focus tooltip gives every series of the
  * period. The legend can be left to the card (legend = false).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): 18px columns 4px apart, 10.5/11px grey axis text.
  */
 @Component({
   selector: 'zed-grouped-column-chart',
@@ -280,7 +291,7 @@ export function axisTicks(max: number): number[] {
                 }
                 @if (hover() === p) {
                   <span class="gc-tip" role="tooltip">
-                    <strong>{{ it.label }}</strong>
+                    <strong>{{ it.tip || it.label }}</strong>
                     @for (v of it.values; track $index; let i = $index) {
                       <span><span class="gc-swatch" [style.background]="colors()[i]"></span>{{ series()[i] }}: {{ format(v) }}</span>
                     }
@@ -303,17 +314,17 @@ export function axisTicks(max: number): number[] {
     .gc-legend .gc-swatch { margin-right: 0; }
     .gc-frame { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding-top: 8px; }
     .gc-ticks { position: relative; height: var(--h, 200px); min-width: 28px; }
-    .gc-ticks span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; color: #6b7f80; font-variant-numeric: tabular-nums; }
+    .gc-ticks span { position: absolute; right: 0; transform: translateY(50%); font-size: 10.5px; font-weight: 500; color: #6f8487; font-variant-numeric: tabular-nums; }
     .gc-area { position: relative; min-width: 0; }
     .gc-grid { position: absolute; left: 0; right: 0; border-top: 1px solid #edf2f2; }
     .gc-grid:first-child { border-color: #cbd9da; }
     .gc-plot { position: relative; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; align-items: end; height: var(--h, 200px); }
-    .gc-group { position: relative; height: 100%; display: flex; justify-content: center; align-items: flex-end; gap: 3px; outline: none; }
+    .gc-group { position: relative; height: 100%; display: flex; justify-content: center; align-items: flex-end; gap: 4px; outline: none; }
     .gc-group:focus-visible { outline: 2px solid #23474a; outline-offset: 2px; border-radius: 4px; }
     .gc-bar { flex: 1 1 0; max-width: 18px; min-height: 2px; border-radius: 3px 3px 0 0; transition: opacity .15s; }
     .gc-bar.is-dim { opacity: .45; }
     .gc-axis { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
-    .gc-label { font-size: 11.5px; color: #5f6f70; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gc-label { font-size: 11px; font-weight: 500; color: #6f8487; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .gc-tip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 3; white-space: nowrap;
       display: flex; flex-direction: column; gap: 2px; background: #23474a; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,.18); pointer-events: none; }`,
@@ -341,6 +352,6 @@ export class GroupedColumnChart {
     return formatCount(v);
   }
   protected describe(it: TrendPoint): string {
-    return `${it.label}: ` + it.values.map((v, i) => `${this.series()[i]} ${formatCount(v)}`).join(', ');
+    return `${it.tip || it.label}: ` + it.values.map((v, i) => `${this.series()[i]} ${formatCount(v)}`).join(', ');
   }
 }

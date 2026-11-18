@@ -380,7 +380,7 @@ describe('PageSettingsPage', () => {
 
 /** Opens the add pop-up of the sectors / categories page. */
 async function openCodeNameAdd(fixture: ComponentFixture<unknown>, el: HTMLElement) {
-  ([...el.querySelectorAll('.page-head button')].find((b) => b.textContent!.includes('+ ADD')) as HTMLButtonElement).click();
+  ([...el.querySelectorAll('.page-head button')].find((b) => b.textContent!.includes('+ Add')) as HTMLButtonElement).click();
   await settle(fixture);
 }
 
@@ -593,7 +593,7 @@ describe('CodeNamesPage (sectors)', () => {
     expect(el.querySelector('.only-on')!.textContent).toContain('Only on the Consultancy portal (kept there): 99');
     expect(el.querySelector('.sync-bar')!.textContent).toContain('2 sectors are missing or different');
 
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('MAKE ALL PORTALS THE SAME')) as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('Make all portals the same')) as HTMLButtonElement).click();
     await settle(fixture);
     const rename = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/sectors/7');
     expect(rename.request.context.get(ADMIN_PORTAL)).toBe('consultancy');
@@ -653,7 +653,7 @@ describe('ParametersPage', () => {
 
     // Add Parameter opens the pop-up.
     expect(el.querySelector('form.add-form')).toBeNull();
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('ADD PARAMETER')) as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('Add parameter')) as HTMLButtonElement).click();
     await settle(fixture);
     (el.querySelector('#sectionCode') as HTMLInputElement).value = '3';
     el.querySelector('#sectionCode')!.dispatchEvent(new Event('input'));

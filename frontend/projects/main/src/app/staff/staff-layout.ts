@@ -18,6 +18,9 @@ import { PORTAL_SYSTEM } from '../portal-system';
  * 2026-11-17 (approved staff redesign): "Search ZED ID" (Ctrl K) for the roles that can open a unit's profile, the bell with
  * the work waiting (api/staff/attention) for Master Admin, agencies and assessors, the toasts of the pages (ToastService),
  * and the footer's links (as the applicant's footer).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' sizes (72px logo bar, 48px menu strip with
+ * lighter tabs and no separators, so the Master Admin's whole menu fits on the row from 1440px), the footer's four links.
+ * The shared blocks of the pages (buttons, tables, pills, cards) are in styles/_v4-skin.scss.
  */
 @Component({
   selector: 'zed-staff-layout',
@@ -26,7 +29,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
   template: `
     <div class="main-container">
       <header class="zed-header zed-smooth" id="main_header">
-        <div class="container g-0">
+        <div class="container">
           <div class="header-top">
             @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', 'Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', 'Images/header/ministry.png')" alt="Ministry of MSME" />}
             <a routerLink="/staff"><img class="zedv2-logo" [src]="brand.logo('header-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
@@ -122,7 +125,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
                         [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
                   <span class="avatar" aria-hidden="true">{{ (user()?.actingUserName || user()?.userName || '?').charAt(0) }}</span>
-                  <span class="who">{{ user()?.actingUserName || user()?.userName }}<small>{{ roleName() }}</small></span>
+                  <span class="who"><b>{{ user()?.actingUserName || user()?.userName }}</b><small>{{ roleName() }}</small></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
                   <li><a class="dropdown-item" routerLink="/staff/change-password">Change Password</a></li>
@@ -136,16 +139,21 @@ import { PORTAL_SYSTEM } from '../portal-system';
 
       <main class="staff-content"><div class="container staff-page"><router-outlet /></div></main>
 
-      <footer>
+      <footer class="sfoot">
         <div class="footer">
           <div class="container sf">
             <small>ZED © {{ year }} All Rights Reserved</small>
+            <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' four links, as the applicant's footer
+                 (Admin → Links); the account's documents and the portal's privacy page when the Admin cleared a link. -->
             <nav class="sf-links" aria-label="Footer">
-              @if (hasDocuments()) { <a routerLink="/staff/documents">Scheme guidelines</a> }
-              @if (main) { <a routerLink="/privacy-policy">Privacy policy</a> }
+              @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a> }
+              @else if (hasDocuments()) { <a routerLink="/staff/documents">Scheme guidelines</a> }
+              @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a> }
+              @else if (main) { <a routerLink="/privacy-policy">Privacy policy</a> }
+              @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a> }
               @if (links.url('contact'); as u) { <a [href]="u" target="_blank" rel="noopener">Help desk</a> }
             </nav>
-            <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" alt="QCI" height="32" />
+            <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" alt="QCI" height="36" />
           </div>
         </div>
       </footer>
@@ -154,72 +162,75 @@ import { PORTAL_SYSTEM } from '../portal-system';
   `,
   styles: `
     :host { color: #333; }
-    /* 2026-11-12 (approved): a slim header that scrolls away (about 60 px, smaller logos); only the menu stays at the top,
-       so it no longer covers the pages' own tabs and headings. Scroll targets keep clear of the menu. */
-    .zed-header { position: static; height: auto; padding: 6px 0; box-shadow: none; }
-    .header-top img { width: 170px; }
-    .zed-header .zedv2-logo { width: 58px !important; }
-    .zed-navbar { position: sticky; top: 6px; z-index: 99; padding: 0; }
-    .zed-navbar .nav-bar-sec { min-height: 62px; }
-    :host ::ng-deep .staff-page [id] { scroll-margin-top: 84px; }
-    /* The pages sit on a light tint, so their cards, tables and forms stand out. */
-    .staff-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f2f6f6; border-top: 1px solid #e3eced; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' frame. A 72px logo bar that scrolls away (the
+       ministry image is 80px tall in its transparent margin, the ZED logo 56px, as the MSME layout), then the 48px menu strip
+       pinned to the top; the page starts 17px under it on the designs' grey (#f4f7f7). The logos sit on the page's left and right
+       edges (the ministry image's margin is 4px at this size). */
+    .zed-header { position: static; height: 72px; padding: 0; box-shadow: none; }
+    .header-top { height: 72px; }
+    .header-top a img, .header-top > img { width: auto; }
+    .header-top > a:first-child > img, .header-top > img:first-child { height: 80px; margin: -4px 0 -4px -4px; }
+    .header-top img.zedv2-logo { width: auto !important; height: 56px; }
+    .zed-navbar { position: sticky; top: 0; z-index: 99; padding: 0; background: var(--zt-dark, #24666b); box-shadow: none; }
+    .zed-navbar .nav-bar-sec { min-height: 48px; background: none; border-radius: 0; box-shadow: none; }
+    :host ::ng-deep .staff-page [id] { scroll-margin-top: 64px; }
+    .staff-content { min-height: calc(100vh - 190px); padding: 17px 0 40px; background: #f4f7f7; }
     /* Every page has the menu bar's width: a page's own container (fixed, fluid or none) lines up with it. */
-    .staff-page { padding-top: 8px; }
     :host ::ng-deep .staff-page .container, :host ::ng-deep .staff-page .container-fluid { max-width: none; padding-left: 0; padding-right: 0; }
-    /* The bar: page name and role on the left, the menu on one row on the right. */
-    .zed-navbar .navbar-brand { max-width: 260px; white-space: normal; line-height: 1.15; font-size: 22px; text-decoration: none; color: #fff; }
+    .zed-navbar .navbar-brand { max-width: 260px; white-space: normal; line-height: 1.15; font-size: 20px; text-decoration: none; color: #fff; }
     .zed-navbar .nav { align-items: center; }
-    .zed-navbar .tag { padding: 0 12px; }
+    .zed-navbar .tag { padding: 0; }
+    .zed-navbar .nav > li:not(:last-child) { border-right: 0; }
     .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link { white-space: nowrap; }
     .zed-navbar .dropdown-header { font-weight: 700; color: var(--zt-mid2, #2f7c83); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 16px 4px; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     /* The drop-downs are buttons; the old stylesheet styles only the links (.zed-navbar .nav > li > a). */
-    .zed-navbar .nav > li > button.nav-link {
-      margin-top: 10px; color: #fff; font-size: 14px; font-weight: 600; line-height: 24px;
-      border: 0; border-radius: 0; background: transparent; box-shadow: none;
-    }
-    .zed-navbar .nav > li > button.nav-link.active { border-bottom: 2px solid #fff; }
-    .zed-navbar .nav > li > button.nav-link:hover, .zed-navbar .nav > li > button.nav-link:focus { opacity: 0.9; }
-
-    /* 2026-11-14 (approved frame A): a slim dark-teal strip, text links, the current page underlined, the user on the right. */
-    .zed-navbar { background: var(--zt-dark, #23656b); top: 0; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.14); }
-    .zed-navbar .nav-bar-sec { background: none; min-height: 56px; border-radius: 0; box-shadow: none; }
-    .zed-navbar .nav > li:not(:last-child) { border-right: 0; }
-    .zed-navbar .tag { padding: 0; }
-    .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
-    .zed-navbar .avatar { flex: none; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: var(--zt-ink, #174a4e);
-      font-size: 12.5px; font-weight: 800; }
-    .zed-navbar .who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
-    .zed-navbar .who small { font-size: 11px; font-weight: 600; color: #a9d3d6; }
-    .zed-navbar .nav-tools { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-    /* Footer: copyright, the links, the logo (as the applicant's footer). */
-    .sf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px; }
-    .sf-links { display: flex; flex-wrap: wrap; gap: 4px 0; font-size: 13px; }
-    .sf-links a { color: inherit; text-decoration: none; opacity: 0.9; }
-    .sf-links a + a::before { content: '·'; margin: 0 8px; }
-    .sf-links a:hover { opacity: 1; text-decoration: underline; }
+    .zed-navbar .nav > li > button.nav-link { margin-top: 10px; color: #fff; font-size: 14px; font-weight: 600; line-height: 24px; border: 0; border-radius: 0;
+      background: transparent; box-shadow: none; }
+    .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
+    .zed-navbar .avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #cdeccf;
+      color: var(--zt-dark, #24666b); font-size: 13px; font-weight: 800; }
+    .zed-navbar .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: left; }
+    .zed-navbar .who b { max-width: 170px; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; font-weight: 700; color: #fff; }
+    .zed-navbar .who small { font-size: 10.5px; font-weight: 500; color: #bcd8da; }
+    .zed-navbar .nav-tools { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+    /* Footer (#1c2e30): copyright on the left, the links in the middle, the logo on the right. */
+    .sfoot { background: #1c2e30; color: #c9d6d7; }
+    .sfoot .footer { min-height: 68px; }
+    .sf { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 14px 12px; }
+    .sf small { font-size: 12.5px; font-weight: 500; }
+    .sf img { justify-self: end; width: auto; height: 36px; }
+    .sf-links { display: flex; flex-wrap: wrap; justify-content: center; font-size: 12.5px; font-weight: 500; }
+    .sf-links a { color: #9fb3b5; text-decoration: none; }
+    .sf-links a + a::before { content: '·'; margin: 0 12px; color: #9fb3b5; }
+    .sf-links a:hover { color: #fff; text-decoration: underline; }
+    @media (max-width: 767.98px) { .sf { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } .sf img { justify-self: center; } }
+    @media (max-width: 991.98px) { .header-top > a:first-child > img, .header-top > img:first-child { height: 64px; } }
     @media (min-width: 992px) {
       .zed-navbar .navbar-brand { display: none; }
-      /* 2026-11-15: no bottom margin on wide screens (the 8px of mb-2 pushed the row up in the strip). */
-      .zed-navbar .navbar-collapse > .nav { flex: 1 1 auto; margin-bottom: 0 !important; }
+      /* Home starts at the page's left edge (its text, not its padding); no bottom margin (mb-2). */
+      .zed-navbar .navbar-collapse > .nav { flex: 1 1 auto; margin: 0 0 0 -13.5px !important; }
       .zed-navbar .nav { align-items: stretch; }
+      /* The designs' tabs: 13.5px medium, no separators, the current one bold and white with a 4px light-green line. */
       .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link {
-        /* 2026-11-15: the full height of the strip (56px), and a transparent top line as thick as the underline, so that the
-           text sits in the middle. */
-        display: flex; align-items: center; gap: 8px; height: 56px; margin: 0; padding: 0 12px; color: var(--zt-soft, #d9eef0); font-size: 14px; font-weight: 700;
-        line-height: 1.2; border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; opacity: 1;
+        position: relative; display: flex; align-items: center; height: 48px; margin: 0; padding: 0 13.5px; color: #d3e6e8; font-size: 13.5px;
+        font-weight: 500; line-height: 1.2; border: 0; border-radius: 0; background: transparent; opacity: 1;
       }
       .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
-      .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; border-bottom: 3px solid #c9e8a0; }
-      .zed-navbar .nav > li.user-menu { margin-left: auto; }
-      .zed-navbar .nav > li.nav-tools { margin-left: auto; padding: 0 12px; }
-      .zed-navbar .nav > li.nav-tools + li.user-menu { margin-left: 0; border-left: 1px solid rgba(255, 255, 255, 0.22); }
-      /* 2026-11-16: a thin line between the tabs (not before Home, not before the user on the right). */
-      .zed-navbar .nav > li.tag { position: relative; }
-      .zed-navbar .nav > li.tag:not(:first-child):not(.user-menu)::before {
-        content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 22px; transform: translateY(-50%); background: rgba(255, 255, 255, 0.28);
-      }
+      .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; font-weight: 700; border: 0; }
+      .zed-navbar .nav > li > .nav-link.active::before { content: ''; position: absolute; left: 9.5px; right: 9.5px; bottom: 0; height: 4px; border-radius: 2px;
+        background: #9fe0a8; }
+      /* A drop-down's chevron (not the filled caret). */
+      .zed-navbar .nav > li > .dropdown-toggle::after { flex: none; width: 5px; height: 5px; margin: -3px -1px 0 10px; border: solid currentColor;
+        border-width: 0 1.6px 1.6px 0; transform: rotate(45deg); vertical-align: 0; }
+      .zed-navbar .nav > li.nav-tools { margin-left: auto; padding: 0 12px 0 0; }
+      .zed-navbar .nav > li.user-menu { position: relative; margin-left: auto; }
+      .zed-navbar .nav > li.nav-tools + li.user-menu { margin-left: 0; }
+      .zed-navbar .nav > li.nav-tools + li.user-menu::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 1px;
+        background: rgba(255, 255, 255, 0.2); }
+      .zed-navbar .nav > li.user-menu > .nav-link { gap: 7px; padding: 0 0 0 13px; color: #fff; }
+      .zed-navbar .nav > li.user-menu > .nav-link:hover { background: transparent; }
+      .zed-navbar .nav > li.user-menu > .dropdown-toggle::after { width: 6px; height: 6px; margin-left: 14px; margin-right: 2px; }
     }
   `,
 })
@@ -249,7 +260,7 @@ export class StaffLayout {
   protected readonly canSearch = computed(() => MSME_PROFILE_ROLES.includes(this.user()?.roleId ?? 0));
   /** The bell: the roles whose work api/staff/attention counts. */
   protected readonly canBell = computed(() => ATTENTION_ROLES.includes(this.user()?.roleId ?? 0));
-  /** Footer: "Scheme guidelines" opens the documents the Admin gave to the account type (not for the Admin). */
+  /** Footer: without the Admin's guidelines link, "Scheme guidelines" opens the documents the Admin gave to the account type (not for the Admin). */
   protected readonly hasDocuments = computed(() => this.menu().some((i) => i.route === '/staff/documents'));
   /** The privacy policy page is on the main portal. */
   protected readonly main = PORTAL_SYSTEM === 'main';

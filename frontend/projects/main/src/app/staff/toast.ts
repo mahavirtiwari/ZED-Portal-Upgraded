@@ -69,18 +69,21 @@ export class ToastService {
     </ng-template>
   `,
   styles: `
-    :host { position: fixed; right: 16px; bottom: 16px; z-index: 1080; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as the designs, at the bottom left of the page (on its left edge
+       on wide screens), 400px, 12px corners, a 24px round icon, the title 13.5px bold and the line under it 12px. */
+    :host { position: fixed; left: max(16px, calc((100vw - 1296px) / 2)); bottom: 16px; z-index: 1080; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
       pointer-events: none; }
     .tt-live { display: flex; flex-direction: column; gap: 8px; }
     .tt-live:empty { display: none; }
-    .tt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1d2f31; color: #fff;
+    .tt { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 16px 12px 20px; border-radius: 12px; background: #16292b; color: #fff;
       box-shadow: 0 12px 32px rgba(16, 40, 42, 0.3); pointer-events: auto; animation: tt-in 0.18s ease-out; }
-    .tt-icon { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #2e9e57; }
-    .tt-error .tt-icon { background: #d64532; }
-    .tt-icon svg { width: 16px; height: 16px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .tt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; overflow-wrap: anywhere; }
-    .tt-text small { font-size: 12.5px; color: #c9dcdc; }
-    .tt-x { flex: none; border: 0; background: none; color: #c9dcdc; font-size: 22px; line-height: 1; padding: 0 2px; }
+    .tt-icon { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #2f9e58; }
+    .tt-error .tt-icon { background: #c8473c; }
+    .tt-icon svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .tt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; overflow-wrap: anywhere; }
+    .tt-text b { font-weight: 700; }
+    .tt-text small { font-size: 12px; font-weight: 500; color: #bcd8da; }
+    .tt-x { flex: none; border: 0; background: none; color: #bcd8da; font-size: 22px; line-height: 1; padding: 0 2px; }
     .tt-x:hover, .tt-x:focus-visible { color: #fff; }
     @keyframes tt-in { from { opacity: 0; transform: translateY(8px); } }
     @media (prefers-reduced-motion: reduce) { .tt { animation: none; } }

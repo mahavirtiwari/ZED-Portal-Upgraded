@@ -292,6 +292,47 @@ public sealed class DashboardTests : IDisposable
         Assert.Null(FakeSql.Arg(call.Args, "PageSize"));
     }
 
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design's "Paid on" column and "Paid between" filter.
+    [Fact]
+    public async Task Payments_received_rows_carry_the_payment_date_and_filter_by_it()
+    {
+        _host.Sql.Procs["SP_DASHBOARD_PAYMENT_TRANSACTIONS"] = _ => FakeSql.Sets([
+            new { ZedId = "ZEDMSME000001", Certification = "Gold", TransactionId = 11, FinalAmountPaid = 9000 },
+            new { ZedId = "ZEDMSME000002", Certification = "Bronze", TransactionId = 12, FinalAmountPaid = 0 },
+            new { ZedId = "ZEDMSME000003", Certification = "Silver", TransactionId = 13, FinalAmountPaid = 5000 },
+        ]);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Dashboard.PaymentsDashboardController.PaidOnSql] = _ =>
+        [
+            new { Id = 11, PaidOn = (DateTime?)new DateTime(2026, 11, 13, 10, 0, 0) },
+            new { Id = 12, PaidOn = (DateTime?)new DateTime(2026, 10, 2, 9, 0, 0) },
+        ];
+        var master = await _host.SignInAsync("MASTER1");
+
+        var all = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/payments-received");
+        Assert.Equal(3, all.GetArrayLength());
+        Assert.StartsWith("2026-11-13", all[0].GetProperty("PaidOn").GetString());
+        Assert.Equal(JsonValueKind.Null, all[2].GetProperty("PaidOn").ValueKind);
+        Assert.False(all[0].TryGetProperty("TransactionId", out _));
+
+        // Both ends are kept; a payment without a date is left out once a range is asked for.
+        var november = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/payments-received?paidFrom=2026-11-01&paidTo=2026-11-13");
+        Assert.Equal(1, november.GetArrayLength());
+        Assert.Equal("ZEDMSME000001", november[0].GetProperty("ZedId").GetString());
+        var since = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/payments-received?paidFrom=2026-10-02");
+        Assert.Equal(2, since.GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("paidFrom=13-11-2026")]
+    [InlineData("paidTo=2026-13-01")]
+    [InlineData("paidFrom=2026-11-10&paidTo=2026-11-01")]
+    public async Task Payments_received_refuses_invalid_payment_dates(string query)
+    {
+        _host.Sql.Procs["SP_DASHBOARD_PAYMENT_TRANSACTIONS"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000001" }]);
+        var master = await _host.SignInAsync("MASTER1");
+        Assert.Equal(HttpStatusCode.BadRequest, (await master.GetAsync("/api/staff/dashboard/payments-received?" + query)).StatusCode);
+    }
+
     [Fact]
     public async Task Financial_support_sends_show_all_as_null()
     {

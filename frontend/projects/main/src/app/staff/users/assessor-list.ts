@@ -97,9 +97,13 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     : open === 0
       ? `No ${work} allotted to this ${word} is open.`
       : `${open} ${work}${open === 1 ? '' : 's'} allotted to this ${word} ${open === 1 ? 'is' : 'are'} still open. ${reAllots.charAt(0).toUpperCase() + reAllots.slice(1)} will need to re-allot ${open === 1 ? 'it' : 'them'}.`;
+  // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-03: a lock tile, the ID under the title, the effects
+  // as red bullets.
   return {
     title: `Block ${name || userId}?`,
-    message: `${name || userId} (${userId}). ${note ? note + ' ' : ''}${openLine} Nothing is deleted; the reason is kept in the history and e-mailed to the ${word}.`,
+    subtitle: userId,
+    icon: 'lock',
+    points: [note, openLine, `Nothing is deleted; the reason is kept in the history and e-mailed to the ${word}.`].filter(Boolean),
     confirmLabel: `Block ${word}`,
     danger: true,
     reason: {
@@ -156,7 +160,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 
     <div class="zed-card as-list">
       <div class="table-responsive">
-        <table class="table table-zed as-table">
+        <table class="table table-zed as-table" [class.is-main]="!consultancy">
           <thead>
             <tr>
               @if (consultancy) {
@@ -168,13 +172,13 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 <th class="text-center">Status</th>
                 <th class="text-end">Action(s)</th>
               } @else {
-                <th>Assessor</th>
-                <th>Levels and modes</th>
-                <th>Sector</th>
-                <th>Contact</th>
-                <th>Agency</th>
-                <th class="text-center">Status</th>
-                <th class="text-end">Actions</th>
+                <th class="c-who">Assessor</th>
+                <th class="c-lv">Levels and modes</th>
+                <th class="c-sec">Sector</th>
+                <th class="c-con">Contact</th>
+                <th class="c-ag">Agency</th>
+                <th class="text-center c-st">Status</th>
+                <th class="text-end c-act">Actions</th>
               }
             </tr>
           </thead>
@@ -207,14 +211,20 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                     }
                   </td>
                   <td data-label="Sector"><span class="as-pill" [class.is-none]="!s.SectorActivity">{{ s.SectorActivity || 'Not set' }}</span></td>
-                  <td class="as-contact" data-label="Contact">
-                    <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
-                    @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
+                  <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the flex column on an inner div; a flex td is
+                       no table cell, so the browser merged Contact and Agency and every later column moved one header left. -->
+                  <td class="as-contact-td" data-label="Contact">
+                    <div class="as-contact">
+                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
+                      @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
+                    </div>
                   </td>
                 }
-                <td class="as-agency" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">
-                  <span class="as-agency-name">{{ s.AgencyUserName }}</span>
-                  <span class="as-id">{{ s.AgencyUserId }}</span>
+                <td class="as-agency-td" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">
+                  <div class="as-agency">
+                    <span class="as-agency-name">{{ s.AgencyUserName }}</span>
+                    <span class="as-id">{{ s.AgencyUserId }}</span>
+                  </div>
                 </td>
                 @if (consultancy) {
                   <!-- The live page prints 0 for each milestone (no count is read). -->
@@ -231,7 +241,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                     </small>
                   }
                 </td>
-                <td class="as-actions">
+                <td class="as-actions text-end">
                   <div class="as-btns">
                     <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
                     <zed-row-menu [items]="s.IsActive ? menuActive : menuBlocked" [label]="'More actions for ' + (s.UserName || s.UserId)" (picked)="pick($event, s)" />
@@ -276,41 +286,49 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     }
   `,
   styles: `
-    .as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 16px; margin-bottom: 16px; }
-    .as-search { position: relative; flex: 1 1 280px; max-width: 400px; margin: 0; }
-    .as-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6b7f80; stroke-width: 2; }
-    .as-search input { padding-left: 36px; }
-    .as-select { flex: 0 1 220px; width: auto; min-width: 0; }
-    .as-agency { flex-basis: 260px; }
-    .as-showing { margin-left: auto; font-size: 13px; color: #5f6f70; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-04: 380px search, 210 / 250px drop-downs, fixed
+       columns that line up with their heads, the skin's avatar tint, pills and buttons. */
+    .as-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; min-height: 62px; padding: 12px 16px; margin-bottom: 16px; }
+    .as-search { position: relative; flex: 0 1 380px; margin: 0; }
+    .as-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
+    .as-search input { height: 38px; padding-left: 36px; border-radius: 9px; background-image: none; }
+    .as-select { flex: 0 1 210px; width: auto; min-width: 0; height: 38px; border-radius: 9px; }
+    select.as-agency { flex-basis: 250px; }
+    .as-showing { margin-left: auto; font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .as-types { flex-basis: 100%; }
 
     .as-list { padding: 0; overflow: hidden; }
     .as-table { margin: 0; }
-    .as-table th:first-child, .as-table td:first-child { padding-left: 14px; }
-    .as-table td { vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
-    .as-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
-    .as-sno { color: #5f6f70; }
-    .as-user { display: flex; align-items: center; gap: 12px; min-width: 170px; }
-    .as-who, .as-agency, .as-contact { min-width: 0; display: flex; flex-direction: column; }
-    .as-avatar { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--zt-soft, #d4ebe6);
-      color: var(--zt-ink, #173f44); font-weight: 700; font-size: 12.5px; }
-    tr.is-blocked .as-avatar { background: #f6e3e1; color: #a8303a; }
-    .as-name, .as-agency-name { font-weight: 700; color: var(--zt-ink, #173f44); }
-    .as-id, .as-sub { font-size: 12.5px; color: #5f6f70; }
-    .as-contact { min-width: 150px; }
-    .as-under { margin: 6px 0 0 46px; }
-    .lv-row { display: flex; gap: 5px; margin-bottom: 3px; }
-    .lv { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10.5px; font-weight: 800;
-      background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 0 0 1.5px rgba(0,0,0,.12); }
-    .lv-bronze { background: #c46a3c; }
+    .as-table.is-main { min-width: 1080px; table-layout: fixed; }
+    .as-table .c-lv { width: 290px; }
+    .as-table .c-sec { width: 140px; }
+    .as-table .c-con { width: 190px; }
+    .as-table .c-ag { width: 170px; }
+    .as-table .c-st { width: 140px; }
+    .as-table .c-act { width: 116px; }
+    .as-table td { vertical-align: middle; font-size: 13.5px; }
+    .as-sno { color: #6f8487; }
+    .as-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .as-who, div.as-agency, div.as-contact { min-width: 0; display: flex; flex-direction: column; }
+    .as-who > *, div.as-agency > *, div.as-contact > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .as-avatar { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-weight: 800; font-size: 11.5px; }
+    tr.is-blocked .as-avatar { background: #fbe9e7; color: #c8473c; }
+    .as-name, .as-agency-name { font-size: 13.5px; font-weight: 700; color: #17373b; }
+    .as-id, .as-sub { font-size: 11.5px; font-weight: 500; color: #6f8487; }
+    .as-who .as-id { font-weight: 600; }
+    div.as-contact > span:first-child { font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .as-under { margin: 6px 0 0 44px; }
+    .lv-row { display: flex; gap: 7px; margin-bottom: 3px; }
+    .lv { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; font-style: italic;
+      background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5); }
+    .lv-bronze { background: #c9714f; }
     .lv-silver { background: #9aa4aa; }
-    .lv-gold { background: #d2a12a; }
-    .as-type { font-size: 13px; color: #3d5254; }
-    .as-pill { display: inline-block; padding: 3px 11px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .as-pill.is-none { background: #fff4d6; color: #8a6100; }
-    .no-mobile { color: #8a6100; }
-    .as-block-note { display: block; margin-top: 4px; font-size: 12px; color: #6b5a5a; }
+    .lv-gold { background: #c9a23f; }
+    .lv-zedx { background: #3c8f99; }
+    .as-type { font-size: 12.5px; color: #3d5559; }
+    .as-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
+    .no-mobile { color: #9a5f06; }
+    .as-block-note { display: block; margin-top: 4px; font-size: 11.5px; color: #6f8487; overflow-wrap: anywhere; }
     .as-btns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
     .as-btns .btn { white-space: nowrap; }
     .no-data .btn-link { font-weight: 600; }
@@ -318,6 +336,8 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 
     @media (max-width: 767.98px) {
       .as-search, .as-select { flex: 1 1 100%; max-width: none; }
+      .as-table.is-main { min-width: 0; table-layout: auto; }
+      .as-who > *, div.as-agency > *, div.as-contact > * { white-space: normal; }
       .as-showing { margin-left: 0; }
       .as-list { background: none; border: 0; box-shadow: none; }
       .as-table thead { display: none; }
@@ -481,7 +501,7 @@ export class AssessorListPage {
     if (this.busy()) return;
     this.dialogError.set('');
     switch (key) {
-      case 'reset': this.resetFor.set({ row: s, ask: resetLinkAsk(s.UserName, s.UserId, s.Email) }); break;
+      case 'reset': this.resetFor.set({ row: s, ask: resetLinkAsk(s.UserName, s.UserId, s.Email, this.consultancy ? 'Consultant' : this.labels.assessor) }); break;
       case 'block': void this.openBlock(s); break;
       case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: s.UserId, userName: s.UserName ?? null }); break;
       case 'history': void this.openHistory(s); break;

@@ -241,8 +241,8 @@ type Section = 'partners' | 'apis' | 'services';
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">UPDATE</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">Update</button>
               </div>
             </form>
           </div>
@@ -285,8 +285,8 @@ type Section = 'partners' | 'apis' | 'services';
                 @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">ADD PARTNER</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">Add partner</button>
               </div>
             </form>
           </div>
@@ -312,7 +312,7 @@ type Section = 'partners' | 'apis' | 'services';
               <button type="button" class="btn btn-outline-primary btn-sm" (click)="copy(c)">{{ copied() ? 'Copied' : 'Copy all' }}</button>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-primary" (click)="created.set(null)">DONE</button>
+              <button type="button" class="btn btn-primary" (click)="created.set(null)">Done</button>
             </div>
           </div>
         </div>

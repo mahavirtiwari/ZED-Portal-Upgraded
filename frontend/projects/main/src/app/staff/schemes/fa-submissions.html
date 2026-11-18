@@ -3,39 +3,38 @@
 @if (!isAssessor()) {
   <zed-chip-filter class="fa-tabs" label="Stage" [chips]="chips()" [value]="'' + status()" (valueChange)="load(+$event)" />
 }
+<!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): one unlabelled row as staff-16: the search with its icon on
+     the left (300px), All levels (170), All agencies (240) and one "Registered: any date" dropdown (220); "Custom dates…" opens
+     the two date boxes of the old filter. -->
 <div class="zed-card fa-filters" data-filters>
   <div class="fa-row">
-    <div class="fa-q">
-      <label class="form-label" for="fa-sub-search">Search</label>
-      <input type="search" id="fa-sub-search" class="form-control" maxlength="50" placeholder="Search applications"
+    <label class="fa-q">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+      <input type="search" id="fa-sub-search" class="form-control" maxlength="50" placeholder="Search applications" aria-label="Search applications"
              [value]="search()" (input)="search.set($any($event.target).value)" />
-    </div>
-    <div>
-      <label class="form-label" for="fa-level">Certification level</label>
-      <select id="fa-level" class="form-select" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
-        <option value="">All levels</option>
-        @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
-      </select>
-    </div>
+    </label>
+    <select id="fa-level" class="form-select fa-level" aria-label="Certification level" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
+      <option value="">All levels</option>
+      @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
+    </select>
     @if (isAdmin()) {
-      <div>
-        <label class="form-label" for="fa-agency">Agency</label>
-        <select id="fa-agency" class="form-select" [ngModel]="filter().agency" (ngModelChange)="setFilter('agency', $event)">
-          <option value="">All agencies</option>
-          @for (a of agencyOptions(); track a.userId) { <option [value]="a.userId">{{ a.userName }} ({{ a.userId }})</option> }
-        </select>
-      </div>
+      <select id="fa-agency" class="form-select fa-agency" aria-label="Agency" [ngModel]="filter().agency" (ngModelChange)="setFilter('agency', $event)">
+        <option value="">All agencies</option>
+        @for (a of agencyOptions(); track a.userId) { <option [value]="a.userId">{{ a.userName }} ({{ a.userId }})</option> }
+      </select>
     }
-    <div class="fa-when">
-      <span class="form-label d-block" id="fa-dates-label">Registered on</span>
-      <div class="fa-dates" role="group" aria-labelledby="fa-dates-label">
+    <select id="fa-when" class="form-select fa-when" aria-label="Registered on" [ngModel]="when()" (ngModelChange)="setWhen($event)">
+      @for (w of whenOptions; track w.key) { <option [value]="w.key">{{ w.label }}</option> }
+    </select>
+    @if (when() === 'custom') {
+      <div class="fa-dates" role="group" aria-label="Registered between">
         <input type="date" id="fa-from" class="form-control" aria-label="Registered from" [max]="filter().to || null"
                [ngModel]="filter().from" (ngModelChange)="setFilter('from', $event)" />
         <span class="to">to</span>
         <input type="date" id="fa-to" class="form-control" aria-label="Registered to" [min]="filter().from || null"
                [ngModel]="filter().to" (ngModelChange)="setFilter('to', $event)" />
       </div>
-    </div>
+    }
   </div>
   @if (filtering()) {
     <div class="fa-filter-foot">
@@ -89,7 +88,7 @@
             @if (showStatusColumn() && isAdmin()) {
               <td>
                 @if (s.ReasonForRejection) {
-                  <span class="chip is-bad">Rejected</span>
+                  <span class="chip is-bad" [title]="'Reason for rejection: ' + s.ReasonForRejection">Rejected</span>
                 } @else if (s.FinancialAssessorId) {
                   <span class="chip is-good">Allotted to assessor</span>
                 } @else if (s.CertificationBodyUserId) {
@@ -115,7 +114,8 @@
           </tr>
         } @empty {
           @if (!loading()) {
-            <tr><td colspan="11" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): sentence-style empty text. -->
+            <tr><td colspan="11" style="padding: 0"><div class="no-data">{{ search() || filtering() ? 'No application matches the search or filter.' : 'No application at this stage.' }}</div></td></tr>
           }
         }
       </tbody>

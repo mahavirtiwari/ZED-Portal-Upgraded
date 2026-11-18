@@ -43,6 +43,9 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         "PStateName", "PDistrictName", "Tds", "SubsidyPercentage", "GstinNumber", "TanNumber", "FinalAmountPaid",
         // 2026-11-17 (approved redesign): how it was paid (PaymentGateway, NEFT, ZeroAmount for a 100% subsidy, PaidAtMilestone1).
         "PaymentType",
+        // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design's "Paid on" column, when the payment was
+        // recorded (MsmePaymentInfo.CreatedDate of the row; the procedure returns its Id as TransactionId but no date).
+        "PaidOn",
     ];
 
     /// <summary>PG Type drop-down of the pop-up (value stored in PaymentGatewayTransactions.PgType).</summary>
@@ -69,17 +72,65 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
     [HttpGet("payments-received")]
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<List<Dictionary<string, object?>>>> PaymentsReceived(
-        string? state, string? certification, string? size, string? gender, CancellationToken ct)
+        string? state, string? certification, string? size, string? gender, string? paidFrom, string? paidTo, CancellationToken ct)
     {
         if (Filters(state, certification, size, gender) is not { } f) return this.Problem400("Invalid filter.");
+        // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design's "Paid between" filter (yyyy-MM-dd, both ends kept).
+        if (!PaidDate(paidFrom, out var from) || !PaidDate(paidTo, out var to) || (from is { } a && to is { } b && a > b))
+            return this.Problem400("Invalid payment dates.");
         // The legacy action passed PageNo/PageSize, which this procedure does not declare; only its own parameters are sent.
         var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_PAYMENT_TRANSACTIONS", new
         {
             Status = "0", State = f.State, UserId, RoleId = RoleId.ToString(), CertificationType = f.Certification,
             Gender = f.Gender, MsmeSize = f.Size,
         }, ct);
-        return DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct),
+        var raw = await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct);
+        var rows = DashboardFilters.Pick(raw,
             host.System == PortalSystem.Consultancy ? [.. ReceivedColumns, ConsultancyReceivedMilestone] : ReceivedColumns);
+        await AddPaidOnAsync(raw, rows, ct);
+        if (from is null && to is null) return rows;
+        return rows.Where(r => r["PaidOn"] is DateTime d &&
+            (from is null || DateOnly.FromDateTime(d) >= from) && (to is null || DateOnly.FromDateTime(d) <= to)).ToList();
+    }
+
+    /// <summary>When each payment of the list was recorded: MsmePaymentInfo.CreatedDate by the row's Id (TransactionId).</summary>
+    internal const string PaidOnSql = "SELECT Id, CreatedDate AS PaidOn FROM dbo.MsmePaymentInfo WHERE Id IN @Ids;";
+
+    public sealed record PaidRow(int Id, DateTime? PaidOn);
+
+    /// <summary>
+    /// Sets PaidOn on each shown row from its procedure row (same order). Null when the payment row has no date or the table
+    /// cannot be read: the page then shows "—" rather than a guessed date.
+    /// </summary>
+    private async Task AddPaidOnAsync(IReadOnlyList<IDictionary<string, object?>> raw, List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        var ids = raw.Select(r => int.TryParse(r.Text("TransactionId"), out var id) ? id : 0).ToList();
+        var wanted = ids.Where(id => id > 0).Distinct().ToList();
+        if (wanted.Count == 0) return;
+        var paid = new Dictionary<int, DateTime>();
+        try
+        {
+            // In chunks: SQL Server takes at most 2,100 parameters.
+            foreach (var chunk in wanted.Chunk(1000))
+                foreach (var p in await db.QuerySqlAsync<PaidRow>(PaidOnSql, new { Ids = chunk }, ct))
+                    if (p.PaidOn is { } d) paid[p.Id] = d;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Payment dates of the payments received list could not be read");
+            return;
+        }
+        for (var i = 0; i < rows.Count && i < ids.Count; i++)
+            if (paid.TryGetValue(ids[i], out var d)) rows[i]["PaidOn"] = d;
+    }
+
+    private static bool PaidDate(string? value, out DateOnly? date)
+    {
+        date = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        if (!DateOnly.TryParseExact(value.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)) return false;
+        date = d;
+        return true;
     }
 
     public sealed record UpdatePaymentRequest(

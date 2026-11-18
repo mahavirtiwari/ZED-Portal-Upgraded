@@ -30,6 +30,9 @@ const API = '/api/staff/password-reset/';
  * who it belongs to (GET api/staff/password-reset/{userId}: name, role, status, the masked address) and says up front why a
  * link cannot be sent (blocked, no valid e-mail, ...); "Send reset link" is the confirmation. On the right how the link
  * works and the links sent since the page was opened.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-06's 856 / 420 columns, a 360px User ID box, icon tiles
+ * and dividers in the rail card heads, the status pill top right of the user card, 40px buttons (grey Cancel, a mail icon
+ * on Send reset link).
  */
 @Component({
   selector: 'zed-staff-password-reset-link',
@@ -72,8 +75,8 @@ const API = '/api/staff/password-reset/';
             @switch (step()) {
               @case (0) { <button type="submit" class="btn btn-primary" [disabled]="busy()">Find user</button> }
               @case (1) {
-                <button type="button" class="btn btn-ph" (click)="restart()">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy() || !target()?.canSend">Send reset link</button>
+                <button type="button" class="btn btn-default" (click)="restart()">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy() || !target()?.canSend"><svg class="prl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg>Send reset link</button>
               }
               @default { <button type="button" class="btn btn-primary" (click)="restart()">Send another link</button> }
             }
@@ -84,7 +87,7 @@ const API = '/api/staff/password-reset/';
 
       <div class="prl-side">
         <section class="zed-card" aria-labelledby="prl-how-title">
-          <h2 class="prl-title" id="prl-how-title">How the link works</h2>
+          <h2 class="prl-title" id="prl-how-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg></span>How the link works</h2>
           <ul class="prl-points">
             <li>It goes to the registered e-mail address; you see only a masked address.</li>
             <li>You never see or set the password: the user chooses it.</li>
@@ -93,7 +96,8 @@ const API = '/api/staff/password-reset/';
           </ul>
         </section>
         <section class="zed-card" aria-labelledby="prl-sent-title">
-          <h2 class="prl-title" id="prl-sent-title">Sent from this page <span class="prl-count">{{ sent().length }}</span></h2>
+          <h2 class="prl-title" id="prl-sent-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg></span>Sent from this page <span class="prl-count">{{ sent().length }}</span></h2>
+          <div class="prl-card-body">
           @for (s of sent(); track $index) {
             <div class="prl-sent-row">
               <span class="prl-tick" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" /></svg></span>
@@ -104,44 +108,53 @@ const API = '/api/staff/password-reset/';
             </div>
           }
           <p class="prl-none">{{ sent().length ? 'Listed here until you leave the page.' : 'Links you send are listed here until you leave the page.' }}</p>
+          </div>
         </section>
       </div>
     </div>
   `,
   styles: `
-    .prl-grid { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .prl-grid { display: grid; grid-template-columns: minmax(0, 856fr) minmax(0, 420fr); gap: 20px; align-items: start; }
     .prl-main { margin: 0; padding: 0; overflow: hidden; }
-    .prl-steps ::ng-deep .st { border: 0; border-bottom: 1px solid #e6eeee; border-radius: 0; box-shadow: none; }
-    .prl-form { padding: 18px 22px 22px; }
-    .prl-id { display: flex; align-items: center; gap: 12px; max-width: 520px; }
-    .prl-id input { flex: 1; }
-    .prl-change { font-weight: 700; color: var(--zt-ink, #173f44); text-decoration: none; }
-    .prl-help { display: block; margin-top: 6px; font-size: 12.5px; color: #5f6f70; }
+    .prl-steps ::ng-deep .st { border: 0; border-bottom: 1px solid #dde7e8; border-radius: 0; box-shadow: none; }
+    .prl-form { padding: 20px 24px 24px; }
+    .prl-form .form-label { font-size: 12.5px; font-weight: 600; color: #17373b; }
+    .prl-id { display: flex; align-items: center; gap: 16px; }
+    .prl-id input { flex: 0 1 360px; height: 40px; border-radius: 9px; font-size: 13px; }
+    .prl-change { min-height: 0; padding: 0; font-size: 13px; font-weight: 700; color: #17373b; text-decoration: none; }
+    .prl-help { display: block; margin-top: 8px; font-size: 12px; font-weight: 500; color: #6f8487; }
     .prl-alert { margin: 12px 0 0; }
-    .prl-who { display: flex; align-items: flex-start; gap: 14px; margin-top: 16px; padding: 16px 18px; border: 1px solid var(--zt-soft, #d4ebe6); border-radius: 12px; background: #f6fbfa; }
+    .prl-who { display: flex; align-items: flex-start; gap: 14px; margin-top: 18px; padding: 18px 20px; border: 1px solid #cfe3e5; border-radius: 12px; background: #f6fbfb; }
     .prl-who.is-blocked { border-color: #f1d9a6; background: #fffaf0; }
-    .prl-av { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #e6f1ef; color: var(--zt-ink, #173f44); font-weight: 700; }
-    .prl-who-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; overflow-wrap: anywhere; }
-    .prl-who-text strong { font-size: 16px; color: var(--zt-ink, #173f44); }
-    .prl-who-text small { color: #5f6f70; }
-    .prl-why { color: #8a5a00; font-weight: 600; }
-    .prl-done { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #e8f5ec; color: #1e6b3c; font-size: 13.5px; }
-    .prl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
-    .prl-actions .btn { min-width: 120px; height: 40px; font-weight: 700; }
+    .prl-av { flex: none; width: 44px; height: 44px; margin-top: 4px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-size: 13px; font-weight: 800; }
+    .prl-who-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; font-weight: 500; color: #17373b; overflow-wrap: anywhere; }
+    .prl-who-text strong { font-size: 15px; font-weight: 700; color: #17373b; }
+    .prl-who-text small { font-size: 12.5px; color: #6f8487; }
+    .prl-who-text b { font-weight: 600; }
+    .prl-why { color: #9a5f06; font-weight: 600; }
+    .prl-done { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #e5f5ea; color: #1e6b3c; font-size: 13px; }
+    .prl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }
+    .prl-actions .btn { min-width: 120px; min-height: 42px; }
+    .prl-actions .btn-primary { min-width: 200px; }
+    .prl-ic, .prl-tile svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .prl-ic { width: 16px; height: 16px; }
     .prl-side { display: flex; flex-direction: column; gap: 20px; }
-    .prl-side .zed-card { margin: 0; }
-    .prl-title { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); display: flex; align-items: center; gap: 8px; }
-    .prl-count { margin-left: auto; font-size: 12px; background: #e6f1ef; border-radius: 10px; padding: 1px 9px; }
-    .prl-points { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; color: #24393b; }
-    .prl-points li::marker { color: var(--zt-mid2, #2a8a8c); }
-    .prl-points li.is-amber::marker { color: #d9a400; }
+    .prl-side .zed-card { margin: 0; padding: 0; overflow: hidden; }
+    .prl-title { margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; display: flex; align-items: center; gap: 12px; }
+    .prl-tile { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
+    .prl-tile svg { width: 16px; height: 16px; }
+    .prl-count { margin-left: auto; min-width: 26px; padding: 2px 9px; border-radius: 10px; background: #e6f2f3; color: #24666b; font-size: 10.5px; text-align: center; }
+    .prl-points { margin: 0; padding: 18px 24px 18px 42px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; font-weight: 500; color: #17373b; }
+    .prl-points li::marker { color: #24666b; }
+    .prl-points li.is-amber::marker { color: #d98a12; }
+    .prl-card-body { padding: 14px 24px 16px; }
     .prl-sent-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
-    .prl-tick { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: #2e9e57; }
-    .prl-tick svg { width: 13px; height: 13px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-    .prl-sent-who { min-width: 0; display: flex; flex-direction: column; font-size: 13.5px; overflow-wrap: anywhere; }
-    .prl-sent-who strong { font-weight: 600; color: #24393b; }
-    .prl-sent-who small { color: #5f6f70; }
-    .prl-none { margin: 6px 0 0; font-size: 12.5px; color: #5f6f70; }
+    .prl-tick { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #2f9e58; }
+    .prl-tick svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .prl-sent-who { min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; overflow-wrap: anywhere; }
+    .prl-sent-who strong { font-weight: 600; color: #17373b; }
+    .prl-sent-who small { font-size: 11.5px; color: #6f8487; }
+    .prl-none { margin: 6px 0 0; font-size: 11.5px; font-weight: 500; color: #6f8487; }
     @media (max-width: 991.98px) { .prl-grid { grid-template-columns: minmax(0, 1fr); } }
   `,
 })

@@ -107,7 +107,7 @@ describe('EmailTemplatesPage', () => {
     await settle();
     button('{{Name}}', dialog).click();
     await settle();
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
 
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/ContactQueryEmail`);
@@ -143,7 +143,7 @@ describe('EmailTemplatesPage', () => {
     expect(body.selectionStart).toBe(at + '{{Name}}'.length);
     expect(frame()).toContain('<p>Dear [Name], thank you.</p>');
 
-    button('SAVE', dialog).click();
+    button('Save', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/ContactQueryEmail`);
     // What is saved keeps the fields; only the preview fills them.
@@ -180,7 +180,7 @@ describe('EmailTemplatesPage', () => {
     button('Phone', dialog).click();
     await settle();
     expect(dialog.querySelector('.mail-frame')!.classList).toContain('phone');
-    button('CANCEL', dialog).click();
+    button('Cancel', dialog).click();
     await settle();
   });
 
@@ -189,7 +189,7 @@ describe('EmailTemplatesPage', () => {
     await settle();
     http.expectOne(`${url}/ContactQueryEmail`).flush({ item: items[0], bodyHtml: '{{Nme}}', standardBody: false });
     await settle();
-    button('SAVE', el.querySelector('[role=dialog]')!).click();
+    button('Save', el.querySelector('[role=dialog]')!).click();
     await settle();
     http.expectOne((r) => r.method === 'PUT').flush({ title: '{{Nme}} is not a field of this e-mail.' }, { status: 400, statusText: 'Bad Request' });
     await settle();

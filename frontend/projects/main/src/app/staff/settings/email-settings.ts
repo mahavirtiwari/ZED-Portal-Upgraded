@@ -91,7 +91,7 @@ interface EmailSettingItem {
         }
         <div class="form-actions save-bar" [class.is-dirty]="changed()">
           @if (changed()) { <span class="unsaved">Unsaved changes</span> } @else { <span class="muted me-auto">All changes saved.</span> }
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || !changed()">SAVE</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || !changed()">Save</button>
         </div>
       </form>
     }

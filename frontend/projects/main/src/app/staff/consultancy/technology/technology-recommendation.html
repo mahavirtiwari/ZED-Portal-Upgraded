@@ -66,7 +66,7 @@
       <!-- When the lead consultant cannot recommend yet (e.g. PreviousRecomInProgress), its text takes PROCEED's place, as on the old page. -->
       <div class="form-actions">
         @if (p.canRecommend) {
-          <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">PROCEED</button>
+          <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">Proceed</button>
         } @else {
           <span class="muted">{{ p.message }}</span>
         }

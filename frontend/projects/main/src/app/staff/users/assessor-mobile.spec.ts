@@ -200,6 +200,8 @@ describe('Registered mobile on the assessor page', () => {
     await settle(fixture);
     // The rail's open assessments count (2026-11-17).
     http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: null });
+    // 2026-11-18: the Master Admin's agencies, for the agency's name on the rail.
+    http.match((r) => r.url === '/api/staff/users/agencies').forEach((r) => r.flush([]));
     await settle(fixture);
     return { fixture, http, el: fixture.nativeElement as HTMLElement };
   }

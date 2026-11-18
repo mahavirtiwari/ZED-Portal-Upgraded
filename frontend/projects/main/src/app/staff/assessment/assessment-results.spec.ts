@@ -58,7 +58,10 @@ describe('AssessmentResultsPage gender filter', () => {
 
   it('main Completed has no Gender filter', async () => {
     const fixture = await create('main', 'completed');
-    http.expectOne((r) => r.url === '/api/staff/assessment/completed').flush({ ...empty, pageSize: 20 });
+    http.expectOne((r) => r.url === '/api/staff/assessment/completed').flush(empty);
+    // 2026-11-18: main's lists also read their count cards (Surveillance shows the total only).
+    http.expectOne((r) => r.url === '/api/staff/assessment/completed/counts')
+      .flush({ total: 0, certifiedThisMonth: 0, surveillanceDue90: 0, duplicates: 0, waitingReallot: null, reallotted: null });
     await settle(fixture);
     expect((fixture.nativeElement as HTMLElement).querySelector('#resGender')).toBeNull();
   });

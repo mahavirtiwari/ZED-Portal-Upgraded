@@ -353,6 +353,61 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.Equal("Withdrawn by the unit", rejected.GetProperty("rows")[0].GetProperty("ReasonForRejection").GetString());
     }
 
+    // ----- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the count cards of staff-11 / staff-12 -----
+
+    [Fact]
+    public async Task Completed_counts_read_every_row_of_the_filter()
+    {
+        var today = DateTime.UtcNow.AddMinutes(330).Date;
+        string F(DateTime d) => d.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture);
+        _host.Sql.Procs["SP_MONITORING_GET_LIST_PAGINATION"] = _ => FakeSql.Sets(
+            [
+                new { ZedId = "ZEDMSME000001", Certification = "Bronze", CertificationStatusDate = F(today), FirstSurveDueDate = F(today.AddDays(30)), SameUdyamAddress = 2 },
+                new { ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatusDate = F(today.AddMonths(-2)), FirstSurveDueDate = F(today.AddDays(200)), SameUdyamAddress = 0 },
+                new { ZedId = "ZEDMSME000003", Certification = "Gold", CertificationStatusDate = (string?)null, FirstSurveDueDate = F(today.AddDays(-3)), SameUdyamAddress = 1 },
+            ],
+            [new { TotalCounts = 3, PageNo = 1, PageSize = 100000 }]);
+        var client = await DaTestUsers.SignInAsync(_host, "AGENCY1");
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed/counts?certification=Bronze");
+        Assert.Equal(3, json.GetProperty("total").GetInt32());
+        Assert.Equal(1, json.GetProperty("certifiedThisMonth").GetInt32());
+        Assert.Equal(1, json.GetProperty("surveillanceDue90").GetInt32());
+        Assert.Equal(2, json.GetProperty("duplicates").GetInt32());
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("waitingReallot").ValueKind);
+        var call = DaTestUsers.CallsTo(_host.Sql, "SP_MONITORING_GET_LIST_PAGINATION").Last();
+        Assert.Equal("6", FakeSql.Arg(call.Args, "Status"));
+        Assert.Equal("Bronze", FakeSql.Arg(call.Args, "CertificationType"));
+        Assert.Equal("100000", FakeSql.Arg(call.Args, "PageSize"));
+        // The list itself still pages at most 200: a larger size from the query string falls back to 20.
+        await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?pageSize=100000");
+        Assert.Equal("20", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_MONITORING_GET_LIST_PAGINATION").Last().Args, "PageSize"));
+    }
+
+    [Fact]
+    public async Task Rejected_counts_tell_waiting_from_reallotted_by_the_live_record()
+    {
+        _host.Sql.Procs["SP_MONITORING_GET_LIST_PAGINATION"] = _ => FakeSql.Sets(
+            [
+                new { ZedId = "ZEDMSME000001", RejectedZedId = "ZEDMSME000001_D_7", Certification = "Bronze" },
+                new { ZedId = "ZEDMSME000002", RejectedZedId = "ZEDMSME000002_R_8", Certification = "Silver" },
+                new { ZedId = "ZEDMSME000003", RejectedZedId = "ZEDMSME000003_R_9", Certification = "Gold" },
+            ],
+            [new { TotalCounts = 3, PageNo = 1, PageSize = 100000 }]);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Assessment.AssessmentResultsController.LiveStatusSql] = _ =>
+        [
+            new { ZedId = "ZEDMSME000001", Certification = "Bronze", CertificationStatus = (int?)2 },
+            new { ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = (int?)9 },
+            // Another level of the unit is not this record's.
+            new { ZedId = "ZEDMSME000003", Certification = "Bronze", CertificationStatus = (int?)3 },
+        ];
+        var client = await DaTestUsers.SignInAsync(_host, "AGENCY1");
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/rejected/counts");
+        Assert.Equal(3, json.GetProperty("total").GetInt32());
+        Assert.Equal(1, json.GetProperty("waitingReallot").GetInt32());
+        Assert.Equal(1, json.GetProperty("reallotted").GetInt32());
+        Assert.Equal("99", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_MONITORING_GET_LIST_PAGINATION").Last().Args, "Status"));
+    }
+
     [Fact]
     public async Task Result_rows_carry_district_and_state()
     {

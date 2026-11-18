@@ -1,4 +1,5 @@
 <!-- 2026-11-17 (approved staff redesign): the page head with crumbs and the light button; completed actions as toasts. -->
+<!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): button labels and outcomes in title case, as the designs. -->
 <zed-page-head [crumbs]="crumbs" [title]="'Financial assistance · ' + zedId"
                subtitle="The application's details and documents: validate each document, then accept or reject the application.">
   <a class="btn btn-ph" routerLink="/staff/financial-assistance">Back to list</a>
@@ -99,15 +100,15 @@
 
   @if (app.canDecide) {
     <div class="form-actions mb-3">
-      <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="openDecision(app, 'reject')">REJECT</button>
-      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="openDecision(app, 'approve')">ACCEPT</button>
+      <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="openDecision(app, 'reject')">Reject</button>
+      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="openDecision(app, 'approve')">Accept</button>
     </div>
   } @else if (app.canValidate) {
-    <p class="text-center muted">ACCEPT / REJECT become available once every document is validated.</p>
+    <p class="text-center muted">Accept and Reject become available once every document is validated.</p>
   }
   @switch (outcome(app)) {
-    @case ('accepted') { <div class="alert alert-success">ACCEPTED</div> }
-    @case ('rejected') { <div class="alert alert-danger">REJECTED</div> }
+    @case ('accepted') { <div class="alert alert-success">Accepted</div> }
+    @case ('rejected') { <div class="alert alert-danger">Rejected</div> }
   }
 
   <ng-template #docView let-doc>
@@ -117,9 +118,9 @@
         @if (doc.timeStamp) { <small> captured at {{ doc.timeStamp }}</small> }
       </span>
       @if (doc.isPdf) {
-        <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
+        <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">View</a>
       } @else {
-        <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc)">VIEW</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc)">View</button>
       }
     </div>
   </ng-template>
@@ -149,7 +150,7 @@
         }
       </div>
       @if (app.canValidate && opened(doc)) {
-        <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
+        <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'Validate' }}</button>
       }
     </div>
   </ng-template>
@@ -219,8 +220,8 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="closeDialogs()">CANCEL</button>
-            <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">SUBMIT</button>
+            <button type="button" class="btn btn-default" (click)="closeDialogs()">Cancel</button>
+            <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">Submit</button>
           </div>
         </div>
       </div>
@@ -228,7 +229,7 @@
     <div class="modal-backdrop show"></div>
   }
 } @else if (!loading() && !error()) {
-  <div class="no-data">No Data</div>
+  <div class="no-data">No application found.</div>
 }
 
 @if (preview(); as url) {

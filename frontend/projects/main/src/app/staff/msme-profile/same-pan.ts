@@ -21,6 +21,10 @@ export interface SamePanResponse {
  * before the site exterior photos of the assessment pages and on the unit's profile. A warning strip with "View units",
  * and a pop-up that opens by itself the first time a unit's page is opened in the browser session: the ZED IDs masked,
  * the unit names and addresses in full. Nothing when the PAN has no other unit (or the user may not see the unit).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-14d / staff-15): the strip is the designs' amber card: the
+ * PAN masked ("AB•••••34F"), "Check that this is a different plant before you accept the application.", and the other units
+ * listed inline (masked ZED ID, name and address); the pop-up's intro line without the yellow background a global
+ * <code>.small.text-muted</code> style gave it (its own class now), with the full PAN for tracing.
  */
 @Component({
   selector: 'zed-same-pan',
@@ -28,9 +32,17 @@ export interface SamePanResponse {
     @if (data(); as d) {
       @if (d.others.length) {
         <div class="sp-strip" role="status" data-same-pan>
-          <span>⚠ Same PAN: {{ d.others.length === 1 ? '1 other ZED unit is' : d.others.length + ' other ZED units are' }} registered with PAN {{ d.pan }}.
-            Check that this is a different plant.</span>
-          <button type="button" class="btn btn-link btn-sm p-0" (click)="open.set(true)">View units</button>
+          <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg>
+          <div class="sp-text">
+            <b>Same PAN: {{ d.others.length === 1 ? '1 other ZED unit is' : d.others.length + ' other ZED units are' }} registered with PAN {{ mask(d.pan) }}</b>
+            <span>Check that this is a different plant before you accept the application.</span>
+            <ul class="sp-list">
+              @for (u of d.others; track u.zedId + u.address) {
+                <li><b>{{ u.zedId }}</b><span>{{ u.unitName || '—' }}@if (u.address) { · {{ u.address }} }</span></li>
+              }
+            </ul>
+          </div>
+          <button type="button" class="btn btn-link btn-sm p-0 sp-view" (click)="open.set(true)">View units</button>
         </div>
         @if (open()) {
           <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="same-pan-title" (click)="open.set(false)">
@@ -43,7 +55,7 @@ export interface SamePanResponse {
                   </div>
                 </div>
                 <div class="modal-body">
-                  <p class="small text-muted">For tracing repeat registrations.
+                  <p class="sp-intro">For tracing repeat registrations (PAN {{ d.pan }}).
                     @if (d.this; as me) { This unit: {{ me.zedId }} · {{ me.unitName }}, {{ me.address }} }</p>
                   <div class="table-responsive">
                     <table class="table table-bordered table-zed mb-0" data-same-pan-list>
@@ -66,8 +78,18 @@ export interface SamePanResponse {
     }
   `,
   styles: `
-    .sp-strip { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid #f0c36d; background: #fff8e6;
-      color: #7a5300; border-radius: 8px; padding: 8px 12px; margin: 0 0 10px; font-size: 13.5px; }
+    .sp-strip { display: flex; align-items: flex-start; gap: 12px; border: 1px solid #ecd98a; background: #fdf2dc; color: #9a5f06; border-radius: 14px;
+      padding: 14px 18px; margin: 0 0 16px; font-size: 12.5px; }
+    .sp-ico { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; margin-top: 1px; }
+    .sp-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .sp-text > b { font-size: 13.5px; }
+    .sp-text > span { color: #3d5559; }
+    .sp-list { list-style: none; margin: 8px 0 0; padding: 0; }
+    .sp-list li { display: flex; gap: 20px; padding: 8px 14px; background: #fff; border: 1px solid #ecd98a; border-radius: 8px; color: #3d5559; }
+    .sp-list li + li { margin-top: 6px; }
+    .sp-list b { color: #17373b; white-space: nowrap; }
+    .sp-view { font-weight: 700; color: #24666b; white-space: nowrap; }
+    .sp-intro { margin: 0 0 10px; font-size: 13px; color: #6f8487; background: none; }
   `,
 })
 export class SamePanUnits {
@@ -76,6 +98,12 @@ export class SamePanUnits {
   readonly zedId = input.required<string>();
   protected readonly data = signal<SamePanResponse | null>(null);
   protected readonly open = signal(false);
+
+  /** "AB•••••34F" (the strip; the pop-up keeps the full PAN for tracing). */
+  protected mask(pan: string | null): string {
+    const p = (pan ?? '').trim();
+    return p.length > 5 ? p.slice(0, 2) + '•••••' + p.slice(-3) : p;
+  }
 
   constructor() {
     effect(() => {

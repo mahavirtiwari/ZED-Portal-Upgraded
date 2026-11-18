@@ -51,52 +51,63 @@ function emptyAgency(): AgencyRequest {
   imports: [FormsModule, RouterLink, MultiSelect, PageHead],
   templateUrl: './agency-form.html',
   styles: `
-    .af { display: grid; grid-template-columns: 240px minmax(0, 1fr) 260px; gap: 20px; align-items: start; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-02 values. */
+    .af { display: grid; grid-template-columns: 260px minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
     .af-left, .af-rail { position: sticky; top: 12px; }
     .af-nav { padding: 8px; margin: 0; }
-    .af-step { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px; border: 0; border-radius: 10px; background: none; text-align: left; }
-    .af-step:hover { background: #f2f8f7; }
-    .af-dot { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: 2px solid #c9d6d7; color: #5f6f70; font-size: 12px; font-weight: 700; }
-    .af-step.done .af-dot { background: #2e9e57; border-color: #2e9e57; }
-    .af-dot svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .af-step { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: none; text-align: left; }
+    .af-step:hover { background: #f1f9f9; }
+    .af-step.current { background: #e6f2f3; }
+    .af-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid #17373b; color: #17373b; font-size: 11px; font-weight: 700; }
+    .af-step.done .af-dot { background: #2f9e58; border-color: #2f9e58; }
+    .af-dot svg, .ok, .ic, .step svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .af-dot svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 3; }
     .af-step-text { display: flex; flex-direction: column; min-width: 0; }
-    .af-step-text strong { font-size: 14px; color: var(--zt-ink, #173f44); }
-    .af-step-text small { font-size: 12px; color: #5f6f70; }
-    .req-note { margin: 10px 4px 0; font-size: 12.5px; color: #5f6f70; }
+    .af-step-text strong { font-size: 13.5px; color: #17373b; }
+    .af-step-text small { font-size: 11.5px; font-weight: 500; color: #6f8487; }
+    .req-note { margin: 10px 4px 0; font-size: 12px; color: #6f8487; }
     .form-section { padding: 0; overflow: hidden; scroll-margin-top: 12px; }
-    .section-head { display: flex; align-items: center; gap: 10px; margin: 0; padding: 14px 20px; border-bottom: 1px solid #e6eeee; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .step { width: 26px; height: 26px; border-radius: 8px; background: #e6f1ef; display: grid; place-items: center; font-size: 13px; }
-    .fs-body { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 14px; }
-    .fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-    .fld > label, .lbl { margin: 0; font-size: 13.5px; font-weight: 600; color: #3b4b4c; text-transform: none; }
-    .fld-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
-    .fs-note { align-self: end; margin: 0 0 10px; font-size: 12.5px; color: #5f6f70; }
-    .fs-hint { font-size: 12.5px; color: #5f6f70; }
-    .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef3f3; }
-    .seg label { position: relative; flex: 1; margin: 0; padding: 7px 14px; border-radius: 8px; text-align: center; cursor: pointer; color: #5f6f70; font-weight: 600; }
-    .seg label.active { background: #fff; color: var(--zt-ink, #173f44); box-shadow: inset 0 0 0 2px var(--zt-dark, #1f5c61); }
+    .section-head { display: flex; align-items: center; gap: 12px; margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
+    .step { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #e6f2f3; color: #24666b; display: grid; place-items: center; }
+    .step svg { width: 16px; height: 16px; }
+    .ic { flex: none; width: 16px; height: 16px; }
+    .fs-body { padding: 18px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+    .fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .fld > label, .lbl { margin: 0; font-size: 12.5px; font-weight: 600; color: #17373b; text-transform: none; }
+    .fld .form-control, .fld .form-select { min-height: 40px; border-radius: 9px; font-size: 13px; }
+    .fld-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; align-items: start; }
+    .fld-row.pin-row { grid-template-columns: 200px 300px; }
+    .fs-note { display: flex; align-items: center; gap: 6px; align-self: end; margin: 0 0 11px; font-size: 12px; font-weight: 500; color: #6f8487; }
+    .fs-note .ic { width: 14px; height: 14px; }
+    .fs-hint { font-size: 12px; color: #6f8487; }
+    .seg { display: inline-flex; padding: 3px; border-radius: 9px; background: #eef3f3; }
+    .seg label { position: relative; flex: 1; margin: 0; padding: 6px 18px; border-radius: 7px; text-align: center; cursor: pointer; color: #6f8487; font-size: 13px; font-weight: 500; }
+    .seg label.active { background: #fff; color: #24666b; font-weight: 700; box-shadow: inset 0 0 0 1.5px #24666b; }
     .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
     .seg label:focus-within { outline: 2px solid var(--zt-mid2, #2a8a8c); }
-    .checks { display: flex; flex-wrap: wrap; gap: 8px 22px; }
-    .chk { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-weight: 600; color: #24393b; cursor: pointer; text-transform: none; }
-    .chk .form-check-input { flex: none; float: none; margin: 2px 0 0; }
-    .chk small { display: block; font-weight: 400; color: #8a6100; }
+    .checks { display: flex; flex-wrap: wrap; gap: 10px 36px; min-height: 36px; align-items: center; }
+    .chk { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 13.5px; font-weight: 600; color: #17373b; cursor: pointer; text-transform: none; }
+    .chk .form-check-input { flex: none; float: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid #24666b; border-radius: 5px; }
+    .chk small { display: block; font-weight: 400; color: #9a5f06; }
     .chk.locked { color: #8a9899; cursor: not-allowed; }
     .login-id { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, monospace; color: var(--zt-mid2, #2a8a8c); }
-    .af-rail { padding: 16px 18px; margin: 0; }
-    .af-rail h4 { margin: 0 0 10px; font-size: 16px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .af-rail ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #3d5254; }
-    .af-rail li::marker { color: var(--zt-mid2, #2a8a8c); }
-    .help-block { color: #a94442; font-size: 12.5px; }
-    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 18px; padding: 12px 18px;
-      background: #fff; border: 1px solid #e1eaea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
+    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, monospace; color: #24666b; }
+    .af-rail { padding: 0; margin: 0; overflow: hidden; }
+    .af-rail h4 { margin: 0; padding: 18px 24px 16px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
+    .af-rail ul { list-style: none; margin: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; font-size: 12px; font-weight: 500; color: #3d5559; }
+    .af-rail li { display: flex; align-items: flex-start; gap: 12px; }
+    .help-block { color: #c8473c; font-size: 12.5px; }
+    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 20px 0 18px; padding: 16px 24px;
+      background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
     .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
-    .save-bar .btn { min-width: 110px; height: 40px; font-weight: 700; }
-    .save-progress { font-size: 13.5px; color: #3d5254; }
-    .save-progress.all { color: #1e6b3c; font-weight: 600; }
-    .unsaved { font-weight: 600; color: #8a6100; }
-    .save-error { font-weight: 600; color: #a8303a; }
+    .save-bar .btn { min-width: 110px; min-height: 40px; }
+    .save-bar .btn-primary { min-width: 170px; }
+    .save-progress { display: inline-flex; align-items: center; gap: 12px; font-size: 13.5px; font-weight: 500; color: #3d5559; }
+    .ok { flex: none; width: 20px; height: 20px; }
+    .ok circle { fill: #2f9e58; stroke: none; }
+    .ok path { stroke: #fff; stroke-width: 2.4; }
+    .unsaved { font-weight: 600; color: #9a5f06; }
+    .save-error { font-weight: 600; color: #c8473c; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     @media (max-width: 1199.98px) {
       .af { grid-template-columns: 220px minmax(0, 1fr); }
@@ -106,7 +117,7 @@ function emptyAgency(): AgencyRequest {
       .af { grid-template-columns: minmax(0, 1fr); }
       .af-left { position: static; }
       .af-rail { grid-column: auto; }
-      .fld-row { grid-template-columns: minmax(0, 1fr); }
+      .fld-row, .fld-row.pin-row { grid-template-columns: minmax(0, 1fr); }
       .fs-body, .section-head { padding-left: 14px; padding-right: 14px; }
       .save-bar > span { flex-basis: 100%; }
     }
@@ -134,6 +145,20 @@ export class AgencyFormPage {
     : [`A login ID is generated for the ${this.consultancy ? 'organisation' : 'agency'}.`, 'The login details are e-mailed to the SPOC.',
        `The ${this.consultancy ? 'organisation' : 'agency'} can then add its ${PORTAL_LABELS.assessors.toLowerCase()}.`,
        ...(this.consultancy ? [] : ['Levels are switched on in Agency Level Allocation.'])];
+  /** 2026-11-18 (staff-02): the line icons of the section heads and "On submit" (person, mail, people, shield). */
+  protected readonly icon = {
+    building: 'M3 21h18 M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16 M9 7h2 M13 7h2 M9 11h2 M13 11h2 M9 15h2 M13 15h2',
+    person: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+    pin: 'M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+    lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z M7 11V7a5 5 0 0 1 10 0v4',
+    mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6',
+    people: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+    shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+    info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01',
+  };
+  protected readonly railIcons: string[] = this.isEdit
+    ? [this.icon.info, this.icon.mail, this.icon.lock, this.icon.shield]
+    : [this.icon.person, this.icon.mail, this.icon.people, this.icon.shield];
   protected readonly tuStates = signal<CodeName[]>([]);
   protected readonly districts = signal<MultiSelectOption[]>([]);
 
@@ -266,6 +291,11 @@ export class AgencyFormPage {
     ];
     if (this.isEdit) list.push({ id: 'sec-login', label: 'Login', hint: 'User ID, status', done: true });
     return list;
+  }
+
+  /** The first section not complete yet (tinted in the list, as the design's current section). */
+  protected currentId(): string | null {
+    return this.sections().find((s) => !s.done)?.id ?? null;
   }
 
   protected doneCount(): number {

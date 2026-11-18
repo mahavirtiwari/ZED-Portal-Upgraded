@@ -88,7 +88,7 @@ describe('AssessorFormPage', () => {
     await pick('assessorType', 'Bronze Assessor');
     await type('#certificateNo', 'BA1234');
     await type('#professionalEmail', 'pro@zed.test');
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'SEARCH') as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Search') as HTMLButtonElement).click();
     await settle(fixture);
     const lookup = http.expectOne('/api/staff/users/assessors/lookup');
     expect(lookup.request.body).toEqual({ assessorType: 'BronzeAssessor', certificateNo: 'BA1234', email: 'pro@zed.test' });
@@ -176,7 +176,7 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
     await pick('assessorType', 'Assessor');
     expect(el.querySelector('.alert-warning')!.textContent!.trim()).toBe("Verification is off: enter the assessor's details as on the certificate.");
-    expect([...el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'SEARCH')).toBe(false);
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Search')).toBe(false);
     expect(el.querySelector('#professionalEmail')).toBeNull();
     expect((el.querySelector('#userName') as HTMLInputElement).readOnly).toBe(false);
     expect(el.querySelector('label[for="pan"]')!.textContent).toContain('PAN Number*');
@@ -223,7 +223,7 @@ describe('AssessorFormPage', () => {
     expect(saveNote()).toBe('Search the certified professional to continue.');
     await type('#certificateNo', 'BA1234');
     await type('#pan', 'ABCDE123');
-    const search = () => ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'SEARCH') as HTMLButtonElement).click();
+    const search = () => ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Search') as HTMLButtonElement).click();
     search();
     await settle(fixture);
     expect(el.querySelector('.alert-danger')!.textContent).toContain('a valid PAN');
@@ -279,7 +279,7 @@ describe('AssessorFormPage', () => {
     expect(el.querySelector('.ph-title')!.textContent).toContain('Add Consultant/Expert');
     expect(el.querySelector('#assessorType-label')!.textContent).toContain('Consultant/Expert');
     expect([...el.querySelectorAll('input[name=assessorType]')].map((i) => i.closest('label')!.textContent!.trim())).toEqual(['Consultant/Expert', 'Technical Expert']);
-    expect(el.querySelector('label[for="userName"]')!.textContent).toContain('Consultant/Expert Name');
+    expect(el.querySelector('label[for="userName"]')!.textContent).toContain('Consultant/Expert name');
     expect(el.textContent).toContain('Applicable States');
   });
 
@@ -305,19 +305,22 @@ describe('AssessorFormPage', () => {
     http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: null });
     // The registered mobile card (assessor-mobile.spec.ts) loads below the form.
     http.expectOne('/api/staff/assessor-mobile/ZEDAS0001').flush({ userId: 'ZEDAS0001', device: null, signIns: [] });
+    // 2026-11-18: the agency's name for the rail.
+    http.expectOne('/api/staff/users/agencies').flush([]);
     await settle(fixture);
-    expect(el.querySelector('.ph-title')!.textContent).toContain('Assessor Details');
-    expect((el.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBe(true);
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Assessor details');
     expect([...el.querySelectorAll('button')].some((b) => ['Create', 'Update'].includes(b.textContent!.trim()))).toBe(false);
-    expect((el.querySelector('#idProofNumber') as HTMLInputElement).placeholder).toBe('XXXXXXXX9012');
+    // 2026-11-18 (staff-05): the view shows a compact contact card (masked), no edit fields.
+    expect(el.querySelector('#idProofNumber')).toBeNull();
+    expect(el.querySelector('[data-view="id-proof"]')!.textContent!.trim()).toBe('Aadhaar card · •••••9012');
+    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('a•••••@z.test');
     expect(el.querySelector('zed-page-head a[data-back]')!.getAttribute('href')).toBe('/staff/users/assessors');
-    // The profile card, the chosen ID proof chip and no save bar.
+    // The profile card and no save bar.
     const profile = el.querySelector('.af-profile')!.textContent!;
     expect(profile).toContain('Asha');
-    expect(profile).toContain('Certificate AS1');
+    expect(profile).toContain('Certificate no. AS1');
     expect(profile).toContain('Active');
-    expect(el.querySelector('zed-page-head')!.textContent).toContain('View only');
-    expect(el.querySelector('.af-chip.active')!.textContent!.trim()).toBe('Aadhaar Card');
+    expect(profile).toContain('View only');
     expect(el.querySelector('.save-bar')).toBeNull();
   });
 
@@ -333,7 +336,7 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
     http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: 0 });
     await settle(fixture);
-    expect(el.querySelector('.ph-title')!.textContent).toContain('Update Assessor Details');
+    expect(el.querySelector('.ph-title')!.textContent).toContain('Update Assessor details');
     expect(el.querySelector('.af-avatar')!.textContent!.trim()).toBe('AR');
     expect([...el.querySelectorAll('.af-head')].map((h) => h.textContent!.trim())).toEqual(['1Contact details', '2ID proof', '3What the assessor assesses', '4Block reason']);
     expect(saveNote()).toBe('No unsaved changes.');
@@ -476,7 +479,9 @@ describe('MyAssessorsPage', () => {
     await choose(el.querySelector('tbody tr')!, 'Send reset link');
     const dialog = el.querySelector('zed-confirm-dialog')!;
     expect(dialog.querySelector('h3')!.textContent).toContain('Send password reset link?');
-    expect(dialog.textContent).toContain('Asha Rao (ZEDBA0001) gets a link to set a new password at as•••••@sample.in');
+    const person = dialog.querySelector('.cd-person')!.textContent!;
+    for (const part of ['Asha Rao', 'Assessor · ZEDBA0001', 'as•••••@sample.in']) expect(person).toContain(part);
+    expect(dialog.textContent).toContain('The user chooses the new password.');
     await submit();
     http.expectOne('/api/staff/users/assessors/ZEDBA0001/password-reset').flush({ message: 'A link to set a new password was e-mailed (a***@sample.in).' });
     await settle(fixture);
@@ -695,7 +700,7 @@ describe('AssessorListPage', () => {
     ]);
     await settle(fixture);
     await choose(el.querySelector('tbody tr')!, 'Send reset link');
-    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('at as•••••@sample.in');
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('as•••••@sample.in');
     await submit();
     http.expectOne('/api/staff/users/assessors/ZEDBA01/password-reset').flush({ title: 'No e-mail address is saved.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);

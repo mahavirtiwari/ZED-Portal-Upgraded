@@ -31,31 +31,33 @@ interface Card {
 /**
  * The certification cards of Views/Dashboard/Index.cshtml (column names of SP_DASHBOARD_GET_DETAILS). V4: without the
  * Financial Assistance card (removed from the dashboard on request, 2026-10-27; Financial Support has its own page).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): status names in sentence case ("Assessment pending",
+ * "NC raised"), as staff-00 (also the export's).
  */
 const MAIN_CARDS: Card[] = [
   {
     css: 'panel-bronze', title: 'BRONZE CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Assessment Pending', field: 'BronzePending' },
-      { label: 'NC Raised', field: 'BronzeNcRaised' }, { label: 'Certified', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
+      { label: 'Total applications', field: 'BronzeTotal' }, { label: 'Assessment pending', field: 'BronzePending' },
+      { label: 'NC raised', field: 'BronzeNcRaised' }, { label: 'Certified', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
     ],
   },
   {
     css: 'panel-silver', title: 'SILVER CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Assessment Pending', field: 'SaSilverPending' },
-      { label: 'NC Raised', field: 'SilverNcRaised' }, { label: 'Certified', field: 'SaSilverCompleted' }, { label: 'Rejected', field: 'SilverRejected' },
+      { label: 'Total applications', field: 'SilverTotal' }, { label: 'Assessment pending', field: 'SaSilverPending' },
+      { label: 'NC raised', field: 'SilverNcRaised' }, { label: 'Certified', field: 'SaSilverCompleted' }, { label: 'Rejected', field: 'SilverRejected' },
     ],
   },
   {
     css: 'panel-gold', title: 'GOLD CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Assessment Pending', field: 'SaGoldPending' },
-      { label: 'NC Raised', field: 'GoldNcRaised' }, { label: 'Certified', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
+      { label: 'Total applications', field: 'GoldTotal' }, { label: 'Assessment pending', field: 'SaGoldPending' },
+      { label: 'NC raised', field: 'GoldNcRaised' }, { label: 'Certified', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
     ],
   },
   {
     // 2026-11-07: ZED-X was missing from the dashboard (its figures: migration 0019, Gold's rules).
     css: 'panel-zedx', title: 'ZED-X CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'ZedxTotal' }, { label: 'Assessment Pending', field: 'SaZedxPending' },
-      { label: 'NC Raised', field: 'ZedxNcRaised' }, { label: 'Certified', field: 'SaZedxCompleted' }, { label: 'Rejected', field: 'ZedxRejected' },
+      { label: 'Total applications', field: 'ZedxTotal' }, { label: 'Assessment pending', field: 'SaZedxPending' },
+      { label: 'NC raised', field: 'ZedxNcRaised' }, { label: 'Certified', field: 'SaZedxCompleted' }, { label: 'Rejected', field: 'ZedxRejected' },
     ],
   },
 ];
@@ -92,7 +94,7 @@ const CONSULTANCY_CARDS: Card[] = [
   },
   {
     css: 'panel-finance', title: 'Technology Intervention', lines: [
-      { label: 'Total Application', field: 'FaTotal' }, { label: 'Approved', field: 'FaCompleted' }, { label: 'Pending', field: 'FaPending' },
+      { label: 'Total applications', field: 'FaTotal' }, { label: 'Approved', field: 'FaCompleted' }, { label: 'Pending', field: 'FaPending' },
     ],
   },
 ];
@@ -104,21 +106,21 @@ const CONSULTANCY_CARDS: Card[] = [
 const SURVEILLANCE_CARDS: Card[] = [
   {
     css: 'panel-bronze', title: 'BRONZE SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Surveillance Pending', field: 'BronzePending' },
-      { label: 'Surveillance Completed', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
+      { label: 'Total applications', field: 'BronzeTotal' }, { label: 'Surveillance pending', field: 'BronzePending' },
+      { label: 'Surveillance completed', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
     ],
   },
   {
     css: 'panel-silver', title: 'SILVER SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Surveillance Pending', field: 'SilverPending' },
-      { label: 'NC Raised', field: 'SaSilverNcRaised' }, { label: 'Surveillance Completed', field: 'SaSilverCompleted' },
+      { label: 'Total applications', field: 'SilverTotal' }, { label: 'Surveillance pending', field: 'SilverPending' },
+      { label: 'NC raised', field: 'SaSilverNcRaised' }, { label: 'Surveillance completed', field: 'SaSilverCompleted' },
       { label: 'Rejected', field: 'SilverRejected' },
     ],
   },
   {
     css: 'panel-gold', title: 'GOLD SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Surveillance Pending', field: 'GoldPending' },
-      { label: 'NC Raised', field: 'SaGoldNcRaised' }, { label: 'Surveillance Completed', field: 'SaGoldCompleted' },
+      { label: 'Total applications', field: 'GoldTotal' }, { label: 'Surveillance pending', field: 'GoldPending' },
+      { label: 'NC raised', field: 'SaGoldNcRaised' }, { label: 'Surveillance completed', field: 'SaGoldCompleted' },
       { label: 'Rejected', field: 'GoldRejected' },
     ],
   },
@@ -140,6 +142,9 @@ export const CONSULTANT_TILES = [
  * 2026-11-17 (approved staff redesign): the shared page head (the date basis, Refresh and Export as its buttons, the
  * Updated time under the title); "Needs your attention" above the cards; per level one stacked bar and its legend; Export
  * as a pop-up (sections and Excel / CSV / PDF).
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): sizes and colours of staff-00: a 344x36 date-basis switch,
+ * 112x36 Refresh / Export with their icons, 176px level cards (50px band, 10px bar whose empty parts take no room, legend
+ * on one line per status).
  */
 @Component({
   selector: 'zed-staff-dashboard',
@@ -160,16 +165,16 @@ export const CONSULTANT_TILES = [
           </div>
         }
         <button type="button" class="btn btn-ph dash-refresh no-export" [disabled]="an.loading()" (click)="refresh()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" /></svg> Refresh
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> Refresh
         </button>
         <button type="button" class="btn btn-primary dash-export-btn no-export" [disabled]="!an.data() || exporting()" aria-haspopup="dialog" (click)="openExport()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" /></svg> {{ exporting() ? 'Exporting…' : 'Export' }}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg> {{ exporting() ? 'Exporting…' : 'Export' }}
         </button>
       }
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">
-        {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try again</button>
+        {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try Again</button>
       </div>
     }
     @if (showConsultantTiles()) {
@@ -259,62 +264,66 @@ export const CONSULTANT_TILES = [
     }
   `,
   styles: `
-    /* Head: the date basis as a two-way switch, then Refresh (grey) and Export. */
-    .dash-basis { display: inline-flex; padding: 3px; border-radius: 9px; background: #e8eff0; }
-    .an-basis-tab { border: 0; background: none; border-radius: 7px; padding: 6px 16px; font-size: 13.5px; font-weight: 600; color: var(--zt-ink, #173f44); }
-    .an-basis-tab.active { background: var(--zt-dark, #1f5c61); color: #fff; }
-    .dash-export-btn { background: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); border-radius: 8px; padding: 8px 18px; text-transform: none; }
-    svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    /* Head: the date basis as a two-way switch, then Refresh (grey) and Export (staff-00 sizes). */
+    .dash-basis { display: inline-flex; padding: 3px; border-radius: 9px; background: #e3ecec; }
+    .an-basis-tab { min-width: 168px; height: 30px; border: 0; background: none; border-radius: 7px; padding: 0 14px; font-size: 12.5px; font-weight: 500; color: #17373b;
+      text-transform: capitalize; }
+    .an-basis-tab.active { background: #24666b; color: #fff; font-weight: 700; }
+    .btn.btn-ph.dash-refresh, .btn.btn-primary.dash-export-btn { justify-content: center; gap: 8px; min-width: 112px; height: 36px; padding: 0 16px; border-radius: 9px;
+      font-size: 13.5px; font-weight: 700; text-transform: none; }
+    .btn.btn-ph.dash-refresh { background: #e7eeee; color: #17373b; border: 0; }
+    .btn.btn-primary.dash-export-btn { background: #24666b; border-color: #24666b; color: #fff; }
+    svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     /* Level cards: the level's colour as the band; one bar of the statuses and a legend under it. Status colours: pending
        amber, NC raised orange, certified green, rejected grey (always named). */
     .app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-    .app-card, .dash-card { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); }
-    .app-band { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 18px; color: #fff;
-      background: linear-gradient(90deg, var(--accent), var(--accent2, var(--accent))); }
+    .app-card, .dash-card { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; overflow: hidden; box-shadow: 0 3px 10px rgba(16, 61, 64, .06); }
+    .app-band { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 50px; padding: 5px 18px; color: #fff;
+      background: linear-gradient(120deg, var(--a1, var(--accent2, var(--accent))), var(--accent), var(--a3, var(--accent))); }
     .app-level { font-size: 14px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
     .app-total { flex: none; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
-    .app-total-value { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .app-total-label { font-size: 11.5px; opacity: .92; white-space: nowrap; }
-    .app-body { padding: 16px 18px 14px; }
-    .app-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; background: #eef3f3; margin-bottom: 14px; }
-    .app-seg { height: 100%; min-width: 0; }
-    .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
-    .app-stats li { display: grid; grid-template-columns: 8px minmax(0, 1fr); column-gap: 7px; align-items: center; align-content: start; }
-    .app-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .app-label { font-size: 12px; line-height: 1.3; color: #5f6f70; overflow-wrap: anywhere; }
-    .app-figure { grid-column: 2; }
+    .app-total-value { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .app-total-label { font-size: 10.5px; font-weight: 500; white-space: nowrap; }
+    .app-body { padding: 16px 18px 10px; }
+    .app-bar { display: flex; height: 10px; border-radius: 2px; overflow: hidden; background: #eef3f3; margin-bottom: 18px; }
+    .app-seg { height: 100%; min-width: 0; border-radius: 2px; }
+    .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+    .app-stats li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 2px 8px; align-items: center; align-content: start; }
+    .app-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .app-label { font-size: 11.5px; font-weight: 500; line-height: 14px; color: #6f8487; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .app-figure { grid-column: 2; line-height: 18px; }
     .app-figure, .ms-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
-    .app-value { font-size: 15px; font-weight: 800; color: var(--zt-ink, #173f44); font-variant-numeric: tabular-nums; }
-    .app-share { font-size: 12px; color: #6b7f80; font-variant-numeric: tabular-nums; }
-    .is-pending .app-dot, .app-seg.is-pending { background: #e08a1e; }
-    .is-nc .app-dot, .app-seg.is-nc { background: #e5603e; }
-    .is-certified .app-dot, .app-seg.is-certified { background: #2e9a5a; }
-    .is-rejected .app-dot, .app-seg.is-rejected { background: #a3adb0; }
+    .app-value { font-size: 14.5px; font-weight: 800; color: #17373b; font-variant-numeric: tabular-nums; }
+    .app-share { font-size: 11.5px; font-weight: 500; color: #6f8487; font-variant-numeric: tabular-nums; }
+    .is-pending .app-dot, .app-seg.is-pending { background: #d98a12; }
+    .is-nc .app-dot, .app-seg.is-nc { background: #e5654b; }
+    .is-certified .app-dot, .app-seg.is-certified { background: #2f9e58; }
+    .is-rejected .app-dot, .app-seg.is-rejected { background: #9aa7a9; }
     /* Consultancy's milestone cards: per milestone the payments received and the completions, each with its share. */
     .ms-head, .ms-list li { display: grid; grid-template-columns: 88px 1fr 1fr; gap: 10px; align-items: center; }
-    .ms-head { font-size: 11.5px; font-weight: 600; color: #5f6f70; padding-bottom: 6px; }
+    .ms-head { font-size: 11.5px; font-weight: 600; color: #6f8487; padding-bottom: 6px; }
     .ms-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-    .ms-no { font-size: 12.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .ms-no { font-size: 12.5px; font-weight: 700; color: #17373b; }
     .ms-cell { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .ms-bar { display: block; height: 6px; border-radius: 3px; background: #e6eeee; overflow: hidden; }
-    .ms-bar > span { display: block; height: 100%; background: #e08a1e; }
-    .ms-cell.is-done .ms-bar > span { background: #2e9a5a; }
+    .ms-bar > span { display: block; height: 100%; background: #d98a12; }
+    .ms-cell.is-done .ms-bar > span { background: #2f9e58; }
     .dash-export { padding: 4px 2px 10px; }
     /* Consultancy Master Admin's organisation and consultant counts, as the headline tiles. */
-    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 16px; }
     .dash-card { display: flex; flex-direction: column-reverse; gap: 2px; padding: 14px 16px; border-top: 3px solid var(--accent); }
-    .dash-card h5 { font-size: 13px; font-weight: 600; color: #3b4b4c; margin: 0; }
+    .dash-card h5 { font-size: 12.5px; font-weight: 500; color: #3d5559; margin: 0; }
     .dash-count { font-size: 24px; font-weight: 800; line-height: 1.15; color: var(--accent); }
-    .panel-bronze { --accent: #b85a35; --accent2: #d98a62; }
-    .panel-silver { --accent: #7d8b92; --accent2: #a7b2b7; }
-    .panel-gold { --accent: #b8890f; --accent2: #d8b443; }
-    .panel-zedx { --accent: #237a80; --accent2: #3fa3a8; }
+    /* The bands: staff-00's level gradients (light, level colour, dark). */
+    .panel-bronze { --a1: #e9a888; --accent: #c9714f; --a3: #9c4f2e; }
+    .panel-silver { --a1: #dfe2e4; --accent: #a5abb0; --a3: #7b838a; }
+    .panel-gold { --a1: #f0d98a; --accent: #c9a23f; --a3: #9c7a1d; }
+    .panel-zedx { --a1: #7fcbd2; --accent: #3c8f99; --a3: #256b74; }
     .panel-finance { --accent: #5b8a2c; --accent2: #7fae49; }
     .panel-empanel { --accent: #2f8a46; --accent2: #4fae66; }
-    .panel-consultant { --accent: #237a80; --accent2: #3fa3a8; }
+    .panel-consultant { --accent: #24666b; --accent2: #3fa3a8; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    @media (max-width: 575.98px) { .dash-basis { display: flex; width: 100%; } .an-basis-tab { flex: 1 1 0; padding: 6px 8px; } }
-  `,
+    @media (max-width: 575.98px) { .dash-basis { display: flex; width: 100%; } .an-basis-tab { flex: 1 1 0; min-width: 0; padding: 0 8px; } }`,
 })
 export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
@@ -328,8 +337,8 @@ export class StaffDashboardPage {
     ...this.fixedCards,
     ...(this.system === 'main' ? (this.analytics()?.otherLevels() ?? []) : []).map((l): Card => ({
       css: 'panel-zedx', title: `${l.code} CERTIFICATION`, name: l.name || adminLevelName(l.code), lines: [
-        { label: 'Total Application', field: `${l.code}Total` }, { label: 'Assessment Pending', field: `Sa${l.code}Pending` },
-        { label: 'NC Raised', field: `${l.code}NcRaised` }, { label: 'Certified', field: `Sa${l.code}Completed` }, { label: 'Rejected', field: `${l.code}Rejected` },
+        { label: 'Total applications', field: `${l.code}Total` }, { label: 'Assessment pending', field: `Sa${l.code}Pending` },
+        { label: 'NC raised', field: `${l.code}NcRaised` }, { label: 'Certified', field: `Sa${l.code}Completed` }, { label: 'Rejected', field: `${l.code}Rejected` },
       ],
     })),
   ]);
@@ -469,7 +478,8 @@ export class StaffDashboardPage {
   /** The status a card line counts (its colour). */
   protected statusKind(label: string): 'pending' | 'nc' | 'certified' | 'rejected' {
     const l = label.toLowerCase();
-    return l.includes('pending') ? 'pending' : l.includes('nc') ? 'nc' : l.includes('reject') ? 'rejected' : 'certified';
+    // "NC" as a word: "surveillance completed" holds the letters "nc" too (2026-11-18: it was drawn as NC raised).
+    return l.includes('pending') ? 'pending' : /\bnc\b/.test(l) ? 'nc' : l.includes('reject') ? 'rejected' : 'certified';
   }
 
   /** A line's share of the card's total applications, in percent. */

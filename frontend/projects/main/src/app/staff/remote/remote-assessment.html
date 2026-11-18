@@ -940,7 +940,7 @@
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="CANCEL" (click)="capture.set(null)" />
+            <input type="button" class="btn btn-default" value="Cancel" (click)="capture.set(null)" />
             <input type="submit" class="btn btn-primary" value="OK" [disabled]="busy()" />
           </div>
         </form>
@@ -981,8 +981,8 @@
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="CANCEL" (click)="choice.set(null)" />
-            <input type="submit" class="btn btn-primary" value="SUBMIT" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" value="Cancel" (click)="choice.set(null)" />
+            <input type="submit" class="btn btn-primary" value="Submit" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -1015,8 +1015,8 @@
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="CANCEL" (click)="textEdit.set(null)" />
-            <input type="submit" class="btn btn-primary" value="UPDATE" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" value="Cancel" (click)="textEdit.set(null)" />
+            <input type="submit" class="btn btn-primary" value="Update" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -1040,7 +1040,7 @@
                 <tr>
                   <td>@if (pp.url) { <img [src]="pp.url" height="50" alt="Site tour photo" /> }</td>
                   <td><small>{{ pp.name }}</small></td>
-                  <td><button type="button" class="btn btn-primary btn-sm select-tour" [disabled]="busy()" (click)="useTourPhoto(pp)">SELECT</button></td>
+                  <td><button type="button" class="btn btn-primary btn-sm select-tour" [disabled]="busy()" (click)="useTourPhoto(pp)">Select</button></td>
                 </tr>
               } @empty {
                 <tr><td>No site tour photos yet.</td></tr>
@@ -1136,8 +1136,8 @@
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
-          <input type="button" class="btn btn-default" value="CANCEL" (click)="finalSubmit.set(null)" />
-          <input type="button" class="btn btn-primary submit" value="SUBMIT" [disabled]="!canSubmit(f) || busy()" (click)="submit()" />
+          <input type="button" class="btn btn-default" value="Cancel" (click)="finalSubmit.set(null)" />
+          <input type="button" class="btn btn-primary submit" value="Submit" [disabled]="!canSubmit(f) || busy()" (click)="submit()" />
         </div>
       </div>
     </div>

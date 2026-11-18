@@ -15,7 +15,7 @@ import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
-import { resetLinkAsk, sentTo } from './user-display';
+import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
 import { AssessmentModeName, AssessorAssessment, LevelModes, Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
 
 interface AssessorModel {
@@ -50,6 +50,28 @@ export function typeOfTicks(t: Record<string, AssessmentModeName[]>): string {
   return !levels.length ? '' : levels.every((k) => k.toLowerCase() === 'bronze') ? 'BronzeAssessor' : 'Assessor';
 }
 
+/** 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the line icons of staff-05 (24px grid, stroked). */
+const ICON = {
+  back: 'M19 12H5 M12 19l-7-7 7-7',
+  check: 'M20 6L9 17l-5-5',
+  lock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z M7 11V7a5 5 0 0 1 10 0v4',
+  unlock: 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z M7 11V7a5 5 0 0 1 9.9-1',
+  mail: 'M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+  person: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  building: 'M3 21h18 M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16 M9 7h2 M13 7h2 M9 11h2 M13 11h2 M9 15h2 M13 15h2',
+  pin: 'M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01',
+} as const;
+
+/** "AV•••••32C": the first two and the last three characters of a PAN (staff-05 masks it everywhere in the view). */
+export function maskPan(pan: string | null | undefined): string {
+  const p = (pan ?? '').trim();
+  if (!p) return '';
+  return p.length <= 5 ? '•••••' + p.slice(-2) : p.slice(0, 2) + '•••••' + p.slice(-3);
+}
+
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_PATTERN = /^\d{10}$/;
@@ -78,7 +100,7 @@ function emptyAssessor(): AssessorModel {
 @Component({
   selector: 'zed-staff-assessor-form',
   imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel],
-  styleUrl: './assessor-form-scope.scss',
+  styleUrls: ['./assessor-form-scope.scss', './assessor-form-view.scss'],
   templateUrl: './assessor-form.html',
 })
 export class AssessorFormPage {
@@ -131,6 +153,28 @@ export class AssessorFormPage {
   protected readonly first = this.isNew ? 1 : 0;
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
+  protected readonly icon = ICON;
+  protected readonly maskPan = maskPan;
+  protected readonly maskEmail = maskEmail;
+  protected readonly maskMobile = maskMobile;
+
+  /** 2026-11-18: a saved assessor the signed-in user cannot edit (the Master Admin): the compact, masked contact card. */
+  protected get viewOnly(): boolean {
+    return !this.isNew && !this.canEdit();
+  }
+
+  /** "PAN card · •••••632C" (the server sends the saved number masked). */
+  protected get idProofLine(): string {
+    const type = this.model.idProofType ? this.model.idProofType.replace(/ Card$/, ' card') : '';
+    const masked = this.maskedIdProof()?.replace(/^[Xx*•]+/, '•••••') ?? '';
+    return [type, masked].filter(Boolean).join(' · ') || 'Not saved';
+  }
+
+  /** The medal colour of a level row (bronze, silver, gold, zedx). */
+  protected medal(code: string): string {
+    const c = code.toLowerCase().replace(/[^a-z]/g, '');
+    return ['bronze', 'silver', 'gold', 'zedx'].includes(c) ? c : 'other';
+  }
 
   constructor() {
     void this.load();
@@ -153,10 +197,24 @@ export class AssessorFormPage {
   /** The agency the assessor belongs to (the details carry its ID only). */
   protected readonly agencyUserId = signal<string | null>(null);
 
-  /** The agency's own name when the agency itself looks at its assessor. */
+  /** The agency's name for the Master Admin (from its agency list; the details carry the ID only). */
+  private readonly agencyListName = signal<string | null>(null);
+
+  /** The agency's own name when the agency itself looks at its assessor; else the name from the Master Admin's list. */
   protected get agencyName(): string | null {
     const me = this.auth.currentUser();
-    return this.isAgency && me && me.userId === this.agencyUserId() ? me.userName || null : null;
+    if (this.isAgency) return me && me.userId === this.agencyUserId() ? me.userName || null : null;
+    return this.agencyListName();
+  }
+
+  /** 2026-11-18 (staff-05: "Mahavir Agency / ZEDAA0080"): the Master Admin's agencies, for the name (optional). */
+  private async loadAgencyName(id: string): Promise<void> {
+    try {
+      const row = (await firstValueFrom(this.api.agencies())).find((a) => a.UserId === id);
+      this.agencyListName.set(row?.UserName || null);
+    } catch {
+      /* optional: the card shows the ID */
+    }
   }
 
   protected get agencyWord(): string {
@@ -199,16 +257,19 @@ export class AssessorFormPage {
   protected readonly confirmAsk = computed<ConfirmAsk | null>(() => {
     const kind = this.confirming();
     const name = this.model.userName || this.userId!;
-    if (kind === 'reset') return resetLinkAsk(this.model.userName, this.userId!, this.model.emailId);
+    if (kind === 'reset') return resetLinkAsk(this.model.userName, this.userId!, this.model.emailId, this.consultancy ? 'Consultant' : 'Assessor');
     if (kind !== 'block') return null;
     const n = this.openCount();
     const who = this.consultancy ? 'consultant/expert' : 'assessor';
     const open = n
       ? ` ${this.openWords(n)} allotted to this ${who} ${n === 1 ? 'is' : 'are'} still open; ${this.isAgency ? 'you' : 'the ' + (this.consultancy ? 'organisation' : 'agency')} will need to re-allot ${n === 1 ? 'it' : 'them'}.`
       : '';
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-03: a lock tile, the ID under the title, red bullets.
     return {
       title: `Block ${name}?`,
-      message: `${name} (${this.userId}) will not be able to sign in.${open} Nothing is deleted; you can unblock at any time.`,
+      subtitle: this.userId,
+      icon: 'lock',
+      points: [`${name} will not be able to sign in.`, open.trim(), 'Nothing is deleted; you can unblock at any time.'].filter(Boolean),
       confirmLabel: 'Block ' + this.noun.toLowerCase(),
       danger: true,
       reason: {
@@ -409,14 +470,15 @@ export class AssessorFormPage {
     this.model.pan = (value ?? '').toUpperCase();
   }
 
+  // 2026-11-18 (staff-05): "Assessor details" in sentence case; the view has no subtitle (the "View only" pill says it).
   protected get title(): string {
-    if (!this.isAgency) return this.noun + ' Details';
-    return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' Details';
+    if (!this.isAgency) return this.noun + ' details';
+    return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' details';
   }
 
-  protected get subtitle(): string {
+  protected get subtitle(): string | null {
     const noun = this.noun.toLowerCase();
-    if (!this.isAgency) return `Details of the ${noun} (view only).`;
+    if (!this.isAgency) return null;
     if (!this.isNew) return `Address, ID proof, states, sectors and areas of the ${noun}.`;
     if (this.typed) return 'Enter the name, e-mail and mobile number of the technical expert.';
     if (this.verifyOff) return `Enter the certificate number, PAN, name, e-mail and mobile number of the ${noun} as on the certificate.`;
@@ -464,6 +526,7 @@ export class AssessorFormPage {
         this.storedIdProofType.set(a.idProofType);
         this.isActive.set(a.isActive);
         this.agencyUserId.set(a.agencyUserId ?? null);
+        if (a.agencyUserId && this.auth.currentUser()?.roleId === StaffRole.MasterAdmin) void this.loadAgencyName(a.agencyUserId);
         this.canEdit.set(a.canEdit && this.isAgency);
         void this.loadOpenCount();
       }

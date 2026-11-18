@@ -513,7 +513,7 @@
               @if (p.url) { <img [src]="p.url" alt="" height="60" /> }
               <span class="muted">Captured at {{ p.createdDate }}</span>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!p.url" (click)="openImage(p.url)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!p.url" (click)="openImage(p.url)">View</button>
           </div>
         }
       </td>
@@ -533,7 +533,7 @@
               @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
               <span class="muted">Generated at {{ pp.createdDate }}</span>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm zp-btn" [disabled]="!pp.url" (click)="openImage(pp.url)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm zp-btn" [disabled]="!pp.url" (click)="openImage(pp.url)">View</button>
           </div>
         </td>
       </tr>
@@ -583,7 +583,7 @@
     } @else {
       <div class="value-box">{{ t(r, f) }}</div>
       @if (canEditField(r, f)) {
-        <input type="button" value="EDIT" class="btn btn-outline-primary btn-sm zp-btn mt-2" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
+        <input type="button" value="Edit" class="btn btn-outline-primary btn-sm zp-btn mt-2" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
       }
     }
   </div>
@@ -636,7 +636,7 @@
         @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
         <span class="muted">Captured at {{ pp.createdDate }}</span>
       </div>
-      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!pp.url" (click)="openImage(pp.url)">VIEW</button>
+      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!pp.url" (click)="openImage(pp.url)">View</button>
     </div>
   }
   <div class="fact">
@@ -646,7 +646,7 @@
     } @else {
       <div class="value-box">{{ t(tr, 'Remarks') }}</div>
       @if (tr['Editable'] === true) {
-        <input type="button" value="EDIT" class="btn btn-outline-primary btn-sm mt-2" aria-label="Edit consultant remark" (click)="startEdit({ kind: 'training', id: tr['Id'] }, tr['Remarks'])" />
+        <input type="button" value="Edit" class="btn btn-outline-primary btn-sm mt-2" aria-label="Edit consultant remark" (click)="startEdit({ kind: 'training', id: tr['Id'] }, tr['Remarks'])" />
       }
     }
   </div>
@@ -668,8 +668,8 @@
   <div class="editor">
     <textarea class="form-control" maxlength="2000" aria-label="Text" [ngModel]="draft()" (ngModelChange)="draft.set($event)"></textarea>
     <div class="row-actions mt-2">
-      <input type="button" value="CANCEL" class="btn btn-default btn-sm" (click)="cancelEdit()" />
-      <input type="button" value="UPDATE" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="saveEdit()" />
+      <input type="button" value="Cancel" class="btn btn-default btn-sm" (click)="cancelEdit()" />
+      <input type="button" value="Update" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="saveEdit()" />
     </div>
   </div>
 </ng-template>
@@ -715,8 +715,8 @@
           @if (dialogError()) { <div class="alert alert-danger mt-2" role="alert">{{ dialogError() }}</div> }
         </div>
         <div class="modal-footer">
-          <input type="button" class="btn btn-default" value="CANCEL" (click)="dialog.set(null)" />
-          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'REJECT' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'UPDATE' : 'SUBMIT'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
+          <input type="button" class="btn btn-default" value="Cancel" (click)="dialog.set(null)" />
+          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'Reject' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'Update' : 'Submit'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
         </div>
       </div>
     </div>

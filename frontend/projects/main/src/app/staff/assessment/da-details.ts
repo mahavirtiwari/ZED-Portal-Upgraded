@@ -26,10 +26,19 @@ import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
 import { StepTracker } from '../../msme/shared/step-tracker';
 import { staffCrumbs } from '../staff-crumbs';
-import { UNIT_VIEW_STYLES, desktopStage, idName, ncLines, unitResult } from './da-details.layout';
+import { UNIT_VIEW_STYLES, desktopStage, ncLines, unitResult } from './da-details.layout';
+import { RoundState, TrackItem, aboveCapacity, basicRaised, ncTracker } from './da-details.overview';
+import { LevelMedal } from './level-medal';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 
-/** 2026-11-17 (the user's staff design 14): the tab bar's names. */
-export const TAB_LABELS: Record<number, string> = { 1: 'Assessment overview', 2: 'Basic information', 9: 'ESG compliance', 3: 'Parameters' };
+/**
+ * 2026-11-17 (the user's staff design 14): the tab bar's names. 2026-11-18 (the new staff-14 series): five tabs: the NC 1 … NC 5
+ * tabs became one "Non-conformances" tab with a round switcher inside (tab ids 4..8 still name the round shown).
+ */
+export const TAB_LABELS: Record<number, string> = { 1: 'Assessment overview', 2: 'Basic information', 9: 'ESG compliance', 3: 'Parameters', 4: 'Non-conformances' };
+
+/** The basic information items of the unit's form (1 to 11; staff-14d numbers them so). */
+export const BASIC_ITEMS = 11;
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -55,8 +64,8 @@ interface ValidationEdit { row: Row | null; verified: string; remarks: string }
 interface EvidenceEdit { evidence: Row; verified: string; source: string; remarks: string; files: File[] }
 interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed: boolean; ticked: string[] }
 
-/** A key fact of the assessment summary card (label above, value below; wide facts span two columns). */
-export interface SummaryFact { label: string; value: string; wide?: boolean }
+/** A key fact of the assessment summary card (label above, value below; `sub` grey beside it, e.g. the agency's ID). */
+export interface SummaryFact { label: string; value: string; wide?: boolean; sub?: string; medal?: boolean }
 
 
 /**
@@ -68,10 +77,10 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES, UNIT_VIEW_STYLES],
-  styleUrl: './da-details.css',
+  styleUrls: ['./da-details.css', './da-details.params.css', './da-details.basic.css', './da-details.nc.css'],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class DaDetailsPage {
@@ -189,23 +198,132 @@ export class DaDetailsPage {
   protected readonly summaryFacts = computed<SummaryFact[]>(() => {
     const m = this.msme();
     const v = (column: string) => text(m, column);
+    // 2026-11-18 (staff-14a): four to a row; the agency and assessor by name with the ID beside it; the level with its medal.
+    const named = (id: string, name: string): SummaryFact['value'] => v(name) || v(id);
     const facts: SummaryFact[] = [
       { label: 'ZED ID', value: v('ZedId') },
       { label: 'Unit name', value: v('PUnitName') },
       { label: 'Udyam registration', value: v('UdyogAadharNo') },
-      { label: 'Level', value: v('Certification') },
+      { label: 'Level', value: v('Certification'), medal: true },
       { label: 'Document submission', value: v('BasicInfoStatus') },
       { label: 'Verification allocated', value: v('DocVerifiAllot') },
       { label: 'Completed', value: v('CompletedOn') },
+      { label: 'Mode', value: 'Desktop' },
     ];
     if (!this.isQc()) {
       facts.push(
-        { label: 'Assessment agency', value: idName(m, 'CertificationBodyUserId', 'AgencyName') },
-        { label: 'Desktop assessor', value: idName(m, 'DesktopAssessorId', 'DesktopAssessorName') },
+        { label: 'Assessment agency', value: named('CertificationBodyUserId', 'AgencyName'), sub: v('AgencyName') ? v('CertificationBodyUserId') : '' },
+        { label: 'Desktop assessor', value: named('DesktopAssessorId', 'DesktopAssessorName'), sub: v('DesktopAssessorName') ? v('DesktopAssessorId') : '' },
       );
     }
     return facts;
   });
+
+  // ------------------------------------------------------------------ 2026-11-18: the new staff-14 series
+
+  /** "Desktop · Assessor One · Mahavir Agency" at the right end of the tab bar. */
+  protected readonly metaLine = computed(() =>
+    ['Desktop', text(this.msme(), 'DesktopAssessorName'), text(this.msme(), 'AgencyName')].filter(Boolean).join(' · '));
+  /** ZED ID history is the Admin's and the dashboard logins' screen (staff route guard: 7, 10, 11, 17). */
+  protected readonly historyLink = computed(() => [7, 10, 11, 17].includes(this.qoAuth.currentUser()?.roleId ?? 0));
+  protected readonly basicItems = BASIC_ITEMS;
+  protected readonly basicRaisedCount = computed(() => basicRaised(this.data()));
+  protected readonly aboveCapacity = computed(() => aboveCapacity(this.msme()));
+  /** Parameters that conform (every requirement Yes) and that do not (a requirement No). */
+  protected readonly paramCounts = computed(() => {
+    const st = (this.data()?.sections ?? []).map((s) => this.sectionStatus(s));
+    return { yes: st.filter((x) => x === 'Yes').length, no: st.filter((x) => x === 'No').length };
+  });
+  /** The rail's "This tab" / "This parameter" chip: the observations on what the tab shows (staff-14a, 14b). */
+  protected readonly qoScope = computed(() => {
+    const d = this.data();
+    if (!d) return null;
+    const req = (rows: Row[]) => rows.map((r) => `Requirement|${text(r, 'Id')}`);
+    if (this.tab() === 3) {
+      const s = this.activeSection();
+      return { label: 'This parameter', keys: s ? req(this.requirementsOf(s, d.requirements)) : [] };
+    }
+    if (this.ncTab()) {
+      const keys = new Set(this.tracker().map((i) => i.key));
+      return { label: 'This tab', keys: req(d.requirements.filter((r) => keys.has(`${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}`))) };
+    }
+    return { label: 'This tab', keys: this.tab() === 1 ? ['Overall|'] : [] };
+  });
+  /** The non-conformance tracker of the overview and the "By requirement" view (staff-14a, staff-14c). */
+  protected readonly tracker = computed(() => ncTracker(this.data()));
+  protected readonly trackerOpen = computed(() => this.tracker().filter((i) => i.outcome !== 'accepted').length);
+  protected readonly stateLabel: Record<RoundState, string> = { accepted: 'Accepted', rejected: 'Not accepted', open: 'Open', none: 'Not needed' };
+
+  /** The Non-conformances tab: its view and, in "By requirement", the round filter (0 all) and the cards opened. */
+  protected readonly ncView = signal<'req' | 'round'>('req');
+  protected readonly ncFilter = signal(0);
+  protected readonly ncOpenCards = signal<ReadonlySet<string>>(new Set());
+  protected readonly ncTab = computed(() => this.tab() >= 4 && this.tab() <= 8);
+  protected readonly shownTrack = computed(() => {
+    const f = this.ncFilter();
+    return f ? this.tracker().filter((i) => i.rounds.some((r) => r.round === f && r.state !== 'none')) : this.tracker();
+  });
+  /** NC items raised over all rounds (an item raised in three rounds counts three times). */
+  protected sumRaised(): number {
+    return this.tracker().reduce((sum, i) => sum + i.rounds.filter((r) => r.state !== 'none').length, 0);
+  }
+  protected roundCount(n: number): number {
+    return this.tracker().filter((i) => i.rounds.some((r) => r.round === n && r.state !== 'none')).length;
+  }
+
+  /**
+   * Opens the Non-conformances tab: the assessor whose round is open lands on that round ("By round", where its buttons are);
+   * everyone else on "By requirement".
+   */
+  protected openNc(view?: 'req' | 'round', round?: number): void {
+    const rounds = this.ncTabs();
+    if (!rounds.length) return;
+    const cur = this.currentRound();
+    const r = round && rounds.includes(round) ? round : rounds.includes(cur) ? cur : rounds[rounds.length - 1];
+    this.ncView.set(view ?? (cur > 0 && this.canChange(cur) ? 'round' : 'req'));
+    this.tab.set(r + 3);
+  }
+
+  protected toggleNcCard(key: string): void {
+    const next = new Set(this.ncOpenCards());
+    if (next.has(key)) next.delete(key); else next.add(key);
+    this.ncOpenCards.set(next);
+  }
+
+  protected collapseAllNc(): void {
+    this.ncOpenCards.set(this.ncOpenCards().size ? new Set() : new Set(this.shownTrack().map((i) => i.key)));
+  }
+
+  /** The conversation of a tracked requirement up to its last round (the "By round" thread). */
+  protected trackThread(i: TrackItem): ThreadMessage[] {
+    return i.row ? this.ncThread(i.row, this.round(i.last), i.last) : [];
+  }
+
+  /** Basic information: All / Needs attention (not accepted) / Accepted. */
+  protected readonly basicFilter = signal<'all' | 'attention' | 'accepted'>('all');
+  protected basicShown(raised: boolean): boolean {
+    const f = this.basicFilter();
+    return f === 'all' || (f === 'attention') === raised;
+  }
+
+  /** Parameters tab: requirement cards closed by the user (all open at first). */
+  protected readonly closedReqs = signal<ReadonlySet<string>>(new Set());
+  protected toggleReq(id: string): void {
+    const next = new Set(this.closedReqs());
+    if (next.has(id)) next.delete(id); else next.add(id);
+    this.closedReqs.set(next);
+  }
+
+  /** The parameter before / after the one shown (the header's arrows). */
+  protected stepSection(delta: number): void {
+    const list = this.data()?.sections ?? [];
+    const i = list.indexOf(this.activeSection() as Row);
+    const next = list[i + delta];
+    if (next) this.selectSection(next);
+  }
+  protected sectionIndex(): number {
+    return (this.data()?.sections ?? []).indexOf(this.activeSection() as Row) + 1;
+  }
 
   /** The parameter shown in the parameters tab. */
   protected readonly activeSection = computed<Row | null>(() => {

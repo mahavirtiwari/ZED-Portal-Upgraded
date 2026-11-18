@@ -146,6 +146,25 @@ input[type='search'].form-control {
   background-size: 16px;
   padding-right: 36px;
 }
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): on the staff pages the designs put the one magnifier on the
+// left (x+12) — so a bare search box gets it there, and a box that draws its own icon (an <svg> or icon before the input, the
+// list search) gets none, instead of a second icon over its placeholder. As heavy as the skin's ".form-control { padding }"
+// (which hid the old right-hand padding) and later, so it wins over the skin while a page's own rule still wins over it; the
+// MSME and public pages keep the rule above.
+.zed-v4 :where(input)[type='search'].form-control {
+  background-position: left 12px center;
+  padding-left: 36px;
+  padding-right: 12px;
+}
+.zed-v4 :is(svg, .filter-icon, .list-search-icon) ~ :where(input)[type='search'].form-control {
+  background-image: none;
+}
+
+// 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-wide leftovers of the designs.
+// - The page keeps the scrollbar's room, so a short page (no scrollbar) does not shift ~8px sideways.
+// - Tables have lines between the rows only (the skin also drew lines between the columns).
+html:has(.zed-legacy.zed-v4) { scrollbar-gutter: stable; }
+.zed-legacy.zed-v4 .table > :not(caption) > * > *:not(:last-child) { border-right-width: 0; }
 
 // Parameters layout of the assessment pages (left parameter list, requirement cards): one look on every page, "zp-" classes.
 @include meta.load-css('styles/zed-parameters');

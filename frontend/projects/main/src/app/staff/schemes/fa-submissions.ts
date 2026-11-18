@@ -40,16 +40,24 @@ const NO_FILTER: FaFilter = { level: '', agency: '', from: '', to: '' };
   host: { class: 'list-v2 d-block' },
   templateUrl: './fa-submissions.html',
   styles: `
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-16 — the stage chips without the "Stage" label, one
+       filter row of fixed widths (search 300, levels 170, agencies 240, date 220) with the rest of the row left empty. */
     .fa-tabs { display: block; margin-bottom: 14px; }
+    .fa-tabs ::ng-deep .cf-label { display: none; }
     .zed-chip.is-auto { background: #e7f3f4; color: #2f6f75; margin: 0 0 0 4px; }
-    .fa-filters { padding: 12px 14px; margin-bottom: 14px; }
-    .fa-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-    .fa-row > div { flex: 1 1 170px; min-width: 0; }
-    .fa-row > .fa-q { flex: 2 1 240px; }
-    .fa-row > .fa-when { flex: 2 1 280px; }
-    .fa-row .form-label { font-size: 12.5px; color: #5f6f70; margin-bottom: 4px; }
-    .fa-dates { display: flex; gap: 6px; align-items: center; }
-    .fa-dates .form-control { min-width: 0; }
+    .fa-filters { padding: 11px 15px; margin-bottom: 16px; }
+    .fa-row { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
+    .fa-q { position: relative; flex: 0 1 300px; margin: 0; }
+    .fa-q svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487;
+      stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+    .fa-q .form-control { width: 100%; padding-left: 36px; padding-right: 12px; background-image: none; }
+    .fa-row .form-select, .fa-q .form-control { height: 38px; border: 1.2px solid #b9cdcf; border-radius: 9px; font-size: 13px; }
+    .fa-row .form-select { color: #17373b; font-weight: 500; }
+    .fa-level { flex: 0 1 170px; }
+    .fa-agency { flex: 0 1 240px; }
+    .fa-when { flex: 0 1 220px; }
+    .fa-dates { display: flex; gap: 6px; align-items: center; flex: 0 1 320px; }
+    .fa-dates .form-control { min-width: 0; height: 38px; }
     .fa-dates .to { font-size: 13px; color: #5f6f70; }
     .fa-filter-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #5f6f70; }
     .fa-addr { max-width: 260px; }
@@ -57,7 +65,6 @@ const NO_FILTER: FaFilter = { level: '', agency: '', from: '', to: '' };
     .fa-reason { min-width: 160px; max-width: 300px; white-space: pre-wrap; }
     tr.fa-rej > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
     .fa-act { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-    .fa-act .btn { font-weight: 600; }
     .fa-modal { border-radius: 12px; }
     .fa-x { font-size: 24px; line-height: 1; color: #5f6f70 !important; text-decoration: none; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -97,6 +104,17 @@ export class FaSubmissionsPage {
   protected readonly levelName = levelName;
   protected readonly filter = signal<FaFilter>(NO_FILTER);
   protected readonly agencyOptions = signal<UserOption[]>([]);
+  /** 2026-11-18 (the user: staff pages 'not aligned with SVG files'): one "Registered" dropdown (staff-16) in place of the two
+   *  date boxes; a period sets "from" to that many days back, "Custom dates…" shows the two boxes. */
+  protected readonly whenOptions = [
+    { key: '', label: 'Registered: any date' },
+    { key: '7', label: 'Registered: last 7 days' },
+    { key: '30', label: 'Registered: last 30 days' },
+    { key: '90', label: 'Registered: last 90 days' },
+    { key: '365', label: 'Registered: last 12 months' },
+    { key: 'custom', label: 'Registered: custom dates…' },
+  ] as const;
+  protected readonly when = signal<string>('');
   protected readonly filtering = computed(() => Object.values(this.filter()).some((v) => !!v));
   protected readonly filterSummary = computed(() => {
     const f = this.filter();
@@ -111,8 +129,9 @@ export class FaSubmissionsPage {
 
   /** Status and reason columns are shown on the allotment list only, as before. */
   protected readonly showStatusColumn = computed(() => this.status() === FaStatus.New);
-  /** Legacy ng-hide="status>1 && status<5": the reason shows on FA ALLOTMENT and on REJECTED. */
-  protected readonly showReasonColumn = computed(() => this.status() === FaStatus.New || this.status() === FaStatus.Rejected);
+  /** 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the reason column only on Rejected (staff-16); on FA allotment
+   *  an agency's reason is the "Rejected" status chip's tooltip. */
+  protected readonly showReasonColumn = computed(() => this.status() === FaStatus.Rejected);
   /** The verification date only on a list that has one. */
   protected readonly showVerificationColumn = computed(() => this.rows().some((r) => !!r.VerificationDate));
 
@@ -152,7 +171,23 @@ export class FaSubmissionsPage {
     void this.load(this.status());
   }
 
+  /** The "Registered" dropdown: a period back from today, any date, or the custom date boxes. */
+  protected setWhen(key: string): void {
+    this.when.set(key ?? '');
+    if (key === 'custom') return;
+    const days = Number(key);
+    let from = '';
+    if (days > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    this.filter.set({ ...this.filter(), from, to: '' });
+    void this.load(this.status());
+  }
+
   protected clearFilters(): void {
+    this.when.set('');
     this.filter.set(NO_FILTER);
     void this.load(this.status());
   }

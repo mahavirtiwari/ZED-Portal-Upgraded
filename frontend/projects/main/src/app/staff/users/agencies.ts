@@ -49,49 +49,59 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
   imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel],
   templateUrl: './agencies.html',
   styles: `
-    .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; margin-bottom: 16px; }
-    .ag-search { position: relative; flex: 1 1 260px; max-width: 340px; }
-    .ag-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #7b8b8c; stroke-width: 2; }
-    .ag-search input { padding-left: 36px; height: 38px; border-radius: 8px; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-01 / staff-03 column widths (fixed layout, the
+       agency column takes the rest), 320px search, the skin's buttons, avatars and pills (no page overrides). */
+    .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; min-height: 62px; padding: 12px 16px; margin-bottom: 16px; }
+    .ag-search { position: relative; flex: 0 1 320px; }
+    .ag-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
+    .ag-search input { padding-left: 36px; height: 38px; border-radius: 9px; background-image: none; }
     .ag-card { padding: 0; overflow: hidden; }
-    .ag-table { min-width: 960px; margin: 0; }
-    .ag-table td { vertical-align: middle; overflow-wrap: anywhere; }
-    .ag-table tr.is-off .ag-name { color: #5f6f70; }
-    .ag { display: flex; gap: 12px; align-items: flex-start; }
-    .initials { flex: 0 0 34px; height: 34px; border-radius: 50%; background: #e6f1ef; color: var(--zt-ink, #173f44); display: grid; place-items: center; font-size: 12.5px; font-weight: 700; }
+    .ag-table { min-width: 1060px; margin: 0; table-layout: fixed; }
+    .ag-table th.c-spoc { width: 240px; }
+    .ag-table th.c-cat { width: 270px; }
+    .ag-table th.c-n { width: 90px; }
+    .ag-table th.c-st { width: 110px; }
+    .ag-table th.c-act { width: 220px; }
+    .ag-table.is-levels th.c-cat { width: 280px; }
+    .ag-table th.c-lv { width: 150px; }
+    .ag-table td { vertical-align: middle; }
+    .ag-table tr.is-off .ag-name { color: #6f8487; }
+    .ag { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+    .initials { flex: 0 0 34px; height: 34px; border-radius: 50%; background: #e6f2f3; color: #24666b; display: grid; place-items: center; font-size: 11.5px; font-weight: 800; }
     tr.is-off .initials { background: #eef1f2; color: #8a9899; }
-    .ag-text { min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; color: #5f6f70; }
-    .ag-name { font-size: 14px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .spoc { display: flex; flex-direction: column; font-size: 12.5px; color: #5f6f70; }
-    .spoc strong { font-size: 14px; color: var(--zt-ink, #173f44); }
-    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
-    .chips span { padding: 3px 10px; border-radius: 12px; background: #e6f1ef; color: var(--zt-ink, #173f44); font-size: 12px; font-weight: 600; }
-    .chips .is-sector { background: #eef1f2; color: #4f6061; }
-    .chips .is-unset { background: #fff4d6; color: #8a6100; }
-    .count { font-size: 15px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .acts { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
-    .acts .btn { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; font-weight: 600; }
+    .ag-text, .spoc { min-width: 0; display: flex; flex-direction: column; font-size: 11.5px; font-weight: 500; line-height: 16px; color: #6f8487; }
+    .ag-text > *, .spoc > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ag-name, .spoc strong { font-size: 13.5px; font-weight: 700; line-height: 18px; color: #17373b; }
+    .ag-id { font-weight: 600; }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+    .chips span { padding: 4px 11px; border-radius: 11px; background: #e6f2f3; color: #24666b; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; line-height: 14px; white-space: nowrap; }
+    .chips .is-sector { background: #ecf0f0; color: #6f8487; }
+    .chips .is-unset { background: #fdf2dc; color: #9a5f06; }
+    .count { font-size: 16px; font-weight: 800; color: #17373b; }
+    .acts { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; justify-content: flex-end; }
+    .acts .btn { white-space: nowrap; }
     .lv-cell { text-align: center; }
     .sw { position: relative; width: 40px; height: 22px; border: 0; border-radius: 11px; background: #d5dcdd; padding: 0; transition: background .15s; }
     .sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
-    .sw.on { background: #2e9e57; }
+    .sw.on { background: #2f9e58; }
     .sw.on::after { left: 21px; }
     .sw:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
     .sw:disabled { opacity: .6; }
-    .lv-state { display: block; font-size: 12px; color: #5f6f70; margin-top: 2px; }
-    .lv-why { display: block; max-width: 160px; margin: 2px auto 0; font-size: 11.5px; color: #8a6100; }
+    .lv-state { display: block; font-size: 11.5px; font-weight: 500; color: #6f8487; margin-top: 2px; }
+    .lv-why { display: block; max-width: 140px; margin: 2px auto 0; font-size: 11.5px; color: #9a5f06; overflow-wrap: anywhere; }
     .no-data .btn { margin-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     @media (max-width: 767.98px) {
-      .ag-search { max-width: none; }
-      .ag-table { min-width: 0; }
+      .ag-search { flex-basis: 100%; }
+      .ag-table { min-width: 0; table-layout: auto; }
       .ag-table thead { display: none; }
       .ag-table, .ag-table tbody, .ag-table tr, .ag-table td { display: block; width: 100%; box-sizing: border-box; }
       .ag-table tr { border-bottom: 1px solid #e1eaea; padding: 8px 14px; }
       .ag-table td { border: 0 !important; padding: 5px 0; text-align: left !important; }
       .ag-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; font-weight: 700; color: #5f6f70; text-transform: uppercase; }
       .ag-table td.half { display: inline-block; width: 50%; vertical-align: top; }
-      .acts { justify-content: flex-start; }
+      .ag-text > *, .spoc > * { white-space: normal; }
+      .acts { justify-content: flex-start; flex-wrap: wrap; }
       .lv-why { margin: 2px 0 0; }
     }
   `,
@@ -161,7 +171,10 @@ export class AgenciesPage {
       counts.all++;
       counts[a.SectorActivity ?? 'none']++;
     }
-    return [{ key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), { key: 'none', label: 'Not set' }]
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design has All / Manufacturing / Services / Both;
+    // "Not set" only while some agency has no sector type (or it is the chosen filter).
+    const none = counts.none || this.sector() === 'none' ? [{ key: 'none', label: 'Not set' }] : [];
+    return [{ key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), ...none]
       .map((c) => ({ ...c, count: counts[c.key as SectorFilter] }));
   });
   protected readonly filtering = computed(() => !!this.search().trim() || this.status() !== 'all' || this.sector() !== 'all');
@@ -246,19 +259,32 @@ export class AgenciesPage {
     switch (key) {
       case 'edit': void this.router.navigate(['/staff/users/agencies', a.UserId]); break;
       case 'assessors': void this.router.navigate(['/staff/users/assessors'], { queryParams: { agencyId: a.UserId } }); break;
-      case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email) }); break;
+      case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email, this.consultancy ? 'Consultant organisation' : 'Assessment agency') }); break;
       case 'history': void this.openHistory(a); break;
       case 'block': this.ask({ kind: 'block', agency: a, ask: this.blockAsk(a) }); break;
       case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: a.UserId, userName: a.UserName ?? null }); break;
     }
   }
 
-  /** popup-03: what blocking does, in plain words, and a required reason. */
+  /**
+   * popup-03: what blocking does, in plain words, and a required reason.
+   * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): a lock tile, "ZEDAA0080 · 1 assessor" under the title,
+   * the effects as red bullets. The design's "Tell the agency SPOC by e-mail" tick box is left out: the block API always
+   * e-mails the agency (no choice to pass), so the pop-up says so instead.
+   */
   private blockAsk(a: AgencyRow): ConfirmAsk {
+    const name = a.UserName || a.UserId;
+    const n = a.NoOfUsers ?? 0;
+    const people = this.consultancy ? (n === 1 ? 'consultant' : 'consultants') : n === 1 ? this.labels.assessor.toLowerCase() : this.labels.assessors.toLowerCase();
     return {
-      title: `Block ${a.UserName || a.UserId}?`,
-      message: `${a.UserName || a.UserId} (${a.UserId}) cannot sign in until it is unblocked. Nothing is deleted; you can unblock the ${this.word} at any time. ` +
-        `The reason is kept in its history and e-mailed to the ${this.word}.`,
+      title: `Block ${name}?`,
+      subtitle: `${a.UserId} · ${n} ${people}`,
+      icon: 'lock',
+      points: [
+        `${name} cannot sign in until it is unblocked.`,
+        `Nothing is deleted. You can unblock the ${this.word} at any time.`,
+        `The reason is kept in its history and e-mailed to the ${this.word} SPOC.`,
+      ],
       confirmLabel: `Block ${this.word}`,
       danger: true,
       reason: { label: 'Reason for blocking', placeholder: `Shown in the ${this.word}'s history`, maxLength: 2000 },
@@ -269,19 +295,28 @@ export class AgenciesPage {
   protected toggleLevel(a: AgencyRow, level: { code: AgencyLevel; name: string }): void {
     const allow = !this.allowed(a, level.code);
     const n = level.name;
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-09: a warning tile, "Agency · ID" under the title,
+    // amber bullets; the reason stays when a level is turned off (the user: "keep the reason when turning a level off"). The
+    // level API always e-mails the agency, so the design's tick box is a line instead.
     const ask: ConfirmAsk = allow
       ? {
           title: `Turn on ${n} for this agency?`,
-          message: `${a.UserName} (${a.UserId}) can be allotted new ${n} assessments again.`,
+          subtitle: `${a.UserName} · ${a.UserId}`,
+          icon: 'check',
+          points: [`${a.UserName} can be allotted new ${n} assessments again.`, `The agency SPOC is told by e-mail.`],
           confirmLabel: `Turn on ${n}`,
           cancelLabel: `Keep ${n} off`,
         }
       : {
           title: `Turn off ${n} for this agency?`,
-          message: [this.disableNote(a, n), `You can turn ${n} back on at any time. The reason is e-mailed to the agency.`].filter(Boolean).join(' '),
+          subtitle: `${a.UserName} · ${a.UserId}`,
+          icon: 'warn',
+          tone: 'warn',
+          points: [this.disableNote(a, n), `You can turn ${n} back on at any time.`].filter(Boolean),
+          note: 'The reason is e-mailed to the agency SPOC.',
           confirmLabel: `Turn off ${n}`,
           cancelLabel: `Keep ${n} on`,
-          reason: { label: 'Reason', placeholder: `Why ${n} assessments are turned off`, maxLength: 2000 },
+          reason: { label: 'Reason for turning it off', placeholder: `Why ${n} assessments are turned off`, maxLength: 2000 },
         };
     this.ask({ kind: 'level', agency: a, ask, level: { code: level.code, name: n, allow } });
   }

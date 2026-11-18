@@ -132,7 +132,7 @@ describe('MilestoneDetailsPage', () => {
     await settle();
     type('textarea', 'new remarks');
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const req = http.expectOne(API + '/requirements/11');
     expect(req.request.method).toBe('POST');
@@ -195,7 +195,7 @@ describe('MilestoneDetailsPage', () => {
     await settle();
     el.querySelectorAll<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')[1].click();
     await settle();
-    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value="SAVE CHECKPOINTS"]')!.click();
+    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value="Save Checkpoints"]')!.click();
     await settle();
     const req = http.expectOne(API + '/requirements/11/checkpoints');
     expect(req.request.body).toEqual({ answers: [{ id: 801, answer: 'No', actions: ['Display it'], remarks: null }], remarks: null });
@@ -224,7 +224,7 @@ describe('MilestoneDetailsPage', () => {
     await settle();
     type('textarea', 'plan A');
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const add = http.expectOne(API + '/bullets');
     expect(add.request.body).toEqual({ requirementId: 11, reqType: 'HandholdingActionPlan', text: 'plan A' });
@@ -264,13 +264,13 @@ describe('MilestoneDetailsPage', () => {
     // 2026-11-17 (approved): the Admin's consultant final submit checklist.
     http.expectOne('/api/staff/submission-checklists/items/consultant-submit').flush({ title: 'Consultant final submit', items: [{ id: 'coi', text: 'No conflict of interest.' }] });
     await settle();
-    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    expect((button('Submit') as HTMLInputElement).disabled).toBe(true);
     type('#milestoneDialogText', 'All done');
     await settle();
-    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    expect((button('Submit') as HTMLInputElement).disabled).toBe(true);
     el.querySelector<HTMLInputElement>('[data-check="coi"]')!.click();
     await settle();
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     const submit = http.expectOne(API + '/consultant/final-submit');
     expect(submit.request.body).toEqual({ remarks: 'All done', checklist: ['coi'] });
@@ -292,11 +292,11 @@ describe('MilestoneDetailsPage', () => {
     // No item in the Admin's consultant organisation checklist: the fixed review box is asked.
     http.expectOne('/api/staff/submission-checklists/items/co-qc').flush({ title: 'Consultant organisation quality check', items: [] });
     await settle();
-    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    expect((button('Submit') as HTMLInputElement).disabled).toBe(true);
     expect(el.querySelector('label[for="milestoneConfirm"] [data-key="staff.consultancy.milestone.review.checkbox"]')).not.toBeNull();
     el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
     await settle();
-    button('SUBMIT')!.click();
+    button('Submit')!.click();
     await settle();
     const co = http.expectOne(API + '/final-submit');
     expect(co.request.body).toEqual({ confirmed: true, checklist: [] });
@@ -318,11 +318,11 @@ describe('MilestoneDetailsPage', () => {
     expect(el.querySelector('#milestoneConfirm')).toBeNull();
     el.querySelector<HTMLInputElement>('[data-check="quality"]')!.click();
     await settle();
-    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    expect((button('Submit') as HTMLInputElement).disabled).toBe(true);
     el.querySelector<HTMLInputElement>('[data-check="photos"]')!.click();
     await settle();
-    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(false);
-    button('SUBMIT')!.click();
+    expect((button('Submit') as HTMLInputElement).disabled).toBe(false);
+    button('Submit')!.click();
     await settle();
     const co = http.expectOne(API + '/final-submit');
     expect(co.request.body).toEqual({ confirmed: true, checklist: ['quality', 'photos'] });
@@ -345,7 +345,8 @@ describe('MilestoneDetailsPage', () => {
     await settle();
     el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
     await settle();
-    button('REJECT')!.click();
+    // The dialog's Reject (the page's own Reject button reads the same since the labels are title case).
+    el.querySelector<HTMLInputElement>('input.btn-primary[value=Reject]')!.click();
     await settle();
     const req = http.expectOne(API + '/reject');
     expect(req.request.body).toEqual({ confirmed: true });
@@ -371,7 +372,7 @@ describe('MilestoneDetailsPage', () => {
     expect(el.querySelector<HTMLTextAreaElement>('#milestoneDialogText')!.maxLength).toBe(2000);
     type('#milestoneDialogText', 'Milestone done and reviewed');
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const req = http.expectOne(API + '/final-comments');
     expect(req.request.body).toEqual({ remarks: 'Milestone done and reviewed' });
@@ -390,7 +391,7 @@ describe('MilestoneDetailsPage', () => {
     await open(details({ party: 'Viewer', permissions: perms, requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '1', Editable: false, Photos: [] }], bullets: [] }));
     await tab('Parameters');
     await expand('Leadership');
-    expect(button('EDIT')).toBeUndefined();
+    expect(button('Edit')).toBeUndefined();
     expect(button('Add More')).toBeUndefined();
     await tab('Closing Meeting');
     expect(button('Final Submit')).toBeUndefined();
@@ -441,7 +442,7 @@ describe('MilestoneDetailsPage', () => {
     expect(el.querySelector<HTMLTextAreaElement>('#milestoneDialogText')!.value).toBe('Opening held');
     type('#milestoneDialogText', 'Opening held with the owner');
     await settle();
-    button('UPDATE')!.click();
+    button('Update')!.click();
     await settle();
     const req = http.expectOne(API + '/meetings/7/remarks');
     expect(req.request.body).toEqual({ remarks: 'Opening held with the owner' });

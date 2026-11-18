@@ -201,8 +201,8 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="CANCEL" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="SAVE" [disabled]="busy()" (click)="save(e)" />
+              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
+              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
             </div>
           </div>
         </div>

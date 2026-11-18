@@ -13,6 +13,8 @@ import { staffCrumbs } from '../staff-crumbs';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ToastService } from '../toast';
 import { daysUntil, shortDate } from '../assessment/allot';
+import { LevelMedal } from '../assessment/level-medal';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -38,21 +40,31 @@ const DEFAULT_STATUS = 3;
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon],
   host: { class: 'list-v2 d-block' },
   templateUrl: './monitoring.html',
   styles: `
-    .mo-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 14px; }
-    .mo-filters > * { flex: 1 1 150px; min-width: 0; }
-    .mo-filters .mo-q { flex: 2 1 240px; }
-    .mo-nc { display: flex; gap: 6px; flex: 1 1 230px; }
-    .mo-sort { flex: 0 0 auto; margin-left: auto; font-size: 13px; color: #5f6f70; }
-    .mo-id { display: block; font-size: 12.5px; font-weight: 700; }
+    .mo-hb { display: inline-flex; align-items: center; gap: 8px; }
+    .mo-stages ::ng-deep .lc-btn { padding-right: 36px; }
+    .mo-stages ::ng-deep .lc-btn:not(:last-child)::after { content: ''; position: absolute; right: 18px; top: 50%; width: 8px; height: 8px; margin-top: -4px;
+      border: solid #9aadaf; border-width: 1.6px 1.6px 0 0; transform: rotate(45deg); }
+    .mo-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; }
+    .mo-filters > * { flex: 0 1 170px; min-width: 0; }
+    .mo-filters .mo-q { flex: 0 1 320px; position: relative; }
+    .mo-q svg { position: absolute; left: 12px; top: 50%; width: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
+    .mo-q input { padding-left: 36px; background-image: none !important; }
+    .mo-filters .mo-ag { flex-basis: 230px; }
+    .mo-filters .mo-md { flex-basis: 160px; }
+    .mo-nc { display: flex; gap: 6px; flex: 0 1 260px; }
+    .mo-filters .mo-sort { flex: 0 0 auto; margin-left: auto; font-size: 13px; font-weight: 500; color: #24666b; }
+    .mo-id { display: block; font-size: 11.5px; font-weight: 700; color: #24666b; }
+    .mo-name b { font-size: 13.5px; font-weight: 700; color: #17373b; }
+    .mo-dupn { color: #6f8487; }
     .unit-cell { min-width: 190px; }
     .stack > div + div { margin-top: 6px; }
     .stack b { display: block; }
     tr.mo-nc-open > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
-    .mo-dup { color: #c0392b; }
+    .mo-dupn.mo-dup { color: #c8473c; }
     .mo-due-h { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
     .mo-due-h:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
     .mo-pop .modal-content { border: 0; border-radius: 14px; }
@@ -70,9 +82,8 @@ export class MonitoringPage {
   protected readonly surveillance = this.system === 'surveillance';
   protected readonly title = this.consultancy ? 'Consultancy Monitoring' : this.surveillance ? 'Surveillance Monitoring' : 'Assessment Monitoring';
   protected readonly crumbs = staffCrumbs({ label: this.title });
-  protected readonly subtitle = this.consultancy
-    ? 'Follow the handholding units by milestone stage.'
-    : `Follow the ${this.surveillance ? 'surveillance assessments' : 'assessments'} by stage.`;
+  /** 2026-11-18: staff-10 has no subtitle (Consultancy keeps its line). */
+  protected readonly subtitle = this.consultancy ? 'Follow the handholding units by milestone stage.' : null;
 
   // V4: ZED-X is assessed on the main portal only.
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */

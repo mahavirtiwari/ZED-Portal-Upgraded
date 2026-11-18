@@ -11,6 +11,8 @@ import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { levelName } from '../../msme/shared/levels';
+import { LevelMedal } from '../assessment/level-medal';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 
 /** MsmePaymentInfo.PaymentType as shown (ZeroAmount: nothing to pay after the subsidy or reward, 2026-11-17). */
 const PAYMENT_TYPES: Record<string, string> = {
@@ -24,6 +26,39 @@ const PAYMENT_TYPES: Record<string, string> = {
 function num(row: Row, field: string): number {
   const n = Number(String(row[field] ?? '').replace(/[,%\s]/g, ''));
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design's "Paid between" drop-down ("Any date" first). The
+ * range goes to the API as paidFrom / paidTo (yyyy-MM-dd), which filters on the payment's recorded date (PaidOn).
+ */
+export const PAID_RANGES = [
+  { value: '', label: 'Any date' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'fy', label: 'This financial year' },
+] as const;
+
+function isoDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** paidFrom of a "Paid between" choice (today is the end), or '' for any date. */
+export function paidFrom(range: string, today = new Date()): string {
+  if (!range) return '';
+  if (range === 'fy') return isoDay(new Date(today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1, 3, 1));
+  const d = new Date(today);
+  d.setDate(d.getDate() - (Number(range) - 1));
+  return isoDay(d);
+}
+
+/** "13 Nov" (the year added when it is not this year), "—" when unknown. */
+export function shortDay(value: unknown, now = new Date()): string {
+  const d = value ? new Date(String(value)) : null;
+  if (!d || Number.isNaN(d.getTime())) return '—';
+  const day = `${d.getDate()} ${d.toLocaleString('en-GB', { month: 'short' })}`;
+  return d.getFullYear() === now.getFullYear() ? day : `${day} ${d.getFullYear()}`;
 }
 
 export function rupees(n: number): string {
@@ -45,17 +80,20 @@ export function masked(value: string): string {
  * Joining Reward.
  * <p>2026-11-17 (approved redesign): four totals of the rows shown (worked out here from the loaded list), Export of those
  * rows, search and filters in one row, the unit as name over ZED ID, GSTIN / TAN partly masked, amounts right-aligned and
- * the payment type under the amount ("Zero amount" for a 100% subsidy). The design's "Paid on" column and "Paid between"
- * filter are not shown: SP_DASHBOARD_PAYMENT_TRANSACTIONS returns no payment date.</p>
+ * the payment type under the amount ("Zero amount" for a 100% subsidy).</p>
+ * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-08's "Paid on" column (the API now adds PaidOn, the
+ * payment row's recorded date) and "Paid between" filter; the search without a label, first in the row, with its icon on the left;
+ * the level as a medal; an empty TDS shows "—"; the cells in the designs' type (13.5px, grey sub-lines), not the browser's 16px
+ * black.</p>
  */
 @Component({
   selector: 'zed-staff-payments-received',
-  imports: [ListFiltersBar, PagerComponent, PageHead],
+  imports: [ListFiltersBar, PagerComponent, PageHead, LevelMedal, DashIcon],
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs" title="MSME Payment Received" subtitle="Payments received from the units, with the TDS, subsidy and amount paid.">
-      <button type="button" class="btn btn-outline-primary" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
-        {{ exporting() ? 'Exporting…' : 'Export' }}</button>
+      <button type="button" class="btn btn-outline-primary pr-btn" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
+        <zed-dash-icon name="download" [size]="16" />{{ exporting() ? 'Exporting…' : 'Export' }}</button>
     </zed-page-head>
     <div class="pr-tiles" role="list" aria-label="Totals of the payments shown">
       @for (t of tiles(); track t.label) {
@@ -65,16 +103,22 @@ export function masked(value: string): string {
     <div class="zed-card pr-filters">
       <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
         <div class="filter wide pr-search">
-          <label class="form-label" for="pr-search">Search</label>
+          <svg class="pr-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
           <input type="search" id="pr-search" class="form-control" maxlength="50" placeholder="Search ZED ID, unit, GSTIN or TAN"
-                 [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
+                 aria-label="Search ZED ID, unit, GSTIN or TAN" [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
+        </div>
+        <div class="filter pr-paid">
+          <label class="form-label" for="pr-paid">Paid between</label>
+          <select class="form-select" id="pr-paid" (change)="onPaid($any($event.target).value)">
+            @for (r of paidRanges; track r.value) { <option [value]="r.value" [selected]="paid() === r.value">{{ r.label }}</option> }
+          </select>
         </div>
       </zed-list-filters>
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
     <div class="list-card">
       <div class="table-responsive">
-        <table class="table table-zed">
+        <table class="table table-zed pr-table">
           <thead>
             <tr>
               <th>Unit</th>
@@ -86,6 +130,7 @@ export function masked(value: string): string {
               <th class="num">TDS</th>
               <th class="num">Subsidy</th>
               <th>GSTIN / TAN</th>
+              <th>Paid on</th>
               <th class="num">Amount paid</th>
             </tr>
           </thead>
@@ -96,7 +141,7 @@ export function masked(value: string): string {
                   <b>{{ t['PUnitName'] }}</b><small>{{ t['ZedId'] }}</small>
                   @if (!consultancy && t['MileStoneNum']) { <small>Milestone {{ t['MileStoneNum'] }}</small> }
                 </td>
-                <td>@if (t['Certification']) { <span class="lv-tag" [class]="'lv-' + lower(t, 'Certification')">{{ level(t) }}</span> }</td>
+                <td><zed-level-medal [level]="$any(t['Certification'])" /></td>
                 <td><span>{{ t['EnterpriseTypee'] }}</span><small class="sub">{{ t['Gender'] }}</small></td>
                 <td>{{ t['SocialCategoryName'] }}</td>
                 @if (consultancy) {
@@ -105,19 +150,20 @@ export function masked(value: string): string {
                   <td><span class="chip" [class.is-good]="flag(t, 'IsCouponUsed')">{{ flag(t, 'IsCouponUsed') ? 'Yes' : 'No' }}</span></td>
                 }
                 <td><span>{{ t['PStateName'] }}</span><small class="sub">{{ t['PDistrictName'] }}</small></td>
-                <td class="num">{{ percent(t, 'Tds') }}</td>
-                <td class="num">{{ percent(t, 'SubsidyPercentage') }}</td>
+                <td class="num">{{ percent(t, 'Tds') || '—' }}</td>
+                <td class="num">{{ percent(t, 'SubsidyPercentage') || '—' }}</td>
                 <td class="pr-tax">
                   @let ids = taxIds(t);
                   @for (id of ids; track $index) { <span>{{ id }}</span> } @empty { <span class="sub">Not given</span> }
                 </td>
+                <td class="sub pr-paid-on">{{ day(t['PaidOn']) }}</td>
                 <td class="num">
                   <b>{{ amount(t) }}</b>
                   @if (paymentType(t); as p) { <small class="sub" [class.pr-zero]="t['PaymentType'] === 'ZeroAmount'">{{ p }}</small> }
                 </td>
               </tr>
             } @empty {
-              @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+              @if (!loading()) { <tr><td colspan="11" style="padding: 0"><div class="no-data">No payment matches these filters.</div></td></tr> }
             }
           </tbody>
         </table>
@@ -130,15 +176,26 @@ export function masked(value: string): string {
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .pr-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
     .pr-tile { background: #fff; border: 1px solid #e1eaea; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16, 61, 64, .05); min-width: 0; }
-    .pr-tile b { display: block; font-size: 24px; font-weight: 800; color: var(--zt-ink, #173f44); line-height: 1.2; overflow-wrap: anywhere; }
-    .pr-tile b.warn { color: #a86a12; }
-    .pr-tile b.good { color: #1e8a4c; }
-    .pr-tile span { font-size: 13px; color: #5f6f70; font-weight: 600; }
+    .pr-tile { border-color: #dde7e8; border-radius: 14px; padding: 16px 18px; }
+    .pr-tile b { display: block; font-size: 24px; font-weight: 800; color: #24666b; line-height: 1.2; overflow-wrap: anywhere; }
+    .pr-tile b.warn { color: #9a5f06; }
+    .pr-tile b.good { color: #2f9e58; }
+    .pr-tile span { font-size: 12.5px; color: #3d5559; font-weight: 500; }
+    .pr-btn { display: inline-flex; align-items: center; gap: 8px; }
     .pr-filters { padding: 12px 14px; margin-bottom: 14px; }
-    .pr-search { order: -1; }
+    .pr-filters .form-label { font-size: 11.5px; font-weight: 600; color: #6f8487; }
+    .pr-filters .filter { flex: 0 1 170px; }
+    .pr-filters .filter.pr-search { order: -1; flex: 0 1 280px; position: relative; }
+    .pr-filters .filter.pr-paid { flex-basis: 200px; }
+    .pr-search .pr-ico { position: absolute; left: 12px; bottom: 12px; color: #6f8487; }
+    .pr-search input { padding-left: 36px; background-image: none !important; }
+    .pr-table > tbody > tr > td { font-size: 13.5px; font-weight: 500; color: #3d5559; vertical-align: middle; }
+    .pr-table td.num b { font-size: 13.5px; font-weight: 700; color: #17373b; }
+    .unit-cell small { display: block; font-size: 11.5px; font-weight: 700; color: #24666b; letter-spacing: .3px; }
     .list-card th.num, .list-card td.num { text-align: right !important; white-space: nowrap; }
-    td small.sub, td .sub { display: block; }
-    .pr-tax span { display: block; font-size: 12.5px; letter-spacing: .3px; white-space: nowrap; }
+    td small.sub, td .sub { display: block; font-size: 11.5px; font-weight: 500; color: #6f8487; }
+    .pr-table > tbody > tr > td.pr-paid-on { white-space: nowrap; font-size: 11.5px; color: #6f8487; }
+    .pr-tax span { display: block; font-size: 11.5px; color: #6f8487; letter-spacing: .3px; white-space: nowrap; }
     .pr-zero { color: var(--zt-mid2, #2a8a8c) !important; font-weight: 700; }
     @media (max-width: 767.98px) {
       .pr-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -159,6 +216,10 @@ export class PaymentsReceivedPage {
   protected readonly error = signal('');
   protected readonly flag = flag;
   protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
+  protected readonly paidRanges = PAID_RANGES;
+  /** The "Paid between" choice ('' any date). */
+  protected readonly paid = signal('');
+  protected readonly day = (v: unknown) => shortDay(v);
 
   /** The four totals of the rows shown (the filters and the search apply). */
   protected readonly tiles = computed(() => {
@@ -184,7 +245,9 @@ export class PaymentsReceivedPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      this.pager.set(await firstValueFrom(this.api.paymentsReceived(this.filter())));
+      const from = paidFrom(this.paid());
+      const query = from ? { ...this.filter(), paidFrom: from, paidTo: paidFrom('1') } : this.filter();
+      this.pager.set(await firstValueFrom(this.api.paymentsReceived(query)));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
@@ -198,8 +261,10 @@ export class PaymentsReceivedPage {
     void this.load();
   }
 
-  protected lower(row: Row, field: string): string {
-    return text(row, field).toLowerCase();
+  protected onPaid(range: string): void {
+    this.paid.set(range);
+    this.pager.setSearch('');
+    void this.load();
   }
 
   protected level(row: Row): string {
@@ -233,10 +298,11 @@ export class PaymentsReceivedPage {
       await this.exporter.xlsx('payments-received', [{
         name: 'Payments received',
         columns: ['S.No.', 'ZED ID', 'Unit', 'Level', 'Size', 'Gender', 'Social category', this.consultancy ? 'Milestone' : 'Joining reward',
-          'State', 'District', 'TDS (%)', 'Subsidy (%)', 'GSTIN', 'TAN', 'Payment type', 'Amount paid (Rs.)'],
+          'State', 'District', 'TDS (%)', 'Subsidy (%)', 'GSTIN', 'TAN', 'Paid on', 'Payment type', 'Amount paid (Rs.)'],
         rows: rows.map((r, i) => [i + 1, t(r, 'ZedId'), t(r, 'PUnitName'), this.level(r), t(r, 'EnterpriseTypee'), t(r, 'Gender'), t(r, 'SocialCategoryName'),
           this.consultancy ? t(r, 'MileStoneNum') : flag(r, 'IsCouponUsed') ? 'Yes' : 'No', t(r, 'PStateName'), t(r, 'PDistrictName'),
-          t(r, 'Tds'), t(r, 'SubsidyPercentage'), t(r, 'GstinNumber'), t(r, 'TanNumber'), this.paymentType(r), num(r, 'FinalAmountPaid')]),
+          t(r, 'Tds'), t(r, 'SubsidyPercentage'), t(r, 'GstinNumber'), t(r, 'TanNumber'), t(r, 'PaidOn').slice(0, 10), this.paymentType(r),
+          num(r, 'FinalAmountPaid')]),
       }]);
       this.toast.success('Export ready', `${rows.length} payment${rows.length === 1 ? '' : 's'}.`);
     } catch (err) {

@@ -285,7 +285,7 @@ describe('CertificationLevelsPage', () => {
     typeIn('#lv-count', '1');
     await settle();
     expect(el.querySelectorAll('.tl-mark').length).toBe(1);
-    button(el.querySelector('.modal-footer')!, 'CANCEL').click();
+    button(el.querySelector('.modal-footer')!, 'Cancel').click();
     await settle();
   });
 

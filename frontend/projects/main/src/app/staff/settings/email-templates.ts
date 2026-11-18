@@ -289,8 +289,8 @@ const standardBodySample =
                 }
               </span>
               <span class="ed-foot-actions">
-                <input type="button" class="btn btn-default" value="CANCEL" (click)="editing.set(null)" />
-                <input type="button" class="btn btn-primary" value="SAVE" [disabled]="busy()" (click)="save(e)" />
+                <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
+                <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
               </span>
             </div>
           </div>

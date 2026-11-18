@@ -42,7 +42,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
         <span class="xl-group xl-group-all"><span class="xl-group-label">Requirements of all parameters</span>
           <zed-excel-tools [api]="'/api/staff/questionnaire/' + sectionType() + '/all-requirements'" [title]="'Requirements of all ' + levelName() + ' parameters'"
                            [fileName]="'requirements-' + sectionType().toLowerCase() + '-all-parameters'" /></span>
-        <button type="button" class="btn btn-primary" (click)="openAdd()">+ ADD PARAMETER</button>
+        <button type="button" class="btn btn-primary" (click)="openAdd()">+ Add parameter</button>
       </div>
     </div>
 
@@ -198,8 +198,8 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
                 @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(false)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">SAVE</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
               </div>
             </form>
           </div>
@@ -246,8 +246,8 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">UPDATE</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Update</button>
               </div>
             </form>
           </div>

@@ -78,7 +78,8 @@ describe('staff pages per system', () => {
     http.expectOne((r) => r.url === '/api/staff/dashboard/analytics').flush(figures({ BronzeTotal: 4, BronzePending: 1, SaSilverNcRaised: 2 }));
     await settle();
     const bronze = [...el.querySelectorAll('.panel-bronze .app-stats li')].map((li) => `${li.querySelector('.app-label')!.textContent!.trim()}: ${li.querySelector('.app-value')!.textContent!.trim()}`);
-    expect(bronze).toEqual(['Surveillance Pending: 1', 'Surveillance Completed: 0', 'Rejected: 0']);
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): status names in sentence case, as staff-00.
+    expect(bronze).toEqual(['Surveillance pending: 1', 'Surveillance completed: 0', 'Rejected: 0']);
     expect(el.querySelector('.panel-bronze .app-total-value')!.textContent).toBe('4');
     expect(el.querySelector('.panel-silver [data-field="SaSilverNcRaised"]')!.textContent).toBe('2');
   });

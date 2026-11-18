@@ -46,24 +46,28 @@ export interface ListCount {
     </ng-template>
   `,
   styles: `
-    .lc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 16px; }
-    .lc-item { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; text-align: left;
-      background: #fff; border: 1px solid #e1eaea; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); color: inherit; }
+    /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' tiles: 80px, 14px corners, a soft shadow, the
+       number 24px in its tone (teal, green, amber, red), the label 12.5px; the chosen tile outlined 2px in teal on a pale fill. */
+    .lc { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .lc-item { position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 3px; min-width: 0;
+      min-height: 80px; text-align: left; background: #fff; border: 1px solid #dde7e8; border-radius: 14px; padding: 14px 18px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.09); color: inherit; }
     .lc-btn { font: inherit; cursor: pointer; }
-    .lc-btn:hover { border-color: var(--zt-soft, #d4ebe6); background: #fbfdfd; }
+    .lc-btn:hover { border-color: var(--zt-soft, #c5dfe0); background: #fbfdfd; }
     .lc-btn:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
-    .lc-btn.on { border: 2px solid var(--zt-dark, #1f5c61); padding: 13px 15px; background: #f4faf9; }
-    .lc-item b { display: block; font-size: 24px; font-weight: 800; color: var(--zt-ink, #173f44); line-height: 1.15; }
-    .lc-item b.is-warn { color: #b26a00; }
-    .lc-item b.is-bad { color: #c0392b; }
-    .lc-item b.is-good { color: #1e8a4c; }
-    .lc-item b.is-info { color: var(--zt-mid2, #2a8a8c); }
-    .lc-label { font-size: 13px; color: #5f6f70; font-weight: 600; overflow-wrap: anywhere; }
+    .lc-btn.on { border: 2px solid var(--zt-dark, #24666b); padding: 13px 17px; background: #f1f9f9; }
+    .lc-item b { display: block; font-size: 24px; font-weight: 800; color: var(--zt-dark, #24666b); line-height: 1.15; }
+    .lc-item b.is-warn { color: #9a5f06; }
+    .lc-item b.is-bad { color: #c8473c; }
+    .lc-item b.is-good { color: #2f9e58; }
+    .lc-item b.is-info { color: var(--zt-dark, #24666b); }
+    .lc-label { font-size: 12.5px; color: #3d5559; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
     .lc-sub { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); }
-    .lc-delta { position: absolute; right: 14px; bottom: 14px; font-size: 12px; font-weight: 700; color: #1e8a4c; }
-    .lc-delta.down { color: #c0392b; }
+    .lc-delta { position: absolute; right: 16px; bottom: 14px; font-size: 12px; font-weight: 700; color: #2f9e58; }
+    .lc-delta.down { color: #c8473c; }
     @media (max-width: 575.98px) {
       .lc { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .lc-item { min-height: 68px; }
       .lc-item b { font-size: 20px; }
     }
   `,

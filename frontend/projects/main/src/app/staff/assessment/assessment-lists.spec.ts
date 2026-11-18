@@ -5,7 +5,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { AllotPage } from './allot';
-import { AssessmentResultsPage } from './assessment-results';
+import { AssessmentResultsPage, searchKind } from './assessment-results';
 import { ClientPager } from '../pager';
 import { ToastService } from '../toast';
 import { TableExport } from '../table-export';
@@ -47,7 +47,12 @@ describe('assessment list pages', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  /** 2026-11-18: Completed / Rejected also ask for their count cards (not checked by every test). */
+  const noCounts = { total: 0, certifiedThisMonth: 0, surveillanceDue90: 0, duplicates: 0, waitingReallot: null, reallotted: null };
+  afterEach(() => {
+    for (const r of http.match((r) => r.url.endsWith('/counts'))) r.flush(noCounts);
+    http.verify();
+  });
 
   /** An ISO date `days` before today (the API's PaidOn). */
   function daysAgo(days: number): string {
@@ -302,7 +307,7 @@ describe('assessment list pages', () => {
     const el: HTMLElement = fixture.nativeElement;
     const first = http.expectOne((r) => r.url === '/api/staff/assessment/completed');
     expect(first.request.params.get('pageNo')).toBe('1');
-    expect(first.request.params.get('pageSize')).toBe('20');
+    expect(first.request.params.get('pageSize')).toBe('10');
     first.flush({ rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', Certification: 'Bronze', DeskAssessment: 'D', DocVerifiAllot: 'May 1, 2024' }], totalCount: 45, pageNo: 1, pageSize: 20 });
     await settle(fixture);
     const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent!.trim());
@@ -418,6 +423,42 @@ describe('assessment list pages', () => {
     await settle(fixture);
     expect(el.querySelector('.modal')).toBeNull();
     expect(buttons(el, 'Re-allot').length).toBe(0);
+  });
+
+  // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-11's four and staff-12's three count cards.
+  it('Completed and Rejected: the count cards of the filter', async () => {
+    TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
+    const fixture = TestBed.createComponent(AssessmentResultsPage);
+    fixture.componentRef.setInput('kind', 'completed');
+    await settle(fixture);
+    flushConfig();
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/completed').flush({ rows: [], totalCount: 9, pageNo: 1, pageSize: 10 });
+    const counts = http.expectOne((r) => r.url === '/api/staff/assessment/completed/counts');
+    expect(counts.request.params.has('pageNo')).toBe(false);
+    counts.flush({ ...noCounts, total: 9, certifiedThisMonth: 4, surveillanceDue90: 2, duplicates: 1 });
+    await settle(fixture);
+    const tiles = () => [...el.querySelectorAll('.lc-item')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
+    expect(tiles()).toEqual(['9 Completed', '4 Certified this month', '2 Surveillance due in 90 days', '1 Duplicates flagged']);
+    expect(el.querySelector('#resSearch')!.getAttribute('placeholder')).toBe('e.g. ZEDM000005');
+
+    fixture.componentRef.setInput('kind', 'rejected');
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/assessment/rejected').flush({ rows: [], totalCount: 5, pageNo: 1, pageSize: 10 });
+    http.expectOne((r) => r.url === '/api/staff/assessment/rejected/counts').flush({ ...noCounts, total: 5, waitingReallot: 2, reallotted: 3 });
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({ rows: [] });
+    await settle(fixture);
+    expect(tiles()).toEqual(['5 Rejected', '2 Waiting to be re-allotted', '3 Re-allotted']);
+    // staff-12's own filter row: no labels, no Search button.
+    expect(el.querySelectorAll('.rs-filters .form-label').length).toBe(0);
+    expect(buttons(el, 'Search').length).toBe(0);
+  });
+
+  it('Rejected: the one search box picks ZED ID, Udyam number or unit name', () => {
+    expect(searchKind('ZEDM000005')).toBe('Zed Id');
+    expect(searchKind('UC3250522285')).toBe('Zed Id');
+    expect(searchKind('UDYAM-MH-01-0000001')).toBe('Udyam Number');
+    expect(searchKind('Pump Engineers')).toBe('Unit Name');
   });
 
   it('ClientPager searches any shown value and pages', () => {

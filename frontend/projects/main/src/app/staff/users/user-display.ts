@@ -32,15 +32,23 @@ export function initialsOf(name: string | null | undefined): string {
 /**
  * The "Send password reset link?" confirmation of a row menu or a record's head (popup-04): who gets the link and the
  * masked address it goes to. The mail goes out at once, so the toast after it has no Undo.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as popup-04: a mail tile, "The user chooses the new
+ * password." under the title, a card of the user (initials, name, "Assessor · ID", masked e-mail, ACTIVE) and two ticks.
  */
-export function resetLinkAsk(name: string | null | undefined, userId: string, email: string | null | undefined): ConfirmAsk {
-  const to = maskEmail(email);
+export function resetLinkAsk(name: string | null | undefined, userId: string, email: string | null | undefined, role = 'User'): ConfirmAsk {
   return {
     title: 'Send password reset link?',
-    message:
-      `${name || userId} (${userId}) gets a link to set a new password` +
-      (to ? ` at ${to}` : ' at the registered e-mail address') +
-      '. The user chooses the new password. The link works once, for a short time, and replaces any link sent earlier.',
+    subtitle: 'The user chooses the new password.',
+    icon: 'mail',
+    person: {
+      name: name || userId,
+      initials: initialsOf(name || userId),
+      line: `${role} · ${userId}`,
+      email: maskEmail(email) || 'The registered e-mail address',
+      status: 'Active',
+    },
+    points: ['The link works once, for a short time.', 'A newer link replaces any link sent earlier.'],
+    pointStyle: 'tick',
     confirmLabel: 'Send link',
   };
 }

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { PaymentsReceivedPage, masked } from './payments-received';
+import { PaymentsReceivedPage, masked, paidFrom, shortDay } from './payments-received';
 import { TableExport } from '../table-export';
 
 describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
@@ -12,10 +12,10 @@ describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
 
   const rows = [
     { RowNumber: 1, ZedId: 'ZEDM000005', Certification: 'Bronze', PUnitName: 'Pump Engineers', EnterpriseTypee: 'Micro', Gender: 'Male', IsCouponUsed: 1,
-      PStateName: 'Delhi', PDistrictName: 'East', Tds: 0, SubsidyPercentage: 80, GstinNumber: null, TanNumber: null, FinalAmountPaid: 0, PaymentType: 'ZeroAmount' },
+      PStateName: 'Delhi', PDistrictName: 'East', Tds: 0, SubsidyPercentage: 80, GstinNumber: null, TanNumber: null, FinalAmountPaid: 0, PaymentType: 'ZeroAmount', PaidOn: null },
     { RowNumber: 2, ZedId: 'ZEDM000008', Certification: 'Gold', PUnitName: 'Lakshmi Auto', EnterpriseTypee: 'Medium', Gender: 'Male', IsCouponUsed: 0,
       PStateName: 'Tamil Nadu', PDistrictName: 'Chennai', Tds: 10, SubsidyPercentage: 50, GstinNumber: '33AACCL1234F1Z2', TanNumber: 'CHEL01234A',
-      FinalAmountPaid: 120000, PaymentType: 'PaymentGateway' },
+      FinalAmountPaid: 120000, PaymentType: 'PaymentGateway', PaidOn: '2025-11-13T10:00:00' },
   ];
 
   async function settle() {
@@ -55,7 +55,35 @@ describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
     expect(second.textContent).not.toContain('33AACCL1234F1Z2');
     expect(second.textContent).toContain('₹ 1,20,000');
     expect(second.textContent).toContain('10%');
-    expect(el.querySelector('thead')!.textContent).not.toContain('Paid on');
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-08's Paid on column, "—" for an unknown date or TDS.
+    expect(el.querySelector('thead')!.textContent).toContain('Paid on');
+    expect(second.querySelector('.pr-paid-on')!.textContent!.trim()).toBe('13 Nov 2025');
+    expect(first.querySelector('.pr-paid-on')!.textContent!.trim()).toBe('—');
+    expect(second.querySelector('zed-level-medal')!.textContent).toContain('Gold');
+  });
+
+  it('asks the API for the payments of the "Paid between" range', async () => {
+    const select = el.querySelector('#pr-paid') as HTMLSelectElement;
+    expect(select.options[0].textContent!.trim()).toBe('Any date');
+    select.value = '30';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    const req = http.expectOne((r) => r.url === '/api/staff/dashboard/payments-received');
+    expect(req.request.params.get('paidFrom')).toBe(paidFrom('30'));
+    expect(req.request.params.get('paidTo')).toBe(paidFrom('1'));
+    req.flush([rows[1]]);
+    await settle();
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
+
+  it('works out the range starts and short dates', () => {
+    const today = new Date(2026, 10, 18);
+    expect(paidFrom('', today)).toBe('');
+    expect(paidFrom('7', today)).toBe('2026-11-12');
+    expect(paidFrom('fy', today)).toBe('2026-04-01');
+    expect(paidFrom('fy', new Date(2027, 1, 2))).toBe('2026-04-01');
+    expect(shortDay('2026-11-13T10:00:00', today)).toBe('13 Nov');
+    expect(shortDay(null, today)).toBe('—');
   });
 
   it('totals follow the search box', async () => {

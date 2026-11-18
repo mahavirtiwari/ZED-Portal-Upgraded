@@ -1,6 +1,7 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -80,6 +81,10 @@ const API = '/api/staff/sub-users';
  * plus a row menu: a new password (on a locked login "Unlock", as the new password also lifts the lock), Block / Unblock,
  * each after a confirmation, and a toast once done. The pop-up has two columns: details and scope on the left, the screens
  * as switches on the right, and a fixed footer.
+ * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-20 / popup-02 values: 34px light avatars, 13.5 / 12.5px
+ * text, an uppercase grey scope pill, ACTIONS on the right, a 62px toolbar card; the pop-up with a white head (icon tile, grey
+ * square close), the states and agencies as drop-down multi-selects (so it fits a laptop screen without scrolling), 42px
+ * screen tiles with 40 x 22 switches (teal outline when on) and 40px title-case buttons; the tab title names the page.
  */
 @Component({
   selector: 'zed-staff-sub-users',
@@ -102,8 +107,8 @@ const API = '/api/staff/sub-users';
         <table class="table table-zed su-table">
           <thead>
             <tr>
-              <th>User</th><th>Contact</th><th>Screens</th><th>Scope</th><th>Last Login</th>
-              <th class="text-center" style="width: 100px">Status</th><th class="text-center" style="width: 120px">Actions</th>
+              <th>User</th><th>Contact</th><th>Screens</th><th>Scope</th><th>Last login</th>
+              <th class="text-center" style="width: 110px">Status</th><th class="text-end" style="width: 120px">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -135,13 +140,13 @@ const API = '/api/staff/sub-users';
                   }
                   @if (!u.permissions.length) { <span class="su-mail">No screens</span> }
                 </td>
-                <td class="su-scope" data-label="Scope"><span class="zed-chip" data-scope>{{ scopeText(u) }}</span></td>
+                <td class="su-scope" data-label="Scope"><span class="su-scope-pill" data-scope>{{ scopeText(u) }}</span></td>
                 <td class="su-login" data-label="Last Login">
                   @if (u.lastLoginAt) { {{ u.lastLoginAt + 'Z' | date: 'dd-MM-yyyy HH:mm' }} } @else { <span class="su-never">Never signed in</span> }
                   <small class="d-block muted">Added {{ u.createdAt | date: 'dd-MM-yyyy' }}</small>
                 </td>
                 <td class="text-center su-status-cell"><ng-container *ngTemplateOutlet="badge; context: { $implicit: u }" /></td>
-                <td class="text-center su-actions-cell">
+                <td class="text-end su-actions-cell">
                   <div class="su-actions">
                     <button type="button" class="btn btn-outline-primary" (click)="edit(u)">Edit</button>
                     <zed-row-menu [items]="menuOf(u)" [label]="'More actions for ' + u.userName" (picked)="picked(u, $event)" />
@@ -185,13 +190,13 @@ const API = '/api/staff/sub-users';
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sub-user-title">
         <div class="modal-dialog modal-popup su-dialog">
           <div class="modal-content su-content">
-            <div class="modal-header su-head">
-              <span class="su-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5a7.5 7.5 0 0 1 15 0" /></svg></span>
+            <div class="su-head">
+              <span class="su-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg></span>
               <div>
-                <h3 class="registration-title m-0" id="sub-user-title">{{ editing() ? 'Edit ' + editing() : 'Add ' + accountType() }}</h3>
+                <h3 class="m-0" id="sub-user-title">{{ editing() ? 'Edit ' + editing() : 'Add ' + accountType() }}</h3>
                 <small class="su-sub">{{ editing() ? f.userName : 'The User ID is generated and the login details are e-mailed to the user.' }}</small>
               </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+              <button type="button" class="su-x" aria-label="Close" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
             </div>
             <form class="su-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body su-body">
@@ -211,13 +216,15 @@ const API = '/api/staff/sub-users';
                   <!-- 2026-11-16 (approved): the states (and, for an operation admin, the assessment agencies) it may see. -->
                   <h4 class="su-section">Scope</h4>
                   <div class="su-field" data-scope-states>
-                    <span class="su-label">States <small class="muted">· none selected = every state</small></span>
-                    <zed-multi-select label="States" inputId="sub-states" [options]="stateOptions()" [value]="f.states" (valueChange)="patch('states', $event)" />
+                    <label class="su-label" for="sub-states">States <small>· none selected = every state</small></label>
+                    <zed-multi-select variant="dropdown" label="States" inputId="sub-states" allText="every state" [options]="stateOptions()" [value]="f.states"
+                                      (valueChange)="patch('states', $event)" />
                   </div>
                   @if (agencyOptions(); as ag) {
                     <div class="su-field" data-scope-agencies>
-                      <span class="su-label">Assessment agencies <small class="muted">· none selected = every agency</small></span>
-                      <zed-multi-select label="Assessment agencies" inputId="sub-agencies" [options]="ag" [value]="f.agencies" (valueChange)="patch('agencies', $event)" />
+                      <label class="su-label" for="sub-agencies">Assessment agencies <small>· none selected = every agency</small></label>
+                      <zed-multi-select variant="dropdown" label="Assessment agencies" inputId="sub-agencies" allText="every agency" [options]="ag" [value]="f.agencies"
+                                        (valueChange)="patch('agencies', $event)" />
                     </div>
                   }
                   <p class="su-hint">{{ scopeNote() }}</p>
@@ -242,11 +249,11 @@ const API = '/api/staff/sub-users';
                       <label class="toggle-card form-switch" [class.active]="f.permissions.includes(p.key)" [for]="'perm-' + p.key">
                         <input class="form-check-input" type="checkbox" role="switch" [id]="'perm-' + p.key" [name]="'perm-' + p.key"
                                [checked]="f.permissions.includes(p.key)" (change)="toggle(p.key)" />
-                        <span>{{ p.label }}</span>
+                        <span class="su-perm-name" [title]="p.label">{{ p.label }}</span>
                       </label>
                     }
                   </div>
-                  <p class="su-note">Work done by {{ whoWord() }} is recorded under your login. You can change the screens or block the login at any time.</p>
+                  <p class="su-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg><span>Work done by {{ whoWord() }} is recorded under your login. You can change the screens or block the login at any time.</span></p>
                   @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
                 </div>
               </div>
@@ -270,66 +277,40 @@ const API = '/api/staff/sub-users';
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  styleUrl: './sub-users-dialog.css',
   styles: `
-    .su-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 16px; margin-bottom: 16px; }
-    .su-toolbar zed-list-search { margin: 0; flex: 0 1 360px; }
-    .su-showing { font-size: 13px; }
-    .su-list { padding: 0 0 8px; overflow: hidden; }
-    .su-table { margin-bottom: 8px; }
+    .su-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; min-height: 62px; padding: 12px 16px; margin-bottom: 16px; }
+    .su-toolbar zed-list-search { margin: 0; flex: 0 1 340px; }
+    .su-showing { font-size: 12.5px; font-weight: 500; color: #6f8487; }
+    .su-list { padding: 0; overflow: hidden; }
+    .su-table { margin-bottom: 0; }
     .su-table td { vertical-align: middle; }
-    .su-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
-    .su-table tr.is-blocked td { background: #fbf7f7; }
-    .su-user { display: flex; align-items: center; gap: 12px; min-width: 180px; }
+    .su-table tbody tr:hover td { background: #f4fafa; }
+    .su-table tr.is-blocked td { background: #fdf6f5; }
+    .su-user { display: flex; align-items: center; gap: 10px; min-width: 180px; }
     .su-who { min-width: 0; }
     .su-avatar { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      color: var(--zt-dark, #1f5c61); background: var(--zt-soft, #d4ebe6); font-weight: 700; font-size: 12.5px; }
-    tr.is-blocked .su-avatar { background: #f3e9e9; color: #9b4a4a; }
-    .su-name { display: block; font-weight: 600; color: #232527; overflow-wrap: anywhere; }
-    .su-id { display: block; font-size: 12px; color: #6b7f80; letter-spacing: .3px; }
+      color: #24666b; background: #e6f2f3; font-weight: 800; font-size: 11.5px; }
+    tr.is-blocked .su-avatar { background: #fbe9e7; color: #c8473c; }
+    .su-name { display: block; font-size: 13.5px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; }
+    .su-id { display: block; font-size: 11.5px; font-weight: 600; color: #6f8487; }
     .su-badge-phone { display: none; }
     .su-lock { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; fill: none; stroke: currentColor; stroke-width: 2.4; }
-    .su-contact { min-width: 150px; }
-    .su-contact span { display: block; line-height: 1.6; overflow-wrap: anywhere; }
-    .su-mail, .su-never { font-size: 13px; color: #5f6f70; }
-    .su-screens { min-width: 200px; max-width: 320px; }
-    .su-login { white-space: nowrap; font-size: 14px; }
-    .su-chip-all { background: #e6f6ec; color: #1e7a3c; }
-    .su-chip-more { background: #fff; border: 1px dashed #9cc7cb; cursor: help; }
+    .su-contact { min-width: 150px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .su-contact span { display: block; line-height: 17px; overflow-wrap: anywhere; }
+    .su-mail, .su-never { font-size: 11.5px; font-weight: 500; color: #6f8487; }
+    .no-mobile { color: #9a5f06; }
+    .su-screens { min-width: 200px; max-width: 330px; }
+    .su-screens .zed-chip { display: inline-block; margin: 2px 4px 2px 0; }
+    .su-scope-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700;
+      letter-spacing: .4px; line-height: 14px; text-transform: uppercase; white-space: nowrap; }
+    .su-login { white-space: nowrap; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    .su-login small { font-size: 11.5px; color: #6f8487; }
+    .su-chip-all { background: #e5f5ea !important; color: #2f9e58 !important; }
+    .su-chip-more { background: #fff !important; border: 1px dashed #9cc7cb; cursor: help; }
     .su-actions { display: inline-flex; align-items: center; gap: 8px; }
+    .su-actions .btn { min-height: 30px; padding: 3px 12px; font-size: 12.5px; white-space: nowrap; }
     .su-empty .btn-link { font-weight: 600; }
-
-    .modal > .modal-dialog.su-dialog { max-width: 980px; width: calc(100% - 32px); }
-    .su-content { max-height: calc(100vh - 3.5rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; }
-    .modal .su-head { gap: 12px; align-items: center; }
-    .su-head > div { flex: 1; min-width: 0; }
-    .su-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #eef4f4; color: var(--zt-ink, #173f44); }
-    .su-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
-    .su-sub, .su-foot-note, .su-hint { font-size: 12.5px; color: #5f6f70; }
-    .su-form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
-    .modal .su-dialog .su-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); padding: 0; overflow-y: auto; min-height: 0; }
-    .su-col { padding: 16px 24px; min-width: 0; }
-    .su-col + .su-col { border-left: 1px solid #e1eaea; }
-    .su-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-    .modal .su-dialog .su-field label, .su-label { margin: 0; font-size: 13.5px; font-weight: 600; color: #24393b; }
-    .su-section { margin: 18px 0 8px; font-size: 12px; font-weight: 800; color: #5f6f70; text-transform: uppercase; letter-spacing: .06em; }
-    .su-hint { margin: 0; }
-    .su-screens-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 10px; }
-    .su-screens-head h4 { margin: 0; font-size: 14px; font-weight: 600; color: #24393b; }
-    .su-given { font-weight: 500; color: #5f6f70; font-size: 12.5px; margin-left: 8px; }
-    .su-bulk { font-size: 13px; color: #8a9899; }
-    .su-bulk .btn-link { font-size: 13px; font-weight: 600; text-decoration: none; }
-    .su-perms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .toggle-card { display: flex; gap: 10px; align-items: center; border: 1px solid #dfe9ea; border-radius: 10px; padding: 9px 12px; margin: 0; cursor: pointer; }
-    .toggle-card:hover { border-color: var(--zt-mid2, #2a8a8c); }
-    .toggle-card.active { border-color: var(--zt-dark, #1f5c61); background: #f4faf9; }
-    /* The skin makes pop-up labels bold; on these cards only the names that are meant to be are. */
-    .modal .modal-popup label.toggle-card { font-weight: 400; color: #232527; }
-    .toggle-card.form-switch { padding-left: 12px; }
-    .toggle-card.form-switch .form-check-input { flex: none; float: none; margin: 0; width: 2.4em; height: 1.3em; }
-    .toggle-card strong { color: #23474a; }
-    .su-note { margin: 16px 0 0; padding: 12px 14px; border-radius: 10px; background: #e8f3f2; color: var(--zt-ink, #173f44); font-size: 13px; }
-    .modal .su-foot { justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid #e1eaea; padding: 12px 24px; flex: none; }
-    .su-foot-actions { display: inline-flex; gap: 8px; }
 
     @media (max-width: 767.98px) {
       .su-toolbar zed-list-search { flex: 1 1 100%; }
@@ -337,23 +318,19 @@ const API = '/api/staff/sub-users';
       .su-table { min-width: 0; }
       .su-table thead { display: none; }
       .su-table, .su-table tbody, .su-table tr, .su-table td { display: block; width: 100%; box-sizing: border-box; }
-      .su-table tr { border: 1px solid #dfe9ea; border-radius: 12px; margin-bottom: 12px; padding: 4px 12px; overflow: hidden; background: #fff; }
+      .su-table tr { border: 1px solid #dde7e8; border-radius: 12px; margin-bottom: 12px; padding: 4px 12px; overflow: hidden; background: #fff; }
       .su-table tr.empty-row { border: 0; padding: 0; }
       .su-table td { border: 0; padding: 6px 0; text-align: left !important; max-width: none; }
-      .su-table tr.is-blocked { background: #fbf7f7; }
+      .su-table tr.is-blocked { background: #fdf6f5; }
       .su-table tr.is-blocked td, .su-table tbody tr:hover td { background: transparent; }
-      .su-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
+      .su-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; font-weight: 700; color: #6f8487; margin-bottom: 2px; }
       .su-user { min-width: 0; }
       .su-who { flex: 1 1 auto; }
       .su-badge-phone { display: inline-block; }
       .su-status-cell { display: none !important; }
       .su-contact, .su-screens { min-width: 0; }
       .su-login { white-space: normal; }
-      .modal .su-dialog .su-body { grid-template-columns: minmax(0, 1fr); }
-      .su-col + .su-col { border-left: 0; border-top: 1px solid #e1eaea; }
-      .su-col { padding: 14px 16px; }
     }
-    @media (max-width: 479.98px) { .su-perms { grid-template-columns: minmax(0, 1fr); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -402,6 +379,9 @@ export class SubUsersPage {
   protected readonly pendingError = signal('');
 
   constructor() {
+    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the tab names the page ("ZED | Operation Admins").
+    const title = inject(Title);
+    effect(() => title.setTitle(`ZED | ${this.accountType()}s`));
     void this.load();
   }
 
