@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Linking } from 'react-native';
+import { Linking, ToastAndroid } from 'react-native';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { APP_TOKEN_HEADER, StackNavigator, UiHost, zedDevice } from '@zed/shared';
 import { SCREENS } from '../App';
@@ -205,22 +205,25 @@ describe('screens', () => {
     expect(byTestId(r, 'assessment-options')).toHaveLength(1);
   });
 
-  it('Clear data is on the case card only: the legacy question, then the case is removed from the phone', async () => {
+  it('Clear data is on the case card only: it opens the section-wise sheet (2026-11-18), Remove everything takes the case off the phone', async () => {
     const { app } = await makeApp(server());
     await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
     await openAssessment(app, unit(), true);
     app.closeAssessment();
     const r = render(app, 'Home');
     await act(async () => undefined);
-    const spy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await act(async () => handler(r, 'clean-' + ZED_ID).props.onPress());
-    const [title, message, buttons] = spy.mock.calls[spy.mock.calls.length - 1]!;
-    expect([title, message, buttons!.map(x => x.text)]).toEqual(['Alert', 'Are you sure you want to clear the data associated with this login?', ['Yes', 'No']]);
-    spy.mockRestore();
-    await act(async () => {
-      await buttons![0]!.onPress!();
-    });
     await act(async () => undefined);
+    expect(byTestId(r, 'clear-data')).toHaveLength(1);
+    // Only the downloaded allocation is on the phone: nothing unsynced, so no typed confirmation.
+    expect(byTestId(r, 'clear-row-allocation')).toHaveLength(1);
+    expect(byTestId(r, 'clear-unsynced-warning')).toHaveLength(0);
+    const toast = jest.spyOn(ToastAndroid, 'show').mockImplementation(() => undefined);
+    await act(async () => handler(r, 'clear-everything').props.onPress());
+    expect(byTestId(r, 'clear-type')).toHaveLength(0);
+    await act(async () => handler(r, 'clear-everything-confirm').props.onPress());
+    await act(async () => undefined);
+    toast.mockRestore();
     expect(await app.storedAssessment(ZED_ID)).toBeNull();
     expect(byTestId(r, 'clean-' + ZED_ID)).toHaveLength(0);
     // Not on the milestone page.

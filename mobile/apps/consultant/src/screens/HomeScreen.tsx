@@ -25,7 +25,7 @@ import {
   type TeamMember,
 } from '../portfolio';
 import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, GradientFill, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, Strip, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
-import { clearData } from './assessmentActions';
+import { ClearDataSheet } from './ClearDataSheet';
 import { showExitAlert } from './common';
 
 /** The units kept on the phone (their AssessorData rows), for the progress and "Clear data". */
@@ -73,6 +73,8 @@ export function HomeScreen() {
   const [tab, setTab] = useState<TabKey>(params.tab ?? 'home');
   const [refreshing, setRefreshing] = useState(false);
   const [cleared, setCleared] = useState(0);
+  /** 2026-11-18: the case whose Clear data sheet is open (section by section). */
+  const [clearing, setClearing] = useState<AssessmentSummary | null>(null);
   const stored = useStored(app, app.assessments, cleared);
 
   useBackHandler(() => {
@@ -107,7 +109,7 @@ export function HomeScreen() {
   };
 
   const view = (a: AssessmentSummary) => nav.push('CaseDetail', { key: keyOf(a) });
-  const clear = (a: AssessmentSummary) => clearData(app, ui, a.zedId, () => setCleared(c => c + 1));
+  const clear = (a: AssessmentSummary) => setClearing(a);
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />;
 
   return (
@@ -119,6 +121,7 @@ export function HomeScreen() {
         {tab === 'profile' ? <ProfileHome /> : null}
       </View>
       <BottomTabs active={tab} onChange={setTab} />
+      {clearing ? <ClearDataSheet a={clearing} onClose={() => setClearing(null)} onCleared={() => setCleared(c => c + 1)} /> : null}
     </Page>
   );
 }

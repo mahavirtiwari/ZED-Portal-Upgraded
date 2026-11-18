@@ -148,6 +148,42 @@ export class AssessorStore {
     const r = await this.db.execute('DELETE FROM EvidenceData WHERE UserId = ?', [userId]);
     return r.rowsAffected > 0;
   }
+
+  // ----- New (2026-11-18): section-wise "Clear data" (clearData.ts) -----
+
+  /**
+   * A partial update of the stored assessment: `mutate` changes the row's JSON in place (the sections being cleared);
+   * the other sections, the meeting and the selfie columns stay. False when the row is missing or unreadable.
+   */
+  async updateDetails(userId: string, mutate: (d: AssessmentDetails) => void): Promise<boolean> {
+    try {
+      let done = false;
+      await this.db.transaction(async tx => {
+        const r = await tx.execute('SELECT AssessorDataColumn FROM AssessorData WHERE UserId = ?', [userId]);
+        const d = r.rows[0] ? parse<AssessmentDetails>(textOf(r.rows[0].AssessorDataColumn)) : null;
+        if (!d) return;
+        mutate(d);
+        await tx.execute('UPDATE AssessorData SET AssessorDataColumn = ? WHERE UserId = ?', [toJson(d), userId]);
+        done = true;
+      });
+      return done;
+    } catch {
+      return false;
+    }
+  }
+
+  /** The evidences of one kind (site tour or added) of a row; the number removed. */
+  async deleteEvidencesOfType(userId: string, type: number): Promise<number> {
+    const r = await this.db.execute('DELETE FROM EvidenceData WHERE UserId = ? AND EvidenceTypeColumn = ?', [userId, type]);
+    return r.rowsAffected;
+  }
+
+  /** Some evidences of a row, by evidence ID; the number removed. */
+  async deleteEvidences(userId: string, evidenceIds: Array<string | null | undefined>): Promise<number> {
+    let n = 0;
+    for (const id of evidenceIds) if (id != null) n += (await this.db.execute('DELETE FROM EvidenceData WHERE UserId = ? AND EvidenceId = ?', [userId, id])).rowsAffected;
+    return n;
+  }
 }
 
 /** SharedPreferences of the legacy app, by file and key (read and written through the native module). */

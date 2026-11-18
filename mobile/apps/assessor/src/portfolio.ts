@@ -174,8 +174,9 @@ export function progressOf(d: AssessmentDetails | null | undefined) {
 
 /**
  * Work on the phone that the server does not have yet: a requirement answered or a parameter completed but not
- * synced, Basic Info or attendance captured offline. "Clean data" refuses while there is any (or while the sync queue,
- * the stored meetings, selfie or photos hold the unit's sends), so it never loses an assessor's work.
+ * synced, Basic Info or attendance captured offline (with the sync queue, the stored meetings, selfie or photos:
+ * SaApp.hasUnsentWork). 2026-11-18: Clear data no longer refuses; it marks each section holding such work "Unsynced" and
+ * asks for a second confirmation (clearData.ts, ClearDataSheet).
  */
 export function hasUnsentWork(d: AssessmentDetails | null | undefined): boolean {
   if (!d) return false;

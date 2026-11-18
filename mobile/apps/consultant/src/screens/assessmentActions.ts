@@ -7,9 +7,23 @@ import { syncNow } from '../sync/queue';
 
 type Nav = { push: (name: string, params?: Record<string, unknown>) => void };
 
-/** The legacy Clear Data question (AssessmentOptionsActivity), asked as before: no check of unsent work. */
-export const CLEAR_DATA_ASK = 'Are you sure you want to clear the data associated with this login?';
+/**
+ * 2026-11-18: "Clear data" section by section (ClearDataSheet; the legacy one-step question is gone): the sheet's texts.
+ */
+export const CLEAR_DATA_SUBTITLE = 'Select the captured data to remove from this device. Synced data stays on the server.';
+export const UNSYNCED_WARNING = 'Unsynced data cannot be recovered. Sync before clearing.';
+export const CLEAR_CONFIRM_TEXT =
+  'They are removed from this phone only. What the server has stays and comes back when you open the case online; the other sections stay as they are.';
+export const UNDERSTAND_LOSS = 'I understand the unsynced work in these sections will be lost.';
+export const EVERYTHING_TITLE = 'Remove everything for this case?';
+export const EVERYTHING_TEXT =
+  'Every section of this case is removed from the phone: answers, photos, meetings, attendance and the sends waiting to sync. The case is downloaded again when you open it online.';
+/** Typed to confirm removing everything while some of it is not synced. */
+export const TYPE_TO_CONFIRM = 'CLEAR';
+export const NOTHING_KEPT = 'Nothing of this case is kept on the phone.';
 export const DATA_CLEARED = 'Case data removed from the phone';
+export const CLEAR_FAILED = 'Could not clear the data, please try again';
+export const sectionsCleared = (n: number) => (n === 1 ? '1 section removed from the phone' : `${n} sections removed from the phone`);
 
 /** The legacy "update the app" question (SA/Login status 2). */
 export function showUpdateAlert(ui: Ui) {
@@ -55,20 +69,6 @@ export async function openMilestone(app: SaApp, ui: Ui, nav: Nav, a: AssessmentS
       ui.toast(out.message, { long: true });
       break;
   }
-}
-
-/** "Clear data" of a case: the legacy question (Yes / No); Yes removes the phone's copy of the unit. */
-export function clearData(app: SaApp, ui: Ui, zedId: string, done: () => void) {
-  ui.alert('Alert', CLEAR_DATA_ASK, [
-    {
-      text: 'Yes',
-      onPress: async () => {
-        if (await app.deleteStoredAssessment(zedId)) ui.toast(DATA_CLEARED);
-        done();
-      },
-    },
-    { text: 'No', style: 'cancel' },
-  ]);
 }
 
 /** The unit's address in the phone's map app (lat/long when the server has them). */

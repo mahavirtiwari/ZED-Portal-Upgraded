@@ -18,6 +18,7 @@ import {
   type SqlDb,
 } from '@zed/shared';
 import { SaApi, type FormCorrection, type SaSystem } from '../api';
+import { carryOverLocalWork, caseSections, loadCaseData, photosIn, photosInUse, planClear, removePhotos, type ClearSection } from '../clearData';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
 import { ASSESSOR_BASIC_INFO, BUILT_IN_BASIC_INFO } from '../forms';
@@ -387,13 +388,61 @@ export class SaApp {
     return hasUnsentWork(await this.storedAssessment(zedId));
   }
 
-  /** "Clean data": the unit's row and its evidences (the caller checks there is no unsent work). */
+  /**
+   * 2026-11-18: the sections of an assessment the phone holds data for (the Clear data sheet), with their size and whether
+   * they hold work the server does not have yet.
+   */
+  async dataSections(zedId: string): Promise<ClearSection[]> {
+    const a = this._assessor;
+    if (!a) return [];
+    const id = a.assessorId + zedId;
+    return caseSections(await loadCaseData(this, a.assessorId, zedId, this.userId === id ? this._details : null));
+  }
+
+  /**
+   * 2026-11-18: "Clear data" section by section: only the given sections are removed (a partial update of the stored
+   * assessment, their evidences, photos, saved meeting or selfie and their queued sends); the other sections stay and the
+   * assessment stays usable. A photo still used by a section that stays is kept.
+   */
+  async clearSections(zedId: string, sections: string[]): Promise<boolean> {
+    const a = this._assessor;
+    if (!a || sections.length === 0) return false;
+    const id = a.assessorId + zedId;
+    await this.saving;
+    const open = this.userId === id ? this._details : null;
+    const before = await loadCaseData(this, a.assessorId, zedId, open);
+    if (!before.details) return false;
+    const plan = planClear(before, sections);
+    if (!(await this.store.updateDetails(id, plan.mutate))) return false;
+    if (open) plan.mutate(open);
+    if (plan.openMeeting) await this.store.clearMeeting(id, true);
+    if (plan.closeMeeting) await this.store.clearMeeting(id, false);
+    if (plan.selfie) await this.store.clearSelfie(id);
+    if (plan.meetingDraft) this.prefs.remove(PREFS.meetingDraft, PREFS.meetingDraftKey);
+    for (const type of plan.evidenceTypes) await this.store.deleteEvidencesOfType(id, type);
+    await this.store.deleteEvidences(id, plan.evidenceIds);
+    for (const job of before.jobs) if (plan.jobKinds.includes(job.kind) && (!plan.jobFilter || plan.jobFilter(job))) await this.queue.remove(job.key);
+    const inUse = photosInUse(await loadCaseData(this, a.assessorId, zedId, open));
+    await removePhotos(this.photos, plan.photos.filter(p => !inUse.has(p.photoId)));
+    this.touch();
+    return true;
+  }
+
+  /**
+   * "Everything for this assessment" of the Clear data sheet (the earlier one-step Clear data): the unit's row, its evidences,
+   * its photos and its queued sends.
+   */
   async deleteStoredAssessment(zedId: string): Promise<boolean> {
     const a = this._assessor;
     if (!a) return false;
     const id = a.assessorId + zedId;
+    await this.saving;
+    const c = await loadCaseData(this, a.assessorId, zedId, this.userId === id ? this._details : null);
     if (!(await this.store.delete(id))) return false;
     await this.store.deleteAllEvidences(id);
+    await removePhotos(this.photos, [...photosIn(c.details, c.openMeeting, c.closeMeeting, c.selfie), ...c.stored]);
+    for (const job of c.jobs) await this.queue.remove(job.key);
+    if (c.meetingDraft) this.prefs.remove(PREFS.meetingDraft, PREFS.meetingDraftKey);
     if (this.userId === id) {
       this.prefs.remove(PREFS.assessment, PREFS.zedId);
       this._details = null;
@@ -405,6 +454,9 @@ export class SaApp {
   /** saveAssessmentDetails */
   async saveDetails(data: AssessmentDetails, saId: string, zedId: string): Promise<boolean> {
     normalizeDetails(data);
+    // 2026-11-18: after a cleared allocation the download brings the parameters back; the phone's other sections stay.
+    const before = await this.store.load(saId + zedId).catch(() => null);
+    if (before) carryOverLocalWork(before, data);
     const ok = await this.store.save(saId + zedId, data);
     if (ok) {
       this._details = data;

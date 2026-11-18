@@ -148,8 +148,8 @@ describe('opening an assessment', () => {
   });
 });
 
-describe('Clean data', () => {
-  it('is refused while the unit has work the server does not have', async () => {
+describe('Unsent work and removing the whole assessment', () => {
+  it('knows when the unit has work the server does not have', async () => {
     const { app } = await makeApp(server());
     await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
     await openAssessment(app, unit(), true);
@@ -176,7 +176,7 @@ describe('screens', () => {
     await act(async () => undefined);
     expect(texts(r)).toEqual(expect.arrayContaining(['Welcome back,', 'RN Lead Assessor', 'Next assessment'.toUpperCase(), 'RN Test Enterprise', '2 member team']));
     expect(byTestId(r, 'view-' + ZED_ID)).toHaveLength(1);
-    // Nothing of the unit on the phone yet: no "Clean data".
+    // Nothing of the unit on the phone yet: no "Clear data".
     expect(byTestId(r, 'clean-' + ZED_ID)).toHaveLength(0);
   });
 

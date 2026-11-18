@@ -7,9 +7,24 @@ import { syncNow } from '../sync/queue';
 
 type Nav = { push: (name: string, params?: Record<string, unknown>) => void };
 
-export const UNSENT_WORK = 'This assessment has work on the phone that is not on the server yet. Please sync it before cleaning the data.';
-export const CLEAN_DATA_ASK = 'Remove the copy of this assessment kept on the phone? It is downloaded again when you open it.';
+/**
+ * 2026-11-18: "Clear data" section by section (ClearDataSheet; it replaces the one-step "Clean data", which was refused while
+ * anything was unsent): the sheet's texts. The same for an Onsite certification and a surveillance visit.
+ */
+export const CLEAR_DATA_SUBTITLE = 'Select the captured data to remove from this device. Synced data stays on the server.';
+export const UNSYNCED_WARNING = 'Unsynced data cannot be recovered. Sync before clearing.';
+export const CLEAR_CONFIRM_TEXT =
+  'They are removed from this phone only. What the server has stays and comes back when you open the assessment online; the other steps stay as they are.';
+export const UNDERSTAND_LOSS = 'I understand the unsynced work in these sections will be lost.';
+export const EVERYTHING_TITLE = 'Remove everything for this assessment?';
+export const EVERYTHING_TEXT =
+  'Every step of this assessment is removed from the phone: answers, photos, meetings, attendance and the sends waiting to sync. The assessment is downloaded again when you open it online.';
+/** Typed to confirm removing everything while some of it is not synced. */
+export const TYPE_TO_CONFIRM = 'CLEAR';
+export const NOTHING_KEPT = 'Nothing of this assessment is kept on the phone.';
 export const DATA_CLEANED = 'Assessment data removed from the phone';
+export const CLEAR_FAILED = 'Could not clear the data, please try again';
+export const sectionsCleared = (n: number) => (n === 1 ? '1 section removed from the phone' : `${n} sections removed from the phone`);
 
 /** The legacy "update the app" question (SA/Login status 2). */
 export function showUpdateAlert(ui: Ui) {
@@ -55,22 +70,6 @@ export async function viewAssessment(app: SaApp, ui: Ui, nav: Nav, a: Assessment
       ui.toast(out.message, { long: true });
       break;
   }
-}
-
-/** "Clean data": refused while the unit has work the server does not have. */
-export function cleanData(app: SaApp, ui: Ui, a: AssessmentSummary, done: () => void) {
-  ui.alert(null, CLEAN_DATA_ASK, [
-    { text: 'Cancel', style: 'cancel' },
-    {
-      text: 'Clean data',
-      style: 'destructive',
-      onPress: async () => {
-        if (await app.hasUnsentWork(a.zedId)) return ui.showAlert(UNSENT_WORK);
-        if (await app.deleteStoredAssessment(a.zedId)) ui.toast(DATA_CLEANED);
-        done();
-      },
-    },
-  ]);
 }
 
 /** The unit's address in the phone's map app (lat/long when the server has them). */

@@ -113,7 +113,7 @@ const FAQS: Array<[string, string]> = [
   ['When can I open a milestone?', 'From 2 days before the allotted visit date.'],
   [
     'What does "Clear data" do?',
-    "It removes the phone's copy of a case. Sync your work first: what is not on the server yet is lost. The case is downloaded again when you open it.",
+    'It frees space section by section. Clear data on a case card lists each section the phone keeps (parameter allocation, attendance, opening meeting and site photos, site tour, trainings, the milestone deliverables, basic information, closing meeting) with its photos and size; tick the ones to remove. A section marked Unsynced holds work the server does not have yet: sync first, or tick "I understand" to lose it. The other sections stay; what the server has comes back when you open the case online. "Remove everything for this case" removes the whole case from the phone (type CLEAR when anything is unsynced).',
   ],
 ];
 

@@ -120,7 +120,7 @@ export function CaseDetailScreen() {
         ) : null}
 
         {d && d !== copy ? (
-          <Strip tone="warning" icon="info" text="The phone has the work of an earlier milestone. Sync it, then use Clear data on the case card to start this milestone." />
+          <Strip tone="warning" icon="info" text="The phone has the work of an earlier milestone. Sync it, then use Clear data on the case card (Remove everything for this case) to start this milestone." />
         ) : null}
 
         {current ? (

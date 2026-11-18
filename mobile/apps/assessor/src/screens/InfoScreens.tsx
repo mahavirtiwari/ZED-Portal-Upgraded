@@ -115,8 +115,8 @@ const FAQS: Array<[string, string]> = [
   ],
   ['When can I open an assessment?', 'From 2 days before the allotted Site Assessment date.'],
   [
-    'What does "Clean data" do?',
-    'It removes the phone\'s copy of an assessment. It is refused while anything of that assessment is not on the server yet; the assessment is downloaded again when you open it.',
+    'What does "Clear data" do?',
+    'It frees space step by step, for an Onsite assessment and a surveillance visit alike. Clear data on an assessment card lists each step the phone keeps (parameter allocation, attendance, opening meeting, site tour photographs, selfie, basic info, each checklist parameter, closing meeting) with its photos and size; tick the ones to remove. A step marked Unsynced holds work the server does not have yet: sync first, or tick "I understand" to lose it. The other steps stay; what the server has comes back when you open the assessment online. "Remove everything for this assessment" removes the whole assessment from the phone (type CLEAR when anything is unsynced).',
   ],
 ];
 

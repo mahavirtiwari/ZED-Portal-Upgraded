@@ -24,10 +24,11 @@ import {
   type TeamMember,
 } from '../portfolio';
 import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, GradientFill, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
-import { cleanData, viewAssessment } from './assessmentActions';
+import { viewAssessment } from './assessmentActions';
+import { ClearDataSheet } from './ClearDataSheet';
 import { showExitAlert } from './common';
 
-/** The units kept on the phone (their AssessorData rows), for the progress and "Clean data". */
+/** The units kept on the phone (their AssessorData rows), for the progress and "Clear data". */
 function useStored(app: SaApp, list: AssessmentSummary[], revision: number) {
   const [stored, setStored] = useState<Record<string, AssessmentDetails>>({});
   useEffect(() => {
@@ -68,6 +69,8 @@ export function HomeScreen() {
   const [tab, setTab] = useState<TabKey>(params.tab ?? 'home');
   const [refreshing, setRefreshing] = useState(false);
   const [cleaned, setCleaned] = useState(0);
+  /** 2026-11-18: the assessment whose Clear data sheet is open (section by section). */
+  const [clearing, setClearing] = useState<AssessmentSummary | null>(null);
   const stored = useStored(app, app.assessments, cleaned);
 
   useBackHandler(() => {
@@ -102,7 +105,7 @@ export function HomeScreen() {
   };
 
   const view = (a: AssessmentSummary) => viewAssessment(app, ui, nav, a);
-  const clean = (a: AssessmentSummary) => cleanData(app, ui, a, () => setCleaned(c => c + 1));
+  const clean = (a: AssessmentSummary) => setClearing(a);
   const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />;
 
   return (
@@ -114,6 +117,7 @@ export function HomeScreen() {
         {tab === 'profile' ? <ProfileHome /> : null}
       </View>
       <BottomTabs active={tab} onChange={setTab} />
+      {clearing ? <ClearDataSheet a={clearing} onClose={() => setClearing(null)} onCleared={() => setCleaned(c => c + 1)} /> : null}
     </Page>
   );
 }
@@ -313,7 +317,7 @@ function AssessmentCard({
         ) : (
           <Text style={[z.muted, { alignSelf: 'center' }]}>{a.statusDate ? `Updated ${formatDate(a.statusDate)}` : ''}</Text>
         )}
-        {d ? <ZButton title="Clean data" icon="close" variant="dangerOutline" small onPress={() => onClean(a)} style={{ minWidth: 136 }} testID={`clean-${id}`} /> : null}
+        {d ? <ZButton title="Clear data" icon="close" variant="dangerOutline" small onPress={() => onClean(a)} style={{ minWidth: 136 }} testID={`clean-${id}`} /> : null}
       </View>
     </Card>
   );
