@@ -13,10 +13,11 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0100 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0101 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
-  2026-11-18 release: migrations 0095-0100 (zero-amount payment record, submission checklists, MSME notifications seen,
-  expenditure monitoring: rates / purchase orders / invoices, one phone per staff app user, the agencies' one-time GSTIN / PAN). The mobile app hosts changed
+  2026-11-18 release: migrations 0095-0101 (zero-amount payment record, submission checklists, MSME notifications seen,
+  expenditure monitoring: rates / purchase orders / invoices, one phone per staff app user, the agencies' one-time GSTIN / PAN,
+  TAT rules and man-days per level). The mobile app hosts changed
   (one-phone rule): keep -IncludeMobile (default). Zed.Jobs did not change.
   2026-11-15 release: migrations 0077-0094 (invoice setup, level flows, certified-by-record rule, App Forms validation,
   reports / surveillance certificate / partner API by record, PENDING phase fix, AP state handholding fee by level, NC rounds and days by level, sub-user states and agencies, quality observations, handholding ZED-X dashboard, sector disable, incentive ZED-X and activity, parameter disable, App Forms repeating entries).
@@ -166,6 +167,8 @@ try {
         @{ Dbs = @('ZED_CONSULTANT'); Name = '0098 expenditure monitoring'; Test = (Has-Col 'dbo.MsmeCertifications' 'ExpM1CountedOn') + " AND OBJECT_ID('dbo.ExpenditureInvoices', 'U') IS NOT NULL" }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0099 one phone per staff user'; Test = (Has-Col 'dbo.MobileDeviceBindings' 'Make') + ' AND ' + (Has-Col 'dbo.MobileDeviceBindings' 'AppVersion') + ' AND ' + (Has-Col 'dbo.MobileDeviceEvents' 'Reason') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT'); Name = '0100 agency GSTIN / PAN'; Test = (Has-Col 'dbo.Users' 'TaxGstin') + ' AND ' + (Has-Col 'dbo.Users' 'TaxSubmittedOn') }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0101 TAT rules'; Test = "OBJECT_ID('dbo.TatStatusDays', 'U') IS NOT NULL AND OBJECT_ID('dbo.TatRelations', 'U') IS NOT NULL" }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0101 man-days per level'; Test = (Has-Col 'dbo.SectionTypes' 'ManDays') + ' AND ' + (Has-Col 'dbo.SectionTypes' 'SurveillanceManDays') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

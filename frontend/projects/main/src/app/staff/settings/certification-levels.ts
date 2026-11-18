@@ -96,6 +96,9 @@ interface LevelItem {
   /** 2026-11-16 (approved, migration 0086): the level's NC rounds (1-5) and days to close them (from the first NC). */
   ncRounds?: number;
   ncDays?: number;
+  /** 2026-11-18 (migration 0101): the man-days of the site assessment and of the surveillance visit (null = not set). */
+  manDays?: number | null;
+  surveillanceManDays?: number | null;
 }
 
 export type AssessmentFlow = 'Desktop' | 'Remote' | 'Onsite' | 'DesktopRemote' | 'DesktopOnsite';
@@ -122,6 +125,9 @@ export function levelFlowsFor(_code: string, available: string[]): string[] {
 }
 /** 2026-11-16: the NC days when the Admin has not set them: 30 for Desktop only, 60 for a flow with a visit. */
 export const defaultNcDays = (flow: AssessmentFlow): number => (flow === 'Desktop' ? 30 : 60);
+
+/** A man-days field as sent: 0 when blank (clears the stored value), else the number. */
+export const manDaysValue = (v: number | string | null | undefined): number => (v === null || v === undefined || v === '' ? 0 : Number(v));
 export const NC_MAX_ROUNDS = 5;
 export const NC_MAX_DAYS = 365;
 /** Where a flow raises its NCs: the desktop for Desktop only, otherwise the visit (none at a combined flow's desktop step). */
@@ -164,6 +170,8 @@ interface LevelForm {
   availableSurveillanceModes: string[];
   ncRounds: number | null;
   ncDays: number | null;
+  manDays: number | null;
+  surveillanceManDays: number | null;
   validityMonths: number | null;
   surveillanceEnabled: boolean;
   firstSurveillanceMonths: number | null;
@@ -459,6 +467,17 @@ const API = '/api/staff/settings/levels';
                             <input id="lv-nc-days" name="ncDays" type="number" min="1" [max]="ncMaxDays" class="form-control lv-short" [(ngModel)]="e.ncDays" />
                           </div>
                           <small class="muted d-block">1 to {{ ncMaxRounds }} rounds. The days count from the first NC and cover every round; after that the application is rejected automatically.</small>
+                        </div>
+                        <!-- 2026-11-18 (migration 0101): man-days of the site assessment and the surveillance visit (monitoring's "submission pending"). -->
+                        <span class="label-like top">Man-days</span>
+                        <div class="lv-nc" data-man-days>
+                          <div class="lv-nc-row">
+                            <label for="lv-man-days">Assessment</label>
+                            <input id="lv-man-days" name="manDays" type="number" min="1" max="30" class="form-control lv-short" placeholder="Not set" [(ngModel)]="e.manDays" />
+                            <label for="lv-surv-man-days">Surveillance</label>
+                            <input id="lv-surv-man-days" name="surveillanceManDays" type="number" min="1" max="30" class="form-control lv-short" placeholder="Not set" [(ngModel)]="e.surveillanceManDays" />
+                          </div>
+                          <small class="muted d-block">Days a site visit takes (1 to 30). A visit still not submitted through the mobile app this many days after it started shows as "Submission pending through mobile app" in monitoring. Blank = not set.</small>
                         </div>
                         <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
                         <div class="lv-surv">
@@ -932,7 +951,7 @@ export class CertificationLevelsPage {
     this.editing.set({
       code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site',
       assessmentFlow: 'DesktopOnsite', surveillanceMode: 'Remote', availableFlows: ['Desktop', 'DesktopOnsite'], availableSurveillanceModes: ['Remote'],
-      ncRounds: NC_MAX_ROUNDS, ncDays: defaultNcDays('DesktopOnsite'),
+      ncRounds: NC_MAX_ROUNDS, ncDays: defaultNcDays('DesktopOnsite'), manDays: null, surveillanceManDays: null,
       validityMonths: 36,
       surveillanceEnabled: true, certNoFormat: '{DDMMYYYY}_{ZEDNO}', certNoFormatManufacturing: '', certNoFormatService: '', fee: null,
       ...DEFAULT_SCHEDULE, surveillanceAutoApply: false, surveillanceSuspendRounds: null, surveillanceScheduleFrom: null,
@@ -979,6 +998,7 @@ export class CertificationLevelsPage {
       availableFlows: levelFlowsFor(l.code, i.availableFlows ?? ['Desktop', 'DesktopOnsite']), availableSurveillanceModes: i.availableSurveillanceModes ?? ['Remote'],
       ncRounds: i.ncRounds ?? NC_MAX_ROUNDS,
       ncDays: i.ncDays ?? defaultNcDays(i.assessmentFlow ?? (l.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite')),
+      manDays: i.manDays ?? null, surveillanceManDays: i.surveillanceManDays ?? null,
       firstSurveillanceMonths: l.firstSurveillanceMonths, certNoFormat: l.certNoFormat, certNoFormatManufacturing: l.certNoFormatManufacturing ?? '',
       certNoFormatService: l.certNoFormatService ?? '', fee: l.fee,
       ...(Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, l[k] ?? DEFAULT_SCHEDULE[k]])) as Record<ScheduleKey, number>),
@@ -1013,6 +1033,8 @@ export class CertificationLevelsPage {
       code: e.isNew ? e.code.trim() : undefined, name: e.name.trim(), description: e.description, comment: e.comment, isEnabled: e.isEnabled,
       assessmentMode: e.assessmentMode, validityMonths: e.validityMonths, surveillanceEnabled: e.surveillanceEnabled,
       assessmentFlow: e.assessmentFlow, surveillanceMode: e.surveillanceMode, ncRounds: e.ncRounds, ncDays: e.ncDays,
+      // 0 clears a man-days value (null would keep the stored one).
+      manDays: manDaysValue(e.manDays), surveillanceManDays: manDaysValue(e.surveillanceManDays),
       firstSurveillanceMonths: e.surveillanceEnabled ? e.firstSurveillanceMonths : null, certNoFormat: e.certNoFormat.trim(),
       certNoFormatManufacturing: e.certNoFormatManufacturing, certNoFormatService: e.certNoFormatService, fee: e.fee,
       ...(e.surveillanceEnabled
@@ -1095,6 +1117,8 @@ export class CertificationLevelsPage {
     if (!e.validityMonths || e.validityMonths < 1 || e.validityMonths > 120) return 'The validity must be 1 to 120 months.';
     if (!Number.isInteger(e.ncRounds) || e.ncRounds! < 1 || e.ncRounds! > NC_MAX_ROUNDS) return `NC rounds must be 1 to ${NC_MAX_ROUNDS}.`;
     if (!Number.isInteger(e.ncDays) || e.ncDays! < 1 || e.ncDays! > NC_MAX_DAYS) return `Days to close NCs must be 1 to ${NC_MAX_DAYS}.`;
+    for (const [v, what] of [[e.manDays, 'assessment'], [e.surveillanceManDays, 'surveillance']] as const)
+      if (manDaysValue(v) !== 0 && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 30)) return `Man-days (${what}) must be 1 to 30.`;
     if (e.surveillanceEnabled && (!e.firstSurveillanceMonths || e.firstSurveillanceMonths < 1 || e.firstSurveillanceMonths >= e.validityMonths))
       return 'The first surveillance must be due before the certificate expires.';
     if (e.surveillanceEnabled) {

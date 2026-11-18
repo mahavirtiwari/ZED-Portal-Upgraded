@@ -192,6 +192,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // 2026-11-17 (approved): what is ticked before a final submit / quality check, and the quality observation reasons (each portal's).
   { label: 'Submission Checklists', route: '/staff/settings/submission-checklists', roles: [R.Admin], menu: 'Administration' },
   { label: 'Observation Reasons', route: '/staff/settings/observation-reasons', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-18: turnaround times per status and between statuses, per module (portal switch); the monitoring pages' delays.
+  { label: 'TAT (Turnaround Time)', route: '/staff/settings/tat', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the partners calling ZED's APIs, with a switch per partner and per API.
   { label: 'API Integrations', route: '/staff/settings/api-integrations', roles: [R.Admin], menu: 'Administration' },
   // New in V4: where "Contact ZED" goes (the ZED website's contact page).

@@ -255,6 +255,133 @@ describe('MonitoringPage', () => {
     expect(el.querySelector('tbody img')).toBeNull();
     expect(el.querySelector('tbody')!.textContent).toContain('<img src=x onerror=alert(1)>');
   });
+  // ----- 2026-11-18 (approved monitoring design) -----
+
+  const stages = [
+    { status: 2, total: 3, delayed: 0, tracks: { desktop: 2, site: 1 } },
+    { status: 3, total: 4, delayed: 0, tracks: { desktop: 1, site: 3 } },
+    { status: 5, total: 5, delayed: 4, tracks: { desktop: 2, site: 3 } },
+    { status: 4, total: 0, delayed: 0, tracks: { desktop: 0, site: 0 } },
+    { status: 7, total: 0, delayed: 0, tracks: { desktop: 0, site: 0 } },
+  ];
+  const tab = (key: string) => el.querySelector(`[data-track="${key}"]`) as HTMLButtonElement;
+  const chip = (label: string) => [...el.querySelectorAll<HTMLButtonElement>('.cf-chip')].find((b) => b.textContent!.trim().startsWith(label))!;
+  const rowIds = () => [...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('.mo-id')?.textContent?.trim());
+
+  it('stage cards show desktop and site counts and the delayed cases; sub-tabs split the list', async () => {
+    await setup();
+    listRequest().flush({
+      units: [unit(1, { CertificationStatus: 3, Track: 'desktop' }), unit(2, { CertificationStatus: 9, Track: 'site' }), unit(3, { CertificationStatus: 13, Track: 'site' })],
+      counts, canManage: false, stages,
+    });
+    await settle();
+    expect(tile('Quality check').textContent).toContain('Desktop 2 · Site 3 · 4 delayed');
+    expect(tile('Assessment in progress').textContent).toContain('4');
+    expect(tab('desktop').textContent).toContain('1');
+    expect(tab('site').textContent).toContain('2');
+    // The first sub-section with cases; a case at desktop is never listed under site.
+    expect(tab('desktop').getAttribute('aria-selected')).toBe('true');
+    expect(rowIds()).toEqual(['ZEDMSME000001']);
+    expect(el.querySelector('#monitoringMode')).toBeNull();
+    tab('site').click();
+    await settle();
+    expect(rowIds()).toEqual(['ZEDMSME000002', 'ZEDMSME000003']);
+    expect(el.querySelector('#monitoringMode')).not.toBeNull();
+  });
+
+  it('in progress, site: the app steps as chips, the pending submission and the row steps', async () => {
+    await setup();
+    listRequest().flush({
+      units: [
+        unit(1, { CertificationStatus: 9, Track: 'site', Step: 'distributed', SubmissionPending: true }),
+        unit(2, { CertificationStatus: 9, Track: 'site', Step: 'opening', SubmissionPending: false }),
+        unit(3, { CertificationStatus: 13, Track: 'site', Step: 'submitted', SubmissionPending: false }),
+      ],
+      counts, canManage: false, stages,
+    });
+    await settle();
+    expect(chip('Parameters distributed').textContent).toContain('1');
+    expect(chip('Submission pending through mobile app').textContent).toContain('1');
+    expect(el.querySelector('thead')!.textContent).toContain('Progress');
+    const steps = [...el.querySelectorAll('tbody tr')[1].querySelectorAll('.mo-steps > span')].map((x) => x.className);
+    expect(steps).toEqual(['done', 'current', 'todo']);
+    expect(el.querySelectorAll('tbody tr')[0].textContent).toContain('Submission pending through mobile app');
+    chip('Submission pending through mobile app').click();
+    await settle();
+    expect(rowIds()).toEqual(['ZEDMSME000001']);
+    chip('Assessment submitted through mobile app').click();
+    await settle();
+    expect(rowIds()).toEqual(['ZEDMSME000003']);
+  });
+
+  it('quality check: delay chips from the TAT, rows highlighted, most delayed first', async () => {
+    await setup('5');
+    listRequest().flush({
+      units: [
+        unit(1, { CertificationStatus: 5, Track: 'desktop', TatBucket: 'on-time', TatLateHours: -48, TatLabel: 'On time · 2 days left', TatRule: 'Days allowed in Desktop assessment quality check' }),
+        unit(2, { CertificationStatus: 5, Track: 'desktop', TatBucket: 'gt10', TatLateHours: 312, TatLabel: '13 days late' }),
+        unit(3, { CertificationStatus: 5, Track: 'desktop', TatBucket: 'lt1', TatLateHours: 18, TatLabel: '18 hours late' }),
+      ],
+      counts, canManage: false, stages,
+    });
+    await settle();
+    expect(rowIds()).toEqual(['ZEDMSME000002', 'ZEDMSME000003', 'ZEDMSME000001']);
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows[0].classList).toContain('mo-d4');
+    expect(rows[1].classList).toContain('mo-d1');
+    expect(rows[0].textContent).toContain('13 days late');
+    expect(rows[2].textContent).toContain('On time · 2 days left');
+    expect(el.querySelector('thead')!.textContent).toContain('Delay');
+    expect(chip('More than 10 days').textContent).toContain('1');
+    chip('Delayed less than 1 day').click();
+    await settle();
+    expect(rowIds()).toEqual(['ZEDMSME000003']);
+  });
+
+  it('the date range follows the stage, is sent to the API and is cleared with Clear All', async () => {
+    await setup();
+    listRequest().flush({ units: [], counts, canManage: false, stages });
+    await settle();
+    expect(el.querySelector('label[for="monitoringFrom"]')!.textContent).toBe('Assessment between');
+    tile('Quality check').click();
+    await settle();
+    listRequest().flush({ units: [], counts, canManage: false, stages });
+    await settle();
+    expect(el.querySelector('label[for="monitoringFrom"]')!.textContent).toBe('Submitted between');
+    const from = el.querySelector('#monitoringFrom') as HTMLInputElement;
+    from.value = '2026-11-01';
+    from.dispatchEvent(new Event('input'));
+    await settle();
+    let req = listRequest();
+    expect(req.request.params.get('from')).toBe('2026-11-01');
+    expect(req.request.params.get('status')).toBe('5');
+    req.flush({ units: [], counts, canManage: false, stages });
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Clear All') as HTMLButtonElement).click();
+    await settle();
+    req = listRequest();
+    expect(req.request.params.has('from')).toBe(false);
+    req.flush({ units: [], counts, canManage: false, stages });
+    await settle();
+  });
+
+  it('exports the filtered list to Excel with the contacts in full', async () => {
+    await setup();
+    listRequest().flush({
+      units: [unit(1, { CertificationStatus: 9, Track: 'site', UnitSpocName: 'Ravi', UnitSpocMobileNo: '9876543210', UnitSpocEmailId: 'ravi@x.test' })],
+      counts, canManage: false, stages,
+    });
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Export') as HTMLButtonElement).click();
+    await settle();
+    const req = http.expectOne('/api/staff/export/xlsx');
+    const sheet = req.request.body.sheets[0];
+    expect(sheet.columns).toContain('Contact mobile');
+    expect(sheet.rows[0]).toContain('9876543210');
+    expect(sheet.rows[0]).toContain('Site assessment');
+    req.flush(new Blob(['x']));
+    await settle();
+  });
 });
 
 describe('MonitoringPage per system', () => {
@@ -390,5 +517,24 @@ describe('MonitoringPage per system', () => {
     await settle();
     const dates = [...el.querySelectorAll('tbody tr td')[5].querySelectorAll('div')].map((d) => d.textContent!.trim());
     expect(dates).toEqual(['June 2, 2026', 'July 1, 2026']);
+  });
+  it('consultancy: the stages split by milestone, all milestones first', async () => {
+    const { el, settle, tile } = await create('consultancy');
+    list().flush({
+      units: [{ ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 15, NcCount: 1, Track: 'm1' },
+              { ZedId: 'ZEDMSME000002', Certification: 'Gold', CertificationStatus: 15, NcCount: 2, Track: 'm2', TatLabel: '3 days late', TatBucket: '1-5', TatLateHours: 72 }],
+      counts, canManage: true,
+      stages: [{ status: 2, total: 0, delayed: 0, tracks: {} }, { status: 3, total: 2, delayed: 1, tracks: { m1: 1, m2: 1 } }, { status: 5, total: 0, delayed: 0, tracks: {} }],
+    });
+    await settle();
+    expect(tile('Consultancy in progress').textContent).toContain('M1 1 · M2 1 · M3 0');
+    const tabs = [...el.querySelectorAll('[data-track]')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
+    expect(tabs).toEqual(['All milestones 2', 'Milestone 1 1', 'Milestone 2 1', 'Milestone 3 0']);
+    expect(el.querySelectorAll('tbody tr').length).toBe(2);
+    (el.querySelector('[data-track="m2"]') as HTMLButtonElement).click();
+    await settle();
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('3 days late');
   });
 });

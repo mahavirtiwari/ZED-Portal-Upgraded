@@ -39,6 +39,9 @@ public sealed partial class CertificationLevelsController(
         /// <summary>2026-11-16: the level's NC rounds and days to close them (<see cref="LevelNcRules"/>; the defaults when not set).</summary>
         public int NcRounds { get; init; } = LevelNcRules.DefaultRounds;
         public int NcDays { get; init; } = LevelNcRules.DefaultDays(LevelFlows.DesktopOnsite);
+        /// <summary>2026-11-18: the man-days of the level's site assessment and surveillance visit (<see cref="LevelManDays"/>; null = not set).</summary>
+        public int? ManDays { get; init; }
+        public int? SurveillanceManDays { get; init; }
     }
 
     /// <summary>The checklist of a level (Administration → Certification Levels). Bronze, Silver, Gold and ZED-X: all true.</summary>
@@ -95,6 +98,7 @@ public sealed partial class CertificationLevelsController(
         var parameters = await ParameterCountsAsync(ct);
         var flows = await LevelFlows.StoredAsync(db, log, ct);
         var ncRules = await LevelNcRules.StoredAsync(db, log, ct);
+        var manDays = await LevelManDays.StoredAsync(db, log, ct);
         var items = new List<LevelItem>();
         foreach (var l in levels)
         {
@@ -110,6 +114,7 @@ public sealed partial class CertificationLevelsController(
                 AssessmentFlow = flow,
                 SurveillanceMode = LevelFlows.SurveillanceModeOf(levelFlow?.SurveillanceMode),
                 NcRounds = LevelNcRules.RoundsOf(nc?.NcRounds), NcDays = LevelNcRules.DaysOf(nc?.NcDays, flow),
+                ManDays = manDays.GetValueOrDefault(l.Code)?.ManDays, SurveillanceManDays = manDays.GetValueOrDefault(l.Code)?.SurveillanceManDays,
             });
         }
         return new LevelsResponse(items, CertificateNumbers.Tokens, stored);
@@ -230,12 +235,17 @@ public sealed partial class CertificationLevelsController(
         int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
         int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null,
         bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null,
-        string? AssessmentFlow = null, string? SurveillanceMode = null, int? NcRounds = null, int? NcDays = null);
+        string? AssessmentFlow = null, string? SurveillanceMode = null, int? NcRounds = null, int? NcDays = null,
+        int? ManDays = null, int? SurveillanceManDays = null);
 
     /// <summary>The request with the old AssessmentMode set from the chosen flow (2026-11-14), and why the flow cannot be saved.</summary>
     private static (LevelRequest Request, string? Problem) WithFlow(LevelRequest req, string code) =>
         (req.AssessmentFlow is { } flow && LevelFlows.Flows.Contains(flow) ? req with { AssessmentMode = LevelFlows.AssessmentModeOf(flow) } : req,
-         LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code) ?? LevelNcRules.Problem(req.NcRounds, req.NcDays));
+         LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code) ?? LevelNcRules.Problem(req.NcRounds, req.NcDays) ??
+         LevelManDays.Problem(NotSet(req.ManDays), NotSet(req.SurveillanceManDays)));
+
+    /// <summary>0 = not set (the page sends 0 to clear a value; null = left out).</summary>
+    private static int? NotSet(int? days) => days is 0 ? null : days;
 
     /// <summary>Saves the chosen flow, surveillance mode and NC rounds / days after the level's row; the message's tail when they could not.</summary>
     private async Task<string> SaveFlowAsync(string code, LevelRequest req, CancellationToken ct)
@@ -246,6 +256,15 @@ public sealed partial class CertificationLevelsController(
         // 2026-11-16: the NC rounds and days (a value left out takes the default of the flow).
         if (req.NcRounds is not null || req.NcDays is not null)
             note += await LevelNcRules.SaveAsync(db, code, LevelNcRules.RoundsOf(req.NcRounds), LevelNcRules.DaysOf(req.NcDays, flow), log, ct) ? "" : LevelNcRules.NotSaved;
+        // 2026-11-18: the man-days (assessment, surveillance) when the page sends them (0 clears one).
+        if (req.ManDays is not null || req.SurveillanceManDays is not null)
+        {
+            // A value left out keeps the stored one.
+            var stored = req.ManDays is null || req.SurveillanceManDays is null ? (await LevelManDays.StoredAsync(db, log, ct)).GetValueOrDefault(code) : null;
+            var manDays = req.ManDays is null ? stored?.ManDays : NotSet(req.ManDays);
+            var survManDays = req.SurveillanceManDays is null ? stored?.SurveillanceManDays : NotSet(req.SurveillanceManDays);
+            note += await LevelManDays.SaveAsync(db, code, manDays, survManDays, log, ct) ? "" : LevelManDays.NotSaved;
+        }
         return note;
     }
 

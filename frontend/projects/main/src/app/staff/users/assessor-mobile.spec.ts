@@ -292,6 +292,8 @@ describe('Registered mobile of a surveillance assessor', () => {
     expect(mobile()).toBeUndefined();
     expect(el.querySelector('zed-phone-chip')).toBeNull();
     http.expectNone(PHONES);
+    // 2026-11-18: an agency's surveillance page also loads its own level-wise totals.
+    http.match('/api/staff/surveillance-users/level-counts').forEach((r) => r.flush([]));
     http.verify();
   });
 });

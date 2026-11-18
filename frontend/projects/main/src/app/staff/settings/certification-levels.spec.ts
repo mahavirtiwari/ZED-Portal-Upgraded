@@ -195,6 +195,14 @@ describe('CertificationLevelsPage', () => {
     // Days the Admin typed stay when the flow changes again.
     typeIn('#lv-nc-rounds', '3');
     typeIn('#lv-nc-days', '45');
+    // 2026-11-18: man-days above 30 are refused; a blank one is sent as 0 (not set).
+    typeIn('#lv-man-days', '31');
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.modal')!.textContent).toContain('Man-days (assessment) must be 1 to 30.');
+    http.expectNone(`${api}/Bronze`);
+    typeIn('#lv-man-days', '2');
     await settle();
     await pick('Onsite only');
     expect(note()).toBe('Raised at the onsite assessment.');
@@ -202,7 +210,7 @@ describe('CertificationLevelsPage', () => {
     (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     const save = http.expectOne(`${api}/Bronze`);
-    expect(save.request.body).toEqual(expect.objectContaining({ assessmentFlow: 'Onsite', ncRounds: 3, ncDays: 45 }));
+    expect(save.request.body).toEqual(expect.objectContaining({ assessmentFlow: 'Onsite', ncRounds: 3, ncDays: 45, manDays: 2, surveillanceManDays: 0 }));
     save.flush({ message: 'Bronze saved.' });
     await settle();
     http.expectOne(api).flush(r);

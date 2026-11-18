@@ -2,12 +2,28 @@
 <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): no subtitle, Refresh with its icon, a chevron on the stage tiles,
      the search icon on the left, fixed-width drop-downs, "Sorted by days left" at the right end, "Assessment dates" and "Due" without
      an arrow, the level as a medal. -->
+<!-- 2026-11-18 (approved monitoring design): sub-sections per stage, a date range that follows the stage, the app's steps and the
+     submission pending (man-days) in progress, TAT delays on quality check, Excel export of the filtered list. -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
+  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />Export</button>
   <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />Refresh</button>
 </zed-page-head>
 <zed-list-counts class="mo-stages" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" label="Stages" (pick)="pickStage($event.key)" />
 
-<div class="zed-card mo-filters">
+<div class="mo-sec">
+<div class="mo-tabs" role="tablist" aria-label="Sub-sections">
+  @for (t of tracks(); track t.key) {
+    <button type="button" role="tab" class="mo-tab" [class.on]="t.key === track()" [attr.aria-selected]="t.key === track()" [attr.data-track]="t.key"
+            (click)="pickTrack(t.key)">{{ t.label }}&ngsp;<span class="cf-n">{{ t.count }}</span></button>
+  }
+</div>
+@if (showSteps()) {
+  <zed-chip-filter class="mo-chips" label="Progress" [chips]="stepFilter()" [value]="step()" (valueChange)="step.set($event)" />
+}
+@if (showDelays()) {
+  <zed-chip-filter class="mo-chips" label="Delay" [chips]="delayFilter()" [value]="delay()" (valueChange)="delay.set($event)" />
+}
+<div class="mo-filters">
   <div class="mo-q">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
     <input type="search" id="monitoringSearch" class="form-control" maxlength="50" aria-label="Search ZED ID, unit, agency or assessor"
@@ -25,7 +41,7 @@
     <option value="">{{ consultancy ? 'All COs' : 'All agencies' }}</option>
     @for (a of agencies(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }
   </select>
-  @if (!consultancy) {
+  @if (!consultancy && track() === 'site') {
     <select id="monitoringMode" class="form-select mo-md" aria-label="Mode of assessment" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
       <option value="">All modes</option>
       @for (m of modes(); track m[0]) { <option [value]="m[0]">{{ m[1] }}</option> }
@@ -37,7 +53,15 @@
       <button type="button" class="btn btn-outline-primary" aria-label="Filter by NC closure date" (click)="load()">Search</button>
     </div>
   }
-  @if (dueSort()) { <span class="mo-sort">Sorted by days left</span> }
+  <div class="mo-range">
+    <label for="monitoringFrom">{{ dateLabel() }}</label>
+    <input type="date" id="monitoringFrom" class="form-control" [attr.aria-label]="dateLabel() + ' (from)'" [ngModel]="from()" (ngModelChange)="setRange('from', $event)" />
+    <label for="monitoringTo">to</label>
+    <input type="date" id="monitoringTo" class="form-control" [attr.aria-label]="dateLabel() + ' (to)'" [min]="from()" [ngModel]="to()" (ngModelChange)="setRange('to', $event)" />
+  </div>
+  @if (filtered()) { <button type="button" class="mo-clear" (click)="clearAll()">Clear All</button> }
+  @if (dueSort()) { <span class="mo-sort">{{ showDelays() ? 'Sorted by most delayed' : 'Sorted by days left' }}</span> }
+</div>
 </div>
 
 @if (error()) {
@@ -63,12 +87,13 @@
           <th>Unit</th>
           <th>{{ surveillance ? 'Level / Surveillance No' : 'Level' }}</th>
           <th>Agency</th>
-          <th>Mode</th>
+          @if (track() !== 'desktop') { <th>Mode</th> }
           <th>Assessor</th>
           @if (main) { <th class="text-center">Duplicates</th> }
           <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} dates</th>
+          @if (showSteps()) { <th>Progress</th> }
           <th [attr.aria-sort]="dueSort() === 1 ? 'ascending' : dueSort() === -1 ? 'descending' : 'none'">
-            <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? 'Sorted by days left' : dueSort() === -1 ? 'Most days left first' : 'Sort by days left'" (click)="toggleDueSort()">Due</button>
+            <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? 'Sorted by days left' : dueSort() === -1 ? 'Most days left first' : 'Sort by days left'" (click)="toggleDueSort()">{{ showDelays() ? 'Delay' : 'Due' }}</button>
           </th>
           <th class="text-end">Actions</th>
         </tr>
@@ -77,7 +102,7 @@
     <tbody>
       @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
         <!-- An open NC (NcStatus 2, status 4 or 14) marked, as the old pages coloured it. -->
-        <tr [class.mo-nc-open]="highlighted(s)">
+        <tr [class.mo-nc-open]="highlighted(s)" [class]="delayClass(s)">
           <td class="unit-cell">
             <b>{{ s['PUnitName'] }}</b>
             <span class="dash-text-clr mo-id">{{ s['ZedId'] }}</span>
@@ -92,7 +117,10 @@
             <small class="sub">{{ s['CertificationBodyUserId'] }}</small>
           </td>
           @if (consultancy) {
-            <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span></td>
+            <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span>
+              @if (showSteps() && s['Step']) { <small class="sub">{{ stepNames['' + s['Step']] }}</small> }
+              @if (s['TatLabel']) { <small class="sub" [title]="t(s, 'TatRule')">{{ s['TatLabel'] }}</small> }
+            </td>
             <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
@@ -104,7 +132,7 @@
               }
             </td>
           } @else {
-            <td><span class="chip is-info">{{ mode(s) }}</span></td>
+            @if (track() !== 'desktop') { <td><span class="chip is-info">{{ mode(s) }}</span></td> }
             <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
@@ -119,13 +147,23 @@
                 <div><b>{{ s['NcFinalClosureDt'] }}</b></div>
               }
             </td>
-            <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span> }</td>
+            @if (showSteps()) {
+              <td>
+                <div class="mo-steps">
+                  @for (st of stepOrder; track st; let last = $last) {
+                    <span [class]="stepState(s['Step'], st)">{{ stepNames[st] }}</span>@if (!last) { <i aria-hidden="true"></i> }
+                  }
+                </div>
+                @if (s['SubmissionPending']) { <span class="mo-pend">Submission pending through mobile app</span> }
+              </td>
+            }
+            <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span>@if (s['TatRule']) { <small class="mo-rule">{{ s['TatRule'] }}</small> } }</td>
           }
           <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" /></td>
         </tr>
       } @empty {
         <tr>
-          <td [attr.colspan]="consultancy ? 7 : main ? 9 : 8" style="padding: 0px">
+          <td [attr.colspan]="12" style="padding: 0px">
             <div class="no-data mo-empty">{{ loading() ? 'Loading…' : status() === null ? 'Choose a stage above to list its units.' : 'No unit at this stage.' }}</div>
           </td>
         </tr>

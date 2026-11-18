@@ -4,7 +4,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
-import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
+import { MonitoringApi, MonitoringCounts, Row, StageCount } from './monitoring.api';
+import { ChipFilter, FilterChip } from '../chip-filter';
+import { TableExport } from '../table-export';
+import {
+  DATE_LABELS, DELAY_CHIPS, PENDING, STEP_ORDER, delayClass, stepChips, stepLabels, stepState, tatDaysLeft, trackOf, trackTabs,
+} from './monitoring-tat';
 import { PagedView, PagerComponent } from '../pager';
 import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
@@ -37,10 +42,17 @@ const DEFAULT_STATUS = 3;
  * <p>2026-11-17 (approved staff-10): the stages are clickable tiles with their counts; the level is optional (the API then
  * lists every level); agency and mode filters on the loaded list; a Due column (days left or overdue to the NC final closure
  * date, or to the scheduled assessment date of a unit not started), sortable; the row's actions in its menu.</p>
+ * <p>2026-11-18 (approved monitoring design, the user's decisions "TAT and monitoring"): the stage cards add "Desktop N · Site N"
+ * (Consultancy: per milestone) and the delayed cases; under the stage two sub-tabs Desktop assessment / Site assessment (Consultancy:
+ * all milestones or one) with their counts; a date range whose meaning follows the stage (allotted / assessment / submitted /
+ * NC raised / rejected on, filtered by the API); Clear All. In progress → Site assessment: the app's steps as chips (parameters
+ * distributed, opening meeting conducted, submitted through the app) and "Submission pending through mobile app" (the level's
+ * man-days), the row showing its steps. Quality check: delay chips from the Admin's TAT (Administration → TAT), rows highlighted
+ * by delay and listed most delayed first; the Due column shows the TAT wherever a rule applies. Excel export of the filtered list.</p>
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon, ChipFilter],
   host: { class: 'list-v2 d-block' },
   templateUrl: './monitoring.html',
   styles: `
@@ -70,12 +82,38 @@ const DEFAULT_STATUS = 3;
     .mo-pop .modal-content { border: 0; border-radius: 14px; }
     .mo-pop .modal-title { font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .mo-empty { padding: 28px 12px; text-align: center; color: #5f6f70; }
+    .mo-sec { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; padding: 4px 16px 14px; margin-bottom: 14px; }
+    .mo-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #dde7e8; margin-bottom: 12px; }
+    .mo-tab { border: 0; background: none; padding: 12px 18px 10px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; }
+    .mo-tab.on { color: var(--zt-ink, #173f44); border-bottom-color: var(--zt-dark, #24666b); font-weight: 700; }
+    .mo-tab .cf-n { display: inline-block; min-width: 22px; margin-left: 8px; padding: 1px 7px; border-radius: 10px; background: #ecf0f0; font-size: 11px; color: #3d5559; }
+    .mo-tab.on .cf-n { background: var(--zt-dark, #24666b); color: #fff; }
+    .mo-chips { margin-bottom: 10px; }
+    .mo-sec .mo-filters { padding: 0; margin: 0; }
+    .mo-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 0 1 auto !important; }
+    .mo-range label { font-size: 12.5px; font-weight: 600; color: #6f8487; margin: 0; }
+    .mo-range input { width: 150px; }
+    .mo-clear { border: 0; background: none; font-weight: 700; font-size: 13px; color: var(--zt-dark, #24666b); margin-left: auto; }
+    .mo-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: #8a9899; }
+    .mo-steps > span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c3cdce; margin-right: 5px; }
+    .mo-steps .done { color: #1e7a3c; }
+    .mo-steps .done::before { background: #2f9e58; }
+    .mo-steps .current { color: #9a5f06; }
+    .mo-steps .current::before { background: #e0912b; }
+    .mo-steps i { width: 14px; height: 1px; background: #c3cdce; }
+    .mo-pend { display: inline-block; margin-top: 4px; font-size: 11.5px; font-weight: 700; color: #c8473c; }
+    .mo-rule { display: block; font-size: 11px; color: #6f8487; margin-top: 2px; }
+    tr.mo-d1 > td:first-child { box-shadow: inset 3px 0 0 #e0b02b; }
+    tr.mo-d2 > td:first-child { box-shadow: inset 3px 0 0 #e0782b; }
+    tr.mo-d3 > td:first-child, tr.mo-d4 > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
+    tr.mo-d4 > td { background: #fdf3f1; }
   `,
 })
 export class MonitoringPage {
   private readonly api = inject(MonitoringApi);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly exporter = inject(TableExport);
   private readonly system = inject(ASSESSMENT_SYSTEM);
   protected readonly main = this.system === 'main';
   protected readonly consultancy = this.system === 'consultancy';
@@ -116,22 +154,83 @@ export class MonitoringPage {
   /** Due column: soonest first (1), latest first (-1), or the list's order (0). */
   protected readonly dueSort = signal<1 | -1 | 0>(1);
   protected readonly counts = signal<MonitoringCounts>(NO_COUNTS);
-  /** The stage tiles (clickable: they choose the stage). */
+  /** 2026-11-18: the stage cards' counts per sub-section (null: the procedure's counts only). */
+  protected readonly stages = signal<StageCount[] | null>(null);
+  /** The sub-section chosen ('' = the first with cases), the date range, the step and delay chips. */
+  protected readonly trackPick = signal('');
+  protected readonly from = signal('');
+  protected readonly to = signal('');
+  protected readonly step = signal('');
+  protected readonly delay = signal('');
+  protected readonly trackTabs = trackTabs(this.system);
+  protected readonly stepNames = stepLabels(this.system);
+  protected readonly stepOrder = STEP_ORDER;
+  protected readonly stepState = stepState;
+  protected readonly delayClass = delayClass;
+  protected readonly dateLabel = computed(() => DATE_LABELS[this.status() ?? 0] ?? 'Between');
+  /** The stage tiles (clickable: they choose the stage), with their sub-sections and delayed cases. */
   protected readonly stageCounts = computed<ListCount[]>(() => {
     const c = this.counts();
+    const stages = this.stages();
     const tone: Partial<Record<keyof MonitoringCounts, ListCount['tone']>> = { Nc: 'warn', Rj: 'bad' };
-    return this.tabs.map((t) => ({ key: String(t.status), label: t.label, value: c[t.count] ?? 0, tone: tone[t.count] }));
+    return this.tabs.map((t) => {
+      const s = stages?.find((x) => x.status === t.status);
+      let sub: string | null = null;
+      if (s) {
+        sub = this.consultancy
+          ? ['m1', 'm2', 'm3'].map((m, i) => `M${i + 1} ${s.tracks[m] ?? 0}`).join(' · ')
+          : `Desktop ${s.tracks['desktop'] ?? 0} · Site ${s.tracks['site'] ?? 0}`;
+        if (t.status === 5 && s.delayed) sub += ` · ${s.delayed} delayed`;
+      }
+      return { key: String(t.status), label: t.label, value: s ? s.total : (c[t.count] ?? 0), tone: tone[t.count], sub };
+    });
   });
   /** Agencies and modes of the loaded list, for the filters. */
   protected readonly agencies = computed(() => distinct(this.units().map((u) => [text(u, 'CertificationBodyUserId'), text(u, 'AgencyName') || text(u, 'CertificationBodyUserId')])));
   protected readonly modes = computed(() => distinct(this.units().map((u) => [text(u, 'ModeOfAssessment'), text(u, 'ModeOfAssessment')])));
-  protected readonly shown = computed(() => {
+  /** The list searched and limited to the agency (before the sub-section). */
+  private readonly base = computed(() => {
     const q = this.search().trim().toLowerCase();
     const agency = this.agency();
-    const mode = this.modeFilter();
-    const list = this.units().filter((u) =>
-      (!agency || text(u, 'CertificationBodyUserId') === agency) && (!mode || text(u, 'ModeOfAssessment') === mode) &&
+    return this.units().filter((u) =>
+      (!agency || text(u, 'CertificationBodyUserId') === agency) &&
       (!q || Object.values(u).some((v) => v !== null && v !== undefined && String(v).toLowerCase().includes(q))));
+  });
+  /** The sub-tabs with their counts. */
+  protected readonly tracks = computed(() => {
+    const rows = this.base();
+    return this.trackTabs.map((t) => ({ ...t, count: t.key === 'all' ? rows.length : rows.filter((r) => trackOf(r, this.system) === t.key).length }));
+  });
+  /** The chosen sub-section, else the first with cases (Consultancy: all milestones). */
+  protected readonly track = computed(() => {
+    const tabs = this.tracks();
+    const picked = this.trackPick();
+    if (picked && tabs.some((t) => t.key === picked)) return picked;
+    return this.consultancy ? 'all' : (tabs.find((t) => t.count > 0) ?? tabs[0]).key;
+  });
+  private readonly trackRows = computed(() => {
+    const track = this.track();
+    const mode = track === 'site' ? this.modeFilter() : '';
+    return this.base().filter((r) => (track === 'all' || trackOf(r, this.system) === track) && (!mode || text(r, 'ModeOfAssessment') === mode));
+  });
+  /** In progress → Site assessment (Consultancy: any milestone): the app's steps and the submission pending (man-days). */
+  protected readonly showSteps = computed(() => this.status() === 3 && (this.consultancy || this.track() === 'site'));
+  protected readonly stepFilter = computed<FilterChip[]>(() => {
+    const rows = this.trackRows();
+    return [{ key: '', label: 'All', count: rows.length },
+      ...stepChips(this.system).map((c) => ({ ...c, count: rows.filter((r) => this.inStep(r, c.key)).length }))];
+  });
+  /** Quality check: the delay chips (TAT). */
+  protected readonly showDelays = computed(() => this.status() === 5);
+  protected readonly delayFilter = computed<FilterChip[]>(() => {
+    const rows = this.trackRows();
+    return [{ key: '', label: 'All', count: rows.length }, ...DELAY_CHIPS.map((c) => ({ ...c, count: rows.filter((r) => r['TatBucket'] === c.key).length }))];
+  });
+  protected readonly filtered = computed(() => !!(this.search() || this.certification() || this.agency() || this.modeFilter() || this.from() || this.to() || this.step() || this.delay()));
+  protected readonly shown = computed(() => {
+    const step = this.showSteps() ? this.step() : '';
+    const delay = this.showDelays() ? this.delay() : '';
+    const list = this.trackRows().filter((r) => (!step || this.inStep(r, step)) && (!delay || r['TatBucket'] === delay));
     const dir = this.dueSort();
     if (!dir) return list;
     return list.sort((a, b) => {
@@ -164,7 +263,56 @@ export class MonitoringPage {
   protected setStatus(value: number): void {
     this.status.set(value);
     this.ncClosingDate.set('');
+    // The sub-section, chips and date range belong to the stage (the range's meaning follows it).
+    this.trackPick.set('');
+    this.step.set('');
+    this.delay.set('');
+    this.from.set('');
+    this.to.set('');
     void this.load();
+  }
+
+  protected pickTrack(key: string): void {
+    this.trackPick.set(key);
+    this.step.set('');
+    this.delay.set('');
+  }
+
+  protected setRange(which: 'from' | 'to', value: string): void {
+    (which === 'from' ? this.from : this.to).set(value ?? '');
+    const f = this.from(), t = this.to();
+    if (!f || !t || f <= t) void this.load();
+  }
+
+  protected clearAll(): void {
+    const reload = !!(this.certification() || this.from() || this.to());
+    this.search.set('');
+    this.certification.set('');
+    this.agency.set('');
+    this.modeFilter.set('');
+    this.from.set('');
+    this.to.set('');
+    this.step.set('');
+    this.delay.set('');
+    if (reload) void this.load();
+  }
+
+  /** A row in a step chip (the pending chip: the API's SubmissionPending). */
+  protected inStep(r: Row, key: string): boolean {
+    return key === PENDING ? r['SubmissionPending'] === true : (r['Step'] ?? (this.consultancy ? 'distributed' : null)) === key;
+  }
+
+  protected exportList(): void {
+    const columns = ['ZED ID', 'Unit', 'Level', this.consultancy ? 'CO' : 'Agency', this.consultancy ? 'CO ID' : 'Agency ID', 'Sub-section', 'Mode',
+      this.consultancy ? 'Consultants' : 'Assessors', 'Date', 'Due / Delay', 'TAT rule', 'Contact', 'Contact mobile', 'Contact e-mail'];
+    const tabName = (r: Row) => this.trackTabs.find((t) => t.key === trackOf(r, this.system))?.label ?? '';
+    const rows = this.shown().map((r) => [
+      text(r, 'ZedId'), text(r, 'PUnitName'), this.levelName(text(r, 'Certification')), text(r, 'AgencyName'), text(r, 'CertificationBodyUserId'), tabName(r),
+      text(r, 'ModeOfAssessment'), this.assessors(r).map((p) => [p.name, p.id].filter((x) => x).join(' ')).join(', '), shortDate(r['StageDate']) || text(r, 'SaAssessmentDate'),
+      this.due(r)?.label ?? '', text(r, 'TatRule'), text(r, 'UnitSpocName'), text(r, 'UnitSpocMobileNo'), text(r, 'UnitSpocEmailId'),
+    ]);
+    const stage = this.tabs.find((t) => t.status === this.status())?.label ?? '';
+    void this.exporter.xlsx(`${this.title} ${stage}`.trim(), [{ name: stage || this.title, columns, rows }]).catch((err) => this.toast.error('Export', apiErrorMessage(err)));
   }
 
   protected pickStage(key: string | undefined): void {
@@ -186,11 +334,14 @@ export class MonitoringPage {
           certification: this.certification(),
           status: this.status(),
           ncClosingDate: !this.consultancy && this.status() === 4 ? this.ncClosingDate() || null : null,
+          from: this.from() || null,
+          to: this.to() || null,
         }),
       );
       if (request !== this.request) return;
       this.units.set(data.units ?? []);
       this.counts.set(data.counts ?? NO_COUNTS);
+      this.stages.set(data.stages ?? null);
       this.canManage.set(!!data.canManage);
       if (this.agency() && !this.agencies().some((a) => a[0] === this.agency())) this.agency.set('');
       if (this.modeFilter() && !this.modes().some((m) => m[0] === this.modeFilter())) this.modeFilter.set('');
@@ -234,6 +385,9 @@ export class MonitoringPage {
    * master admin only, as the API gives it), or the scheduled assessment date of a unit not started. Null otherwise.
    */
   protected dueDays(r: Row): number | null {
+    // 2026-11-18: the TAT (Administration → TAT) wherever a rule applies.
+    const tat = tatDaysLeft(r);
+    if (tat !== null) return tat;
     const status = this.status();
     if ((status === 4 || (this.surveillance && status === 7)) && r['NcFinalClosureDt']) return daysUntil(r['NcFinalClosureDt']);
     if (status === 2 && !this.consultancy && r['SaAssessmentDate']) return daysUntil(r['SaAssessmentDate']);
@@ -241,6 +395,10 @@ export class MonitoringPage {
   }
 
   protected due(r: Row): { label: string; cls: string } | null {
+    if (typeof r['TatLabel'] === 'string' && r['TatLabel']) {
+      const b = r['TatBucket'];
+      return { label: r['TatLabel'], cls: b === 'on-time' ? 'is-good' : b === 'lt1' || b === '1-5' ? 'is-warn' : 'is-bad' };
+    }
     const d = this.dueDays(r);
     if (d === null) return null;
     if (d < 0) return { label: `Overdue ${-d} ${d === -1 ? 'day' : 'days'}`, cls: 'is-bad' };

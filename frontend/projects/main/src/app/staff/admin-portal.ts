@@ -42,6 +42,8 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   // 2026-11-17 (approved): each portal keeps its own submission checklists and observation reasons.
   { prefix: '/api/staff/settings/submission-checklists', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/observation-reasons', portals: ALL_PORTALS },
+  // 2026-11-18: each portal keeps its own TAT (Assessment, Handholding, Surveillance).
+  { prefix: '/api/staff/settings/tat', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
   // Professional verification (2026-11-13): each portal keeps its own (the agencies' Add Assessor / Consultant form).
   { prefix: '/api/staff/settings/professional-verification', portals: ALL_PORTALS },

@@ -288,4 +288,34 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal("remote", LevelNcRules.StageOf("DesktopRemote"));
         Assert.Equal("onsite", LevelNcRules.StageOf("Onsite"));
     }
+    /// <summary>2026-11-18: the Admin sets each level's man-days for the site assessment and the surveillance visit (migration 0101).</summary>
+    [Fact]
+    public async Task A_level_saves_its_man_days_and_the_list_shows_them()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Dictionary<string, object?> Body(int? manDays, int? surveillanceManDays) => new()
+        {
+            ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
+            ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["manDays"] = manDays, ["surveillanceManDays"] = surveillanceManDays,
+        };
+        Assert.Equal("Man-days (assessment) must be 1 to 30.", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(31, null))).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == LevelManDays.SaveSql);
+
+        // Left out: nothing written; 0 clears a value; one left out keeps the stored one.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body(null, null))).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == LevelManDays.SaveSql);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body(2, 0))).StatusCode);
+        var saved = Assert.Single(_host.Sql.Calls, c => c.Name == LevelManDays.SaveSql).Args;
+        Assert.Equal(("ZEDX", "2", null), (FakeSql.Arg(saved, "Code"), FakeSql.Arg(saved, "ManDays"), FakeSql.Arg(saved, "SurveillanceManDays")));
+
+        _host.Sql.Queries[LevelManDays.ReadSql] = _ => [new LevelManDays.Row("ZEDX", 2, 4), new LevelManDays.Row("Gold", 3, null)];
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body(5, null))).StatusCode);
+        saved = _host.Sql.Calls.Last(c => c.Name == LevelManDays.SaveSql).Args;
+        Assert.Equal(("5", "4"), (FakeSql.Arg(saved, "ManDays"), FakeSql.Arg(saved, "SurveillanceManDays")));
+
+        var gold = (await admin.GetFromJsonAsync<JsonElement>(Url)).GetProperty("levels").EnumerateArray()
+            .Single(l => l.GetProperty("level").GetProperty("code").GetString() == "Gold");
+        Assert.Equal(3, gold.GetProperty("manDays").GetInt32());
+        Assert.Equal(JsonValueKind.Null, gold.GetProperty("surveillanceManDays").ValueKind);
+    }
 }

@@ -81,6 +81,8 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./observation-reasons').then((m) => m.ObservationReasonsPage),
   },
+  // 2026-11-18: turnaround times per status and between statuses (per portal, through the portal switch).
+  { path: 'tat', title: 'ZED | TAT', canActivate: [admin], loadComponent: () => import('./tat').then((m) => m.TatPage) },
   // New in V4: the site tour sections of the site assessor app and the photos each needs.
   {
     path: 'site-tour-sections',
