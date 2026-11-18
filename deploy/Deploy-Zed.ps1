@@ -13,8 +13,11 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0097 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0099 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
+  2026-11-18 release: migrations 0095-0099 (zero-amount payment record, submission checklists, MSME notifications seen,
+  expenditure monitoring: rates / purchase orders / invoices, one phone per staff app user). The mobile app hosts changed
+  (one-phone rule): keep -IncludeMobile (default). Zed.Jobs did not change.
   2026-11-15 release: migrations 0077-0094 (invoice setup, level flows, certified-by-record rule, App Forms validation,
   reports / surveillance certificate / partner API by record, PENDING phase fix, AP state handholding fee by level, NC rounds and days by level, sub-user states and agencies, quality observations, handholding ZED-X dashboard, sector disable, incentive ZED-X and activity, parameter disable, App Forms repeating entries).
   They go together: never 0078-0083 without 0084. Zed.Jobs did not change (no -IncludeJobs needed).
