@@ -184,7 +184,11 @@ public sealed partial class SurveillanceController(
         };
 
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
-        await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        // 2026-11-18: one phone per assessor (OnePhoneRule; SURV is enforced by default). The installed app sends no
+        // deviceInfo, so its sign-in is not refused unless Mobile:RefuseMissingDevice is set.
+        if (await OnePhoneRule.SignInRefusalAsync(HttpContext, devices, options.Value, App, userKey, request.deviceInfo, log, ct) is { } phone)
+            return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = phone });
+        await OnePhoneRule.RegisterAsync(HttpContext, devices, options.Value, App, userKey, request.deviceInfo, request.version, ct);
         // The token binds the assessor and the unit the login was checked for (set 4).
         response.appToken = await tokens.IssueAsync(App, userKey, msme.Text("ZedId") is { Length: > 0 } unitId ? unitId : zedId, ct);
         log.LogInformation("Surveillance app login for {UserId} on {ZedId}", userKey, zedId);
@@ -211,7 +215,7 @@ public sealed partial class SurveillanceController(
     /// level, but usually not the assessor, so the assessor is taken from the allotment: the unit's
     /// DesktopAssessorId must be set, an assessor named in the request must be that one, the app token must be that
     /// assessor's for this unit (Mobile:AppTokens), and the calling device must have signed in as that assessor
-    /// (Mobile:DeviceBinding as for the other apps: Monitor records, Enforce refuses). <paramref name="zedId"/> is the
+    /// (the app's mode, DevicePolicy: Monitor records, Enforce refuses any phone but the registered one). <paramref name="zedId"/> is the
     /// unit the action acts on. Returns the unit row, or the refusal to answer with.
     /// </summary>
     private async Task<(SurveillanceUnit? Unit, IActionResult? Refused)> UnitAsync(string action, string? zedId, string? certification,
@@ -254,9 +258,9 @@ public sealed partial class SurveillanceController(
     /// <summary>The device check of <see cref="DeviceBoundAttribute"/>, for the assessor found in the allotment.</summary>
     private async Task<IActionResult?> DeviceRefusalAsync(string assessorId, string? deviceId, CancellationToken ct)
     {
-        var mode = options.Value.DeviceBinding;
+        var mode = DevicePolicy.ModeFor(options.Value, App);
         if (mode == DeviceBindingMode.Off) return null;
-        var check = await devices.CheckAsync(App, assessorId, deviceId, ct);
+        var check = await OnePhoneRule.CallCheckAsync(devices, mode, App, assessorId, deviceId, ct);
         if (check is DeviceCheck.Known or DeviceCheck.NoBinding) return null;
         var refuse = mode == DeviceBindingMode.Enforce && (check == DeviceCheck.Unknown || options.Value.RefuseMissingDevice);
         await devices.RecordAsync(App, assessorId, deviceId, HttpContext.Request.Path, ClientIp, check, refuse, ct);

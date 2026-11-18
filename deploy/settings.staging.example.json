@@ -26,6 +26,7 @@
     "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in",
     "Mobile__Culture": "en-US",
+    "_DeviceBinding_comment": "One phone per staff user (2026-11-18, migration 0099): leave Monitor. Monitor = each app at its default: the site assessor app, the consultant app (SA) and the Bronze surveillance app (SURV) Enforce (a sign-in from another phone is refused until the Admin / Master Admin releases it), the MSME and RA apps record only. Off = every app off; Enforce = every app enforced (MSME too). Emergency switch of one app, in the application's own section: Mobile__DeviceBindingApps__SA (or SURV) = Monitor.",
     "Mobile__DeviceBinding": "Monitor",
     "Mobile__RefuseMissingDevice": "false",
     "_AppTokens_comment": "App sign-in token: Monitor for every app. Per app (MSME, SA, RA, SURV) in the application's own section; the consultant app's SA also on the Consultancy portal. MSME and RA stay on Monitor (the store apps cannot send the token).",

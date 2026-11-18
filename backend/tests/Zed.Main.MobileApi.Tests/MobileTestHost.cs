@@ -90,15 +90,47 @@ public sealed class FakeEmail : IEmailSender
     public Task SendAsync(EmailMessage message, CancellationToken ct = default) { Sent.Enqueue(message); return Task.CompletedTask; }
 }
 
+/// <summary>A user's recorded phones in an app, in the order they were remembered (the last one is the registered phone).</summary>
+public sealed class KnownPhones : IEnumerable<string>
+{
+    private readonly List<string> _ids = [];
+
+    public void Add(string id)
+    {
+        lock (_ids)
+        {
+            _ids.Remove(id);
+            _ids.Add(id);
+        }
+    }
+
+    public string? Last()
+    {
+        lock (_ids) return _ids.Count == 0 ? null : _ids[^1];
+    }
+
+    public IEnumerator<string> GetEnumerator()
+    {
+        lock (_ids) return _ids.ToList().GetEnumerator();
+    }
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
 public sealed class FakeDevices : IDeviceBindings
 {
-    public ConcurrentDictionary<(string App, string User), ConcurrentBag<string>> Known { get; } = new();
+    public ConcurrentDictionary<(string App, string User), KnownPhones> Known { get; } = new();
     public ConcurrentQueue<(string App, string User, string? Device, string Path, DeviceCheck Outcome, bool Refused)> Events { get; } = new();
+    /// <summary>What each sign-in recorded about the phone (make, app version, IP).</summary>
+    public ConcurrentQueue<(string App, string User, DeviceInfo? Device, string? Ip, string? AppVersion)> Remembered { get; } = new();
 
-    public Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, CancellationToken ct = default)
+    public Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, string? appVersion = null, CancellationToken ct = default)
     {
         if (!string.IsNullOrWhiteSpace(device?.deviceId))
+        {
             Known.GetOrAdd((app, userKey.ToUpperInvariant()), _ => []).Add(device.deviceId);
+            Remembered.Enqueue((app, userKey, device, ip, appVersion));
+        }
         return Task.CompletedTask;
     }
 
@@ -126,7 +158,7 @@ public sealed class FakeDevices : IDeviceBindings
 
     /// <summary>The phone registered last (the last one remembered).</summary>
     public Task<RegisteredDevice?> RegisteredAsync(string app, string userKey, CancellationToken ct = default) =>
-        Task.FromResult(Known.TryGetValue((app, userKey.ToUpperInvariant()), out var ids) && ids.TryPeek(out var last)
+        Task.FromResult(Known.TryGetValue((app, userKey.ToUpperInvariant()), out var ids) && ids.Last() is { } last
             ? new RegisteredDevice(last, "Test Phone", "14", null, null, null, null) : null);
 
     public Task KeepOnlyAsync(string app, string userKey, string deviceId, CancellationToken ct = default)

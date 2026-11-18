@@ -28,7 +28,7 @@ namespace Zed.Main.MobileApi.Controllers.Consultancy;
 /// verification): a technology upgradation verifier (DFO) keeps signing in with the unit's ZED ID. The reads are new calls
 /// that only the new app makes, so they need a valid app token of the consultant named in them whatever
 /// <c>Mobile:AppTokens</c> says, and the Users row must still be an active consultant. Data comes from the legacy tables
-/// only (no new table or column). Unlike the site assessor app, there is no one-phone rule.
+/// only (no new table or column). Like the site assessor app, one phone per consultant (2026-11-18, <see cref="OnePhoneRule"/>).
 /// </para>
 /// </summary>
 public sealed partial class ConsultancySAController
@@ -70,6 +70,10 @@ public sealed partial class ConsultancySAController
             return LegacyJson(new ConsultantSignInResponse { status = "0", errorMessage = DfoSignIn });
         }
 
+        // 2026-11-18: one phone per consultant (OnePhoneRule), before anything is read for the dashboard.
+        if (await OnePhoneRule.SignInRefusalAsync(HttpContext, devices, mobile.Value, App, userKey, request.deviceInfo, log, ct) is { } phone)
+            return LegacyJson(new ConsultantSignInResponse { status = "0", errorMessage = phone });
+
         var cases = await CaseListAsync(userKey, ct);
         var response = new ConsultantSignInResponse
         {
@@ -81,7 +85,7 @@ public sealed partial class ConsultancySAController
                 .Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, 0)).ToList(),
         };
 
-        await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        await OnePhoneRule.RegisterAsync(HttpContext, devices, mobile.Value, App, userKey, request.deviceInfo, request.version, ct);
         // No unit: every SA call checks the allotment of the unit it names against the token's consultant.
         response.appToken = await tokens.IssueAsync(App, userKey, null, ct);
         log.LogInformation("Consultant app sign-in for {UserId} ({Count} cases)", userKey, cases.Count);

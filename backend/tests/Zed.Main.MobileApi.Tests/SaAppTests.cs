@@ -368,6 +368,9 @@ public sealed class SaAppTests : IDisposable
     public async Task An_assessor_signs_in_on_one_phone_until_the_admin_releases_it()
     {
         Assert.Equal("1", (await SignIn()).GetProperty("status").GetString());
+        // 2026-11-18: the phone is registered with its app version and the sign-in's IP.
+        var remembered = _t.Devices.Remembered.Last();
+        Assert.Equal(("SA", Lead, "sa-phone", "1.0"), (remembered.App, remembered.User, remembered.Device!.deviceId, remembered.AppVersion));
         // Another phone: both sign-ins refuse it, and the refusal is recorded.
         var other = await _t.Json("/SA/SignIn", new { assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } });
         Assert.Equal("0", other.GetProperty("status").GetString());
@@ -375,6 +378,12 @@ public sealed class SaAppTests : IDisposable
         Assert.False(other.TryGetProperty("appToken", out _));
         var login = await _t.Json("/SA/Login", new { zedId = Zed, assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } });
         Assert.Equal(SAController.OtherPhone("Test Phone"), login.GetProperty("errorMessage").GetString());
+        Assert.Equal("This account is registered on another phone (Test Phone). Ask your Master Admin to release it.", login.GetProperty("errorMessage").GetString());
+        // The refused SA/Login (it names the unit too) is in the sign-in log under the assessor, where the portal's panel reads it.
+        var logged = _t.Fake.Calls.Last(c => c.Name.StartsWith("INSERT INTO dbo.V4LoginEvents", StringComparison.Ordinal));
+        Assert.Equal(Lead, FakeSql.Arg(logged.Args, "UserId"));
+        Assert.Equal("Site assessment app", FakeSql.Arg(logged.Args, "App"));
+        Assert.Equal("Failed", FakeSql.Arg(logged.Args, "Result"));
         Assert.Contains(_t.Devices.Events, e => e.Device == "new-phone" && e.Refused);
         // No device information: refused (it could not be told apart).
         var none = await _t.Json("/SA/SignIn", new { assessorId = Lead, password = Password, version = "1.0" });
@@ -385,6 +394,18 @@ public sealed class SaAppTests : IDisposable
         Assert.Equal("1", (await _t.Json("/SA/SignIn", new { assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } }))
             .GetProperty("status").GetString());
         Assert.Equal("0", (await SignIn()).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task An_emergency_setting_turns_the_rule_off_for_the_app_only()
+    {
+        _t.Settings["Mobile:DeviceBindingApps:SA"] = "Monitor";
+        Assert.Equal("1", (await SignIn()).GetProperty("status").GetString());
+        var other = await _t.Json("/SA/SignIn", new { assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } });
+        Assert.Equal("1", other.GetProperty("status").GetString());
+        // Recorded, not refused; both phones are kept, so the latest is the one kept when the rule is back on.
+        Assert.Contains(_t.Devices.Events, e => e.Device == "new-phone" && !e.Refused);
+        Assert.Equal(["sa-phone", "new-phone"], _t.Devices.Known[(MobileApps.SiteAssessor, Lead)]);
     }
 
     [Fact]

@@ -72,7 +72,7 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
   `database/migrations/0001_mobile_devices.sql`).
 - An action marked `[DeviceBound]` checks that the calling device has logged in as the user named
   in the request.
-- `Mobile:DeviceBinding`:
+- `Mobile:DeviceBinding` (2026-11-18: Monitor now leaves each app at its own mode, the staff apps SA and SURV at **Enforce** with one phone per user; see "One phone per staff user" below):
   - `Monitor` (default): nothing is refused; calls from unknown devices and calls without a
     device id are recorded in `dbo.MobileDeviceEvents` (at most one row per user, device, action
     and outcome every 10 minutes).
@@ -281,7 +281,7 @@ Open before go-live:
 | `Mobile:PathBase` | Virtual folder the old services ran under (the portal links to `/mobileapi/...`, so likely `/mobileapi`) |
 | `Mobile:StorageRoot` | The old services site's folder (holds `Photos/`, `SaPhotos/`, `Videos/`) |
 | `Mobile:Culture` | Regional format for dates sent as text (default `en-US`) |
-| `Mobile:DeviceBinding`, `Mobile:RefuseMissingDevice` | See above |
+| `Mobile:DeviceBinding`, `Mobile:DeviceBindingApps:<app>`, `Mobile:SaOnePhone`, `Mobile:RefuseMissingDevice` | See above and "One phone per staff user" |
 | `Mobile:AppTokens:Mode`, `Mobile:AppTokens:Apps:<app>` | App sign-in token: Off / Monitor (default) / Enforce, per app `MSME`, `SA`, `RA`, `SURV` (see "App sign-in token") |
 | `Mobile:AppTokenDays` | Lifetime of an app token (default 30) |
 | `Mobile:AppTokenKey` | Secret, base64 of at least 32 bytes; the same on the mobile hosts and the portals (settings `Common`). The Main and Surveillance mobile hosts **must** hold the same key: the ZED MSME app's surveillance NC replies carry Main's token to the Surveillance host |
@@ -370,18 +370,39 @@ call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`
   (`Zed.Core.Assessment.SiteEvidenceChecks`; before 0043 nothing is listed and the free photos stay). The requirement's
   comments (`comments` → `SaAssessorRemarks`) are kept by the redesigned app as points, one "• point" line each (500
   characters in all, as before).
-- **One phone per site assessor (V4).** `SA/SignIn` and `SA/Login` (the redesigned and the installed app) refuse a
-  sign-in from another phone than the assessor's registered one (the phone signed in from last,
-  `dbo.MobileDeviceBindings`, AppKind `SA`): `{"status":"0","errorMessage":"Your account is registered on another mobile
-  (Samsung SM-A515F). Please ask the ZED Admin to release it to sign in on this mobile."}`, and a sign-in without
-  `deviceInfo.deviceId` ("Device information missing. Please update the ZED SA app."). A successful sign-in registers the
-  phone (make and model, OS version, IP, first / last sign-in) and forgets the assessor's other phones, so an assessor who
-  used several keeps the last one. Every attempt, refused ones included, is in `dbo.V4LoginEvents` (IP, device ID, model,
-  manufacturer, OS version, API level, app version) and a refusal also in `dbo.MobileDeviceEvents`. The Master Admin (not
-  the agency) sees the phone and the recent sign-ins on the assessor's page ("Registered mobile"; on Surveillance the
-  "Mobile" button of the assessor's row) and releases it (`api/staff/assessor-mobile/{userId}`, GET / DELETE, Main and
-  Surveillance); the next sign-in then registers the new phone. `Mobile:SaOnePhone: false` turns the rule off (on by default). The app's offline sign-in on its own phone is not
-  affected.
+- **One phone per staff user (V4, 2026-11-18), every app but the ZED MSME app.** The site assessor app (Main and
+  Surveillance, AppKind `SA`), the consultant app (Consultancy, its fork, AppKind `SA` in ZED_CONSULTANT) and the Bronze
+  surveillance app (Surveillance, `SURV`) sign a user in on one phone only (`Zed.Core.Mobile.OnePhoneRule`):
+  - A sign-in from another phone than the registered one is refused with
+    `{"status":"0","errorMessage":"This account is registered on another phone (Samsung SM-A515F). Ask your Master Admin to release it."}`
+    (the shape every app already shows for a refused sign-in), recorded in `dbo.MobileDeviceEvents` (Refused 1) and, with
+    IP, make, model, OS, API level and app version, in `dbo.V4LoginEvents` (under the assessor / consultant id).
+  - Calls from any phone but the registered one are refused ("This device is not registered for your account. Please login again.").
+  - The Admin or that portal's Master Admin (never agencies or consultant organisations) releases the phone with a reason
+    (portal: assessor / consultant list → row menu → Release mobile, or the details page's Registered mobile card;
+    `POST api/staff/assessor-mobile/{userId}/release {reason}`, on all three portals). The release is kept in
+    `dbo.MobileDeviceEvents` (Outcome `Released`, old DeviceId and Model, ReleasedBy, Reason, Ip); the next sign-in
+    registers the phone it comes from and forgets the others.
+  - Recorded per phone (`dbo.MobileDeviceBindings`, migration 0099): Model ("make model"), Make, OsVersion, ApiLevel,
+    AppVersion, FirstIp, LastIp, first and last sign-in.
+  - The ZED MSME app and the remote assessment app (the unit's own apps) never have the rule: any number of phones; their
+    calls keep `Mobile:DeviceBinding` as before.
+- **Settings** (per mobile host; defaults in brackets):
+  - `Mobile:DeviceBindingApps:SA`, `...:SURV`, `...:RA`, `...:MSME` = Off / Monitor / Enforce [not set]: the emergency
+    switch of one app; wins over everything below. E.g. `Mobile__DeviceBindingApps__SA = Monitor` in `MobileConsultancy`
+    turns the rule off (recorded only) for the consultant app.
+  - `Mobile:DeviceBinding` [Monitor]: Off turns every app off; Enforce enforces every app (MSME and RA too, as before);
+    Monitor leaves each app at its default: **SA and SURV Enforce**, MSME and RA Monitor.
+  - `Mobile:SaOnePhone` [true]: false keeps SA at Monitor (the earlier switch).
+  - `Mobile:RefuseMissingDevice` [false]: also refuse sign-ins and calls without `deviceInfo.deviceId` (the site assessor
+    app's sign-in always refuses them under Enforce: the redesigned app always sends it).
+- **Phones recorded at Monitor** (before the rule was enforced): the registered phone is the one signed in from last
+  (`dbo.MobileDeviceBindings.LastLoginAt`). A user with exactly one recorded phone keeps it; a user with several keeps the
+  most recent one, the others are refused (sign-in and calls) and deleted at the next sign-in on the kept phone; a user
+  with none registers the first phone that signs in. Nothing needs cleaning up before Enforce. At Monitor a sign-in from
+  another phone is recorded (Refused 0) and that phone recorded too, so the latest phone is the one kept later.
+- Installed apps that send no `deviceInfo` (the old APKs) cannot be bound: their sign-ins are not refused (except the site
+  assessor app's, as before), and their calls are "Missing", allowed unless `Mobile:RefuseMissingDevice` is true.
 - **App version (redesigned SA app 2.0, versionCode 47).** `SA/SignIn` and `SA/Login` refuse another version with
   status "2" (the app's "update the app" question) when the host has `Mobile:CheckSaVersion` = true and
   `Mobile:SaVersion` = "2.0" (compared with the app's versionName). Set them in the `MobileMain` and `MobileSurveillance`

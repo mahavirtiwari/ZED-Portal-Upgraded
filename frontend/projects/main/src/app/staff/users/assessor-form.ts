@@ -115,10 +115,12 @@ export class AssessorFormPage {
   /** Agencies create and edit their assessors; the MasterAdmin only views them. */
   protected readonly canEdit = signal(this.isNew && this.isAgency);
   /**
-   * V4: the saved assessor's registered mobile of the site assessor app (one phone per assessor), for the Admin and the
-   * MasterAdmin only (never agencies), on the main portal (Consultancy has no site assessor app).
+   * V4: the saved assessor's / consultant's registered mobile (one phone per user in the site assessor app, and on
+   * Consultancy the consultant app; 2026-11-18 on every portal), for the Admin and the MasterAdmin only (never agencies),
+   * at the top of the right rail so it is seen without scrolling.
    */
-  protected readonly showsMobile = !this.isNew && canSeeAssessorMobile(this.auth.currentUser()?.roleId) && inject(STAFF_SYSTEM) === 'main';
+  protected readonly showsMobile = !this.isNew && canSeeAssessorMobile(this.auth.currentUser()?.roleId);
+  protected readonly mobileSystem = inject(STAFF_SYSTEM);
 
   protected model: AssessorModel = emptyAssessor();
   protected readonly maskedIdProof = signal<string | null>(null);

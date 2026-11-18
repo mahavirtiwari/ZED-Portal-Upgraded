@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
@@ -17,6 +18,7 @@ import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
+import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
 
 interface BronzeDialog {
   agency: SurveillanceAgency;
@@ -49,7 +51,7 @@ interface Target {
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip],
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="title" subtitle="Accounts are created and edited on the ZED portal (main); changes here apply to surveillance only." />
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
@@ -158,13 +160,15 @@ interface Target {
                       {{ s.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}
                     </label>
                   </td>
-                  <td class="text-center sv-status-cell" data-label="Status"><span class="status-badge" [class.is-active]="s.isActive" [class.is-rejected]="!s.isActive">{{ status(s) }}</span></td>
+                  <td class="text-center sv-status-cell" data-label="Status"><span class="status-badge" [class.is-active]="s.isActive" [class.is-rejected]="!s.isActive">{{ status(s) }}</span>
+                    <!-- 2026-11-18: the registered phone (site assessor app or Bronze surveillance app), Admin and Master Admin only. -->
+                    @if (showsMobile) { <zed-phone-chip class="sv-phone" [phone]="phoneOf(s.userId)" /> }</td>
                   <td class="sv-actions">
                     <div class="sv-btns">
                       @if (showsMobile) {
                         <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Registered mobile of ' + s.userId" (click)="mobileOf.set(s.userId)">Mobile</button>
                       }
-                      <zed-row-menu [items]="s.isActive ? assessorMenuActive : assessorMenuBlocked" [label]="'More actions for ' + (s.userName || s.userId)"
+                      <zed-row-menu [items]="assessorMenu(s.userId, !!s.isActive)" [label]="'More actions for ' + (s.userName || s.userId)"
                                     (picked)="pick($event, { kind: 'assessors', userId: s.userId, name: s.userName, email: s.email })" />
                     </div>
                   </td>
@@ -232,7 +236,7 @@ interface Target {
             <button type="button" class="btn-close" aria-label="Close" (click)="mobileOf.set(null)"></button>
           </div>
           <div class="modal-body">
-            <zed-assessor-mobile [userId]="id" system="surveillance" [plain]="true" />
+            <zed-assessor-mobile [userId]="id" system="surveillance" [plain]="true" [name]="nameOf(id)" (released)="loadPhones()" />
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" (click)="mobileOf.set(null)">Close</button>
@@ -242,6 +246,9 @@ interface Target {
       <div class="modal-backdrop show"></div>
     }
 
+    @if (releaseFor(); as m) {
+      <zed-confirm-dialog [ask]="m.ask" [busy]="busy()" [failed]="dialogError()" inputId="sv-release-reason" (confirmed)="releaseMobile(m.target, $event)" (cancel)="closeDialogs()" />
+    }
     @if (resetFor(); as r) {
       <zed-confirm-dialog [ask]="r.ask" [busy]="busy()" [failed]="dialogError()" (confirmed)="sendReset(r.target)" (cancel)="closeDialogs()" />
     }
@@ -280,6 +287,7 @@ interface Target {
     .sv-pill { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 10px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .sv-agency-line { margin-top: 3px; }
     .no-mobile { color: #8a6100; }
+    .sv-phone { display: block; margin-top: 6px; }
     .bronze-status { gap: 2px; min-width: 130px; }
     .bronze-switch { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; cursor: pointer; white-space: nowrap; }
     .bronze-switch.is-on { color: #1e7a3c; font-weight: 600; }
@@ -368,6 +376,46 @@ export class SurveillanceUsersPage {
   protected readonly agencyMenuBlocked = this.menus('agency')[1];
   protected readonly assessorMenuActive = this.menus('assessor')[0];
   protected readonly assessorMenuBlocked = this.menus('assessor')[1];
+  /** 2026-11-18: "Release mobile" for an assessor with a registered phone (Admin and Master Admin; the API refuses others). */
+  private readonly releaseItem: RowMenuItem = { key: 'release', label: 'Release mobile', icon: 'refresh' };
+  private readonly assessorMenuActivePhone = [...this.assessorMenuActive.slice(0, 2), this.releaseItem, ...this.assessorMenuActive.slice(2)];
+  private readonly assessorMenuBlockedPhone = [...this.assessorMenuBlocked, this.releaseItem];
+  private readonly http = inject(HttpClient);
+  /** The registered phones of this portal's apps, by user id (upper case). */
+  protected readonly phones = signal<Map<string, PhoneSummary>>(new Map());
+  protected readonly releaseFor = signal<{ target: Target; ask: ConfirmAsk } | null>(null);
+
+  protected phoneOf(userId: string): PhoneSummary | undefined {
+    return this.phones().get((userId ?? '').trim().toUpperCase());
+  }
+
+  protected nameOf(userId: string): string | null {
+    return this.assessors().find((a) => a.userId === userId)?.userName ?? null;
+  }
+
+  protected assessorMenu(userId: string, active: boolean): RowMenuItem[] {
+    const phone = this.showsMobile && hasPhone(this.phoneOf(userId));
+    return active ? (phone ? this.assessorMenuActivePhone : this.assessorMenuActive) : phone ? this.assessorMenuBlockedPhone : this.assessorMenuBlocked;
+  }
+
+  /** The Phone chips (a failure leaves them "Not registered" rather than failing the list). */
+  protected async loadPhones(): Promise<void> {
+    if (!this.showsMobile) return;
+    try {
+      this.phones.set(phonesById(await firstValueFrom(loadPhones(this.http))));
+    } catch {
+      /* the list works without the chips */
+    }
+  }
+
+  /** Releases the assessor's registered phone(s) with the reason; the next sign-in registers the new phone. */
+  protected async releaseMobile(t: Target, reason: string): Promise<void> {
+    await this.confirmed(releasePhone(this.http, t.userId, reason), (m) => {
+      this.toast.success('Mobile released', m);
+      void this.loadPhones();
+      return false;
+    });
+  }
 
   /** The tile chosen above the list. */
   protected readonly filter = signal<ListFilter>('all');
@@ -415,6 +463,7 @@ export class SurveillanceUsersPage {
 
   constructor() {
     void this.load();
+    void this.loadPhones();
   }
 
   private async load(): Promise<void> {
@@ -485,6 +534,7 @@ export class SurveillanceUsersPage {
         this.reasonAsk.set({ action: 'unblock', userId: t.userId, userName: t.name });
         break;
       case 'history': void this.openHistory(t); break;
+      case 'release': this.releaseFor.set({ target: t, ask: releaseMobileAsk(t.name, t.userId, this.phoneOf(t.userId)?.model, 'assessor') }); break;
     }
   }
 
@@ -507,6 +557,7 @@ export class SurveillanceUsersPage {
     this.resetFor.set(null);
     this.blockFor.set(null);
     this.reasonAsk.set(null);
+    this.releaseFor.set(null);
     this.dialogError.set('');
   }
 

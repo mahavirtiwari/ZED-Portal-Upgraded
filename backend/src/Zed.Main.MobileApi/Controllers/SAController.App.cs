@@ -60,7 +60,7 @@ public sealed partial class SAController
                 .Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, 0)).ToList(),
         };
 
-        await RegisterPhoneAsync(userKey, request.deviceInfo, ct);
+        await RegisterPhoneAsync(userKey, request.deviceInfo, request.version, ct);
         // No unit: every SA call checks the allotment of the unit it names against the token's assessor.
         response.appToken = await tokens.IssueAsync(MobileApps.SiteAssessor, userKey, null, ct);
         log.LogInformation("SA app sign-in for {UserId} ({Count} assessments)", userKey, assessments.Count);

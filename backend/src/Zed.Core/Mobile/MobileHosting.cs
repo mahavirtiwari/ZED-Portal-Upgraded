@@ -13,8 +13,21 @@ public sealed class MobileOptions
 {
     public const string Section = "Mobile";
 
-    /// <summary>Monitor until the logs show the apps always send deviceInfo, then Enforce.</summary>
+    /// <summary>
+    /// The setting of every app before 2026-11-18: Off turns every app off, Enforce enforces every app; Monitor (the
+    /// default) leaves each app at its own mode (<see cref="DevicePolicy"/>: the staff apps SA and SURV Enforce, the unit's
+    /// MSME and RA apps Monitor).
+    /// </summary>
     public DeviceBindingMode DeviceBinding { get; set; } = DeviceBindingMode.Monitor;
+
+    /// <summary>
+    /// <c>Mobile:DeviceBindingApps:{app}</c> (SA, SURV, RA, MSME) = Off / Monitor / Enforce: one app's mode, over
+    /// <see cref="DeviceBinding"/> (the emergency switch of one app; <see cref="DevicePolicy"/>).
+    /// </summary>
+    public Dictionary<string, DeviceBindingMode> DeviceBindingApps { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The earlier switch of the site assessor app's one-phone rule: false keeps SA at Monitor (when not set per app).</summary>
+    public bool? SaOnePhone { get; set; }
 
     /// <summary>In Enforce mode, also refuse calls that send no device id for a user who has a registered device.</summary>
     public bool RefuseMissingDevice { get; set; }

@@ -303,7 +303,7 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
     // The rail's open assessments count (assessor-form.spec.ts).
     http.expectOne('/api/staff/users/assessors/ZEDAS0001/open-assessments').flush({ count: null });
-    // The registered mobile card (assessor-mobile.spec.ts) loads below the form.
+    // The registered mobile card (assessor-mobile.spec.ts), first in the right rail.
     http.expectOne('/api/staff/assessor-mobile/ZEDAS0001').flush({ userId: 'ZEDAS0001', device: null, signIns: [] });
     // 2026-11-18: the agency's name for the rail.
     http.expectOne('/api/staff/users/agencies').flush([]);
@@ -798,6 +798,89 @@ describe('AssessorListPage', () => {
     ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Show all') as HTMLButtonElement).click();
     await settle(fixture);
     expect(rows().length).toBe(4);
+    http.verify();
+  });
+});
+
+describe('AssessorListPage: one phone per assessor (2026-11-18)', () => {
+  const rows: AssessorRow[] = [
+    { RowNumber: 1, Id: 1, UserId: 'ZEDAS0001', UserName: 'Ravi Kumar', MobileNo: null, Email: null, Address: null, IdStatus: 'Active', IsActive: true, AssessorType: 'Assessor', AgencyUserId: null, AgencyUserName: null },
+    { RowNumber: 2, Id: 2, UserId: 'ZEDAS0002', UserName: 'Sita Devi', MobileNo: null, Email: null, Address: null, IdStatus: 'Active', IsActive: true, AssessorType: 'Assessor', AgencyUserId: null, AgencyUserName: null },
+    { RowNumber: 3, Id: 3, UserId: 'ZEDAS0003', UserName: 'Om Prakash', MobileNo: null, Email: null, Address: null, IdStatus: 'Active', IsActive: true, AssessorType: 'Assessor', AgencyUserId: null, AgencyUserName: null },
+  ];
+  const phones = [
+    { userId: 'zedas0001', app: 'SA', appName: 'Site assessment app', model: 'Samsung SM-A515F', make: 'Samsung', lastLoginAt: '2026-11-17T10:00:00', refusedToday: false, lastRefusedAt: null },
+    { userId: 'ZEDAS0003', app: null, appName: null, model: null, make: null, lastLoginAt: null, refusedToday: true, lastRefusedAt: '2026-11-18T09:00:00' },
+  ];
+
+  async function create(roleId: number) {
+    await TestBed.configureTestingModule({
+      imports: [AssessorListPage],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
+      ],
+    }).compileComponents();
+    signIn(roleId);
+    const fixture = TestBed.createComponent(AssessorListPage);
+    const http = TestBed.inject(HttpTestingController);
+    await settle(fixture);
+    return { fixture, http, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it("shows each assessor's Phone chip and releases a phone with a reason from the row menu", async () => {
+    const { fixture, http, el } = await create(StaffRole.MasterAdmin);
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(rows);
+    http.expectOne('/api/staff/assessor-mobile').flush(phones);
+    await settle(fixture);
+    const tr = (i: number) => el.querySelectorAll('tbody tr')[i];
+    const chip = (i: number) => tr(i).querySelector('zed-phone-chip [data-phone]')!;
+    expect(chip(0).textContent!.trim()).toBe('Registered · Samsung SM-A515F');
+    expect(chip(1).textContent!.trim()).toBe('Not registered');
+    expect(chip(2).textContent!.trim()).toBe('Refused sign-in today');
+    expect(chip(2).classList).toContain('is-warn');
+
+    const menu = async (i: number) => {
+      (tr(i).querySelector('zed-row-menu .rm-btn') as HTMLButtonElement).click();
+      await settle(fixture);
+      return [...tr(i).querySelectorAll('.rm-item')].map((b) => b.textContent!.trim());
+    };
+    // Only a registered phone can be released.
+    expect(await menu(1)).not.toContain('Release mobile');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await settle(fixture);
+    expect(await menu(0)).toEqual(['Send reset link', 'View history', 'Release mobile', 'Block assessor']);
+    ([...tr(0).querySelectorAll('.rm-item')].find((b) => b.textContent!.trim() === 'Release mobile') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = el.querySelector('zed-confirm-dialog')!;
+    expect(dialog.querySelector('h3')!.textContent).toContain('Release the mobile of Ravi Kumar?');
+    expect(dialog.textContent).toContain('ZEDAS0001 · Samsung SM-A515F');
+    (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(dialog.textContent).toContain('Please enter the reason for releasing the mobile.');
+    const reason = el.querySelector('#as-release-reason') as HTMLTextAreaElement;
+    reason.value = 'Phone replaced';
+    reason.dispatchEvent(new Event('input'));
+    (dialog.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const post = http.expectOne('/api/staff/assessor-mobile/ZEDAS0001/release');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ reason: 'Phone replaced' });
+    post.flush({ message: 'Mobile released.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/assessor-mobile').flush([phones[1]]);
+    await settle(fixture);
+    expect(el.querySelector('zed-confirm-dialog')).toBeNull();
+    expect(chip(0).textContent!.trim()).toBe('Not registered');
+    http.verify();
+  });
+
+  it('shows no chip, menu item or phone list to an agency', async () => {
+    const { fixture, http, el } = await create(StaffRole.Agency);
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(rows);
+    await settle(fixture);
+    expect(el.querySelector('zed-phone-chip')).toBeNull();
+    http.expectNone('/api/staff/assessor-mobile');
     http.verify();
   });
 });

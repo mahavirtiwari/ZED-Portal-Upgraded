@@ -97,8 +97,11 @@ public sealed record RegisteredDevice(string DeviceId, string? Model, string? Os
 
 public interface IDeviceBindings
 {
-    /// <summary>Call after a successful login: this device may act for this user from now on.</summary>
-    Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, CancellationToken ct = default);
+    /// <summary>
+    /// Call after a successful login: this device may act for this user from now on. Records the phone's make, model, OS,
+    /// API level, <paramref name="appVersion"/> (the sign-in's "version") and IP (the first IP kept too).
+    /// </summary>
+    Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, string? appVersion = null, CancellationToken ct = default);
 
     Task<DeviceCheck> CheckAsync(string app, string userKey, string? deviceId, CancellationToken ct = default);
 
@@ -120,25 +123,58 @@ public sealed class SqlDeviceBindings(ISqlExecutor sql, ILogger<SqlDeviceBinding
     // Event rows are rate-limited per (app, user, device, path) so a busy app does not flood the table.
     private readonly ConcurrentDictionary<string, DateTime> recent = new();
 
-    public async Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, CancellationToken ct = default)
+    /// <summary>The phone of a sign-in, with what migration 0099 adds (make, API level, app version, first IP).</summary>
+    public const string RememberSql = """
+        MERGE dbo.MobileDeviceBindings AS t
+        USING (SELECT @App AS AppKind, @User AS UserKey, @Device AS DeviceId) AS s
+           ON t.AppKind = s.AppKind AND t.UserKey = s.UserKey AND t.DeviceId = s.DeviceId
+        WHEN MATCHED THEN UPDATE SET LastLoginAt = SYSDATETIME(), LastSeenAt = SYSDATETIME(), LastIp = @Ip,
+             Model = @Model, OsVersion = @Os, Make = @Make, ApiLevel = @ApiLevel, AppVersion = @AppVersion, FirstIp = ISNULL(t.FirstIp, @Ip)
+        WHEN NOT MATCHED THEN INSERT (AppKind, UserKey, DeviceId, Model, OsVersion, FirstSeenAt, LastLoginAt, LastSeenAt, LastIp, Make, ApiLevel, AppVersion, FirstIp)
+             VALUES (@App, @User, @Device, @Model, @Os, SYSDATETIME(), SYSDATETIME(), SYSDATETIME(), @Ip, @Make, @ApiLevel, @AppVersion, @Ip);
+        """;
+
+    /// <summary><see cref="RememberSql"/> before migration 0099 (the sign-in must not fail on a database without its columns).</summary>
+    public const string RememberLegacySql = """
+        MERGE dbo.MobileDeviceBindings AS t
+        USING (SELECT @App AS AppKind, @User AS UserKey, @Device AS DeviceId) AS s
+           ON t.AppKind = s.AppKind AND t.UserKey = s.UserKey AND t.DeviceId = s.DeviceId
+        WHEN MATCHED THEN UPDATE SET LastLoginAt = SYSDATETIME(), LastSeenAt = SYSDATETIME(), LastIp = @Ip,
+             Model = @Model, OsVersion = @Os
+        WHEN NOT MATCHED THEN INSERT (AppKind, UserKey, DeviceId, Model, OsVersion, FirstSeenAt, LastLoginAt, LastSeenAt, LastIp)
+             VALUES (@App, @User, @Device, @Model, @Os, SYSDATETIME(), SYSDATETIME(), SYSDATETIME(), @Ip);
+        """;
+
+    // Until 0099 is applied the columns are missing: the old statement is used, and the new one tried again after a while.
+    private static DateTime legacyUntil = DateTime.MinValue;
+
+    public async Task RememberAsync(string app, string userKey, DeviceInfo? device, string? ip, string? appVersion = null, CancellationToken ct = default)
     {
         var deviceId = Clean(device?.deviceId);
         if (deviceId is null || string.IsNullOrWhiteSpace(userKey)) return;
-        await sql.ExecuteSqlAsync("""
-            MERGE dbo.MobileDeviceBindings AS t
-            USING (SELECT @App AS AppKind, @User AS UserKey, @Device AS DeviceId) AS s
-               ON t.AppKind = s.AppKind AND t.UserKey = s.UserKey AND t.DeviceId = s.DeviceId
-            WHEN MATCHED THEN UPDATE SET LastLoginAt = SYSDATETIME(), LastSeenAt = SYSDATETIME(), LastIp = @Ip,
-                 Model = @Model, OsVersion = @Os
-            WHEN NOT MATCHED THEN INSERT (AppKind, UserKey, DeviceId, Model, OsVersion, FirstSeenAt, LastLoginAt, LastSeenAt, LastIp)
-                 VALUES (@App, @User, @Device, @Model, @Os, SYSDATETIME(), SYSDATETIME(), SYSDATETIME(), @Ip);
-            """,
-            new
+        var args = new
+        {
+            App = app, User = userKey.Trim(), Device = deviceId, Ip = Truncate(ip, 50),
+            Model = Truncate($"{device!.manufacturer} {device.modelProduct}".Trim(), 100),
+            Os = Truncate(device.osVersion, 50),
+            Make = Truncate(string.IsNullOrWhiteSpace(device.manufacturer) ? null : device.manufacturer.Trim(), 100),
+            ApiLevel = device.apiLevel > 0 ? device.apiLevel : (int?)null,
+            AppVersion = Truncate(string.IsNullOrWhiteSpace(appVersion) ? null : appVersion.Trim(), 50),
+        };
+        if (DateTime.UtcNow >= legacyUntil)
+        {
+            try
             {
-                App = app, User = userKey.Trim(), Device = deviceId, Ip = Truncate(ip, 50),
-                Model = Truncate($"{device!.manufacturer} {device.modelProduct}".Trim(), 100),
-                Os = Truncate(device.osVersion, 50),
-            }, ct);
+                await sql.ExecuteSqlAsync(RememberSql, args, ct);
+                return;
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 207)
+            {
+                logger.LogWarning("dbo.MobileDeviceBindings has no make / app version columns yet: run migration 0099");
+                legacyUntil = DateTime.UtcNow.AddMinutes(10);
+            }
+        }
+        await sql.ExecuteSqlAsync(RememberLegacySql, args, ct);
     }
 
     public async Task<DeviceCheck> CheckAsync(string app, string userKey, string? deviceId, CancellationToken ct = default)
@@ -288,8 +324,10 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
         }
         var options = http.RequestServices.GetService(typeof(IOptions<MobileOptions>)) as IOptions<MobileOptions>;
         var tokens = http.RequestServices.GetService(typeof(AppTokens)) as AppTokens;
-        var mode = options?.Value.DeviceBinding ?? DeviceBindingMode.Off;
-        if (!TokenRequired && mode == DeviceBindingMode.Off && (tokens is null || tokens.ModeFor(App) == AppTokenMode.Off))
+        // 2026-11-18: each app's own mode (DevicePolicy: the staff apps enforce one phone by default, the unit's apps do not).
+        DeviceBindingMode ModeOf(string a) => options is null ? DeviceBindingMode.Off : DevicePolicy.ModeFor(options.Value, a);
+        if (!TokenRequired && ModeOf(App) == DeviceBindingMode.Off && (AlsoApp is null || ModeOf(AlsoApp) == DeviceBindingMode.Off)
+            && (tokens is null || tokens.ModeFor(App) == AppTokenMode.Off))
         {
             await next();
             return;
@@ -325,6 +363,8 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
             }
         }
 
+        // The mode of the app the call is checked as (the MSME app's own for a call it makes with its token: never one phone).
+        var mode = ModeOf(app);
         if (mode == DeviceBindingMode.Off || string.IsNullOrWhiteSpace(user))
         {
             await next();
@@ -333,7 +373,7 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
 
         var deviceId = FindDeviceId(context, values);
         var bindings = (IDeviceBindings)http.RequestServices.GetService(typeof(IDeviceBindings))!;
-        var check = await bindings.CheckAsync(app, user, deviceId, http.RequestAborted);
+        var check = await OnePhoneRule.CallCheckAsync(bindings, mode, app, user, deviceId, http.RequestAborted);
         if (check is DeviceCheck.Known or DeviceCheck.NoBinding)
         {
             await next();
@@ -342,6 +382,7 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
 
         var refuse = mode == DeviceBindingMode.Enforce &&
                      (check == DeviceCheck.Unknown || options!.Value.RefuseMissingDevice);
+        // (Unknown under the one-phone rule includes the user's older phones recorded at Monitor: only the latest is kept.)
         await bindings.RecordAsync(app, user, deviceId, http.Request.Path, http.Connection.RemoteIpAddress?.ToString(), check, refuse, http.RequestAborted);
         if (refuse)
         {

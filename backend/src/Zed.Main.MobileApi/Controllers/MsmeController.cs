@@ -142,7 +142,7 @@ public sealed partial class MsmeController(
         if (zedId.Length > 0 && response.MsmeDetails.msmeStatus is { } loginStatus)
             await BronzeVisitAppStatus.ApplyAsync(db, zedId, loginStatus, withRemote: false, log, ct);
 
-        await devices.RememberAsync(MobileApps.Msme, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, ct);
+        await devices.RememberAsync(MobileApps.Msme, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, request.version, ct);
         // The store app has no source and never sends it back: the MSME app stays in Monitor (docs/MOBILE-API.md).
         response.appToken = await tokens.IssueAsync(MobileApps.Msme, user.Text("UserId") is { Length: > 0 } uid ? uid : userName,
             zedId.Length > 0 ? zedId : userName, ct);

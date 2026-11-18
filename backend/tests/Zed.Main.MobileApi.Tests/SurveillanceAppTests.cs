@@ -167,6 +167,18 @@ public sealed class SurveillanceAppTests : IDisposable
     }
 
     [Fact]
+    public async Task The_bronze_surveillance_app_signs_in_on_one_phone()
+    {
+        LoginProc();
+        AssertOk(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "pw", version = "1.8", deviceInfo = new { deviceId = "dev-1", manufacturer = "Samsung" } }));
+        Assert.Equal("1.8", _t.Devices.Remembered.Last().AppVersion);
+        AssertFail(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "pw", deviceInfo = new { deviceId = "dev-2" } }),
+            "This account is registered on another phone (Test Phone). Ask your Master Admin to release it.");
+        // The installed app sends no deviceInfo: not refused (it cannot be told apart) unless RefuseMissingDevice is set.
+        AssertOk(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "pw" }));
+    }
+
+    [Fact]
     public async Task Login_with_the_procedure_master_password_is_refused()
     {
         LoginProc(password: "real");

@@ -36,6 +36,7 @@ public sealed partial class SAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
+    Microsoft.Extensions.Options.IOptions<MobileOptions> mobile,
     AppTokens tokens,
     LoginThrottle throttle,
     MobileStorage storage,
@@ -92,7 +93,7 @@ public sealed partial class SAController(
         var userKey = signIn.UserKey!;
         if (await OtherPhoneAsync(userKey, request.deviceInfo, ct) is { } phone)
             return LegacyJson(new AssessmentDetails { status = "0", errorMessage = phone });
-        await RegisterPhoneAsync(userKey, request.deviceInfo, ct);
+        await RegisterPhoneAsync(userKey, request.deviceInfo, request.version, ct);
         // The calls are checked against the assessor (saId); the unit is recorded but each call checks the allotment itself.
         response.appToken = await tokens.IssueAsync(MobileApps.SiteAssessor, userKey, answer.ZedId, ct);
         log.LogInformation("SA app login for {UserId} on {ZedId}", userKey, request.zedId);
@@ -100,35 +101,24 @@ public sealed partial class SAController(
     });
 
     /// <summary>
-    /// V4: an assessor signs in to the SA app on one phone only (<c>Mobile:SaOnePhone</c>, on unless set to false): a
-    /// sign-in from another phone than the one registered (the phone signed in from last) is refused until the Admin
-    /// releases it (Admin → assessor → Registered mobile). The refusal is recorded as a device event and, by
-    /// <see cref="LoginAuditAttribute"/>, in the sign-in log with the phone's make, model, OS, app version and IP.
+    /// V4: an assessor signs in to the SA app on one phone only (<see cref="OnePhoneRule"/>; the app's mode is
+    /// <see cref="DevicePolicy"/>'s, Enforce by default): a sign-in from another phone than the one registered (the phone
+    /// signed in from last) is refused until the Admin or the Master Admin releases it (portal: assessor → Registered mobile →
+    /// Release Mobile). The refusal is recorded as a device event and, by <see cref="LoginAuditAttribute"/>, in the sign-in
+    /// log with the phone's make, model, OS, app version and IP. A sign-in without deviceInfo is refused under Enforce (the
+    /// redesigned app always sends it).
     /// </summary>
-    private async Task<string?> OtherPhoneAsync(string userKey, DeviceInfo? device, CancellationToken ct)
-    {
-        if (!config.GetValue("Mobile:SaOnePhone", true)) return null;
-        var deviceId = device?.deviceId?.Trim();
-        if (string.IsNullOrEmpty(deviceId)) return DeviceInfoMissing;
-        if (await devices.RegisteredAsync(MobileApps.SiteAssessor, userKey, ct) is not { } registered
-            || string.Equals(registered.DeviceId, deviceId, StringComparison.Ordinal)) return null;
-        log.LogWarning("SA sign-in of {UserId} refused: registered on device {Registered}, tried {Device}", userKey, registered.DeviceId, deviceId);
-        await devices.RecordAsync(MobileApps.SiteAssessor, userKey, deviceId, Request.Path, ClientIp, DeviceCheck.Unknown, refused: true, ct);
-        return OtherPhone(registered.Model);
-    }
+    private Task<string?> OtherPhoneAsync(string userKey, DeviceInfo? device, CancellationToken ct) =>
+        OnePhoneRule.SignInRefusalAsync(HttpContext, devices, mobile.Value, MobileApps.SiteAssessor, userKey, device, log, ct,
+            refuseMissing: true, missingMessage: DeviceInfoMissing);
 
-    /// <summary>Registers the phone (make, model, OS, IP) and, with the one-phone rule, forgets the assessor's other phones.</summary>
-    private async Task RegisterPhoneAsync(string userKey, DeviceInfo? device, CancellationToken ct)
-    {
-        await devices.RememberAsync(MobileApps.SiteAssessor, userKey, device, ClientIp, ct);
-        if (config.GetValue("Mobile:SaOnePhone", true) && device?.deviceId?.Trim() is { Length: > 0 } id)
-            await devices.KeepOnlyAsync(MobileApps.SiteAssessor, userKey, id, ct);
-    }
+    /// <summary>Registers the phone (make, model, OS, app version, IP) and, with the one-phone rule, forgets the assessor's other phones.</summary>
+    private Task RegisterPhoneAsync(string userKey, DeviceInfo? device, string? version, CancellationToken ct) =>
+        OnePhoneRule.RegisterAsync(HttpContext, devices, mobile.Value, MobileApps.SiteAssessor, userKey, device, version, ct);
 
     public const string DeviceInfoMissing = "Device information missing. Please update the ZED SA app.";
 
-    public static string OtherPhone(string? model) =>
-        $"Your account is registered on another mobile{(string.IsNullOrWhiteSpace(model) ? "" : $" ({model.Trim()})")}. Please ask the ZED Admin to release it to sign in on this mobile.";
+    public static string OtherPhone(string? model) => OnePhoneRule.OtherPhone(model);
 
     /// <summary>A refused sign-in: <c>status</c> "2" (update the app) or "0", and the text the app shows.</summary>
     private sealed record SignInRefusal(string Status, string Message);

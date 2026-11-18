@@ -255,13 +255,14 @@
   }
 </form>
 
-@if (showsMobile && !loading() && userId) {
-  <zed-assessor-mobile [userId]="userId" system="main" />
-}
 </div>
 
 @if (!isNew && isActive() !== null) {
   <aside class="af-rail" [attr.aria-label]="'About this ' + noun.toLowerCase()">
+    <!-- 2026-11-18 (the user: one phone per assessor "not visible anywhere"): the registered mobile first in the rail. -->
+    @if (showsMobile && userId) {
+      <zed-assessor-mobile [userId]="userId" [system]="mobileSystem" [name]="model.userName" [word]="consultancy ? 'consultant' : 'assessor'" />
+    }
     @if (agencyUserId(); as agency) {
       <section class="zed-card af-card" data-rail="agency">
         <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.building" /></svg></span>{{ agencyWord }}</h4>

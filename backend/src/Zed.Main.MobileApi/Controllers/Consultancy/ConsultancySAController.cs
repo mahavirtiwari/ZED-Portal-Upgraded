@@ -34,6 +34,7 @@ public sealed partial class ConsultancySAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
+    Microsoft.Extensions.Options.IOptions<MobileOptions> mobile,
     AppTokens tokens,
     LoginThrottle throttle,
     MobileStorage storage,
@@ -130,7 +131,10 @@ public sealed partial class ConsultancySAController(
         var answer = await UnitAnswerAsync(nameof(Login), signIn.Sets!, request.zedId, dfo, userKey, ct);
         if (answer.Response is not { } response) return LoginFail(answer.Refusal!);
 
-        await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        // 2026-11-18: one phone per consultant / DFO (OnePhoneRule; the consultant app is enforced by default).
+        if (await OnePhoneRule.SignInRefusalAsync(HttpContext, devices, mobile.Value, App, userKey, request.deviceInfo, log, ct) is { } phone)
+            return LoginFail(phone);
+        await OnePhoneRule.RegisterAsync(HttpContext, devices, mobile.Value, App, userKey, request.deviceInfo, request.version, ct);
         // Consultant and DFO alike; the DFO's technology upgradation calls to the consultancy portal check it against the
         // unit (TuAppController), the SA calls against the user named in them.
         response.appToken = await tokens.IssueAsync(App, userKey, request.zedId, ct);

@@ -292,6 +292,24 @@ public sealed class ConsultancyAppLoginTests : IDisposable
     }
 
     [Fact]
+    public async Task A_consultant_signs_in_on_one_phone_until_the_master_admin_releases_it()
+    {
+        Assert.Equal("1", (await Login()).GetProperty("status").GetString());
+        Assert.Equal("1.0", _t.Devices.Remembered.Last().AppVersion);
+        var other = await _t.Json("/SA/Login", new { zedId = Zed, assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } });
+        AssertFail(other, "This account is registered on another phone (Test Phone). Ask your Master Admin to release it.");
+        Assert.False(other.TryGetProperty("appToken", out _));
+        Assert.Contains(_t.Devices.Events, e => e.App == MobileApps.SiteAssessor && e.Device == "new-phone" && e.Refused);
+
+        // Released (the rows deleted): the next sign-in registers the new phone, which is then the only one.
+        _t.Devices.Known.Clear();
+        Assert.Equal("1", (await _t.Json("/SA/Login", new { zedId = Zed, assessorId = Lead, password = Password, version = "1.0", deviceInfo = new { deviceId = "new-phone" } }))
+            .GetProperty("status").GetString());
+        Assert.Equal(["new-phone"], _t.Devices.Known[(MobileApps.SiteAssessor, Lead)]);
+        Assert.Equal("0", (await Login()).GetProperty("status").GetString());
+    }
+
+    [Fact]
     public async Task Before_allotment_the_lead_gets_input_parameters()
     {
         _status = 8;

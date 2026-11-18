@@ -139,7 +139,10 @@ public static partial class UserAgentInfo
 public sealed class LoginAuditAttribute(string channel, string app) : Attribute, IAsyncActionFilter
 {
     public const string WebDeviceCookie = "zed.device";
-    private static readonly string[] UserIdProperties = ["UserId", "userName", "zedId", "assessorId", "saId"];
+    // 2026-11-18: the staff apps' sign-ins (SA/Login, Surveillance/Login, the consultant app's SA/Login) name the unit (zedId)
+    // as well as the assessor: the assessor / consultant signs in, so assessorId and saId come before zedId (the MSME and RA
+    // apps send no assessorId). Before, those sign-ins were logged under the unit's ZED ID and missing from the assessor's page.
+    private static readonly string[] UserIdProperties = ["UserId", "assessorId", "saId", "userName", "zedId"];
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {

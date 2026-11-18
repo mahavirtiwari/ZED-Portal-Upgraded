@@ -145,7 +145,7 @@ public sealed class RAController(
             TwilioApiSecret = null,
         };
 
-        await devices.RememberAsync(MobileApps.RemoteAssessor, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, ct);
+        await devices.RememberAsync(MobileApps.RemoteAssessor, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, request.version, ct);
         response.appToken = await tokens.IssueAsync(MobileApps.RemoteAssessor, user.Text("UserId") is { Length: > 0 } uid ? uid : userName,
             zedId.Length > 0 ? zedId : userName, ct);
         log.LogInformation("RA app login for {ZedId}", zedId);

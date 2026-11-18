@@ -4,7 +4,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { apiErrorMessage } from '@zed/shared';
+import { HttpClient } from '@angular/common/http';
+import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { LABELS } from '../../portal-labels';
 import { STAFF_SYSTEM } from '../staff-menu';
@@ -20,6 +21,8 @@ import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
+import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
+import { canSeeAssessorMobile } from './assessor-mobile';
 
 /** Which assessors the list shows: the status tiles, the type chips and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
@@ -124,7 +127,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 @Component({
   selector: 'zed-staff-assessor-list',
   imports: [
-    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel,
+    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip,
   ],
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="noun + (agencyId ? ' of ' + agencyId : '')" />
@@ -234,6 +237,8 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 }
                 <td class="text-center as-status" data-label="Status">
                   <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
+                  <!-- 2026-11-18: the registered phone of the app (one phone per user), for the Admin and the Master Admin. -->
+                  @if (showsPhone) { <zed-phone-chip class="as-phone" [phone]="phoneOf(s)" /> }
                   @if (!s.IsActive && (s.BlockReason || s.BlockedOn)) {
                     <small class="as-block-note" data-block-note>
                       @if (s.BlockReason) { “{{ s.BlockReason }}” }
@@ -244,7 +249,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 <td class="as-actions text-end">
                   <div class="as-btns">
                     <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
-                    <zed-row-menu [items]="s.IsActive ? menuActive : menuBlocked" [label]="'More actions for ' + (s.UserName || s.UserId)" (picked)="pick($event, s)" />
+                    <zed-row-menu [items]="menuOf(s)" [label]="'More actions for ' + (s.UserName || s.UserId)" (picked)="pick($event, s)" />
                   </div>
                 </td>
               </tr>
@@ -273,6 +278,9 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     }
     @if (blockFor(); as b) {
       <zed-confirm-dialog [ask]="b.ask" [busy]="busy()" [failed]="dialogError()" inputId="as-block-reason" (confirmed)="block(b.row, $event)" (cancel)="closeDialogs()" />
+    }
+    @if (releaseFor(); as m) {
+      <zed-confirm-dialog [ask]="m.ask" [busy]="busy()" [failed]="dialogError()" inputId="as-release-reason" (confirmed)="releaseMobile(m.row, $event)" (cancel)="closeDialogs()" />
     }
     @if (reasonAsk(); as r) {
       <zed-reason-dialog [ask]="r" [busy]="busy()" [failed]="dialogError()" (confirmed)="unblockWithReason(r, $event)" (cancel)="closeDialogs()" />
@@ -328,6 +336,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     .as-type { font-size: 12.5px; color: #3d5559; }
     .as-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
     .no-mobile { color: #9a5f06; }
+    .as-phone { display: block; margin-top: 6px; }
     .as-block-note { display: block; margin-top: 4px; font-size: 11.5px; color: #6f8487; overflow-wrap: anywhere; }
     .as-btns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
     .as-btns .btn { white-space: nowrap; }
@@ -404,6 +413,24 @@ export class AssessorListPage {
     { key: 'history', label: 'View history', icon: 'history' },
     { key: 'unblock', label: 'Unblock ' + this.word, icon: 'unlock' },
   ];
+  /** 2026-11-18: "Release mobile" for a user with a registered phone (Admin and Master Admin; the API refuses others). */
+  private readonly releaseItem: RowMenuItem = { key: 'release', label: 'Release mobile', icon: 'refresh' };
+  private readonly menuActivePhone: RowMenuItem[] = [...this.menuActive.slice(0, 2), this.releaseItem, ...this.menuActive.slice(2)];
+  private readonly menuBlockedPhone: RowMenuItem[] = [...this.menuBlocked, this.releaseItem];
+  protected readonly showsPhone = canSeeAssessorMobile(inject(AuthService).currentUser()?.roleId);
+  private readonly http = inject(HttpClient);
+  /** The registered phones of this portal's app, by user id (upper case). */
+  protected readonly phones = signal<Map<string, PhoneSummary>>(new Map());
+  protected readonly releaseFor = signal<{ row: AssessorRow; ask: ConfirmAsk } | null>(null);
+
+  protected phoneOf(s: AssessorRow): PhoneSummary | undefined {
+    return this.phones().get((s.UserId ?? '').trim().toUpperCase());
+  }
+
+  protected menuOf(s: AssessorRow): RowMenuItem[] {
+    const phone = this.showsPhone && hasPhone(this.phoneOf(s));
+    return s.IsActive ? (phone ? this.menuActivePhone : this.menuActive) : phone ? this.menuBlockedPhone : this.menuBlocked;
+  }
 
   protected readonly tiles = computed<ListCount[]>(() => {
     const rows = this.rows();
@@ -465,6 +492,7 @@ export class AssessorListPage {
 
   constructor() {
     void this.load();
+    void this.loadPhones();
   }
 
   protected setStatus(value: StatusFilter): void {
@@ -505,6 +533,7 @@ export class AssessorListPage {
       case 'block': void this.openBlock(s); break;
       case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: s.UserId, userName: s.UserName ?? null }); break;
       case 'history': void this.openHistory(s); break;
+      case 'release': this.releaseFor.set({ row: s, ask: releaseMobileAsk(s.UserName, s.UserId, this.phoneOf(s)?.model, this.word) }); break;
     }
   }
 
@@ -513,7 +542,27 @@ export class AssessorListPage {
     this.resetFor.set(null);
     this.blockFor.set(null);
     this.reasonAsk.set(null);
+    this.releaseFor.set(null);
     this.dialogError.set('');
+  }
+
+  /** Releases the user's registered phone with the reason; the next sign-in registers the new phone. */
+  protected async releaseMobile(s: AssessorRow, reason: string): Promise<void> {
+    await this.act(releasePhone(this.http, s.UserId, reason), (m) => {
+      this.toast.success('Mobile released', m);
+      void this.loadPhones();
+      return false;
+    });
+  }
+
+  /** The Phone chips (Admin and Master Admin only; a failure leaves them "Not registered" rather than failing the list). */
+  private async loadPhones(): Promise<void> {
+    if (!this.showsPhone) return;
+    try {
+      this.phones.set(phonesById(await firstValueFrom(loadPhones(this.http))));
+    } catch {
+      /* the list works without the chips */
+    }
   }
 
   /** E-mails the assessor a link to set a new password. */

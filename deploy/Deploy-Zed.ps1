@@ -161,6 +161,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0098 expenditure monitoring'; Test = (Has-Col 'dbo.MsmeCertifications' 'ExpCountedOn') }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0098 expenditure tables'; Test = "OBJECT_ID('dbo.ExpenditureRates', 'U') IS NOT NULL AND OBJECT_ID('dbo.ExpenditureInvoices', 'U') IS NOT NULL" }
         @{ Dbs = @('ZED_CONSULTANT'); Name = '0098 expenditure monitoring'; Test = (Has-Col 'dbo.MsmeCertifications' 'ExpM1CountedOn') + " AND OBJECT_ID('dbo.ExpenditureInvoices', 'U') IS NOT NULL" }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0099 one phone per staff user'; Test = (Has-Col 'dbo.MobileDeviceBindings' 'Make') + ' AND ' + (Has-Col 'dbo.MobileDeviceBindings' 'AppVersion') + ' AND ' + (Has-Col 'dbo.MobileDeviceEvents' 'Reason') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }
