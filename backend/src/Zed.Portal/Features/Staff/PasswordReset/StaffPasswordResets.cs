@@ -286,7 +286,8 @@ public sealed class StaffPasswordResets(
             return new(null, "The reset link could not be e-mailed. Please try again.");
         }
         audit.LogInformation("Staff password reset: link sent to {UserId} by {Actor} from {Ip}", account.UserId, actor.UserId, ip);
-        return new($"A password reset link has been sent to the user's registered e-mail address ({Mask(to)}).", null);
+        // 2026-11-18 (the user): the signed-in administrator sees the address in full (e-mail is never masked on staff pages).
+        return new($"A password reset link has been sent to the user's registered e-mail address ({to}).", null);
     }
 
     // ------------------------------------------------------------------ Helpers
@@ -360,12 +361,6 @@ public sealed class StaffPasswordResets(
     {
         var id = (typed ?? "").Trim();
         return id.Length is > 0 and <= 50 && !id.Any(char.IsControl) ? id : "";
-    }
-
-    private static string Mask(string address)
-    {
-        var at = address.IndexOf('@');
-        return at <= 1 ? "***" + address[Math.Max(at, 0)..] : address[0] + new string('*', Math.Min(at - 1, 6)) + address[at..];
     }
 
     private void Audit(string outcome, string userId, string? ip) =>

@@ -56,8 +56,12 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         };
         // 2026-11-17 (approved redesign): the unit's district, state and size (the procedure's Msme columns) for the rows.
         string[] place = ["PDistrictName", "PStateName", "EnterpriseTypee"];
+        // 2026-11-18: main adds the units an agency rejected at the site allotment (SiteRejections), to re-allot.
+        IEnumerable<IDictionary<string, object?>> listed = sets[0];
+        if (host.System == PortalSystem.Main)
+            listed = listed.Concat(await SiteRejections.ListAsync(db, null, type, f, log, ct));
         // A Master Admin with a scope sees only its units and levels (migration 0057).
-        var rows = AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), [.. AllotmentLists.ListFields, .. extra, .. place]);
+        var rows = AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, listed, ct), [.. AllotmentLists.ListFields, .. extra, .. place]);
         await AddPaidOnAsync(rows, ct);
         return new ListResponse(rows);
     }
@@ -189,6 +193,10 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
 
         var listed = (await AllotmentLists.List(db, UserId, RoleId, null, zedId, AllotmentLists.Filter.None with { Certification = level }, ct))[0]
             .Any(r => AllotmentLists.Same(r, "ZedId", zedId!) && AllotmentLists.Same(r, "Certification", level));
+        // 2026-11-18: or (main) rejected by its agency at the site allotment (SiteRejections).
+        if (!listed && host.System == PortalSystem.Main)
+            listed = (await SiteRejections.ListAsync(db, zedId, null, AllotmentLists.Filter.None with { Certification = level }, log, ct))
+                .Any(r => AllotmentLists.Same(r, "ZedId", zedId!) && AllotmentLists.Same(r, "Certification", level));
         if (!listed) return "This assessment can no longer be allotted.";
 
         var agency = (await AgenciesFor(zedId!, level, ct)).FirstOrDefault(a => string.Equals(a.UserId, agencyUserId, StringComparison.OrdinalIgnoreCase));

@@ -86,10 +86,24 @@ describe('SaAllotmentPage (consultancy)', () => {
     expect(rows[0].querySelector('.rm-btn')).not.toBeNull();
     expect(rows[0].textContent).toContain('Milestone 1');
     expect(rows[1].textContent).toContain('Re-allot');
-    expect(rows[1].querySelector('.rm-btn')).toBeNull();
     expect(rows[1].textContent).toContain('Co Two');
     expect(rows[2].textContent).toContain('Rejected');
-    expect(rows[2].querySelector('button')).toBeNull();
+    expect(rows[2].querySelector('button.co-act')).toBeNull();
+  });
+
+  it('View details (the milestone review page) on the row and in its menu, with the profile (2026-11-18)', async () => {
+    const links = [...el.querySelectorAll<HTMLAnchorElement>('tbody a.co-view')];
+    expect(links.length).toBe(3);
+    expect(links[0].getAttribute('href')).toBe('/staff/consultancy/milestones/ZEDMSME000001/Silver');
+    const menuOf = async (row: number) => {
+      const tr = el.querySelectorAll('tbody tr')[row];
+      (tr.querySelector('.rm-btn') as HTMLButtonElement).click();
+      await settle(fixture);
+      return [...tr.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim());
+    };
+    expect(await menuOf(0)).toEqual(['View details', 'View MSME profile', 'Reject']);
+    expect(await menuOf(1)).toEqual(['View details', 'View MSME profile']);
+    expect(await menuOf(2)).toEqual(['View details', 'View MSME profile']);
   });
 
   it('allots milestone 1 with the team and the BDS and HAP dates', async () => {
@@ -191,7 +205,7 @@ describe('SaAllotmentPage (surveillance)', () => {
   it('shows the surveillance round and date and sends the meeting link', async () => {
     expect(el.textContent).toContain('1st Surveillance');
     expect(el.textContent).toContain('Surveillance Date');
-    button(el, 'Allot')!.click();
+    button(el, 'Accept')!.click();
     await settle(fixture);
     expect(el.textContent).toContain('Original Lead');
     // One "Assessor" and no Co Assessor choice, as on the surveillance page.

@@ -22,6 +22,10 @@
 }
 
 @if (data(); as d) {
+  <!-- 2026-11-18: the agency's unit not yet accepted: a read-only preview with the allotment banner (Accept / Re-allot, Reject). -->
+  @if (allotment(); as al) {
+    <zed-da-allotment-banner [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [allotment]="al" />
+  }
   <div class="zed-tabs">
     <ul class="nav nav-tabs uv-tabs" role="tablist">
       @for (id of [1, 2, 9, 3]; track id) {
@@ -29,7 +33,7 @@
           <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">
             <span class="uv-tab-name">{{ tabLabels[id] }}</span>
             @if (id === 2) { <span class="uv-tab-n">{{ basicItems }} items</span> }
-            @if (id === 3) { <span class="uv-tab-n">{{ completeCount() }} of {{ d.sections.length }}</span> }
+            @if (id === 3) { <span class="uv-tab-n">{{ previewMode() ? d.sections.length + ' parameters' : completeCount() + ' of ' + d.sections.length }}</span> }
           </button>
         </li>
       }
@@ -121,7 +125,9 @@
             <button type="button" class="ov-link" (click)="tab.set(2)">
               <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 12h6M10 16h6" /></svg></span>Basic information</span>
               <b>{{ basicItems }} items</b>
-              <small [class.warn]="basicRaisedCount()">{{ basicRaisedCount() ? basicRaisedCount() + ' raised as NC' : 'None raised as NC' }}</small>
+              @if (previewMode()) { <small class="muted">As submitted by the unit</small> } @else {
+                <small [class.warn]="basicRaisedCount()">{{ basicRaisedCount() ? basicRaisedCount() + ' raised as NC' : 'None raised as NC' }}</small>
+              }
             </button>
             <button type="button" class="ov-link" (click)="tab.set(9)">
               <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" /></svg></span>ESG compliance</span>
@@ -130,14 +136,21 @@
             </button>
             <button type="button" class="ov-link" (click)="tab.set(3)">
               <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>Parameters</span>
-              <b>{{ completeCount() }} of {{ d.sections.length }}</b>
-              <small [class.warn]="paramCounts().no">{{ paramCounts().yes }} conform@if (paramCounts().no) {, {{ paramCounts().no }} raised as NC}</small>
+              @if (previewMode()) {
+                <b>{{ d.sections.length }} parameters</b>
+                <small class="muted">Documents uploaded by the unit</small>
+              } @else {
+                <b>{{ completeCount() }} of {{ d.sections.length }}</b>
+                <small [class.warn]="paramCounts().no">{{ paramCounts().yes }} conform@if (paramCounts().no) {, {{ paramCounts().no }} raised as NC}</small>
+              }
             </button>
+            @if (!previewMode()) {
             <button type="button" class="ov-link" [disabled]="!ncTabs().length" (click)="openNc()">
               <span class="ov-link-head"><span class="uv-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg></span>Non-conformances</span>
               <b>{{ ncTabs().length ? ncTabs().length + ' of 5 rounds' : 'None' }}</b>
               <small [class.warn]="trackerOpen()">{{ !tracker().length ? 'No item raised' : trackerOpen() ? trackerOpen() + ' not closed' : 'All items closed' }}</small>
             </button>
+            }
           </div>
           @if (ncList().length) {
             <section class="uv-card" aria-labelledby="daNcTitle" data-nc-card>
@@ -200,11 +213,13 @@
           @let se = siteExterior()[0];
           @let seRaised = t(se, 'IsVerified') === 'No';
           <div class="bi-bar">
+            @if (!previewMode()) {
             <div class="bi-chips" role="group" aria-label="Show">
               <button type="button" class="bi-chip" [class.on]="basicFilter() === 'all'" [attr.aria-pressed]="basicFilter() === 'all'" (click)="basicFilter.set('all')">All <span>{{ basicItems }}</span></button>
               <button type="button" class="bi-chip" [class.on]="basicFilter() === 'attention'" [attr.aria-pressed]="basicFilter() === 'attention'" (click)="basicFilter.set('attention')">Needs attention <span>{{ basicRaisedCount() }}</span></button>
               <button type="button" class="bi-chip" [class.on]="basicFilter() === 'accepted'" [attr.aria-pressed]="basicFilter() === 'accepted'" (click)="basicFilter.set('accepted')">Accepted <span>{{ basicItems - basicRaisedCount() }}</span></button>
             </div>
+            }
             @if (t(msme(), 'BasicInfoStatus')) { <span class="bi-when">Submitted by the unit on {{ t(msme(), 'BasicInfoStatus') }}</span> }
           </div>
 
@@ -235,7 +250,9 @@
                   </div>
                   <div class="bi-body photo-verdict">
                     <h6>Site exterior photos @if (seRaised && ncTabs().length) { <button type="button" class="bi-nc" (click)="openNc('round', 1)">Raised in NC 1</button> }</h6>
-                    @if (t(se, 'IsVerified')) {
+                    @if (previewMode()) {
+                      <span class="uv-chip" [class.good]="siteExterior().length">{{ siteExterior().length ? 'Photo uploaded' : 'No photo' }}</span>
+                    } @else if (t(se, 'IsVerified')) {
                       <span class="uv-chip" [class.good]="!seRaised" [class.bad]="seRaised">Verified: {{ t(se, 'IsVerified') }}</span>
                       <span class="bi-label">Assessor remarks</span>
                       <p>{{ t(se, 'AssessorRemarks') || 'No remarks recorded' }}</p>
@@ -283,6 +300,7 @@
                     <figcaption>Description photo</figcaption>
                   </figure>
                 </div>
+                @if (!previewMode()) {
                 <div class="bi-verdict">
                   <span class="bi-label">Conformance</span>
                   @if (t(p, 'IsVerified')) { <span class="uv-chip" [class.good]="!pRaised" [class.bad]="pRaised">{{ t(p, 'IsVerified') }}</span> } @else { <span class="uv-chip">Not checked</span> }
@@ -298,6 +316,7 @@
                   }
                   @if (pRaised && ncTabs().length) { <button type="button" class="bi-nc" (click)="openNc('round', 1)">Raised in NC 1</button> }
                 </div>
+                }
               </section>
             }
           } @empty {
@@ -360,7 +379,9 @@
             </table>
           }
           <zed-app-form-values [zedId]="zedId()" [certification]="level() ?? certification()" />
-          <zed-form-checks kind="desktop" [zedId]="zedId()" [certification]="level() ?? certification()" />
+          @if (!previewMode()) {
+            <zed-form-checks kind="desktop" [zedId]="zedId()" [certification]="level() ?? certification()" />
+          }
         </div>
       }
 
@@ -422,12 +443,14 @@
           <div class="zp-layout">
             <nav class="zp-nav" aria-labelledby="daParamNavTitle">
               <!-- 2026-11-18 (staff-14b): "Parameters" with "N of M complete", a progress bar and the conform / does-not counts. -->
-              <div class="zp-nav-head" id="daParamNavTitle">Parameters <span class="zp-nav-done">{{ completeCount() }} of {{ d.sections.length }} complete</span></div>
+              <div class="zp-nav-head" id="daParamNavTitle">Parameters <span class="zp-nav-done">{{ previewMode() ? d.sections.length + ' parameters' : completeCount() + ' of ' + d.sections.length + ' complete' }}</span></div>
+              @if (!previewMode()) {
               <div class="zp-nav-sum">
                 <span class="zp-bar" aria-hidden="true"><span [style.width.%]="d.sections.length ? (completeCount() / d.sections.length) * 100 : 0"></span></span>
                 <span class="uv-chip good">{{ paramCounts().yes }} conform</span>
                 @if (paramCounts().no) { <span class="uv-chip bad zp-x">{{ paramCounts().no }} does not</span> }
               </div>
+              }
               <div class="zp-nav-list">
                 @for (s of d.sections; track t(s, 'Id')) {
                   @let st = navStatus(s);
@@ -436,10 +459,14 @@
                     <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                      <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
-                      <span class="zp-bar" aria-hidden="true"><span [style.width.%]="exempted(s) ? 100 : pg.percent"></span></span>
+                      @if (previewMode()) {
+                        <span class="zp-nav-meta">{{ requirementsOf(s, d.requirements).length }} requirements</span>
+                      } @else {
+                        <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                        <span class="zp-bar" aria-hidden="true"><span [style.width.%]="exempted(s) ? 100 : pg.percent"></span></span>
+                      }
                     </span>
-                    <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                    @if (!previewMode()) { <span class="zp-chip" [attr.data-v]="st">{{ st }}</span> }
                   </button>
                 }
               </div>
@@ -466,13 +493,15 @@
                       <button type="button" class="zp-step" aria-label="Previous parameter" [disabled]="sectionIndex() <= 1" (click)="stepSection(-1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg></button>
                       <button type="button" class="zp-step" aria-label="Next parameter" [disabled]="sectionIndex() >= d.sections.length" (click)="stepSection(1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
                     </div>
-                    <div class="zp-head-status">
-                      <span class="zp-label">Conformance</span>
-                      <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
-                    </div>
+                    @if (!previewMode()) {
+                      <div class="zp-head-status">
+                        <span class="zp-label">Conformance</span>
+                        <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                      </div>
+                    }
                   </div>
 
-                  @if (n(s, 'ValidationRequired') > 0) {
+                  @if (n(s, 'ValidationRequired') > 0 && !previewMode()) {
                     <h5 class="zp-section-note">
                       @if (canChange(0) && status() <= 3) {
                         <span>Exempted from Remote/Site Assessment</span>
@@ -505,8 +534,10 @@
                         <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
                         <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
                         <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
-                        <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
-                        @if (qoMaster()) { <button type="button" class="btn btn-outline-primary btn-sm qo-add" (click)="observe(r)">+ Observation</button> }
+                        @if (!previewMode()) {
+                          <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                          @if (qoMaster()) { <button type="button" class="btn btn-outline-primary btn-sm qo-add" (click)="observe(r)">+ Observation</button> }
+                        }
                         <button type="button" class="zp-fold" [attr.aria-expanded]="!closed" [attr.aria-label]="(closed ? 'Open ' : 'Close ') + t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" (click)="toggleReq(t(r, 'Id'))">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
                         </button>
@@ -532,6 +563,7 @@
                                     </ul>
                                   }
                                 </div>
+                                @if (!previewMode()) {
                                 <div class="zp-cp-answer">
                                   @if (answerOf(r, o); as a) {
                                     <span class="cp-chip" [attr.data-v]="a">{{ a }}</span>
@@ -544,13 +576,14 @@
                                            [class.btn-outline-primary]="!!t(ve, 'IsVerified')" [attr.aria-label]="(t(ve, 'IsVerified') ? 'Edit ' : 'Validate ') + t(ve, 'EvidenceName')" (click)="editEvidence(ve)" />
                                   }
                                 </div>
+                                }
                               </div>
                               @if (cpEv.length) {
                                 <div class="zp-cp-ev">
                                   <ng-container *ngTemplateOutlet="evidenceTable; context: { $implicit: cpEv, act: false }" />
                                 </div>
                               }
-                              @if (cp?.desktop?.actions?.length || cp?.desktop?.remarks) {
+                              @if (!previewMode() && (cp?.desktop?.actions?.length || cp?.desktop?.remarks)) {
                                 <div class="zp-cp-note">
                                   @if (cp?.desktop?.actions?.length) { <span>Actions needed: {{ cp?.desktop?.actions?.join(', ') }}</span> }
                                   @if (cp?.desktop?.actions?.length && cp?.desktop?.remarks) { <span> · </span> }
@@ -574,6 +607,7 @@
                         </div>
                       </div>
 
+                      @if (!previewMode()) {
                       <div class="zp-foot">
                         <div class="zp-conf">
                           <div class="zp-label">Conformance</div>
@@ -598,6 +632,7 @@
                           </div>
                         </div>
                       </div>
+                      }
                     </article>
                   } @empty {
                     <p class="zp-muted">No requirements in this parameter.</p>
@@ -609,6 +644,7 @@
             </div>
           </div>
 
+          @if (!previewMode()) {
           @if (t(msme(), 'AssessorRemarks')) {
             <div class="final-remarks"><strong>Assessor Final Remarks:</strong> {{ t(msme(), 'AssessorRemarks') }}</div>
           }
@@ -618,6 +654,7 @@
             }
             <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="desktop" [actions]="review()" (done)="reviewed($event)" />
           </div>
+          }
         </div>
       }
 
@@ -1279,7 +1316,7 @@
 <!-- The evidence rows of a checkpoint, or of the whole requirement (Parameters tab). -->
 <ng-template #evidenceTable let-list let-act="act">
 <table class="zp-ev-table">
-    <thead><tr><th>Document</th><th>Verified</th><th>Source</th><th>Screenshots</th>@if (act) { <th><span class="visually-hidden">Action</span></th> }</tr></thead>
+    <thead><tr><th>Document</th>@if (!previewMode()) { <th>Verified</th><th>Source</th><th>Screenshots</th>@if (act) { <th><span class="visually-hidden">Action</span></th> } }</tr></thead>
     <tbody>
       @for (e of list; track t(e, 'Id')) {
         <tr class="zp-ev-row">
@@ -1291,8 +1328,9 @@
             } @else {
               <span class="zp-ev-name">{{ t(e, 'EvidenceName') }}</span>
             }
-            @if (t(e, 'AssessorRemarks')) { <div class="zp-ev-remarks">Remarks: {{ t(e, 'AssessorRemarks') }}</div> }
+            @if (t(e, 'AssessorRemarks') && !previewMode()) { <div class="zp-ev-remarks">Remarks: {{ t(e, 'AssessorRemarks') }}</div> }
           </td>
+          @if (!previewMode()) {
           <td class="zp-ev-verified" data-label="Verified">
             @if (t(e, 'IsVerified')) {
               <span class="zp-chip" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span>
@@ -1316,6 +1354,7 @@
                 <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm zp-btn" [class.btn-primary]="!t(e, 'IsVerified')" [class.btn-outline-primary]="!!t(e, 'IsVerified')" (click)="editEvidence(e)" />
               }
             </td>
+          }
           }
         </tr>
       }

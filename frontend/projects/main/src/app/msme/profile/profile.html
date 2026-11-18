@@ -1,5 +1,5 @@
 <!-- 2026-11-17 (the user's approved design "Enterprise profile"): a left section menu in place of one long scroll; the
-     header card; the enterprise from Udyam (read only, PAN masked); the contact with the change of the registered e-mail
+     header card; the enterprise from Udyam (read only; 2026-11-18 the user: PAN, e-mail and mobile shown in full, never masked); the contact with the change of the registered e-mail
      (OTP to the new address); the unit as a card and its NIC activity as the 2 > 4 > 5-digit hierarchy with Edit activity.
      Basic information and documents are entered only in the ZED MSME app.
      2026-11-18 (the user's applicant designs): the design's sizes, the pledge date as d MMM yyyy, Verified after the mobile when
@@ -54,8 +54,7 @@
           @if (pan()) {
             <div>
               <dt>PAN</dt>
-              <dd><span data-testid="pan">{{ showPan() ? pan() : masked(pan()) }}</span>
-                <button type="button" class="lnk" [attr.aria-pressed]="showPan()" (click)="showPan.set(!showPan())">{{ showPan() ? 'Hide' : 'Show' }}</button></dd>
+              <dd><span data-testid="pan">{{ pan() }}</span></dd>
             </div>
           }
           @if (entType()) { <div><dt>Enterprise type</dt><dd>{{ entType() }}</dd></div> }
@@ -83,9 +82,6 @@
         <span class="pc-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg></span>
         <h3 id="contactTitle">Contact</h3>
         <span class="end">
-          @if (registeredEmail() || mobile()) {
-            <button type="button" class="lnk" [attr.aria-pressed]="showContact()" (click)="showContact.set(!showContact())">{{ showContact() ? 'Hide' : 'Show' }}</button>
-          }
           @if (emailStep() === 'idle') { <button type="button" class="lnk" (click)="startEmailChange()">Edit contact</button> }
         </span>
       </header>
@@ -93,7 +89,7 @@
         <div>
           <dt>Registered e-mail <small>(ZED mails &amp; password links)</small></dt>
           <dd>
-            <span data-testid="registered-email">{{ registeredEmail() ? (showContact() ? registeredEmail() : maskedEmail(registeredEmail())) : 'Not given' }}</span>
+            <span data-testid="registered-email" class="one-line" [attr.title]="registeredEmail() || null">{{ registeredEmail() || 'Not given' }}</span>
             <!-- The registered e-mail is only ever set with an OTP sent to it (pledge registration, Change e-mail). -->
             @if (registeredEmail()) { <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span> }
           </dd>
@@ -101,7 +97,7 @@
         <div>
           <dt>Mobile</dt>
           <dd>
-            <span data-testid="mobile">{{ mobile() ? (showContact() ? mobile() : masked(mobile())) : 'Not given' }}</span>
+            <span data-testid="mobile">{{ mobile() || 'Not given' }}</span>
             <!-- 2026-11-18: the mobile the Udyam service accepted for the Udyam number at registration (no OTP to the mobile). -->
             @if (mobile() && mobileVerified()) {
               <span class="ok" title="The mobile number of your Udyam registration"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span>

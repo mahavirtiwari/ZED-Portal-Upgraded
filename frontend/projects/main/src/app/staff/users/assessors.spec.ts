@@ -310,10 +310,11 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
     expect(el.querySelector('.ph-title')!.textContent).toContain('Assessor details');
     expect([...el.querySelectorAll('button')].some((b) => ['Create', 'Update'].includes(b.textContent!.trim()))).toBe(false);
-    // 2026-11-18 (staff-05): the view shows a compact contact card (masked), no edit fields.
+    // 2026-11-18 (staff-05): the view shows a compact contact card, no edit fields; the e-mail in full (the user: never masked).
+    // An Aadhaar ID proof keeps only its last four (as the server sends it).
     expect(el.querySelector('#idProofNumber')).toBeNull();
     expect(el.querySelector('[data-view="id-proof"]')!.textContent!.trim()).toBe('Aadhaar card · •••••9012');
-    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('a•••••@z.test');
+    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('a@z.test');
     expect(el.querySelector('zed-page-head a[data-back]')!.getAttribute('href')).toBe('/staff/users/assessors');
     // The profile card and no save bar.
     const profile = el.querySelector('.af-profile')!.textContent!;
@@ -411,7 +412,7 @@ describe('MyAssessorsPage', () => {
 
   afterEach(() => http.verify());
 
-  it('offers no Unblock while the certificate is attached elsewhere, masks the contact and shows no ID proof or PAN', async () => {
+  it('offers no Unblock while the certificate is attached elsewhere, shows the contact in full and no ID proof or PAN column', async () => {
     http.expectOne('/api/staff/users/assessors/mine').flush([
       row('ZEDBA0001', { IsActive: false, IsCertAttached: 1, PanNo: 'ABCDE1234F' }),
       row('ZEDBA0002', { IsActive: false }),
@@ -426,8 +427,8 @@ describe('MyAssessorsPage', () => {
     expect(rows[1].textContent).not.toContain('attached to another');
     expect(rows[0].textContent).not.toContain('XXXXXXXX9012');
     expect(rows[0].textContent).not.toContain('ABCDE1234F');
-    expect([...rows[0].querySelectorAll('.ma-contact span')].map((s) => s.textContent!.trim())).toEqual(['90•••••001', 'x•••••@z.test']);
-    expect(rows[0].textContent).not.toContain('9000000001');
+    // 2026-11-18 (the user): never masked.
+    expect([...rows[0].querySelectorAll('.ma-contact span')].map((s) => s.textContent!.trim())).toEqual(['9000000001', 'x@z.test']);
     // Two buttons at most: Edit and the menu (the mobile number is changed on the edit page).
     expect([...rows[2].querySelectorAll('.ma-btns > a, .ma-btns > button')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
     expect(rows[2].querySelector('.ma-btns a')!.getAttribute('href')).toBe('/staff/users/assessors/ZEDBA0003');
@@ -480,14 +481,14 @@ describe('MyAssessorsPage', () => {
     const dialog = el.querySelector('zed-confirm-dialog')!;
     expect(dialog.querySelector('h3')!.textContent).toContain('Send password reset link?');
     const person = dialog.querySelector('.cd-person')!.textContent!;
-    for (const part of ['Asha Rao', 'Assessor · ZEDBA0001', 'as•••••@sample.in']) expect(person).toContain(part);
+    for (const part of ['Asha Rao', 'Assessor · ZEDBA0001', 'asha@sample.in']) expect(person).toContain(part);
     expect(dialog.textContent).toContain('The user chooses the new password.');
     await submit();
-    http.expectOne('/api/staff/users/assessors/ZEDBA0001/password-reset').flush({ message: 'A link to set a new password was e-mailed (a***@sample.in).' });
+    http.expectOne('/api/staff/users/assessors/ZEDBA0001/password-reset').flush({ message: 'A link to set a new password was e-mailed (asha@sample.in).' });
     await settle(fixture);
     expect(el.querySelector('zed-confirm-dialog')).toBeNull();
     expect(el.querySelector('.alert-success')).toBeNull();
-    expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Reset link sent', message: 'E-mailed to a***@sample.in' });
+    expect((await toasts()).at(-1)).toMatchObject({ tone: 'success', title: 'Reset link sent', message: 'E-mailed to asha@sample.in' });
   });
 
   it('blocks from the row menu with the open assessments and a required reason, and keeps a refusal in the pop-up', async () => {
@@ -700,7 +701,7 @@ describe('AssessorListPage', () => {
     ]);
     await settle(fixture);
     await choose(el.querySelector('tbody tr')!, 'Send reset link');
-    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('as•••••@sample.in');
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('asha@sample.in');
     await submit();
     http.expectOne('/api/staff/users/assessors/ZEDBA01/password-reset').flush({ title: 'No e-mail address is saved.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);
@@ -709,8 +710,8 @@ describe('AssessorListPage', () => {
     http.expectOne('/api/staff/users/assessors/ZEDBA01/password-reset').flush({ message: 'Link sent.' });
     await settle(fixture);
     expect(el.querySelector('zed-confirm-dialog')).toBeNull();
-    // No address in the answer: the list's masked address.
-    expect((await toasts()).at(-1)).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to as•••••@sample.in' });
+    // No address in the answer: the list's address.
+    expect((await toasts()).at(-1)).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to asha@sample.in' });
     http.verify();
   });
 
@@ -729,7 +730,7 @@ describe('AssessorListPage', () => {
     http.verify();
   });
 
-  it('masks the contact and leaves the PAN out', async () => {
+  it('shows the contact in full and has no PAN column', async () => {
     const { fixture, http, el } = await create();
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush([
       { RowNumber: 1, Id: 1, UserId: 'ZEDBA01', UserName: 'Ravi', MobileNo: '9876543210', Email: 'ravi@sample.in', PanNo: 'ABCDE1234F', IsActive: true, IdStatus: 'Active' },
@@ -737,10 +738,11 @@ describe('AssessorListPage', () => {
     ]);
     await settle(fixture);
     const [first, second] = [...el.querySelectorAll('tbody tr')];
-    expect([...first.querySelectorAll('.as-contact span')].map((s) => s.textContent!.trim())).toEqual(['98•••••210', 'ra•••••@sample.in']);
+    // 2026-11-18 (the user): never masked; a long e-mail is cut with "…" and its tooltip.
+    expect([...first.querySelectorAll('.as-contact span')].map((s) => s.textContent!.trim())).toEqual(['9876543210', 'ravi@sample.in']);
+    expect(first.querySelector('.as-contact .as-sub')!.getAttribute('title')).toBe('ravi@sample.in');
     expect(second.querySelector('.as-contact')!.textContent!.trim()).toBe('Mobile not saved');
     expect(el.querySelector('tbody')!.textContent).not.toContain('ABCDE1234F');
-    expect(el.querySelector('tbody')!.textContent).not.toContain('9876543210');
     expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Levels and modes', 'Sector', 'Contact', 'Agency', 'Status', 'Actions']);
     http.verify();
   });

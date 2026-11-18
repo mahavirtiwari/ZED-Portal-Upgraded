@@ -2,25 +2,18 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
+import { Router, RouterLink } from '@angular/router';
+import { Assessor, Row, SITE_SYSTEM, SiteAssessmentApi } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
 import { PagedView, PagerComponent, searchRows } from '../pager';
-import { mayAssess } from '../users/assessor-scope';
+import { SaAllotDialog, SiteAllotChoice, siteRejectAsk } from './sa-allot-actions';
+import { RowMenu, RowMenuItem } from '../row-menu';
+import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile } from '../users/user-display';
-
-interface AllotForm {
-  unit: Row;
-  assessmentDate: string;
-  modeOfAssessment: string;
-  siteAssessorId: string;
-  coAssessorId: string;
-  meetingLink: string;
-}
 
 /**
  * "Allot SA Assessments" for agencies with the site verification sub-role. Port of
@@ -30,11 +23,15 @@ interface AllotForm {
  * certification's assessors, and the meeting link of the external video meeting (mode stored as Onsite, shown as
  * Remote, as before); one "Assessor" and no co-assessor (that page's Co Assessor select was commented out). Consultancy build: the CO allotment page ({@link CoAllotmentPage}) instead.
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the mode as
- * chips, one search box, the SPOC's mobile and e-mail masked, Allot / Re-allot on the row, a toast when done.</p>
+ * chips, one search box, the SPOC's mobile and e-mail in full (2026-11-18, the user), Allot / Re-allot on the row, a toast when done.</p>
+ * <p>2026-11-18 (the user: "accept, reject, view details and other option similar to combination one"): the desktop list's
+ * actions: Accept (allot) / Re-allot and View details on the row, View details, View MSME profile and Reject (reason
+ * required, back to the ZED team) in its menu. View details opens the assessment details page with the allotment banner
+ * (the same Accept and Reject, sa-allot-actions.ts).</p>
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, CoAllotmentPage, PagerComponent, PageHead, ListCounts, ChipFilter],
+  imports: [FormsModule, RouterLink, CoAllotmentPage, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, SaAllotDialog],
   host: { class: 'list-v2 d-block' },
   template: `
     @if (system === 'consultancy') {
@@ -83,7 +80,7 @@ interface AllotForm {
                 @if (surveillance && s['SurveillanceNo']) { <span class="sub">{{ s['SurveillanceNo'] }}</span> }
               </td>
               <!-- Masked in the list; the MSME profile has the full values. -->
-              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
+              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
               @if (surveillance) { <td class="text-nowrap">{{ s['AssessmentDate'] }}</td> }
               <td>@if (modeOf(s); as m) { <span class="chip is-info">{{ m }}</span> }</td>
               <td class="stack">
@@ -103,8 +100,10 @@ interface AllotForm {
                 @if (s['SiteAssessorId']) {
                   <button type="button" class="btn sa-act re-allot" (click)="open(s)">Re-allot</button>
                 } @else if (!s['ReasonForRejection']) {
-                  <button type="button" class="btn btn-primary sa-act" (click)="open(s)">Allot</button>
+                  <button type="button" class="btn btn-primary sa-act" (click)="open(s)">Accept</button>
                 }
+                <a class="btn btn-outline-primary sa-act sa-view" [routerLink]="detailsLink(s)">View details</a>
+                <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
               </td>
             </tr>
           } @empty {
@@ -118,82 +117,13 @@ interface AllotForm {
     <zed-pager [pager]="view" />
     </div>
 
-    @if (form(); as f) {
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allot-title" (click)="close()">
-        <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content sa-pop">
-            <div class="modal-header justify-content-between">
-              <div>
-                <h3 class="sa-pop-title" id="allot-title">{{ f.unit['SiteAssessorId'] ? 'Re-allot unit' : 'Allot unit' }}</h3>
-                <p class="sa-pop-sub">{{ f.unit['ZedId'] }} · {{ f.unit['Certification'] }}@if (f.unit['PUnitName']) { · {{ f.unit['PUnitName'] }} }</p>
-              </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label" for="FinalSaDate">{{ surveillance ? 'Surveillance Assessment Date' : 'Assessment Date' }}<span class="req">*</span></label>
-                <input type="date" id="FinalSaDate" name="FinalSaDate" class="form-control" [min]="minDate" [(ngModel)]="f.assessmentDate" />
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="ModeOfAssessment">Mode of Assessment<span class="req">*</span></label>
-                <select id="ModeOfAssessment" name="ModeOfAssessment" class="form-select" [(ngModel)]="f.modeOfAssessment">
-                  <option value="">--Select--</option>
-                  <!-- Surveillance stores Onsite but the assessment runs on the meeting link (the old page showed "Remote Assessment"). -->
-                  <!-- 2026-11-14: a main unit whose level is assessed remotely (Desktop + Remote, Remote only) is allotted Remote. -->
-                  @if (remoteUnit(f.unit)) {
-                    <option [value]="remote">Remote Assessment</option>
-                  } @else {
-                    <option [value]="onsite">{{ surveillance && !onsiteVisit(f.unit) ? 'Remote Assessment' : 'Onsite Assessment' }}</option>
-                  }
-                </select>
-              </div>
-              @if (needsLink(f.unit)) {
-                <div class="mb-3">
-                  <label class="form-label" for="MeetingLink">Meeting Link<span class="req">*</span></label>
-                  <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="5000" rows="4"
-                            placeholder="https://..." [(ngModel)]="f.meetingLink"></textarea>
-                </div>
-              }
-              <div class="mb-3">
-                <label class="form-label" for="SiteAssessorId">{{ surveillance ? 'Assessor' : 'Lead Assessor' }}<span class="req">*</span></label>
-                <select id="SiteAssessorId" name="SiteAssessorId" class="form-select" [(ngModel)]="f.siteAssessorId" (ngModelChange)="f.coAssessorId = ''">
-                  <option value="">--Select--</option>
-                  @for (a of assessorsFor(f.unit); track a.userId) {
-                    <option [value]="a.userId">{{ a.userName }}</option>
-                  }
-                </select>
-              </div>
-              <!-- Surveillance: the old page had no co-assessor choice (its select was commented out); only one assessor is allotted. -->
-              @if (f.modeOfAssessment === onsite && !surveillance) {
-                <div class="mb-3">
-                  <label class="form-label" for="CoAssessorId">Co Assessor</label>
-                  <select id="CoAssessorId" name="CoAssessorId" class="form-select" [(ngModel)]="f.coAssessorId">
-                    <option value="">--Select--</option>
-                    @for (a of coAssessors(f.siteAssessorId); track a.userId) {
-                      <option [value]="a.userId">{{ a.userName }}</option>
-                    }
-                  </select>
-                </div>
-              }
-              @if (surveillance) {
-                <div class="original">
-                  <div><strong>Onsite Assessment Done by</strong></div>
-                  <div><span class="muted">Onsite Lead Assessor:</span> {{ f.unit['LeadInCertification'] }} - {{ f.unit['LeadNameInCertification'] }}</div>
-                  <div><span class="muted">Onsite Co Assessor:</span> {{ f.unit['CoInCertification'] }} - {{ f.unit['CoNameInCertification'] }}</div>
-                </div>
-              }
-              @if (formError()) {
-                <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div>
-              }
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="allot(f)">Allot</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-backdrop show"></div>
+    @if (form(); as u) {
+      <zed-sa-allot-dialog [unit]="u" [assessors]="assessors()" [busy]="busy()" [failed]="formError()" (allot)="allot($event)" (cancel)="close()" />
+    }
+
+    @if (rejectFor(); as r) {
+      <zed-confirm-dialog [ask]="rejectAsk(r)" [busy]="busy()" [failed]="formError()" inputId="saRejectReason"
+                          (confirmed)="reject($event)" (cancel)="rejectFor.set(null)" />
     }
 
     @if (busy()) {
@@ -216,20 +146,17 @@ interface AllotForm {
     .sa-act { min-width: 82px; font-weight: 600; }
     .sa-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
     .sa-act.re-allot:hover { background: #ffe6b5; }
-    .sa-pop { border: 0; border-radius: 12px; }
-    .sa-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .sa-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
-    .original { background: #eef6f6; border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; }
+    .sa-act + .sa-act { margin-left: 6px; }
+    .sa-act.sa-view { min-width: 0; margin-right: 6px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class SaAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
   protected readonly system = inject(SITE_SYSTEM);
   protected readonly surveillance = this.system === 'surveillance';
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
 
   protected readonly units = signal<Row[]>([]);
@@ -248,9 +175,9 @@ export class SaAllotmentPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly formError = signal('');
-  protected readonly form = signal<AllotForm | null>(null);
-  protected readonly onsite = ONSITE;
-  protected readonly remote = REMOTE;
+  /** The unit whose Accept / Re-allot pop-up is open. */
+  protected readonly form = signal<Row | null>(null);
+  protected readonly rejectFor = signal<Row | null>(null);
 
   protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments (Site)' : 'Allot SA Assessments';
   protected readonly crumbs = staffCrumbs({ label: this.pageTitle });
@@ -301,34 +228,48 @@ export class SaAllotmentPage {
     ];
   });
 
-  /** 2026-11-14: a main unit whose level's flow is remote (the server sends AssessmentMode). */
-  protected remoteUnit(unit: Row): boolean {
-    return !this.surveillance && unit['AssessmentMode'] === 'Remote';
+  /** The assessment details page of the unit (with the allotment banner while it waits here). */
+  protected detailsLink(s: Row): string {
+    return `/staff/assessment/da-details/${encodeURIComponent(this.str(s['ZedId']))}/${encodeURIComponent(this.str(s['Certification']))}`;
   }
 
-  /** 2026-11-14 (Onsite surveillance): a surveillance unit whose level is surveilled by an onsite visit. */
-  protected onsiteVisit(unit: Row): boolean {
-    return this.surveillance && unit['AssessmentMode'] === 'Onsite';
+  /** The row menu: the details, the profile, and Reject (before a site assessor is allotted, once). */
+  protected menu(s: Row): RowMenuItem[] {
+    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
+    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: 'Reject', danger: true });
+    return items;
   }
 
-  /** Surveillance (except an onsite visit) and main remote assessments are held on a meeting link. */
-  protected needsLink(unit: Row): boolean {
-    return (this.surveillance && !this.onsiteVisit(unit)) || this.remoteUnit(unit);
+  protected act(s: Row, key: string): void {
+    if (key === 'details') void this.router.navigateByUrl(this.detailsLink(s));
+    else if (key === 'profile') void this.router.navigateByUrl(`/staff/msme-profile/${encodeURIComponent(this.str(s['ZedId']))}`);
+    else if (key === 'reject') {
+      this.formError.set('');
+      this.rejectFor.set(s);
+    }
   }
-  protected readonly minDate = todayIso();
-  /** V4: only assessors who assess the unit's kind (Manufacturing / Services; not set = no limit). */
-  protected assessorsFor(unit: Row): Assessor[] {
-    const category = unit['SectorCategory'];
-    const level = String(unit['Certification'] ?? '');
-    // 2026-11-14: only assessors ticked for the unit's level in its mode (remote or onsite).
-    return this.assessors().filter((a) => (!category || !a.sectorActivity || a.sectorActivity === 'Both' || a.sectorActivity === category)
-      // A meeting-link surveillance keeps today's list (no mode to tick for it).
-      && (this.surveillance && !this.onsiteVisit(unit) ? true : mayAssess(a, level, this.remoteUnit(unit) ? 'Remote' : 'Onsite')));
+
+  protected rejectAsk(s: Row): ConfirmAsk {
+    return siteRejectAsk(s);
   }
-  protected readonly coAssessors = (leadId: string) => {
-    const unit = this.form()?.unit;
-    return (unit ? this.assessorsFor(unit) : this.assessors()).filter((a) => a.userId !== leadId);
-  };
+
+  protected async reject(reason: string): Promise<void> {
+    const s = this.rejectFor();
+    if (!s || !reason) return;
+    this.busy.set(true);
+    this.formError.set('');
+    try {
+      await firstValueFrom(this.api.reject(this.str(s['ZedId']), this.str(s['Certification']), reason));
+      this.rejectFor.set(null);
+      this.toast.success(`${s['ZedId']} rejected`, null);
+    } catch (err) {
+      this.formError.set(apiErrorMessage(err));
+      return;
+    } finally {
+      this.busy.set(false);
+    }
+    await this.load();
+  }
 
   constructor() {
     if (this.system !== 'consultancy') void this.load();
@@ -348,50 +289,25 @@ export class SaAllotmentPage {
     }
   }
 
-  /** As the old pop-up (a copy of the row): RE-ALLOT opens with the current assessor and meeting link filled in. */
+  /** Accept / Re-allot (the pop-up opens with the current assessor and meeting link filled in). */
   protected open(unit: Row): void {
     this.formError.set('');
-    const value = (column: string) => (unit[column] === null || unit[column] === undefined ? '' : String(unit[column]));
-    this.form.set({
-      unit,
-      assessmentDate: '',
-      modeOfAssessment: this.surveillance ? ONSITE : this.remoteUnit(unit) ? REMOTE : '',
-      siteAssessorId: value('SiteAssessorId'),
-      coAssessorId: '',
-      meetingLink: this.needsLink(unit) ? value('MeetingLink') : '',
-    });
+    this.form.set(unit);
   }
 
   protected close(): void {
     this.form.set(null);
   }
 
-  protected async allot(f: AllotForm): Promise<void> {
-    if (!f.siteAssessorId || !f.modeOfAssessment || !f.assessmentDate) {
-      this.formError.set('Please select valid data.');
-      return;
-    }
-    if (this.needsLink(f.unit) && !isWebLink(f.meetingLink)) {
-      this.formError.set('Please enter a valid meeting link (starting with https:// or http://).');
-      return;
-    }
+  protected async allot(choice: SiteAllotChoice): Promise<void> {
+    const unit = this.form();
+    if (!unit) return;
     this.busy.set(true);
     this.formError.set('');
     try {
-      await firstValueFrom(
-        this.api.allot({
-          zedId: String(f.unit['ZedId']),
-          certification: String(f.unit['Certification']),
-          siteAssessorId: f.siteAssessorId,
-          coAssessorId: f.modeOfAssessment === ONSITE && f.coAssessorId && !this.surveillance ? f.coAssessorId : null,
-          assessmentDate: f.assessmentDate,
-          modeOfAssessment: f.modeOfAssessment,
-          ...(this.needsLink(f.unit) ? { meetingLink: f.meetingLink.trim() } : {}),
-        }),
-      );
+      await firstValueFrom(this.api.allot(choice.request));
       this.form.set(null);
-      const to = this.assessors().find((a) => a.userId === f.siteAssessorId)?.userName;
-      this.toast.success(`${f.unit['ZedId']} allotted`, to ? `To ${to}.` : null);
+      this.toast.success(`${unit['ZedId']} allotted`, choice.assessorName ? `To ${choice.assessorName}.` : null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

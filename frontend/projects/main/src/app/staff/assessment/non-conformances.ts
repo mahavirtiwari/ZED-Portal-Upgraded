@@ -12,7 +12,6 @@ import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
-import { maskEmail, maskMobile } from '../users/user-display';
 
 /** The mode of a row (the procedure's ModeOfAssessment; none: desktop). */
 type Mode = 'Desktop' | 'Remote' | 'Onsite';
@@ -23,7 +22,7 @@ type Mode = 'Desktop' | 'Remote' | 'Onsite';
  * desktop assessment page; Silver/Gold the site assessment page of the current portal. The old page also
  * showed Accept/Reject buttons here, but records in this list are always accepted already, so they are omitted.
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the mode as
- * chips, the API's filters in one bar, the SPOC's mobile and e-mail masked (the MSME profile has them), Assess on the row
+ * chips, the API's filters in one bar, the SPOC's mobile and e-mail (in full since 2026-11-18, the user), Assess on the row
  * and View profile in its menu.</p>
  */
 @Component({
@@ -91,8 +90,8 @@ type Mode = 'Desktop' | 'Remote' | 'Onsite';
                 <small class="nc-addr" [title]="t(s, 'UnitAddress')">{{ t(s, 'UnitAddress') }}</small>
               </td>
               <td><span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
-              <!-- Masked in the list; the MSME profile has the full values. -->
-              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ maskMobile(t(s, 'UnitSpocMobileNo')) }}</span><span class="sub">{{ maskEmail(t(s, 'UnitSpocEmailId')) }}</span></td>
+              <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub mail-cut" [title]="t(s, 'UnitSpocEmailId')">{{ t(s, 'UnitSpocEmailId') }}</span></td>
               <td>{{ t(s, 'AgencyName') }}<span class="sub">{{ t(s, 'CertificationBodyUserId') }}</span></td>
               <td>@if (modeOf(s); as m) { <span class="chip is-info">{{ m }}</span> }</td>
               <td>
@@ -138,8 +137,6 @@ export class NonConformancesPage {
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly crumbs = staffCrumbs({ label: 'Non-conformances' });
   protected readonly menu: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
 

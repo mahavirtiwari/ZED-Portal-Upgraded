@@ -112,10 +112,12 @@ public static class PoLimits
 /// Purchase orders per agency (main) or consultant organisation (Consultancy) and level: on Agency Level Allocation and the
 /// Consultant Organisations page. The master admin who created the agency (organisation) adds, edits and reopens them
 /// (<see cref="ExpenditureParty.CanManage"/>); the Admin sees all. Every change is recorded in dbo.PurchaseOrderChanges.
+/// 2026-11-18: the agency (organisation) reads its own POs, read-only, on its Expenditure page (GET only; the history and
+/// every change stay the managers').
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
 [Route("api/staff/expenditure/po")]
-[StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
+[StaffRoles(UserRole.Admin, UserRole.MasterAdmin, UserRole.Agency)]
 public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost host, ILogger<PurchaseOrdersController> log) : StaffApiController
 {
     public const int MaxCases = 1_000_000;
@@ -178,7 +180,9 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
 
     public sealed record LevelView(string Level, string Name, int Cases, int Used, int InProgress, int Left, int Percent, string State, IReadOnlyList<Po> Pos);
 
-    public sealed record PoView(string PartyId, string PartyName, bool CanEdit, IReadOnlyList<LevelView> Levels, IReadOnlyList<LevelOption> LevelOptions);
+    /// <param name="Tax">The agency's one-time GSTIN and PAN (read-only).</param>
+    public sealed record PoView(string PartyId, string PartyName, bool CanEdit, IReadOnlyList<LevelView> Levels, IReadOnlyList<LevelOption> LevelOptions,
+        ExpenditureTax.View? Tax = null);
 
     public sealed record Change(int Id, string Level, string LevelName, string Type, string? Reason, int? CasesBefore, int? CasesAfter, string? Details,
         string? By, DateTime? On);
@@ -191,6 +195,7 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
     }
 
     [HttpGet("history")]
+    [StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
     public async Task<ActionResult<IReadOnlyList<Change>>> History(string? partyId, CancellationToken ct)
     {
         if (await PartyAsync(partyId, ct) is not { } party) return NotFound();
@@ -210,6 +215,7 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
     public sealed record PoInput(string? PartyId, string? Level, string? PoNumber, string? PoDate, int? Cases);
 
     [HttpPost]
+    [StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> Add(PoInput req, CancellationToken ct)
     {
         if (await ManagedAsync(req.PartyId, ct) is not { } party) return Forbidden();
@@ -230,6 +236,7 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
     public sealed record EditInput(string? PoNumber, string? PoDate, int? Cases, string? Reason);
 
     [HttpPut("{id:int}")]
+    [StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> Edit(int id, EditInput req, CancellationToken ct)
     {
         var po = (await db.QuerySqlAsync<PoRow>(FindSql, new { Id = id }, ct)).FirstOrDefault();
@@ -252,6 +259,7 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
 
     /// <summary>Reopen (the master admin): a reason and either extra cases (a PO amendment) or a new PO; kept in the history.</summary>
     [HttpPost("reopen")]
+    [StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> Reopen(ReopenInput req, CancellationToken ct)
     {
         if (await ManagedAsync(req.PartyId, ct) is not { } party) return Forbidden();
@@ -317,7 +325,8 @@ public sealed partial class PurchaseOrdersController(ISqlExecutor db, PortalHost
             var mine = pos.Where(p => Expenditure.Same(p.Level, l)).Select(p => new Po(p.Id, p.PoNumber ?? "", Day(p.PoDate), p.Cases)).ToList();
             return new LevelView(l, LevelRegistry.NameOf(l), s.Cases, s.Used, s.InProgress, s.Left, s.Percent, s.State, mine);
         }).ToList();
-        return new PoView(party.Id, party.Name, party.CanManage, levels, Levels.Select(l => new LevelOption(l, LevelRegistry.NameOf(l))).ToList());
+        return new PoView(party.Id, party.Name, party.CanManage, levels, Levels.Select(l => new LevelOption(l, LevelRegistry.NameOf(l))).ToList(),
+            await ExpenditureTax.ViewAsync(db, party.Id, log, ct));
     }
 
     private static string Day(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

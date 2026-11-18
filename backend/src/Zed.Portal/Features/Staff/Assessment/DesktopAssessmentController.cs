@@ -141,6 +141,13 @@ public sealed partial class DesktopAssessmentController(
     {
         /// <summary>The checkpoints of every requirement row (initial and NC rounds), by MsmeRequirements.Id (migration 0039).</summary>
         public IReadOnlyList<CheckpointAnswers.Checkpoint> Checkpoints { get; init; } = [];
+
+        /// <summary>
+        /// 2026-11-18: set only for the agency of a unit waiting in its DA allotment list (not yet accepted): the page is then a
+        /// read-only preview with the allotment banner (<see cref="AgencyAllotment"/>).
+        /// </summary>
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public AgencyAllotment? Allotment { get; init; }
     }
 
     // ======================================================================== read
@@ -224,6 +231,7 @@ public sealed partial class DesktopAssessmentController(
             Monitoring.ReviewRules.For(user, record, Monitoring.ReviewStage.Desktop));
 
         var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct);
+        var allotment = await AgencyAllotmentAsync(zedId, level, record, user, ct);
         return new DaDetailsResponse(
             zedId, level, user.RoleName, msme,
             Products(da[1], zedId, level, moved, system),
@@ -244,7 +252,7 @@ public sealed partial class DesktopAssessmentController(
                     da[esg + 1].FirstOrDefault() is { } fs ? Pick(fs, FinancialSupportFields) : null,
                     da[esg + 2].FirstOrDefault() is { } aq ? Pick(aq, AdditionalSupportFields) : null)
                 : null)
-        { Checkpoints = checkpoints };
+        { Checkpoints = checkpoints, Allotment = allotment };
     }
 
     private static List<Dictionary<string, object?>> WithVideos(List<Dictionary<string, object?>> rows, RequirementVideos.Map videos)

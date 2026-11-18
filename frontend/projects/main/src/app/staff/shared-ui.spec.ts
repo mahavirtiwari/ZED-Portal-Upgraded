@@ -240,10 +240,10 @@ describe('staff shared UI', () => {
       const fixture = TestBed.createComponent(ToastHost);
       const toasts = TestBed.inject(ToastService);
       const el: HTMLElement = fixture.nativeElement;
-      toasts.success('Reset link sent', 'E-mailed to de•••••@qcin.org');
+      toasts.success('Reset link sent', 'E-mailed to deepa@qcin.org');
       toasts.error('Not saved', 'Please try again.');
       fixture.detectChanges();
-      expect(text(el.querySelector('[role="status"] .tt'))).toContain('Reset link sent E-mailed to de•••••@qcin.org');
+      expect(text(el.querySelector('[role="status"] .tt'))).toContain('Reset link sent E-mailed to deepa@qcin.org');
       expect(text(el.querySelector('[role="alert"] .tt'))).toContain('Not saved');
       expect(el.textContent).not.toContain('Undo');
       vi.advanceTimersByTime(5000);

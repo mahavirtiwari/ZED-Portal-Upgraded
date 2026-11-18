@@ -87,7 +87,7 @@ export class PaymentApi {
     return this.http.get<{ url: string; invoiceNo: string }>(`${base(kind, certification)}/invoice`);
   }
 
-  /** The confirmation mail again, to the unit's registered e-mail (masked in the answer). */
+  /** The confirmation mail again, to the unit's registered e-mail (named in full in the answer). */
   emailCopy(certification: string, kind: PaymentKind = 'certification'): Observable<{ sentTo: string }> {
     return this.http.post<{ sentTo: string }>(`${base(kind, certification)}/email-copy`, {});
   }

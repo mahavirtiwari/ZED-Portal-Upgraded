@@ -23,7 +23,29 @@ export interface ExpenditureCards {
   milestones: number;
   payable: number;
   approved: number;
+  /** The payable of the cases whose month has a submitted or approved invoice. */
+  invoiced?: number;
+  outstanding?: number;
 }
+
+/**
+ * 2026-11-18 (the user): the agency's (consultant organisation's) one-time tax details: GSTIN, PAN, the GST registration
+ * certificate and the PAN card. Locked once submitted. `available` is false until the database has them (migration 0100).
+ */
+export interface TaxDetails {
+  available: boolean;
+  submitted: boolean;
+  gstin: string | null;
+  pan: string | null;
+  hasGstFile: boolean;
+  hasPanFile: boolean;
+  submittedOn: string | null;
+  submittedBy: string | null;
+  /** Before submission: the GSTIN of the agency form, to pre-fill the field. */
+  suggestedGstin: string | null;
+}
+
+export type TaxFile = 'gst' | 'pan';
 
 export interface ExpenditureRow {
   partyId: string;
@@ -52,6 +74,8 @@ export interface ExpenditureSummary {
   states: string[];
   cards: ExpenditureCards;
   rows: ExpenditureRow[];
+  /** With one agency chosen: its tax details. */
+  tax?: TaxDetails | null;
 }
 
 export interface ExpenditureFilter {
@@ -129,6 +153,7 @@ export interface InvoiceDetail {
   live: MonthFigures;
   liveDifference: number;
   lines: RateLine[];
+  tax?: TaxDetails | null;
 }
 
 export interface PoItem { id: number; poNumber: string; poDate: string; cases: number }
@@ -151,6 +176,7 @@ export interface PoView {
   canEdit: boolean;
   levels: PoLevel[];
   levelOptions: Option[];
+  tax?: TaxDetails | null;
 }
 
 export interface PoChange {
@@ -188,12 +214,16 @@ export interface MyMonth {
   cases: number;
   amount: number;
   gstPercent: number;
+  gstAmount: number;
   total: number;
   invoice: Invoice | null;
+  /** False for the current month (shown, invoiced once it has ended). */
+  ended: boolean;
+  /** Ended, and no invoice or a returned one. Uploading also needs the tax details. */
   canUpload: boolean;
 }
 
-export interface MyInvoices { partyId: string; partyName: string; kind: PayeeKind; months: MyMonth[] }
+export interface MyInvoices { partyId: string; partyName: string; kind: PayeeKind; tax: TaxDetails; months: MyMonth[] }
 
 export interface AgencyRateLevel { level: string; name: string; flow: string }
 export interface ConsultantRateLevel { level: string; name: string; milestones: number }
@@ -309,6 +339,19 @@ export class ExpenditureApi {
     return this.http.post<MessageResponse>(`${BASE}/my/invoices`, form);
   }
 
+  /** The one-time tax details (gstin, pan, declaration, gstFile, panFile); refused once submitted. */
+  submitTax(form: FormData): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${BASE}/my/tax`, form);
+  }
+
+  tax(partyId: string, portal?: AdminPortal | null): Observable<TaxDetails> {
+    return this.http.get<TaxDetails>(`${BASE}/tax`, { params: params({ partyId }), ...this.ctx(portal) });
+  }
+
+  taxFile(which: TaxFile, partyId: string, portal?: AdminPortal | null): Observable<Blob> {
+    return this.http.get(`${BASE}/tax/${which}`, { params: params({ partyId }), responseType: 'blob', ...this.ctx(portal) });
+  }
+
   rates(): Observable<RatesResponse> {
     return this.http.get<RatesResponse>('/api/staff/expenditure-rates');
   }
@@ -393,4 +436,41 @@ export function rateLineText(l: RateLine): string {
   const what = l.kind === 'Milestone' ? `milestone ${l.milestone ?? ''}`.trim() : l.kind === 'Surveillance' ? 'surveillance' : l.kind.toLowerCase();
   const rate = l.rate === null ? 'no rate' : rupees(l.rate);
   return `${l.cases} ${what} × ${rate} (${l.levelName}${l.rateFrom ? ', from ' + dmy(l.rateFrom) : ''})`;
+}
+
+const BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+/** The app's GSTIN format (payment step): state code 01-38, the PAN, the entity number, "Z", the check digit. */
+const GSTIN = /^(0[1-9]|[12][0-9]|3[0-8])[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+/** The GSTIN's 15th character from its first 14 (modulus 36). */
+export function gstinCheckDigit(gstin: string): string {
+  let sum = 0;
+  for (let i = 0; i < 14; i++) {
+    const p = BASE36.indexOf(gstin[i]) * (i % 2 ? 2 : 1);
+    sum += Math.floor(p / 36) + (p % 36);
+  }
+  return BASE36[(36 - (sum % 36)) % 36];
+}
+
+/** Null when the GSTIN is valid (as the server checks it); otherwise why not. */
+export function gstinProblem(value: string): string | null {
+  const g = value.trim().toUpperCase();
+  if (!GSTIN.test(g)) return 'Please enter a valid GSTIN: 15 characters (state code, PAN, entity number, Z and check digit).';
+  return gstinCheckDigit(g) === g[14] ? null : "The GSTIN's last character (its check digit) does not match. Please check the GSTIN.";
+}
+
+/** Null when the PAN is valid and is characters 3-12 of the GSTIN; otherwise why not. */
+export function panProblem(value: string, gstin: string): string | null {
+  const p = value.trim().toUpperCase();
+  if (!PAN.test(p)) return 'Please enter a valid PAN: 10 characters, e.g. AAPFU0939F.';
+  const of = gstin.trim().toUpperCase().slice(2, 12);
+  return p === of ? null : `The PAN does not match the GSTIN: characters 3 to 12 of the GSTIN are the PAN (${of}).`;
+}
+
+/** Opens a downloaded file (PDF, image) in a new tab. */
+export function openBlob(blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }

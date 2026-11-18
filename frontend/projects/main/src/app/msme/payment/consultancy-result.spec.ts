@@ -11,7 +11,7 @@ function confirmation(overrides: Partial<ConsultancyConfirmation> = {}): Consult
   return {
     certification: 'Silver', milestone: 2, amount: 23600, orderId: '200002', transactionId: '114000000077', paidOn: '2026-11-17T09:05:00',
     method: 'Net Banking', receiptUrl: `${API}/Silver/receipt`, invoiceUrl: '/api/msme/files/ReceiptInvoice/HH/2526/12_ZEDMSME000001_Invoice.pdf',
-    invoiceNo: 'HH/2526/12', email: 'pl•••@acme.test', ...overrides,
+    invoiceNo: 'HH/2526/12', email: 'pledge@acme.test', ...overrides,
   };
 }
 
@@ -102,9 +102,9 @@ describe('ConsultancyResultPage', () => {
     const req = http.expectOne(`${API}/Silver/email-copy?milestone=2`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({});
-    req.flush({ sentTo: 'pl•••@acme.test' });
+    req.flush({ sentTo: 'pledge@acme.test' });
     await settle(fixture);
-    expect(el.querySelector('.pr-sent')!.textContent).toContain('Sent to pl•••@acme.test');
+    expect(el.querySelector('.pr-sent')!.textContent).toContain('Sent to pledge@acme.test');
 
     link('E-mail a copy').click();
     await settle(fixture);

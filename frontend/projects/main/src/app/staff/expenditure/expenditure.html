@@ -36,6 +36,10 @@
   @if (filtering()) { <button type="button" class="xp-clear" (click)="clearAll()">Clear all</button> }
 </div>
 
+@if (partyId() && data()?.tax) {
+  <!-- 2026-11-18: the chosen agency's one-time GSTIN and PAN, read-only, with their documents. -->
+  <zed-tax-details [tax]="data()!.tax" [partyId]="partyId()" [portal]="portal()" />
+}
 <zed-list-counts [counts]="counts()" label="Expenditure in figures" />
 
 <div class="zed-card xp-card">

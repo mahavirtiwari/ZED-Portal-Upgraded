@@ -15,6 +15,7 @@ import {
   ExpenditureApi, ExpenditureFilter, ExpenditureRow, ExpenditureSummary, Invoice, Option, PayeeKind, poPill, rupees, rupeesShort, shownDate, statusTone,
 } from './expenditure.api';
 import { InvoiceReviewDialog } from './invoice-review';
+import { TaxDetailsCard } from './tax-details';
 
 /** A view of the page: the assessment agencies (main) or the consultant organisations (Consultancy). */
 type View = 'agencies' | 'organisations';
@@ -28,7 +29,7 @@ type View = 'agencies' | 'organisations';
  */
 @Component({
   selector: 'zed-staff-expenditure',
-  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog],
+  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard],
   templateUrl: './expenditure.html',
   styles: `
     .xp-tabs { display: inline-flex; border: 1px solid #dde7e8; border-radius: 9px; overflow: hidden; }

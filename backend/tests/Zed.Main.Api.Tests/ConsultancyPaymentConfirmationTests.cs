@@ -78,7 +78,7 @@ public sealed class ConsultancyPaymentConfirmationTests : IDisposable
     }
 
     [Fact]
-    public async Task Handholding_confirmation_shows_the_milestone_order_receipt_invoice_and_masked_email()
+    public async Task Handholding_confirmation_shows_the_milestone_order_receipt_invoice_and_full_email()
     {
         WriteFile($"PDFs/SA/{Me}/Silver_Milestone2_Payment_Receipt.pdf");
         WriteFile($"ReceiptInvoice/HH/2526/12_{Me}_Invoice.pdf");
@@ -99,7 +99,8 @@ public sealed class ConsultancyPaymentConfirmationTests : IDisposable
         // This payment's invoice: its TadaInvoiceNo, module HANDHOLDING, level and milestone (not the receipt, another module or milestone 1).
         Assert.Equal($"/api/msme/files/ReceiptInvoice/HH/2526/12_{Me}_Invoice.pdf", json.GetProperty("invoiceUrl").GetString());
         Assert.Equal("HH/2526/12", json.GetProperty("invoiceNo").GetString());
-        Assert.Equal("pl•••@acme.test", json.GetProperty("email").GetString());
+        // 2026-11-18 (the user): the registered e-mail in full (never masked on signed-in pages).
+        Assert.Equal("pledge@acme.test", json.GetProperty("email").GetString());
 
         var receipt = await client.GetAsync(json.GetProperty("receiptUrl").GetString());
         Assert.Equal(HttpStatusCode.OK, receipt.StatusCode);
@@ -180,7 +181,7 @@ public sealed class ConsultancyPaymentConfirmationTests : IDisposable
         var r = await client.PostAsJsonAsync($"{Api}/Silver/email-copy", new { email = "someone@else.test", zedId = Other });
 
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Equal("pl•••@acme.test", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("sentTo").GetString());
+        Assert.Equal("pledge@acme.test", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("sentTo").GetString());
         // Only the unit's copy: no agency mail, no office copy, nothing posted again.
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("pledge@acme.test", mail.To);

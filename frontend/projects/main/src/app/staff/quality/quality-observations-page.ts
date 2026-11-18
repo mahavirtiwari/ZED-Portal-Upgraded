@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { apiErrorMessage, AuthService } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { HANDHOLDING_LEVEL_CODES, levelName, levelOptions } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { AttentionService } from '../attention';
@@ -12,7 +13,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { QualityObservationItem } from './quality-observation-item';
-import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './quality.api';
+import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi } from './quality.api';
 
 /**
  * 2026-11-16 (approved): Quality observations. The Master Admin and its operation admins: the dashboard (open / replied /
@@ -26,6 +27,9 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
  * headers and names wrap); no header wraps; values 12.5px, rank / open / score 16/800, the score with one decimal; the
  * Dashboard / Observations switch 36px at 13px. The header bell opens
  * the list with <code>?status=Open</code>.
+ * 2026-11-18 (the user: 'please also keep date range selection and certification level filter'): the period keeps its presets
+ * and adds "Custom range…" (From / To dates beside it, To not before From, neither after today), a certification level, and
+ * Clear All; the server filters both views and so the CSV (the date the observation was raised, the assessment's level).
  */
 @Component({
   selector: 'zed-staff-quality-observations',
@@ -40,14 +44,26 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
     </zed-page-head>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
-    <div class="qo-filters">
+    <div class="qo-filters" data-qo-filters>
       <label class="visually-hidden" for="qo-days">Period</label>
-      <select id="qo-days" class="form-select" [ngModel]="days()" (ngModelChange)="days.set(+$event); load()">
+      <select id="qo-days" class="form-select qo-period" [ngModel]="period()" (ngModelChange)="setPeriod($event)">
         <option [ngValue]="30">Last 30 days</option>
         <option [ngValue]="90">Last 3 months</option>
         <option [ngValue]="365">Last year</option>
         <option [ngValue]="3650">All time</option>
+        <option ngValue="custom">Custom range…</option>
       </select>
+      @if (period() === 'custom') {
+        <input id="qo-from" type="date" class="form-control qo-date" aria-label="From" title="From (dd-mm-yyyy)" [max]="to() || today" [ngModel]="from()" (ngModelChange)="setDate('from', $event)" />
+        <span class="qo-to" aria-hidden="true">to</span>
+        <input id="qo-to" type="date" class="form-control qo-date" aria-label="To" title="To (dd-mm-yyyy)" [min]="from()" [max]="today" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" />
+      }
+      <label class="visually-hidden" for="qo-level">Certification level</label>
+      <select id="qo-level" class="form-select qo-level" [ngModel]="level()" (ngModelChange)="level.set($event); load()">
+        <option value="">All levels</option>
+        @for (l of levels(); track l.value) { <option [value]="l.value">{{ l.label }}</option> }
+      </select>
+      @if (filtered()) { <button type="button" class="btn btn-link qo-reset" (click)="clearAll()">Clear All</button> }
       @if (master()) {
         <div class="qo-seg" role="tablist" aria-label="View">
           <button type="button" role="tab" [attr.aria-selected]="tab() === 'dashboard'" [class.on]="tab() === 'dashboard'" (click)="tab.set('dashboard')">Dashboard</button>
@@ -55,6 +71,7 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
         </div>
       }
     </div>
+    @if (rangeError()) { <p class="qo-range-err" role="alert">{{ rangeError() }}</p> }
 
     @if (master() && tab() === 'dashboard') {
       @if (dash(); as d) {
@@ -136,7 +153,13 @@ import { QoDashboard, QoObservation, QoStanding, QoStatus, QualityApi } from './
     .qo-csv { display: inline-flex; align-items: center; gap: 8px; border-radius: 8px; font-weight: 600; padding: 8px 18px; }
     .qo-csv svg, .qo-ico svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .qo-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 16px; }
-    .qo-filters .form-select { width: auto; min-width: 190px; border-radius: 8px; }
+    .qo-filters .form-select, .qo-date { flex: none; border-radius: 8px; }
+    .qo-period { width: 210px; }
+    .qo-level { width: 190px; }
+    .qo-date { width: 150px; }
+    .qo-to { font-size: 13px; color: #5f6f70; }
+    .qo-reset { font-size: 12.5px; font-weight: 700; color: #6f8487; white-space: nowrap; padding: 4px; text-decoration: none; }
+    .qo-range-err { margin: -8px 0 14px; font-size: 13px; color: #b42318; }
     .qo-seg { display: inline-flex; background: #e8eff0; border-radius: 10px; padding: 3px; }
     .qo-seg button { height: 30px; border: 0; background: none; border-radius: 8px; padding: 0 22px; font-size: 13px; font-weight: 500; color: #17373b; }
     .qo-seg button.on { font-weight: 700; }
@@ -183,6 +206,7 @@ export class QualityObservationsPage {
   private readonly attention = inject(AttentionService);
   protected readonly crumbs = staffCrumbs({ label: 'Quality Observations' });
   /** Handholding (consultancy portal) names consultants and consultant organisations; surveillance, surveillances. */
+  private readonly consultancy = inject(ASSESSMENT_SYSTEM) === 'consultancy';
   protected readonly words = (() => {
     const system = inject(ASSESSMENT_SYSTEM);
     if (system === 'consultancy') return {
@@ -200,7 +224,25 @@ export class QualityObservationsPage {
 
   protected readonly master = computed(() => this.auth.currentUser()?.roleId === 7);
   protected readonly tab = signal<'dashboard' | 'list'>('dashboard');
-  protected readonly days = signal(90);
+  /** A preset of days, or a custom From / To range (yyyy-MM-dd). */
+  protected readonly period = signal<number | 'custom'>(90);
+  protected readonly from = signal('');
+  protected readonly to = signal('');
+  protected readonly level = signal('');
+  /** Today, in the browser's (India) time, as the date fields hold it. */
+  protected readonly today = isoDate(new Date());
+  /** Consultancy: the handholding levels; else the Admin's enabled levels (Administration → Certification Levels). */
+  protected readonly levels = computed(() => (this.consultancy
+    ? HANDHOLDING_LEVEL_CODES.map((c) => ({ value: c, label: levelName(c) }))
+    : levelOptions(true)));
+  protected readonly filtered = computed(() => this.period() !== 90 || !!this.level());
+  protected readonly rangeError = computed(() => {
+    if (this.period() !== 'custom') return '';
+    const [from, to] = [this.from(), this.to()];
+    if ((from && from > this.today) || (to && to > this.today)) return 'The dates cannot be after today.';
+    return from && to && to < from ? 'The To date cannot be before the From date.' : '';
+  });
+  private loads = 0;
   protected readonly status = signal<QoStatus | ''>('');
   protected readonly items = signal<QoObservation[]>([]);
   protected readonly canClose = signal(false);
@@ -254,15 +296,56 @@ export class QualityObservationsPage {
     await this.load();
   }
 
+  /** The period select: a preset, or "Custom range…" (From the preset's start, To today; no From for All time). */
+  protected setPeriod(value: number | 'custom'): void {
+    if (value === 'custom') {
+      const days = this.period();
+      if (typeof days === 'number' && days < 3650) {
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+        this.from.set(isoDate(start));
+      } else this.from.set('');
+      this.to.set(this.today);
+    }
+    this.period.set(value === 'custom' ? 'custom' : +value);
+    void this.load();
+  }
+
+  protected setDate(which: 'from' | 'to', value: string | null): void {
+    (which === 'from' ? this.from : this.to).set(value ?? '');
+    void this.load();
+  }
+
+  protected clearAll(): void {
+    this.period.set(90);
+    this.from.set('');
+    this.to.set('');
+    this.level.set('');
+    void this.load();
+  }
+
+  private filter(): QoFilter {
+    const level = this.level() || null;
+    const p = this.period();
+    return p === 'custom' ? { from: this.from() || null, to: this.to() || null, level } : { days: p, level };
+  }
+
   protected async load(): Promise<void> {
+    if (this.rangeError()) return;
+    const n = ++this.loads;
+    const filter = this.filter();
     this.error.set('');
     try {
-      const list = await firstValueFrom(this.api.list('', this.days()));
+      const list = await firstValueFrom(this.api.list('', filter));
+      if (n !== this.loads) return;
       this.items.set(list.items);
       this.canClose.set(list.canClose);
-      if (this.master()) this.dash.set(await firstValueFrom(this.api.dashboard(this.days())));
+      if (this.master()) {
+        const dash = await firstValueFrom(this.api.dashboard(filter));
+        if (n === this.loads) this.dash.set(dash);
+      }
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      if (n === this.loads) this.error.set(apiErrorMessage(err));
     }
   }
 
@@ -270,6 +353,14 @@ export class QualityObservationsPage {
     const columns = ['Type', 'Rank', 'Name', 'User ID', 'Assessments', 'Total', 'Open', 'Replied', 'Closed', 'Minor', 'Major', 'Critical', 'Reopened', 'Avg reply (h)', 'Avg close (h)', 'Score'];
     const line = (s: QoStanding) => [s.kind, s.rank, s.name ?? '', s.userId, s.assessments, s.total, s.open, s.responded, s.closed, s.minor, s.major, s.critical,
       s.reopens, s.avgReplyHours ?? '', s.avgCloseHours ?? '', s.score];
-    this.exporter.csv('quality-observations-ranking', { name: 'Ranking', columns, rows: [...d.agencies.map(line), ...d.assessors.map(line)] });
+    // The file name says what the (server-filtered) ranking covers.
+    const f = this.filter();
+    const name = ['quality-observations-ranking', f.level, f.from, f.to ? `to-${f.to}` : ''].filter(Boolean).join('-');
+    this.exporter.csv(name, { name: 'Ranking', columns, rows: [...d.agencies.map(line), ...d.assessors.map(line)] });
   }
+}
+
+/** yyyy-MM-dd of a date in the browser's time zone. */
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

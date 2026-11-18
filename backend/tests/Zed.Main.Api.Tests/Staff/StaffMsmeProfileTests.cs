@@ -33,14 +33,15 @@ public sealed class StaffMsmeProfileTests : IDisposable
     }
 
     [Fact]
-    public async Task Master_admin_sees_the_page_fields_only_with_a_masked_pan()
+    public async Task Master_admin_sees_the_page_fields_only_with_the_full_pan()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = await client.GetFromJsonAsync<JsonElement>("/api/staff/msme-profile/ZEDMSME000001");
         Assert.Equal("Unit One", r.GetProperty("unit").GetProperty("PUnitName").GetString());
         Assert.False(r.GetProperty("unit").TryGetProperty("MobileNo", out _));
         Assert.False(r.GetProperty("unit").TryGetProperty("PledgeEmailId", out _));
-        Assert.Equal("XXXXXX234F", r.GetProperty("enterprise").GetProperty("PanNo").GetString());
+        // 2026-11-18 (the user): the PAN in full, never masked.
+        Assert.Equal("ABCDE1234F", r.GetProperty("enterprise").GetProperty("PanNo").GetString());
         Assert.Equal(2, r.GetProperty("certifications").GetArrayLength());
         var call = _host.Sql.Calls.Last(c => c.Name == "SP_ASSESSMENT_VIEW_PROFILE");
         Assert.Equal("MASTER1", FakeSql.Arg(call.Args, "UserId"));
@@ -86,23 +87,26 @@ public sealed class StaffMsmeProfileTests : IDisposable
 
     /// <summary>2026-11-17 (the user, approved): the other units of the same PAN, for tracing repeat registrations.</summary>
     [Fact]
-    public async Task The_other_units_of_the_same_pan_are_listed_with_masked_zed_ids_and_full_addresses()
+    public async Task The_other_units_of_the_same_pan_are_listed_with_complete_addresses_and_no_zed_ids()
     {
         _host.Sql.Queries[StaffMsmeProfileController.PanSql] = args => FakeSql.Arg(args, "ZedId") == "ZEDMSME000001" ? [new { PanNo = "ABCDE1234F" }] : [];
         _host.Sql.Queries[StaffMsmeProfileController.SamePanSql] = _ =>
         [
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme Unit 2", "Plot 4", null, "Industrial Area", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Unit 1", "Plot-4", "", "Industrial Area", "Kanpur", null, null, "208001", null),
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000003", "Acme Services", null, null, null, null, null, null, "226001", "12 MG Road, Lucknow"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme Unit 2", "Plot 4", null, "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Unit 1", "Plot-4", "", "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000003", "Acme Services", null, null, null, null, null, "Lucknow", "UTTAR PRADESH", "226001", "12 MG Road, Lucknow"),
         ];
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = (await master.GetFromJsonAsync<StaffMsmeProfileController.SamePanResponse>("/api/staff/msme-profile/ZEDMSME000001/same-pan"))!;
         Assert.Equal("ABCDE1234F", r.Pan);
         Assert.Equal("Acme Unit 2", r.This!.UnitName);
         Assert.Equal(2, r.Others.Count);
-        Assert.All(r.Others, o => Assert.DoesNotContain("00000", o.ZedId));
-        Assert.Equal(("Acme Unit 1", "Plot-4, Industrial Area, Kanpur 208001"), (r.Others[0].UnitName, r.Others[0].Address));
-        Assert.Equal("12 MG Road, Lucknow 226001", r.Others[1].Address);
+        // 2026-11-18 (the user): the complete address (flat, road, village / town, city, district, state, PIN), no ZED ID.
+        Assert.Equal(("Acme Unit 1", "Plot-4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001"), (r.Others[0].UnitName, r.Others[0].Address));
+        Assert.Equal("12 MG Road, Lucknow, UTTAR PRADESH 226001", r.Others[1].Address);
+        var raw = await master.GetStringAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan");
+        Assert.DoesNotContain("ZEDMSME", raw);
+        Assert.DoesNotContain("zedId", raw, StringComparison.OrdinalIgnoreCase);
 
         // An agency sees it for its own units only.
         Assert.Equal(HttpStatusCode.OK, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY1")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);

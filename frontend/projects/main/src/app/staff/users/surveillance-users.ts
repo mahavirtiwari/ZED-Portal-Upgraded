@@ -16,7 +16,7 @@ import { ListCount, ListCounts } from '../list-counts';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
 
@@ -45,7 +45,7 @@ interface Target {
  * blocked or unblocked in the surveillance database. The route's `data.kind` ('agencies' | 'assessors') picks the list.
  * 2026-11-17 (approved staff redesign, as staff-01 / staff-04): the shared head and counts (all, active, blocked,
  * Bronze-allowed; a click filters), the search (and, for the MasterAdmin's assessors, the agency drop-down), a row per
- * login with initials, ID, masked contact, the Bronze surveillance state (agencies: a button opens the setting;
+ * login with initials, ID, contact (in full since 2026-11-18, the user: never masked), the Bronze surveillance state (agencies: a button opens the setting;
  * assessors: a switch) and status, and a row menu (Send reset link, View history, Block / Unblock) whose actions confirm
  * first and end with a toast; the block history opens in the side panel. Cards on phones.
  */
@@ -95,7 +95,7 @@ interface Target {
                   <td class="sv-contact" data-label="SPOC">
                     <strong>{{ a.spocName }}</strong>
                     <span [class.no-mobile]="!a.mobileNo">{{ a.mobileNo ? mobile(a.mobileNo) : 'Mobile not saved' }}</span>
-                    @if (a.email) { <span class="sv-sub">{{ email(a.email) }}</span> }
+                    @if (a.email) { <span class="sv-sub" [title]="a.email">{{ email(a.email) }}</span> }
                   </td>
                   <td data-label="Verification">
                     @if (a.desktopVerification) { <span class="sv-pill">Desktop verification</span> }
@@ -152,7 +152,7 @@ interface Target {
                   </td>
                   <td class="sv-contact" data-label="Contact">
                     <span [class.no-mobile]="!s.mobileNo">{{ s.mobileNo ? mobile(s.mobileNo) : 'Mobile not saved' }}</span>
-                    @if (s.email) { <span class="sv-sub">{{ email(s.email) }}</span> }
+                    @if (s.email) { <span class="sv-sub" [title]="s.email">{{ email(s.email) }}</span> }
                   </td>
                   <td data-label="Bronze surveillance">
                     <label class="bronze-switch form-switch" [class.is-on]="s.allowBronzeSurveillance">
@@ -284,6 +284,7 @@ interface Target {
     .sv-name, .sv-contact strong { font-weight: 700; color: var(--zt-ink, #173f44); }
     .sv-id, .sv-sub { font-size: 12.5px; color: #5f6f70; }
     .sv-contact { min-width: 150px; }
+    .sv-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sv-pill { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 10px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .sv-agency-line { margin-top: 3px; }
     .no-mobile { color: #8a6100; }
@@ -356,8 +357,8 @@ export class SurveillanceUsersPage {
   protected readonly historyFor = signal<{ target: Target; items: HistoryItem[] | null; error: string } | null>(null);
   /** The assessor whose registered mobile is shown in the pop-up. */
   protected readonly mobileOf = signal<string | null>(null);
-  protected readonly mobile = maskMobile;
-  protected readonly email = maskEmail;
+  protected readonly mobile = plain;
+  protected readonly email = plain;
 
   private menus(word: string): [RowMenuItem[], RowMenuItem[]] {
     return [

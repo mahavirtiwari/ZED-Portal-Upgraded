@@ -69,7 +69,7 @@ export class ConsultancyPaymentApi {
     return this.http.get<ConsultancyConfirmation>(`${this.base}/${encodeURIComponent(certification)}/confirmation`, { params: milestoneParam(milestone) });
   }
 
-  /** The confirmation mail again, to the unit's registered e-mail (masked in the answer). */
+  /** The confirmation mail again, to the unit's registered e-mail (named in full in the answer). */
   emailCopy(certification: string, milestone?: number | null): Observable<{ sentTo: string }> {
     return this.http.post<{ sentTo: string }>(`${this.base}/${encodeURIComponent(certification)}/email-copy`, {}, { params: milestoneParam(milestone) });
   }

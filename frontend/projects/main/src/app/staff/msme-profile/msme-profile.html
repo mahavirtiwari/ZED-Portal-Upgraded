@@ -75,12 +75,9 @@
                 } @else if (editing() && r.edit) {
                   <input type="text" class="form-control" [attr.aria-label]="r.label" [attr.name]="r.edit"
                          [attr.maxlength]="r.edit === 'ownerName' ? 200 : 250" [(ngModel)]="form[r.edit]" />
-                } @else if (r.mask) {
-                  <span class="pf-masked">{{ masked(p, r) }}</span>
-                  @if (hasValue(p, r)) {
-                    <button type="button" class="pf-show" [attr.aria-label]="(revealed().has(r.field) ? 'Hide ' : 'Show ') + r.label"
-                      [attr.aria-pressed]="revealed().has(r.field)" (click)="toggle(r.field)">{{ revealed().has(r.field) ? 'Hide' : 'Show' }}</button>
-                  }
+                } @else if (r.oneLine) {
+                  @let full = value(p, r);
+                  <span class="pf-one-line" [attr.title]="full">{{ full }}</span>
                 } @else {
                   {{ value(p, r) }}
                 }

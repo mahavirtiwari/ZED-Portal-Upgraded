@@ -130,6 +130,51 @@ public sealed class QualityObservationsTests : IDisposable
         Assert.Equal(["B-SA", "A-SA"], QualityObservations.Rank(items, "Assessor").Select(a => a.UserId));
     }
 
+    private static object? Raw(object? args, string name) =>
+        args?.GetType().GetProperty(name)?.GetValue(args) switch { Dapper.DbString s => s.Value, var v => v };
+
+    [Fact]
+    public async Task The_date_range_and_the_certification_level_reach_the_query()
+    {
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        (await master.GetAsync($"{Base}?from=2026-11-01&to=2026-11-15&level=gold")).EnsureSuccessStatusCode();
+        var call = _host.Sql.Calls.Last(c => c.Name == QualityObservations.AllSql);
+        // Raised on or after From, before the day after To; the level in its stored spelling.
+        Assert.Equal((new DateTime(2026, 11, 1), new DateTime(2026, 11, 16), "Gold"),
+            ((DateTime)Raw(call.Args, "From")!, (DateTime?)Raw(call.Args, "Before"), (string?)Raw(call.Args, "Certification")));
+
+        // The dashboard (counts, rankings, categories and the CSV made from them) takes the same filters; a preset has no end.
+        (await master.GetAsync($"{Base}/dashboard?days=30&level=Silver")).EnsureSuccessStatusCode();
+        call = _host.Sql.Calls.Last(c => c.Name == QualityObservations.AllSql);
+        Assert.Equal((DateTime.Today.AddDays(-30), null, "Silver"),
+            ((DateTime)Raw(call.Args, "From")!, (DateTime?)Raw(call.Args, "Before"), (string?)Raw(call.Args, "Certification")));
+
+        // No level: every level (NULL); a From alone overrides the preset.
+        (await master.GetAsync($"{Base}/dashboard?days=30&from=2026-10-05")).EnsureSuccessStatusCode();
+        call = _host.Sql.Calls.Last(c => c.Name == QualityObservations.AllSql);
+        Assert.Equal((new DateTime(2026, 10, 5), null, null),
+            ((DateTime)Raw(call.Args, "From")!, (DateTime?)Raw(call.Args, "Before"), (string?)Raw(call.Args, "Certification")));
+    }
+
+    [Theory]
+    [InlineData("from=2026-02-31", "Please enter valid dates (dd-mm-yyyy).")]
+    [InlineData("to=yesterday", "Please enter valid dates (dd-mm-yyyy).")]
+    [InlineData("from=0001-01-01", "Please enter valid dates (dd-mm-yyyy).")]
+    [InlineData("from=2026-11-10&to=2026-11-01", "The To date cannot be before the From date.")]
+    [InlineData("to=2999-01-01", "The dates cannot be after today.")]
+    [InlineData("level=NoSuchLevel", "Invalid certification level.")]
+    public async Task Bad_dates_and_levels_are_refused(string query, string message)
+    {
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        foreach (var path in new[] { $"{Base}?{query}", $"{Base}/dashboard?{query}" })
+        {
+            var r = await master.GetAsync(path);
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+            Assert.Equal(message, await r.ProblemTitle());
+        }
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == QualityObservations.AllSql);
+    }
+
     [Fact]
     public async Task Open_major_observations_hold_the_agencys_final_submit()
     {

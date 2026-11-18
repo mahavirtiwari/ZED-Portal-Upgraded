@@ -22,24 +22,32 @@ describe('SamePanUnits (2026-11-17)', () => {
 
   const answer = {
     pan: 'ABCDE1234F',
-    this: { zedId: 'ZEDM•••457', unitName: 'Acme Unit 2', address: 'Plot 4, Industrial Area, Kanpur 208001' },
+    this: { unitName: 'Acme Unit 2', address: 'Plot 4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001' },
     others: [
-      { zedId: 'ZEDM•••102', unitName: 'Acme Unit 1', address: 'Plot-4, Industrial Area, Kanpur 208001' },
-      { zedId: 'ZEDS•••311', unitName: 'Acme Services', address: '12 MG Road, Lucknow 226001' },
+      { unitName: 'Acme Unit 1', address: 'Plot-4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001' },
+      { unitName: 'Acme Services', address: '12 MG Road, Lucknow, UTTAR PRADESH 226001' },
     ],
   };
 
-  it('warns and opens the list by itself the first time, with masked ZED IDs and full names and addresses', async () => {
+  it('warns and opens the list by itself the first time, with the full PAN, the unit names and complete addresses and no ZED IDs', async () => {
     const el = await render(answer);
-    // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the strip masks the PAN and lists the units inline.
-    expect(el.querySelector('[data-same-pan]')!.textContent).toContain('2 other ZED units are registered with PAN AB•••••34F');
-    expect(el.querySelectorAll('[data-same-pan] .sp-list li').length).toBe(2);
+    // 2026-11-18 (the user): the PAN in full; "ZED ID is not required to show"; "Please show the complete address".
+    const strip = el.querySelector('[data-same-pan]')!;
+    expect(strip.textContent).toContain('2 other ZED units are registered with PAN ABCDE1234F');
+    expect(strip.textContent).not.toContain('•');
+    expect([...strip.querySelectorAll('.sp-list li')].map((li) => [...li.children].map((c) => c.textContent!.trim()))).toEqual([
+      ['Acme Unit 1', 'Plot-4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001'],
+      ['Acme Services', '12 MG Road, Lucknow, UTTAR PRADESH 226001'],
+    ]);
     expect(el.querySelector('.sp-intro')!.textContent).toContain('ABCDE1234F');
+    expect([...el.querySelectorAll('[data-same-pan-list] th')].map((th) => th.textContent!.trim())).toEqual(['Unit name', 'Complete address']);
     const rows = [...el.querySelectorAll('[data-same-pan-list] tbody tr')].map((r) => [...r.children].map((c) => c.textContent!.trim()));
     expect(rows).toEqual([
-      ['ZEDM•••102', 'Acme Unit 1', 'Plot-4, Industrial Area, Kanpur 208001'],
-      ['ZEDS•••311', 'Acme Services', '12 MG Road, Lucknow 226001'],
+      ['Acme Unit 1', 'Plot-4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001'],
+      ['Acme Services', '12 MG Road, Lucknow, UTTAR PRADESH 226001'],
     ]);
+    expect(el.textContent).not.toContain('ZED ID');
+    expect(el.textContent).not.toMatch(/ZED[MS]/);
   });
 
   it('does not open by itself again in the session; View units opens it', async () => {

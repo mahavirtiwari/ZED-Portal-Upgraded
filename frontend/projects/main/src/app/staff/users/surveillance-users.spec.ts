@@ -119,7 +119,7 @@ describe('surveillance agencies and assessors', () => {
     expect(lastToast()).toMatchObject({ tone: 'success', title: 'Assessor blocked', message: 'User Blocked successful' });
   });
 
-  it('shows the agency rows as designed: masked SPOC contact, Bronze surveillance as a button, the rest in the row menu', async () => {
+  it('shows the agency rows as designed: the SPOC contact in full, Bronze surveillance as a button, the rest in the row menu', async () => {
     const { fixture, el } = await agencies([{ ...agency, address: '12 Mill Road', pinCode: '208001' }]);
     const table = el.querySelector('table')!;
     expect(table.classList).toContain('table-zed');
@@ -129,8 +129,8 @@ describe('surveillance agencies and assessors', () => {
     const tr = table.querySelector('tbody tr')!;
     const cells = [...tr.querySelectorAll('td')];
     expect([...cells[0].querySelectorAll('.sv-who > span')].map((s) => s.textContent!.trim())).toEqual(['Acme', 'ZEDAA0001', '12 Mill Road, 208001']);
-    expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['Spoc', '98•••••210', 'a•••••@acme.test']);
-    expect(tr.textContent).not.toContain('9876543210');
+    // 2026-11-18 (the user): never masked.
+    expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['Spoc', '9876543210', 'a@acme.test']);
     expect(cells[2].textContent!.trim()).toBe('Desktop verification');
     expect(cells[3].textContent!.trim()).toBe('2');
     expect(cells[5].textContent!.trim()).toBe('Active');
@@ -151,7 +151,7 @@ describe('surveillance agencies and assessors', () => {
     expect(cells[0].textContent).toContain('Kanpur');
     expect(cells[0].textContent).toContain('ID-77');
     expect(tr.textContent).not.toContain('ABCDE1234F');
-    expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['98•••••678', 'a•••••@x.test']);
+    expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['9812345678', 'a@x.test']);
     expect(cells[2].querySelector('input[type=checkbox]')).not.toBeNull();
     expect(cells[3].textContent!.trim()).toBe('In-Active');
     expect(await menuOf(fixture, tr)).toEqual(['View history', 'Unblock assessor']);
@@ -197,12 +197,12 @@ describe('surveillance agencies and assessors', () => {
     await choose(fixture, el.querySelector('tbody tr')!, 'Send reset link');
     expect(el.querySelector('zed-confirm-dialog h3')!.textContent).toContain('Send password reset link?');
     const person = el.querySelector('zed-confirm-dialog .cd-person')!.textContent!;
-    for (const part of ['Acme', 'Surveillance agency · ZEDAA0001', 'a•••••@acme.test']) expect(person).toContain(part);
+    for (const part of ['Acme', 'Surveillance agency · ZEDAA0001', 'a@acme.test']) expect(person).toContain(part);
     await submit(fixture);
-    http.expectOne('/api/staff/surveillance-users/agencies/ZEDAA0001/password-reset').flush({ message: 'Link sent (s***@acme.test).' });
+    http.expectOne('/api/staff/surveillance-users/agencies/ZEDAA0001/password-reset').flush({ message: 'Link sent (a@acme.test).' });
     await settle(fixture);
     expect(el.querySelector('zed-confirm-dialog')).toBeNull();
-    expect(lastToast()).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to s***@acme.test' });
+    expect(lastToast()).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to a@acme.test' });
 
     await choose(fixture, el.querySelector('tbody tr')!, 'View history');
     expect(el.querySelector('zed-user-history small')!.textContent).toBe('Acme · ZEDAA0001');

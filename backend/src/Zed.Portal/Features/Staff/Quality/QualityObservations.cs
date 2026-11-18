@@ -61,9 +61,16 @@ public static class QualityObservations
         "SELECT " + Columns + " FROM dbo.AssessorComments WHERE ZedId = @ZedId AND Certification = @Certification " +
         "AND AssessmentType IN ('QualityObs', 'QualityEvt') ORDER BY Id;";
 
-    /// <summary>Every observation and step (the lists and the dashboard filter them).</summary>
+    /// <summary>
+    /// Every observation and step (the lists and the dashboard filter them by role and scope). @From / @Before (exclusive,
+    /// the day after "To"; NULL = up to now) bound the date the observation was raised; its later steps are kept, so the
+    /// reply and close times stay whole. @Certification (NULL = every level) is the assessment's certification level
+    /// (2026-11-18, the user: date range and certification level filters).
+    /// </summary>
     internal const string AllSql =
-        "SELECT " + Columns + " FROM dbo.AssessorComments WHERE AssessmentType IN ('QualityObs', 'QualityEvt') AND CertificationStatusDate >= @From ORDER BY Id;";
+        "SELECT " + Columns + " FROM dbo.AssessorComments WHERE AssessmentType IN ('QualityObs', 'QualityEvt') AND CertificationStatusDate >= @From " +
+        "AND (@Before IS NULL OR AssessmentType = 'QualityEvt' OR CertificationStatusDate < @Before) " +
+        "AND (@Certification IS NULL OR Certification = @Certification) ORDER BY Id;";
 
     internal const string OneSql = "SELECT " + Columns + " FROM dbo.AssessorComments WHERE Id = @Id AND AssessmentType = 'QualityObs';";
 

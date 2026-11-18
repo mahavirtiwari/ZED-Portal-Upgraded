@@ -66,6 +66,15 @@ public static partial class StaffUserRules
     public static string? MaskIdProof(string? number) =>
         string.IsNullOrEmpty(number) ? null : number.Length <= 4 ? new string('X', number.Length) : new string('X', number.Length - 4) + number[^4..];
 
+    /// <summary>
+    /// The ID proof number as signed-in staff see it: a PAN in full (2026-11-18, the user: e-mail, mobile and PAN are never
+    /// masked); an Aadhaar number (or any other) with its last four characters only (Aadhaar must not be displayed in full).
+    /// </summary>
+    public static string? ShowIdProof(string? type, string? number) =>
+        string.IsNullOrEmpty(number) ? null
+        : string.Equals(type?.Trim(), IdProofPan, StringComparison.OrdinalIgnoreCase) ? number.Trim().ToUpperInvariant()
+        : MaskIdProof(number);
+
     /// <summary>Distinct values that are all in the allowed set (case-insensitive), or null when one is not.</summary>
     public static List<string>? OnlyAllowed(IEnumerable<string>? values, IEnumerable<string> allowed)
     {

@@ -174,21 +174,15 @@ describe('ProfilePage', () => {
     expect(hero.textContent).not.toContain('Pledge taken');
   });
 
-  it('masks the PAN, e-mail and mobile until Show is pressed', async () => {
+  it('shows the PAN, e-mail and mobile in full, with no Show / Hide', async () => {
+    // 2026-11-18 (the user): e-mail, mobile and PAN are never masked on signed-in pages.
     await loaded({ ...profile, basicInfo: { ...profile.basicInfo, PanNo: 'ABCDE1234F', MobileNo: '9876543133' } });
-    expect(el.querySelector('[data-testid="pan"]')!.textContent).toBe('AB•••••34F');
-    expect(el.textContent).not.toContain('ABCDE1234F');
-    expect(el.querySelector('[data-testid="registered-email"]')!.textContent).toBe('ka•••••@example.com');
-    expect(el.textContent).toContain('98•••••133');
-
-    el.querySelector<HTMLButtonElement>('#sec-enterprise dd button')!.click();
-    await settle();
     expect(el.querySelector('[data-testid="pan"]')!.textContent).toBe('ABCDE1234F');
-
-    button('Show')!.click();
-    await settle();
     expect(el.querySelector('[data-testid="registered-email"]')!.textContent).toBe('karan@example.com');
-    expect(el.textContent).toContain('9876543133');
+    expect(el.querySelector('[data-testid="mobile"]')!.textContent).toBe('9876543133');
+    expect(el.textContent).not.toContain('•');
+    expect(button('Show')).toBeFalsy();
+    expect(button('Hide')).toBeFalsy();
   });
 
   it('shows the activity as the 2 > 4 > 5-digit hierarchy', async () => {
@@ -200,7 +194,7 @@ describe('ProfilePage', () => {
   it('shows Verified after the mobile only when it is the Udyam record’s', async () => {
     await loaded({ ...profile, basicInfo: { ...profile.basicInfo, MobileNo: '9876543133' }, mobileVerified: true });
     const mobile = el.querySelector('[data-testid="mobile"]')!.parentElement!;
-    expect(mobile.textContent).toContain('98•••••133');
+    expect(mobile.textContent).toContain('9876543133');
     expect(mobile.querySelector('.ok')!.textContent).toContain('Verified');
   });
 

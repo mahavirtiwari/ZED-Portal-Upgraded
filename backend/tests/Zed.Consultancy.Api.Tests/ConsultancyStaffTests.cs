@@ -697,7 +697,8 @@ public sealed class ConsultancyStaffTests : IDisposable
         var client = await ConsultancyLogin.SignInAsync(_host, "CONS1");
         var r = await client.GetFromJsonAsync<JsonElement>("/api/staff/msme-profile/ZEDMSME1");
         Assert.Equal("Unit One", r.GetProperty("unit").GetProperty("PUnitName").GetString());
-        Assert.Equal("XXXXXX234F", r.GetProperty("enterprise").GetProperty("PanNo").GetString());
+        // 2026-11-18 (the user): the PAN in full, never masked.
+        Assert.Equal("ABCDE1234F", r.GetProperty("enterprise").GetProperty("PanNo").GetString());
 
         var other = await ConsultancyLogin.SignInAsync(_host, "CO2");
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/staff/msme-profile/ZEDMSME1")).StatusCode);

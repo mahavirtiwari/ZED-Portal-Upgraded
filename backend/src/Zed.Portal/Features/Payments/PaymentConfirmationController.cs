@@ -14,7 +14,7 @@ namespace Zed.Portal.Features.Payments;
 /// payment, and its three actions. Everything is read for the ZED ID of the sign-in cookie, never from the request.
 /// <list type="bullet">
 /// <item><c>GET …/{level}/confirmation</c>: amount, order and CCAvenue reference, when and how it was paid, whether the receipt
-/// and the tax invoice can be downloaded, and the masked registered e-mail.</item>
+/// and the tax invoice can be downloaded, and the registered e-mail (in full since 2026-11-18).</item>
 /// <item><c>GET …/{level}/receipt</c>: the receipt PDF written when the payment was recorded (PDFs/SA/{ZedId}/…).</item>
 /// <item><c>GET …/{level}/invoice</c>: the link to the ERP's tax invoice of that payment (My Documents' file), or 404 while the ERP
 /// has not sent it yet.</item>
@@ -41,7 +41,7 @@ public sealed class PaymentConfirmationController(
     /// <param name="Method">The gateway's payment mode (e.g. UPI, Net Banking), NEFT, or "Zero amount".</param>
     /// <param name="ReceiptUrl">The receipt's download address, or null when it is not stored.</param>
     /// <param name="InvoiceUrl">The tax invoice's address (api/msme/files/ReceiptInvoice/…), or null while the ERP has not sent it.</param>
-    /// <param name="Email">The registered e-mail, masked (ka•••@gmail.com); null without one.</param>
+    /// <param name="Email">The registered e-mail in full (2026-11-18, the user: never masked for the signed-in unit); null without one.</param>
     public sealed record ConfirmationResponse(
         string Certification, decimal? Amount, string? OrderId, string? TransactionId, DateTime? PaidOn, string? Method,
         string? ReceiptUrl, string? InvoiceUrl, string? InvoiceNo, string? Email);
@@ -106,7 +106,7 @@ public sealed class PaymentConfirmationController(
             System.IO.File.Exists(paid.ReceiptFile) ? ReceiptUrl(kind, level) : null,
             invoice is null ? null : MsmeFilePaths.ToApiUrl(invoice.Value.Relative),
             invoice?.InvoiceNo,
-            Mask(paid.Msme?.Text("PledgeEmailId")));
+            Email(paid.Msme?.Text("PledgeEmailId")));
     }
 
     private async Task<IActionResult> ReceiptAsync(Kind kind, string certification, CancellationToken ct)
@@ -145,7 +145,7 @@ public sealed class PaymentConfirmationController(
         }
         if (sentTo is null) return this.Problem400("There is no registered e-mail for this unit. Please update it in your profile.");
         log.LogInformation("Payment confirmation copy sent for {ZedId}/{Certification} ({Kind})", ZedId, level, kind);
-        return new EmailCopyResponse(Mask(sentTo)!);
+        return new EmailCopyResponse(Email(sentTo)!);
     }
 
     /// <summary>The unit's payment for the level (null when there is none).</summary>
@@ -240,14 +240,9 @@ public sealed class PaymentConfirmationController(
 
     internal static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-    /// <summary>"ka•••@gmail.com": the first two letters of the name, then the domain.</summary>
-    internal static string? Mask(string? email)
-    {
-        if (string.IsNullOrWhiteSpace(email)) return null;
-        var e = email.Trim();
-        var at = e.LastIndexOf('@');
-        if (at <= 0) return "•••";
-        var name = e[..at];
-        return name[..Math.Min(name.Length > 2 ? 2 : 1, name.Length)] + "•••" + e[at..];
-    }
+    /// <summary>
+    /// The registered e-mail as the signed-in unit sees it: in full, trimmed (2026-11-18, the user: e-mail, mobile and PAN are
+    /// never masked on signed-in pages); null without one.
+    /// </summary>
+    internal static string? Email(string? email) => string.IsNullOrWhiteSpace(email) ? null : email.Trim();
 }

@@ -30,7 +30,7 @@ describe('PaymentResultPage (2026-11-17 confirmation design)', () => {
 
   const confirmation = (more: object = {}) => ({
     certification: 'Silver', amount: 5000, orderId: 'ZED-SLV-2026-000123', transactionId: 'TXN26111706250042', paidOn: '2026-11-17T06:25:00',
-    method: 'UPI', receiptUrl: '/api/msme/payments/Silver/receipt', invoiceUrl: null, invoiceNo: null, email: 'ka•••@gmail.com', ...more,
+    method: 'UPI', receiptUrl: '/api/msme/payments/Silver/receipt', invoiceUrl: null, invoiceNo: null, email: 'kavita@gmail.com', ...more,
   });
   const button = (label: string) => [...el.querySelectorAll('button, a')].find((b) => b.textContent!.includes(label)) as HTMLElement;
 
@@ -70,9 +70,9 @@ describe('PaymentResultPage (2026-11-17 confirmation design)', () => {
     await settle();
     const req = http.expectOne('/api/msme/payments/Silver/email-copy');
     expect(req.request.method).toBe('POST');
-    req.flush({ sentTo: 'ka•••@gmail.com' });
+    req.flush({ sentTo: 'kavita@gmail.com' });
     await settle();
-    expect(el.querySelector('.pr-sent')!.textContent).toBe('Sent to ka•••@gmail.com');
+    expect(el.querySelector('.pr-sent')!.textContent).toBe('Sent to kavita@gmail.com');
   });
 
   it('uses the surveillance endpoints and hides the certification steps', async () => {

@@ -108,7 +108,29 @@ export interface QoDashboard {
   categories: { category: string; total: number; major: number }[];
 }
 
+/**
+ * 2026-11-18 (the user): the lists' and the dashboard's filter: a preset period (days) or a custom range (from / to as
+ * yyyy-MM-dd, on the date the observation was raised), and the certification level (empty = every level).
+ */
+export interface QoFilter {
+  days?: number | null;
+  from?: string | null;
+  to?: string | null;
+  level?: string | null;
+}
+
 const API = '/api/staff/quality-observations';
+
+function withQuery(url: string, f: QoFilter, status: QoStatus | '' = ''): string {
+  const q = new URLSearchParams();
+  if (status) q.set('status', status);
+  if (f.days) q.set('days', String(f.days));
+  if (f.from) q.set('from', f.from);
+  if (f.to) q.set('to', f.to);
+  if (f.level) q.set('level', f.level);
+  const qs = q.toString();
+  return qs ? `${url}?${qs}` : url;
+}
 
 @Injectable({ providedIn: 'root' })
 export class QualityApi {
@@ -134,16 +156,12 @@ export class QualityApi {
     return this.http.post<MessageResponse>(`${API}/items/${id}/reopen`, { text });
   }
 
-  list(status: QoStatus | '' = '', days?: number): Observable<{ items: QoObservation[]; canClose: boolean }> {
-    const q = new URLSearchParams();
-    if (status) q.set('status', status);
-    if (days) q.set('days', String(days));
-    const qs = q.toString();
-    return this.http.get<{ items: QoObservation[]; canClose: boolean }>(qs ? `${API}?${qs}` : API);
+  list(status: QoStatus | '' = '', filter: QoFilter = {}): Observable<{ items: QoObservation[]; canClose: boolean }> {
+    return this.http.get<{ items: QoObservation[]; canClose: boolean }>(withQuery(API, filter, status));
   }
 
-  dashboard(days?: number): Observable<QoDashboard> {
-    return this.http.get<QoDashboard>(days ? `${API}/dashboard?days=${days}` : `${API}/dashboard`);
+  dashboard(filter: QoFilter = {}): Observable<QoDashboard> {
+    return this.http.get<QoDashboard>(withQuery(`${API}/dashboard`, filter));
   }
 }
 

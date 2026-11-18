@@ -89,8 +89,12 @@ public static class SubUserPermissions
         new("financial-assistance", "Financial Assistance verification", UserRole.Agency, Main, [SubRoles.FinancialVerification],
             ["/staff/financial-assistance"], ["/api/staff/schemes/fa"]),
         // 2026-11-18 (approved): the agency's / organisation's monthly invoices (upload, status, its own PDFs).
-        new("invoices", "Invoices", UserRole.Agency, [PortalSystem.Main, PortalSystem.Consultancy], None,
-            ["/staff/expenditure/invoices"], ["/api/staff/expenditure/my", "/api/staff/expenditure/invoices"]),
+        // 2026-11-18 (the user): now its Expenditure page: its figures, POs (read-only), cases, the one-time GSTIN / PAN (the key
+        // stays "invoices": it is stored in dbo.V4SubUsers.Permissions).
+        new("invoices", "Expenditure", UserRole.Agency, [PortalSystem.Main, PortalSystem.Consultancy], None,
+            ["/staff/expenditure/invoices"],
+            ["/api/staff/expenditure/my", "/api/staff/expenditure/invoices", "/api/staff/expenditure/summary", "/api/staff/expenditure/cases",
+             "/api/staff/expenditure/po", "/api/staff/expenditure/tax"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.Agency, Consultancy, [SubRoles.FinancialVerification],
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
     ];

@@ -124,6 +124,33 @@ export interface DaDetails {
   checkpoints?: Checkpoint[];
   /** Surveillance host only: Bronze surveillance app answers and the original ZED assessment's location. */
   surveillance?: SurveillanceDetails | null;
+  /**
+   * 2026-11-18: only for the agency of a unit waiting in its DA allotment list (not yet accepted): the page is a read-only
+   * preview of what the applicant submitted, with the allotment banner (Accept / Re-allot, Reject).
+   */
+  allotment?: AgencyAllotment | null;
+}
+
+/** The agency's allotment of a unit it has not accepted yet (DesktopAssessmentController.AgencyAllotment). */
+export interface AgencyAllotment {
+  /** desktop: the DA allotment list (desktop assessor); site: the SA allotment list (site assessor). */
+  kind: 'desktop' | 'site';
+  /** Nothing assessed yet: the page hides the assessors' verdicts (always for desktop; for site, when there was no desktop step). */
+  preview: boolean;
+  /** pending: no assessor yet; allotted: given to an assessor (desktop: not accepted yet; site: not started); rejected: the desktop assessor rejected it. */
+  stage: 'pending' | 'allotted' | 'rejected';
+  /** "17 Nov 2026", when known. */
+  allottedOn: string | null;
+  assessorId: string | null;
+  assessorName: string | null;
+  assessorReason: string | null;
+  canAllot: boolean;
+  canReject: boolean;
+  /** The applicant's contact, in full. */
+  spocName: string | null;
+  mobile: string | null;
+  email: string | null;
+  pan: string | null;
 }
 
 export interface SurveillanceDetails {

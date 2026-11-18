@@ -13,7 +13,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
-import { maskEmail, maskMobile } from '../users/user-display';
+import { plain } from '../users/user-display';
 
 interface PermissionOption {
   key: string;
@@ -76,7 +76,7 @@ const API = '/api/staff/sub-users';
  * with its own ID and works as the owner (same role and data) on the screens ticked here; the login ID is generated and
  * the password mailed to the sub-user.
  * 2026-11-17 (approved staff-20 / popup-02): the page head with the Add button, the shared count tiles (all, active, locked,
- * blocked; a click filters), the search bar, the list with the masked contact, the screens as chips (four at most, then
+ * blocked; a click filters), the search bar, the list with the contact (in full since 2026-11-18, the user: never masked), the screens as chips (four at most, then
  * "+N more"; one "All N screens" chip when it has every one), a locked login flagged in amber with a lock, and per row Edit
  * plus a row menu: a new password (on a locked login "Unlock", as the new password also lifts the lock), Block / Unblock,
  * each after a confirmation, and a toast once done. The pop-up has two columns: details and scope on the left, the screens
@@ -124,10 +124,10 @@ const API = '/api/staff/sub-users';
                     <ng-container *ngTemplateOutlet="badge; context: { $implicit: u, phone: true }" />
                   </div>
                 </td>
-                <!-- The list masks the mobile and e-mail (the user's decision, 2026-11-17); Edit shows the full values. -->
+                <!-- 2026-11-18 (the user): the mobile and e-mail in full (never masked); a long e-mail is cut with "…" and its tooltip. -->
                 <td class="su-contact" data-label="Contact">
                   @if (u.mobileNo) { <span>{{ mobileOf(u) }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
-                  @if (u.email) { <span class="su-mail">{{ mailOf(u) }}</span> }
+                  @if (u.email) { <span class="su-mail" [title]="u.email">{{ mailOf(u) }}</span> }
                 </td>
                 <td class="su-screens" data-label="Screens">
                   @if (hasAll(u)) {
@@ -298,6 +298,7 @@ const API = '/api/staff/sub-users';
     .su-lock { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; fill: none; stroke: currentColor; stroke-width: 2.4; }
     .su-contact { min-width: 150px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
     .su-contact span { display: block; line-height: 17px; overflow-wrap: anywhere; }
+    .su-contact .su-mail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
     .su-mail, .su-never { font-size: 11.5px; font-weight: 500; color: #6f8487; }
     .no-mobile { color: #9a5f06; }
     .su-screens { min-width: 200px; max-width: 330px; }
@@ -412,11 +413,11 @@ export class SubUsersPage {
   }
 
   protected mobileOf(u: SubUser): string {
-    return maskMobile(u.mobileNo);
+    return plain(u.mobileNo);
   }
 
   protected mailOf(u: SubUser): string {
-    return maskEmail(u.email);
+    return plain(u.email);
   }
 
   /** Two letters of the name (or of the user ID) for the round badge. */
@@ -450,7 +451,7 @@ export class SubUsersPage {
 
   protected picked(u: SubUser, key: string): void {
     const name = `${u.userName} (${u.userId})`;
-    const to = maskEmail(u.email) || 'the registered e-mail address';
+    const to = plain(u.email) || 'the registered e-mail address';
     let ask: ConfirmAsk;
     if (key === 'reset' && this.statusOf(u) === 'locked') {
       ask = {
@@ -493,7 +494,7 @@ export class SubUsersPage {
     try {
       if (p.key === 'reset') {
         await firstValueFrom(this.http.post<MessageResponse>(`${API}/${id}/reset-password`, null));
-        this.toast.success(this.statusOf(u) === 'locked' ? 'Login unlocked' : 'New password sent', 'New password e-mailed to ' + (maskEmail(u.email) || 'the registered e-mail address'));
+        this.toast.success(this.statusOf(u) === 'locked' ? 'Login unlocked' : 'New password sent', 'New password e-mailed to ' + (plain(u.email) || 'the registered e-mail address'));
       } else {
         const body: SubUserForm = {
           userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: p.key === 'unblock',

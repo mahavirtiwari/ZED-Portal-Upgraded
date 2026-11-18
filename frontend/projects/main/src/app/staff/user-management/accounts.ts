@@ -14,7 +14,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { staffCrumbs } from '../staff-crumbs';
-import { maskEmail, maskMobile } from '../users/user-display';
+import { plain } from '../users/user-display';
 
 interface AccountType {
   roleId: number;
@@ -205,15 +205,15 @@ const typeHints: Readonly<Record<number, string>> = {
                     @if (scopeText(a); as sc) { <span class="acc-state acc-scope" title="Scope of this login">{{ sc }}</span> }
                   </td>
                 }
-                <!-- The NEFT Admins list masks the mobile and e-mail (the user's decision, 2026-11-17); the pop-up has the full values. -->
+                <!-- 2026-11-18 (the user): the mobile and e-mail in full on every list (never masked); a long e-mail is cut with "…" and its tooltip. -->
                 <td class="acc-contact" data-label="Contact">
                   @if (a.mobileNo) {
-                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ neft ? mobileOf(a) : a.mobileNo }}</span>
+                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ a.mobileNo }}</span>
                   } @else {
                     <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span>
                   }
                   @if (a.email) {
-                    <span class="acc-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ neft ? mailOf(a) : a.email }}</span>
+                    <span class="acc-mail" [title]="a.email"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg><span class="acc-txt">{{ a.email }}</span></span>
                   }
                 </td>
                 <td class="text-center acc-status-cell"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span></td>
@@ -547,6 +547,8 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-state { display: block; margin-top: 4px; font-size: 12px; color: #5f6f70; }
     .acc-contact { min-width: 220px; }
     .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; overflow-wrap: anywhere; }
+    .acc-contact .acc-mail { min-width: 0; }
+    .acc-contact .acc-txt { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
     .acc-contact .acc-mail { font-size: 13px; color: #5f6f70; }
     .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
     .acc-actions-cell .row-actions { flex-wrap: nowrap; }
@@ -719,15 +721,6 @@ export class AccountsPage {
 
   protected pickStatus(key: string | undefined): void {
     this.status.set(key === 'active' || key === 'blocked' ? key : 'all');
-  }
-
-  /** The NEFT Admins list: the masked mobile and e-mail (the record's pop-up has the full values). */
-  protected mobileOf(a: Account): string {
-    return maskMobile(a.mobileNo);
-  }
-
-  protected mailOf(a: Account): string {
-    return maskEmail(a.email);
   }
 
   /** A NEFT Admin's row menu: a new password, then block (red) or unblock. */
@@ -907,7 +900,7 @@ export class AccountsPage {
     this.reasonError.set('');
     const name = a.userName || a.userId;
     if (action === 'reset-password') {
-      const to = maskEmail(a.email);
+      const to = plain(a.email);
       this.pending.set({ account: a, action, ask: {
         title: 'Send a new password?',
         message: `${name} (${a.userId}) gets a new password by e-mail${to ? ' at ' + to : ''}. The current password stops working at once.`,
@@ -936,7 +929,7 @@ export class AccountsPage {
     try {
       await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(p.account.userId)}/reset-password`, null));
       this.pending.set(null);
-      this.toast.success('New password sent', 'E-mailed to ' + (maskEmail(p.account.email) || 'the registered e-mail address'));
+      this.toast.success('New password sent', 'E-mailed to ' + (plain(p.account.email) || 'the registered e-mail address'));
       await this.load();
     } catch (err) {
       this.reasonError.set(apiErrorMessage(err));

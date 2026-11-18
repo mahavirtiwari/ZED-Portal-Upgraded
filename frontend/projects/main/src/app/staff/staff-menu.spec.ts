@@ -61,7 +61,7 @@ describe('staff menu', () => {
       const site = c(StaffRole.Agency, ['SiteVerification']);
       expect(site).toEqual(expect.arrayContaining(['Allot Consultancy', 'Consultancy Monitoring', 'Consultants/Experts', 'Reports']));
       expect(site).not.toContain('Technology Upgradation');
-      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Technology Upgradation', 'Invoices', 'Documents', 'Quality Observations', 'Sub-Users']);
+      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
     });
 
     it('gives consultants the milestone lists, pointing at the site-assessment routes', () => {
@@ -144,9 +144,9 @@ describe('staff menu', () => {
       const agency = (system: 'main' | 'consultancy' | 'surveillance') =>
         menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification'], system)).map((e: StaffMenuEntry) =>
           'group' in e ? `${e.group} (${e.items.length})` : e.item.label);
-      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Invoices', 'Documents', 'Quality Observations', 'Sub-Users']);
+      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Quality Observations', 'Sub-Users', 'Documents']);
-      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Invoices', 'Documents', 'Quality Observations', 'Sub-Users']);
+      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       // An agency with only desktop verification has one allotment screen: a link, not a drop-down.
       expect(menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main')).some((e) => 'item' in e && e.item.label === 'DA Allotment')).toBe(true);
       expect(menuEntries(menuFor(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'], 'main')).every((e) => 'item' in e)).toBe(true);

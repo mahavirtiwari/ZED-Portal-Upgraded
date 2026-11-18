@@ -193,7 +193,8 @@ public sealed partial class StaffPasswordResetTests : IDisposable
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = await master.PostAsync("/api/staff/password-reset/MASTER2", null);
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Contains("m******@zed.test", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        // 2026-11-18 (the user): the signed-in Master Admin sees the address in full.
+        Assert.Contains("(master2@zed.test)", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
         var mail = Assert.Single(MailsTo("master2@zed.test"));
         Assert.Contains("A ZED administrator (MASTER1)", mail.HtmlBody);
         Assert.Equal("MASTER1", _resets.Rows.Single().RequestedBy);

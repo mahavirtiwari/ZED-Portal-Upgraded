@@ -86,7 +86,7 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     await settle(fixture);
   }
 
-  it('shows the crumbs, the View only tag, the actions in the identity card and the right rail to the Master Admin, with masked contact details', async () => {
+  it('shows the crumbs, the View only tag, the actions in the identity card and the right rail to the Master Admin, with the contact details in full', async () => {
     await open(StaffRole.MasterAdmin, 'ZEDAS0001', { panNo: 'ABCDE1234F' });
     expect([...head().querySelectorAll('.ph-crumb a, .ph-crumb span:not(.ph-sep)')].map((c) => c.textContent!.trim())).toEqual(['Home', 'Assessors', 'ZEDAS0001']);
     expect(head().querySelector('.ph-title')!.textContent).toContain('Assessor details');
@@ -95,12 +95,12 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     const card = el.querySelector('.af-profile')!;
     expect(card.querySelector('.af-view-only')!.textContent!.trim()).toBe('View only');
     expect([...card.querySelectorAll('.af-acts .btn')].map((b) => b.textContent!.trim())).toEqual(['Block', 'Reset link', 'History']);
-    expect(card.querySelector('.af-id')!.textContent).toContain('PAN AB•••••34F');
-    expect(card.textContent).not.toContain('ABCDE1234F');
-    // The view masks the e-mail and the mobile (no edit fields).
+    // 2026-11-18 (the user): PAN, e-mail and mobile in full (never masked); no edit fields in the view.
+    expect(card.querySelector('.af-id')!.textContent).toContain('PAN ABCDE1234F');
     expect(el.querySelector('#emailId')).toBeNull();
-    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('as•••••@zed.test');
-    expect(el.querySelector('[data-view="mobile"]')!.textContent!.trim()).toBe('90•••••001');
+    expect(el.querySelector('[data-view="email"]')!.textContent!.trim()).toBe('asha@zed.test');
+    expect(el.querySelector('[data-view="email"]')!.getAttribute('title')).toBe('asha@zed.test');
+    expect(el.querySelector('[data-view="mobile"]')!.textContent!.trim()).toBe('9000000001');
     expect(el.querySelector('[data-view="id-proof"]')!.textContent!.trim()).toBe('Aadhaar card · •••••9012');
 
     const agency = el.querySelector('[data-rail="agency"]')!;
@@ -160,19 +160,20 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('sends a reset link after the confirmation and names the masked address in the toast', async () => {
+  it('sends a reset link after the confirmation and names the address in the toast', async () => {
     await open(StaffRole.MasterAdmin, 'ZEDAS0001');
     act('reset')!.click();
     await settle(fixture);
     expect(dialog()!.querySelector('h3')!.textContent!.trim()).toBe('Send password reset link?');
     expect(dialog()!.querySelector('.cd-person')!.textContent).toContain('Assessor · ZEDAS0001');
+    expect(dialog()!.querySelector('.cd-person')!.textContent).toContain('asha@zed.test');
     expect(dialog()!.querySelector('textarea')).toBeNull();
     await confirm();
     const req = http.expectOne(`${BASE}/ZEDAS0001/password-reset`);
     expect(req.request.method).toBe('POST');
-    req.flush({ message: 'A link to set a new password was e-mailed (a***@zed.test).' });
+    req.flush({ message: 'A link to set a new password was e-mailed (asha@zed.test).' });
     await settle(fixture);
-    expect(toast.success).toHaveBeenCalledWith('Reset link sent', 'E-mailed to a***@zed.test');
+    expect(toast.success).toHaveBeenCalledWith('Reset link sent', 'E-mailed to asha@zed.test');
     expect(dialog()).toBeNull();
   });
 

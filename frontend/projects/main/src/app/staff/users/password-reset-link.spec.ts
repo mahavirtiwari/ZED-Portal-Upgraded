@@ -20,10 +20,10 @@ describe('PasswordResetLinkPage', () => {
   }
 
   const target = (extra: Partial<ResetTarget> = {}): ResetTarget => ({
-    userId: 'MASTER2', userName: 'Second Master', roleId: 7, role: 'Master Admin', isActive: true, maskedEmail: 'm******@zed.test',
+    userId: 'MASTER2', userName: 'Second Master', roleId: 7, role: 'Master Admin', isActive: true, email: 'master2@zed.test',
     canSend: true, reason: null, ...extra,
   });
-  const sentAnswer = { message: "A password reset link has been sent to the user's registered e-mail address (m******@zed.test)." };
+  const sentAnswer = { message: "A password reset link has been sent to the user's registered e-mail address (master2@zed.test)." };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -67,7 +67,7 @@ describe('PasswordResetLinkPage', () => {
     const who = el.querySelector('.prl-who')!;
     expect(who.textContent).toContain('Second Master');
     expect(who.textContent).toContain('Master Admin · MASTER2');
-    expect(who.textContent).toContain('Link will go to m******@zed.test');
+    expect(who.textContent).toContain('Link will go to master2@zed.test');
     expect(who.textContent).toContain('Active');
     expect((el.querySelector('#resetUserId') as HTMLInputElement).readOnly).toBe(true);
 
@@ -79,8 +79,8 @@ describe('PasswordResetLinkPage', () => {
     await settle();
     expect(current()).toBe(-1);
     expect(steps().every((s) => s.classList.contains('st-done'))).toBe(true);
-    expect(el.querySelector('.prl-done')!.textContent).toContain('m******@zed.test');
-    expect(TestBed.inject(ToastService).toasts().at(-1)).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to m******@zed.test' });
+    expect(el.querySelector('.prl-done')!.textContent).toContain('master2@zed.test');
+    expect(TestBed.inject(ToastService).toasts().at(-1)).toMatchObject({ title: 'Reset link sent', message: 'E-mailed to master2@zed.test' });
     expect(el.querySelectorAll('.prl-sent-row').length).toBe(1);
     expect(el.querySelector('.prl-sent-id')!.textContent).toBe('MASTER2');
     expect(el.querySelector('.prl-sent-row')!.textContent).toContain('Second Master');

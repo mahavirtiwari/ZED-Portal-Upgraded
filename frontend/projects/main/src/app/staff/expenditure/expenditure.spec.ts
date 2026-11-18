@@ -7,7 +7,7 @@ import { ADMIN_PORTAL } from '../admin-portal';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { TableExport } from '../table-export';
 import { ExpenditurePage } from './expenditure';
-import { ExpenditureSummary, Invoice, InvoiceDetail, caseText, poPill, rateLineText, rupees, rupeesShort } from './expenditure.api';
+import { ExpenditureSummary, Invoice, InvoiceDetail, TaxDetails, caseText, poPill, rateLineText, rupees, rupeesShort } from './expenditure.api';
 
 const summary = (kind: 'Agency' | 'Consultant' = 'Agency'): ExpenditureSummary => ({
   kind,
@@ -29,6 +29,11 @@ const invoice = (extra: Partial<Invoice> = {}): Invoice => ({
   gstPercent: 18, portalTotal: 495600, difference: 0, status: 'Submitted', remarks: null, submittedOn: null, reviewedBy: null, reviewedOn: null,
   erpExport: null, canReview: true, ...extra,
 });
+
+const gstin: TaxDetails = {
+  available: true, submitted: true, gstin: '27AAPFU0939F1ZV', pan: 'AAPFU0939F', hasGstFile: true, hasPanFile: true, submittedOn: '2026-11-18T05:00:00',
+  submittedBy: 'ZEDAA0080', suggestedGstin: null,
+};
 
 describe('ExpenditurePage', () => {
   let fixture: ComponentFixture<ExpenditurePage>;
@@ -89,9 +94,14 @@ describe('ExpenditurePage', () => {
     await settle();
     const req = http.expectOne((r) => r.url === '/api/staff/expenditure/summary');
     expect(req.request.params.get('partyId')).toBe('ZEDAA0080');
-    req.flush(summary());
+    req.flush({ ...summary(), tax: gstin });
     http.expectOne((r) => r.url === '/api/staff/expenditure/invoices').flush([]);
     await settle();
+    // 2026-11-18: the chosen agency's one-time GSTIN and PAN, read-only.
+    const tax = el.querySelector('zed-tax-details')!;
+    expect(tax.textContent).toContain('27AAPFU0939F1ZV');
+    expect(tax.textContent).toContain('Locked');
+    expect(tax.querySelector('input')).toBeNull();
 
     button('Cases', el.querySelectorAll('.xp-table tbody tr')[0])!.click();
     await settle();
@@ -127,11 +137,14 @@ describe('ExpenditurePage', () => {
       invoice: invoice(), liveDifference: 0,
       live: { month: '2026-10-01', completed: 41, rejected: 3, surveillance: 14, milestones: 0, amount: 420000, gst: 18, total: 495600 },
       lines: [{ kind: 'Completed', level: 'Bronze', levelName: 'Bronze', milestone: null, rate: 3000, rateFrom: '2026-11-01', cases: 41, amount: 123000 }],
+      tax: gstin,
     };
     http.expectOne('/api/staff/expenditure/invoices/5').flush(detail);
     await settle();
     const dialog = el.querySelector('zed-invoice-review')!;
     expect(dialog.textContent).toContain('matches');
+    expect(dialog.textContent).toContain('27AAPFU0939F1ZV');
+    expect(dialog.textContent).toContain('AAPFU0939F');
     expect(dialog.textContent).toContain('41 completed × ₹ 3,000 (Bronze, from 01-11-2026)');
     button('Return', dialog)!.click();
     await settle();

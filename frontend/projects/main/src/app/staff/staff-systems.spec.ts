@@ -91,7 +91,7 @@ describe('staff pages per system', () => {
     ]);
     await settle();
     expect(el.querySelector('h2')!.textContent).toBe('Consultant Organisations');
-    // 2026-11-17 redesign: the ID under the organisation's name, the SPOC in its own column (masked contact).
+    // 2026-11-17 redesign: the ID under the organisation's name, the SPOC in its own column (contact in full since 2026-11-18).
     expect(headers()).toEqual(['Consultant Organisation', 'SPOC', 'No. of Consultant', 'Status', 'Actions']);
     const row = el.querySelector('tbody tr')!;
     expect(row.querySelectorAll('td').length).toBe(5);

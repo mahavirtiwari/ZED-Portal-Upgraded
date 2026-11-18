@@ -17,7 +17,7 @@ import { ToastService } from '../toast';
 import { PoCard } from '../expenditure/po-card';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
-import { initialsOf, maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { initialsOf, resetLinkAsk, sentTo } from './user-display';
 import { AgencyLevel, AgencyRow, SECTOR_ACTIVITIES, SectorActivity, UsersApi, agencyLevels, rowValue } from './users.api';
 
 /** 'levels': Agency level allocation (2026-11-08; before, the Bronze Assessment Agencies page). */
@@ -42,7 +42,7 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
  * BronzeAssessmentAgencies.cshtml (enable / disable the levels); the route's `data.mode` ('all' | 'levels') picks the page.
  * 2026-11-17 (approved staff redesign, staff-01 / staff-03, pop-ups 01, 03, 04, 08, 09): counts that filter, chip filters,
  * a light table where each row has Edit and Assessors plus a ⋮ menu (reset link, history, block / unblock, each confirmed),
- * the SPOC mobile and e-mail masked (full on the agency's page), toasts for completed actions; the levels page has one
+ * the SPOC mobile and e-mail (in full since 2026-11-18, the user: never masked), toasts for completed actions; the levels page has one
  * switch per level in its own column: on asks to confirm, off asks for the reason (e-mailed to the agency).
  */
 @Component({
@@ -195,8 +195,6 @@ export class AgenciesPage {
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() => this.filtered());
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly initials = initialsOf;
 
   constructor() {

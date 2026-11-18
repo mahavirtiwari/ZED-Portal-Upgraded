@@ -16,7 +16,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { ContentService } from '../../content/content-text';
-import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 
 /** Which assessors the list shows (the status tiles). */
@@ -27,7 +27,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
  * while the certificate is attached to another active Bronze Assessor; on consultancy always), edit (the mobile number
  * too, since 2026-11-13). 2026-11-17 (approved staff redesign, as staff-04): the shared head with Add, counts (all,
  * active, blocked; a click filters), a search, a row per assessor with the selfie or initials, its levels as medals, the
- * sector, the masked contact (no PAN or ID proof: they are on the record's page) and status, Edit plus a row menu (Send
+ * sector, the contact in full (2026-11-18, the user: never masked; no PAN or ID proof: they are on the record's page) and status, Edit plus a row menu (Send
  * reset link, View history, Block / Unblock) whose actions confirm first and end with a toast, the block history in the
  * side panel, a card per assessor on phones, and an empty state that leads to Add.
  */
@@ -125,7 +125,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   }
                   <td class="ma-contact" [attr.data-label]="consultancy ? 'Contact Details' : 'Contact'">
                     <span [class.no-mobile]="!u.MobileNo">{{ u.MobileNo ? mobile(u.MobileNo) : 'Mobile not saved' }}</span>
-                    @if (u.Email) { <span class="ma-sub">{{ email(u.Email) }}</span> }
+                    @if (u.Email) { <span class="ma-sub" [title]="u.Email">{{ email(u.Email) }}</span> }
                   </td>
                   <td class="text-center ma-status" data-label="Status">
                     <span class="status-badge" [class.is-active]="u.IsActive" [class.is-rejected]="!u.IsActive">{{ u.IdStatus }}</span>
@@ -197,6 +197,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     .ma-name { font-weight: 700; color: var(--zt-ink, #173f44); }
     .ma-id, .ma-sub { font-size: 12.5px; color: #5f6f70; }
     .ma-contact { min-width: 150px; }
+    .ma-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lv-row { display: flex; gap: 5px; margin-bottom: 3px; }
     .lv { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10.5px; font-weight: 800;
       background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 0 0 1.5px rgba(0,0,0,.12); }
@@ -262,8 +263,8 @@ export class MyAssessorsPage {
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
   protected readonly medals = levelMedals;
-  protected readonly mobile = maskMobile;
-  protected readonly email = maskEmail;
+  protected readonly mobile = plain;
+  protected readonly email = plain;
 
   private readonly word = this.consultancy ? 'consultant' : 'assessor';
   protected readonly menuActive: RowMenuItem[] = [

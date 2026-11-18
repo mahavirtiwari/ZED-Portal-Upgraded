@@ -101,7 +101,7 @@ let nextId = 0;
                   <div class="cd-pi">
                     <strong>{{ u.name }}</strong>
                     @if (u.line) { <small>{{ u.line }}</small> }
-                    @if (u.email) { <span>{{ u.email }}</span> }
+                    @if (u.email) { <span class="cd-mail" [attr.title]="u.email">{{ u.email }}</span> }
                   </div>
                   @if (u.status) { <span class="status-badge is-active">{{ u.status }}</span> }
                 </div>
@@ -156,6 +156,7 @@ let nextId = 0;
     .cd-pi strong { font-size: 15px; color: #17373b; }
     .cd-pi small { font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .cd-pi span { font-size: 12.5px; font-weight: 600; color: #17373b; }
+    .cd-pi .cd-mail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
     .cd-person .status-badge { align-self: flex-start; }
     .cd-msg { font-size: 13px; font-weight: 500; color: #3d5559; margin-bottom: 12px; }
     .cd-pts { list-style: none; margin: 0 0 16px; padding: 0; }

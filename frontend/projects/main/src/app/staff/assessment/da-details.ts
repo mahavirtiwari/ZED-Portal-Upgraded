@@ -30,6 +30,7 @@ import { UNIT_VIEW_STYLES, desktopStage, ncLines, unitResult } from './da-detail
 import { RoundState, TrackItem, aboveCapacity, basicRaised, ncTracker } from './da-details.overview';
 import { LevelMedal } from './level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
+import { DaAllotmentBanner } from './da-allotment-banner';
 
 /**
  * 2026-11-17 (the user's staff design 14): the tab bar's names. 2026-11-18 (the new staff-14 series): five tabs: the NC 1 … NC 5
@@ -77,7 +78,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean; sub
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon, DaAllotmentBanner],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES, UNIT_VIEW_STYLES],
   styleUrls: ['./da-details.css', './da-details.params.css', './da-details.basic.css', './da-details.nc.css'],
@@ -159,6 +160,13 @@ export class DaDetailsPage {
   protected readonly review = computed(() => this.perms().review ?? NO_REVIEW);
   protected readonly remarksTarget = signal<RemarksTarget | null>(null);
   protected readonly isAssessorRole = computed(() => this.data()?.role === 'DesktopAssessor');
+  /**
+   * 2026-11-18 (the user: "show assessment detail during the allocation in the login of assessment agency"): the agency's
+   * unit not yet accepted (the server sends `allotment` only then). The page is a read-only preview of what the applicant
+   * submitted: no conformance, verdicts, assessor remarks or buttons; the banner offers Accept / Re-allot and Reject.
+   */
+  protected readonly allotment = computed(() => this.data()?.allotment ?? null);
+  protected readonly previewMode = computed(() => !!this.allotment()?.preview);
   protected readonly isQc = computed(() => this.data()?.role === 'QC');
   protected readonly status = computed(() => num(this.msme(), 'CertificationStatus'));
   protected readonly ncCount = computed(() => num(this.msme(), 'NcCount'));

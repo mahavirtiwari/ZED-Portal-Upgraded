@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { PaymentsReceivedPage, masked, paidFrom, shortDay } from './payments-received';
+import { PaymentsReceivedPage, paidFrom, shortDay } from './payments-received';
 import { TableExport } from '../table-export';
 
 describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
@@ -42,7 +42,7 @@ describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
 
   const tiles = () => [...el.querySelectorAll('.pr-tile')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
 
-  it('shows the four totals of the loaded list, the merged unit column, masked tax numbers and the payment type', () => {
+  it('shows the four totals of the loaded list, the merged unit column, the full tax numbers and the payment type', () => {
     expect(tiles()).toEqual(['₹ 1,20,000 Amount received', '2 Payments', '1 With TDS deducted', '1 Used Joining Reward']);
     const first = el.querySelectorAll('tbody tr')[0];
     expect(first.querySelector('.unit-cell')!.textContent).toContain('Pump Engineers');
@@ -50,9 +50,8 @@ describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
     expect(first.textContent).toContain('Zero amount');
     expect(first.textContent).toContain('Not given');
     const second = el.querySelectorAll('tbody tr')[1];
-    expect(second.textContent).toContain('33AAC•••1Z2');
-    expect(second.textContent).toContain('CHEL•••4A');
-    expect(second.textContent).not.toContain('33AACCL1234F1Z2');
+    // 2026-11-18 (the user): GSTIN (it holds the PAN) and TAN in full, never masked.
+    expect([...second.querySelectorAll('.pr-tax span')].map((s) => s.textContent!.trim())).toEqual(['33AACCL1234F1Z2', 'CHEL01234A']);
     expect(second.textContent).toContain('₹ 1,20,000');
     expect(second.textContent).toContain('10%');
     // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-08's Paid on column, "—" for an unknown date or TDS.
@@ -106,11 +105,5 @@ describe('PaymentsReceivedPage (2026-11-17 redesign)', () => {
     expect(sheets[0].rows.length).toBe(2);
     expect(sheets[0].rows[1]).toContain('33AACCL1234F1Z2');
     expect(sheets[0].rows[0]).toContain('Zero amount');
-  });
-
-  it('masks short and long numbers', () => {
-    expect(masked('27AABCU9603R1Z5')).toBe('27AAB•••1Z5');
-    expect(masked('DELA12345B')).toBe('DELA•••5B');
-    expect(masked('')).toBe('');
   });
 });

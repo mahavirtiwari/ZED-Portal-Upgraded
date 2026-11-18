@@ -4,6 +4,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
+import { setAllLevels } from '../../msme/shared/levels';
 import { AttentionService } from '../attention';
 import { QualityObservationsPage } from './quality-observations-page';
 import { QualityObservationsPanel } from './quality-observations-panel';
@@ -240,5 +241,85 @@ describe('Quality observations (2026-11-16)', () => {
     expect(el.querySelector<HTMLElement>('[data-qo-categories] .qo-bar-major')!.style.width).toBe('66.7%');
     expect(el.querySelector('[data-qo-score]')!.textContent).toContain('minor 1, major 3, critical 5');
     expect([...el.querySelectorAll('zed-page-head button')].map((b) => b.textContent!.trim())).toEqual(['Download ranking (CSV)']);
+  });
+
+  describe('filters (2026-11-18: date range and certification level)', () => {
+    const empty = { agencies: [], assessors: [], total: 0, open: 0, responded: 0, closed: 0, avgReplyHours: null, avgCloseHours: null, categories: [] };
+    const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    /** Answers the list and then the dashboard asked with the query. */
+    async function answer(f: { detectChanges(): void; whenStable(): Promise<unknown> }, query: string) {
+      await settle(f);
+      http.expectOne(`${API}?${query}`).flush({ items: [], canClose: true });
+      await settle(f);
+      http.expectOne(`${API}/dashboard?${query}`).flush(empty);
+      await settle(f);
+    }
+
+    async function open() {
+      setAllLevels(null);
+      const f = TestBed.createComponent(QualityObservationsPage);
+      await answer(f, 'days=90');
+      return { f, el: f.nativeElement as HTMLElement };
+    }
+
+    function pick(el: HTMLElement, id: string, change: (s: HTMLSelectElement) => void) {
+      const select = el.querySelector<HTMLSelectElement>(id)!;
+      change(select);
+      select.dispatchEvent(new Event('change'));
+    }
+
+    function type(el: HTMLElement, id: string, value: string) {
+      const input = el.querySelector<HTMLInputElement>(id)!;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+
+    it('offers the presets, "Custom range…" and the enabled levels in one row, with no Clear All at first', async () => {
+      const { el } = await open();
+      const texts = (id: string) => [...el.querySelectorAll<HTMLOptionElement>(`${id} option`)].map((o) => o.textContent!.trim());
+      expect(texts('#qo-days')).toEqual(['Last 30 days', 'Last 3 months', 'Last year', 'All time', 'Custom range…']);
+      expect(texts('#qo-level')).toEqual(['All levels', 'Bronze', 'Silver', 'Gold', 'ZED-X']);
+      expect(el.querySelector('#qo-from')).toBeNull();
+      expect(el.querySelector('.qo-reset')).toBeNull();
+    });
+
+    it('"Custom range…" shows the From / To dates and sends them; To before From is refused before asking', async () => {
+      const { f, el } = await open();
+      pick(el, '#qo-days', (s) => (s.selectedIndex = 4));
+      const today = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 90);
+      // From the preset's start to today.
+      await answer(f, `from=${iso(start)}&to=${iso(today)}`);
+      const from = el.querySelector<HTMLInputElement>('#qo-from')!;
+      const to = el.querySelector<HTMLInputElement>('#qo-to')!;
+      expect([from.type, to.type, to.max]).toEqual(['date', 'date', iso(today)]);
+      expect(el.querySelector('.qo-reset')!.textContent!.trim()).toBe('Clear All');
+
+      type(el, '#qo-from', '2026-11-01');
+      await answer(f, `from=2026-11-01&to=${iso(today)}`);
+      type(el, '#qo-to', '2026-10-15');
+      await settle(f);
+      http.expectNone((r) => r.url.startsWith(API));
+      expect(el.querySelector('.qo-range-err')!.textContent).toContain('The To date cannot be before the From date.');
+      type(el, '#qo-to', '2026-11-15');
+      await answer(f, 'from=2026-11-01&to=2026-11-15');
+      expect(el.querySelector('.qo-range-err')).toBeNull();
+    });
+
+    it('sends the certification level with the period, and Clear All resets everything', async () => {
+      const { f, el } = await open();
+      pick(el, '#qo-level', (s) => (s.value = 'Gold'));
+      await answer(f, 'days=90&level=Gold');
+      pick(el, '#qo-days', (s) => (s.selectedIndex = 0));
+      await answer(f, 'days=30&level=Gold');
+
+      el.querySelector<HTMLButtonElement>('.qo-reset')!.click();
+      await answer(f, 'days=90');
+      expect(el.querySelector<HTMLSelectElement>('#qo-level')!.value).toBe('');
+      expect(el.querySelector<HTMLSelectElement>('#qo-days')!.selectedIndex).toBe(1);
+      expect(el.querySelector('.qo-reset')).toBeNull();
+    });
   });
 });

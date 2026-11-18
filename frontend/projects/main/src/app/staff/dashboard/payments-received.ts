@@ -65,21 +65,13 @@ export function rupees(n: number): string {
   return '₹ ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
-/** GSTIN / TAN partly masked in the list: "27AAB•••1Z5" (the export keeps the full number). */
-export function masked(value: string): string {
-  const v = value.trim();
-  if (v.length <= 6) return v ? v.slice(0, 1) + '•••' : '';
-  const keep = v.length > 10 ? [5, 3] : [4, 2];
-  return v.slice(0, keep[0]) + '•••' + v.slice(-keep[1]);
-}
-
 /**
  * MSME payments received (MasterAdmin). Port of Views/Dashboard/PaymentReceived.cshtml. The old page's
  * Approve/Reject handlers had no pop-up markup and could not be used; they are not ported. Consultancy's page
  * (ZEDCS_CONSULTANCY Frontend/Dashboard/PaymentReceived.cshtml) has a Milestone column where the others have
  * Joining Reward.
  * <p>2026-11-17 (approved redesign): four totals of the rows shown (worked out here from the loaded list), Export of those
- * rows, search and filters in one row, the unit as name over ZED ID, GSTIN / TAN partly masked, amounts right-aligned and
+ * rows, search and filters in one row, the unit as name over ZED ID, GSTIN / TAN (in full since 2026-11-18, the user: a GSTIN holds the PAN, never masked), amounts right-aligned and
  * the payment type under the amount ("Zero amount" for a 100% subsidy).</p>
  * <p>2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-08's "Paid on" column (the API now adds PaidOn, the
  * payment row's recorded date) and "Paid between" filter; the search without a label, first in the row, with its icon on the left;
@@ -286,7 +278,7 @@ export class PaymentsReceivedPage {
   }
 
   protected taxIds(row: Row): string[] {
-    return [text(row, 'GstinNumber'), text(row, 'TanNumber')].filter((v) => v.trim()).map(masked);
+    return [text(row, 'GstinNumber'), text(row, 'TanNumber')].map((v) => v.trim()).filter(Boolean);
   }
 
   /** Export (approved): the rows shown (filters and search), with the full GSTIN and TAN. */

@@ -157,22 +157,27 @@ public sealed class QualityObservationsController(
 
     // ------------------------------------------------------------------ lists and dashboard
 
-    /// <summary>The Master Admin's (within its scope), an agency's own, or an assessor's observations; status = Open / Responded / Closed.</summary>
+    /// <summary>
+    /// The Master Admin's (within its scope), an agency's own, or an assessor's observations; status = Open / Responded / Closed.
+    /// 2026-11-18 (the user): the period (days, or from / to as yyyy-MM-dd on the date raised) and the certification level.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<ListView>> List(string? status, int? days, CancellationToken ct)
+    public async Task<ActionResult<ListView>> List(string? status, int? days, string? from, string? to, string? level, CancellationToken ct)
     {
         if (status is not null && Pick(status, [QualityObservations.Open, QualityObservations.Responded, QualityObservations.Closed]) is null)
             return this.Problem400("Invalid status.");
-        var items = await VisibleAsync(days, ct);
+        if (Period(days, from, to, level, out var period) is { } bad) return bad;
+        var items = await VisibleAsync(period, ct);
         if (status is not null) items = items.Where(o => string.Equals(o.Status, status, StringComparison.OrdinalIgnoreCase)).ToList();
         return new ListView(items, IsMaster);
     }
 
     [HttpGet("dashboard")]
     [StaffRoles(UserRole.MasterAdmin)]
-    public async Task<ActionResult<DashboardView>> Dashboard(int? days, CancellationToken ct)
+    public async Task<ActionResult<DashboardView>> Dashboard(int? days, string? from, string? to, string? level, CancellationToken ct)
     {
-        var items = await VisibleAsync(days, ct);
+        if (Period(days, from, to, level, out var period) is { } bad) return bad;
+        var items = await VisibleAsync(period, ct);
         var replies = items.Where(o => o.ReplyHours is not null).Select(o => o.ReplyHours!.Value).ToList();
         var closes = items.Where(o => o.CloseHours is not null).Select(o => o.CloseHours!.Value).ToList();
         return new DashboardView(
@@ -184,13 +189,47 @@ public sealed class QualityObservationsController(
                 .OrderByDescending(c => c.Total).ToList());
     }
 
-    private async Task<List<QualityObservations.Observation>> VisibleAsync(int? days, CancellationToken ct)
+    /// <summary>The lists' and the dashboard's filter: raised on or after From, before Before (the day after "To"), of one level.</summary>
+    public sealed record ObservationPeriod(DateTime From, DateTime? Before, string? Level);
+
+    /// <summary>
+    /// The period (a preset of days, or the custom From / To dates, each yyyy-MM-dd or dd-MM-yyyy, To not before From, neither
+    /// after today) and the certification level (Administration → Certification Levels); null when valid, else the 400.
+    /// </summary>
+    private ActionResult? Period(int? days, string? from, string? to, string? level, out ObservationPeriod period)
     {
-        var from = DateTime.Today.AddDays(-Math.Clamp(days ?? 3650, 1, 3650));
+        period = null!;
+        if (!TryDate(from, out var start) || !TryDate(to, out var end)) return this.Problem400("Please enter valid dates (dd-mm-yyyy).");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(330));   // India time
+        if (start > today || end > today) return this.Problem400("The dates cannot be after today.");
+        if (start is not null && end is not null && end < start) return this.Problem400("The To date cannot be before the From date.");
+        string? code = null;
+        if (!string.IsNullOrWhiteSpace(level) && (code = AssessmentInput.Level(level)) is null) return this.Problem400("Invalid certification level.");
+        period = new ObservationPeriod(
+            start?.ToDateTime(TimeOnly.MinValue) ?? DateTime.Today.AddDays(-Math.Clamp(days ?? 3650, 1, 3650)),
+            end?.AddDays(1).ToDateTime(TimeOnly.MinValue), code);
+        return null;
+    }
+
+    private static readonly string[] DateFormats = ["yyyy-MM-dd", "dd-MM-yyyy"];
+
+    private static bool TryDate(string? value, out DateOnly? date)
+    {
+        date = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        if (!DateOnly.TryParseExact(value.Trim(), DateFormats, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var d) || d.Year < 2000) return false;
+        date = d;
+        return true;
+    }
+
+    private async Task<List<QualityObservations.Observation>> VisibleAsync(ObservationPeriod period, CancellationToken ct)
+    {
         IReadOnlyList<QualityObservations.Row> rows;
         try
         {
-            rows = await db.QuerySqlAsync<QualityObservations.Row>(QualityObservations.AllSql, new { From = from }, ct);
+            rows = await db.QuerySqlAsync<QualityObservations.Row>(QualityObservations.AllSql,
+                new { period.From, period.Before, Certification = AssessmentInput.Ansi(period.Level) }, ct);
         }
         catch (System.Data.Common.DbException ex)
         {

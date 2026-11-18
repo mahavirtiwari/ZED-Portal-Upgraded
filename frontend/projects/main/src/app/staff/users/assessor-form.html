@@ -1,6 +1,6 @@
 <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-05: only Back in the title row; the identity card
-     holds the status, type, sector and "View only" pills and the Block / Reset link / History buttons; PAN, e-mail and mobile
-     masked in the view (full values only in the agency's edit fields); a compact contact card when the page cannot edit. -->
+     holds the status, type, sector and "View only" pills and the Block / Reset link / History buttons; a compact contact card
+     when the page cannot edit. 2026-11-18 (the user): PAN, e-mail and mobile in full everywhere (never masked). -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
   <a [routerLink]="backLink" class="btn btn-default" data-back><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.back" /></svg>Back</a>
 </zed-page-head>
@@ -13,7 +13,7 @@
     <span class="af-avatar" aria-hidden="true">{{ initials(model.userName) }}</span>
     <div class="af-who">
       <span class="af-name">{{ model.userName }}</span>
-      <span class="af-id">{{ userId }}@if (model.certificateNo) { · Certificate no. {{ model.certificateNo }} }@if (panNo()) { · PAN {{ canEdit() ? panNo() : maskPan(panNo()) }} }</span>
+      <span class="af-id">{{ userId }}@if (model.certificateNo) { · Certificate no. {{ model.certificateNo }} }@if (panNo()) { · PAN {{ panNo() }} }</span>
       <div class="af-tags">
         @if (isActive() !== null) {
           <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">@if (isActive()) {<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.check" /></svg>}{{ isActive() ? 'Active' : 'Blocked' }}</span>
@@ -130,8 +130,8 @@
         <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>Contact details</h4>
         <dl class="af-facts">
           <div><dt>{{ noun }} name</dt><dd>{{ model.userName || '—' }}</dd></div>
-          <div><dt>E-mail ID</dt><dd data-view="email">{{ maskEmail(model.emailId) || 'Not saved' }}</dd></div>
-          <div><dt>Mobile number</dt><dd data-view="mobile">{{ maskMobile(model.mobileNo) || 'Not saved' }}</dd></div>
+          <div><dt>E-mail ID</dt><dd data-view="email" class="af-one-line" [attr.title]="model.emailId || null">{{ model.emailId || 'Not saved' }}</dd></div>
+          <div><dt>Mobile number</dt><dd data-view="mobile">{{ model.mobileNo || 'Not saved' }}</dd></div>
           <div><dt>Address</dt><dd>{{ model.address || '—' }}</dd></div>
           <div><dt>PIN code</dt><dd>{{ model.pinCode || '—' }}</dd></div>
           <div><dt>ID proof</dt><dd data-view="id-proof">{{ idProofLine }}</dd></div>

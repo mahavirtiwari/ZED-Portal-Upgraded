@@ -10,7 +10,7 @@ namespace Zed.Main.Api.Tests.Staff;
 
 /// <summary>
 /// 2026-11-17: the Password Reset Link page's lookup (GET api/staff/password-reset/{userId}): who the link would go to and
-/// why it cannot be sent, scoped like the send and never showing more than its answer (the masked address only).
+/// why it cannot be sent, scoped like the send and never showing more than its answer (the address, in full since 2026-11-18).
 /// </summary>
 public sealed class StaffResetLookupTests : IDisposable
 {
@@ -39,20 +39,20 @@ public sealed class StaffResetLookupTests : IDisposable
     }
 
     [Fact]
-    public async Task Shows_who_gets_the_link_with_the_masked_address_only_and_sends_nothing()
+    public async Task Shows_who_gets_the_link_with_the_full_address_and_sends_nothing()
     {
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = await master.GetAsync("/api/staff/password-reset/zedaa0001");
-        var raw = await r.Content.ReadAsStringAsync();
         var t = await Json(r);
         Assert.Equal("ZEDAA0001", t.GetProperty("userId").GetString());
         Assert.Equal(2, t.GetProperty("roleId").GetInt32());
         Assert.Equal("Assessment agency", t.GetProperty("role").GetString());
         Assert.True(t.GetProperty("isActive").GetBoolean());
-        Assert.Equal("s***@acme.test", t.GetProperty("maskedEmail").GetString()); // as the send masks it
+        // 2026-11-18 (the user): e-mail is never masked on signed-in pages.
+        Assert.Equal("spoc@acme.test", t.GetProperty("email").GetString());
+        Assert.False(t.TryGetProperty("maskedEmail", out _));
         Assert.True(t.GetProperty("canSend").GetBoolean());
         Assert.Equal(JsonValueKind.Null, t.GetProperty("reason").ValueKind);
-        Assert.DoesNotContain("spoc@acme.test", raw);
         // Read-only: no link created, nothing mailed.
         Assert.Empty(_resets.Rows);
         Assert.Empty(_host.Email.Sent);
@@ -70,7 +70,7 @@ public sealed class StaffResetLookupTests : IDisposable
 
         var noMail = await Json(await master.GetAsync("/api/staff/password-reset/NOMAIL1"));
         Assert.False(noMail.GetProperty("canSend").GetBoolean());
-        Assert.Equal(JsonValueKind.Null, noMail.GetProperty("maskedEmail").ValueKind);
+        Assert.Equal(JsonValueKind.Null, noMail.GetProperty("email").ValueKind);
         Assert.Equal("This user has no valid registered e-mail address. Update it first.", noMail.GetProperty("reason").GetString());
 
         var own = await Json(await master.GetAsync("/api/staff/password-reset/MASTER1"));

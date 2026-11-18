@@ -281,6 +281,46 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         return new MessageResponse("Unit allotted." + linkNote);
     }
 
+    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonForRejection);
+
+    /// <summary>SP_ASSESSMENT_REJECT_UNIT_FOR_SA takes @ReasonForRejection varchar(100) (as on Consultancy's CO reject).</summary>
+    public const int MaxReason = 100;
+
+    /// <summary>
+    /// 2026-11-18 (the user: "accept, reject, view details ... similar to combination one"): the agency returns a unit of its
+    /// site-assessment allotment list to the ZED team, as it rejects a desktop allotment. Only while no site assessor is
+    /// allotted and only once (the Consultancy CO's rule). SP_ASSESSMENT_REJECT_UNIT_FOR_SA (the legacy procedure, same in
+    /// main and Surveillance) sets ReasonForRejection and AcceptOrRejectDate on the unit's level row and writes the history;
+    /// the status (6 / 8) and the agency stay, so the unit shows "Rejected" in this list without actions, and comes back to the
+    /// Master Admin's Allot list (re-allot: SP_ASSESSMENT_ALLOT_TO_AGENCY clears the reason). The ZED team inbox is told by mail
+    /// (the desktop rejection's mail, "Rejection by Agency").
+    /// </summary>
+    [HttpPost("allotments/reject")]
+    [StaffRoles(UserRole.Agency)]
+    [SubRole(SubRoles.SiteVerification)]
+    public async Task<ActionResult<MessageResponse>> Reject(RejectRequest req, CancellationToken ct)
+    {
+        var zedId = req.ZedId?.Trim();
+        var certification = Level(req.Certification, SiteLevels);
+        var reason = req.ReasonForRejection?.Trim();
+        if (!IsId(zedId) || certification is null) return this.Problem400("Please select valid data.");
+        if (string.IsNullOrEmpty(reason)) return this.Problem400("Please enter reason for rejection.");
+        if (reason.Any(c => char.IsControl(c) && c is not '\r' and not '\n')) return this.Problem400("Please enter a valid reason for rejection.");
+        if (reason.Length > MaxReason) return this.Problem400($"The reason can be at most {MaxReason} characters.");
+
+        var sets = await AgencyListAsync(zedId, certification, ct);
+        var unit = sets[0].FirstOrDefault(r => Same(r, "ZedId", zedId!) && Same(r, "Certification", certification));
+        if (unit is null) return NotFound();
+        if (unit.Text("SiteAssessorId").Length > 0 || unit.Text("ReasonForRejection").Length > 0)
+            return this.Problem400("This unit can no longer be rejected.");
+
+        await db.ExecuteProcAsync("SP_ASSESSMENT_REJECT_UNIT_FOR_SA", new { ZedId = zedId, Certification = certification, ReasonForRejection = reason }, ct);
+        log.LogInformation("Agency {UserId} rejected the site assessment of {ZedId} {Certification}", UserId, zedId, certification);
+        await Assessment.DesktopAssessmentEmails.Create(HttpContext.RequestServices)
+            .SendAsync(Assessment.DesktopAssessmentEmails.Kind.RejectedByAgency, zedId!, certification, reason, ct);
+        return new MessageResponse("Unit rejected.");
+    }
+
     /// <summary>Surveillance (migration 0075): the agency's allotment of an onsite surveillance visit.</summary>
     public const string OnsiteVisitProcedure = "SP_V4_SURVEILLANCE_ACCEPT_ONSITE";
 

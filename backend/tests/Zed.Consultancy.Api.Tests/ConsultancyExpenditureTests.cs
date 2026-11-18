@@ -66,4 +66,56 @@ public sealed class ConsultancyExpenditureTests : IDisposable
         // The rates screen is main's only.
         Assert.Equal(HttpStatusCode.NotFound, (await (await _s.SignInAsync("ADMIN", 1)).GetAsync("/api/staff/expenditure-rates")).StatusCode);
     }
+
+    [Fact]
+    public async Task The_organisation_sees_its_own_milestones_and_gives_its_gstin_and_pan_once_before_invoicing()
+    {
+        _s.Sql.Queries[ExpenditureQueries.MilestoneCountSql] = _ =>
+        [
+            new { PartyId = "CO1", Level = "Silver", Kind = "Milestone", Cases = 12, Amount = 400000m, Invoiced = 0m },
+            new { PartyId = "CO2", Level = "Gold", Kind = "Milestone", Cases = 3, Amount = 1m, Invoiced = 0m },
+        ];
+        var submitted = false;
+        _s.Sql.Queries[ExpenditureTax.ReadSql] = args => FakeSql.Arg(args, "PartyId") == "CO1" && submitted
+            ? [new { UserId = "CO1", TaxGstin = "27AAPFU0939F1ZV", TaxPan = "AAPFU0939F", TaxGstFile = "g", TaxPanFile = "p", TaxSubmittedOn = DateTime.UtcNow, TaxSubmittedBy = "CO1" }]
+            : [new { UserId = FakeSql.Arg(args, "PartyId") }];
+        var org = await _s.SignInAsync("CO1", 2);
+
+        var s = await org.GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary", Web);
+        Assert.Equal(("CO1", 12), (Assert.Single(s!.Rows).PartyId, s.Cards.Milestones));
+        Assert.Equal(HttpStatusCode.NotFound, (await org.GetAsync("/api/staff/expenditure/cases?partyId=CO2")).StatusCode);
+        var mine = await org.GetFromJsonAsync<MyInvoicesController.MyResponse>("/api/staff/expenditure/my", Web);
+        Assert.Equal(("Consultant", false), (mine!.Kind, mine.Tax.Submitted));
+
+        var month = DateTime.UtcNow.AddMinutes(330).AddMonths(-1).ToString("yyyy-MM");
+        var invoice = new MultipartFormDataContent
+        {
+            { new StringContent(month), "month" }, { new StringContent("CO/1"), "invoiceNo" }, { new StringContent(month + "-28"), "invoiceDate" },
+            { new StringContent("100"), "invoiceAmount" },
+        };
+        Assert.Equal(MyInvoicesController.TaxFirst, await (await org.PostAsync("/api/staff/expenditure/my/invoices", invoice)).ProblemTitle());
+
+        MultipartFormDataContent Tax()
+        {
+            var pdf = new ByteArrayContent(System.Text.Encoding.ASCII.GetBytes("%PDF-1.4\n%%EOF\n"));
+            pdf.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+            var jpg = new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46]);
+            jpg.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
+            return new MultipartFormDataContent
+            {
+                { new StringContent("27AAPFU0939F1ZV"), "gstin" }, { new StringContent("AAPFU0939F"), "pan" }, { new StringContent("true"), "declaration" },
+                { pdf, "gstFile", "gst.pdf" }, { jpg, "panFile", "pan.jpeg" },
+            };
+        }
+        Assert.Equal(HttpStatusCode.OK, (await org.PostAsync("/api/staff/expenditure/my/tax", Tax())).StatusCode);
+        var save = Assert.Single(_s.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+        Assert.StartsWith("Uploads/ExpenditureTax/CO1/PanCard_", FakeSql.Arg(save.Args, "PanFile"));
+        Assert.EndsWith(".jpg", FakeSql.Arg(save.Args, "PanFile"));
+        submitted = true;
+        Assert.Equal(HttpStatusCode.Conflict, (await org.PostAsync("/api/staff/expenditure/my/tax", Tax())).StatusCode);
+        Assert.Single(_s.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+        // Its master admin reads them; the other organisation does not.
+        Assert.Equal("AAPFU0939F", (await (await _s.SignInAsync("MADMIN", 7)).GetFromJsonAsync<ExpenditureTax.View>("/api/staff/expenditure/tax?partyId=CO1", Web))!.Pan);
+        Assert.Equal(HttpStatusCode.NotFound, (await (await _s.SignInAsync("CO2", 2)).GetAsync("/api/staff/expenditure/tax?partyId=CO1")).StatusCode);
+    }
 }

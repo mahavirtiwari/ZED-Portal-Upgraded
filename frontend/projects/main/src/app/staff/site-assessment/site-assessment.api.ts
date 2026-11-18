@@ -84,6 +84,11 @@ export class SiteAssessmentApi {
     return this.http.post<MessageResponse>('/api/staff/site-assessment/allotments', req);
   }
 
+  /** 2026-11-18: the agency returns a unit of its site-assessment allotment to the ZED team (reason required, at most 100 characters). */
+  reject(zedId: string, certification: string, reasonForRejection: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>('/api/staff/site-assessment/allotments/reject', { zedId, certification, reasonForRejection });
+  }
+
   remoteAssessments(): Observable<Row[]> {
     return this.http.get<Row[]>('/api/staff/site-assessment/remote-assessments');
   }

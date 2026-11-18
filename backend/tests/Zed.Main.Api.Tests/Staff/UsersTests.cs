@@ -486,6 +486,15 @@ public sealed class UsersTests : IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0002", new { })).StatusCode);
     }
 
+    /// <summary>2026-11-18 (the user: PAN never masked): a PAN ID proof in full; Aadhaar keeps only its last four.</summary>
+    [Fact]
+    public void An_id_proof_pan_is_shown_in_full_and_an_aadhaar_number_keeps_its_last_four()
+    {
+        Assert.Equal("ABCDE1234F", StaffUserRules.ShowIdProof("PAN Card", " abcde1234f "));
+        Assert.Equal("XXXXXXXX9012", StaffUserRules.ShowIdProof("Aadhaar Card", "123456789012"));
+        Assert.Null(StaffUserRules.ShowIdProof("PAN Card", ""));
+    }
+
     [Fact]
     public async Task Master_admin_blocks_and_unblocks_an_assessor_and_each_is_kept_in_the_history()
     {

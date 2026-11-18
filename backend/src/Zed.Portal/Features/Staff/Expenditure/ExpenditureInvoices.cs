@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -140,12 +141,17 @@ public static partial class ExpenditureInvoices
     {
         var (_, error) = await MasterUploads.CheckAsync(file, Pdf, MaxBytes, ct);
         if (error is not null) return error.Replace("Allowed types: .pdf", "Please upload the invoice as a PDF.");
-        // The end of a PDF: "%%EOF" in its last kilobyte (a truncated or disguised file has none).
-        await using var s = file!.OpenReadStream();
+        return await PdfCompleteAsync(file!, ct) ? null : "The file is not a complete PDF. Please upload the invoice PDF again.";
+    }
+
+    /// <summary>The end of a PDF: "%%EOF" in its last kilobyte (a truncated or disguised file has none).</summary>
+    public static async Task<bool> PdfCompleteAsync(IFormFile file, CancellationToken ct)
+    {
+        await using var s = file.OpenReadStream();
         var tail = new byte[Math.Min(1024, (int)Math.Min(file.Length, 1024))];
         s.Seek(-tail.Length, SeekOrigin.End);
         await s.ReadExactlyAsync(tail, ct);
-        return System.Text.Encoding.ASCII.GetString(tail).Contains("%%EOF", StringComparison.Ordinal) ? null : "The file is not a complete PDF. Please upload the invoice PDF again.";
+        return System.Text.Encoding.ASCII.GetString(tail).Contains("%%EOF", StringComparison.Ordinal);
     }
 
     public static string StorageRoot(IWebHostEnvironment env, PortalOptions portal) => Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.StorageRoot));
@@ -178,13 +184,17 @@ public static partial class ExpenditureInvoices
 public sealed class MyInvoicesController(
     ISqlExecutor db, PortalHost host, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<MyInvoicesController> log) : StaffApiController
 {
-    /// <summary>The months listed: the last 12 full months, and every month with an invoice.</summary>
+    /// <summary>The months listed: the current month, the 12 before it, and every month with an invoice.</summary>
     public const int Months = 12;
 
+    /// <param name="GstAmount">The GST on <paramref name="Amount"/> (Total less Amount).</param>
+    /// <param name="Ended">False for the current month: its figures are shown, its invoice is uploaded once it has ended.</param>
+    /// <param name="CanUpload">The month has ended and has no invoice, or its invoice was returned. Uploading also needs the
+    /// tax details (<see cref="MyResponse.Tax"/>).</param>
     public sealed record MonthView(string Month, string Label, int Completed, int Rejected, int Surveillance, int Milestones, int Cases,
-        decimal Amount, decimal GstPercent, decimal Total, ExpenditureInvoices.View? Invoice, bool CanUpload);
+        decimal Amount, decimal GstPercent, decimal GstAmount, decimal Total, ExpenditureInvoices.View? Invoice, bool Ended, bool CanUpload);
 
-    public sealed record MyResponse(string PartyId, string PartyName, string Kind, IReadOnlyList<MonthView> Months);
+    public sealed record MyResponse(string PartyId, string PartyName, string Kind, ExpenditureTax.View Tax, IReadOnlyList<MonthView> Months);
 
     [HttpGet]
     public async Task<ActionResult<MyResponse>> Get(CancellationToken ct)
@@ -192,21 +202,78 @@ public sealed class MyInvoicesController(
         var party = (await ExpenditureParties.ForAsync(db, CurrentUser, ct)).FirstOrDefault();
         if (party is null) return NotFound();
         await ExpenditureSweep.RunAsync(db, host, log, ct);
-        var invoices = await db.QuerySqlAsync<ExpenditureInvoices.Row>(ExpenditureInvoices.ListSql, new { PartyId = party.Id }, ct);
+        IReadOnlyList<ExpenditureInvoices.Row> invoices;
+        try { invoices = await db.QuerySqlAsync<ExpenditureInvoices.Row>(ExpenditureInvoices.ListSql, new { PartyId = party.Id }, ct); }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Invoices of {Party} not read (is migration 0098 applied?)", party.Id);
+            invoices = [];
+        }
         var current = new DateTime(Expenditure.Today.Year, Expenditure.Today.Month, 1);
-        var months = Enumerable.Range(1, Months).Select(i => current.AddMonths(-i))
+        var months = Enumerable.Range(0, Months + 1).Select(i => current.AddMonths(-i))
             .Concat(invoices.Select(i => new DateTime(i.InvoiceMonth.Year, i.InvoiceMonth.Month, 1))).Distinct().OrderByDescending(m => m).ToList();
         var counts = await ExpenditureQueries.MonthsAsync(db, host, party.Id, months.Min(), months.Max().AddMonths(1), log, ct);
         var rates = await ExpenditureRates.ListAsync(db, host, log, ct);
-        return new MyResponse(party.Id, party.Name, Expenditure.KindOf(host), months.Select(m =>
+        var tax = await ExpenditureTax.ViewAsync(db, party.Id, log, ct);
+        return new MyResponse(party.Id, party.Name, Expenditure.KindOf(host), tax, months.Select(m =>
         {
             var f = ExpenditureInvoices.Figure(m, counts, ExpenditureQueries.GstOn(rates, Expenditure.KindOf(host), m.AddMonths(1).AddDays(-1)));
             var inv = invoices.FirstOrDefault(i => i.InvoiceMonth.Year == m.Year && i.InvoiceMonth.Month == m.Month);
+            var ended = m < current;
             return new MonthView(m.ToString("yyyy-MM", CultureInfo.InvariantCulture), ExpenditureInvoices.MonthLabel(m), f.Completed, f.Rejected, f.Surveillance,
-                f.Milestones, f.Cases, f.Amount, f.Gst, f.Total, inv is null ? null : ExpenditureInvoices.ToView(inv, party.Name, false),
-                inv is null || inv.Status == ExpenditureInvoices.Returned);
+                f.Milestones, f.Cases, f.Amount, f.Gst, f.Total - f.Amount, f.Total, inv is null ? null : ExpenditureInvoices.ToView(inv, party.Name, false),
+                ended, ended && (inv is null || inv.Status == ExpenditureInvoices.Returned));
         }).ToList());
     }
+
+    /// <summary>
+    /// The one-time tax details (migration 0100): GSTIN, PAN (characters 3-12 of the GSTIN), the GST registration certificate
+    /// and the PAN card, and the declaration. Locked once submitted: a second submission is refused.
+    /// </summary>
+    [HttpPost("tax")]
+    [RequestSizeLimit(2 * ExpenditureTax.MaxBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 2 * ExpenditureTax.MaxBytes + 64 * 1024)]
+    public async Task<ActionResult<MessageResponse>> SubmitTax([FromForm] string? gstin, [FromForm] string? pan, [FromForm] string? declaration,
+        IFormFile? gstFile, IFormFile? panFile, CancellationToken ct)
+    {
+        var party = (await ExpenditureParties.ForAsync(db, CurrentUser, ct)).FirstOrDefault();
+        if (party is null) return NotFound();
+        var (row, available) = await ExpenditureTax.ReadAsync(db, party.Id, log, ct);
+        if (!available) return this.Problem400("The tax details cannot be saved yet. Please try again later.");
+        if (row?.TaxSubmittedOn is { } on) return Locked(on);
+
+        var g = gstin?.Trim().ToUpperInvariant();
+        if (ExpenditureTax.GstinProblem(g) is { } gp) return this.Problem400(gp);
+        var p = pan?.Trim().ToUpperInvariant();
+        if (ExpenditureTax.PanProblem(p, g!) is { } pp) return this.Problem400(pp);
+        var (gstType, gstError) = await ExpenditureTax.CheckAsync(gstFile, "GST registration certificate", ct);
+        if (gstError is not null) return this.Problem400(gstError);
+        var (panType, panError) = await ExpenditureTax.CheckAsync(panFile, "PAN card", ct);
+        if (panError is not null) return this.Problem400(panError);
+        if (!string.Equals(declaration?.Trim(), "true", StringComparison.OrdinalIgnoreCase))
+            return this.Problem400("Please tick the declaration: the details are correct and cannot be changed later.");
+
+        var root = ExpenditureInvoices.StorageRoot(env, portal.Value);
+        var gstPath = await ExpenditureTax.SaveAsync(gstFile!, root, party.Id, "GstCertificate", gstType!.Extension, ct);
+        var panPath = await ExpenditureTax.SaveAsync(panFile!, root, party.Id, "PanCard", panType!.Extension, ct);
+        var changed = await db.ExecuteSqlAsync(ExpenditureTax.SubmitSql,
+            new { PartyId = party.Id, Gstin = g, Pan = p, GstFile = gstPath, PanFile = panPath, By = ActorId }, ct);
+        if (changed == 0)
+        {
+            // Submitted meanwhile (another tab or sub-user): the first submission stays.
+            ExpenditureTax.Discard(root, gstPath, panPath);
+            return Locked((await ExpenditureTax.ReadAsync(db, party.Id, log, ct)).Row?.TaxSubmittedOn ?? DateTime.UtcNow);
+        }
+        log.LogInformation("{Actor} submitted the tax details of {Party} (GSTIN {Gstin})", ActorId, party.Id, g);
+        return new MessageResponse("Your GSTIN and PAN are saved. You can now upload your invoices.");
+    }
+
+    public const string TaxFirst =
+        "Please submit your GSTIN and PAN with the GST registration certificate and PAN card first (once): invoices can be uploaded after that.";
+
+    private ObjectResult Locked(DateTime on) => this.Problem(
+        title: $"Your GSTIN and PAN were submitted on {on.AddMinutes(330).ToString("dd MMM yyyy", CultureInfo.InvariantCulture)} and cannot be changed.",
+        statusCode: StatusCodes.Status409Conflict);
 
     /// <summary>Uploads the month's invoice (or uploads it again after Returned).</summary>
     [HttpPost("invoices")]
@@ -217,6 +284,9 @@ public sealed class MyInvoicesController(
     {
         var party = (await ExpenditureParties.ForAsync(db, CurrentUser, ct)).FirstOrDefault();
         if (party is null) return NotFound();
+        // 2026-11-18 (the user): the GSTIN and PAN (with their documents) come first, once.
+        if ((await ExpenditureTax.ReadAsync(db, party.Id, log, ct)).Row?.TaxSubmittedOn is null)
+            return this.Problem400(TaxFirst);
         var current = new DateTime(Expenditure.Today.Year, Expenditure.Today.Month, 1);
         if (Expenditure.Month(month) is not { } m || m >= current || m < current.AddYears(-3))
             return this.Problem400("Please choose a month that has ended.");

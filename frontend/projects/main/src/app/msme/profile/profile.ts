@@ -45,20 +45,6 @@ function nicStep(value: string): NicStep {
   return m ? { code: m[1], text: m[2].trim() } : { code: '', text: value.trim() };
 }
 
-/** "AN•••••82C": the first two and the last three characters (the whole value when it is that short). */
-export function masked(value: string): string {
-  const v = value.trim();
-  if (v.length <= 5) return v;
-  return `${v.slice(0, 2)}•••••${v.slice(-3)}`;
-}
-
-/** "ka•••••@gmail.com": the first two characters of the name and the domain. */
-export function maskedEmail(value: string): string {
-  const at = value.lastIndexOf('@');
-  if (at < 1) return masked(value);
-  return `${value.slice(0, Math.min(2, at))}•••••${value.slice(at)}`;
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /**
@@ -126,7 +112,7 @@ const certifiedStatus = (code: string): number => (code === 'Bronze' ? 6 : 16);
 /**
  * MSME "Enterprise profile". Port of Views/Msme/ViewProfile.cshtml; 2026-11-17 the user's approved design: a left section
  * menu (Enterprise, Contact, Units / plants, Unit activity (NIC), Account & security, Edit history), the header card
- * (size, certification, pledge), the Udyam details read only with the PAN masked, the contact with the change of the
+ * (size, certification, pledge), the Udyam details read only (2026-11-18 the user: the PAN, e-mail and mobile in full, no Show / Hide), the contact with the change of the
  * registered e-mail (OTP to the new address), the unit as a card and its NIC activity as the 2 > 4 > 5-digit hierarchy
  * with "Edit activity" choosing another activity of the MSME's own Udyam record. Basic information and documents are
  * entered only in the ZED MSME app; nothing else is edited here. 2026-11-18 (the user's applicant designs): the design's sizes, the
@@ -157,8 +143,6 @@ export class ProfilePage {
   /** The rest of the Udyam details: "Show all details" (only when there is more to show). */
   protected readonly showAll = signal(false);
   protected readonly moreRows = computed(() => MORE_INFO.filter((r) => this.value(r)));
-  protected readonly showPan = signal(false);
-  protected readonly showContact = signal(false);
   protected readonly fullAddress = signal(false);
 
   protected readonly enterpriseName = computed(() => this.text(this.basicInfo(), 'EnterpriseName') || this.text(this.msme(), 'EnterpriseName'));
@@ -224,9 +208,6 @@ export class ProfilePage {
   protected readonly selected = signal('');
   /** UPDATE is only offered once a different activity is chosen (as before). */
   protected readonly changed = computed(() => !!this.selected() && this.selected() !== this.text(this.msme(), 'FiveDigitActivity'));
-
-  protected readonly masked = masked;
-  protected readonly maskedEmail = maskedEmail;
 
   constructor() {
     void this.load().then(() => {

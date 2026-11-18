@@ -37,14 +37,14 @@ export function staffProfileLink(zedId: string): string {
 
 type EditField = keyof StaffMsmeProfileUpdate;
 
-/** One label and value of a card; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address); `mask` = hidden until Show. */
+/** One label and value of a card; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address); `oneLine` = one line, cut with "…" and the full value as the tooltip (an e-mail). */
 export interface InfoRow {
   label: string;
   source: 'unit' | 'enterprise';
   field: string;
   edit?: EditField;
   wide?: boolean;
-  mask?: 'pan' | 'email' | 'mobile';
+  oneLine?: boolean;
   /** A second field shown after the first ("Uttar Pradesh · Basti"). */
   also?: string;
 }
@@ -60,7 +60,7 @@ export interface InfoSection {
 
 /**
  * The fields of Views/Msme/Profile.cshtml, grouped in four cards. The ZED ID and the Udyam number are in the identity header.
- * PAN, e-mail and mobile are masked until Show.
+ * PAN, e-mail and mobile are shown in full (2026-11-18, the user: never masked on signed-in pages).
  */
 export const PROFILE_SECTIONS: InfoSection[] = [
   // 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): the four cards hold the design's fields, side by side
@@ -71,7 +71,7 @@ export const PROFILE_SECTIONS: InfoSection[] = [
     rows: [
       { label: 'Owner name', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
       { label: 'Enterprise name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
-      { label: 'PAN', source: 'enterprise', field: 'PanNo', mask: 'pan' },
+      { label: 'PAN', source: 'enterprise', field: 'PanNo' },
       { label: 'Enterprise type', source: 'enterprise', field: 'EnterpriseTypee' },
       { label: 'Gender', source: 'enterprise', field: 'Gender' },
       { label: 'Social category', source: 'enterprise', field: 'SocialCategoryName' },
@@ -83,8 +83,8 @@ export const PROFILE_SECTIONS: InfoSection[] = [
     rows: [
       { label: 'Registered address', source: 'enterprise', field: 'Address' },
       { label: 'State / District', source: 'enterprise', field: 'StateName', also: 'DistrictName' },
-      { label: 'Registered e-mail', source: 'enterprise', field: 'EmailId', edit: 'emailId', mask: 'email' },
-      { label: 'Mobile', source: 'enterprise', field: 'MobileNo', mask: 'mobile' },
+      { label: 'Registered e-mail', source: 'enterprise', field: 'EmailId', edit: 'emailId', oneLine: true },
+      { label: 'Mobile', source: 'enterprise', field: 'MobileNo' },
     ],
   },
   {
@@ -124,19 +124,6 @@ export const PROFILE_SECTIONS: InfoSection[] = [
   },
 ];
 
-/** A value with only its ends showing ("AB•••••34F", "ab•••••@mail.test", "94•••••133"). */
-export function maskValue(value: string, kind: 'pan' | 'email' | 'mobile'): string {
-  const v = value.trim();
-  if (!v) return v;
-  const dots = '•••••';
-  if (kind === 'email') {
-    const at = v.indexOf('@');
-    if (at < 0) return v.slice(0, 2) + dots;
-    return v.slice(0, Math.min(2, at)) + dots + v.slice(at);
-  }
-  return v.length <= 5 ? v.slice(0, 1) + dots : v.slice(0, 2) + dots + v.slice(-3);
-}
-
 /**
  * Staff "View Profile" of a unit (all three portals). Port of Views/Msme/Profile.cshtml (Basic Information, Selected Unit,
  * Selected Unit Activity), read through api/staff/msme-profile/{zedId}, which checks the role and, for agencies and
@@ -144,7 +131,7 @@ export function maskValue(value: string, kind: 'pan' | 'email' | 'mobile'): stri
  * as on the old page.
  * 2026-11-17 (the user's staff design 15): an identity header (the unit, its Udyam number, ZED ID, type and levels) with the
  * links to its ZED ID history and assessment details, the facts in four cards on a two-column grid, PAN / e-mail / mobile
- * masked until Show.
+ * in full (2026-11-18, the user: no masking, no Show / Hide).
  * 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): equal-height card pairs with the design's fields (the
  * others in a full-width card below), the NIC activity as one line, Back with its icon, the edit history as a table with paging.
  */
@@ -161,8 +148,6 @@ export class StaffMsmeProfilePage {
   protected readonly sections = PROFILE_SECTIONS.filter((x) => !x.full);
   protected readonly more = PROFILE_SECTIONS.find((x) => x.full)!;
   protected readonly crumbs = staffCrumbs({ label: 'MSME Profile' });
-  /** The masked fields shown in full (Show). */
-  protected readonly revealed = signal<ReadonlySet<string>>(new Set());
   /** ZED ID history: the logins with that screen (Master Admin and the dashboard logins). */
   protected readonly historyLink = [7, 10, 11, 17].includes(this.roleId) ? ['/staff/history'] : null;
   /** Assessment details of each level (not on the consultancy portal: handholding has no assessment pages). */
@@ -286,25 +271,6 @@ export class StaffMsmeProfilePage {
   /** The unit's name for the header: the enterprise, else the unit. */
   protected name(p: StaffMsmeProfile): string {
     return this.text(p.enterprise, 'EnterpriseName') || this.text(p.unit, 'PUnitName') || this.zedId;
-  }
-
-  /** A masked field's text: its ends only until Show. */
-  protected masked(p: StaffMsmeProfile, r: InfoRow): string {
-    const v = this.text(r.source === 'unit' ? p.unit : p.enterprise, r.field);
-    if (!v) return '-';
-    return r.mask && !this.revealed().has(r.field) ? maskValue(v, r.mask) : v;
-  }
-
-  protected hasValue(p: StaffMsmeProfile, r: InfoRow): boolean {
-    return !!this.text(r.source === 'unit' ? p.unit : p.enterprise, r.field).trim();
-  }
-
-  protected toggle(field: string): void {
-    this.revealed.update((s) => {
-      const next = new Set(s);
-      if (!next.delete(field)) next.add(field);
-      return next;
-    });
   }
 
   protected back(): void {

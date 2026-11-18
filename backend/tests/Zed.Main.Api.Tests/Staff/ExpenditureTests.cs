@@ -290,7 +290,9 @@ public sealed class ExpenditureTests : IDisposable
         var admin = await SignIn("ADMIN1");
         var all = await admin.GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary", Web);
         Assert.Equal(2, all!.Rows.Count);
-        Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn("AGENCY1")).GetAsync("/api/staff/expenditure/summary")).StatusCode);
+        // 2026-11-18: the agency reads its own figures only.
+        var own = await (await SignIn("AGENCY1")).GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary", Web);
+        Assert.Equal(["AGENCY1"], own!.Rows.Select(r => r.PartyId).Distinct());
     }
 
     // ------------------------------------------------------------------ monthly invoices
@@ -317,6 +319,7 @@ public sealed class ExpenditureTests : IDisposable
         var first = new DateTime(DateTime.Today.AddMonths(-1).Year, DateTime.Today.AddMonths(-1).Month, 1);
         _host.Sql.Queries[ExpenditureQueries.MainMonthSql] = _ =>
             [new { Month = first, Kind = "Completed", Cases = 41, Amount = 123000m }, new { Month = first, Kind = "Rejected", Cases = 3, Amount = 4500m }];
+        TaxSubmitted();
         var agency = await SignIn("AGENCY1");
 
         Assert.Equal(HttpStatusCode.BadRequest, (await agency.PostAsync("/api/staff/expenditure/my/invoices",
@@ -335,8 +338,8 @@ public sealed class ExpenditureTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_host.StorageRoot, path)));
 
         var mine = await agency.GetFromJsonAsync<MyInvoicesController.MyResponse>("/api/staff/expenditure/my", Web);
-        Assert.Equal(MyInvoicesController.Months, mine!.Months.Count);
-        Assert.Equal(44, mine.Months[0].Cases);
+        Assert.Equal(MyInvoicesController.Months + 1, mine!.Months.Count);
+        Assert.Equal(44, mine.Months[1].Cases);
     }
 
     [Fact]
@@ -362,5 +365,257 @@ public sealed class ExpenditureTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await master.PostAsJsonAsync("/api/staff/expenditure/invoices/5/approve", new { })).StatusCode);
         Assert.Contains("ErpExport = 'Pending'", ExpenditureInvoices.ApproveSql);
         Assert.Contains(_host.Sql.Calls, c => c.Name == ExpenditureInvoices.ApproveSql && FakeSql.Arg(c.Args, "Id") == "5");
+    }
+
+    // ------------------------------------------------------------------ the agency's Expenditure page (2026-11-18)
+
+    private const string Gstin = "27AAPFU0939F1ZV";
+    private const string Pan = "AAPFU0939F";
+
+    /// <summary>AGENCY1's tax details as submitted (files stored under the storage root); other agencies have none.</summary>
+    private void TaxSubmitted()
+    {
+        var folder = Path.Combine(_host.StorageRoot, "Uploads", "ExpenditureTax", "AGENCY1");
+        Directory.CreateDirectory(folder);
+        File.WriteAllBytes(Path.Combine(folder, "GstCertificate_1.pdf"), Pdf);
+        File.WriteAllBytes(Path.Combine(folder, "PanCard_1.png"), Png);
+        _host.Sql.Queries[ExpenditureTax.ReadSql] = args => FakeSql.Arg(args, "PartyId") == "AGENCY1"
+            ? [new
+            {
+                UserId = "AGENCY1", TaxGstin = Gstin, TaxPan = Pan, TaxGstFile = "Uploads/ExpenditureTax/AGENCY1/GstCertificate_1.pdf",
+                TaxPanFile = "Uploads/ExpenditureTax/AGENCY1/PanCard_1.png", TaxSubmittedOn = new DateTime(2026, 11, 18, 5, 0, 0), TaxSubmittedBy = "AGENCY1",
+            }]
+            : [new { UserId = FakeSql.Arg(args, "PartyId") }];
+    }
+
+    private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D, 0x49, 0x48, 0x44, 0x52];
+
+    private static MultipartFormDataContent Tax(string? gstin = Gstin, string? pan = Pan, string declaration = "true",
+        (byte[] Bytes, string Name, string Type)? gst = null, (byte[] Bytes, string Name, string Type)? panCard = null, bool withFiles = true)
+    {
+        var form = new MultipartFormDataContent { { new StringContent(declaration), "declaration" } };
+        if (gstin is not null) form.Add(new StringContent(gstin), "gstin");
+        if (pan is not null) form.Add(new StringContent(pan), "pan");
+        if (!withFiles) return form;
+        foreach (var (field, f) in new[] { ("gstFile", gst ?? (Pdf, "gst.pdf", "application/pdf")), ("panFile", panCard ?? (Png, "pan.png", "image/png")) })
+        {
+            var c = new ByteArrayContent(f.Bytes);
+            c.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(f.Type);
+            form.Add(c, field, f.Name);
+        }
+        return form;
+    }
+
+    [Fact]
+    public void The_gstin_is_checked_by_format_state_code_and_check_digit_and_the_pan_by_the_gstin()
+    {
+        Assert.Null(ExpenditureTax.GstinProblem(Gstin));
+        Assert.Equal('V', ExpenditureTax.CheckDigit(Gstin));
+        Assert.Contains("check digit", ExpenditureTax.GstinProblem("27AAPFU0939F1ZA"));
+        Assert.Contains("15 characters", ExpenditureTax.GstinProblem("99AAPFU0939F1ZV")); // no such state code
+        Assert.Contains("15 characters", ExpenditureTax.GstinProblem("27AAPFU0939F1Z"));
+        Assert.Null(ExpenditureTax.PanProblem(Pan, Gstin));
+        Assert.Contains("(AAPFU0939F)", ExpenditureTax.PanProblem("AAPFU0939G", Gstin));
+        Assert.Contains("10 characters", ExpenditureTax.PanProblem("AAPFU0939", Gstin));
+        // Written once: only while nothing was submitted.
+        Assert.EndsWith("WHERE RoleId = 2 AND UserId = @PartyId AND TaxSubmittedOn IS NULL;", ExpenditureTax.SubmitSql);
+    }
+
+    [Fact]
+    public async Task The_agency_sees_only_its_own_figures_pos_cases_and_invoices()
+    {
+        _host.Sql.Queries[ExpenditureQueries.MainCountSql] = _ =>
+        [
+            new { PartyId = "AGENCY1", Level = "Bronze", Kind = "Completed", Cases = 300, Amount = 900000m, Invoiced = 720000m },
+            new { PartyId = "AGENCY2", Level = "Silver", Kind = "Completed", Cases = 5, Amount = 90000m, Invoiced = 0m },
+        ];
+        _host.Sql.Queries[PoLimits.TotalsSql] = _ => [new { PartyId = "AGENCY1", Level = "Bronze", Cases = 500, FirstPo = new DateTime(2026, 4, 2) }];
+        _host.Sql.Queries[PoLimits.MainUsedSql] = _ => [new { PartyId = "AGENCY1", Level = "Bronze", Cases = 300 }];
+        _host.Sql.Queries[PurchaseOrdersController.ListSql] = args => FakeSql.Arg(args, "PartyId") == "AGENCY1"
+            ? [new { Id = 7, PartyId = "AGENCY1", Level = "Bronze", PoNumber = "QCI/ZED/PO/2026/116", PoDate = new DateTime(2026, 4, 2), Cases = 500 }]
+            : [];
+        _host.Sql.Queries[ExpenditureQueries.MainCaseSql] = _ =>
+            [new { ZedId = "ZEDMSME000001", UnitName = "Unit 1", State = "GOA", Level = "Bronze", Kind = "Completed", CountedOn = new DateTime(2026, 10, 3), Rate = 3000m }];
+        TaxSubmitted();
+        var agency = await SignIn("AGENCY1");
+
+        var s = await agency.GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary", Web);
+        var row = Assert.Single(s!.Rows);
+        Assert.Equal(("AGENCY1", 300, 200, "Open"), (row.PartyId, row.Completed, row.Balance!.Value, row.PoState));
+        Assert.Equal((900000m, 720000m, 180000m), (s.Cards.Payable, s.Cards.Invoiced, s.Cards.Outstanding));
+        Assert.Equal(["AGENCY1"], s.Parties.Select(p => p.Code));
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync("/api/staff/expenditure/summary?partyId=AGENCY2")).StatusCode);
+
+        var cases = await agency.GetFromJsonAsync<List<ExpenditureController.CaseView>>("/api/staff/expenditure/cases?partyId=AGENCY1&level=Bronze", Web);
+        Assert.Equal("ZEDMSME000001", Assert.Single(cases!).ZedId);
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync("/api/staff/expenditure/cases?partyId=AGENCY2")).StatusCode);
+
+        // Its POs, read-only (no edit, no history, no change).
+        var po = await agency.GetFromJsonAsync<PurchaseOrdersController.PoView>("/api/staff/expenditure/po?partyId=AGENCY1", Web);
+        Assert.False(po!.CanEdit);
+        var level = Assert.Single(po.Levels);
+        Assert.Equal(("QCI/ZED/PO/2026/116", 300, 200, 60, "Open"), (level.Pos.Single().PoNumber, level.Used, level.Left, level.Percent, level.State));
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync("/api/staff/expenditure/po?partyId=AGENCY2")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/expenditure/po/history?partyId=AGENCY1")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync("/api/staff/expenditure/po",
+            new { partyId = "AGENCY1", level = "Gold", poNumber = "X1", poDate = "2026-04-02", cases = 40 })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync("/api/staff/expenditure/po/reopen",
+            new { partyId = "AGENCY1", level = "Bronze", reason = "x", extraCases = 10 })).StatusCode);
+
+        // The managers' invoice list and review stay theirs; the agency opens its own invoice and PDF, not another's.
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/expenditure/invoices")).StatusCode);
+        _host.Sql.Queries[ExpenditureInvoices.FindSql] = args =>
+        {
+            var id = FakeSql.Arg(args, "Id");
+            Directory.CreateDirectory(Path.Combine(_host.StorageRoot, "Uploads", "ExpenditureInvoices", "AGENCY1"));
+            File.WriteAllBytes(Path.Combine(_host.StorageRoot, "Uploads", "ExpenditureInvoices", "AGENCY1", "x.pdf"), Pdf);
+            return [new
+            {
+                Id = int.Parse(id!), PartyId = id == "5" ? "AGENCY1" : "AGENCY2", InvoiceMonth = new DateTime(2026, 10, 1), InvoiceNo = "MA/26-27/031",
+                InvoiceDate = new DateTime(2026, 11, 5), InvoiceAmount = 495600m, FilePath = "Uploads/ExpenditureInvoices/AGENCY1/x.pdf", Status = "Returned",
+                Remarks = "Wrong amount",
+            }];
+        };
+        var detail = await agency.GetFromJsonAsync<ExpenditureController.InvoiceDetail>("/api/staff/expenditure/invoices/5", Web);
+        Assert.False(detail!.Invoice.CanReview);
+        Assert.Equal(Gstin, detail.Tax!.Gstin);
+        var pdf = await agency.GetAsync("/api/staff/expenditure/invoices/5/file");
+        Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+        Assert.Equal("application/pdf", pdf.Content.Headers.ContentType!.MediaType);
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync("/api/staff/expenditure/invoices/6")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync("/api/staff/expenditure/invoices/6/file")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync("/api/staff/expenditure/invoices/5/approve", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.PostAsJsonAsync("/api/staff/expenditure/invoices/5/return", new { remarks = "x" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_agencys_months_are_the_current_one_and_the_12_before_with_gst_and_the_invoice_status()
+    {
+        var today = DateTime.UtcNow.AddMinutes(330).Date;
+        var current = new DateTime(today.Year, today.Month, 1);
+        var last = current.AddMonths(-1);
+        _host.Sql.Queries[ExpenditureQueries.MainMonthSql] = _ =>
+        [
+            new { Month = last, Kind = "Completed", Cases = 41, Amount = 123000m },
+            new { Month = last, Kind = "Rejected", Cases = 3, Amount = 4500m },
+            new { Month = current, Kind = "Completed", Cases = 2, Amount = 6000m },
+        ];
+        _host.Sql.Queries[ExpenditureQueries.SurveillanceMonthSql] = _ => [new { Month = last, Kind = "Surveillance", Cases = 14, Amount = 28000m }];
+        _host.Sql.Queries[ExpenditureInvoices.ListSql] = _ => [new
+        {
+            Id = 3, PartyId = "AGENCY1", InvoiceMonth = last.AddMonths(-2), InvoiceNo = "MA/26-27/017", InvoiceDate = last.AddMonths(-1), InvoiceAmount = 1m,
+            Status = "Returned", Remarks = "Wrong GSTIN",
+        }];
+        var agency = await SignIn("AGENCY1");
+
+        var mine = await agency.GetFromJsonAsync<MyInvoicesController.MyResponse>("/api/staff/expenditure/my", Web);
+        Assert.Equal(MyInvoicesController.Months + 1, mine!.Months.Count);
+        var now = mine.Months[0];
+        Assert.Equal((current.ToString("yyyy-MM"), 2, false, false), (now.Month, now.Cases, now.Ended, now.CanUpload));
+        var m = mine.Months[1];
+        Assert.Equal((41, 3, 14, 58), (m.Completed, m.Rejected, m.Surveillance, m.Cases));
+        Assert.Equal((155500m, 18m, 27990m, 183490m), (m.Amount, m.GstPercent, m.GstAmount, m.Total));
+        Assert.True(m.Ended && m.CanUpload && m.Invoice is null);
+        var returned = mine.Months[3];
+        Assert.Equal(("Returned", "Wrong GSTIN", true), (returned.Invoice!.Status, returned.Invoice.Remarks, returned.CanUpload));
+        // No tax details yet: the page asks for them (pre-filled from the agency form's GSTIN when there is one).
+        Assert.True(mine.Tax.Available);
+        Assert.False(mine.Tax.Submitted);
+        Assert.Null(mine.Tax.Gstin);
+    }
+
+    [Fact]
+    public async Task Tax_details_come_before_any_invoice_upload()
+    {
+        var month = DateTime.UtcNow.AddMinutes(330).AddMonths(-1).ToString("yyyy-MM");
+        _host.Sql.Queries[ExpenditureTax.ReadSql] = _ => [new { UserId = "AGENCY1", AgencyGstNumber = Gstin }];
+        var agency = await SignIn("AGENCY1");
+        var mine = await agency.GetFromJsonAsync<MyInvoicesController.MyResponse>("/api/staff/expenditure/my", Web);
+        Assert.Equal(Gstin, mine!.Tax.SuggestedGstin);
+
+        var r = await agency.PostAsync("/api/staff/expenditure/my/invoices", Invoice(month, Pdf));
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Equal(MyInvoicesController.TaxFirst, await r.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == ExpenditureInvoices.InsertSql);
+    }
+
+    [Fact]
+    public async Task Tax_details_are_validated_saved_with_their_documents_and_locked()
+    {
+        _host.Sql.Queries[ExpenditureTax.ReadSql] = _ => [new { UserId = "AGENCY1" }];
+        var agency = await SignIn("AGENCY1");
+        async Task<string?> Refused(MultipartFormDataContent form)
+        {
+            var r = await agency.PostAsync("/api/staff/expenditure/my/tax", form);
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+            return await r.ProblemTitle();
+        }
+
+        Assert.Contains("valid GSTIN", await Refused(Tax(gstin: "27AAPFU0939F1Z")));
+        Assert.Contains("check digit", await Refused(Tax(gstin: "27AAPFU0939F1ZA")));
+        Assert.Contains("does not match the GSTIN", await Refused(Tax(pan: "AAPFU0939G")));
+        Assert.Equal("Please upload the GST registration certificate (PDF, JPG or PNG, up to 5 MB).", await Refused(Tax(withFiles: false)));
+        Assert.Contains("does not match its type", await Refused(Tax(gst: (System.Text.Encoding.ASCII.GetBytes("MZ not a pdf"), "gst.pdf", "application/pdf"))));
+        Assert.Contains("not allowed", await Refused(Tax(panCard: (Png, "pan.exe", "application/octet-stream"))));
+        Assert.Contains("not a complete PDF", await Refused(Tax(gst: (System.Text.Encoding.ASCII.GetBytes("%PDF-1.4 truncated"), "gst.pdf", "application/pdf"))));
+        Assert.Contains("too large", await Refused(Tax(panCard: (new byte[ExpenditureTax.MaxBytes + 1], "pan.png", "image/png"))));
+        Assert.Contains("declaration", await Refused(Tax(declaration: "false")));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+
+        var ok = await agency.PostAsync("/api/staff/expenditure/my/tax", Tax(gstin: " 27aapfu0939f1zv ", pan: "aapfu0939f"));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var save = Assert.Single(_host.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+        Assert.Equal(("AGENCY1", Gstin, Pan, "AGENCY1"),
+            (FakeSql.Arg(save.Args, "PartyId"), FakeSql.Arg(save.Args, "Gstin"), FakeSql.Arg(save.Args, "Pan"), FakeSql.Arg(save.Args, "By")));
+        var gstPath = FakeSql.Arg(save.Args, "GstFile")!;
+        var panPath = FakeSql.Arg(save.Args, "PanFile")!;
+        Assert.StartsWith("Uploads/ExpenditureTax/AGENCY1/GstCertificate_", gstPath);
+        Assert.EndsWith(".pdf", gstPath);
+        Assert.StartsWith("Uploads/ExpenditureTax/AGENCY1/PanCard_", panPath);
+        Assert.EndsWith(".png", panPath);
+        Assert.True(File.Exists(Path.Combine(_host.StorageRoot, gstPath)) && File.Exists(Path.Combine(_host.StorageRoot, panPath)));
+
+        // Once submitted they cannot be changed: a second submission is refused and nothing is written or stored.
+        TaxSubmitted();
+        var files = Directory.GetFiles(Path.Combine(_host.StorageRoot, "Uploads", "ExpenditureTax", "AGENCY1")).Length;
+        var again = await agency.PostAsync("/api/staff/expenditure/my/tax", Tax(gstin: "29AAPFU0939F1ZR", pan: Pan));
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Equal("Your GSTIN and PAN were submitted on 18 Nov 2026 and cannot be changed.", await again.ProblemTitle());
+        Assert.Single(_host.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+        Assert.Equal(files, Directory.GetFiles(Path.Combine(_host.StorageRoot, "Uploads", "ExpenditureTax", "AGENCY1")).Length);
+        // There is no edit endpoint.
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.PutAsync("/api/staff/expenditure/my/tax", Tax())).StatusCode);
+        Assert.Single(_host.Sql.Calls, c => c.Name == ExpenditureTax.SubmitSql);
+        var mine = await agency.GetFromJsonAsync<MyInvoicesController.MyResponse>("/api/staff/expenditure/my", Web);
+        Assert.Equal((true, Gstin, Pan, true, true), (mine!.Tax.Submitted, mine.Tax.Gstin, mine.Tax.Pan, mine.Tax.HasGstFile, mine.Tax.HasPanFile));
+    }
+
+    [Fact]
+    public async Task The_master_admin_reads_the_tax_details_and_their_files_other_agencies_cannot()
+    {
+        TaxSubmitted();
+        var master = await SignIn("MASTER1");
+        var tax = await master.GetFromJsonAsync<ExpenditureTax.View>("/api/staff/expenditure/tax?partyId=AGENCY1", Web);
+        Assert.Equal((true, Gstin, Pan), (tax!.Submitted, tax.Gstin, tax.Pan));
+        var gst = await master.GetAsync("/api/staff/expenditure/tax/gst?partyId=AGENCY1");
+        Assert.Equal(HttpStatusCode.OK, gst.StatusCode);
+        Assert.Equal("application/pdf", gst.Content.Headers.ContentType!.MediaType);
+        var pan = await master.GetAsync("/api/staff/expenditure/tax/pan?partyId=AGENCY1");
+        Assert.Equal("image/png", pan.Content.Headers.ContentType!.MediaType);
+        Assert.Equal(HttpStatusCode.NotFound, (await master.GetAsync("/api/staff/expenditure/tax/other?partyId=AGENCY1")).StatusCode);
+        // The Expenditure tab with the agency chosen, and its purchase-order card, show them too.
+        var sum = await master.GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary?partyId=AGENCY1", Web);
+        Assert.Equal(Pan, sum!.Tax!.Pan);
+        Assert.Null((await master.GetFromJsonAsync<ExpenditureController.SummaryResponse>("/api/staff/expenditure/summary", Web))!.Tax);
+        var po = await master.GetFromJsonAsync<PurchaseOrdersController.PoView>("/api/staff/expenditure/po?partyId=AGENCY1", Web);
+        Assert.Equal(Gstin, po!.Tax!.Gstin);
+        // A master admin who does not see the agency, and another agency, get nothing; the agency gets its own.
+        Assert.Equal(HttpStatusCode.NotFound, (await (await SignIn("MASTER2")).GetAsync("/api/staff/expenditure/tax?partyId=AGENCY1")).StatusCode);
+        var other = await SignIn("AGENCY2");
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/staff/expenditure/tax?partyId=AGENCY1")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/staff/expenditure/tax/gst?partyId=AGENCY1")).StatusCode);
+        Assert.False((await other.GetFromJsonAsync<ExpenditureTax.View>("/api/staff/expenditure/tax?partyId=AGENCY2", Web))!.Submitted);
+        Assert.Equal(HttpStatusCode.OK, (await (await SignIn("AGENCY1")).GetAsync("/api/staff/expenditure/tax/pan?partyId=AGENCY1")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await (await SignIn("ADMIN1")).GetAsync("/api/staff/expenditure/tax?partyId=AGENCY1")).StatusCode);
     }
 }

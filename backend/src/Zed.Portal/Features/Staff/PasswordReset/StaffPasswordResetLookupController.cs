@@ -9,10 +9,10 @@ namespace Zed.Portal.Features.Staff.PasswordReset;
 
 /// <summary>
 /// 2026-11-17 (approved staff redesign, Password Reset Link): before a MasterAdmin sends a link, the page shows who it goes
-/// to (name, role, status, the masked address) and, up front, why it cannot be sent (blocked, no valid e-mail, own account,
+/// to (name, role, status, the address: in full since 2026-11-18, the user) and, up front, why it cannot be sent (blocked, no valid e-mail, own account,
 /// password held by the main portal). Read-only, scoped exactly like the send (<see cref="StaffPasswordResetAdminController"/>:
 /// MasterAdmin, the same portals, the same account lookup SP_V4_STAFF_RESET_ACCOUNT, MSMEs and unknown IDs are 404) and
-/// never shows more than the send's answer would: only the masked address, never the address itself.
+/// never shows more than the send's answer would (its address, which the signed-in Master Admin sees in full).
 /// </summary>
 [Route("api/staff/password-reset")]
 [StaffRoles(UserRole.MasterAdmin)]
@@ -20,9 +20,9 @@ namespace Zed.Portal.Features.Staff.PasswordReset;
 public sealed class StaffPasswordResetLookupController(StaffPasswordResets resets, ISqlExecutor db, IServiceProvider services) : StaffApiController
 {
     /// <param name="Role">The account's role in words ("Assessment agency", "Master Admin", …).</param>
-    /// <param name="MaskedEmail">The registered address as the send's answer names it (e.g. "m******@zed.test"); null without a valid one.</param>
+    /// <param name="Email">The registered address in full, as the send's answer names it (2026-11-18, the user: never masked); null without a valid one.</param>
     /// <param name="CanSend">Whether Send would e-mail a link now; else <paramref name="Reason"/> says why (the send's own refusal).</param>
-    public sealed record ResetTarget(string UserId, string UserName, int RoleId, string Role, bool IsActive, string? MaskedEmail, bool CanSend, string? Reason);
+    public sealed record ResetTarget(string UserId, string UserName, int RoleId, string Role, bool IsActive, string? Email, bool CanSend, string? Reason);
 
     [HttpGet("{userId}")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
@@ -52,7 +52,7 @@ public sealed class StaffPasswordResetLookupController(StaffPasswordResets reset
 
         var name = row.Text("UserName");
         return new ResetTarget(accountId, string.IsNullOrWhiteSpace(name) ? accountId : name.Trim(), roleId, RoleName(roleId), active,
-            email is null ? null : Mask(email), reason is null, reason);
+            email, reason is null, reason);
     }
 
     /// <summary>The role in words as the staff screens name it.</summary>
@@ -73,12 +73,5 @@ public sealed class StaffPasswordResetLookupController(StaffPasswordResets reset
     {
         var id = (typed ?? "").Trim();
         return id.Length is > 0 and <= 50 && !id.Any(char.IsControl) ? id : "";
-    }
-
-    /// <summary>As the send's answer masks it ("m******@zed.test").</summary>
-    private static string Mask(string address)
-    {
-        var at = address.IndexOf('@');
-        return at <= 1 ? "***" + address[Math.Max(at, 0)..] : address[0] + new string('*', Math.Min(at - 1, 6)) + address[at..];
     }
 }

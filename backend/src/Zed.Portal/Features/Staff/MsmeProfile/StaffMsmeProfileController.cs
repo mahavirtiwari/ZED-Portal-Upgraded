@@ -87,21 +87,25 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
         if (unit is null || !string.Equals(unit.Text("ZedId"), id, StringComparison.OrdinalIgnoreCase)) return NotFound();
 
         var enterprise = StaffUserRules.Pick(basic ?? new Dictionary<string, object?>(), BasicFields);
-        enterprise["PanNo"] = StaffUserRules.MaskIdProof(basic?.Text("PanNo"));
+        // 2026-11-18 (the user): the PAN in full, as the e-mail and the mobile (signed-in staff; never masked).
+        enterprise["PanNo"] = basic?.Text("PanNo") is { Length: > 0 } pan ? pan.Trim().ToUpperInvariant() : null;
         return new ProfileResponse(StaffUserRules.Pick(unit, UnitFields), enterprise,
             allotments.Select(a => a.Certification ?? "").Where(c => c.Length > 0).Distinct().ToList());
     }
 
     // ---- 2026-11-17 (the user, approved): the other units of the same PAN, for tracing repeat registrations ---------
 
-    /// <param name="ZedId">Masked (the unit names and addresses are shown in full).</param>
-    public sealed record SamePanUnit(string ZedId, string? UnitName, string Address);
+    /// <summary>
+    /// One unit of the same PAN: its name and complete address. 2026-11-18 (the user: "ZED ID is not required to show"):
+    /// no ZED ID at all.
+    /// </summary>
+    public sealed record SamePanUnit(string? UnitName, string Address);
 
-    /// <param name="Pan">In full (2026-11-17, the user: for tracing; the profile itself keeps it masked).</param>
+    /// <param name="Pan">In full (2026-11-18, the user: PAN, e-mail and mobile are never masked on signed-in pages).</param>
     public sealed record SamePanResponse(string? Pan, SamePanUnit? This, IReadOnlyList<SamePanUnit> Others);
 
     internal const string SamePanSql =
-        "SELECT TOP (50) m.ZedId, m.PUnitName, m.PFlat, m.PBuilding, m.PRoad, m.PCity, m.PDistrictName, m.PStateName, m.PPin, m.PAddress " +
+        "SELECT TOP (50) m.ZedId, m.PUnitName, m.PFlat, m.PBuilding, m.PRoad, m.PArea, m.PCity, m.PDistrictName, m.PStateName, m.PPin, m.PAddress " +
         "FROM dbo.MsmeBasicInformation b INNER JOIN dbo.Msme m ON m.ZedId = b.ZedId " +
         "WHERE NULLIF(LTRIM(RTRIM(b.PanNo)), '') IS NOT NULL AND LTRIM(RTRIM(b.PanNo)) = " +
         "(SELECT TOP (1) LTRIM(RTRIM(x.PanNo)) FROM dbo.MsmeBasicInformation x WHERE x.ZedId = @ZedId) " +
@@ -109,14 +113,14 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
 
     internal const string PanSql = "SELECT TOP (1) PanNo FROM dbo.MsmeBasicInformation WHERE ZedId = @ZedId;";
 
-    public sealed record SamePanRow(string? ZedId, string? PUnitName, string? PFlat, string? PBuilding, string? PRoad, string? PCity,
-        string? PDistrictName, string? PStateName, string? PPin, string? PAddress);
+    public sealed record SamePanRow(string? ZedId, string? PUnitName, string? PFlat, string? PBuilding, string? PRoad, string? PArea,
+        string? PCity, string? PDistrictName, string? PStateName, string? PPin, string? PAddress);
 
     private sealed record PanRow(string? PanNo);
 
     /// <summary>
-    /// GET api/staff/msme-profile/{zedId}/same-pan: the other ZED units registered with the unit's PAN (ZED ID masked; unit
-    /// name and address in full), shown to the staff who may see the unit before its site exterior photos. Same access as
+    /// GET api/staff/msme-profile/{zedId}/same-pan: the other ZED units registered with the unit's PAN (the unit name and
+    /// its complete address; no ZED ID, 2026-11-18 the user), shown to the staff who may see the unit before its site exterior photos. Same access as
     /// the profile (the Master Admin and its operation admins, Super Admin, Ministry, QC, citizen feedback; an agency or
     /// assessor allotted to the unit).
     /// </summary>
@@ -133,19 +137,38 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
         var pan = (await db.QuerySqlAsync<PanRow>(PanSql, p, ct)).FirstOrDefault()?.PanNo;
         if (string.IsNullOrWhiteSpace(pan)) return new SamePanResponse(null, null, []);
         var rows = await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct);
-        static SamePanUnit Unit(SamePanRow r) => new(Zed.Portal.Features.Msme.MsmeAccountFinder.MaskZedId(r.ZedId?.Trim() ?? ""), r.PUnitName?.Trim(), AddressOf(r));
+        static SamePanUnit Unit(SamePanRow r) => new(r.PUnitName?.Trim(), AddressOf(r));
         var self = rows.FirstOrDefault(r => string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase));
         return new SamePanResponse(pan.Trim().ToUpperInvariant(), self is null ? null : Unit(self),
             rows.Where(r => !string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase)).Select(Unit).ToList());
     }
 
-    /// <summary>The plant's address from its parts (as Udyam gives them), else the stored one line.</summary>
+    /// <summary>
+    /// The plant's complete address (2026-11-18, the user: "Please show the complete address"): flat / door, building,
+    /// road, village / town (area), city, district, state and PIN as Udyam gives them; without those parts the stored one
+    /// line, completed with the district, state and PIN it does not already name. Repeats are left out.
+    /// </summary>
     internal static string AddressOf(SamePanRow r)
     {
-        var parts = new[] { r.PFlat, r.PBuilding, r.PRoad, r.PCity, r.PDistrictName, r.PStateName }
-            .Select(x => x?.Trim()).Where(x => !string.IsNullOrEmpty(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var line = parts.Count > 0 ? string.Join(", ", parts) : r.PAddress?.Trim() ?? "";
-        return string.IsNullOrWhiteSpace(r.PPin) ? line : $"{line} {r.PPin.Trim()}".Trim();
+        static string? T(string? x) => string.IsNullOrWhiteSpace(x) ? null : x.Trim().TrimEnd(',').Trim();
+        var parts = new List<string>();
+        string? oneLine = null;
+        void Add(string? x)
+        {
+            if (T(x) is not { Length: > 0 } v) return;
+            if (parts.Any(p => p.Equals(v, StringComparison.OrdinalIgnoreCase))) return;
+            // A district / state the stored one line already names ("12 MG Road, Lucknow" and Lucknow) is not repeated.
+            if (oneLine is not null && oneLine.Contains(v, StringComparison.OrdinalIgnoreCase)) return;
+            parts.Add(v);
+        }
+        var local = new[] { r.PFlat, r.PBuilding, r.PRoad, r.PArea, r.PCity };
+        if (local.Any(x => T(x) is not null)) foreach (var x in local) Add(x);
+        else { Add(r.PAddress); oneLine = T(r.PAddress); }
+        Add(r.PDistrictName);
+        Add(r.PStateName);
+        var line = string.Join(", ", parts);
+        var pin = T(r.PPin);
+        return pin is null || line.Contains(pin, StringComparison.Ordinal) ? line : $"{line} {pin}".Trim();
     }
 
     // ---- SuperAdmin "EDIT PROFILE" (Main only) ----------------------------------------------------------------

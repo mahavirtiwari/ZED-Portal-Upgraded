@@ -4,16 +4,18 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { AdminPortal } from '../admin-portal';
 import { ToastService } from '../toast';
-import { ExpenditureApi, InvoiceDetail, rateLineText, rupees, shownDate, statusTone } from './expenditure.api';
+import { ExpenditureApi, InvoiceDetail, openBlob, rateLineText, rupees, shownDate, statusTone } from './expenditure.api';
+import { TaxDetailsCard } from './tax-details';
 
 /**
  * The invoice review pop-up (approved design, section 4): the month, the portal's cases and amount (per rate when a date of
  * effect falls in the month), the invoice's amount and the difference; Open PDF, Return (remarks required) or Approve. A
- * reviewed invoice opens read-only.
+ * reviewed invoice opens read-only. 2026-11-18: with the agency's one-time GSTIN and PAN (and their documents); the agency
+ * opens its own invoices here too, read-only.
  */
 @Component({
   selector: 'zed-invoice-review',
-  imports: [FormsModule],
+  imports: [FormsModule, TaxDetailsCard],
   styleUrl: './exp-dialog.scss',
   styles: `
     .xr-lines { margin: 0 0 12px; padding-left: 18px; font-size: 13px; color: #3d5559; }
@@ -46,6 +48,7 @@ import { ExpenditureApi, InvoiceDetail, rateLineText, rupees, shownDate, statusT
               @else { <span class="xr-diff">differs by {{ money(f ? x.liveDifference : inv.difference) }}</span> }</div>
             <div><small>Invoice date</small>{{ date(inv.invoiceDate) }}</div>
           </div>
+          <zed-tax-details [tax]="x.tax" [partyId]="inv.partyId" [portal]="portal()" [compact]="true" />
           @if (x.lines.length) {
             <ul class="xr-lines" aria-label="Cases per rate">
               @for (l of x.lines; track $index) { <li>{{ line(l) }}</li> }
@@ -109,10 +112,7 @@ export class InvoiceReviewDialog implements OnInit {
 
   protected async pdf(): Promise<void> {
     try {
-      const blob = await firstValueFrom(this.api.invoicePdf(this.invoiceId(), this.portal()));
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      openBlob(await firstValueFrom(this.api.invoicePdf(this.invoiceId(), this.portal())));
     } catch (e) {
       this.toast.error('The PDF could not be opened', apiErrorMessage(e));
     }

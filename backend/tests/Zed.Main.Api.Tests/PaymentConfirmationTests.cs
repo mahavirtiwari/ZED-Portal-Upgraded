@@ -81,7 +81,7 @@ public sealed class PaymentConfirmationTests : IDisposable
     }
 
     [Fact]
-    public async Task Confirmation_shows_the_paid_order_the_receipt_the_invoice_and_the_masked_email()
+    public async Task Confirmation_shows_the_paid_order_the_receipt_the_invoice_and_the_full_email()
     {
         WriteFile($"PDFs/SA/{Me}/Bronze_Payment_Receipt.pdf");
         WriteFile($"ReceiptInvoice/ZED/2526/41_{Me}_Invoice.pdf");
@@ -99,7 +99,8 @@ public sealed class PaymentConfirmationTests : IDisposable
         // This payment's invoice (its TadaInvoiceNo), not the ERP receipt nor the older invoice of the level.
         Assert.Equal($"/api/msme/files/ReceiptInvoice/ZED/2526/41_{Me}_Invoice.pdf", json.GetProperty("invoiceUrl").GetString());
         Assert.Equal("ZED/2526/41", json.GetProperty("invoiceNo").GetString());
-        Assert.Equal("pl•••@acme.test", json.GetProperty("email").GetString());
+        // 2026-11-18 (the user): the registered e-mail in full (never masked on signed-in pages).
+        Assert.Equal("pledge@acme.test", json.GetProperty("email").GetString());
 
         // The links work: the receipt here, the invoice through My Documents' files.
         var receipt = await client.GetAsync("/api/msme/payments/Bronze/receipt");
@@ -170,7 +171,7 @@ public sealed class PaymentConfirmationTests : IDisposable
         var r = await client.PostAsJsonAsync("/api/msme/payments/Bronze/email-copy", new { email = "someone@else.test", zedId = Other });
 
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Equal("pl•••@acme.test", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("sentTo").GetString());
+        Assert.Equal("pledge@acme.test", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("sentTo").GetString());
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("pledge@acme.test", mail.To);
         Assert.Equal($"ZED Certification Payment Confirmation Details - {Me}", mail.Subject);
@@ -225,12 +226,12 @@ public sealed class PaymentConfirmationTests : IDisposable
     }
 
     [Theory]
-    [InlineData("kavita@gmail.com", "ka•••@gmail.com")]
-    [InlineData("ab@x.in", "a•••@x.in")]
-    [InlineData("nope", "•••")]
+    [InlineData(" kavita@gmail.com ", "kavita@gmail.com")]
+    [InlineData("ab@x.in", "ab@x.in")]
     [InlineData("", null)]
-    public void Email_is_masked(string email, string? expected) =>
-        Assert.Equal(expected, Zed.Portal.Features.Payments.PaymentConfirmationController.Mask(email));
+    [InlineData("  ", null)]
+    public void Email_is_shown_in_full(string email, string? expected) =>
+        Assert.Equal(expected, Zed.Portal.Features.Payments.PaymentConfirmationController.Email(email));
 
     [Theory]
     [InlineData("order_id=1&payment_mode=Net Banking&amount=1.00", "Net Banking")]

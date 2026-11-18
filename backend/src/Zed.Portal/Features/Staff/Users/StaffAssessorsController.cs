@@ -66,6 +66,8 @@ public sealed class StaffAssessorsController(
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         var scopes = host.IsConsultancy() ? [] : await AssessorScope.ByRoleAsync(db, log, ct);
+        // 2026-11-18 (the user): assessments allotted per level (UserLevelCounts has the rule), one grouped query.
+        var allotted = host.IsConsultancy() ? null : await UserLevelCounts.AssessorsAsync(db, agencyId, log, ct);
         // 2026-11-16: an operation admin limited to some agencies sees only their assessors.
         var login = await HttpContext.LoginScopeAsync(ct);
         return sets[0].Where(r => login.AllowsAgency(r.Text("AgencyUserId"))).Select(r =>
@@ -75,6 +77,7 @@ public sealed class StaffAssessorsController(
             row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
             if (scopes.TryGetValue(r.Text("UserId").Trim(), out var scope)) row["Assessments"] = AssessorScope.Items(scope);
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
+            if (!host.IsConsultancy()) row["LevelCounts"] = allotted?.Of(r.Text("UserId"));
             AddBlock(row, blocks);
             return row;
         }).ToList();
@@ -90,6 +93,8 @@ public sealed class StaffAssessorsController(
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         var scopes = host.IsConsultancy() ? [] : await AssessorScope.ByRoleAsync(db, log, ct);
+        // 2026-11-18 (the user): per level, only this agency's assessors are counted.
+        var allotted = host.IsConsultancy() ? null : await UserLevelCounts.AssessorsAsync(db, UserId, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, OwnColumns);
@@ -97,6 +102,7 @@ public sealed class StaffAssessorsController(
             row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
             if (scopes.TryGetValue(r.Text("UserId").Trim(), out var scope)) row["Assessments"] = AssessorScope.Items(scope);
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
+            if (!host.IsConsultancy()) row["LevelCounts"] = allotted?.Of(r.Text("UserId"));
             AddBlock(row, blocks);
             if (host.IsConsultancy())
             {
@@ -105,10 +111,25 @@ public sealed class StaffAssessorsController(
                 row["UserType"] = r.Text("UserType");
             }
             row["IsCertAttached"] = int.TryParse(r.Text("IsCertAttached"), out var n) ? n : 0;
-            row["IdProofNumber"] = StaffUserRules.MaskIdProof(r.Text("IdProofNumber"));
+            row["IdProofNumber"] = StaffUserRules.ShowIdProof(r.Text("IdProofType"), r.Text("IdProofNumber"));
             row["PhotoPath"] = StaffUserRules.PhotoUrl(r.Text("PhotoPath"));
             return row;
         }).ToList();
+    }
+
+    /// <summary>
+    /// 2026-11-18 (the user: "same logic in the assessment agency login"): the signed-in agency's own units allotted per level,
+    /// as its row of the Master Admin's Assessment Agencies list (<see cref="UserLevelCounts"/>), for the tiles of its
+    /// Assessors page. Only its own: the agency is the sign-in, never a parameter. Main only (empty on Consultancy).
+    /// </summary>
+    [HttpGet("mine/level-counts")]
+    [StaffRoles(UserRole.Agency)]
+    public async Task<ActionResult<IReadOnlyList<UserLevelCounts.LevelCount>>> MyLevelCounts(CancellationToken ct)
+    {
+        if (host.IsConsultancy()) return new List<UserLevelCounts.LevelCount>();
+        var counts = await UserLevelCounts.AgenciesAsync(db, UserId, log, ct);
+        if (counts is null) return Problem(title: "The allotment counts could not be read. Please try again.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        return counts.Of(UserId).ToList();
     }
 
     /// <summary>A blocked assessor: the reason and date of its latest block (2026-11-08).</summary>
@@ -202,7 +223,7 @@ public sealed class StaffAssessorsController(
         string? T(string c) => r.Text(c) is { Length: > 0 } v ? v : null;
         var details = new AssessorDetails(a.UserId, r.Text("UserName"), T("Email"), T("MobileNo"), T("Address"), T("Pincode"),
             host.IsConsultancy() ? null : T("AssessorType"),
-            T("CertificateNo"), T("IdProofType"), StaffUserRules.MaskIdProof(T("IdProofNumber")), a.States, a.NicSectors, a.AreasOfKnowledge,
+            T("CertificateNo"), T("IdProofType"), StaffUserRules.ShowIdProof(T("IdProofType"), T("IdProofNumber")), a.States, a.NicSectors, a.AreasOfKnowledge,
             T("ReasonForRejection"), a.IsActive, T("CreatedBy"), CanEdit: IsRole(UserRole.Agency),
             UserType: host.IsConsultancy() ? (r.Text("RoleId") == "33" ? ConsultancyUsers.TechnicalExpert : ConsultancyUsers.Consultant) : null,
             PanNo: T("PanNo") ?? await ProfessionalVerification.PanOfAsync(db, a.UserId, log, ct));

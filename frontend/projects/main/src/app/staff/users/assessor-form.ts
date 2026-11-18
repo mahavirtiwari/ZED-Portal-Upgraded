@@ -15,7 +15,7 @@ import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
-import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { resetLinkAsk, sentTo } from './user-display';
 import { AssessmentModeName, AssessorAssessment, LevelModes, Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
 
 interface AssessorModel {
@@ -64,13 +64,6 @@ const ICON = {
   pin: 'M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01',
 } as const;
-
-/** "AV•••••32C": the first two and the last three characters of a PAN (staff-05 masks it everywhere in the view). */
-export function maskPan(pan: string | null | undefined): string {
-  const p = (pan ?? '').trim();
-  if (!p) return '';
-  return p.length <= 5 ? '•••••' + p.slice(-2) : p.slice(0, 2) + '•••••' + p.slice(-3);
-}
 
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -156,16 +149,13 @@ export class AssessorFormPage {
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
   protected readonly icon = ICON;
-  protected readonly maskPan = maskPan;
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
 
-  /** 2026-11-18: a saved assessor the signed-in user cannot edit (the Master Admin): the compact, masked contact card. */
+  /** 2026-11-18: a saved assessor the signed-in user cannot edit (the Master Admin): the compact contact card (e-mail, mobile and PAN in full since 2026-11-18). */
   protected get viewOnly(): boolean {
     return !this.isNew && !this.canEdit();
   }
 
-  /** "PAN card · •••••632C" (the server sends the saved number masked). */
+  /** "PAN card · ABCDE1234F" in full; "Aadhaar card · •••••9012" (the server sends an Aadhaar number with its last four only). */
   protected get idProofLine(): string {
     const type = this.model.idProofType ? this.model.idProofType.replace(/ Card$/, ' card') : '';
     const masked = this.maskedIdProof()?.replace(/^[Xx*•]+/, '•••••') ?? '';

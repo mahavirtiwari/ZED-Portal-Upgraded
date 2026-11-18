@@ -13,7 +13,6 @@ import { staffCrumbs } from '../staff-crumbs';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile } from '../users/user-display';
 
 /**
  * Desktop assessor: units allotted for desktop verification — accept/reject, then assess. Port of
@@ -22,7 +21,7 @@ import { maskEmail, maskMobile } from '../users/user-display';
  * Surveillance ("Surveillance Assessments", Bronze): the agency's allotment is already accepted; units are listed from
  * status 1, while the assessor captures the unit in the Surveillance app, and are verified here after its final submit.
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, one search
- * box, the SPOC's mobile and e-mail masked (the MSME profile has them), Accept or Assess on the row and View profile and
+ * box, the SPOC's mobile and e-mail (in full since 2026-11-18, the user), Accept or Assess on the row and View profile and
  * Reject in its menu, the reason for a rejection in the confirmation pop-up, a toast when done. The accept pop-up keeps the
  * Admin's text (staff.desktopVerification.accept.confirm).</p>
  */
@@ -65,8 +64,8 @@ import { maskEmail, maskMobile } from '../users/user-display';
                 <small class="dv-addr" [title]="t(s, 'UnitAddress')">{{ t(s, 'UnitAddress') }}</small>
               </td>
               <td><span class="lv-tag" [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
-              <!-- Masked in the list; the MSME profile has the full values. -->
-              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ maskMobile(t(s, 'UnitSpocMobileNo')) }}</span><span class="sub">{{ maskEmail(t(s, 'UnitSpocEmailId')) }}</span></td>
+              <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub mail-cut" [title]="t(s, 'UnitSpocEmailId')">{{ t(s, 'UnitSpocEmailId') }}</span></td>
               <td>{{ t(s, 'AgencyName') }}<span class="sub">{{ t(s, 'CertificationBodyUserId') }}</span></td>
               <td><span class="chip" [class]="'chip ' + stateOf(s).tone">{{ stateOf(s).label }}</span></td>
               <td class="text-end text-nowrap">
@@ -138,8 +137,6 @@ export class DaVerificationPage {
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly nm = num;
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);

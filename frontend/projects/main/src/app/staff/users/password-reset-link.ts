@@ -27,7 +27,7 @@ const API = '/api/staff/password-reset/';
  * MasterAdmin: e-mails any staff account of this portal a link to set a new password, including MasterAdmin and
  * SuperAdmin accounts, which cannot use "Forgot password?". The administrator never sees or sets the password.
  * 2026-11-17 (approved staff redesign, staff-06): the full-width three-step tracker; after the User ID the page looks up
- * who it belongs to (GET api/staff/password-reset/{userId}: name, role, status, the masked address) and says up front why a
+ * who it belongs to (GET api/staff/password-reset/{userId}: name, role, status, the address: in full since 2026-11-18, the user) and says up front why a
  * link cannot be sent (blocked, no valid e-mail, ...); "Send reset link" is the confirmation. On the right how the link
  * works and the links sent since the page was opened.
  * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-06's 856 / 420 columns, a 360px User ID box, icon tiles
@@ -59,7 +59,7 @@ const API = '/api/staff/password-reset/';
                 <strong>{{ t.userName }}</strong>
                 <small>{{ roleName(t) }} · {{ t.userId }}</small>
                 @if (t.canSend) {
-                  <span>Link will go to <b>{{ t.maskedEmail }}</b></span>
+                  <span class="prl-to" [title]="t.email">Link will go to <b>{{ t.email }}</b></span>
                 } @else {
                   <span class="prl-why" role="alert">{{ t.reason }}</span>
                 }
@@ -89,7 +89,7 @@ const API = '/api/staff/password-reset/';
         <section class="zed-card" aria-labelledby="prl-how-title">
           <h2 class="prl-title" id="prl-how-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg></span>How the link works</h2>
           <ul class="prl-points">
-            <li>It goes to the registered e-mail address; you see only a masked address.</li>
+            <li>It goes to the registered e-mail address shown above.</li>
             <li>You never see or set the password: the user chooses it.</li>
             <li>It works once, for a short time. A newer link replaces the older one.</li>
             <li class="is-amber">A blocked user must be unblocked first, and a user without a valid e-mail address needs it updated first.</li>
@@ -131,6 +131,7 @@ const API = '/api/staff/password-reset/';
     .prl-who-text strong { font-size: 15px; font-weight: 700; color: #17373b; }
     .prl-who-text small { font-size: 12.5px; color: #6f8487; }
     .prl-who-text b { font-weight: 600; }
+    .prl-who-text .prl-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
     .prl-why { color: #9a5f06; font-weight: 600; }
     .prl-done { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #e5f5ea; color: #1e6b3c; font-size: 13px; }
     .prl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }
@@ -214,8 +215,8 @@ export class PasswordResetLinkPage {
     this.busy.set(true);
     try {
       const message = (await firstValueFrom(this.http.post<MessageResponse>(API + encodeURIComponent(t.userId), null))).message;
-      // The answer names the masked address in brackets, e.g. "(m******@zed.test)".
-      const to = /\(([^()]*@[^()]*)\)/.test(message) ? sentTo(message, null) : t.maskedEmail ?? 'Registered e-mail address';
+      // The answer names the address in brackets, e.g. "(meena@zed.test)".
+      const to = /\(([^()]*@[^()]*)\)/.test(message) ? sentTo(message, null) : t.email ?? 'Registered e-mail address';
       this.sent.update((list) => [{ userId: t.userId, userName: t.userName, sentTo: to, at: new Date() }, ...list]);
       this.step.set(2);
       this.toast.success('Reset link sent', `E-mailed to ${to}`);

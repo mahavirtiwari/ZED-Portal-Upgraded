@@ -58,6 +58,8 @@ public sealed class StaffAgenciesController(
         IReadOnlyList<AgencyLevels.Level> addedLevels = [];
         var addedByUser = new Dictionary<string, Dictionary<string, AgencyLevels.AddedRow>>(StringComparer.OrdinalIgnoreCase);
         if (!host.IsConsultancy()) (addedLevels, addedByUser) = await AgencyLevels.AddedAsync(db, log, ct);
+        // 2026-11-18 (the user): units allotted per level (UserLevelCounts has the rule), one grouped query for the whole list.
+        var allotted = host.IsConsultancy() ? null : await UserLevelCounts.AgenciesAsync(db, null, log, ct);
         // 2026-11-16: an operation admin limited to some agencies sees only those.
         var scope = await HttpContext.LoginScopeAsync(ct);
         return sets[0].Where(r => scope.AllowsAgency(r.Text("UserId"))).Select(r =>
@@ -95,6 +97,8 @@ public sealed class StaffAgenciesController(
                     all.Add(new(level.Code, level.Name, v?.Allow != false, v?.Reason));
                 }
                 row["Levels"] = all;
+                // 2026-11-18: allotted / in progress / completed / rejected per enabled level; null when not readable.
+                row["LevelCounts"] = allotted?.Of(r.Text("UserId"));
             }
             return row;
         }).ToList();

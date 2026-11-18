@@ -371,22 +371,23 @@ describe('User management', () => {
       expect(el.querySelectorAll('tbody tr').length).toBe(2);
     });
 
-    it('masks the contact, keeps Edit on the row and sends a new password from the row menu after a confirmation', async () => {
+    it('shows the contact in full, keeps Edit on the row and sends a new password from the row menu after a confirmation', async () => {
       await create(AccountsPage, 'neft');
       http.expectOne('/api/staff/neft-admins').flush(neftList);
       await settle();
       expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['User', 'Contact', 'Status', 'Actions']);
       const row = el.querySelectorAll('tbody tr')[0];
-      expect(row.querySelector('.acc-mobile')!.textContent).toBe('98•••••210');
-      expect(row.querySelector('.acc-mail')!.textContent).toBe('ne•••••@zed.test');
-      expect(el.textContent).not.toContain('neft.desk@zed.test');
+      // 2026-11-18 (the user): never masked.
+      expect(row.querySelector('.acc-mobile')!.textContent).toBe('9876543210');
+      expect(row.querySelector('.acc-mail')!.textContent).toBe('neft.desk@zed.test');
+      expect(row.querySelector('.acc-mail')!.getAttribute('title')).toBe('neft.desk@zed.test');
       expect([...row.querySelectorAll('.acc-actions-cell button.btn')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
       expect(await menuItems(row)).toEqual(['Send new password', 'Block login']);
       expect(await menuItems(el.querySelectorAll('tbody tr')[1])).toEqual(['Unblock login']);
 
       await pickMenu(row, 'Send new password');
       expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Send a new password?');
-      expect(confirmDialog()!.textContent).toContain('Neft Desk (NEFT01) gets a new password by e-mail at ne•••••@zed.test.');
+      expect(confirmDialog()!.textContent).toContain('Neft Desk (NEFT01) gets a new password by e-mail at neft.desk@zed.test.');
       await confirm();
       const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/neft-admins/NEFT01/reset-password');
       expect(req.request.body).toBeNull();
@@ -395,7 +396,7 @@ describe('User management', () => {
       http.expectOne('/api/staff/neft-admins').flush(neftList);
       await settle();
       expect(confirmDialog()).toBeNull();
-      expect(toasts()).toContain('New password sent: E-mailed to ne•••••@zed.test');
+      expect(toasts()).toContain('New password sent: E-mailed to neft.desk@zed.test');
 
       // Edit shows the full values in the pop-up.
       button('Edit').click();
@@ -616,12 +617,13 @@ describe('User management', () => {
       };
       const row = (i: number) => el.querySelectorAll('tbody tr')[i];
 
-      it('masks the contact and offers a new password, Unlock only on a locked login, and Block / Unblock', async () => {
+      it('shows the contact in full and offers a new password, Unlock only on a locked login, and Block / Unblock', async () => {
         await create(SubUsersPage);
         http.expectOne('/api/staff/sub-users').flush(opList);
         await settle();
-        expect([...row(0).querySelectorAll('.su-contact span')].map((s) => s.textContent)).toEqual(['98•••••210', 'ra•••••@zed.test']);
-        expect(el.textContent).not.toContain('ravi@zed.test');
+        // 2026-11-18 (the user): never masked.
+        expect([...row(0).querySelectorAll('.su-contact span')].map((s) => s.textContent)).toEqual(['9876543210', 'ravi@zed.test']);
+        expect(row(0).querySelector('.su-mail')!.getAttribute('title')).toBe('ravi@zed.test');
         expect(row(1).querySelector('.su-status-cell .status-badge svg.su-lock')).not.toBeNull();
         expect(row(1).querySelector('.su-status-cell')!.textContent!.trim()).toBe('Locked');
         expect([...row(0).querySelectorAll('.su-actions button.btn')].map((b) => b.textContent!.trim())).toEqual(['Edit']);
@@ -636,7 +638,7 @@ describe('User management', () => {
         await settle();
         await pickMenu(row(0), 'Send new password');
         expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Send a new password?');
-        expect(confirmDialog()!.textContent).toContain('Priya Nair (MA1S01) gets a new password by e-mail at ra•••••@zed.test.');
+        expect(confirmDialog()!.textContent).toContain('Priya Nair (MA1S01) gets a new password by e-mail at ravi@zed.test.');
         // Cancel: nothing is sent.
         (confirmDialog()!.querySelector('.btn-default') as HTMLButtonElement).click();
         await settle();
@@ -651,7 +653,7 @@ describe('User management', () => {
         await settle();
         http.expectOne('/api/staff/sub-users').flush(opList);
         await settle();
-        expect(toasts()).toContain('New password sent: New password e-mailed to ra•••••@zed.test');
+        expect(toasts()).toContain('New password sent: New password e-mailed to ravi@zed.test');
 
         await pickMenu(row(1), 'Unlock (send new password)');
         expect(confirmDialog()!.querySelector('h3')!.textContent).toBe('Unlock Rohan?');
@@ -661,7 +663,7 @@ describe('User management', () => {
         await settle();
         http.expectOne('/api/staff/sub-users').flush(opList);
         await settle();
-        expect(toasts()).toContain('Login unlocked: New password e-mailed to ro•••••@zed.test');
+        expect(toasts()).toContain('Login unlocked: New password e-mailed to rohan@zed.test');
       });
 
       it('blocks (a red confirmation, no reason: the API takes none) and unblocks with the same update as Edit', async () => {

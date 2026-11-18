@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { ToastService } from '../toast';
 import { RemoteAssessmentsPage } from './remote-assessments';
 import { SaAllotmentPage } from './sa-allotment';
@@ -50,19 +50,19 @@ describe('SaAllotmentPage', () => {
 
   afterEach(() => http.verify());
 
-  it('lists the units with Allot / Re-allot, as text', () => {
+  it('lists the units with Accept / Re-allot, as text', () => {
     const rows = el.querySelectorAll('tbody tr');
     expect(rows.length).toBe(3);
-    expect(rows[0].textContent).toContain('Allot');
+    expect(rows[0].textContent).toContain('Accept');
     expect(rows[1].textContent).toContain('Re-allot');
     expect(rows[1].textContent).toContain('Lead One');
-    expect(rows[2].querySelector('button')).toBeNull();
+    expect(rows[2].querySelector('button.sa-act')).toBeNull();
     expect(el.querySelector('tbody img')).toBeNull();
     expect(rows[0].textContent).toContain('<img src=x onerror=alert(1)>');
   });
 
   it('requires date, mode and lead assessor before calling the API', async () => {
-    button(el, 'Allot')!.click();
+    button(el, 'Accept')!.click();
     await settle(fixture);
     button(el.querySelector('.modal-footer') as HTMLElement, 'Allot')!.click();
     await settle(fixture);
@@ -83,7 +83,7 @@ describe('SaAllotmentPage', () => {
 
   it('allots with the chosen assessors and reloads the list', async () => {
     const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
-    button(el, 'Allot')!.click();
+    button(el, 'Accept')!.click();
     await settle(fixture);
     expect((el.querySelector('#FinalSaDate') as HTMLInputElement).min).toBe(todayIso());
 
@@ -119,8 +119,55 @@ describe('SaAllotmentPage', () => {
     expect(el.querySelector('#MeetingLink')).toBeNull();
   });
 
+  it('View details on every row and in its menu, with the profile and Reject (2026-11-18)', async () => {
+    const links = [...el.querySelectorAll<HTMLAnchorElement>('tbody a.sa-view')];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      '/staff/assessment/da-details/ZEDMSME000001/Silver', '/staff/assessment/da-details/ZEDMSME000002/Gold', '/staff/assessment/da-details/ZEDMSME000003/Gold',
+    ]);
+    expect(links[0].classList).toContain('btn-outline-primary');
+    const menuOf = async (row: number) => {
+      const tr = el.querySelectorAll('tbody tr')[row];
+      (tr.querySelector('.rm-btn') as HTMLButtonElement).click();
+      await settle(fixture);
+      return [...tr.querySelectorAll<HTMLButtonElement>('.rm-item')];
+    };
+    const first = await menuOf(0);
+    expect(first.map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile', 'Reject']);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    first.find((b) => b.textContent!.trim() === 'View MSME profile')!.click();
+    await settle(fixture);
+    expect(navigate).toHaveBeenCalledWith('/staff/msme-profile/ZEDMSME000001');
+    // Allotted to a site assessor, or rejected already: no Reject.
+    expect((await menuOf(1)).map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile']);
+    expect((await menuOf(2)).map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile']);
+  });
+
+  it('rejects a waiting unit with a reason, then reloads with a toast (2026-11-18)', async () => {
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    (el.querySelector('tbody tr .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    (el.querySelector('.rm-item.danger') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter reason for rejection.');
+    http.expectNone('/api/staff/site-assessment/allotments/reject');
+    choose(el, '#saRejectReason', 'Outside our sector');
+    await settle(fixture);
+    (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
+    const req = http.expectOne('/api/staff/site-assessment/allotments/reject');
+    expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', reasonForRejection: 'Outside our sector' });
+    req.flush({ message: 'Unit rejected.' });
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'GET' && r.url === '/api/staff/site-assessment/allotments').flush({ units, assessors });
+    await settle(fixture);
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', null);
+    expect(el.querySelector('.modal')).toBeNull();
+  });
+
   it('shows the API message when the allotment is refused', async () => {
-    button(el, 'Allot')!.click();
+    button(el, 'Accept')!.click();
     await settle(fixture);
     choose(el, '#FinalSaDate', '2099-01-15');
     choose(el, '#ModeOfAssessment', 'Onsite Assessment');

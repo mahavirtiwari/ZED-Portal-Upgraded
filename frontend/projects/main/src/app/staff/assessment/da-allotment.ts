@@ -1,19 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
-import { AssessmentApi, Person, Row, serves } from './assessment.api';
+import { AssessmentApi, Person, Row } from './assessment.api';
 import { PagedView, PagerComponent, searchRows } from '../pager';
-import { mayAssess } from '../users/assessor-scope';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit } from './da-allot-actions';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile } from '../users/user-display';
 
 type Stage = 'pending' | 'allotted' | 'rejected';
 
@@ -25,10 +24,14 @@ type Stage = 'pending' | 'allotted' | 'rejected';
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, one search
  * box, the SPOC's mobile and e-mail masked (the MSME profile has them), Accept / Re-allot on the row and View profile and
  * Reject in its menu, the reason for a rejection in the confirmation pop-up, a toast when done.</p>
+ * <p>2026-11-18 (the user: "show assessment detail during the allocation in the login of assessment agency"): View details
+ * on the row and in its menu opens the assessment details page of the unit, a read-only preview of what the applicant
+ * submitted with the same Accept / Re-allot and Reject (da-allot-actions.ts). The SPOC's mobile and e-mail in full (the
+ * user: nothing masked in the signed-in portal).</p>
  */
 @Component({
   selector: 'zed-staff-da-allotment',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog, AllotAssessorDialog],
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="pageTitle" [subtitle]="subtitle">
@@ -73,8 +76,7 @@ type Stage = 'pending' | 'allotted' | 'rejected';
                 <small class="da-addr" [title]="t(s, 'UnitAddress')">{{ t(s, 'UnitAddress') }}</small>
               </td>
               <td><span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
-              <!-- Masked in the list; the MSME profile has the full values. -->
-              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ maskMobile(t(s, 'UnitSpocMobileNo')) }}</span><span class="sub">{{ maskEmail(t(s, 'UnitSpocEmailId')) }}</span></td>
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ t(s, 'UnitSpocEmailId') }}</span></td>
               <td>{{ t(s, 'DaAssessorName') }}<span class="sub">{{ t(s, 'DesktopAssessorId') }}</span></td>
               <td>
                 @if (t(s, 'DesktopReasonForRejection')) { <span class="chip is-bad">Assessor rejected</span> }
@@ -98,6 +100,7 @@ type Stage = 'pending' | 'allotted' | 'rejected';
                 @if (canReallot(s)) {
                   <button type="button" class="btn da-act re-allot" (click)="openAllot(s)">Re-allot</button>
                 }
+                <a class="btn btn-outline-primary da-act da-view" [routerLink]="detailsLink(s)">View details</a>
                 <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" />
               </td>
             </tr>
@@ -111,32 +114,8 @@ type Stage = 'pending' | 'allotted' | 'rejected';
     </div>
 
     @if (allotFor(); as c) {
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daAllotTitle" (click)="allotFor.set(null)">
-        <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content da-pop">
-            <div class="modal-header justify-content-between">
-              <div>
-                <h3 class="da-pop-title" id="daAllotTitle">{{ t(c, 'DesktopAssessorId') ? 'Re-allot assessment' : 'Accept assessment' }}</h3>
-                <p class="da-pop-sub">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}@if (t(c, 'PUnitName')) { · {{ t(c, 'PUnitName') }} }</p>
-              </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="allotFor.set(null)"></button>
-            </div>
-            <div class="modal-body">
-              <label class="form-label" for="daAssessor">Assessor<span class="req">*</span></label>
-              <select id="daAssessor" class="form-select" [(ngModel)]="assessorId">
-                <option value="">--Select--</option>
-                @for (a of assessorsFor(c); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
-              </select>
-              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-light" (click)="allotFor.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary da-ok" [disabled]="busy()" (click)="allot()">Allot to assessor</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-backdrop show"></div>
+      <zed-allot-assessor-dialog [unit]="c" [assessors]="assessorsFor(c)" [busy]="busy()" [failed]="modalError()"
+                                 (allot)="allot($event)" (cancel)="allotFor.set(null)" />
     }
 
     @if (rejectFor(); as r) {
@@ -156,9 +135,7 @@ type Stage = 'pending' | 'allotted' | 'rejected';
     .da-act { min-width: 82px; margin-right: 6px; font-weight: 600; }
     .da-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
     .da-act.re-allot:hover { background: #ffe6b5; }
-    .da-pop { border: 0; border-radius: 12px; }
-    .da-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
-    .da-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
+    .da-act.da-view { min-width: 0; }
   `,
 })
 export class DaAllotmentPage {
@@ -168,8 +145,6 @@ export class DaAllotmentPage {
   protected readonly legacy = useLegacyPortal();
   protected readonly t = text;
   protected readonly f = flag;
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
@@ -211,7 +186,6 @@ export class DaAllotmentPage {
   protected readonly allotFor = signal<Row | null>(null);
   protected readonly rejectFor = signal<Row | null>(null);
   protected readonly modalError = signal('');
-  protected assessorId = '';
   protected readonly more = new Expanded();
   protected readonly key = (s: Row) => text(s, 'ZedId') + text(s, 'Certification');
 
@@ -240,14 +214,14 @@ export class DaAllotmentPage {
     this.stage.set(this.stage() === k ? null : k);
   }
 
-  /**
-   * 2026-11-14: the agency's assessors ticked for the unit's level at the desktop (one kind of assessor; main sends one
-   * list with the ticks). Surveillance keeps its own list. V4: only those who assess the unit's kind (Manufacturing / Services).
-   */
+  /** The agency's assessors who may assess the unit (da-allot-actions.ts). */
   protected assessorsFor(s: Row): Person[] {
-    const level = text(s, 'Certification');
-    const list = level === 'Bronze' ? this.bronzeAssessors() : this.assessors();
-    return list.filter((a) => serves(a, s['SectorCategory']) && mayAssess(a, level, 'Desktop'));
+    return assessorsForUnit(s, this.assessors(), this.bronzeAssessors());
+  }
+
+  /** The assessment details page of the unit (a read-only preview while it waits here). */
+  protected detailsLink(s: Row): string {
+    return `/staff/assessment/da-details/${encodeURIComponent(text(s, 'ZedId'))}/${encodeURIComponent(text(s, 'Certification'))}`;
   }
 
   /**
@@ -259,15 +233,16 @@ export class DaAllotmentPage {
     return this.surveillance ? num(s, 'CertificationStatus') < 2 : !!text(s, 'DesktopReasonForRejection') || !flag(s, 'DesktopAccepted');
   }
 
-  /** The row menu: the profile, and Reject (as the old REJECT button: before allotment or after the assessor rejected). */
+  /** The row menu: the details, the profile, and Reject (as the old REJECT button: before allotment or after the assessor rejected). */
   protected menu(s: Row): RowMenuItem[] {
-    const items: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
+    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
     if (!text(s, 'DesktopAssessorId') || text(s, 'DesktopReasonForRejection')) items.push({ key: 'reject', label: 'Reject', danger: true });
     return items;
   }
 
   protected act(s: Row, key: string): void {
-    if (key === 'profile') void this.router.navigateByUrl('/' + this.legacy.profile(text(s, 'ZedId')));
+    if (key === 'details') void this.router.navigateByUrl(this.detailsLink(s));
+    else if (key === 'profile') void this.router.navigateByUrl('/' + this.legacy.profile(text(s, 'ZedId')));
     else if (key === 'reject') this.openReject(s);
   }
 
@@ -277,7 +252,6 @@ export class DaAllotmentPage {
 
   /** As the old pop-up (a copy of the row): Re-allot opens with the current assessor selected. */
   protected openAllot(s: Row): void {
-    this.assessorId = text(s, 'DesktopAssessorId');
     this.modalError.set('');
     this.allotFor.set(s);
   }
@@ -288,27 +262,16 @@ export class DaAllotmentPage {
   }
 
   protected rejectAsk(s: Row): ConfirmAsk {
-    return {
-      title: 'Reject assessment?',
-      message: `${text(s, 'ZedId')} (${text(s, 'Certification')}) goes back to the ZED team with your reason.`,
-      confirmLabel: 'Reject',
-      danger: true,
-      reason: { label: 'Reason for rejection', maxLength: 2000, requiredMessage: 'Please enter reason for rejection.' },
-    };
+    return agencyRejectAsk(s);
   }
 
-  protected async allot(): Promise<void> {
+  protected async allot(choice: AllotChoice): Promise<void> {
     const s = this.allotFor();
     if (!s) return;
-    if (!this.assessorId) {
-      this.modalError.set('Please select valid data.');
-      return;
-    }
-    const to = this.assessorsFor(s).find((a) => a.userId === this.assessorId)?.userName ?? this.assessorId;
     await this.run(
-      () => this.api.allotToAssessor(text(s, 'ZedId'), text(s, 'Certification'), this.assessorId),
+      () => this.api.allotToAssessor(text(s, 'ZedId'), text(s, 'Certification'), choice.assessorId),
       () => this.allotFor.set(null),
-      `${text(s, 'ZedId')} allotted`, `To ${to}.`,
+      `${text(s, 'ZedId')} allotted`, `To ${choice.assessorName}.`,
     );
   }
 

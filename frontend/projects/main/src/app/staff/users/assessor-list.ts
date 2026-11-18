@@ -19,7 +19,7 @@ import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile, resetLinkAsk, sentTo } from './user-display';
+import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
 import { canSeeAssessorMobile } from './assessor-mobile';
@@ -121,7 +121,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
  * Port of Views/User/AssessorList.cshtml: search, page size and paging in the page. 2026-11-17 (approved staff-04): the
  * shared head and counts (all, active, blocked; a click filters), the search with the sector type and agency drop-downs
  * (and type chips when the list has more than one type), a row per assessor with its levels as medals, the sector, the
- * masked contact (no PAN), the agency and status, View plus a row menu (Send reset link, View history, Block / Unblock)
+ * contact in full (2026-11-18, the user: never masked; no PAN), the agency and status, View plus a row menu (Send reset link, View history, Block / Unblock)
  * whose actions confirm first and end with a toast; the block history opens in the side panel. Cards on phones.
  */
 @Component({
@@ -197,7 +197,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                   @if (consultancy) {
                     <div class="as-contact as-under">
                       <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
-                      @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
+                      @if (s.Email) { <span class="as-sub" [title]="s.Email">{{ email(s.Email) }}</span> }
                     </div>
                   }
                 </td>
@@ -219,7 +219,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                   <td class="as-contact-td" data-label="Contact">
                     <div class="as-contact">
                       <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
-                      @if (s.Email) { <span class="as-sub">{{ email(s.Email) }}</span> }
+                      @if (s.Email) { <span class="as-sub" [title]="s.Email">{{ email(s.Email) }}</span> }
                     </div>
                   </td>
                 }
@@ -400,8 +400,8 @@ export class AssessorListPage {
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
   protected readonly medals = levelMedals;
-  protected readonly mobile = maskMobile;
-  protected readonly email = maskEmail;
+  protected readonly mobile = plain;
+  protected readonly email = plain;
 
   private readonly word = this.consultancy ? 'consultant' : 'assessor';
   protected readonly menuActive: RowMenuItem[] = [

@@ -335,7 +335,7 @@ export type ManagedKind = 'agencies' | 'assessors';
 
 /**
  * 2026-11-17 (Password Reset Link): who a MasterAdmin's link would go to (GET api/staff/password-reset/{userId}, read-only,
- * scoped like the send): the masked address only, and the send's refusal up front when it cannot be sent.
+ * scoped like the send): the address (in full since 2026-11-18, the user), and the send's refusal up front when it cannot be sent.
  */
 export interface ResetTarget {
   userId: string;
@@ -343,7 +343,7 @@ export interface ResetTarget {
   roleId: number;
   role: string;
   isActive: boolean;
-  maskedEmail: string | null;
+  email: string | null;
   canSend: boolean;
   reason: string | null;
 }

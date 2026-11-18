@@ -36,8 +36,7 @@
 .pf-fact dt { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6f8487; margin: 0 0 6px; }
 .pf-fact dd { margin: 0; font-size: 14px; font-weight: 500; color: #17373b; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .pf-fact .form-control, .pf-fact .form-select { height: 34px; padding: 4px 8px; font-size: 14px; }
-.pf-show { border: 0; background: none; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--zt-mid2, #2a8a8c); }
-.pf-show:hover, .pf-show:focus-visible { color: var(--zt-dark, #1f5c61); text-decoration: underline; }
+.pf-one-line { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
 .pf-history-body { padding: 0 0 6px; }
 @media (max-width: 991.98px) { .pf-grid { grid-template-columns: minmax(0, 1fr); } .pf-full .pf-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 479.98px) {

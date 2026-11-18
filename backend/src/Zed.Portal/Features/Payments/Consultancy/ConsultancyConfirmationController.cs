@@ -15,7 +15,7 @@ namespace Zed.Portal.Features.Payments.Consultancy;
 /// for the ZED ID of the sign-in cookie, never from the request.
 /// <list type="bullet">
 /// <item><c>GET …/{level}/confirmation</c>: the milestone, amount, order and CCAvenue reference, when and how it was paid, whether the
-/// receipt and the tax invoice can be downloaded, and the masked registered e-mail.</item>
+/// receipt and the tax invoice can be downloaded, and the registered e-mail (in full since 2026-11-18).</item>
 /// <item><c>GET …/{level}/receipt</c>: the receipt PDF written when the payment was recorded (PDFs/SA/{ZedId}/{Level}_Milestone{n}_…).</item>
 /// <item><c>GET …/{level}/invoice</c>: the link to the ERP's tax invoice of that payment (My Documents' file), or 404 while the ERP has
 /// not sent it yet.</item>
@@ -67,7 +67,7 @@ public sealed class ConsultancyConfirmationController(
             System.IO.File.Exists(paid.ReceiptFile) ? "/api/msme/consultancy-payments/" + Uri.EscapeDataString(level) + "/receipt" + (milestone is null ? "" : "?milestone=" + paid.Milestone) : null,
             invoice is null ? null : MsmeFilePaths.ToApiUrl(invoice.Value.Relative),
             invoice?.InvoiceNo,
-            PaymentConfirmationController.Mask(paid.Msme?.Text("PledgeEmailId")));
+            PaymentConfirmationController.Email(paid.Msme?.Text("PledgeEmailId")));
     }
 
     [HttpGet(Base + "/receipt")]
@@ -109,7 +109,7 @@ public sealed class ConsultancyConfirmationController(
         }
         if (sentTo is null) return this.Problem400("There is no registered e-mail for this unit. Please update it in your profile.");
         log.LogInformation("Handholding payment confirmation copy sent for {ZedId}/{Certification} (milestone {Milestone})", ZedId, level, paid.Milestone);
-        return new PaymentConfirmationController.EmailCopyResponse(PaymentConfirmationController.Mask(sentTo)!);
+        return new PaymentConfirmationController.EmailCopyResponse(PaymentConfirmationController.Email(sentTo)!);
     }
 
     // ----- the work -----

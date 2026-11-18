@@ -81,4 +81,14 @@ describe('PoCard', () => {
     expect(button('Edit')).toBeUndefined();
     expect(button('History')).toBeTruthy();
   });
+
+  it("shows the agency's one-time GSTIN and PAN read-only (2026-11-18)", async () => {
+    await create({ ...view(), tax: { available: true, submitted: true, gstin: '27AAPFU0939F1ZV', pan: 'AAPFU0939F', hasGstFile: true, hasPanFile: true,
+      submittedOn: '2026-11-18T05:00:00', submittedBy: 'ZEDAA0080', suggestedGstin: null } });
+    const tax = el.querySelector('zed-tax-details')!;
+    expect(tax.textContent).toContain('27AAPFU0939F1ZV');
+    expect(tax.textContent).toContain('AAPFU0939F');
+    expect(tax.querySelector('input')).toBeNull();
+    expect(button('View GST Certificate', tax)).toBeTruthy();
+  });
 });

@@ -6,6 +6,7 @@ import { AdminPortal } from '../admin-portal';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { ExpenditureApi, PoChange, PoItem, PoLevel, PoView, poPill, shownDate } from './expenditure.api';
+import { TaxDetailsCard } from './tax-details';
 
 type Form =
   | { kind: 'add'; level: string; poNumber: string; poDate: string; cases: number | null }
@@ -20,7 +21,7 @@ type Form =
  */
 @Component({
   selector: 'zed-po-card',
-  imports: [FormsModule],
+  imports: [FormsModule, TaxDetailsCard],
   styleUrl: './exp-dialog.scss',
   styles: `
     :host { display: block; margin-bottom: 16px; }
@@ -47,6 +48,10 @@ type Form =
         </div>
       </div>
       @if (error()) { <div class="alert alert-danger m-3" role="alert">{{ error() }}</div> }
+      @if (view()?.tax?.available) {
+        <!-- 2026-11-18: the agency's one-time GSTIN and PAN, read-only. -->
+        <div class="px-3 pt-3"><zed-tax-details [tax]="view()!.tax" [partyId]="partyId()" [portal]="portal()" [compact]="true" /></div>
+      }
       <div class="table-responsive">
         <table class="table table-zed mb-0">
           <thead><tr><th>Level</th><th>PO number</th><th>PO date</th><th class="num">Cases in PO</th><th class="num">Used</th><th>Use</th><th>Allotment</th><th></th></tr></thead>

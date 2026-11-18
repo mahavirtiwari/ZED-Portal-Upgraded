@@ -2,7 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Assessor, Row, SiteAssessmentApi, todayIso } from './site-assessment.api';
+import { Router, RouterLink } from '@angular/router';
+import { Assessor, Row, SiteAssessmentApi, milestoneReviewLink, todayIso } from './site-assessment.api';
 import { PagedView, PagerComponent, searchRows } from '../pager';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
@@ -11,7 +12,6 @@ import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
-import { maskEmail, maskMobile } from '../users/user-display';
 
 interface CoForm {
   unit: Row;
@@ -34,12 +34,12 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
  * technical experts, BDS dates and (milestone 1) HAP dates; REJECT with a reason. Multi-selects are plain checkbox
  * lists (no select2); the lead is never offered as a co-consultant.
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the
- * milestone as chips, one search box, the SPOC's mobile and e-mail masked, Accept / Re-allot on the row and Reject in its
+ * milestone as chips, one search box, the SPOC's mobile and e-mail in full (2026-11-18, the user), Accept / Re-allot on the row and Reject in its
  * menu (the reason in the confirmation pop-up), a toast when done.</p>
  */
 @Component({
   selector: 'zed-staff-co-allotment',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, RouterLink],
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs" title="Allot Consultancy"
@@ -83,7 +83,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
               <td><span [class]="'lv-tag lv-' + str(s['Certification']).toLowerCase()">{{ s['Certification'] }}</span></td>
               <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span></td>
               <!-- Masked in the list; the MSME profile has the full values. -->
-              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
+              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
               <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
               <td class="consultants">
                 <div><div class="muted">{{ s['SiteAssessorId'] }}</div>{{ s['SaAssessorName'] }}</div>
@@ -100,8 +100,10 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                   <button type="button" class="btn co-act re-allot allot" (click)="open(s)">Re-allot</button>
                 } @else if (!s['ReasonForRejection']) {
                   <button type="button" class="btn btn-primary co-act allot" (click)="open(s)">Accept</button>
-                  <zed-row-menu [items]="menu" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
                 }
+                <!-- 2026-11-18 (the user: "accept, reject, view details and other option similar to combination one"). -->
+                <a class="btn btn-outline-primary co-act co-view" [routerLink]="detailsLink(s)">View details</a>
+                <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
               </td>
             </tr>
           } @empty {
@@ -225,6 +227,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
     .co-act { min-width: 82px; margin-right: 6px; font-weight: 600; }
     .co-act.re-allot { background: #fff1d6; border-color: #fff1d6; color: #7a4700; }
     .co-act.re-allot:hover { background: #ffe6b5; }
+    .co-act.co-view { min-width: 0; }
     .co-pop { border: 0; border-radius: 12px; }
     .co-pop-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .co-pop-sub { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
@@ -236,10 +239,20 @@ export class CoAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly toast = inject(ToastService);
   protected readonly crumbs = staffCrumbs({ label: 'Allot Consultancy' });
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
-  protected readonly menu: RowMenuItem[] = [{ key: 'reject', label: 'Reject', danger: true }];
+  private readonly router = inject(Router);
+
+  /** The milestone review page of the unit (Consultancy's assessment details; read-only for the CO before it allots). */
+  protected detailsLink(s: Row): string {
+    return milestoneReviewLink(this.str(s['ZedId']), this.str(s['Certification']), this.str(s['NcCount']));
+  }
+
+  /** The row menu: the details, the profile, and Reject (before the first allotment, once). */
+  protected menu(s: Row): RowMenuItem[] {
+    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
+    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: 'Reject', danger: true });
+    return items;
+  }
 
   protected readonly units = signal<Row[]>([]);
   /** The tile chosen ('waiting' / 'allotted' / 'rejected'; null: every unit) and the milestone chip ('' all). */
@@ -289,7 +302,9 @@ export class CoAllotmentPage {
   }
 
   protected act(s: Row, key: string): void {
-    if (key === 'reject') this.openReject(s);
+    if (key === 'details') void this.router.navigateByUrl(this.detailsLink(s));
+    else if (key === 'profile') void this.router.navigateByUrl(`/staff/msme-profile/${encodeURIComponent(this.str(s['ZedId']))}`);
+    else if (key === 'reject') this.openReject(s);
   }
 
   protected rejectAsk(s: Row): ConfirmAsk {

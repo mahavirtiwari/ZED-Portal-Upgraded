@@ -10,7 +10,6 @@ import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
-import { maskEmail, maskMobile } from '../users/user-display';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -24,7 +23,7 @@ import { maskEmail, maskMobile } from '../users/user-display';
  * consultant's units with the BDS/HAP dates; View Profile opens the unit's profile and VIEW DETAILS the milestone review page.
  * </p>
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the counts as tiles that filter the list, the mode as
- * chips, one search box, the SPOC's mobile and e-mail masked, at most two buttons on a row (the milestone lists: View details
+ * chips, one search box, the SPOC's mobile and e-mail (in full since 2026-11-18, the user), at most two buttons on a row (the milestone lists: View details
  * and the profile in the row menu).</p>
  */
 @Component({
@@ -73,8 +72,8 @@ import { maskEmail, maskMobile } from '../users/user-display';
                   <small class="ra-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
                 </td>
                 <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
-                <!-- Masked in the list; the MSME profile has the full values. -->
-                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
+                <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
                 @if (milestone === 1) {
                   <td>BDS: {{ s['BdsToDate'] }}<span class="sub">HAP: {{ s['HapToDate'] }}</span></td>
@@ -120,8 +119,8 @@ import { maskEmail, maskMobile } from '../users/user-display';
                   <small class="ra-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
                 </td>
                 <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
-                <!-- Masked in the list; the MSME profile has the full values. -->
-                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ maskMobile(str(s['UnitSpocMobileNo'])) }}</span><span class="sub">{{ maskEmail(str(s['UnitSpocEmailId'])) }}</span></td>
+                <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
                 <td><span class="chip is-info">{{ mode(s) }}</span></td>
                 <td class="text-nowrap">{{ s['AssessmentDate'] }}</td>
@@ -182,8 +181,6 @@ import { maskEmail, maskMobile } from '../users/user-display';
 export class RemoteAssessmentsPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly router = inject(Router);
-  protected readonly maskEmail = maskEmail;
-  protected readonly maskMobile = maskMobile;
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
   protected readonly profileMenu: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
   private readonly legacyUrl = signal('');

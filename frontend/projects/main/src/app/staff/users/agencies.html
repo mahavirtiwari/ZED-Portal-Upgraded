@@ -71,8 +71,8 @@
               <td data-label="SPOC">
                 <div class="spoc">
                   <strong [title]="a.SpocName || ''">{{ a.SpocName || '—' }}</strong>
-                  <span>{{ a.MobileNo ? maskMobile(a.MobileNo) : 'Mobile not saved' }}</span>
-                  @if (a.Email) { <span>{{ maskEmail(a.Email) }}</span> }
+                  <span>{{ a.MobileNo || 'Mobile not saved' }}</span>
+                  @if (a.Email) { <span [title]="a.Email">{{ a.Email }}</span> }
                 </div>
               </td>
             }

@@ -68,17 +68,17 @@ describe('AgenciesPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('masks the SPOC mobile and e-mail and offers two buttons plus a menu per row', async () => {
+  it('shows the SPOC mobile and e-mail in full and offers two buttons plus a menu per row', async () => {
     await create('all');
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001'), agency('ZEDAA0002', { IsActive: false, IdStatus: 'In-Active', MobileNo: null })]);
     await settle();
     expect(el.querySelector('h2')!.textContent).toContain('Assessment Agencies');
     expect(el.textContent).toContain('+ Add agency');
     const first = rows()[0];
-    expect(first.textContent).toContain('98•••••210');
-    expect(first.textContent).toContain('sp•••••@a.test');
-    expect(first.textContent).not.toContain('9876543210');
-    expect(first.textContent).not.toContain('spoc@a.test');
+    // 2026-11-18 (the user): never masked.
+    expect(first.textContent).toContain('9876543210');
+    expect(first.textContent).toContain('spoc@a.test');
+    expect(first.textContent).not.toContain('•');
     expect(rows()[1].textContent).toContain('Mobile not saved');
     expect([...first.querySelectorAll('.acts > a')].map((a) => a.textContent!.trim())).toEqual(['Edit', 'Assessors']);
 
@@ -98,18 +98,18 @@ describe('AgenciesPage', () => {
     await pick(rows()[0], 'Send reset link');
     const dialog = el.querySelector('zed-confirm-dialog')!;
     expect(dialog.textContent).toContain('Send password reset link?');
-    expect(dialog.textContent).toContain('sp•••••@a.test');
+    expect(dialog.textContent).toContain('spoc@a.test');
     http.expectNone('/api/staff/users/agencies/ZEDAA0001/password-reset');
 
     button('Send link', dialog)!.click();
     await settle();
     http.expectOne({ method: 'POST', url: '/api/staff/users/agencies/ZEDAA0001/password-reset' })
-      .flush({ message: "A password reset link has been sent to the user's registered e-mail address (s***@a.test)." });
+      .flush({ message: "A password reset link has been sent to the user's registered e-mail address (spoc@a.test)." });
     await settle();
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001')]);
     await settle();
     expect(el.querySelector('zed-confirm-dialog')).toBeNull();
-    expect(toasts.toasts().at(-1)).toMatchObject({ tone: 'success', title: 'Reset link sent', message: 'E-mailed to s***@a.test' });
+    expect(toasts.toasts().at(-1)).toMatchObject({ tone: 'success', title: 'Reset link sent', message: 'E-mailed to spoc@a.test' });
     expect(confirm).not.toHaveBeenCalled();
   });
 

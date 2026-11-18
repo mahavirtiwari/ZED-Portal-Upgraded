@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { AllotPage } from './allot';
 import { AssessmentResultsPage, searchKind } from './assessment-results';
@@ -220,7 +220,7 @@ describe('assessment list pages', () => {
     expect(toast).toHaveBeenCalledWith('ZEDMSME000001 allotted', 'To Bronze assessor.');
   });
 
-  it('DA Allotment: the tiles filter the list and the SPOC contact is masked', async () => {
+  it('DA Allotment: the tiles filter the list and the SPOC contact is shown in full (2026-11-18, nothing masked)', async () => {
     const fixture = await create(DaAllotmentPage);
     const el: HTMLElement = fixture.nativeElement;
     http.expectOne('/api/staff/assessment/da-allotment').flush({
@@ -231,9 +231,9 @@ describe('assessment list pages', () => {
       assessors: [], bronzeAssessors: [],
     });
     await settle(fixture);
-    expect(el.querySelector('tbody')!.textContent).toContain('98•••••210');
-    expect(el.querySelector('tbody')!.textContent).toContain('sp•••••@unit.in');
-    expect(el.querySelector('tbody')!.textContent).not.toContain('9876543210');
+    expect(el.querySelector('tbody')!.textContent).toContain('9876543210');
+    expect(el.querySelector('tbody')!.textContent).toContain('spoc@unit.in');
+    expect(el.querySelector('tbody')!.textContent).not.toContain('•');
     const tile = [...el.querySelectorAll<HTMLButtonElement>('.lc-btn')].find((b) => b.textContent!.includes('Rejected by the assessor'))!;
     tile.click();
     await settle(fixture);
@@ -251,7 +251,7 @@ describe('assessment list pages', () => {
     await settle(fixture);
     (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
     await settle(fixture);
-    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View MSME profile', 'Reject']);
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile', 'Reject']);
     ([...el.querySelectorAll<HTMLButtonElement>('.rm-item')].find((b) => b.textContent!.trim() === 'Reject')!).click();
     await settle(fixture);
     expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
@@ -269,6 +269,33 @@ describe('assessment list pages', () => {
     post.flush({ title: 'This assessment is not allotted to your agency or can no longer be rejected.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);
     expect(el.querySelector('.modal .help-block')!.textContent).toContain('can no longer be rejected');
+  });
+
+  it('DA Allotment: View details on the row and in its menu opens the assessment details of the unit and level (2026-11-18)', async () => {
+    const fixture = await create(DaAllotmentPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne('/api/staff/assessment/da-allotment').flush({
+      rows: [
+        { ZedId: 'ZEDMSME000001', Certification: 'Bronze', PUnitName: 'Unit 1' },
+        { ZedId: 'ZEDMSME000002', Certification: 'Silver', DesktopAssessorId: 'AS1' },
+      ],
+      assessors: [], bronzeAssessors: [],
+    });
+    await settle(fixture);
+    const links = [...el.querySelectorAll<HTMLAnchorElement>('tbody a.da-view')];
+    expect(links.map((a) => a.textContent!.trim())).toEqual(['View details', 'View details']);
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/staff/assessment/da-details/ZEDMSME000001/Bronze', '/staff/assessment/da-details/ZEDMSME000002/Silver']);
+    expect(links[0].classList).toContain('btn-outline-primary');
+    // Beside Accept, before the row menu.
+    const cell = links[0].closest('td')!;
+    expect([...cell.querySelectorAll('button, a')].map((b) => b.textContent!.trim()).slice(0, 2)).toEqual(['Accept', 'View details']);
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    (el.querySelector('tbody .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    ([...el.querySelectorAll<HTMLButtonElement>('.rm-item')].find((b) => b.textContent!.trim() === 'View details')!).click();
+    await settle(fixture);
+    expect(navigate).toHaveBeenCalledWith('/staff/assessment/da-details/ZEDMSME000001/Bronze');
   });
 
   it('Desktop Verification: accept before assess', async () => {

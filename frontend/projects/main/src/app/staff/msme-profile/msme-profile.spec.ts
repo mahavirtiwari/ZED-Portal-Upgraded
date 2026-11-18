@@ -25,23 +25,18 @@ describe('staff MSME profile', () => {
     const { fixture, http } = create('ZEDMSME000001');
     http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({
       unit: { ZedId: 'ZEDMSME000001', PUnitName: 'Unit One' },
-      enterprise: { OwnerName: 'Owner', PanNo: 'XXXXXX234F' },
+      enterprise: { OwnerName: 'Owner', PanNo: 'ABCDE1234F' },
       certifications: ['Bronze'],
     });
     await fixture.whenStable();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('[data-field="PUnitName"]')?.textContent).toContain('Unit One');
-    // 2026-11-17 (design 15): PAN, e-mail and mobile are masked until Show.
-    expect(el.querySelector('[data-field="PanNo"]')?.textContent).toContain('XX•••••34F');
-    expect(el.querySelector('[data-field="PanNo"]')?.textContent).not.toContain('XXXXXX234F');
-    el.querySelector<HTMLButtonElement>('[data-field="PanNo"] .pf-show')!.click();
-    fixture.detectChanges();
-    expect(el.querySelector('[data-field="PanNo"]')?.textContent).toContain('XXXXXX234F');
-    expect(el.querySelector('[data-field="PanNo"] .pf-show')?.textContent?.trim()).toBe('Hide');
-    // Nothing to show: a dash and no Show button.
-    expect(el.querySelector('[data-field="EmailId"]')?.textContent).toContain('-');
-    expect(el.querySelector('[data-field="EmailId"] .pf-show')).toBeNull();
+    // 2026-11-18 (the user): PAN, e-mail and mobile are shown in full, with no Show / Hide.
+    expect(el.querySelector('[data-field="PanNo"]')?.textContent?.trim()).toBe('ABCDE1234F');
+    expect(el.querySelector('.pf-show')).toBeNull();
+    // Nothing saved: a dash.
+    expect(el.querySelector('[data-field="EmailId"]')?.textContent?.trim()).toBe('-');
   });
 
   it('opens with the identity header and its links (design 15)', async () => {
@@ -63,8 +58,10 @@ describe('staff MSME profile', () => {
     expect(links.map((a) => a.textContent?.trim())).toEqual(['ZED ID history', 'Assessment details']);
     expect(links[0].getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
     expect(links[1].getAttribute('href')).toBe('/staff/assessment/da-details/ZEDMSME000001/Bronze');
-    expect(el.querySelector('[data-field="EmailId"]')?.textContent).toContain('ka•••••@mail.test');
-    expect(el.querySelector('[data-field="MobileNo"]')?.textContent).toContain('94•••••133');
+    const email = el.querySelector('[data-field="EmailId"] .pf-one-line')!;
+    expect(email.textContent?.trim()).toBe('karan@mail.test');
+    expect(email.getAttribute('title')).toBe('karan@mail.test');
+    expect(el.querySelector('[data-field="MobileNo"]')?.textContent?.trim()).toBe('9412345133');
   });
 
   it('shows an agency no ZED ID history link', async () => {

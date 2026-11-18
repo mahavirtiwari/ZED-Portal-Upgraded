@@ -201,7 +201,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the documents and videos the Admin gave to the account type.
   // 2026-11-18 (approved design "Expenditure monitoring"): cases, payable, POs and invoices; the agencies' monthly invoices.
   { label: 'Expenditure', route: '/staff/expenditure', roles: [R.MasterAdmin, R.Admin] },
-  { label: 'Invoices', route: '/staff/expenditure/invoices', roles: [R.Agency] },
+  { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
@@ -273,7 +273,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Reports', route: '/staff/reports', roles: [R.StateCoordinator] },
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Expenditure', route: '/staff/expenditure', roles: [R.MasterAdmin] },
-  { label: 'Invoices', route: '/staff/expenditure/invoices', roles: [R.Agency] },
+  { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.

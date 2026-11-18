@@ -2,15 +2,15 @@ import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+/** 2026-11-18 (the user: "ZED ID is not required to show"): the unit name and its complete address, no ZED ID. */
 export interface SamePanUnit {
-  /** Masked. */
-  zedId: string;
   unitName: string | null;
+  /** Complete: flat / building, road, village / town, city, district, state and PIN. */
   address: string;
 }
 
 export interface SamePanResponse {
-  /** In full (for tracing). */
+  /** In full (never masked). */
   pan: string | null;
   this: SamePanUnit | null;
   others: SamePanUnit[];
@@ -25,6 +25,9 @@ export interface SamePanResponse {
  * PAN masked ("AB•••••34F"), "Check that this is a different plant before you accept the application.", and the other units
  * listed inline (masked ZED ID, name and address); the pop-up's intro line without the yellow background a global
  * <code>.small.text-muted</code> style gave it (its own class now), with the full PAN for tracing.
+ * 2026-11-18 (the user): the PAN in full on the strip too (never masked); no ZED ID anywhere ("ZED ID is not required to
+ * show"); each unit's name and its complete address ("Please show the complete address"), the address wrapping at word
+ * breaks, never cut.
  */
 @Component({
   selector: 'zed-same-pan',
@@ -34,11 +37,11 @@ export interface SamePanResponse {
         <div class="sp-strip" role="status" data-same-pan>
           <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg>
           <div class="sp-text">
-            <b>Same PAN: {{ d.others.length === 1 ? '1 other ZED unit is' : d.others.length + ' other ZED units are' }} registered with PAN {{ mask(d.pan) }}</b>
+            <b>Same PAN: {{ d.others.length === 1 ? '1 other ZED unit is' : d.others.length + ' other ZED units are' }} registered with PAN {{ d.pan }}</b>
             <span>Check that this is a different plant before you accept the application.</span>
             <ul class="sp-list">
-              @for (u of d.others; track u.zedId + u.address) {
-                <li><b>{{ u.zedId }}</b><span>{{ u.unitName || '—' }}@if (u.address) { · {{ u.address }} }</span></li>
+              @for (u of d.others; track $index) {
+                <li><b>{{ u.unitName || '—' }}</b><span>{{ u.address || '—' }}</span></li>
               }
             </ul>
           </div>
@@ -56,13 +59,13 @@ export interface SamePanResponse {
                 </div>
                 <div class="modal-body">
                   <p class="sp-intro">For tracing repeat registrations (PAN {{ d.pan }}).
-                    @if (d.this; as me) { This unit: {{ me.zedId }} · {{ me.unitName }}, {{ me.address }} }</p>
+                    @if (d.this; as me) { This unit: {{ me.unitName }}, {{ me.address }} }</p>
                   <div class="table-responsive">
                     <table class="table table-bordered table-zed mb-0" data-same-pan-list>
-                      <thead><tr><th>ZED ID</th><th>Unit name</th><th>Address</th></tr></thead>
+                      <thead><tr><th>Unit name</th><th>Complete address</th></tr></thead>
                       <tbody>
-                        @for (u of d.others; track u.zedId + u.address) {
-                          <tr><td class="text-nowrap">{{ u.zedId }}</td><td>{{ u.unitName || '—' }}</td><td>{{ u.address || '—' }}</td></tr>
+                        @for (u of d.others; track $index) {
+                          <tr><td>{{ u.unitName || '—' }}</td><td class="sp-addr">{{ u.address || '—' }}</td></tr>
                         }
                       </tbody>
                     </table>
@@ -85,9 +88,10 @@ export interface SamePanResponse {
     .sp-text > b { font-size: 13.5px; }
     .sp-text > span { color: #3d5559; }
     .sp-list { list-style: none; margin: 8px 0 0; padding: 0; }
-    .sp-list li { display: flex; gap: 20px; padding: 8px 14px; background: #fff; border: 1px solid #ecd98a; border-radius: 8px; color: #3d5559; }
+    .sp-list li { display: flex; flex-wrap: wrap; gap: 4px 20px; padding: 8px 14px; background: #fff; border: 1px solid #ecd98a; border-radius: 8px; color: #3d5559; }
     .sp-list li + li { margin-top: 6px; }
-    .sp-list b { color: #17373b; white-space: nowrap; }
+    .sp-list b { color: #17373b; }
+    .sp-list span, .sp-addr { overflow-wrap: break-word; word-break: normal; }
     .sp-view { font-weight: 700; color: #24666b; white-space: nowrap; }
     .sp-intro { margin: 0 0 10px; font-size: 13px; color: #6f8487; background: none; }
   `,
@@ -98,12 +102,6 @@ export class SamePanUnits {
   readonly zedId = input.required<string>();
   protected readonly data = signal<SamePanResponse | null>(null);
   protected readonly open = signal(false);
-
-  /** "AB•••••34F" (the strip; the pop-up keeps the full PAN for tracing). */
-  protected mask(pan: string | null): string {
-    const p = (pan ?? '').trim();
-    return p.length > 5 ? p.slice(0, 2) + '•••••' + p.slice(-3) : p;
-  }
 
   constructor() {
     effect(() => {

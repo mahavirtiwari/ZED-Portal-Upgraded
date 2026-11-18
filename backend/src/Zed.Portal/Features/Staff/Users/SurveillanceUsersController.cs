@@ -58,6 +58,8 @@ public sealed class SurveillanceUsersController(
         public string? Address { get; init; }
         public string? PinCode { get; init; }
         public int NoOfUsers { get; init; }
+        /// <summary>2026-11-18: units allotted per level in this database (<see cref="UserLevelCounts"/>); list only, null when not read.</summary>
+        public IReadOnlyList<UserLevelCounts.LevelCount>? LevelCounts { get; set; }
     }
 
     public const string AgenciesSql =
@@ -83,7 +85,24 @@ public sealed class SurveillanceUsersController(
 
     [HttpGet("agencies")]
     [StaffRoles(UserRole.MasterAdmin)]
-    public async Task<IReadOnlyList<AgencyRow>> Agencies(CancellationToken ct) => await db.QuerySqlAsync<AgencyRow>(AgenciesSql, null, ct);
+    public async Task<IReadOnlyList<AgencyRow>> Agencies(CancellationToken ct)
+    {
+        var rows = await db.QuerySqlAsync<AgencyRow>(AgenciesSql, null, ct);
+        // 2026-11-18 (the user): units allotted per level, one grouped query for the whole list.
+        var allotted = await UserLevelCounts.AgenciesAsync(db, null, log, ct);
+        foreach (var r in rows) r.LevelCounts = allotted?.Of(r.UserId);
+        return rows;
+    }
+
+    /// <summary>2026-11-18: the signed-in agency's own units allotted per level in surveillance (tiles of its assessors page).</summary>
+    [HttpGet("level-counts")]
+    [StaffRoles(UserRole.Agency)]
+    public async Task<ActionResult<IReadOnlyList<UserLevelCounts.LevelCount>>> MyLevelCounts(CancellationToken ct)
+    {
+        var counts = await UserLevelCounts.AgenciesAsync(db, UserId, log, ct);
+        if (counts is null) return Problem(title: "The allotment counts could not be read. Please try again.", statusCode: StatusCodes.Status503ServiceUnavailable);
+        return counts.Of(UserId).ToList();
+    }
 
     public sealed record AgencyDetails(AgencyRow Agency, IReadOnlyList<string> Districts);
 
@@ -154,6 +173,8 @@ public sealed class SurveillanceUsersController(
         public string? IdProofNumber { get; init; }
         /// <summary>Users.PanNo (0068; copied from main when main creates the assessor, 0069 for older ones).</summary>
         public string? PanNo { get; set; }
+        /// <summary>2026-11-18: assessments allotted per level in this database (<see cref="UserLevelCounts"/>); null when not read.</summary>
+        public IReadOnlyList<UserLevelCounts.LevelCount>? LevelCounts { get; set; }
     }
 
     /// <summary>Assessors: all of them for the MasterAdmin (optionally of one agency), the agency's own for an agency.</summary>
@@ -169,7 +190,13 @@ public sealed class SurveillanceUsersController(
             "WHERE A.RoleId = 3 AND (@AgencyId IS NULL OR A.CreatedBy = @AgencyId) ORDER BY A.CreatedBy, A.UserId",
             new { AgencyId = agency }, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
-        foreach (var r in rows) r.PanNo = r.UserId is { } id ? pans.GetValueOrDefault(id.Trim()) : null;
+        // 2026-11-18 (the user): per level, scoped as the list (an agency: only its own assessors).
+        var allotted = await UserLevelCounts.AssessorsAsync(db, agency, log, ct);
+        foreach (var r in rows)
+        {
+            r.PanNo = r.UserId is { } id ? pans.GetValueOrDefault(id.Trim()) : null;
+            r.LevelCounts = allotted?.Of(r.UserId);
+        }
         return Ok(rows);
     }
 
