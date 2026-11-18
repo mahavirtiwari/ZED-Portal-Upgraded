@@ -18,6 +18,7 @@ import { ToastService } from '../toast';
 import { ContentService } from '../../content/content-text';
 import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
+import { LevelCount, LevelCounts, levelCountTiles } from './level-counts';
 
 /** Which assessors the list shows (the status tiles). */
 type StatusFilter = 'all' | 'active' | 'blocked';
@@ -33,13 +34,19 @@ type StatusFilter = 'all' | 'active' | 'blocked';
  */
 @Component({
   selector: 'zed-staff-my-assessors',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, LevelCounts],
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="labels.assessors">
       <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add {{ consultancy ? labels.assessor : labels.assessor.toLowerCase() }}</a>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+
+    @if (totalTiles().length) {
+      <!-- 2026-11-18 (the user: "same logic in the assessment agency login"): the agency's own units per certification level. -->
+      <h3 class="ma-cap">Units Allocated to Your Agency</h3>
+      <zed-list-counts class="ma-totals" [counts]="totalTiles()" label="Units allocated to your agency per level" />
     }
 
     @if (loaded() && !assessors().length) {
@@ -87,6 +94,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                 } @else {
                   <th>Assessor</th>
                   <th>Levels and modes</th>
+                  <th>Allocated</th>
                   <th>Sector</th>
                   <th>Contact</th>
                   <th class="text-center">Status</th>
@@ -121,6 +129,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                         <span class="ma-type">{{ typeLabel(u.AssessorType) }}</span>
                       }
                     </td>
+                    <!-- 2026-11-18 (the user): assessments allocated per certification level (desktop, lead or co-assessor). -->
+                    <td class="ma-alloc" data-label="Allocated"><zed-level-counts [counts]="u.LevelCounts" [label]="'Assessments allocated to ' + (u.UserName || u.UserId)" /></td>
                     <td data-label="Sector"><span class="ma-pill" [class.is-none]="!u.SectorActivity">{{ u.SectorActivity || 'Not set' }}</span></td>
                   }
                   <td class="ma-contact" [attr.data-label]="consultancy ? 'Contact Details' : 'Contact'">
@@ -143,7 +153,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                 </tr>
               } @empty {
                 <tr class="empty-row">
-                  <td colspan="6" style="padding: 0">
+                  <td [attr.colspan]="consultancy ? 5 : 7" style="padding: 0">
                     <div class="no-data">
                       No {{ labels.assessor.toLowerCase() }} matches the search.
                       <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all</button>
@@ -181,6 +191,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     .ma-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6b7f80; stroke-width: 2; }
     .ma-search input { padding-left: 36px; }
     .ma-showing { font-size: 13px; color: #5f6f70; }
+    .ma-cap { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
+    .ma-alloc { min-width: 170px; }
 
     .ma-list { padding: 0; overflow: hidden; }
     .ma-table { margin: 0; }
@@ -246,6 +258,9 @@ export class MyAssessorsPage {
   private readonly content = inject(ContentService);
 
   protected readonly assessors = signal<OwnAssessorRow[]>([]);
+  /** Main (2026-11-18): the agency's own units allocated per level (none shown until read, or when they cannot be). */
+  protected readonly levelTotals = signal<LevelCount[] | null>(null);
+  protected readonly totalTiles = computed(() => levelCountTiles(this.levelTotals()));
   protected readonly search = signal('');
   protected readonly status = signal<StatusFilter>('all');
   protected readonly loading = signal(false);
@@ -306,6 +321,16 @@ export class MyAssessorsPage {
     const message = (globalThis.history?.state as { message?: unknown } | null)?.message;
     if (typeof message === 'string' && message) this.toast.success(`${this.labels.assessor} added`, message);
     void this.load();
+    if (!this.consultancy) void this.loadTotals();
+  }
+
+  /** The agency's totals per level; a failure leaves the tiles out (the list works without them). */
+  private async loadTotals(): Promise<void> {
+    try {
+      this.levelTotals.set(await firstValueFrom(this.api.myLevelCounts()));
+    } catch {
+      this.levelTotals.set(null);
+    }
   }
 
   protected async load(): Promise<void> {

@@ -23,6 +23,7 @@ import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
 import { canSeeAssessorMobile } from './assessor-mobile';
+import { LevelCounts } from './level-counts';
 
 /** Which assessors the list shows: the status tiles, the type chips and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
@@ -127,7 +128,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 @Component({
   selector: 'zed-staff-assessor-list',
   imports: [
-    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip,
+    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts,
   ],
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="noun + (agencyId ? ' of ' + agencyId : '')" />
@@ -177,6 +178,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
               } @else {
                 <th class="c-who">Assessor</th>
                 <th class="c-lv">Levels and modes</th>
+                <th class="c-alloc">Allocated</th>
                 <th class="c-sec">Sector</th>
                 <th class="c-con">Contact</th>
                 <th class="c-ag">Agency</th>
@@ -213,6 +215,8 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                       <span class="as-type">{{ typeLabel(s.AssessorType) }}</span>
                     }
                   </td>
+                  <!-- 2026-11-18 (the user): assessments allocated per certification level (desktop, lead or co-assessor). -->
+                  <td data-label="Allocated"><zed-level-counts [counts]="s.LevelCounts" [label]="'Assessments allocated to ' + (s.UserName || s.UserId)" /></td>
                   <td data-label="Sector"><span class="as-pill" [class.is-none]="!s.SectorActivity">{{ s.SectorActivity || 'Not set' }}</span></td>
                   <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the flex column on an inner div; a flex td is
                        no table cell, so the browser merged Contact and Agency and every later column moved one header left. -->
@@ -255,7 +259,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
               </tr>
             } @empty {
               <tr class="empty-row">
-                <td colspan="7" style="padding: 0">
+                <td [attr.colspan]="consultancy ? 6 : 8" style="padding: 0">
                   @if (rows().length) {
                     <div class="no-data">
                       No {{ consultancy ? 'consultant' : labels.assessor.toLowerCase() }} matches the filters.
@@ -307,8 +311,9 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 
     .as-list { padding: 0; overflow: hidden; }
     .as-table { margin: 0; }
-    .as-table.is-main { min-width: 1080px; table-layout: fixed; }
-    .as-table .c-lv { width: 290px; }
+    .as-table.is-main { min-width: 1240px; table-layout: fixed; }
+    .as-table .c-lv { width: 230px; }
+    .as-table .c-alloc { width: 190px; }
     .as-table .c-sec { width: 140px; }
     .as-table .c-con { width: 190px; }
     .as-table .c-ag { width: 170px; }

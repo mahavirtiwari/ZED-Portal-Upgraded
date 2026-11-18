@@ -19,6 +19,7 @@ import { ToastService } from '../toast';
 import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { PhoneChip, PhoneSummary, hasPhone, loadPhones, phonesById, releaseMobileAsk, releasePhone } from './assessor-phone';
+import { LevelCount, LevelCounts, levelCountTiles } from './level-counts';
 
 interface BronzeDialog {
   agency: SurveillanceAgency;
@@ -51,11 +52,16 @@ interface Target {
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts],
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="title" subtitle="Accounts are created and edited on the ZED portal (main); changes here apply to surveillance only." />
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
+    @if (totalTiles().length) {
+      <!-- 2026-11-18 (the user: "same logic in the assessment agency login"): the agency's own units per level in surveillance. -->
+      <h3 class="sv-cap">Units Allocated to Your Agency</h3>
+      <zed-list-counts [counts]="totalTiles()" label="Units allocated to your agency per level" />
+    }
     <zed-list-counts [counts]="tiles()" [selected]="filter()" [label]="noun() + ' by status'" (pick)="filter.set($any($event.key))" />
 
     <div class="zed-card sv-bar">
@@ -77,7 +83,7 @@ interface Target {
         @if (kind === 'agencies') {
           <table class="table table-zed sv-table">
             <thead>
-              <tr><th>Agency</th><th>SPOC</th><th>Verification</th><th class="text-center">Assessors</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
+              <tr><th>Agency</th><th>SPOC</th><th>Verification</th><th class="text-center">Assessors</th><th class="sv-alloc">Allocated</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
             </thead>
             <tbody>
               @for (a of agenciesView.page(); track a.userId) {
@@ -102,6 +108,7 @@ interface Target {
                     @if (a.siteVerification) { <span class="sv-pill">Site verification</span> }
                   </td>
                   <td class="text-center sv-count-cell" data-label="Assessors"><strong>{{ a.noOfUsers }}</strong></td>
+                  <td class="sv-alloc" data-label="Allocated"><zed-level-counts [counts]="a.levelCounts" [label]="'Units allocated to ' + (a.userName || a.userId)" /></td>
                   <td class="bronze-status" data-label="Bronze surveillance">
                     <span class="status-badge" [class.is-success]="a.allowBronzeSurveillance" [class.is-inactive]="!a.allowBronzeSurveillance">{{ a.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}</span>
                     @if (!a.allowBronzeSurveillance && a.reasonForRejectionForBS) { <small class="sv-sub">{{ a.reasonForRejectionForBS }}</small> }
@@ -117,7 +124,7 @@ interface Target {
                   </td>
                 </tr>
               } @empty {
-                <tr class="empty-row"><td colspan="7" style="padding: 0"><div class="no-data sv-empty">
+                <tr class="empty-row"><td colspan="8" style="padding: 0"><div class="no-data sv-empty">
                   @if (agencies().length) {
                     No agency matches the filters.
                     <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all agencies</button>
@@ -131,7 +138,7 @@ interface Target {
         } @else {
           <table class="table table-zed sv-table">
             <thead>
-              <tr><th>Assessor</th><th>Contact</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
+              <tr><th>Assessor</th><th>Contact</th><th class="sv-alloc">Allocated</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
             </thead>
             <tbody>
               @for (s of assessorsView.page(); track s.userId) {
@@ -154,6 +161,7 @@ interface Target {
                     <span [class.no-mobile]="!s.mobileNo">{{ s.mobileNo ? mobile(s.mobileNo) : 'Mobile not saved' }}</span>
                     @if (s.email) { <span class="sv-sub" [title]="s.email">{{ email(s.email) }}</span> }
                   </td>
+                  <td class="sv-alloc" data-label="Allocated"><zed-level-counts [counts]="s.levelCounts" [label]="'Assessments allocated to ' + (s.userName || s.userId)" /></td>
                   <td data-label="Bronze surveillance">
                     <label class="bronze-switch form-switch" [class.is-on]="s.allowBronzeSurveillance">
                       <input type="checkbox" role="switch" class="form-check-input" [checked]="!!s.allowBronzeSurveillance" [disabled]="busy()" (change)="setAssessorBronze(s, $any($event.target).checked)" />
@@ -174,7 +182,7 @@ interface Target {
                   </td>
                 </tr>
               } @empty {
-                <tr class="empty-row"><td colspan="5" style="padding: 0"><div class="no-data sv-empty">
+                <tr class="empty-row"><td colspan="6" style="padding: 0"><div class="no-data sv-empty">
                   @if (assessors().length) {
                     No assessor matches the filters.
                     <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all assessors</button>
@@ -287,6 +295,8 @@ interface Target {
     .sv-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sv-pill { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 10px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .sv-agency-line { margin-top: 3px; }
+    .sv-alloc { min-width: 170px; }
+    .sv-cap { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .no-mobile { color: #8a6100; }
     .sv-phone { display: block; margin-top: 6px; }
     .bronze-status { gap: 2px; min-width: 130px; }
@@ -462,9 +472,23 @@ export class SurveillanceUsersPage {
   protected readonly shownCount = computed(() => (this.kind === 'agencies' ? this.filteredAgencies() : this.filteredAssessors()).length);
   protected readonly totalCount = computed(() => (this.kind === 'agencies' ? this.agencies() : this.assessors()).length);
 
+  /** 2026-11-18: an agency's own units allocated per level (its assessors page); none for other roles. */
+  protected readonly levelTotals = signal<LevelCount[] | null>(null);
+  protected readonly totalTiles = computed(() => levelCountTiles(this.levelTotals()));
+
   constructor() {
     void this.load();
     void this.loadPhones();
+    if (this.kind === 'assessors' && this.roleId === StaffRole.Agency) void this.loadTotals();
+  }
+
+  /** A failure leaves the tiles out (the list works without them). */
+  private async loadTotals(): Promise<void> {
+    try {
+      this.levelTotals.set(await firstValueFrom(this.api.levelCounts()));
+    } catch {
+      this.levelTotals.set(null);
+    }
   }
 
   private async load(): Promise<void> {

@@ -410,7 +410,40 @@ describe('MyAssessorsPage', () => {
     await settle(fixture);
   });
 
-  afterEach(() => http.verify());
+  // 2026-11-18: the agency's own totals per level are read beside the list (answered here unless a test does).
+  afterEach(() => {
+    http.match('/api/staff/users/assessors/mine/level-counts').forEach((r) => r.flush([]));
+    http.verify();
+  });
+
+  it('shows the agency its own units allocated per level as tiles and each assessor’s allocations in a column (2026-11-18)', async () => {
+    const counts = (b: number, s: number) => [
+      { code: 'Bronze', name: 'Bronze', allotted: b, inProgress: b - 1, completed: 1, rejected: 0 },
+      { code: 'Silver', name: 'Silver', allotted: s, inProgress: s, completed: 0, rejected: 0 },
+    ];
+    http.expectOne('/api/staff/users/assessors/mine/level-counts').flush(counts(9, 2));
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001', { LevelCounts: counts(4, 0) }), row('ZEDBA0002', { LevelCounts: null })]);
+    await settle(fixture);
+    expect(el.querySelector('.ma-cap')!.textContent).toContain('Units Allocated to Your Agency');
+    const tiles = [...el.querySelectorAll('zed-list-counts')][0];
+    expect(tiles.querySelector('.lc')!.getAttribute('aria-label')).toBe('Units allocated to your agency per level');
+    expect(tiles.textContent!.replace(/\s+/g, ' ')).toContain('9 Bronze Allocated 8 in progress · 1 completed');
+    expect(tiles.textContent!.replace(/\s+/g, ' ')).toContain('2 Silver Allocated 2 in progress · 0 completed');
+    const heads = [...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim());
+    expect(heads.indexOf('Allocated')).toBe(heads.indexOf('Levels and modes') + 1);
+    const rows = el.querySelectorAll('tbody tr');
+    expect([...rows[0].querySelectorAll('.lcs-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Bronze 4', 'Silver 0']);
+    expect(rows[0].querySelector('[data-level="Bronze"]')!.getAttribute('title')).toBe('Bronze: 4 allocated · 3 in progress · 1 completed');
+    expect(rows[1].querySelector('td[data-label="Allocated"]')!.textContent!.trim()).toBe('—');
+  });
+
+  it('leaves the totals out when they cannot be read', async () => {
+    http.expectOne('/api/staff/users/assessors/mine/level-counts').flush({ title: 'down' }, { status: 503, statusText: 'Unavailable' });
+    http.expectOne('/api/staff/users/assessors/mine').flush([row('ZEDBA0001')]);
+    await settle(fixture);
+    expect(el.querySelector('.ma-cap')).toBeNull();
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+  });
 
   it('offers no Unblock while the certificate is attached elsewhere, shows the contact in full and no ID proof or PAN column', async () => {
     http.expectOne('/api/staff/users/assessors/mine').flush([
@@ -743,7 +776,7 @@ describe('AssessorListPage', () => {
     expect(first.querySelector('.as-contact .as-sub')!.getAttribute('title')).toBe('ravi@sample.in');
     expect(second.querySelector('.as-contact')!.textContent!.trim()).toBe('Mobile not saved');
     expect(el.querySelector('tbody')!.textContent).not.toContain('ABCDE1234F');
-    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Levels and modes', 'Sector', 'Contact', 'Agency', 'Status', 'Actions']);
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Levels and modes', 'Allocated', 'Sector', 'Contact', 'Agency', 'Status', 'Actions']);
     http.verify();
   });
 
@@ -800,6 +833,31 @@ describe('AssessorListPage', () => {
     ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Show all') as HTMLButtonElement).click();
     await settle(fixture);
     expect(rows().length).toBe(4);
+    http.verify();
+  });
+
+  it('shows each assessor’s assessments allocated per level beside the levels and modes (2026-11-18)', async () => {
+    const { fixture, http, el } = await create();
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush([
+      {
+        RowNumber: 1, Id: 1, UserId: 'ZEDAS0001', UserName: 'Ravi Kumar', IsActive: true, IdStatus: 'Active', MobileNo: '9000000001', Email: 'ravi@z.test',
+        LevelCounts: [
+          { code: 'Bronze', name: 'Bronze', allotted: 5, inProgress: 2, completed: 3, rejected: 0 },
+          { code: 'ZEDX', name: 'ZED-X', allotted: 0, inProgress: 0, completed: 0, rejected: 0 },
+        ],
+      },
+      { RowNumber: 2, Id: 2, UserId: 'ZEDAS0002', UserName: 'Sita Devi', IsActive: true, IdStatus: 'Active', LevelCounts: null },
+    ]);
+    await settle(fixture);
+    const heads = [...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim());
+    expect(heads.indexOf('Allocated')).toBe(heads.indexOf('Levels and modes') + 1);
+    const [first, second] = [...el.querySelectorAll('tbody tr')];
+    expect([...first.querySelectorAll('.lcs-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Bronze 5', 'ZED-X 0']);
+    expect(first.querySelector('[data-level="Bronze"]')!.getAttribute('title')).toBe('Bronze: 5 allocated · 2 in progress · 3 completed');
+    // The contact stays in full.
+    expect(first.textContent).toContain('9000000001');
+    expect(first.textContent).toContain('ravi@z.test');
+    expect(second.querySelector('td[data-label="Allocated"]')!.textContent!.trim()).toBe('—');
     http.verify();
   });
 });

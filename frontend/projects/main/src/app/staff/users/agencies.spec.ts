@@ -278,4 +278,31 @@ describe('AgenciesPage', () => {
     expect(el.querySelector('zed-confirm-dialog')).toBeNull();
     expect(confirm).not.toHaveBeenCalled();
   });
+
+  it('shows the units allocated per level beside the category, with the split in the tooltip (2026-11-18)', async () => {
+    await create('all');
+    const LevelCounts = [
+      { code: 'Bronze', name: 'Bronze', allotted: 12, inProgress: 4, completed: 7, rejected: 1 },
+      { code: 'Silver', name: 'Silver', allotted: 3, inProgress: 3, completed: 0, rejected: 0 },
+      { code: 'Gold', name: 'Gold', allotted: 0, inProgress: 0, completed: 0, rejected: 0 },
+      { code: 'ZEDX', name: 'ZED-X', allotted: 1, inProgress: 1, completed: 0, rejected: 0 },
+    ];
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001', { LevelCounts }), agency('ZEDAA0002', { LevelCounts: null })]);
+    await settle();
+    const heads = [...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim());
+    expect(heads.indexOf('Allocated')).toBe(heads.indexOf('Category and sector type') + 1);
+    const cell = rows()[0].querySelector('td[data-label="Allocated"]')!;
+    expect([...cell.querySelectorAll('.lcs-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Bronze 12', 'Silver 3', 'Gold 0', 'ZED-X 1']);
+    expect(cell.querySelector('[data-level="Bronze"]')!.getAttribute('title')).toBe('Bronze: 12 allocated · 4 in progress · 7 completed · 1 rejected');
+    // Not counted: a dash, the rest of the row unchanged.
+    expect(rows()[1].querySelector('td[data-label="Allocated"]')!.textContent!.trim()).toBe('—');
+    expect(rows()[1].textContent).toContain('9876543210');
+  });
+
+  it('has no Allocated column on the level allocation page', async () => {
+    await create('levels');
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001')]);
+    await settle();
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).not.toContain('Allocated');
+  });
 });

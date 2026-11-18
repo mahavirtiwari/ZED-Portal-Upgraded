@@ -15,6 +15,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { ToastService } from '../toast';
 import { PoCard } from '../expenditure/po-card';
+import { LevelCounts } from './level-counts';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { initialsOf, resetLinkAsk, sentTo } from './user-display';
@@ -47,7 +48,7 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel, PoCard],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel, PoCard, LevelCounts],
   templateUrl: './agencies.html',
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-01 / staff-03 column widths (fixed layout, the
@@ -58,6 +59,9 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
     .ag-search input { padding-left: 36px; height: 38px; border-radius: 9px; background-image: none; }
     .ag-card { padding: 0; overflow: hidden; }
     .ag-table { min-width: 1060px; margin: 0; table-layout: fixed; }
+    /* 2026-11-18: the Allocated column (level chips, two per line at most) beside the category. */
+    .ag-table.has-alloc { min-width: 1250px; }
+    .ag-table th.c-alloc { width: 200px; }
     .ag-table th.c-spoc { width: 240px; }
     .ag-table th.c-cat { width: 270px; }
     .ag-table th.c-n { width: 90px; }
@@ -124,6 +128,8 @@ export class AgenciesPage {
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly word = this.consultancy ? 'organisation' : 'agency';
+  /** 2026-11-18 (the user): units allocated per certification level, beside the category (main list only). */
+  protected readonly showsAllocated = this.mode === 'all' && !this.consultancy;
   /** 2026-11-18 (expenditure monitoring): the agency (organisation) whose purchase orders card is open. */
   protected readonly poFor = signal<AgencyRow | null>(null);
 

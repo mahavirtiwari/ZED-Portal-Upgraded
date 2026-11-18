@@ -35,12 +35,13 @@
 
 <div class="zed-card ag-card">
   <div class="table-responsive">
-    <table class="table table-zed ag-table" [class.is-levels]="mode === 'levels'">
+    <table class="table table-zed ag-table" [class.is-levels]="mode === 'levels'" [class.has-alloc]="showsAllocated">
       <thead>
         <tr>
           <th class="c-ag">{{ consultancy ? 'Consultant Organisation' : 'Agency' }}</th>
           @if (mode === 'all') { <th class="c-spoc">SPOC</th> }
           @if (!consultancy) { <th class="c-cat">Category and sector type</th> }
+          @if (showsAllocated) { <th class="c-alloc">Allocated</th> }
           @if (mode === 'levels') {
             @for (l of levels(); track l.code) { <th class="text-center c-lv">{{ l.name }}</th> }
           } @else {
@@ -86,6 +87,10 @@
                 </div>
               </td>
             }
+            @if (showsAllocated) {
+              <!-- 2026-11-18 (the user): units allocated to the agency per certification level; the tooltip splits them. -->
+              <td class="ag-alloc" data-label="Allocated"><zed-level-counts [counts]="a.LevelCounts" [label]="'Units allocated to ' + a.UserName" /></td>
+            }
             @if (mode === 'levels') {
               @for (l of levels(); track l.code) {
                 <td class="lv-cell half" [attr.data-label]="l.name">
@@ -115,7 +120,7 @@
         } @empty {
           @if (!loading()) {
             <tr class="empty-row">
-              <td [attr.colspan]="mode === 'levels' ? 2 + levels().length : consultancy ? 5 : 6" style="padding: 0">
+              <td [attr.colspan]="mode === 'levels' ? 2 + levels().length : consultancy ? 5 : 7" style="padding: 0">
                 <div class="no-data">
                   @if (filtering()) {
                     No {{ word }} matches the search or filter.

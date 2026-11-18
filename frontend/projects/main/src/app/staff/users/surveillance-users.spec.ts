@@ -124,7 +124,7 @@ describe('surveillance agencies and assessors', () => {
     const table = el.querySelector('table')!;
     expect(table.classList).toContain('table-zed');
     expect([...table.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual([
-      'Agency', 'SPOC', 'Verification', 'Assessors', 'Bronze surveillance', 'Status', 'Actions',
+      'Agency', 'SPOC', 'Verification', 'Assessors', 'Allocated', 'Bronze surveillance', 'Status', 'Actions',
     ]);
     const tr = table.querySelector('tbody tr')!;
     const cells = [...tr.querySelectorAll('td')];
@@ -133,8 +133,8 @@ describe('surveillance agencies and assessors', () => {
     expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['Spoc', '9876543210', 'a@acme.test']);
     expect(cells[2].textContent!.trim()).toBe('Desktop verification');
     expect(cells[3].textContent!.trim()).toBe('2');
-    expect(cells[5].textContent!.trim()).toBe('Active');
-    expect([...cells[6].querySelectorAll('.sv-btns > button')].map((b) => b.textContent!.trim())).toEqual(['Bronze surveillance']);
+    expect(cells[6].textContent!.trim()).toBe('Active');
+    expect([...cells[7].querySelectorAll('.sv-btns > button')].map((b) => b.textContent!.trim())).toEqual(['Bronze surveillance']);
     expect(await menuOf(fixture, tr)).toEqual(['Send reset link', 'View history', 'Block agency']);
   });
 
@@ -145,15 +145,15 @@ describe('surveillance agencies and assessors', () => {
     ]);
     await settle(fixture);
     const table = el.querySelector('table')!;
-    expect([...table.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Contact', 'Bronze surveillance', 'Status', 'Actions']);
+    expect([...table.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['Assessor', 'Contact', 'Allocated', 'Bronze surveillance', 'Status', 'Actions']);
     const tr = table.querySelector('tbody tr')!;
     const cells = [...tr.querySelectorAll('td')];
     expect(cells[0].textContent).toContain('Kanpur');
     expect(cells[0].textContent).toContain('ID-77');
     expect(tr.textContent).not.toContain('ABCDE1234F');
     expect([...cells[1].children].map((s) => s.textContent!.trim())).toEqual(['9812345678', 'a@x.test']);
-    expect(cells[2].querySelector('input[type=checkbox]')).not.toBeNull();
-    expect(cells[3].textContent!.trim()).toBe('In-Active');
+    expect(cells[3].querySelector('input[type=checkbox]')).not.toBeNull();
+    expect(cells[4].textContent!.trim()).toBe('In-Active');
     expect(await menuOf(fixture, tr)).toEqual(['View history', 'Unblock assessor']);
     expect(table.querySelector('.sv-agency-line')).toBeNull();
     expect(el.querySelector('#sv-agency')).toBeNull();
@@ -262,5 +262,50 @@ describe('surveillance agencies and assessors', () => {
     await settle(fixture);
     expect(el.querySelector('.sv-empty')!.textContent).toContain('No agencies yet. They are added on the ZED portal (main).');
     expect([...el.querySelectorAll('zed-list-counts .lc-item b')].map((c) => c.textContent)).toEqual(['0', '0', '0', '0']);
+  });
+
+  // ---- 2026-11-18: allocations per level -------------------------------------------------------------
+  const levelCounts = (b: number, g: number) => [
+    { code: 'Bronze', name: 'Bronze', allotted: b, inProgress: b, completed: 0, rejected: 0 },
+    { code: 'Gold', name: 'Gold', allotted: g, inProgress: 0, completed: g, rejected: 0 },
+  ];
+  const chips = (root: Element) => [...root.querySelectorAll('.lcs-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim());
+
+  it('shows each agency’s units allocated per level in an Allocated column', async () => {
+    const { el } = await agencies([{ ...agency, levelCounts: levelCounts(6, 2) }, { ...agency, userId: 'ZEDAA0002', levelCounts: null }]);
+    const heads = [...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim());
+    expect(heads.indexOf('Allocated')).toBe(heads.indexOf('Assessors') + 1);
+    const [first, second] = [...el.querySelectorAll('tbody tr')];
+    expect(chips(first)).toEqual(['Bronze 6', 'Gold 2']);
+    expect(first.querySelector('[data-level="Gold"]')!.getAttribute('title')).toBe('Gold: 2 allocated · 0 in progress · 2 completed');
+    expect(second.querySelector('td[data-label="Allocated"]')!.textContent!.trim()).toBe('—');
+  });
+
+  it('shows each assessor’s allocations and, to an agency, its own totals per level as tiles', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { data: { kind: 'assessors' } } } }],
+    });
+    TestBed.inject(AuthService).setUser({ userId: 'AGENCY1', userName: 'Acme', roleId: 2, role: 'Agency', subRoles: [] });
+    const fixture = TestBed.createComponent(SurveillanceUsersPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el = fixture.nativeElement as HTMLElement;
+    http.expectOne('/api/staff/surveillance-users/level-counts').flush(levelCounts(9, 1));
+    http.expectOne('/api/staff/surveillance-users/assessors').flush([{ ...assessor, levelCounts: levelCounts(3, 0) }]);
+    await settle(fixture);
+    expect(el.querySelector('.sv-cap')!.textContent).toContain('Units Allocated to Your Agency');
+    const totals = el.querySelector('zed-list-counts')!;
+    expect(totals.querySelector('.lc')!.getAttribute('aria-label')).toBe('Units allocated to your agency per level');
+    expect(totals.textContent!.replace(/\s+/g, ' ')).toContain('9 Bronze Allocated 9 in progress · 0 completed');
+    expect(chips(el.querySelector('tbody tr')!)).toEqual(['Bronze 3', 'Gold 0']);
+    http.verify();
+  });
+
+  it('reads no totals for the MasterAdmin', async () => {
+    const { fixture, http, el } = create('assessors', true);
+    http.expectOne('/api/staff/surveillance-users/assessors').flush([assessor]);
+    await settle(fixture);
+    http.expectNone('/api/staff/surveillance-users/level-counts');
+    expect(el.querySelector('.sv-cap')).toBeNull();
+    expect(el.querySelector('tbody td[data-label="Allocated"]')!.textContent!.trim()).toBe('—');
   });
 });

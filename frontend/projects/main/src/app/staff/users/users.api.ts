@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { allLevels, levelName } from '../../msme/shared/levels';
+import { LevelCount } from './level-counts';
 
 /** Row of SP_GET_USERS_BY_ROLE (RoleId 2) as returned by api/staff/users/agencies (legacy column names). */
 export interface AgencyRow {
@@ -29,6 +30,8 @@ export interface AgencyRow {
   LevelReasons?: Partial<Record<AgencyLevel, string | null>>;
   /** Main (V4): Manufacturing, Services or Both; null when not set yet. */
   SectorActivity?: SectorActivity | null;
+  /** Main (2026-11-18): units allocated per enabled level; null when they could not be counted. */
+  LevelCounts?: LevelCount[] | null;
   /** 2026-11-08: the levels the Admin added, Allow{Code}Assessments (NULL / missing = allowed). */
   [column: string]: unknown;
 }
@@ -190,6 +193,8 @@ export interface AssessorRow {
   AgencyUserName: string | null;
   /** Users.PanNo (2026-11-13), when the agency entered it. */
   PanNo?: string | null;
+  /** Main (2026-11-18): assessments allocated per enabled level; null when they could not be counted. */
+  LevelCounts?: LevelCount[] | null;
   /** Blocked: the reason and date of its latest block (2026-11-08). */
   BlockReason?: string | null;
   BlockedOn?: string | null;
@@ -225,6 +230,8 @@ export interface OwnAssessorRow {
   PanNo?: string | null;
   /** Consultancy: "Consultant" or "Technical Expert" (RoleId 3 / 33). */
   UserType?: string | null;
+  /** Main (2026-11-18): assessments allocated per enabled level; null when they could not be counted. */
+  LevelCounts?: LevelCount[] | null;
 }
 
 /** How the Add form verifies a certified professional (Admin → Settings → Professional Verification, per portal). */
@@ -399,6 +406,11 @@ export class UsersApi {
     return this.http.get<AssessorRow[]>(`${this.base}/assessors`, { params });
   }
 
+  /** Main (2026-11-18): the signed-in agency's own units allocated per level. */
+  myLevelCounts(): Observable<LevelCount[]> {
+    return this.http.get<LevelCount[]>(`${this.base}/assessors/mine/level-counts`);
+  }
+
   myAssessors(): Observable<OwnAssessorRow[]> {
     return this.http.get<OwnAssessorRow[]>(`${this.base}/assessors/mine`);
   }
@@ -482,6 +494,8 @@ export interface SurveillanceAgency {
   reasonForRejectionForBS: string | null;
   tuPreferredState: string | null;
   noOfUsers: number;
+  /** 2026-11-18: units allocated per level in surveillance; null when they could not be counted. */
+  levelCounts?: LevelCount[] | null;
 }
 
 export interface SurveillanceAssessor {
@@ -496,6 +510,8 @@ export interface SurveillanceAssessor {
   allowBronzeSurveillance: boolean | null;
   agencyUserId: string | null;
   agencyUserName: string | null;
+  /** 2026-11-18: assessments allocated per level in surveillance; null when they could not be counted. */
+  levelCounts?: LevelCount[] | null;
 }
 
 export interface BronzeSurveillanceRequest {
@@ -534,6 +550,11 @@ export class SurveillanceUsersApi {
 
   setAgencyBronze(userId: string, req: BronzeSurveillanceRequest): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`${this.base}/agencies/${encodeURIComponent(userId)}/bronze-surveillance`, req);
+  }
+
+  /** 2026-11-18: the signed-in agency's own units allocated per level in surveillance. */
+  levelCounts(): Observable<LevelCount[]> {
+    return this.http.get<LevelCount[]>(`${this.base}/level-counts`);
   }
 
   assessors(agencyId = ''): Observable<SurveillanceAssessor[]> {
