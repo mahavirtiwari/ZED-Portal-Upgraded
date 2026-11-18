@@ -95,7 +95,6 @@ import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
       </div>
       <footer class="ml-footer">
         <small>© {{ year }} Ministry of MSME, Government of India</small>
-        <small>Best viewed in the latest Chrome, Edge or Firefox</small>
       </footer>
     </div>
   `,
