@@ -299,12 +299,19 @@ export function RegistrationScreen() {
               <DarkHeading title="Plant Location" />
               {lookup.plants.map((p, i) => (
                 <View key={`plant-${i}`} testID={`plant-${i}`}>
-                  <OptionCard selected={plant === i} onPress={() => choosePlant(i)} disabled={registeredZedId(p) != null} testID={`plant-${i}-select`}>
+                  <OptionCard
+                    selected={plant === i}
+                    onPress={() => choosePlant(i)}
+                    disabled={registeredZedId(p) != null || badUnitName(p) != null}
+                    testID={`plant-${i}-select`}
+                  >
                     {registeredZedId(p) != null ? (
                       <Unavailable
                         text={`Already registered${registeredZedId(p) ? ': ' + registeredZedId(p) : ''}. Log in with its ZED ID.`}
                         testID={`plant-${i}-registered`}
                       />
+                    ) : badUnitName(p) != null ? (
+                      <Unavailable text={badUnitName(p)!} testID={`plant-${i}-bad-name`} />
                     ) : (
                       <RadioRow selected={plant === i} label="Select this Unit" />
                     )}
@@ -433,6 +440,15 @@ function RegInput({
 function registeredZedId(plant: UdyamRecord): string | null {
   const v = (plant as Record<string, unknown>).V4RegisteredZedId;
   return typeof v === 'string' ? v : null;
+}
+
+/**
+ * 2026-11-19 (the user): the server marks a plant whose unit name in Udyam is blank or a placeholder (N/A, NA, 1, 2, ...)
+ * with the reason; it cannot be chosen until the name is corrected on the Udyam portal.
+ */
+function badUnitName(plant: UdyamRecord): string | null {
+  const v = (plant as Record<string, unknown>).V4UnitNameRefused;
+  return typeof v === 'string' && v.trim() ? v : null;
 }
 
 /** New (2026-11-07): the reason an activity cannot be registered (the scheme does not cover it), from the server. */

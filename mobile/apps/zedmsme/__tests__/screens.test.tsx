@@ -365,6 +365,7 @@ describe('ZED MSME applicant screens', () => {
           Plants: [
             { PlantIdNo: 'P1', UnitName: 'Acme Unit 1', PAddress: 'Plot 4', V4RegisteredZedId: 'ZEDM•••123' },
             { PlantIdNo: 'P2', UnitName: 'Acme Unit 2', PAddress: 'Plot 9' },
+            { PlantIdNo: 'P3', UnitName: 'N/A', PAddress: 'Plot 11', V4UnitNameRefused: 'The plant / unit name in your Udyam registration is not a valid name.' },
           ],
           Activities: [
             { Activity: 'Trading', Two_DigitActivity: '46-Wholesale trade', V4NotEligible: 'Currently this scheme is not applicable for the selected plant activity.' },
@@ -382,6 +383,8 @@ describe('ZED MSME applicant screens', () => {
 
     expect(texts(r)).toContain('Already registered: ZEDM•••123. Log in with its ZED ID.');
     expect(handler(r, 'plant-0-select', 'onPress').props.disabled).toBe(true);
+    expect(texts(r)).toContain('The plant / unit name in your Udyam registration is not a valid name.');
+    expect(handler(r, 'plant-2-select', 'onPress').props.disabled).toBe(true);
     await press(r, 'plant-1-select');
     expect(texts(r)).toContain('Currently this scheme is not applicable for the selected plant activity.');
     expect(handler(r, 'activity-0-select', 'onPress').props.disabled).toBe(true);
