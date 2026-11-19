@@ -1,15 +1,19 @@
 -- Run on ZED_SURVEILLANCE, after 0028 (Users.SectorActivity, SectionTypes.AssessmentMode on main) and 0082. Safe to re-run:
 -- the procedures are recreated (CREATE OR ALTER) and each legacy payment procedure is skipped once edited.
 --
--- 2026-11-19 (the user): a surveillance round never goes to the agency that did the unit's certification assessment.
+-- 2026-11-19 (the user): a surveillance round never goes to the agency that did the unit's certification assessment,
+-- and one agency login serves Bronze, Silver and Gold surveillance.
 -- Before, the Silver / Gold (and V4 level) surveillance payment procedures gave the round to main's certifying agency
 -- (MsmeCertifications.CertificationBodyUserId at status 16), and Bronze rounds went by round robin without leaving that
 -- agency out. Now every level, Bronze included, goes by round robin to another active agency that serves the unit's state
 -- and sector, as the Master Admin's Allot Surveillance list offers them (SP_ASSESSMENT_AGENCIES_TO_ALLOT and the portal):
 --   Bronze             AllowBronzeSurveillance, preferred state (Users.TuPreferredState = the unit's state); agencies of
 --                      the unit's district (AgencyUserDistricts) first, as before.
---   other levels       not a Bronze surveillance agency, site verification (desktop verification for a level assessed at
---                      the desktop only), the unit's state in AgencyUserStates (no state rows = every state).
+--   other levels       site verification (desktop verification for a level assessed at the desktop only), the unit's
+--                      state in AgencyUserStates (no state rows = every state). An agency allowed for Bronze surveillance
+--                      is offered them too: one agency login serves Bronze, Silver and Gold surveillance (the user,
+--                      2026-11-19; before, SP_ASSESSMENT_AGENCIES_TO_ALLOT offered Silver / Gold only to agencies NOT
+--                      allowed for Bronze surveillance).
 --   every level        active here and on main, the unit's NIC sector in UserNicSectors (no sector rows = every sector),
 --                      the unit's kind (Manufacturing / Services) in Users.SectorActivity (not set or Both = any), and never
 --                      an agency of main's records of this level (CertificationBodyUserId: the certifying agency).
@@ -21,6 +25,9 @@
 --   SP_V4_SURVEILLANCE_NEXT_AGENCY           new: the choice above (reads only).
 --   SP_MSME_AUTO_ALLOT_AGENCY_ROUND_ROBIN    Bronze (zero-amount payment): the choice above, then as before (the round's
 --                                            agency if it has none yet, the history row; the caller mails the agency).
+--   SP_ASSESSMENT_AGENCIES_TO_ALLOT          (the Allot Surveillance list) Silver / Gold / V4 levels: agencies allowed for
+--                                            Bronze surveillance too (was AllowBronzeSurveillance = 0); every branch now
+--                                            also leaves out blocked agencies (the state / sector branches did not).
 --   SP_MSME_PAYMENT_GATEWAY_DETAILS, SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS, ..._WITH_INFO
 --                                            the round's agency is the choice above instead of main's certifying agency;
 --                                            the allotment is written to AgencyAllotmentHistory ('Auto') and the round's
@@ -80,7 +87,7 @@ BEGIN
       AND LTRIM(RTRIM(U.UserId)) NOT IN (SELECT UserId FROM @Excluded)
       AND (
             (@Certification = 'Bronze' AND U.AllowBronzeSurveillance = 1 AND LTRIM(RTRIM(U.TuPreferredState)) = @StateId)
-         OR (@Certification <> 'Bronze' AND ISNULL(U.AllowBronzeSurveillance, 0) = 0
+         OR (@Certification <> 'Bronze'
              AND (CASE WHEN @Desktop = 1 THEN U.DesktopVerification ELSE U.SiteVerification END) = 1
              AND (NOT EXISTS (SELECT 1 FROM dbo.AgencyUserStates S WHERE S.UserId = U.UserId AND S.RoleId = 2)
                   OR EXISTS (SELECT 1 FROM dbo.AgencyUserStates S WHERE S.UserId = U.UserId AND S.RoleId = 2 AND LTRIM(RTRIM(S.States)) = @StateName)))
@@ -236,6 +243,20 @@ FROM (VALUES (N'dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS'), (N'dbo.SP_MSME_MANUAL_UPD
              (N'dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO')) AS p (Obj)
 CROSS JOIN (VALUES (1, N'--and RestrictMail IS NULL', @choose),
                    (2, N'EXEC [SP_SEND_AUTO_MAIL_FOR_AUTO_ALLOT_AGENCY] @ZedId, @Certification', @record)) AS e (Seq, Find, Replacement);
+-- The Allot Surveillance list: only active agencies in every branch (1-3), and Silver / Gold also for Bronze agencies (4).
+INSERT #V4_EDITS (Obj, Seq, Find, Replacement, Expect) VALUES
+(N'dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT', 1,
+ N'from Users U where RoleId=2 AND AllowBronzeSurveillance=1 AND TuPreferredState=',
+ N'from Users U where RoleId=2 AND U.IsActive = 1 AND AllowBronzeSurveillance=1 AND TuPreferredState=', 1),
+(N'dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT', 2,
+ N'where A.RoleId=2 AND AllowBronzeSurveillance=1 AND NicSectorCode',
+ N'where A.RoleId=2 AND U.IsActive = 1 AND AllowBronzeSurveillance=1 AND NicSectorCode', 1),
+(N'dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT', 3,
+ N'where A.RoleId=2 AND AllowBronzeSurveillance=0',
+ N'where A.RoleId=2 AND U.IsActive = 1 AND AllowBronzeSurveillance=0', 2),
+(N'dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT', 4,
+ N'AllowBronzeSurveillance=0',
+ N'ISNULL(AllowBronzeSurveillance, 0) IN (0, 1)', 4);
 GO
 SET XACT_ABORT ON;
 BEGIN TRANSACTION;
@@ -244,6 +265,7 @@ BEGIN
     EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS', @Marker = N'EXEC dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY @ZedId, @Certification, @Agency OUTPUT';
     EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS', @Marker = N'EXEC dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY @ZedId, @Certification, @Agency OUTPUT';
     EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO', @Marker = N'EXEC dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY @ZedId, @Certification, @Agency OUTPUT';
+    EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT', @Marker = N'ISNULL(AllowBronzeSurveillance, 0) IN (0, 1)';
 END
 COMMIT;
 GO

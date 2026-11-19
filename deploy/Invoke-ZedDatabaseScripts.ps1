@@ -230,7 +230,7 @@ $Migrations = @(
     @{ File = '0099_mobile_one_phone.sql';     Dbs = $Zed;      Markers = @('COL:dbo.MobileDeviceBindings.Make', 'COL:dbo.MobileDeviceBindings.AppVersion', 'COL:dbo.MobileDeviceBindings.FirstIp', 'COL:dbo.MobileDeviceEvents.ReleasedBy', 'COL:dbo.MobileDeviceEvents.Reason') }
     @{ File = '0100_expenditure_tax_details.sql'; Dbs = @($Main, $Cons); Markers = @('COL:dbo.Users.TaxGstin', 'COL:dbo.Users.TaxSubmittedOn', 'C:dbo.CK_Users_TaxDetails') }
     @{ File = '0101_tat_and_man_days.sql';     Dbs = @($Main, $Cons, $Surv); Markers = @('U:dbo.TatStatusDays', 'U:dbo.TatRelations') }
-    @{ File = '0102_surveillance_other_agency.sql'; Dbs = @($Surv); Markers = @('DEF:dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY:V4_0102', 'DEF:dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS:SP_V4_SURVEILLANCE_NEXT_AGENCY', 'DEF:dbo.SP_MSME_AUTO_ALLOT_AGENCY_ROUND_ROBIN:V4_0102') }
+    @{ File = '0102_surveillance_other_agency.sql'; Dbs = @($Surv); Markers = @('DEF:dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY:V4_0102', 'DEF:dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS:SP_V4_SURVEILLANCE_NEXT_AGENCY', 'DEF:dbo.SP_MSME_AUTO_ALLOT_AGENCY_ROUND_ROBIN:V4_0102', 'DEF:dbo.SP_ASSESSMENT_AGENCIES_TO_ALLOT:ISNULL(AllowBronzeSurveillance, 0) IN (0, 1)') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{
