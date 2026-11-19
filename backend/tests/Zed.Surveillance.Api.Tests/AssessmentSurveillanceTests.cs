@@ -63,6 +63,21 @@ public sealed class AssessmentSurveillanceTests : IDisposable
         Assert.False(row.TryGetProperty("MobileNo", out _));
     }
 
+    /// <summary>2026-11-19 (the user): never the agency that did the unit's certification assessment.</summary>
+    [Fact]
+    public async Task The_agency_that_certified_the_unit_is_not_offered_and_cannot_be_allotted()
+    {
+        _s.Sql.Queries[AssessmentAllotmentController.CertifyingAgenciesSql] = args =>
+            FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "Certification") == "Bronze" ? [new { UserId = "agency1 " }] : [];
+        var client = await _s.SignInAsync("MADMIN", 7);
+        var agencies = await client.GetFromJsonAsync<JsonElement>($"/api/staff/assessment/allot/agencies?zedId={Zed}&certification=Bronze");
+        Assert.Empty(agencies.EnumerateArray());
+
+        var refused = await client.PostAsJsonAsync("/api/staff/assessment/allot", new { zedId = Zed, certification = "Bronze", agencyUserId = "AGENCY1" });
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.DoesNotContain(_s.Sql.Calls, c => c.Name == "SP_ASSESSMENT_ALLOT_TO_AGENCY");
+    }
+
     [Fact]
     public async Task Bronze_is_offered_only_to_agencies_allowed_for_bronze_surveillance()
     {

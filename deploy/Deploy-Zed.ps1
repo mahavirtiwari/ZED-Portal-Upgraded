@@ -13,8 +13,9 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0101 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0102 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
+  2026-11-19: migration 0102 (surveillance rounds go by round robin to another agency, never the certifying one).
   2026-11-18 release: migrations 0095-0101 (zero-amount payment record, submission checklists, MSME notifications seen,
   expenditure monitoring: rates / purchase orders / invoices, one phone per staff app user, the agencies' one-time GSTIN / PAN,
   TAT rules and man-days per level). The mobile app hosts changed
@@ -169,6 +170,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT'); Name = '0100 agency GSTIN / PAN'; Test = (Has-Col 'dbo.Users' 'TaxGstin') + ' AND ' + (Has-Col 'dbo.Users' 'TaxSubmittedOn') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0101 TAT rules'; Test = "OBJECT_ID('dbo.TatStatusDays', 'U') IS NOT NULL AND OBJECT_ID('dbo.TatRelations', 'U') IS NOT NULL" }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0101 man-days per level'; Test = (Has-Col 'dbo.SectionTypes' 'ManDays') + ' AND ' + (Has-Col 'dbo.SectionTypes' 'SurveillanceManDays') }
+        @{ Dbs = @('ZED_SURVEILLANCE'); Name = '0102 surveillance to another agency'; Test = (Has-Text 'dbo.SP_V4_SURVEILLANCE_NEXT_AGENCY' 'V4_0102') + ' AND ' + (Has-Text 'dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS' 'SP_V4_SURVEILLANCE_NEXT_AGENCY') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

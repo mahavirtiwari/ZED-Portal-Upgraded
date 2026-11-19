@@ -222,6 +222,17 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         return null;
     }
 
+    /// <summary>The agencies of main's records of this level of the unit: the agency that certified it (2026-11-19).</summary>
+    internal const string CertifyingAgenciesSql =
+        "SELECT DISTINCT LTRIM(RTRIM(CertificationBodyUserId)) AS UserId FROM ZEDCS_V2_LIVE.dbo.MsmeCertifications " +
+        "WHERE ZedId = @ZedId AND Certification = @Certification AND LTRIM(RTRIM(ISNULL(CertificationBodyUserId, ''))) <> '';";
+
+    private sealed record AgencyIdRow(string? UserId);
+
+    private async Task<HashSet<string>> CertifyingAgenciesAsync(string zedId, string level, CancellationToken ct) =>
+        (await db.QuerySqlAsync<AgencyIdRow>(CertifyingAgenciesSql, new { ZedId = zedId, Certification = level }, ct))
+            .Select(r => r.UserId?.Trim() ?? "").Where(u => u.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private async Task<IEnumerable<Person>> AgenciesFor(string zedId, string level, CancellationToken ct)
     {
         var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
@@ -233,7 +244,12 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
         // V4 (2026-11-08): not the agencies the Master Admin disabled this level for (Silver, Gold, ZED-X; Bronze is in the procedure).
-        var disabled = host.System == PortalSystem.Main ? await Users.AgencyLevels.DisabledAsync(db, level, log, ct) : [];
+        var disabled = host.System == PortalSystem.Main ? await Users.AgencyLevels.DisabledAsync(db, level, log, ct)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // 2026-11-19 (the user): a surveillance round never goes to the agency that did the unit's certification assessment
+        // (the automatic allotment leaves it out too: ZED_SURVEILLANCE SP_V4_SURVEILLANCE_NEXT_AGENCY, migration 0102).
+        if (host.System == PortalSystem.Surveillance)
+            disabled.UnionWith(await CertifyingAgenciesAsync(zedId, level, ct));
         // 2026-11-18 (expenditure monitoring): each agency's PO for the level; a used-up PO stops its allotment (main, Consultancy).
         var po = (await Expenditure.PoLimits.StatusAsync(db, host, null, level, log, ct))
             .ToDictionary(s => s.PartyId, StringComparer.OrdinalIgnoreCase);
