@@ -3,6 +3,7 @@ import { Injectable, InjectionToken, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { MessageResponse } from '@zed/shared';
 import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
+import type { AgencyRejection, RejectResponse } from '../assessment/assessment.api';
 
 /** The system this build serves (a token so the specs can render the Consultancy and Surveillance variants). */
 export const SITE_SYSTEM = new InjectionToken<PortalSystem>('SITE_SYSTEM', { providedIn: 'root', factory: () => PORTAL_SYSTEM });
@@ -84,9 +85,12 @@ export class SiteAssessmentApi {
     return this.http.post<MessageResponse>('/api/staff/site-assessment/allotments', req);
   }
 
-  /** 2026-11-18: the agency returns a unit of its site-assessment allotment to the ZED team (reason required, at most 100 characters). */
-  reject(zedId: string, certification: string, reasonForRejection: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>('/api/staff/site-assessment/allotments/reject', { zedId, certification, reasonForRejection });
+  /**
+   * 2026-11-18: the agency rejects a unit of its site-assessment allotment. 2026-11-19 (rejection reasons, approved): with a
+   * reason of Admin → Rejection Reasons and optional remarks; the reason decides whether it goes to another agency.
+   */
+  reject(zedId: string, certification: string, rejection: AgencyRejection): Observable<RejectResponse> {
+    return this.http.post<RejectResponse>('/api/staff/site-assessment/allotments/reject', { zedId, certification, ...rejection });
   }
 
   remoteAssessments(): Observable<Row[]> {

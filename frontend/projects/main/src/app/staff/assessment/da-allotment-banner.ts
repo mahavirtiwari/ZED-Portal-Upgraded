@@ -1,11 +1,11 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { apiErrorMessage } from '@zed/shared';
-import { firstValueFrom } from 'rxjs';
+import { MessageResponse, apiErrorMessage } from '@zed/shared';
+import { Observable, firstValueFrom } from 'rxjs';
 import { text } from './assessment-shared';
-import { AgencyAllotment, AssessmentApi, Person, Row } from './assessment.api';
-import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit } from './da-allot-actions';
-import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { AgencyAllotment, AssessmentApi, Person, RejectionReason, Row } from './assessment.api';
+import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit, rejectionOf } from './da-allot-actions';
+import { ConfirmAsk, ConfirmDialog, ConfirmResult } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { TextPipe, t } from '../../content/page-text';
 import { Assessor, Row as SiteRow, SiteAssessmentApi } from '../site-assessment/site-assessment.api';
@@ -58,7 +58,7 @@ export const SA_ALLOTMENT_URL = '/staff/sa-allotment';
       <zed-allot-assessor-dialog [unit]="u" [assessors]="assessors()" [busy]="busy()" [failed]="failed()" (allot)="allot($event)" (cancel)="allotUnit.set(null)" />
     }
     @if (rejecting()) {
-      <zed-confirm-dialog [ask]="rejectAsk()" [busy]="busy()" [failed]="failed()" inputId="daRejectReason" (confirmed)="reject($event)" (cancel)="rejecting.set(false)" />
+      <zed-confirm-dialog [ask]="rejectAsk()" [busy]="busy()" [failed]="failed()" inputId="daRejectReason" (decided)="reject($event)" (cancel)="rejecting.set(false)" />
     }
   `,
   styles: `
@@ -94,6 +94,8 @@ export class DaAllotmentBanner {
   protected readonly allotUnit = signal<Row | null>(null);
   protected readonly assessors = signal<Person[]>([]);
   protected readonly rejecting = signal(false);
+  /** The active rejection reasons, loaded when the Reject pop-up opens. */
+  private readonly reasons = signal<RejectionReason[]>([]);
   /** Site: the unit as in the agency's SA list and its site assessors, while the Accept / Re-allot pop-up is open. */
   protected readonly siteUnit = signal<SiteRow | null>(null);
   protected readonly siteAssessors = signal<Assessor[]>([]);
@@ -101,7 +103,8 @@ export class DaAllotmentBanner {
   private readonly listUrl = computed(() => (this.site() ? SA_ALLOTMENT_URL : DA_ALLOTMENT_URL));
 
   private readonly unit = computed<Row>(() => ({ ZedId: this.zedId(), Certification: this.certification(), PUnitName: this.unitName() }));
-  protected readonly rejectAsk = computed<ConfirmAsk>(() => (this.site() ? siteRejectAsk(this.unit() as SiteRow) : agencyRejectAsk(this.unit())));
+  protected readonly rejectAsk = computed<ConfirmAsk>(() =>
+    (this.site() ? siteRejectAsk(this.unit() as SiteRow, this.reasons()) : agencyRejectAsk(this.unit(), this.reasons())));
 
   /** The title: when it was allotted and what waits. */
   protected readonly heading = computed(() => {
@@ -181,9 +184,18 @@ export class DaAllotmentBanner {
       choice.assessorName ? t('staff.daAllotment.banner.toast.allottedTo', 'To {name}.', { name: choice.assessorName }) : null);
   }
 
-  protected openReject(): void {
+  /** 2026-11-19 (rejection reasons, approved): the pop-up opens with the reasons the Admin manages. */
+  protected async openReject(): Promise<void> {
     this.failed.set('');
-    this.rejecting.set(true);
+    this.busy.set(true);
+    try {
+      this.reasons.set(await firstValueFrom(this.api.rejectionReasons()));
+      this.rejecting.set(true);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err), null);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async allot(choice: AllotChoice): Promise<void> {
@@ -192,21 +204,23 @@ export class DaAllotmentBanner {
       t('staff.daAllotment.banner.toast.allottedTo', 'To {name}.', { name: choice.assessorName }));
   }
 
-  protected async reject(reason: string): Promise<void> {
-    if (!reason) return;
-    const call = () => (this.site() ? this.siteApi.reject(this.zedId(), this.certification(), reason) : this.api.agencyReject(this.zedId(), this.certification(), reason));
-    await this.run(call, t('staff.daAllotment.banner.toast.rejected', '{zedId} rejected', { zedId: this.zedId() }), null);
+  /** The toast says what the server did (another agency got the unit, or the ZED team). */
+  protected async reject(result: ConfirmResult): Promise<void> {
+    const rejection = rejectionOf(result);
+    if (!rejection) return;
+    const call = () => (this.site() ? this.siteApi.reject(this.zedId(), this.certification(), rejection) : this.api.agencyReject(this.zedId(), this.certification(), rejection));
+    await this.run(call, t('staff.daAllotment.banner.toast.rejected', '{zedId} rejected', { zedId: this.zedId() }), (r) => r.message || null);
   }
 
-  private async run(call: () => ReturnType<AssessmentApi['agencyReject']>, done: string, detail: string | null): Promise<void> {
+  private async run(call: () => Observable<MessageResponse>, done: string, detail: string | null | ((r: MessageResponse) => string | null)): Promise<void> {
     this.busy.set(true);
     this.failed.set('');
     try {
-      await firstValueFrom(call());
+      const res = await firstValueFrom(call());
       this.allotUnit.set(null);
       this.siteUnit.set(null);
       this.rejecting.set(false);
-      this.toast.success(done, detail);
+      this.toast.success(done, typeof detail === 'function' ? detail(res) : detail);
       await this.router.navigateByUrl(this.listUrl());
     } catch (err) {
       this.failed.set(apiErrorMessage(err));

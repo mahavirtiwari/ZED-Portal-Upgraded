@@ -211,9 +211,9 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
     public async Task Agency_rejection_needs_a_reason()
     {
         var client = await DaTestUsers.SignInAsync(_host, "AGENCY1");
-        var r = await client.PostAsJsonAsync("/api/staff/assessment/da-allotment/reject", new { zedId = "ZEDMSME000001", certification = "Bronze", reasonForRejection = " " });
+        var r = await client.PostAsJsonAsync("/api/staff/assessment/da-allotment/reject", new { zedId = "ZEDMSME000001", certification = "Bronze", reasonId = " " });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        r = await client.PostAsJsonAsync("/api/staff/assessment/da-allotment/reject", new { zedId = "ZEDMSME000001", certification = "Bronze", reasonForRejection = "No capacity" });
+        r = await client.PostAsJsonAsync("/api/staff/assessment/da-allotment/reject", new { zedId = "ZEDMSME000001", certification = "Bronze", reasonId = "other", remarks = "No capacity" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Single(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_REJECT_UNIT_FOR_DA"));
         Assert.Equal("zed@qcin.org", Assert.Single(_host.Email.Sent).To);

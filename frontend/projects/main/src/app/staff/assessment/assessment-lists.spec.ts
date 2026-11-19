@@ -67,7 +67,7 @@ describe('assessment list pages', () => {
 
   const allotRows = () => [
     { ZedId: 'ZEDMSME000001', Certification: 'Bronze', PUnitName: 'Unit 1', CertificationStatus: 2, PaidOn: daysAgo(3), PDistrictName: 'Pune', PStateName: 'Maharashtra', EnterpriseTypee: 'Small' },
-    { ZedId: 'ZEDMSME000002', Certification: 'Silver', PUnitName: 'Unit 2', CertificationStatus: 3, CertificationBodyUserId: 'AGENCY1', AgencyName: 'Agency One', ReasonForRejection: 'Busy' },
+    { ZedId: 'ZEDMSME000002', Certification: 'Silver', PUnitName: 'Unit 2', CertificationStatus: 3, CertificationBodyUserId: 'AGENCY1', AgencyName: 'Agency One', ReasonForRejection: 'Busy', RejectionRemarks: 'No assessor free this month' },
     { ZedId: 'ZEDMSME000003', Certification: 'Gold', PUnitName: 'Unit 3', CertificationStatus: 2, PaidOn: daysAgo(10), UnitAddress: 'Plot 4, Kanpur' },
   ];
 
@@ -144,6 +144,8 @@ describe('assessment list pages', () => {
     expect(rows.length).toBe(1);
     expect(rows[0].textContent).toContain('Agency Rejected');
     expect(rows[0].textContent).toContain('Busy');
+    // 2026-11-19 (rejection reasons): the agency's remarks under its reason.
+    expect(rows[0].querySelector('.al-reason .al-remarks')!.textContent!.trim()).toBe('No assessor free this month');
     expect(rows[0].querySelector('.al-act')!.textContent!.trim()).toBe('Re-allot');
   });
 
@@ -242,9 +244,13 @@ describe('assessment list pages', () => {
     expect(tile.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('DA Allotment: shows the API message when a rejection is refused', async () => {
-    const fixture = await create(DaAllotmentPage);
-    const el: HTMLElement = fixture.nativeElement;
+  /** 2026-11-19 (rejection reasons, approved): the Admin's reasons for the Reject pop-up. */
+  const rejectionReasons = [
+    { id: 'no-capacity', text: 'No assessor available', autoReallot: true },
+    { id: 'conflict', text: 'Conflict of interest', autoReallot: false },
+  ];
+
+  async function openDaReject(el: HTMLElement, fixture: ComponentFixture<unknown>) {
     http.expectOne('/api/staff/assessment/da-allotment').flush({
       rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Bronze' }], assessors: [], bronzeAssessors: [],
     });
@@ -254,21 +260,63 @@ describe('assessment list pages', () => {
     expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile', 'Reject']);
     ([...el.querySelectorAll<HTMLButtonElement>('.rm-item')].find((b) => b.textContent!.trim() === 'Reject')!).click();
     await settle(fixture);
+    http.expectOne('/api/staff/assessment/rejection-reasons').flush(rejectionReasons);
+    await settle(fixture);
     expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
+  }
+
+  async function pickReason(el: HTMLElement, fixture: ComponentFixture<unknown>, id: string) {
+    const select = el.querySelector<HTMLSelectElement>('#daRejectReason-choice')!;
+    select.value = id;
+    select.dispatchEvent(new Event('change'));
+    await settle(fixture);
+  }
+
+  it('DA Allotment: Reject asks for a reason of the list (required) and optional remarks, and shows the API message when refused', async () => {
+    const fixture = await create(DaAllotmentPage);
+    const el: HTMLElement = fixture.nativeElement;
+    await openDaReject(el, fixture);
+    const options = [...el.querySelectorAll<HTMLOptionElement>('#daRejectReason-choice option')].map((o) => o.textContent!.trim());
+    expect(options).toEqual(['--Select--', 'No assessor available', 'Conflict of interest']);
+    expect(el.querySelector('.modal')!.textContent).toContain('Remarks');
     el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle(fixture);
-    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter reason for rejection.');
-    const reason = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
-    reason.value = 'No capacity';
-    reason.dispatchEvent(new Event('input'));
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please select the reason for rejection.');
+    http.expectNone('/api/staff/assessment/da-allotment/reject');
+    await pickReason(el, fixture, 'conflict');
+    expect(el.querySelector('.modal .cd-choice-note')!.textContent).toContain('goes back to the ZED team (Master Admin) for allotment');
+    await pickReason(el, fixture, 'no-capacity');
+    expect(el.querySelector('.modal .cd-choice-note')!.textContent).toContain('goes to another agency automatically');
+    const remarks = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
+    expect(remarks.maxLength).toBe(1000);
+    remarks.value = ' No capacity ';
+    remarks.dispatchEvent(new Event('input'));
     await settle(fixture);
     el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle(fixture);
     const post = http.expectOne('/api/staff/assessment/da-allotment/reject');
-    expect(post.request.body.reasonForRejection).toBe('No capacity');
+    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonId: 'no-capacity', remarks: 'No capacity' });
     post.flush({ title: 'This assessment is not allotted to your agency or can no longer be rejected.' }, { status: 400, statusText: 'Bad Request' });
     await settle(fixture);
     expect(el.querySelector('.modal .help-block')!.textContent).toContain('can no longer be rejected');
+  });
+
+  it('DA Allotment: Reject without remarks sends null and the toast shows the server message', async () => {
+    const fixture = await create(DaAllotmentPage);
+    const el: HTMLElement = fixture.nativeElement;
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
+    await openDaReject(el, fixture);
+    await pickReason(el, fixture, 'conflict');
+    el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
+    await settle(fixture);
+    const post = http.expectOne('/api/staff/assessment/da-allotment/reject');
+    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonId: 'conflict', remarks: null });
+    post.flush({ message: 'Assessment rejected. It goes back to the ZED team for allotment.', reallotted: false });
+    await settle(fixture);
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', 'Assessment rejected. It goes back to the ZED team for allotment.');
+    expect(el.querySelector('.modal')).toBeNull();
+    http.expectOne('/api/staff/assessment/da-allotment').flush({ rows: [], assessors: [], bronzeAssessors: [] });
+    await settle(fixture);
   });
 
   it('DA Allotment: View details on the row and in its menu opens the assessment details of the unit and level (2026-11-18)', async () => {

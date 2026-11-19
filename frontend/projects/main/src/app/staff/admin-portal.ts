@@ -28,6 +28,11 @@ export const BANNER_PORTALS: readonly AdminPortal[] = ['main'];
 export const QUESTIONNAIRE_PORTALS: readonly AdminPortal[] = ['main', 'surveillance'];
 /** The portals whose app has a site tour (Admin → Site Tour Sections): the site assessor app, the consultant app's milestone 1. */
 export const SITE_TOUR_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
+/**
+ * 2026-11-19 (rejection reasons, approved): the portals whose agencies reject allotted units with a reason of Admin → Rejection
+ * Reasons (desktop and site allotment): ZED Certification and Surveillance.
+ */
+export const REJECTION_REASON_PORTALS: readonly AdminPortal[] = ['main', 'surveillance'];
 /** The NEFT Admin's portals: financial assistance (main) and Technology Upgradation (Consultancy). */
 export const NEFT_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
 
@@ -44,6 +49,8 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   // 2026-11-17 (approved): each portal keeps its own submission checklists and observation reasons.
   { prefix: '/api/staff/settings/submission-checklists', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/observation-reasons', portals: ALL_PORTALS },
+  // 2026-11-19 (approved): the agencies' rejection reasons, each portal's own (main and surveillance).
+  { prefix: '/api/staff/settings/rejection-reasons', portals: REJECTION_REASON_PORTALS },
   // 2026-11-18: each portal keeps its own TAT (Assessment, Handholding, Surveillance).
   { prefix: '/api/staff/settings/tat', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },

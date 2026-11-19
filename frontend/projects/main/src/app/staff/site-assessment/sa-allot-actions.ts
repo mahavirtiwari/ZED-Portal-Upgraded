@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { AllotRequest, Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, isWebLink, todayIso } from './site-assessment.api';
 import { mayAssess } from '../users/assessor-scope';
 import { ConfirmAsk } from '../confirm-dialog';
+import type { RejectionReason } from '../assessment/assessment.api';
+import { REJECT_REMARKS_MAX } from '../assessment/da-allot-actions';
 import { TextPipe, t } from '../../content/page-text';
 
 /**
@@ -37,16 +39,29 @@ export function siteAssessorsFor(unit: Row, assessors: Assessor[], surveillance:
     && (surveillance && !siteOnsiteVisit(unit, surveillance) ? true : mayAssess(a, level, siteRemoteUnit(unit, surveillance) ? 'Remote' : 'Onsite')));
 }
 
-/** The Reject confirmation (reason required; the procedure keeps 100 characters). */
-export function siteRejectAsk(unit: Row): ConfirmAsk {
+/**
+ * The Reject confirmation. 2026-11-19 (rejection reasons, approved): a reason of Admin → Rejection Reasons (required; under it
+ * where the unit goes with that reason) and optional remarks, instead of the free-text reason.
+ */
+export function siteRejectAsk(unit: Row, reasons: readonly RejectionReason[]): ConfirmAsk {
   return {
     title: t('staff.saAllotment.actions.reject.title', 'Reject assessment?'),
-    message: t('staff.saAllotment.actions.reject.message', '{zedId} ({level}) goes back to the ZED team with your reason.',
+    message: t('staff.saAllotment.actions.reject.message', '{zedId} ({level}) leaves your agency. The reason you pick decides where it goes next.',
       { zedId: str(unit['ZedId']), level: str(unit['Certification']) }),
     confirmLabel: t('staff.saAllotment.actions.reject.confirmButton', 'Reject'),
     danger: true,
-    reason: { label: t('staff.saAllotment.actions.reject.reasonLabel', 'Reason for rejection'), maxLength: 100,
-      requiredMessage: t('staff.saAllotment.actions.reject.reasonRequired.message', 'Please enter reason for rejection.') },
+    choice: {
+      label: t('staff.saAllotment.actions.reject.reasonLabel', 'Reason for rejection'),
+      options: reasons.map((r) => ({
+        value: r.id,
+        label: r.text,
+        note: r.autoReallot
+          ? t('staff.saAllotment.actions.reject.autoNote', 'With this reason the unit goes to another agency automatically.')
+          : t('staff.saAllotment.actions.reject.masterAdminNote', 'With this reason the unit goes back to the ZED team (Master Admin) for allotment.'),
+      })),
+      requiredMessage: t('staff.saAllotment.actions.reject.reasonRequired.message', 'Please select the reason for rejection.'),
+    },
+    reason: { label: t('staff.saAllotment.actions.reject.remarksLabel', 'Remarks'), required: false, maxLength: REJECT_REMARKS_MAX },
   };
 }
 

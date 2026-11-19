@@ -14,6 +14,18 @@ export interface ConfirmAsk {
   cancelLabel?: string;
   /** A destructive action (block, delete): the confirm button is red. */
   danger?: boolean;
+  /**
+   * 2026-11-19 (rejection reasons, approved): a required drop-down before the reason box ("Reason for rejection"); the
+   * chosen option's <code>note</code> shows under it. Its value comes with <code>decided</code> (<code>choice</code>).
+   */
+  choice?: {
+    label: string;
+    options: readonly ConfirmChoiceOption[];
+    /** The first, empty option (default "--Select--"). */
+    placeholder?: string;
+    /** Shown when nothing is chosen (default "Please select an option."). */
+    requiredMessage?: string;
+  };
   reason?: {
     label?: string;
     placeholder?: string;
@@ -43,10 +55,19 @@ export interface ConfirmAsk {
   note?: string | null;
 }
 
-/** The answer with the tick box's state. */
+/** One option of the drop-down (<code>ConfirmAsk.choice</code>). */
+export interface ConfirmChoiceOption {
+  value: string;
+  label: string;
+  /** A line under the drop-down while this option is chosen (what it does). */
+  note?: string | null;
+}
+
+/** The answer with the tick box's state and the drop-down's value ("" without one). */
 export interface ConfirmResult {
   reason: string;
   checked: boolean;
+  choice: string;
 }
 
 const ICONS: Record<ConfirmIcon, string> = {
@@ -113,6 +134,15 @@ let nextId = 0;
                   @for (p of a.points; track $index) { <li>{{ p }}</li> }
                 </ul>
               }
+              @if (a.choice; as c) {
+                <label class="cd-label" [for]="inputId() + '-choice'">{{ c.label }}<span class="req">*</span></label>
+                <select [id]="inputId() + '-choice'" name="choice" class="form-select cd-select" [ngModel]="picked()" (ngModelChange)="pick($event)"
+                        [attr.aria-invalid]="!!error() && !picked()">
+                  <option value="">{{ c.placeholder ?? ('--Select--' | t: 'common.confirm.choicePlaceholder') }}</option>
+                  @for (o of c.options; track o.value) { <option [value]="o.value">{{ o.label }}</option> }
+                </select>
+                @if (pickedNote(); as n) { <small class="cd-hint cd-choice-note" role="status"><span class="cd-i" aria-hidden="true">i</span>{{ n }}</small> }
+              }
               @if (a.reason; as r) {
                 <label class="cd-label" [for]="inputId()">{{ r.label ?? ('Reason' | t: 'common.confirm.reasonLabel') }}@if (r.required !== false) {<span class="req">*</span>}</label>
                 <textarea [id]="inputId()" name="reason" class="form-control" rows="3" [attr.maxlength]="r.maxLength ?? 2000" [(ngModel)]="text"
@@ -174,6 +204,9 @@ let nextId = 0;
     .cd-label .req { color: #c8473c; font-weight: 700; margin-left: 1px; }
     .cd textarea.form-control { min-height: 84px; height: 84px; border-radius: 9px; border: 1.2px solid #b9cdcf; font-size: 13px; resize: vertical; }
     .cd-hint { display: block; margin-top: 4px; font-size: 12.5px; color: #6f8487; }
+    .cd-select { height: 40px; border-radius: 9px; border: 1.2px solid #b9cdcf; font-size: 13px; margin-bottom: 4px; }
+    .cd-choice-note { display: flex; gap: 6px; align-items: flex-start; margin: 2px 0 12px; color: #24666b; }
+    .cd-i { flex: none; width: 16px; height: 16px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; font: italic 700 11px Georgia, serif; }
     .cd-note { margin-top: 14px; }
     .cd-check { display: flex; align-items: center; gap: 12px; margin: 18px 0 0; font-size: 13.5px; font-weight: 600; color: #17373b; text-transform: none; cursor: pointer; }
     .cd-check input { flex: none; width: 20px; height: 20px; margin: 0; border-radius: 5px; accent-color: #24666b; }
@@ -212,6 +245,9 @@ export class ConfirmDialog {
   protected readonly tick = signal<boolean | null>(null);
   protected readonly checked = computed(() => this.tick() ?? this.ask().checkbox?.checked ?? false);
   private readonly typed = signal('');
+  /** The drop-down's value ("" until chosen). */
+  protected readonly picked = signal('');
+  protected readonly pickedNote = computed(() => this.ask().choice?.options.find((o) => o.value === this.picked())?.note ?? null);
   protected readonly error = signal('');
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly blocked = computed(() => this.holdUntilReason() && this.needsReason() && !this.typed().trim());
@@ -222,13 +258,18 @@ export class ConfirmDialog {
     // The reason field first, else the confirm button.
     afterNextRender(() => {
       const el = this.host.nativeElement as HTMLElement;
-      (el.querySelector('textarea') ?? el.querySelector<HTMLButtonElement>('.cd-ok'))?.focus();
+      (el.querySelector<HTMLElement>('.cd-select') ?? el.querySelector('textarea') ?? el.querySelector<HTMLButtonElement>('.cd-ok'))?.focus();
     });
   }
 
   private needsReason(): boolean {
     const r = this.ask().reason;
     return !!r && r.required !== false;
+  }
+
+  protected pick(value: string): void {
+    this.picked.set(value ?? '');
+    if (value) this.error.set('');
   }
 
   @HostListener('input', ['$event'])
@@ -243,13 +284,18 @@ export class ConfirmDialog {
 
   protected submit(): void {
     const reason = this.ask().reason ? this.text.trim() : '';
+    const choice = this.ask().choice ? this.picked() : '';
+    if (this.ask().choice && !choice) {
+      this.error.set(this.ask().choice?.requiredMessage ?? t('common.confirm.choiceError', 'Please select an option.'));
+      return;
+    }
     if (this.needsReason() && !reason) {
       this.error.set(this.ask().reason?.requiredMessage ?? t('common.confirm.reasonError', 'Please enter the reason.'));
       return;
     }
     this.error.set('');
     this.confirmed.emit(reason);
-    this.decided.emit({ reason, checked: !!this.ask().checkbox && this.checked() });
+    this.decided.emit({ reason, checked: !!this.ask().checkbox && this.checked(), choice });
   }
 }
 

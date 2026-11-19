@@ -180,6 +180,27 @@ export function canonicalLevel(value: string | null | undefined): string | null 
   return canonicalLevelCode(value);
 }
 
+/**
+ * 2026-11-19 (rejection reasons, approved): a reason an agency picks when it rejects a unit allotted to it (Admin → Rejection
+ * Reasons, active ones in order). autoReallot: the unit goes to another agency by round robin; else back to the Master Admin.
+ */
+export interface RejectionReason {
+  id: string;
+  text: string;
+  autoReallot: boolean;
+}
+
+/** What the agency sends with a rejection (desktop and site allotment): the reason picked and its optional remarks. */
+export interface AgencyRejection {
+  reasonId: string;
+  remarks: string | null;
+}
+
+/** The server's answer to a rejection: its message says whether the unit went to another agency. */
+export interface RejectResponse extends MessageResponse {
+  reallotted: boolean;
+}
+
 /** ZED IDs, including rejected copies (ZEDMSME000123_D_45). */
 export function isZedId(value: string | null | undefined): boolean {
   return !!value && /^[A-Za-z0-9_]{1,50}$/.test(value);
@@ -217,8 +238,12 @@ export class AssessmentApi {
   allotToAssessor(zedId: string, certification: string, desktopAssessorId: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/da-allotment/allot`, { zedId, certification, desktopAssessorId });
   }
-  agencyReject(zedId: string, certification: string, reasonForRejection: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/da-allotment/reject`, { zedId, certification, reasonForRejection });
+  /** The active rejection reasons (desktop and site allotment). */
+  rejectionReasons(): Observable<RejectionReason[]> {
+    return this.http.get<RejectionReason[]>(`${this.base}/rejection-reasons`);
+  }
+  agencyReject(zedId: string, certification: string, rejection: AgencyRejection): Observable<RejectResponse> {
+    return this.http.post<RejectResponse>(`${this.base}/da-allotment/reject`, { zedId, certification, ...rejection });
   }
 
   // Desktop assessor

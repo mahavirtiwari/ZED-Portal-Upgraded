@@ -487,6 +487,8 @@ type Tab = 'allot' | 'reallot';
                         <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? ('less' | t: 'staff.allot.row.lessButton') : ('more' | t: 'staff.allot.row.moreButton') }}</button>
                       }
                     }
+                    <!-- 2026-11-19 (rejection reasons, approved): the agency's optional remarks under the reason it picked. -->
+                    @if (col(s, 'RejectionRemarks'); as remarks) { <small class="al-remarks">{{ remarks }}</small> }
                   </td>
                 }
                 <td class="text-end text-nowrap">
@@ -528,6 +530,7 @@ type Tab = 'allot' | 'reallot';
     .al-addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 260px; }
     .unit-cell { min-width: 200px; }
     .al-reason { min-width: 180px; max-width: 320px; white-space: pre-wrap; }
+    .al-remarks { display: block; margin-top: 4px; font-size: 12px; color: #6f8487; overflow-wrap: break-word; }
     td .status-badge { margin-top: 4px; }
     td .chip { margin-top: 4px; }
     .al-act { min-width: 82px; margin-right: 6px; font-weight: 600; }

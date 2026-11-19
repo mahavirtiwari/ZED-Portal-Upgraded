@@ -72,6 +72,8 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.Users.LoginScopes>();
         // Financial assistance: round-robin allotment to agencies (2026-11-08), and its sweep on the main portal.
         services.AddScoped<Features.Staff.Schemes.FaAutoAllotment>();
+        // 2026-11-19: an agency's rejection of an allotment with a reason; re-allotted by round robin when the reason says so.
+        services.AddScoped<Features.Staff.Assessment.AgencyRejections>();
         // States of the LG Directory masters for every drop-down and check (2026-11-08).
         services.AddHostedService<Features.Staff.Masters.StateMasterRefresher>();
         if (system == PortalSystem.Main) services.AddHostedService<Features.Staff.Schemes.FaAutoAllotmentSweep>();

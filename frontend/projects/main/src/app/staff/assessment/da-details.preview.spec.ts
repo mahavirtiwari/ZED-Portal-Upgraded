@@ -150,28 +150,44 @@ describe('DaDetailsPage: the agency preview before acceptance (2026-11-18)', () 
     expect(navigate).toHaveBeenCalledWith('/staff/assessment/da-allotment');
   });
 
-  it('Reject needs a reason, posts it with the list API, then returns to the list with a toast', async () => {
+  /** 2026-11-19 (rejection reasons, approved): the Admin's reasons; the pop-up's drop-down. */
+  const reasons = [
+    { id: 'no-capacity', text: 'No assessor available', autoReallot: true },
+    { id: 'sector', text: 'Outside our sector', autoReallot: false },
+  ];
+  const pick = async (id: string) => {
+    const select = el.querySelector<HTMLSelectElement>('#daRejectReason-choice')!;
+    select.value = id;
+    select.dispatchEvent(new Event('change'));
+    await settle();
+  };
+
+  it('Reject needs a reason of the list, posts it with the remarks, then returns to the list with the server message', async () => {
     await open(preview());
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     button('Reject', el.querySelector('[data-allotment-banner]')!)!.click();
     await settle();
+    http.expectOne('/api/staff/assessment/rejection-reasons').flush(reasons);
+    await settle();
     expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
     el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle();
-    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter reason for rejection.');
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please select the reason for rejection.');
     http.expectNone('/api/staff/assessment/da-allotment/reject');
-    const reason = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
-    reason.value = 'Outside our sector';
-    reason.dispatchEvent(new Event('input'));
+    await pick('sector');
+    expect(el.querySelector('.modal .cd-choice-note')!.textContent).toContain('goes back to the ZED team (Master Admin)');
+    const remarks = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
+    remarks.value = 'Textiles only';
+    remarks.dispatchEvent(new Event('input'));
     await settle();
     el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle();
     const post = http.expectOne('/api/staff/assessment/da-allotment/reject');
-    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonForRejection: 'Outside our sector' });
-    post.flush({ message: 'Assessment rejected.' });
+    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonId: 'sector', remarks: 'Textiles only' });
+    post.flush({ message: 'Assessment rejected. It goes back to the ZED team.', reallotted: false });
     await settle();
-    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', null);
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', 'Assessment rejected. It goes back to the ZED team.');
     expect(navigate).toHaveBeenCalledWith('/staff/assessment/da-allotment');
   });
 
@@ -218,22 +234,28 @@ describe('DaDetailsPage: the agency preview before acceptance (2026-11-18)', () 
     expect(navigate).toHaveBeenCalledWith('/staff/sa-allotment');
   });
 
-  it('site allotment: Reject posts the reason to the site list API', async () => {
+  it('site allotment: Reject posts the reason picked and the remarks to the site list API, with the server message', async () => {
     await open(preview({ kind: 'site' }));
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     button('Reject', el.querySelector('[data-allotment-banner]')!)!.click();
     await settle();
-    const reason = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
-    expect(reason.maxLength).toBe(100);
-    reason.value = 'No site assessor free';
-    reason.dispatchEvent(new Event('input'));
+    http.expectOne('/api/staff/assessment/rejection-reasons').flush(reasons);
+    await settle();
+    await pick('no-capacity');
+    expect(el.querySelector('.modal .cd-choice-note')!.textContent).toContain('goes to another agency automatically');
+    const remarks = el.querySelector<HTMLTextAreaElement>('#daRejectReason')!;
+    expect(remarks.maxLength).toBe(1000);
+    remarks.value = 'No site assessor free';
+    remarks.dispatchEvent(new Event('input'));
     await settle();
     el.querySelector<HTMLButtonElement>('.modal .cd-ok')!.click();
     await settle();
     const post = http.expectOne('/api/staff/site-assessment/allotments/reject');
-    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonForRejection: 'No site assessor free' });
-    post.flush({ message: 'Unit rejected.' });
+    expect(post.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Bronze', reasonId: 'no-capacity', remarks: 'No site assessor free' });
+    post.flush({ message: 'Unit rejected. It went to Agency Two.', reallotted: true });
     await settle();
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', 'Unit rejected. It went to Agency Two.');
     expect(navigate).toHaveBeenCalledWith('/staff/sa-allotment');
   });
 

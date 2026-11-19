@@ -81,6 +81,13 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./observation-reasons').then((m) => m.ObservationReasonsPage),
   },
+  // 2026-11-19 (approved): the reasons an agency picks when it rejects a unit allotted to it (main and surveillance).
+  {
+    path: 'rejection-reasons',
+    title: 'ZED | Rejection Reasons',
+    canActivate: [admin],
+    loadComponent: () => import('./rejection-reasons').then((m) => m.RejectionReasonsPage),
+  },
   // 2026-11-18: turnaround times per status and between statuses (per portal, through the portal switch).
   { path: 'tat', title: 'ZED | TAT', canActivate: [admin], loadComponent: () => import('./tat').then((m) => m.TatPage) },
   // New in V4: the site tour sections of the site assessor app and the photos each needs.

@@ -7,8 +7,10 @@ import { Assessor, Row, SITE_SYSTEM, SiteAssessmentApi } from './site-assessment
 import { CoAllotmentPage } from './co-allotment';
 import { PagedView, PagerComponent, searchRows } from '../pager';
 import { SaAllotDialog, SiteAllotChoice, siteRejectAsk } from './sa-allot-actions';
+import { AssessmentApi, RejectionReason } from '../assessment/assessment.api';
+import { rejectionOf } from '../assessment/da-allot-actions';
 import { RowMenu, RowMenuItem } from '../row-menu';
-import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
+import { ConfirmAsk, ConfirmDialog, ConfirmResult } from '../confirm-dialog';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
@@ -124,7 +126,7 @@ import { TextPipe, t } from '../../content/page-text';
 
     @if (rejectFor(); as r) {
       <zed-confirm-dialog [ask]="rejectAsk(r)" [busy]="busy()" [failed]="formError()" inputId="saRejectReason"
-                          (confirmed)="reject($event)" (cancel)="rejectFor.set(null)" />
+                          (decided)="reject($event)" (cancel)="rejectFor.set(null)" />
     }
 
     @if (busy()) {
@@ -154,6 +156,7 @@ import { TextPipe, t } from '../../content/page-text';
 })
 export class SaAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
+  private readonly assessmentApi = inject(AssessmentApi);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly system = inject(SITE_SYSTEM);
@@ -179,6 +182,8 @@ export class SaAllotmentPage {
   /** The unit whose Accept / Re-allot pop-up is open. */
   protected readonly form = signal<Row | null>(null);
   protected readonly rejectFor = signal<Row | null>(null);
+  /** The active rejection reasons, loaded when the Reject pop-up opens. */
+  private readonly reasons = signal<RejectionReason[]>([]);
 
   protected readonly pageTitle = computed(() => this.surveillance
     ? t('staff.saAllotment.surveillance.title', 'Allot Surveillance Assessments (Site)') : t('staff.saAllotment.title', 'Allot SA Assessments'));
@@ -253,25 +258,38 @@ export class SaAllotmentPage {
   protected act(s: Row, key: string): void {
     if (key === 'details') void this.router.navigateByUrl(this.detailsLink(s));
     else if (key === 'profile') void this.router.navigateByUrl(`/staff/msme-profile/${encodeURIComponent(this.str(s['ZedId']))}`);
-    else if (key === 'reject') {
-      this.formError.set('');
+    else if (key === 'reject') void this.openReject(s);
+  }
+
+  /** 2026-11-19 (rejection reasons, approved): the pop-up opens with the reasons the Admin manages. */
+  protected async openReject(s: Row): Promise<void> {
+    this.formError.set('');
+    this.busy.set(true);
+    try {
+      this.reasons.set(await firstValueFrom(this.assessmentApi.rejectionReasons()));
       this.rejectFor.set(s);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err), null);
+    } finally {
+      this.busy.set(false);
     }
   }
 
   protected rejectAsk(s: Row): ConfirmAsk {
-    return siteRejectAsk(s);
+    return siteRejectAsk(s, this.reasons());
   }
 
-  protected async reject(reason: string): Promise<void> {
+  /** The toast says what the server did (another agency got the unit, or the ZED team). */
+  protected async reject(result: ConfirmResult): Promise<void> {
     const s = this.rejectFor();
-    if (!s || !reason) return;
+    const rejection = rejectionOf(result);
+    if (!s || !rejection) return;
     this.busy.set(true);
     this.formError.set('');
     try {
-      await firstValueFrom(this.api.reject(this.str(s['ZedId']), this.str(s['Certification']), reason));
+      const res = await firstValueFrom(this.api.reject(this.str(s['ZedId']), this.str(s['Certification']), rejection));
       this.rejectFor.set(null);
-      this.toast.success(t('staff.saAllotment.toast.rejected', '{zedId} rejected', { zedId: s['ZedId'] }), null);
+      this.toast.success(t('staff.saAllotment.toast.rejected', '{zedId} rejected', { zedId: s['ZedId'] }), res.message || null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

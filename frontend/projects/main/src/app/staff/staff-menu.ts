@@ -193,6 +193,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // 2026-11-17 (approved): what is ticked before a final submit / quality check, and the quality observation reasons (each portal's).
   { label: 'Submission Checklists', route: '/staff/settings/submission-checklists', roles: [R.Admin], menu: 'Administration' },
   { label: 'Observation Reasons', route: '/staff/settings/observation-reasons', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-19 (approved): the reasons an agency picks when it rejects a unit allotted to it (each portal's, main and surveillance).
+  { label: 'Rejection Reasons', route: '/staff/settings/rejection-reasons', roles: [R.Admin], menu: 'Administration' },
   // 2026-11-18: turnaround times per status and between statuses, per module (portal switch); the monitoring pages' delays.
   { label: 'TAT (Turnaround Time)', route: '/staff/settings/tat', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the partners calling ZED's APIs, with a switch per partner and per API.
@@ -316,6 +318,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the site tour sections of the site assessor app (main and surveillance only).
   { label: 'Site Tour Sections', route: '/staff/settings/site-tour-sections', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-19 (approved): the reasons an agency picks when it rejects a unit allotted to it.
+  { label: 'Rejection Reasons', route: '/staff/settings/rejection-reasons', roles: [R.Admin], menu: 'Administration' },
   { label: 'Certification Levels', route: '/staff/settings/levels', roles: [R.Admin], menu: 'Administration' },
 
   // MasterAdmin
@@ -418,6 +422,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Site Tour Sections': () => t('staff.menu.item.siteTourSectionsLabel', 'Site Tour Sections'),
   'Submission Checklists': () => t('staff.menu.item.submissionChecklistsLabel', 'Submission Checklists'),
   'Observation Reasons': () => t('staff.menu.item.observationReasonsLabel', 'Observation Reasons'),
+  'Rejection Reasons': () => t('staff.menu.item.rejectionReasonsLabel', 'Rejection Reasons'),
   'TAT (Turnaround Time)': () => t('staff.menu.item.tatTurnaroundTimeLabel', 'TAT (Turnaround Time)'),
   'API Integrations': () => t('staff.menu.item.apiIntegrationsLabel', 'API Integrations'),
   'Links': () => t('staff.menu.item.linksLabel', 'Links'),

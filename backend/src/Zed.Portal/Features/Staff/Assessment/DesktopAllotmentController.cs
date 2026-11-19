@@ -101,16 +101,27 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         return new MessageResponse("Assessment allotted to the assessor.");
     }
 
-    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonForRejection);
+    /// <param name="ReasonId">2026-11-19: the reason the agency picks (Admin → Rejection Reasons); <paramref name="Remarks"/> optional.</param>
+    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonId, string? Remarks);
 
+    /// <summary>The agency's answer: <paramref name="Reallotted"/> when the unit went to another agency at once.</summary>
+    public sealed record RejectResponse(string Message, bool Reallotted);
+
+    /// <summary>
+    /// 2026-11-19 (approved): the agency picks a reason (Admin → Rejection Reasons) and may add remarks; the reason decides
+    /// whether the unit is re-allotted automatically by round robin or waits for the Master Admin (<see cref="AgencyRejections"/>).
+    /// </summary>
     [HttpPost("da-allotment/reject")]
     [StaffRoles(UserRole.Agency)]
     [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AgencyReject(RejectRequest req, CancellationToken ct)
+    public async Task<ActionResult<RejectResponse>> AgencyReject(RejectRequest req, [FromServices] AgencyRejections rejections, CancellationToken ct)
     {
         var level = AssessmentInput.Level(req.Certification);
         if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
-        if (Reason(req.ReasonForRejection) is not { } reason) return this.Problem400("Please enter reason for rejection.");
+        if (RejectionReasons.Find(await rejections.ReasonsAsync(ct), req.ReasonId) is not { } picked)
+            return this.Problem400("Please select the reason for rejection.");
+        if (!RejectionReasons.TryRemarks(req.Remarks, out var remarks, out var remarksError)) return this.Problem400(remarksError!);
+        var reason = RejectionReasons.LegacyText(picked, remarks);
 
         var row = (await List(db, UserId, RoleId, "DA", req.ZedId, Filter.None with { Certification = level }, ct))[0]
             .FirstOrDefault(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
@@ -119,9 +130,10 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
             return this.Problem400("This assessment is not allotted to your agency or can no longer be rejected.");
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_REJECT_UNIT_FOR_DA", new { ZedId = req.ZedId, Certification = level, ReasonForRejection = reason }, ct);
-        log.LogInformation("Agency {UserId} rejected {ZedId} {Certification}", UserId, req.ZedId, level);
-        await Emails().SendAsync(DesktopAssessmentEmails.Kind.RejectedByAgency, req.ZedId!, level, reason, ct);
-        return new MessageResponse("Assessment rejected.");
+        log.LogInformation("Agency {UserId} rejected {ZedId} {Certification} ({Reason})", UserId, req.ZedId, level, picked.Id);
+        await Emails().SendAsync(DesktopAssessmentEmails.Kind.RejectedByAgency, req.ZedId!, level, RejectionReasons.LegacyText(picked, remarks, 2000), ct);
+        var outcome = await rejections.AfterRejectAsync(req.ZedId!, level, UserId, picked, remarks, ct);
+        return new RejectResponse(AgencyRejections.Message(outcome), outcome.Reallotted);
     }
 
     // ---------------------------------------------------------------- desktop assessor: work lists
@@ -162,10 +174,13 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         return new MessageResponse("Unit accepted.");
     }
 
+    /// <summary>The assessor's rejection (back to its agency) keeps its free-text reason.</summary>
+    public sealed record AssessorRejectRequest(string? ZedId, string? Certification, string? ReasonForRejection);
+
     [HttpPost("da-verification/reject")]
     [StaffRoles(UserRole.DesktopAssessor)]
     [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AssessorReject(RejectRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> AssessorReject(AssessorRejectRequest req, CancellationToken ct)
     {
         var level = AssessmentInput.Level(req.Certification);
         if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");

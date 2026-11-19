@@ -63,7 +63,39 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         // A Master Admin with a scope sees only its units and levels (migration 0057).
         var rows = AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, listed, ct), [.. AllotmentLists.ListFields, .. extra, .. place]);
         await AddPaidOnAsync(rows, ct);
+        if (host.System != PortalSystem.Consultancy) await AddRemarksAsync(rows, ct);
         return new ListResponse(rows);
+    }
+
+    /// <summary>2026-11-19: the agency's remarks with its rejection reason (MsmeCertifications.RejectionRemarks, migration 0103).</summary>
+    internal const string RemarksSql =
+        "SELECT ZedId, Certification, RejectionRemarks FROM dbo.MsmeCertifications " +
+        "WHERE ZedId IN @ZedIds AND ISNULL(ReasonForRejection, '') <> '' AND ISNULL(RejectionRemarks, '') <> '';";
+
+    public sealed record RemarksRow(string? ZedId, string? Certification, string? RejectionRemarks);
+
+    /// <summary>RejectionRemarks on the rows an agency rejected (null on the others, or before migration 0103).</summary>
+    private async Task AddRemarksAsync(List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        foreach (var r in rows) r["RejectionRemarks"] = null;
+        var ids = rows.Where(r => r.Text("ReasonForRejection").Length > 0).Select(r => r.Text("ZedId").Trim())
+            .Where(AssessmentInput.IsId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (ids.Count == 0) return;
+        var remarks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var chunk in ids.Chunk(1000))
+                foreach (var m in await db.QuerySqlAsync<RemarksRow>(RemarksSql, new { ZedIds = chunk }, ct))
+                    if (!string.IsNullOrWhiteSpace(m.RejectionRemarks)) remarks[$"{m.ZedId?.Trim()}|{m.Certification?.Trim()}"] = m.RejectionRemarks.Trim();
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Rejection remarks of the allot list could not be read (is migration 0103 applied?)");
+            return;
+        }
+        foreach (var r in rows)
+            if (r.Text("ReasonForRejection").Length > 0 && remarks.TryGetValue($"{r.Text("ZedId").Trim()}|{r.Text("Certification").Trim()}", out var m))
+                r["RejectionRemarks"] = m;
     }
 
     /// <summary>
@@ -222,49 +254,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         return null;
     }
 
-    /// <summary>The agencies of main's records of this level of the unit: the agency that certified it (2026-11-19).</summary>
-    internal const string CertifyingAgenciesSql =
-        "SELECT DISTINCT LTRIM(RTRIM(CertificationBodyUserId)) AS UserId FROM ZEDCS_V2_LIVE.dbo.MsmeCertifications " +
-        "WHERE ZedId = @ZedId AND Certification = @Certification AND LTRIM(RTRIM(ISNULL(CertificationBodyUserId, ''))) <> '';";
-
-    private sealed record AgencyIdRow(string? UserId);
-
-    private async Task<HashSet<string>> CertifyingAgenciesAsync(string zedId, string level, CancellationToken ct) =>
-        (await db.QuerySqlAsync<AgencyIdRow>(CertifyingAgenciesSql, new { ZedId = zedId, Certification = level }, ct))
-            .Select(r => r.UserId?.Trim() ?? "").Where(u => u.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-    private async Task<IEnumerable<Person>> AgenciesFor(string zedId, string level, CancellationToken ct)
-    {
-        var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
-        // Bronze surveillance goes only to agencies allowed for it (the old Allot page filtered on AllowBronzeSurveillance).
-        // 2026-11-08: a V4 level assessed at the desktop only goes to desktop-verification agencies, as Bronze.
-        var column = level == "Bronze" ? (host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification")
-            : Zed.Core.Data.LevelRegistry.IsDesktop(level) ? "DesktopVerification" : "SiteVerification";
-        // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
-        var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
-        var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
-        // V4 (2026-11-08): not the agencies the Master Admin disabled this level for (Silver, Gold, ZED-X; Bronze is in the procedure).
-        var disabled = host.System == PortalSystem.Main ? await Users.AgencyLevels.DisabledAsync(db, level, log, ct)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        // 2026-11-19 (the user): a surveillance round never goes to the agency that did the unit's certification assessment
-        // (the automatic allotment leaves it out too: ZED_SURVEILLANCE SP_V4_SURVEILLANCE_NEXT_AGENCY, migration 0102).
-        if (host.System == PortalSystem.Surveillance)
-            disabled.UnionWith(await CertifyingAgenciesAsync(zedId, level, ct));
-        // 2026-11-18 (expenditure monitoring): each agency's PO for the level; a used-up PO stops its allotment (main, Consultancy).
-        var po = (await Expenditure.PoLimits.StatusAsync(db, host, null, level, log, ct))
-            .ToDictionary(s => s.PartyId, StringComparer.OrdinalIgnoreCase);
-        var levelName = Zed.Core.Data.LevelRegistry.NameOf(level);
-        return rows.Where(r => AllotmentLists.Flag(r, column) && !disabled.Contains(r.Text("UserId").Trim()))
-            .Select(r =>
-            {
-                var id = r.Text("UserId");
-                var s = po.GetValueOrDefault(id.Trim());
-                return new Person(id, r.Text("UserName"), activities.GetValueOrDefault(id), PoStopped: s?.Stopped == true,
-                    PoMessage: s?.Stopped == true ? Expenditure.PoLimits.StoppedMessage(s, r.Text("UserName"), levelName) : null,
-                    PoLeft: s?.HasPo == true ? s.Left : null);
-            })
-            .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category));
-    }
+    private Task<IReadOnlyList<Person>> AgenciesFor(string zedId, string level, CancellationToken ct) =>
+        AllotmentAgencies.ForAsync(db, host, zedId, level, log, ct);
 }
 
 /// <summary>SP_ASSESSMENT_ALLOT_LIST and the helpers the allotment controllers share.</summary>

@@ -281,7 +281,8 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         return new MessageResponse("Unit allotted." + linkNote);
     }
 
-    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonForRejection);
+    /// <param name="ReasonId">2026-11-19: the reason the agency picks (Admin → Rejection Reasons); <paramref name="Remarks"/> optional.</param>
+    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonId, string? Remarks);
 
     /// <summary>SP_ASSESSMENT_REJECT_UNIT_FOR_SA takes @ReasonForRejection varchar(100) (as on Consultancy's CO reject).</summary>
     public const int MaxReason = 100;
@@ -298,15 +299,17 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     [HttpPost("allotments/reject")]
     [StaffRoles(UserRole.Agency)]
     [SubRole(SubRoles.SiteVerification)]
-    public async Task<ActionResult<MessageResponse>> Reject(RejectRequest req, CancellationToken ct)
+    public async Task<ActionResult<Assessment.DesktopAllotmentController.RejectResponse>> Reject(RejectRequest req,
+        [FromServices] Assessment.AgencyRejections rejections, CancellationToken ct)
     {
         var zedId = req.ZedId?.Trim();
         var certification = Level(req.Certification, SiteLevels);
-        var reason = req.ReasonForRejection?.Trim();
         if (!IsId(zedId) || certification is null) return this.Problem400("Please select valid data.");
-        if (string.IsNullOrEmpty(reason)) return this.Problem400("Please enter reason for rejection.");
-        if (reason.Any(c => char.IsControl(c) && c is not '\r' and not '\n')) return this.Problem400("Please enter a valid reason for rejection.");
-        if (reason.Length > MaxReason) return this.Problem400($"The reason can be at most {MaxReason} characters.");
+        // 2026-11-19 (approved): a reason from Admin → Rejection Reasons and optional remarks (Assessment.AgencyRejections).
+        if (Assessment.RejectionReasons.Find(await rejections.ReasonsAsync(ct), req.ReasonId) is not { } picked)
+            return this.Problem400("Please select the reason for rejection.");
+        if (!Assessment.RejectionReasons.TryRemarks(req.Remarks, out var remarks, out var remarksError)) return this.Problem400(remarksError!);
+        var reason = Assessment.RejectionReasons.LegacyText(picked, remarks, MaxReason);
 
         var sets = await AgencyListAsync(zedId, certification, ct);
         var unit = sets[0].FirstOrDefault(r => Same(r, "ZedId", zedId!) && Same(r, "Certification", certification));
@@ -315,10 +318,11 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             return this.Problem400("This unit can no longer be rejected.");
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_REJECT_UNIT_FOR_SA", new { ZedId = zedId, Certification = certification, ReasonForRejection = reason }, ct);
-        log.LogInformation("Agency {UserId} rejected the site assessment of {ZedId} {Certification}", UserId, zedId, certification);
+        log.LogInformation("Agency {UserId} rejected the site assessment of {ZedId} {Certification} ({Reason})", UserId, zedId, certification, picked.Id);
         await Assessment.DesktopAssessmentEmails.Create(HttpContext.RequestServices)
-            .SendAsync(Assessment.DesktopAssessmentEmails.Kind.RejectedByAgency, zedId!, certification, reason, ct);
-        return new MessageResponse("Unit rejected.");
+            .SendAsync(Assessment.DesktopAssessmentEmails.Kind.RejectedByAgency, zedId!, certification, Assessment.RejectionReasons.LegacyText(picked, remarks, 2000), ct);
+        var outcome = await rejections.AfterRejectAsync(zedId!, certification, UserId, picked, remarks, ct);
+        return new Assessment.DesktopAllotmentController.RejectResponse(Assessment.AgencyRejections.Message(outcome), outcome.Reallotted);
     }
 
     /// <summary>Surveillance (migration 0075): the agency's allotment of an onsite surveillance visit.</summary>

@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 8542,
+  "count": 8590,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -270,6 +270,30 @@
       "key": "common.confirm.cancelButton",
       "standard": "Cancel",
       "kind": "button",
+      "portal": "common",
+      "page": "confirm",
+      "pageName": "Confirm",
+      "placeholders": [],
+      "files": [
+        "staff/confirm-dialog.ts"
+      ]
+    },
+    {
+      "key": "common.confirm.choiceError",
+      "standard": "Please select an option.",
+      "kind": "message",
+      "portal": "common",
+      "page": "confirm",
+      "pageName": "Confirm",
+      "placeholders": [],
+      "files": [
+        "staff/confirm-dialog.ts"
+      ]
+    },
+    {
+      "key": "common.confirm.choicePlaceholder",
+      "standard": "--Select--",
+      "kind": "placeholder",
       "portal": "common",
       "page": "confirm",
       "pageName": "Confirm",
@@ -36088,6 +36112,18 @@
       ]
     },
     {
+      "key": "staff.daAllotment.actions.reject.autoNote",
+      "standard": "With this reason the unit goes to another agency automatically.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "daAllotment",
+      "pageName": "Da allotment",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-allot-actions.ts"
+      ]
+    },
+    {
       "key": "staff.daAllotment.actions.reject.confirmButton",
       "standard": "Reject",
       "kind": "button",
@@ -36100,8 +36136,20 @@
       ]
     },
     {
+      "key": "staff.daAllotment.actions.reject.masterAdminNote",
+      "standard": "With this reason the unit goes back to the ZED team (Master Admin) for allotment.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "daAllotment",
+      "pageName": "Da allotment",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-allot-actions.ts"
+      ]
+    },
+    {
       "key": "staff.daAllotment.actions.reject.message",
-      "standard": "{zedId} ({level}) goes back to the ZED team with your reason.",
+      "standard": "{zedId} ({level}) leaves your agency. The reason you pick decides where it goes next.",
       "kind": "message",
       "portal": "staff",
       "page": "daAllotment",
@@ -36128,8 +36176,20 @@
     },
     {
       "key": "staff.daAllotment.actions.reject.reasonRequired.message",
-      "standard": "Please enter reason for rejection.",
+      "standard": "Please select the reason for rejection.",
       "kind": "message",
+      "portal": "staff",
+      "page": "daAllotment",
+      "pageName": "Da allotment",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-allot-actions.ts"
+      ]
+    },
+    {
+      "key": "staff.daAllotment.actions.reject.remarksLabel",
+      "standard": "Remarks",
+      "kind": "label",
       "portal": "staff",
       "page": "daAllotment",
       "pageName": "Da allotment",
@@ -66772,6 +66832,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.rejectionReasonsLabel",
+      "standard": "Rejection Reasons",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.remoteAssessmentsLabel",
       "standard": "Remote Assessments",
       "kind": "label",
@@ -82968,6 +83040,482 @@
       ]
     },
     {
+      "key": "staff.rejectionReasons.action.autoLabel",
+      "standard": "Auto re-allot (round robin)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.action.masterAdminLabel",
+      "standard": "Master Admin allots",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.addButton",
+      "standard": "Add reason",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.column.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.column.after",
+      "standard": "After rejection",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.column.reason",
+      "standard": "Reason",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.action.label",
+      "standard": "After rejection",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.active.label",
+      "standard": "In use",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.addTitle",
+      "standard": "Add reason",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.closeAria",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.editTitle",
+      "standard": "Edit reason",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.error.duplicate",
+      "standard": "Another reason has this wording.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.error.empty",
+      "standard": "Enter the reason.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.error.long",
+      "standard": "At most {count} characters.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.reason.label",
+      "standard": "Reason",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.reason.placeholder",
+      "standard": "e.g. No assessor available in the area",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.dialog.saveButton",
+      "standard": "Save",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.loadError",
+      "standard": "The rejection reasons could not be loaded",
+      "kind": "message",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.note",
+      "standard": "Only the reasons switched on are offered to the agencies. A unit already rejected keeps the reason it was rejected with.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.offDialog.confirmButton",
+      "standard": "Switch Off",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.offDialog.message",
+      "standard": "\"{reason}\" is no longer offered to the agencies.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.offDialog.title",
+      "standard": "Switch the Reason Off?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.resetButton",
+      "standard": "Reset to standard reasons",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.resetDialog.confirmButton",
+      "standard": "Reset",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.resetDialog.message",
+      "standard": "The reasons added or changed here are removed.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.resetDialog.title",
+      "standard": "Reset to the Standard Reasons?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.moveDownTooltip",
+      "standard": "Move down",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.moveUpTooltip",
+      "standard": "Move up",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.off",
+      "standard": "Off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.offAria",
+      "standard": "Switch off {reason}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.offTooltip",
+      "standard": "Switch this reason off",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.on",
+      "standard": "On",
+      "kind": "label",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.onAria",
+      "standard": "Switch on {reason}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.row.onTooltip",
+      "standard": "Switch this reason on",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.standardNote",
+      "standard": "Standard reasons (not changed yet).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.sub",
+      "standard": "The reasons an assessment agency picks when it rejects a unit allotted to it, each with what happens to the unit next.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
+      "key": "staff.rejectionReasons.title",
+      "standard": "Rejection reasons",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "rejectionReasons",
+      "pageName": "Rejection reasons",
+      "placeholders": [],
+      "files": [
+        "staff/settings/rejection-reasons.ts"
+      ]
+    },
+    {
       "key": "staff.remote.answerButton",
       "standard": "Answer",
       "kind": "button",
@@ -88878,6 +89426,18 @@
       ]
     },
     {
+      "key": "staff.saAllotment.actions.reject.autoNote",
+      "standard": "With this reason the unit goes to another agency automatically.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "saAllotment",
+      "pageName": "Sa allotment",
+      "placeholders": [],
+      "files": [
+        "staff/site-assessment/sa-allot-actions.ts"
+      ]
+    },
+    {
       "key": "staff.saAllotment.actions.reject.confirmButton",
       "standard": "Reject",
       "kind": "button",
@@ -88890,8 +89450,20 @@
       ]
     },
     {
+      "key": "staff.saAllotment.actions.reject.masterAdminNote",
+      "standard": "With this reason the unit goes back to the ZED team (Master Admin) for allotment.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "saAllotment",
+      "pageName": "Sa allotment",
+      "placeholders": [],
+      "files": [
+        "staff/site-assessment/sa-allot-actions.ts"
+      ]
+    },
+    {
       "key": "staff.saAllotment.actions.reject.message",
-      "standard": "{zedId} ({level}) goes back to the ZED team with your reason.",
+      "standard": "{zedId} ({level}) leaves your agency. The reason you pick decides where it goes next.",
       "kind": "message",
       "portal": "staff",
       "page": "saAllotment",
@@ -88918,8 +89490,20 @@
     },
     {
       "key": "staff.saAllotment.actions.reject.reasonRequired.message",
-      "standard": "Please enter reason for rejection.",
+      "standard": "Please select the reason for rejection.",
       "kind": "message",
+      "portal": "staff",
+      "page": "saAllotment",
+      "pageName": "Sa allotment",
+      "placeholders": [],
+      "files": [
+        "staff/site-assessment/sa-allot-actions.ts"
+      ]
+    },
+    {
+      "key": "staff.saAllotment.actions.reject.remarksLabel",
+      "standard": "Remarks",
+      "kind": "label",
       "portal": "staff",
       "page": "saAllotment",
       "pageName": "Sa allotment",

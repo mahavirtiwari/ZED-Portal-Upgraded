@@ -2,16 +2,17 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
-import { firstValueFrom } from 'rxjs';
+import { MessageResponse } from '@zed/shared';
+import { Observable, firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
-import { AssessmentApi, Person, Row } from './assessment.api';
+import { AssessmentApi, Person, RejectionReason, Row } from './assessment.api';
 import { PagedView, PagerComponent, searchRows } from '../pager';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { RowMenu, RowMenuItem } from '../row-menu';
-import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
-import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit } from './da-allot-actions';
+import { ConfirmAsk, ConfirmDialog, ConfirmResult } from '../confirm-dialog';
+import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit, rejectionOf } from './da-allot-actions';
 import { ToastService } from '../toast';
 import { TextPipe, t } from '../../content/page-text';
 
@@ -121,7 +122,7 @@ type Stage = 'pending' | 'allotted' | 'rejected';
 
     @if (rejectFor(); as r) {
       <zed-confirm-dialog [ask]="rejectAsk(r)" [busy]="busy()" [failed]="modalError()" inputId="daRejectReason"
-                          (confirmed)="reject($event)" (cancel)="rejectFor.set(null)" />
+                          (decided)="reject($event)" (cancel)="rejectFor.set(null)" />
     }
   `,
   styles: `
@@ -187,6 +188,8 @@ export class DaAllotmentPage {
   protected readonly error = signal('');
   protected readonly allotFor = signal<Row | null>(null);
   protected readonly rejectFor = signal<Row | null>(null);
+  /** The active rejection reasons, loaded when the Reject pop-up opens. */
+  private readonly reasons = signal<RejectionReason[]>([]);
   protected readonly modalError = signal('');
   protected readonly more = new Expanded();
   protected readonly key = (s: Row) => text(s, 'ZedId') + text(s, 'Certification');
@@ -259,13 +262,22 @@ export class DaAllotmentPage {
     this.allotFor.set(s);
   }
 
-  protected openReject(s: Row): void {
+  /** 2026-11-19 (rejection reasons, approved): the pop-up opens with the reasons the Admin manages. */
+  protected async openReject(s: Row): Promise<void> {
     this.modalError.set('');
-    this.rejectFor.set(s);
+    this.busy.set(true);
+    try {
+      this.reasons.set(await firstValueFrom(this.api.rejectionReasons()));
+      this.rejectFor.set(s);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err), null);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected rejectAsk(s: Row): ConfirmAsk {
-    return agencyRejectAsk(s);
+    return agencyRejectAsk(s, this.reasons());
   }
 
   protected async allot(choice: AllotChoice): Promise<void> {
@@ -279,23 +291,26 @@ export class DaAllotmentPage {
     );
   }
 
-  protected async reject(reason: string): Promise<void> {
+  /** The toast says what the server did (another agency got the unit, or the ZED team). */
+  protected async reject(result: ConfirmResult): Promise<void> {
     const s = this.rejectFor();
-    if (!s || !reason) return;
+    const rejection = rejectionOf(result);
+    if (!s || !rejection) return;
     await this.run(
-      () => this.api.agencyReject(text(s, 'ZedId'), text(s, 'Certification'), reason),
+      () => this.api.agencyReject(text(s, 'ZedId'), text(s, 'Certification'), rejection),
       () => this.rejectFor.set(null),
-      t('staff.daAllotment.toast.rejected', '{zedId} rejected', { zedId: text(s, 'ZedId') }), null,
+      t('staff.daAllotment.toast.rejected', '{zedId} rejected', { zedId: text(s, 'ZedId') }), (r) => r.message || null,
     );
   }
 
-  private async run(call: () => ReturnType<AssessmentApi['agencyReject']>, close: () => void, done: string, detail: string | null): Promise<void> {
+  private async run(call: () => Observable<MessageResponse>, close: () => void, done: string,
+    detail: string | null | ((r: MessageResponse) => string | null)): Promise<void> {
     this.busy.set(true);
     this.modalError.set('');
     try {
-      await firstValueFrom(call());
+      const res = await firstValueFrom(call());
       close();
-      this.toast.success(done, detail);
+      this.toast.success(done, typeof detail === 'function' ? detail(res) : detail);
       await this.load();
     } catch (err) {
       this.modalError.set(apiErrorMessage(err));

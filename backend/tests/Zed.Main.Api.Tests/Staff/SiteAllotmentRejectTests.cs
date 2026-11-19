@@ -32,8 +32,9 @@ public sealed class SiteAllotmentRejectTests : IDisposable
 
     private Task<HttpClient> SignIn(string user) => SiteAssessmentTestUsers.SignInAsync(_host, user);
 
-    private static object Body(string reason = "Outside our sector", string zedId = "ZEDMSME000001") =>
-        new { zedId, certification = "Silver", reasonForRejection = reason };
+    /// <summary>2026-11-19: a reason of Admin → Rejection Reasons ("other": the Master Admin allots) and optional remarks.</summary>
+    private static object Body(string reasonId = "other", string? remarks = "Outside our sector", string zedId = "ZEDMSME000001") =>
+        new { zedId, certification = "Silver", reasonId, remarks };
 
     private IEnumerable<object?> Rejections() => _host.Sql.Calls.Where(c => c.Name == "SP_ASSESSMENT_REJECT_UNIT_FOR_SA").Select(c => c.Args);
 
@@ -45,7 +46,14 @@ public sealed class SiteAllotmentRejectTests : IDisposable
         var call = Assert.Single(Rejections());
         Assert.Equal("ZEDMSME000001", FakeSql.Arg(call, "ZedId"));
         Assert.Equal("Silver", FakeSql.Arg(call, "Certification"));
-        Assert.Equal("Outside our sector", FakeSql.Arg(call, "ReasonForRejection"));
+        Assert.Equal("Other – Outside our sector", FakeSql.Arg(call, "ReasonForRejection"));
+        // A "Master Admin allots" reason: no automatic re-allotment; the reason and remarks are recorded.
+        Assert.False((await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reallotted").GetBoolean());
+        Assert.Empty(_host.Sql.Calls.Where(c => c.Name == "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+        var record = Assert.Single(_host.Sql.Calls, c => c.Name == AgencyRejections.RecordSql);
+        Assert.Equal("other", FakeSql.Arg(record.Args, "ReasonId"));
+        Assert.Equal("Outside our sector", FakeSql.Arg(record.Args, "Remarks"));
+        Assert.Equal("AGENCY1", FakeSql.Arg(record.Args, "Agency"));
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Contains("Rejection by Agency", mail.Subject);
         Assert.Contains("Outside our sector", mail.HtmlBody);
@@ -54,6 +62,7 @@ public sealed class SiteAllotmentRejectTests : IDisposable
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
+    [InlineData("no-such-reason")]
     public async Task A_reason_is_required(string reason)
     {
         var r = await (await SignIn("AGENCY1")).PostAsJsonAsync(Url, Body(reason));
@@ -63,11 +72,17 @@ public sealed class SiteAllotmentRejectTests : IDisposable
     }
 
     [Fact]
-    public async Task The_reason_fits_the_procedure()
+    public async Task The_reason_fits_the_procedure_and_long_remarks_are_refused()
     {
-        var r = await (await SignIn("AGENCY1")).PostAsJsonAsync(Url, Body(new string('x', 101)));
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        var client = await SignIn("AGENCY1");
+        var tooLong = await client.PostAsJsonAsync(Url, Body(remarks: new string('x', 1001)));
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
         Assert.Empty(Rejections());
+
+        var r = await client.PostAsJsonAsync(Url, Body(remarks: new string('x', 900)));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(100, FakeSql.Arg(Assert.Single(Rejections()), "ReasonForRejection")!.Length);
+        Assert.Equal(900, FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == AgencyRejections.RecordSql).Args, "Remarks")!.Length);
     }
 
     [Fact]
@@ -159,5 +174,103 @@ public sealed class SiteRejectionsAllotListTests : IDisposable
         var r = await client.PostAsJsonAsync("/api/staff/assessment/allot", new { zedId = "ZEDMSME000099", certification = "Silver", agencyUserId = "AGENCY2" });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+    }
+}
+
+/// <summary>
+/// 2026-11-19 (approved): a reason marked "Auto re-allot" sends the rejected unit at once to the next agency by round robin,
+/// among those the Master Admin could allot it to, never one that rejected it.
+/// </summary>
+public sealed class AgencyRejectionReallotTests : IDisposable
+{
+    private const string Url = "/api/staff/site-assessment/allotments/reject";
+    private readonly TestHost _host = new();
+    private object[] _agencies =
+    [
+        new { UserId = "AGENCY1", UserName = "Agency One", SiteVerification = true },
+        new { UserId = "AGENCYX", UserName = "Rejected before", SiteVerification = true },
+        new { UserId = "AGENCY2", UserName = "Agency Two", SiteVerification = true },
+        new { UserId = "AGENCY3", UserName = "Agency Three", SiteVerification = true },
+        new { UserId = "AGENCYDESK", UserName = "Desktop only", DesktopVerification = true },
+    ];
+    private string? _last = "AGENCY2";
+
+    public AgencyRejectionReallotTests()
+    {
+        SiteAssessmentTestUsers.Register(_host);
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = args =>
+            FakeSql.Arg(args, "UserId") == "AGENCY1" && FakeSql.Arg(args, "AllotmentType") == "SA"
+                ? FakeSql.Sets([new { ZedId = "ZEDMSME000001", Certification = "Silver", PUnitName = "Acme Unit", CertificationStatus = 6 }], [], [])
+                : FakeSql.Sets([], [], []);
+        _host.Sql.Procs["SP_EMAIL_GET_DETAILS"] = _ => FakeSql.Sets([new { EnterpriseName = "Acme", AgencyEmailId = "agency@x.test", AgencyName = "Agency", PUnitName = "Acme Unit" }]);
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets(_agencies);
+        // The unit was rejected before by AGENCYX.
+        _host.Sql.Queries[AgencyRejections.RejectedSql] = _ => [new { RejectedAgencies = "AGENCYX,AGENCY1" }];
+        var ids = new Dictionary<string, long> { ["AGENCY1"] = 10, ["AGENCYX"] = 11, ["AGENCY2"] = 12, ["AGENCY3"] = 13, ["AGENCYDESK"] = 14 };
+        _host.Sql.Queries[AgencyRejections.AgencyIdsSql] = args =>
+            ((string[])args!.GetType().GetProperty("Ids")!.GetValue(args)!).Where(ids.ContainsKey).Select(i => (object)new { UserId = i, Id = ids[i] });
+        _host.Sql.Queries[AgencyRejections.LastSql] = _ => _last is null ? [] : [new { AgencyId = _last }];
+    }
+
+    public void Dispose() => _host.Dispose();
+
+    private async Task<HttpResponseMessage> Reject(string reasonId = "conflict") =>
+        await (await SiteAssessmentTestUsers.SignInAsync(_host, "AGENCY1")).PostAsJsonAsync(Url,
+            new { zedId = "ZEDMSME000001", certification = "Silver", reasonId, remarks = "Gap study by our lead assessor" });
+
+    private IEnumerable<object?> Allotments() => _host.Sql.Calls.Where(c => c.Name == "SP_ASSESSMENT_ALLOT_TO_AGENCY").Select(c => c.Args);
+
+    [Fact]
+    public async Task An_auto_reason_allots_the_next_agency_by_round_robin_and_mails_it()
+    {
+        var r = await Reject();
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var body = await r.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("reallotted").GetBoolean());
+        Assert.Contains("another agency", body.GetProperty("message").GetString());
+        // After AGENCY2 (the last re-allotment) comes AGENCY3; AGENCY1 and AGENCYX rejected it, AGENCYDESK has no site verification.
+        var allot = Assert.Single(Allotments());
+        Assert.Equal("AGENCY3", FakeSql.Arg(allot, "CertificationBodyUserId"));
+        Assert.Equal("Silver", FakeSql.Arg(allot, "Certification"));
+        Assert.Equal("AGENCY3", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == AgencyRejections.MarkSql).Args, "Agency"));
+        Assert.Contains(_host.Email.Sent, m => m.To == "agency@x.test");
+    }
+
+    [Fact]
+    public async Task The_rotation_wraps_round_and_skips_every_agency_that_rejected_the_unit()
+    {
+        _last = "AGENCY3";
+        await Reject();
+        Assert.Equal("AGENCY2", FakeSql.Arg(Assert.Single(Allotments()), "CertificationBodyUserId"));
+    }
+
+    [Fact]
+    public async Task With_no_other_agency_the_unit_waits_for_the_master_admin()
+    {
+        _agencies = [new { UserId = "AGENCY1", UserName = "Agency One", SiteVerification = true }, new { UserId = "AGENCYX", UserName = "Rejected before", SiteVerification = true }];
+        var r = await Reject();
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.False((await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("reallotted").GetBoolean());
+        Assert.Empty(Allotments());
+    }
+
+    [Fact]
+    public async Task A_master_admin_reason_saved_by_the_admin_is_not_re_allotted()
+    {
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new { SettingKey = RejectionReasons.Key, SettingValue = "[{\"id\":\"conflict\",\"text\":\"Conflict of interest\",\"action\":\"MasterAdmin\",\"active\":true}]" }];
+        var r = await Reject();
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Empty(Allotments());
+    }
+
+    [Fact]
+    public async Task The_agency_gets_the_active_reasons_with_what_each_does()
+    {
+        var reasons = await (await SiteAssessmentTestUsers.SignInAsync(_host, "AGENCY1")).GetFromJsonAsync<JsonElement>("/api/staff/assessment/rejection-reasons");
+        var first = reasons[0];
+        Assert.Equal("conflict", first.GetProperty("id").GetString());
+        Assert.True(first.GetProperty("autoReallot").GetBoolean());
+        Assert.Contains(reasons.EnumerateArray(), x => x.GetProperty("id").GetString() == "other" && !x.GetProperty("autoReallot").GetBoolean());
     }
 }

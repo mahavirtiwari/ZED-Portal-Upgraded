@@ -142,27 +142,36 @@ describe('SaAllotmentPage', () => {
     expect((await menuOf(2)).map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile']);
   });
 
-  it('rejects a waiting unit with a reason, then reloads with a toast (2026-11-18)', async () => {
+  it('rejects a waiting unit with a reason of the list and remarks, then reloads with the server message (2026-11-19)', async () => {
     const toast = vi.spyOn(TestBed.inject(ToastService), 'success');
     (el.querySelector('tbody tr .rm-btn') as HTMLButtonElement).click();
     await settle(fixture);
     (el.querySelector('.rm-item.danger') as HTMLButtonElement).click();
     await settle(fixture);
+    http.expectOne('/api/staff/assessment/rejection-reasons').flush([
+      { id: 'no-capacity', text: 'No assessor available', autoReallot: true },
+      { id: 'sector', text: 'Outside our sector', autoReallot: false },
+    ]);
+    await settle(fixture);
     expect(el.querySelector('.modal h3')!.textContent).toContain('Reject assessment?');
+    expect([...el.querySelectorAll('#saRejectReason-choice option')].map((o) => o.textContent!.trim())).toEqual(['--Select--', 'No assessor available', 'Outside our sector']);
     (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
     await settle(fixture);
-    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please enter reason for rejection.');
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please select the reason for rejection.');
     http.expectNone('/api/staff/site-assessment/allotments/reject');
-    choose(el, '#saRejectReason', 'Outside our sector');
+    choose(el, '#saRejectReason-choice', 'no-capacity');
+    await settle(fixture);
+    expect(el.querySelector('.modal .cd-choice-note')!.textContent).toContain('goes to another agency automatically');
+    choose(el, '#saRejectReason', 'Assessors on leave');
     await settle(fixture);
     (el.querySelector('.modal .cd-ok') as HTMLButtonElement).click();
     const req = http.expectOne('/api/staff/site-assessment/allotments/reject');
-    expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', reasonForRejection: 'Outside our sector' });
-    req.flush({ message: 'Unit rejected.' });
+    expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', reasonId: 'no-capacity', remarks: 'Assessors on leave' });
+    req.flush({ message: 'Unit rejected. It went to Agency Two.', reallotted: true });
     await settle(fixture);
     http.expectOne((r) => r.method === 'GET' && r.url === '/api/staff/site-assessment/allotments').flush({ units, assessors });
     await settle(fixture);
-    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', null);
+    expect(toast).toHaveBeenCalledWith('ZEDMSME000001 rejected', 'Unit rejected. It went to Agency Two.');
     expect(el.querySelector('.modal')).toBeNull();
   });
 

@@ -1,9 +1,9 @@
 import { Component, OnInit, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { text } from './assessment-shared';
-import { Person, Row, serves } from './assessment.api';
+import { AgencyRejection, Person, RejectionReason, Row, serves } from './assessment.api';
 import { mayAssess } from '../users/assessor-scope';
-import { ConfirmAsk } from '../confirm-dialog';
+import { ConfirmAsk, ConfirmResult } from '../confirm-dialog';
 import { TextPipe, t } from '../../content/page-text';
 
 /**
@@ -22,17 +22,38 @@ export function assessorsForUnit(unit: Row, assessors: Person[], bronzeAssessors
   return list.filter((a) => serves(a, unit['SectorCategory']) && mayAssess(a, level, 'Desktop'));
 }
 
-/** The Reject confirmation (reason required, as the server). */
-export function agencyRejectAsk(unit: Row): ConfirmAsk {
+/**
+ * The Reject confirmation. 2026-11-19 (rejection reasons, approved): a reason of Admin → Rejection Reasons (required; under it
+ * where the unit goes with that reason) and optional remarks, instead of the free-text reason.
+ */
+export function agencyRejectAsk(unit: Row, reasons: readonly RejectionReason[]): ConfirmAsk {
   return {
     title: t('staff.daAllotment.actions.reject.title', 'Reject assessment?'),
-    message: t('staff.daAllotment.actions.reject.message', '{zedId} ({level}) goes back to the ZED team with your reason.',
+    message: t('staff.daAllotment.actions.reject.message', '{zedId} ({level}) leaves your agency. The reason you pick decides where it goes next.',
       { zedId: text(unit, 'ZedId'), level: text(unit, 'Certification') }),
     confirmLabel: t('staff.daAllotment.actions.reject.confirmButton', 'Reject'),
     danger: true,
-    reason: { label: t('staff.daAllotment.actions.reject.reasonLabel', 'Reason for rejection'), maxLength: 2000,
-      requiredMessage: t('staff.daAllotment.actions.reject.reasonRequired.message', 'Please enter reason for rejection.') },
+    choice: {
+      label: t('staff.daAllotment.actions.reject.reasonLabel', 'Reason for rejection'),
+      options: reasons.map((r) => ({
+        value: r.id,
+        label: r.text,
+        note: r.autoReallot
+          ? t('staff.daAllotment.actions.reject.autoNote', 'With this reason the unit goes to another agency automatically.')
+          : t('staff.daAllotment.actions.reject.masterAdminNote', 'With this reason the unit goes back to the ZED team (Master Admin) for allotment.'),
+      })),
+      requiredMessage: t('staff.daAllotment.actions.reject.reasonRequired.message', 'Please select the reason for rejection.'),
+    },
+    reason: { label: t('staff.daAllotment.actions.reject.remarksLabel', 'Remarks'), required: false, maxLength: REJECT_REMARKS_MAX },
   };
+}
+
+/** The remarks' limit (the server's). */
+export const REJECT_REMARKS_MAX = 1000;
+
+/** The rejection to send from the pop-up's answer (null without a reason picked). */
+export function rejectionOf(result: ConfirmResult): AgencyRejection | null {
+  return result.choice ? { reasonId: result.choice, remarks: result.reason.trim() || null } : null;
 }
 
 /** The chosen assessor. */
