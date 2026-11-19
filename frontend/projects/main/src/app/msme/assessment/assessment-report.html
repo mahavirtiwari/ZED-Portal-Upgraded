@@ -65,7 +65,7 @@
                                             <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p['TimeStamp'] } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p['CreatedDate'] } }}</span>
                                           </div>
                                           @if (p['FileUrl']) {
-                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                                           }
                                         </div>
                                       }
@@ -81,7 +81,7 @@
                                             <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p['TimeStamp'] } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p['CreatedDate'] } }}</span>
                                           </div>
                                           @if (p['FileUrl']) {
-                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                                           }
                                         </div>
                                       }
@@ -100,7 +100,7 @@
                                             @if (p['PhotoUrl']) { <img [src]="p['PhotoUrl']" alt="" /> }
                                             <span>{{ p['ProductName'] }}</span>
                                           </div>
-                                          <button type="button" class="btn btn-primary pull-right" (click)="product.set(p)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                                          <button type="button" class="btn btn-primary pull-right" (click)="product.set(p)">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                                         </div>
                                       }
                                     </td>
@@ -124,7 +124,7 @@
                                         @for (r of b.rawMaterials; track $index) {
                                           <div class="row-data">
                                             <span>{{ r['RawMaterialName'] }}</span>
-                                            <button type="button" class="btn btn-primary pull-right" (click)="rawMaterial.set(r)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="rawMaterial.set(r)">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                                           </div>
                                         }
                                       </td>
@@ -540,7 +540,7 @@
       <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p.timeStamp } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p.createdDate } }}</span>
     </div>
     @if (p.url) {
-      <button type="button" class="btn btn-primary pull-right" (click)="view(p)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+      <button type="button" class="btn btn-primary pull-right" (click)="view(p)">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
     }
   </div>
 </ng-template>
@@ -573,7 +573,7 @@
                       @if (p['PhotoUrl']) {
                         <div class="row-data">
                           <div><img [src]="p['PhotoUrl']" alt="" /></div>
-                          <button type="button" class="btn btn-primary" (click)="preview.set(value(p['PhotoUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                          <button type="button" class="btn btn-primary" (click)="preview.set(value(p['PhotoUrl']))">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                         </div>
                       }
                     </td>
@@ -585,12 +585,12 @@
                         @if (p['DescriptionType'] === 'pdf') {
                           <div class="row-data">
                             <div><img src="/Images/svgicons/pdf-icon.svg" alt="" /></div>
-                            <a class="btn btn-primary" [href]="p['DescriptionUrl']" target="_blank" rel="noopener">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</a>
+                            <a class="btn btn-primary" [href]="p['DescriptionUrl']" target="_blank" rel="noopener">{{ 'View' | t: 'msme.assessment.viewButton' }}</a>
                           </div>
                         } @else {
                           <div class="row-data">
                             <div><img [src]="p['DescriptionUrl']" alt="" /></div>
-                            <button type="button" class="btn btn-primary" (click)="preview.set(value(p['DescriptionUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
+                            <button type="button" class="btn btn-primary" (click)="preview.set(value(p['DescriptionUrl']))">{{ 'View' | t: 'msme.assessment.viewButton' }}</button>
                           </div>
                         }
                       }

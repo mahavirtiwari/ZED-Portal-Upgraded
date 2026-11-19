@@ -28,7 +28,7 @@
 .id-tag {
   display: inline-flex; align-items: center; gap: 7px; min-height: 30px; border: 1px solid #dde7e8; border-radius: 8px; padding: 4px 10px 4px 5px;
   font-size: 13px; font-weight: 600; color: #17373b; overflow-wrap: anywhere;
-  i { font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--zt-dark, #24666b); background: #e6f2f3; border-radius: 5px; padding: 3px 6px; }
+  i { flex: none; white-space: nowrap; font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--zt-dark, #24666b); background: #e6f2f3; border-radius: 5px; padding: 3px 6px; }
 }
 .pledge {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 13px; font-weight: 500; color: #3d5559;

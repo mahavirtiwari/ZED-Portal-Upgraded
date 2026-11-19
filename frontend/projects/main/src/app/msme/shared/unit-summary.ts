@@ -72,7 +72,7 @@ type Row = Record<string, unknown>;
         <p>{{ basicInfo() ? ('Pledged on {date}' | t: 'common.unitSummary.pledgedOnText' : { date: m['PledgeOn'] }) : ('Pledge taken on {date}' | t: 'common.unitSummary.pledgeTakenOnText' : { date: m['PledgeOn'] }) }}</p>
         <div class="btn-download">
           <!-- V4: the certificate page (DOWNLOAD PDF there); the PDF is drawn when downloaded, never stored. -->
-          <a href="/msme/pledge-certificate">{{ basicInfo() ? ('DOWNLOAD PLEDGE' | t: 'common.unitSummary.downloadPledgeButton') : ('DOWNLOAD' | t: 'common.unitSummary.downloadButton') }}</a>
+          <a href="/msme/pledge-certificate">{{ basicInfo() ? ('DOWNLOAD PLEDGE' | t: 'common.unitSummary.downloadPledgeButton') : ('Download' | t: 'common.unitSummary.downloadButton') }}</a>
         </div>
       </div>
     </div>

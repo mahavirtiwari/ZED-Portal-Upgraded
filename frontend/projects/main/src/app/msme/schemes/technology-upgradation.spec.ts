@@ -81,7 +81,7 @@ describe('TechnologyUpgradationPage', () => {
     (fixture.componentInstance as unknown as Page).go('list');
     await settle();
     const rows = [...el.querySelectorAll('#tuTechnologies tbody tr')].map((r) => [...r.querySelectorAll('td')].map((td) => td.textContent!.trim()));
-    expect(rows).toEqual([['1. Solar rooftop', '--', 'APPLY'], ['2. LED lighting', '--', 'APPLY']]);
+    expect(rows).toEqual([['1. Solar rooftop', '--', 'Apply'], ['2. LED lighting', '--', 'Apply']]);
     expect((el.querySelector('#tuProceed') as HTMLButtonElement).disabled).toBe(true);
   });
 

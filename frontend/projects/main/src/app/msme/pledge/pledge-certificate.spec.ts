@@ -28,7 +28,7 @@ async function settle(fixture: { detectChanges(): void; whenStable(): Promise<un
 }
 
 describe('Pledge certificate pages', () => {
-  it('shows the MSME its certificate as the PDF draws it, with DOWNLOAD PDF', async () => {
+  it('shows the MSME its certificate as the PDF draws it, with Download PDF', async () => {
     await TestBed.configureTestingModule({ imports: [MsmePledgePage], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] }).compileComponents();
     const fixture = TestBed.createComponent(MsmePledgePage);
     const http = TestBed.inject(HttpTestingController);
@@ -40,7 +40,7 @@ describe('Pledge certificate pages', () => {
     expect([...el.querySelectorAll('.pledge-box span')].map((s) => s.textContent)).toEqual(['Shree Ganesh Precision', 'Engineering Works']);
     expect(el.querySelector('.pledge-text')!.textContent!.trim()).toBe('UDYAM-UP-29-0003915');
     expect((el.querySelector('.pledge-qr') as HTMLImageElement).getAttribute('src')).toBe('data:image/png;base64,AAAA');
-    const download = [...el.querySelectorAll('a')].find((a) => a.textContent!.trim() === 'DOWNLOAD PDF')!;
+    const download = [...el.querySelectorAll('a')].find((a) => a.textContent!.trim() === 'Download PDF')!;
     expect(download.getAttribute('href')).toBe('/api/msme/pledge-certificate/pdf');
     expect(download.getAttribute('download')).toBe('Pledge_Certificate_ZEDMSME000001.pdf');
     http.verify();
@@ -57,7 +57,7 @@ describe('Pledge certificate pages', () => {
     http.expectOne('/api/staff/certification-documents/ZEDMSME000001/pledge-certificate/view').flush(certificate);
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
-    const download = [...el.querySelectorAll('a')].find((a) => a.textContent!.trim() === 'DOWNLOAD PDF')!;
+    const download = [...el.querySelectorAll('a')].find((a) => a.textContent!.trim() === 'Download PDF')!;
     expect(download.getAttribute('href')).toBe('/api/staff/certification-documents/ZEDMSME000001/pledge-certificate');
     http.verify();
   });

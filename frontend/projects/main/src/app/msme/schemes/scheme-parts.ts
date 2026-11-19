@@ -44,7 +44,7 @@ import { SchemeDocument, UnitPanel } from './schemes.api';
         <div class="unit-selection">
           <div class="col-sm-12 p-0">
             <p>{{ 'Pledge taken on {date}' | t: 'msme.schemeParts.pledge.dateText' : { date: u['PledgeOn'] } }}</p>
-            <div class="btn-download"><a href="/msme/pledge-certificate">{{ 'DOWNLOAD' | t: 'msme.schemeParts.pledge.downloadButton' }}</a></div>
+            <div class="btn-download"><a href="/msme/pledge-certificate">{{ 'Download' | t: 'msme.schemeParts.pledge.downloadButton' }}</a></div>
           </div>
         </div>
       }
@@ -85,8 +85,8 @@ export class SchemeUnitPanel {
                 <zed-text key="msme.schemes.instructions" />
               }
               <div class="stepper-footer-sec initial-step1">
-                <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.schemeParts.intro.dashboardButton' }}</a>
-                <button type="button" class="btn btn-primary" (click)="accept.emit()">{{ 'ACCEPT & PROCEED' | t: 'msme.schemeParts.intro.acceptButton' }}</button>
+                <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'Back to dashboard' | t: 'msme.schemeParts.intro.dashboardButton' }}</a>
+                <button type="button" class="btn btn-primary" (click)="accept.emit()">{{ 'Accept & proceed' | t: 'msme.schemeParts.intro.acceptButton' }}</button>
               </div>
             </div>
           </div>

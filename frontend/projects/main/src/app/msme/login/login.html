@@ -47,7 +47,7 @@
           <p class="masked-email" data-testid="masked-email">{{ sentTo() }}</p>
           <p class="text-muted small">{{ 'No access to this e-mail? Please contact the ZED team.' | t: 'public.msmeLogin.sent.note' }}</p>
           <div class="register-btn">
-            <button type="button" class="btn btn-primary" (click)="switchMode('login')">{{ 'LOGIN' | t: 'public.msmeLogin.backToLoginButton' }}</button>
+            <button type="button" class="btn btn-primary" (click)="switchMode('login')">{{ 'Login' | t: 'public.msmeLogin.backToLoginButton' }}</button>
           </div>
         </div>
       } @else if (units(); as list) {
@@ -66,8 +66,8 @@
             }
           </div>
           <div class="register-btn mt-3">
-            <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">{{ 'SEND RESET LINK' | t: 'public.msmeLogin.units.sendButton' }}</button>
-            <button type="button" class="btn ml-secondary" (click)="units.set(null)">{{ 'BACK' | t: 'public.msmeLogin.units.backButton' }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">{{ 'Send reset link' | t: 'public.msmeLogin.units.sendButton' }}</button>
+            <button type="button" class="btn ml-secondary" (click)="units.set(null)">{{ 'Back' | t: 'public.msmeLogin.units.backButton' }}</button>
           </div>
         </form>
       } @else {
@@ -90,8 +90,8 @@
             <zed-recaptcha [label]="'Verification' | t: 'public.msmeLogin.captchaLabel'" (token)="onCaptcha($event)" />
           </div>
           <div class="register-btn">
-            <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'FIND MY ACCOUNT' | t: 'public.msmeLogin.forgot.findButton' }}</button>
-            <button type="button" class="btn ml-secondary" (click)="switchMode('login')">{{ 'LOGIN' | t: 'public.msmeLogin.backToLoginButton' }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Find my account' | t: 'public.msmeLogin.forgot.findButton' }}</button>
+            <button type="button" class="btn ml-secondary" (click)="switchMode('login')">{{ 'Login' | t: 'public.msmeLogin.backToLoginButton' }}</button>
           </div>
         </form>
       }

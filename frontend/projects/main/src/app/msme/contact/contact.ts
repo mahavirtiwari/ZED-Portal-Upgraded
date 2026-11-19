@@ -45,8 +45,20 @@ import { TextPipe, t } from '../../content/page-text';
   `,
   styles: `
     .narrow-page { max-width: 760px; margin: 24px auto 0; }
+    /* 2026-11-20 (applicant UI pass): the fields take the card's width (they stopped at 280px, half the card empty) and the
+       query box is tall enough to write in. */
+    .form-grid { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px 18px; align-items: center; }
+    .form-grid > .form-control { width: 100%; max-width: none; }
+    .form-grid > textarea.form-control { min-height: 130px; resize: vertical; }
+    .form-grid > label { margin: 0; font-weight: 600; }
     .form-grid > .align-self-start { padding-top: 9px; }
-    @media (max-width: 767.98px) { .form-grid > span:empty { display: none; } }
+    .form-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+    @media (max-width: 767.98px) {
+      .form-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+      .form-grid > label:not(:first-child) { margin-top: 10px; }
+      .form-grid > span:empty { display: none; }
+      .form-actions .btn { width: 100%; }
+    }
   `,
 })
 export class ContactPage {

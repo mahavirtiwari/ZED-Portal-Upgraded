@@ -47,8 +47,8 @@ export interface PledgeCertificate {
     @let c = certificate();
     @if (showActions()) {
       <div class="pledge-actions">
-        <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">{{ 'DOWNLOAD PDF' | t: 'common.pledgeCertificate.downloadButton' }}</a>
-        <a class="btn btn-default" [href]="inlineUrl()" target="_blank" rel="noopener">{{ 'OPEN PDF' | t: 'common.pledgeCertificate.openButton' }}</a>
+        <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">{{ 'Download PDF' | t: 'common.pledgeCertificate.downloadButton' }}</a>
+        <a class="btn btn-default" [href]="inlineUrl()" target="_blank" rel="noopener">{{ 'Open PDF' | t: 'common.pledgeCertificate.openButton' }}</a>
       </div>
     }
     <div class="pledge-sheet" role="img" [attr.aria-label]="'ZED pledge certificate of {name}, {zedId}' | t: 'common.pledgeCertificate.sheetAria' : { name: c.name, zedId: c.zedId }">
@@ -126,8 +126,8 @@ export const pledgeInlineUrl = (pdfUrl: string) => pdfUrl + (pdfUrl.includes('?'
     <div class="container pledge-page">
       <zed-page-head [crumbs]="crumbs()" [title]="'Pledge certificate' | t: 'msme.pledge.title'">
         @if (certificate(); as c) {
-          <a class="btn btn-outline-secondary btn-sm" [href]="inline" target="_blank" rel="noopener">{{ 'OPEN PDF' | t: 'msme.pledge.openButton' }}</a>
-          <a class="btn btn-primary btn-sm" [href]="pdf" [attr.download]="c.fileName">{{ 'DOWNLOAD PDF' | t: 'msme.pledge.downloadButton' }}</a>
+          <a class="btn btn-outline-secondary btn-sm" [href]="inline" target="_blank" rel="noopener">{{ 'Open PDF' | t: 'msme.pledge.openButton' }}</a>
+          <a class="btn btn-primary btn-sm" [href]="pdf" [attr.download]="c.fileName">{{ 'Download PDF' | t: 'msme.pledge.downloadButton' }}</a>
         }
       </zed-page-head>
       @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }

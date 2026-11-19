@@ -26,10 +26,10 @@ import { TextPipe, t } from '../../content/page-text';
           } @else if (state() === 'invalid') {
             <div class="alert alert-danger">{{ error() }}</div>
             <p>{{ 'Use "Forgot Password" on the login page to get a new link.' | t: 'public.msmeResetPassword.invalidNote' }}</p>
-            <a routerLink="/msme/login" class="btn btn-primary">{{ 'GO TO LOGIN' | t: 'public.msmeResetPassword.loginButton' }}</a>
+            <a routerLink="/msme/login" class="btn btn-primary">{{ 'Go to login' | t: 'public.msmeResetPassword.loginButton' }}</a>
           } @else if (state() === 'done') {
             <div class="alert alert-success">{{ 'Password reset successful. You can now log in with your new password.' | t: 'public.msmeResetPassword.doneMessage' }}</div>
-            <a routerLink="/msme/login" class="btn btn-primary">{{ 'GO TO LOGIN' | t: 'public.msmeResetPassword.loginButton' }}</a>
+            <a routerLink="/msme/login" class="btn btn-primary">{{ 'Go to login' | t: 'public.msmeResetPassword.loginButton' }}</a>
           } @else {
             <label for="newPassword">{{ 'New Password' | t: 'public.msmeResetPassword.newLabel' }}</label>
             <div class="mb-3">
@@ -44,7 +44,7 @@ import { TextPipe, t } from '../../content/page-text';
             </div>
             <div class="register-btn">
               <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Change Password' | t: 'public.msmeResetPassword.submitButton' }}</button>
-              <a routerLink="/msme/login" class="btn btn-dark">{{ 'LOGIN' | t: 'public.msmeResetPassword.cancelButton' }}</a>
+              <a routerLink="/msme/login" class="btn btn-dark">{{ 'Login' | t: 'public.msmeResetPassword.cancelButton' }}</a>
             </div>
             @if (error()) {
               <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>

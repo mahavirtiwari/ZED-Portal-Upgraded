@@ -10,7 +10,7 @@
           <div class="col-sm-9 dash-main">
             <div class="alert alert-info" role="status" id="tuMessage">{{ p.message }}</div>
             <div class="stepper-footer-sec">
-              <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
+              <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'Back to dashboard' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
             </div>
           </div>
         </div>
@@ -45,8 +45,8 @@
               </label>
             </div>
             <div class="stepper-footer-sec initial-step1">
-              <button type="button" class="btn btn-default" (click)="go(2)">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
-              <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
+              <button type="button" class="btn btn-default" (click)="go(2)">{{ 'Back' | t: 'msme.technologyUpgradation.backButton' }}</button>
+              <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">{{ 'Proceed' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
             </div>
           }
           @case ('list') {
@@ -70,9 +70,9 @@
                             <td class="text-center">
                               <div class="row-actions justify-content-center">
                                 @if (t.submitted) {
-                                  <button type="button" class="btn btn-outline-primary" (click)="open(t)">{{ 'VIEW' | t: 'msme.technologyUpgradation.list.viewButton' }}</button>
+                                  <button type="button" class="btn btn-outline-primary" (click)="open(t)">{{ 'View' | t: 'msme.technologyUpgradation.list.viewButton' }}</button>
                                 } @else {
-                                  <button type="button" class="btn btn-primary" (click)="open(t)">{{ 'APPLY' | t: 'msme.technologyUpgradation.list.applyButton' }}</button>
+                                  <button type="button" class="btn btn-primary" (click)="open(t)">{{ 'Apply' | t: 'msme.technologyUpgradation.list.applyButton' }}</button>
                                 }
                               </div>
                             </td>
@@ -83,8 +83,8 @@
                   </div>
                 </div>
                 <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go(3)">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
-                  <button type="button" class="btn btn-primary" id="tuProceed" [disabled]="!anySubmitted()" (click)="go('summary')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
+                  <button type="button" class="btn btn-default" (click)="go(3)">{{ 'Back' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                  <button type="button" class="btn btn-primary" id="tuProceed" [disabled]="!anySubmitted()" (click)="go('summary')">{{ 'Proceed' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                 </div>
               </div>
             </div>
@@ -187,8 +187,8 @@
                       </div>
                     </div>
                     <div class="stepper-footer-sec initial-step1">
-                      <button type="button" class="btn btn-default" (click)="go('list')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
-                      <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'SUBMIT' | t: 'msme.technologyUpgradation.submitButton' }}</button>
+                      <button type="button" class="btn btn-default" (click)="go('list')">{{ 'Back' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                      <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Submit' | t: 'msme.technologyUpgradation.submitButton' }}</button>
                     </div>
                   </form>
                 </div>
@@ -216,8 +216,8 @@
                   </table>
                 </div>
                 <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go('list')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
-                  <button type="button" class="btn btn-primary" (click)="go('account')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
+                  <button type="button" class="btn btn-default" (click)="go('list')">{{ 'Back' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                  <button type="button" class="btn btn-primary" (click)="go('account')">{{ 'Proceed' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                 </div>
               </div>
             </div>
@@ -294,8 +294,8 @@
                     </label>
                   </div>
                   <div class="stepper-footer-sec initial-step1">
-                    <button type="button" class="btn btn-default" (click)="go('summary')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
-                    <button type="submit" class="btn btn-primary" [class.btn-disabled]="!declaration" [disabled]="busy()">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
+                    <button type="button" class="btn btn-default" (click)="go('summary')">{{ 'Back' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                    <button type="submit" class="btn btn-primary" [class.btn-disabled]="!declaration" [disabled]="busy()">{{ 'Proceed' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                   </div>
                 </form>
               </div>
@@ -308,7 +308,7 @@
                 <h2>{{ 'Application for Financial Support for Zero Effect Solution submitted successfully!' | t: 'msme.technologyUpgradation.done.title' }}</h2>
               </div>
               <div class="stepper-footer-sec justify-content-center">
-                <a class="btn btn-primary" routerLink="/msme/dashboard">{{ 'BACK TO DASHBOARD' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
+                <a class="btn btn-primary" routerLink="/msme/dashboard">{{ 'Back to dashboard' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
               </div>
             </div>
           }

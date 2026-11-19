@@ -65,8 +65,8 @@ const ICONS: Record<RowMenuIcon, string> = {
     .rm-btn:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
     .rm-btn svg { width: 18px; height: 18px; fill: currentColor; }
     /* 2026-11-19 (the user, Admin login: dark buttons): the "⋯" button solid dark with white dots. */
-    :host-context(.zed-admin) .rm-btn { border-color: #3d5a5e; background: #3d5a5e; color: #fff; }
-    :host-context(.zed-admin) .rm-btn:hover, :host-context(.zed-admin) .rm-btn[aria-expanded='true'] { border-color: #2c4346; background: #2c4346; color: #fff; }
+    :host-context(.zed-admin) .rm-btn, :host-context(.zed-msme) .rm-btn { border-color: #3d5a5e; background: #3d5a5e; color: #fff; }
+    :host-context(.zed-admin) .rm-btn:hover, :host-context(.zed-admin) .rm-btn[aria-expanded='true'], :host-context(.zed-msme) .rm-btn:hover, :host-context(.zed-msme) .rm-btn[aria-expanded='true'] { border-color: #2c4346; background: #2c4346; color: #fff; }
     .rm-menu { position: fixed; z-index: 1060; min-width: 230px; max-width: min(320px, calc(100vw - 16px)); padding: 6px; background: #fff;
       border: 1px solid #dde7e8; border-radius: 12px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.09), 0 12px 32px rgba(16, 61, 64, 0.12); text-align: left; }
     .rm-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 8px 12px; border: 0; border-radius: 8px; background: none;

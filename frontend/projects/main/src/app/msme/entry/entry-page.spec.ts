@@ -290,7 +290,7 @@ describe('EntryPage', () => {
     el.querySelector<HTMLInputElement>('#confirmSubmit')!.click();
     await settle();
     const submit = el.querySelector<HTMLButtonElement>('#finalSubmit')!;
-    expect(submit.textContent).toContain('SUBMIT NC ANSWERS');
+    expect(submit.textContent).toContain('Submit NC answers');
     submit.click();
     await settle();
     http.expectOne(`${URL}/final-submit`).flush({ message: 'Your answers to NC 1 are submitted.' });

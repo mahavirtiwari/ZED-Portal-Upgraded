@@ -91,7 +91,7 @@
                                     <img [src]="p.productPhoto" alt="" />
                                     <span>{{ 'Product Photo' | t: 'msme.siteAssessment.basic.productPhotoLabel' }}</span>
                                   </div>
-                                  <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productPhoto)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
+                                  <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productPhoto)">{{ 'View' | t: 'msme.siteAssessment.viewButton' }}</button>
                                 </div>
                               }
                               @if (p.productDescriptionPhoto) {
@@ -101,7 +101,7 @@
                                       <img class="sa-pdf-icon" [class.opened]="p.productDescriptionOpened" src="/Images/svgicons/pdf-icon.svg" alt="" />
                                       <span>{{ 'Product Description Photo' | t: 'msme.siteAssessment.basic.descriptionPhotoLabel' }}</span>
                                     </div>
-                                    <a class="btn btn-outline-primary btn-sm pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</a>
+                                    <a class="btn btn-outline-primary btn-sm pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">{{ 'View' | t: 'msme.siteAssessment.viewButton' }}</a>
                                   </div>
                                 } @else {
                                   <div class="row-data">
@@ -109,7 +109,7 @@
                                       <img [src]="p.productDescriptionPhoto" alt="" />
                                       <span>{{ 'Product Description Photo' | t: 'msme.siteAssessment.basic.descriptionPhotoLabel' }}</span>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productDescriptionPhoto)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productDescriptionPhoto)">{{ 'View' | t: 'msme.siteAssessment.viewButton' }}</button>
                                   </div>
                                 }
                               }
@@ -394,7 +394,7 @@
                                 <span>{{ 'Captured at {time}' | t: 'msme.siteAssessment.photo.capturedText' : { time: pp.createdDate } }}</span>
                               </div>
                               @if (pp.src) {
-                                <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'View' | t: 'msme.siteAssessment.viewButton' }}</button>
                               }
                             </div>
                           </div>
@@ -607,7 +607,7 @@
             <span>{{ pp.name }}</span>
           </div>
           @if (pp.src) {
-            <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
+            <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'View' | t: 'msme.siteAssessment.viewButton' }}</button>
           }
         </div>
       </ng-template>

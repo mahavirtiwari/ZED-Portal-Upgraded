@@ -156,7 +156,7 @@ describe('SiteAssessmentPage', () => {
     expect(text()).toContain('Energy Source(s) Used DA Electricity Site Assessment Solar');
     expect(text()).toContain('Steel 20 Japan');
 
-    const description = buttons('VIEW').find((b) => b.tagName === 'A')!;
+    const description = buttons('View').find((b) => b.tagName === 'A')!;
     expect(description.getAttribute('href')).toBe(`${PHOTOS}mobileapi/Photos/ZEDMSME000001/Silver/BasicInfo/d1.pdf`);
     expect(description.getAttribute('target')).toBe('_blank');
   });

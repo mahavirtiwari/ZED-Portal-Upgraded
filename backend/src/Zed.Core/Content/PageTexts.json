@@ -1513,7 +1513,7 @@
     },
     {
       "key": "common.pledgeCertificate.downloadButton",
-      "standard": "DOWNLOAD PDF",
+      "standard": "Download PDF",
       "kind": "button",
       "portal": "common",
       "page": "pledgeCertificate",
@@ -1525,7 +1525,7 @@
     },
     {
       "key": "common.pledgeCertificate.openButton",
-      "standard": "OPEN PDF",
+      "standard": "Open PDF",
       "kind": "button",
       "portal": "common",
       "page": "pledgeCertificate",
@@ -2273,7 +2273,7 @@
     },
     {
       "key": "common.unitSummary.downloadButton",
-      "standard": "DOWNLOAD",
+      "standard": "Download",
       "kind": "button",
       "portal": "common",
       "page": "unitSummary",
@@ -3979,7 +3979,7 @@
     },
     {
       "key": "msme.assessment.viewButton",
-      "standard": "VIEW",
+      "standard": "View",
       "kind": "button",
       "portal": "msme",
       "page": "assessment",
@@ -8320,7 +8320,7 @@
     },
     {
       "key": "msme.entry.backStepButton",
-      "standard": "BACK",
+      "standard": "Back",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8373,7 +8373,7 @@
     },
     {
       "key": "msme.entry.basic.saveButton",
-      "standard": "SAVE AND CONTINUE",
+      "standard": "Save and continue",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8473,7 +8473,7 @@
     },
     {
       "key": "msme.entry.documents.replaceButton",
-      "standard": "REPLACE",
+      "standard": "Replace",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8523,7 +8523,7 @@
     },
     {
       "key": "msme.entry.documents.uploadButton",
-      "standard": "UPLOAD",
+      "standard": "Upload",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8571,7 +8571,7 @@
     },
     {
       "key": "msme.entry.error.dashboardButton",
-      "standard": "BACK TO DASHBOARD",
+      "standard": "Back to dashboard",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8909,7 +8909,7 @@
     },
     {
       "key": "msme.entry.nc.replaceButton",
-      "standard": "REPLACE",
+      "standard": "Replace",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8921,7 +8921,7 @@
     },
     {
       "key": "msme.entry.nc.saveButton",
-      "standard": "SAVE",
+      "standard": "Save",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -8981,7 +8981,7 @@
     },
     {
       "key": "msme.entry.nextButton",
-      "standard": "NEXT",
+      "standard": "Next",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -9082,7 +9082,7 @@
     },
     {
       "key": "msme.entry.submit.finalButton",
-      "standard": "FINAL SUBMIT",
+      "standard": "Final submit",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -9094,7 +9094,7 @@
     },
     {
       "key": "msme.entry.submit.ncButton",
-      "standard": "SUBMIT NC ANSWERS",
+      "standard": "Submit NC answers",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -9302,7 +9302,7 @@
     },
     {
       "key": "msme.entry.viewButton",
-      "standard": "VIEW",
+      "standard": "View",
       "kind": "button",
       "portal": "msme",
       "page": "entry",
@@ -14613,7 +14613,7 @@
     },
     {
       "key": "msme.pledge.downloadButton",
-      "standard": "DOWNLOAD PDF",
+      "standard": "Download PDF",
       "kind": "button",
       "portal": "msme",
       "page": "pledge",
@@ -14625,7 +14625,7 @@
     },
     {
       "key": "msme.pledge.openButton",
-      "standard": "OPEN PDF",
+      "standard": "Open PDF",
       "kind": "button",
       "portal": "msme",
       "page": "pledge",
@@ -15865,7 +15865,7 @@
     },
     {
       "key": "msme.schemeParts.intro.acceptButton",
-      "standard": "ACCEPT & PROCEED",
+      "standard": "Accept & proceed",
       "kind": "button",
       "portal": "msme",
       "page": "schemeParts",
@@ -15877,7 +15877,7 @@
     },
     {
       "key": "msme.schemeParts.intro.dashboardButton",
-      "standard": "BACK TO DASHBOARD",
+      "standard": "Back to dashboard",
       "kind": "button",
       "portal": "msme",
       "page": "schemeParts",
@@ -15927,7 +15927,7 @@
     },
     {
       "key": "msme.schemeParts.pledge.downloadButton",
-      "standard": "DOWNLOAD",
+      "standard": "Download",
       "kind": "button",
       "portal": "msme",
       "page": "schemeParts",
@@ -17773,7 +17773,7 @@
     },
     {
       "key": "msme.siteAssessment.viewButton",
-      "standard": "VIEW",
+      "standard": "View",
       "kind": "button",
       "portal": "msme",
       "page": "siteAssessment",
@@ -18118,7 +18118,7 @@
     },
     {
       "key": "msme.technologyUpgradation.backButton",
-      "standard": "BACK",
+      "standard": "Back",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -18154,7 +18154,7 @@
     },
     {
       "key": "msme.technologyUpgradation.dashboardButton",
-      "standard": "BACK TO DASHBOARD",
+      "standard": "Back to dashboard",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -18430,7 +18430,7 @@
     },
     {
       "key": "msme.technologyUpgradation.list.applyButton",
-      "standard": "APPLY",
+      "standard": "Apply",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -18514,7 +18514,7 @@
     },
     {
       "key": "msme.technologyUpgradation.list.viewButton",
-      "standard": "VIEW",
+      "standard": "View",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -18526,7 +18526,7 @@
     },
     {
       "key": "msme.technologyUpgradation.proceedButton",
-      "standard": "PROCEED",
+      "standard": "Proceed",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -18562,7 +18562,7 @@
     },
     {
       "key": "msme.technologyUpgradation.submitButton",
-      "standard": "SUBMIT",
+      "standard": "Submit",
       "kind": "button",
       "portal": "msme",
       "page": "technologyUpgradation",
@@ -19407,7 +19407,7 @@
     },
     {
       "key": "public.msmeLogin.backToLoginButton",
-      "standard": "LOGIN",
+      "standard": "Login",
       "kind": "button",
       "portal": "public",
       "page": "msmeLogin",
@@ -19529,7 +19529,7 @@
     },
     {
       "key": "public.msmeLogin.forgot.findButton",
-      "standard": "FIND MY ACCOUNT",
+      "standard": "Find my account",
       "kind": "button",
       "portal": "public",
       "page": "msmeLogin",
@@ -19961,7 +19961,7 @@
     },
     {
       "key": "public.msmeLogin.units.backButton",
-      "standard": "BACK",
+      "standard": "Back",
       "kind": "button",
       "portal": "public",
       "page": "msmeLogin",
@@ -19973,7 +19973,7 @@
     },
     {
       "key": "public.msmeLogin.units.sendButton",
-      "standard": "SEND RESET LINK",
+      "standard": "Send reset link",
       "kind": "button",
       "portal": "public",
       "page": "msmeLogin",
@@ -20021,7 +20021,7 @@
     },
     {
       "key": "public.msmeResetPassword.cancelButton",
-      "standard": "LOGIN",
+      "standard": "Login",
       "kind": "button",
       "portal": "public",
       "page": "msmeResetPassword",
@@ -20093,7 +20093,7 @@
     },
     {
       "key": "public.msmeResetPassword.loginButton",
-      "standard": "GO TO LOGIN",
+      "standard": "Go to login",
       "kind": "button",
       "portal": "public",
       "page": "msmeResetPassword",

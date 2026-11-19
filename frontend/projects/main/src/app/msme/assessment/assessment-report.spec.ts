@@ -126,7 +126,7 @@ describe('Assessment pages (MSME, read-only)', () => {
     expect(text()).toContain('Steel');
 
     // Product dialog: label PDF opens in a new tab, the photo in the preview.
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).filter((b) => b.textContent!.trim() === 'VIEW')[2].click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button')).filter((b) => b.textContent!.trim() === 'View')[2].click();
     await settle(fixture);
     const dialog = el.querySelector('.modal')!;
     expect(dialog.textContent).toContain('Valve');

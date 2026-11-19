@@ -48,9 +48,16 @@ export interface TrackerStep {
     .st-step:not(.st-done):not(.st-now) .st-label { color: #5f6f70; }
     .st-note { font-size: 12px; color: #5f6f70; }
     .st-now .st-note { color: var(--zt-dark, #1f5c61); }
+    /* 2026-11-20 (applicant UI pass): on phones the steps stand one under the other (dot, then the label and note beside it),
+       because five labels side by side ran into each other ("Application received" / "Information & documents"). */
     @media (max-width: 575.98px) {
-      .st-label { font-size: 11.5px; }
-      .st-note { display: none; }
+      .st { grid-auto-flow: row; grid-auto-columns: auto; row-gap: 14px; padding: 14px 16px; }
+      .st-step { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 12px; align-items: center; text-align: left; padding: 0; }
+      .st-step + .st-step::before { top: -14px; bottom: auto; left: 15px; right: auto; width: 3px; height: 14px; }
+      .st-step:has(.st-note) .st-dot { grid-row: span 2; }
+      .st-label, .st-note { grid-column: 2; }
+      .st-label { margin-top: 0; font-size: 13.5px; overflow-wrap: break-word; }
+      .st-note { display: block; }
     }
   `,
 })

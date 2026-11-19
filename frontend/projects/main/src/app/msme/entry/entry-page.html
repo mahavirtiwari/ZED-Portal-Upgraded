@@ -10,7 +10,7 @@
     <p class="text-muted" role="status">{{ 'Loading…' | t: 'msme.entry.loading' }}</p>
   } @else if (loadError(); as err) {
     <div class="alert alert-warning" role="alert" id="entryError">{{ err }}</div>
-    <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.entry.error.dashboardButton' }}</a>
+    <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'Back to dashboard' | t: 'msme.entry.error.dashboardButton' }}</a>
   } @else if (state(); as s) {
     @if (s.submitted && !s.nc) {
       <div class="alert alert-success" role="status" id="entrySubmitted">
@@ -104,7 +104,7 @@
           @if (editable()) {
             <p class="help">{{ 'Photos: JPG or PNG, up to 5 MB each. Your browser may ask to share your location: it is recorded with the photos, as the ZED app does.' | t: 'msme.entry.basic.photosNote' }}</p>
             <div class="stepper-footer-sec">
-              <button type="button" class="btn btn-primary" [disabled]="busy()" id="saveBasicInfo" (click)="saveBasicInfo()">{{ busy() ? ('Saving…' | t: 'msme.entry.basic.savingButton') : ('SAVE AND CONTINUE' | t: 'msme.entry.basic.saveButton') }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" id="saveBasicInfo" (click)="saveBasicInfo()">{{ busy() ? ('Saving…' | t: 'msme.entry.basic.savingButton') : ('Save and continue' | t: 'msme.entry.basic.saveButton') }}</button>
             </div>
           }
         </div>
@@ -133,7 +133,7 @@
                     <span class="doc-status">
                       @if (e.uploaded) {
                         <span class="doc-badge badge-ok">{{ 'Uploaded' | t: 'msme.entry.documents.uploadedLabel' }}</span>
-                        @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">{{ 'VIEW' | t: 'msme.entry.viewButton' }}</a> }
+                        @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">{{ 'View' | t: 'msme.entry.viewButton' }}</a> }
                       } @else if (e.required) {
                         <span class="doc-badge badge-req">{{ 'Required' | t: 'msme.entry.documents.requiredLabel' }}</span>
                       } @else {
@@ -144,7 +144,7 @@
                       <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
                              [attr.aria-label]="'Files for {name}' | t: 'msme.entry.documents.filesAria' : { name: e.name }" (change)="choose(e, $event)" />
                       <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || chosenFor(e).length === 0" (click)="upload(e)">
-                        {{ e.uploaded ? ('REPLACE' | t: 'msme.entry.documents.replaceButton') : ('UPLOAD' | t: 'msme.entry.documents.uploadButton') }}
+                        {{ e.uploaded ? ('Replace' | t: 'msme.entry.documents.replaceButton') : ('Upload' | t: 'msme.entry.documents.uploadButton') }}
                       </button>
                     }
                   </div>
@@ -157,8 +157,8 @@
         }
         @if (editable()) {
           <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-default" (click)="tab.set('basic')">{{ 'BACK' | t: 'msme.entry.backStepButton' }}</button>
-            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'NEXT' | t: 'msme.entry.nextButton' }}</button>
+            <button type="button" class="btn btn-default" (click)="tab.set('basic')">{{ 'Back' | t: 'msme.entry.backStepButton' }}</button>
+            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'Next' | t: 'msme.entry.nextButton' }}</button>
           </div>
         }
       }
@@ -183,7 +183,7 @@
                          [attr.aria-label]="'New site exterior photos (up to 2)' | t: 'msme.entry.nc.site.filesAria'" (change)="chooseNc('site', $event)" />
                   <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on the site exterior photos' | t: 'msme.entry.nc.site.remarksAria'" maxlength="2000"
                          [value]="remark('site')" (input)="setRemark('site', $any($event.target).value)" />
-                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">{{ 'SAVE' | t: 'msme.entry.nc.saveButton' }}</button>
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">{{ 'Save' | t: 'msme.entry.nc.saveButton' }}</button>
                 }
               </div>
             </div>
@@ -224,7 +224,7 @@
                     </label>
                     <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on {name}' | t: 'msme.entry.nc.remarksAria' : { name: p.productName }" maxlength="2000"
                            [value]="remark('p-' + p.id)" (input)="setRemark('p-' + p.id, $any($event.target).value)" />
-                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">{{ 'SAVE' | t: 'msme.entry.nc.saveButton' }}</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">{{ 'Save' | t: 'msme.entry.nc.saveButton' }}</button>
                   }
                 </div>
               }
@@ -240,7 +240,7 @@
                     @if (r.assessorRemarks) { <span class="help"><b>{{ 'Assessor:' | t: 'msme.entry.nc.assessorLabel' }}</b> {{ r.assessorRemarks }}</span> }
                     @if (r.answered) {
                       <span class="doc-badge badge-ok">{{ 'Answered' | t: 'msme.entry.nc.answeredLabel' }}</span>
-                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm ms-2">{{ 'VIEW' | t: 'msme.entry.viewButton' }}</a> }
+                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm ms-2">{{ 'View' | t: 'msme.entry.viewButton' }}</a> }
                     } @else {
                       <span class="doc-badge badge-req">{{ 'To answer' | t: 'msme.entry.nc.toAnswerLabel' }}</span>
                     }
@@ -251,7 +251,7 @@
                     <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on {name}' | t: 'msme.entry.nc.remarksAria' : { name: r.code }" maxlength="2000"
                            [value]="remark('r-' + r.id)" (input)="setRemark('r-' + r.id, $any($event.target).value)" />
                     <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('r-' + r.id).length === 0" (click)="answerRequirement(r.id)">
-                      {{ r.answered ? ('REPLACE' | t: 'msme.entry.nc.replaceButton') : ('SAVE' | t: 'msme.entry.nc.saveButton') }}
+                      {{ r.answered ? ('Replace' | t: 'msme.entry.nc.replaceButton') : ('Save' | t: 'msme.entry.nc.saveButton') }}
                     </button>
                   }
                 </div>
@@ -260,7 +260,7 @@
           }
           @if (ncAnswerable()) {
             <div class="stepper-footer-sec">
-              <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'NEXT' | t: 'msme.entry.nextButton' }}</button>
+              <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'Next' | t: 'msme.entry.nextButton' }}</button>
             </div>
           }
         }
@@ -286,9 +286,9 @@
             </label>
           </div>
           <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-default" (click)="tab.set(nc() ? 'nc' : 'documents')">{{ 'BACK' | t: 'msme.entry.backStepButton' }}</button>
+            <button type="button" class="btn btn-default" (click)="tab.set(nc() ? 'nc' : 'documents')">{{ 'Back' | t: 'msme.entry.backStepButton' }}</button>
             <button type="button" class="btn btn-primary" id="finalSubmit" [disabled]="busy() || !readyToSubmit() || !confirmed()" (click)="finalSubmit()">
-              {{ busy() ? ('Submitting…' | t: 'msme.entry.submit.submittingButton') : nc() ? ('SUBMIT NC ANSWERS' | t: 'msme.entry.submit.ncButton') : ('FINAL SUBMIT' | t: 'msme.entry.submit.finalButton') }}
+              {{ busy() ? ('Submitting…' | t: 'msme.entry.submit.submittingButton') : nc() ? ('Submit NC answers' | t: 'msme.entry.submit.ncButton') : ('Final submit' | t: 'msme.entry.submit.finalButton') }}
             </button>
           </div>
         }

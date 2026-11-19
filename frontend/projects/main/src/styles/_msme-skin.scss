@@ -54,3 +54,39 @@
 .btn.btn-default:hover,
 .btn-secondary:hover,
 .btn-light:hover { background-color: #d9e4e4 !important; border-color: #d9e4e4 !important; color: #10292c !important; }
+
+// 2026-11-20 (the user, applicant pages: 'fix the UI for all the sections, pop-ups, buttons (make it in dark color), texts
+// wrapping/alignments, adaptability'). The dark colours come from the Admin's skin (styles.scss); here the rest.
+
+// Buttons keep their words' own case (the old site's rules put some in capitals) and break only between words on phones.
+.btn, input.btn { text-transform: none !important; letter-spacing: 0; }
+@media (max-width: 575.98px) {
+  .btn:not(td .btn):not(.modal-footer .btn) { white-space: normal; text-align: center; }
+}
+
+// Pop-ups: the window's height at most, the head and buttons always in view, the body scrolling inside; on phones the
+// window's width less 16px on each side.
+.modal .modal-dialog { margin-top: 16px; margin-bottom: 16px; }
+.modal .modal-dialog-centered { min-height: calc(100% - 32px); }
+.modal .modal-content { max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; }
+.modal .modal-content > form,
+.modal .modal-content > :has(> .modal-body) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.modal .modal-header, .modal .modal-footer { flex: none; }
+.modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; overflow-wrap: break-word; }
+.modal .modal-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.modal .modal-footer > * { margin: 0; }
+@media (max-width: 575.98px) {
+  .modal .modal-dialog,
+  .modal .modal-dialog.modal-popup,
+  .modal .modal-dialog[class*='-dialog'] { width: auto; max-width: none; margin: 16px; }
+  .modal .modal-header { padding: 14px 16px; }
+  .modal .modal-body { padding: 14px 16px; }
+  .modal .modal-footer { padding: 10px 16px; }
+}
+
+// Whole words: titles and card text break between words, a word only when it cannot fit on a line of its own.
+.ph-title, .registration-title, .modal-title, h1, h2, h3 { overflow-wrap: break-word; word-break: normal; }
+// Things read as one unit stay on one line: chips, badges, dates and amounts.
+.status-badge, .badge, .chip, time, .text-nowrap { white-space: nowrap; }
+// Tables scroll inside their box on narrow screens instead of widening the page.
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }

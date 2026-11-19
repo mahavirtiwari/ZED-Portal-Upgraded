@@ -48,6 +48,23 @@ body {
 .zed-legacy.zed-msme {
   @include meta.load-css('styles/msme-skin');
 }
+// 2026-11-20 (the user, signed in as an applicant: 'fix the UI for all the sections, pop-ups, buttons (make it in dark
+// color)'): the applicant pages (the MSME layout and the public layout of registration and Contact) get the Admin's dark
+// buttons, the same skin and colours (styles/_admin-skin.scss): main action #1f5c61, other buttons #3d5a5e, danger #b0362b.
+.zed-legacy.zed-msme {
+  --zb-main: var(--zt-dark, #1f5c61);
+  --zb-main-hover: color-mix(in srgb, var(--zb-main) 78%, #000);
+  --zb-main-off: color-mix(in srgb, var(--zb-main) 65%, #a9b5b6);
+  --zb-2: #3d5a5e;
+  --zb-2-hover: #2c4346;
+  --zb-2-off: color-mix(in srgb, #3d5a5e 65%, #a9b5b6);
+  --zb-danger: #b0362b;
+  --zb-danger-hover: #8f2a21;
+  --zb-danger-off: color-mix(in srgb, #b0362b 65%, #b5a3a1);
+}
+.zed-legacy.zed-msme:not(#zed-x) {
+  @include meta.load-css('styles/admin-skin');
+}
 
 // 2026-11-15: Admin → Branding colour themes (only with <html data-zed-theme>; ZED Teal unchanged).
 @include meta.load-css('styles/themes');

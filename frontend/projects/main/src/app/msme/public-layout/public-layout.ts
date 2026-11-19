@@ -1,10 +1,11 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
 import { ContactPage } from '../contact/contact';
 import { PageHead } from '../shared/page-head';
 import { TextPipe, t } from '../../content/page-text';
+import { closeTopPopup } from '../layout/msme-layout';
 
 /**
  * Frame of the public pages (registration, Contact ZED), as Views/Shared/_LayoutHome.cshtml drew it: the logo header,
@@ -94,6 +95,14 @@ import { TextPipe, t } from '../../content/page-text';
   `,
 })
 export class PublicLayout {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /** 2026-11-20 (applicant UI pass): Escape closes the open pop-up (registration's e-mail and OTP boxes), as in the MSME layout. */
+  @HostListener('document:keydown.escape', ['$event'])
+  protected closeOnEscape(event: Event): void {
+    if (closeTopPopup(this.host.nativeElement)) event.preventDefault();
+  }
+
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
   /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */

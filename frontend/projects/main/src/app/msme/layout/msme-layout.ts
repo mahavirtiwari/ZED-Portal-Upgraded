@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
@@ -174,6 +174,18 @@ export class MsmeLayout {
     this.userMenuOpen.set(false);
   }
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /**
+   * 2026-11-20 (applicant UI pass): Escape closes the open pop-up of any applicant page (its close button, as a click on it
+   * would), the newest one first; then the user menu.
+   */
+  @HostListener('document:keydown.escape', ['$event'])
+  protected closeOnEscape(event: Event): void {
+    if (closeTopPopup(this.host.nativeElement)) event.preventDefault();
+    else this.userMenuOpen.set(false);
+  }
+
   protected async logout(): Promise<void> {
     await this.auth.logout();
     // The Udyami Bharat return link belongs to this sign-in only.
@@ -196,4 +208,16 @@ export function sectionOf(url: string): 'home' | 'certifications' | 'incentives'
   if (/^\/msme\/(financial-assistance|technology-upgradation|handholding)(\/|$)/.test(p)) return 'incentives';
   if (/^\/msme\/(profile|edit-history|change-password)(\/|$)/.test(p)) return 'profile';
   return 'other';
+}
+
+/** Clicks the close button of the last open pop-up inside the element; false when there is none. */
+export function closeTopPopup(root: HTMLElement): boolean {
+  // The applicant pop-ups are in the page only while open (@if), shown with .d-block (or Bootstrap's .show).
+  const open = [...root.querySelectorAll<HTMLElement>('.modal.d-block, .modal.show')];
+  const top = open.at(-1);
+  const close = top?.querySelector<HTMLElement>(
+    '.modal-header .btn-close, .modal-header [aria-label="Close"], .modal-header .close, .modal-footer [data-dismiss], .modal-footer .btn-close');
+  if (!close) return false;
+  close.click();
+  return true;
 }
