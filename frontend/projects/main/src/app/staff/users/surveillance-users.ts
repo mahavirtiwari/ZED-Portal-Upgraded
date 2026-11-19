@@ -41,7 +41,7 @@ interface Target {
 }
 
 /**
- * Surveillance build: "Bronze Surveillance Agencies" (MasterAdmin) and the assessors list (MasterAdmin: all, agency: its
+ * Surveillance build: "Assessment Agencies" (MasterAdmin; "Bronze Surveillance Agencies" before 2026-11-19) and the assessors list (MasterAdmin: all, agency: its
  * own). Port of ZEDCS_SURVEILLANCE User/AssessmentAgencies and User/Assessors. Accounts are created and edited in main;
  * here the MasterAdmin enables Bronze surveillance with the preferred state and districts, and agencies / assessors are
  * blocked or unblocked in the surveillance database. The route's `data.kind` ('agencies' | 'assessors') picks the list.
@@ -348,7 +348,7 @@ export class SurveillanceUsersPage {
   private readonly isMaster = this.roleId === StaffRole.MasterAdmin;
   /** V4: the assessor's registered mobile of the surveillance site assessor app, for the Admin and the MasterAdmin (not agencies). */
   protected readonly showsMobile = this.kind === 'assessors' && canSeeAssessorMobile(this.roleId);
-  protected readonly title = computed(() => (this.kind === 'agencies' ? t('staff.surveillanceUsers.agencies.title', 'Bronze Surveillance Agencies')
+  protected readonly title = computed(() => (this.kind === 'agencies' ? t('staff.surveillanceUsers.agencies.title', 'Assessment Agencies')
     : t('staff.surveillanceUsers.assessors.title', 'Assessors')));
   protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
 

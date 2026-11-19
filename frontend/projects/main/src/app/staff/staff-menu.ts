@@ -322,8 +322,10 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance
   // Monitoring" drop-down; Assessors (commented out there) and Password Reset Link are V4's.
   { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
-  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
-  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  // 2026-11-19 (the user could not find Block): every agency is on this list (block / unblock, Bronze surveillance), so it is
+  // named and grouped as on the main portal ("Agencies": Assessment Agencies, Assessors); before, "Bronze Surveillance Agencies".
+  { label: 'Assessment Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin], group: 'Agencies' },
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin], group: 'Agencies' },
   { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
   { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
   { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
@@ -333,7 +335,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   // Agency
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Surveillance' },
   { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Surveillance' },
-  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.Agency], subRoles: ['DesktopVerification'] },
+  // 2026-11-19: every surveillance agency manages (and blocks) its assessors; before, Bronze (desktop) agencies only.
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
   { label: 'Allot Surveillance', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'], group: 'Allotment' },
   { label: 'Allot Surveillance (Site)', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Allotment' },
   { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Surveillance' },
@@ -438,7 +441,6 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'New Transactions': () => t('staff.menu.item.newTransactionsLabel', 'New Transactions'),
   'Approved Transactions': () => t('staff.menu.item.approvedTransactionsLabel', 'Approved Transactions'),
   'Allot Surveillance': () => t('staff.menu.item.allotSurveillanceLabel', 'Allot Surveillance'),
-  'Bronze Surveillance Agencies': () => t('staff.menu.item.bronzeSurveillanceAgenciesLabel', 'Bronze Surveillance Agencies'),
   'Surveillance Payment Received': () => t('staff.menu.item.surveillancePaymentReceivedLabel', 'Surveillance Payment Received'),
   'Surveillance Monitoring': () => t('staff.menu.item.surveillanceMonitoringLabel', 'Surveillance Monitoring'),
   'Surveillance Completed': () => t('staff.menu.item.surveillanceCompletedLabel', 'Surveillance Completed'),

@@ -63,7 +63,7 @@ describe('surveillance agencies and assessors', () => {
   it('lists the agencies with their Bronze surveillance state and preferred state', async () => {
     const { el } = await agencies();
     const text = el.textContent ?? '';
-    expect(el.querySelector('h2')!.textContent).toBe('Bronze Surveillance Agencies');
+    expect(el.querySelector('h2')!.textContent).toBe('Assessment Agencies');
     expect(el.querySelector('zed-page-head')!.textContent).toContain('changes here apply to surveillance only');
     expect(text).toContain('ZEDAA0001');
     expect(el.querySelector('.bronze-status')!.textContent).toContain('Not allowed');

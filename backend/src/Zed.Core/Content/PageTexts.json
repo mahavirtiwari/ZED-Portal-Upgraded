@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 8543,
+  "count": 8542,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -66196,18 +66196,6 @@
       ]
     },
     {
-      "key": "staff.menu.item.bronzeSurveillanceAgenciesLabel",
-      "standard": "Bronze Surveillance Agencies",
-      "kind": "label",
-      "portal": "staff",
-      "page": "menu",
-      "pageName": "Menu",
-      "placeholders": [],
-      "files": [
-        "staff/staff-menu.ts"
-      ]
-    },
-    {
       "key": "staff.menu.item.captchaSettingsLabel",
       "standard": "Captcha Settings",
       "kind": "label",
@@ -97687,7 +97675,7 @@
     },
     {
       "key": "staff.surveillanceUsers.agencies.title",
-      "standard": "Bronze Surveillance Agencies",
+      "standard": "Assessment Agencies",
       "kind": "heading",
       "portal": "staff",
       "page": "surveillanceUsers",

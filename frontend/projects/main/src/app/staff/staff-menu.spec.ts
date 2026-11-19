@@ -90,7 +90,7 @@ describe('staff menu', () => {
 
     it('gives the master admin the surveillance screens and agency view', () => {
       expect(s(StaffRole.MasterAdmin, [])).toEqual(expect.arrayContaining([
-        'Allot Surveillance', 'Bronze Surveillance Agencies', 'Surveillance Payment Received', 'Surveillance Monitoring',
+        'Allot Surveillance', 'Assessment Agencies', 'Assessors', 'Surveillance Payment Received', 'Surveillance Monitoring',
         'Surveillance Completed', 'Surveillance Rejected',
       ]));
     });
@@ -98,6 +98,14 @@ describe('staff menu', () => {
     it('shows every assessor Completed and Non-Conformances, whatever the sub-role', () => {
       expect(s(StaffRole.DesktopAssessor, ['SiteVerification'])).toEqual(expect.arrayContaining(['Completed', 'Non-Conformances']));
       expect(s(StaffRole.DesktopAssessor, ['SiteVerification'])).not.toContain('Surveillance Assessments');
+    });
+
+    // 2026-11-19: a site-only (Silver / Gold surveillance) agency manages and blocks its assessors too.
+    it('gives every surveillance agency its Assessors, and the master admin Operation Admins (agencies Sub-Users)', () => {
+      expect(s(StaffRole.Agency, ['SiteVerification'])).toContain('Assessors');
+      expect(s(StaffRole.Agency, ['DesktopVerification'])).toContain('Assessors');
+      expect(s(StaffRole.Agency, ['SiteVerification'])).toContain('Sub-Users');
+      expect(s(StaffRole.MasterAdmin, [])).toContain('Operation Admins');
     });
 
     it('splits agency allotment by sub-role and has no NEFT', () => {
@@ -127,7 +135,7 @@ describe('staff menu', () => {
         'Main Dashboard Cards /staff/incentives/dashboard-cards',
       ]);
       expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
-      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)', 'Quality Observations', 'Operation Admins', 'Documents']);
+      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Agencies (2)', 'Surveillance Monitoring (5)', 'Quality Observations', 'Operation Admins', 'Documents']);
     });
 
     it('puts the headings of a menu inside its drop-down', () => {

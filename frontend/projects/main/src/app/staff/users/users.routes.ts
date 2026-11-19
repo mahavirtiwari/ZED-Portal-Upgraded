@@ -82,7 +82,7 @@ const MAIN_USERS_ROUTES: Routes = [
 const SURVEILLANCE_USERS_ROUTES: Routes = [
   {
     path: 'surveillance-agencies',
-    title: 'ZED | Bronze Surveillance Agencies',
+    title: 'ZED | Assessment Agencies',
     canActivate: [masterAdmin],
     data: { kind: 'agencies' },
     loadComponent: () => import('./surveillance-users').then((m) => m.SurveillanceUsersPage),
