@@ -101,7 +101,7 @@ describe('ExcelToolsComponent', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('1 added, 1 updated');
     expect(fixture.componentInstance.applied()).toEqual(result);
     expect(button(el, 'APPLY')).toBeUndefined();
-    button(el, 'CLOSE').click();
+    button(el, 'Close').click();
     await settle(fixture);
     expect(el.querySelector('.modal')).toBeNull();
     http.verify();

@@ -181,7 +181,7 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
             }
           }
         </div>
-        <zed-pager [pager]="view" />
+        @if (view.total()) { <zed-pager [pager]="view" /> }
       </section>
     } @else {
       <div class="zed-card no-data">Choose a state to see its incentives.</div>
@@ -211,16 +211,14 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .inc-tile.tone-grey { border-left-color: #b7c3c4; }
     .inc-tile.tone-violet { border-left-color: #3f3a7a; }
     .inc-tile strong { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
-    .inc-tile-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .inc-tile-label { font-size: 13px; color: #5f6f70; overflow-wrap: break-word; }
 
     .inc-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-    .inc-list-head .form-control { flex: 0 1 340px; min-width: 0; }
+    .inc-list-head .form-control { flex: 1 1 360px; max-width: 480px; min-width: 0; }
     .inc-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
+    /* The look is the shared .seg; here the level dot and the count beside each label. */
+    .inc-list-tools .seg { max-width: 100%; }
+    .inc-list-tools .seg button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .seg-count { font-size: 12px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
     .lv-dot { display: inline-block; width: 9px; height: 9px; border-radius: 5px; }
@@ -241,11 +239,13 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
       color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); }
     .inc-card.is-off .inc-avatar { background: #b7c3c4; }
     .inc-card-name { flex: 1 1 auto; min-width: 0; }
-    .inc-name { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #232527; overflow-wrap: anywhere; }
-    .inc-card-name small { font-size: 12.5px; overflow-wrap: anywhere; }
-    .inc-highlight { align-self: flex-start; font-weight: 700; font-size: 14px; color: var(--zt-mid2, #2f7c83); background: #eef6f6; border-radius: 8px; padding: 3px 10px; overflow-wrap: anywhere; }
-    .inc-details { font-size: 13.5px; color: #3b4b4c; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .inc-name { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #232527; overflow-wrap: break-word; }
+    .inc-card-name small { font-size: 12.5px; overflow-wrap: break-word; }
+    .inc-card-top .status-badge { flex: none; white-space: nowrap; overflow-wrap: normal; }
+    .inc-highlight { align-self: flex-start; font-weight: 700; font-size: 14px; color: var(--zt-mid2, #2f7c83); background: #eef6f6; border-radius: 8px; padding: 3px 10px; overflow-wrap: break-word; max-width: 100%; }
+    .inc-details { font-size: 13.5px; color: #3b4b4c; white-space: pre-wrap; overflow-wrap: break-word; }
     .inc-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+    .lv-chip, .act-chip, .inc-where { white-space: nowrap; }
     .lv-chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 2px 10px; }
     .lv-chip.lv-bronze { background: #fbeee8; color: #8a4a33; }
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
@@ -257,12 +257,12 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .inc-facts { margin: 0; font-size: 13px; border-top: 1px solid #eef3f3; }
     .inc-facts > div { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef3f3; }
     .inc-facts dt { font-weight: 600; color: #5f6f70; }
-    .inc-facts dd { margin: 0; color: #232527; overflow-wrap: anywhere; }
+    .inc-facts dd { margin: 0; color: #232527; overflow-wrap: break-word; min-width: 0; }
     .inc-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; flex-wrap: wrap; }
     .inc-docs { display: flex; flex-wrap: wrap; gap: 8px; }
-    .doc-slot { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dfe9ea; border-radius: 8px; padding: 3px 10px; font-size: 12.5px; }
+    .doc-slot { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cfdcdd; border-radius: 8px; padding: 3px 10px; font-size: 12.5px; background: #fff; }
     .doc-view { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: #23474a; text-decoration: none; }
-    .doc-none { color: #8a9899; }
+    .doc-none { color: #5f6f70; }
     .doc-upload { margin: 0; color: var(--zt-mid2, #2f7c83); font-weight: 600; cursor: pointer; }
     .doc-upload:hover { text-decoration: underline; }
 
@@ -271,6 +271,8 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
       .inc-grid { grid-template-columns: minmax(0, 1fr); }
       .inc-list-head .form-control { flex-basis: 100%; }
       .inc-group-cards { margin-left: 0; }
+      .inc-list-tools .seg { width: 100%; }
+      .inc-where { margin-left: 0; }
     }
   `,
 })

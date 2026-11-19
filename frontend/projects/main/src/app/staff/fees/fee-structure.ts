@@ -241,7 +241,7 @@ interface SharePreview {
             <thead>
               <tr>
                 <th>Code</th><th>Category</th><th class="text-end">Subsidy</th><th class="text-end">GoI share</th><th class="text-end col-pay">MSME share</th>
-                <th class="text-end">GST &#64; 18%</th><th class="text-end">MSME taxable</th><th class="text-center">Actions</th>
+                <th class="text-end">GST &#64; 18%</th><th class="text-end">MSME taxable</th><th class="fs-actions-h">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -268,9 +268,10 @@ interface SharePreview {
                   <td class="text-end col-pay" data-label="MSME share"><strong>₹ {{ s.row.applicantContributionAfterSubsidy | number: '1.2-2' }}</strong></td>
                   <td class="text-end" data-label="GST @ 18%">₹ {{ s.row.gstAfterSubsidy | number: '1.2-2' }}</td>
                   <td class="text-end" data-label="MSME taxable"><strong>₹ {{ s.row.subsidyPer | number: '1.2-2' }}</strong></td>
-                  <td class="text-center fs-actions">
+                  <td class="fs-actions">
                     @if (!rejected() && !s.row.isCouponRow) {
-                      <div class="row-actions justify-content-center">
+                      <!-- Left-aligned: Edit stays at the same place on every row, with or without Disable / Enable. -->
+                      <div class="row-actions justify-content-start">
                         <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit the subsidy of ' + s.name" (click)="edit(s)">Edit</button>
                         @if (switchReady() && s.category !== 0) {
                           @if (offOf(s.category)) {
@@ -400,11 +401,11 @@ interface SharePreview {
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="fs-edit-title">
-        <div class="modal-dialog modal-lg modal-dialog-centered fs-dialog">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable fs-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <div>
-                <h4 class="m-0" id="fs-edit-title">{{ e.name }}</h4>
+                <h4 class="m-0 fs-title" id="fs-edit-title">{{ e.name }}</h4>
                 <small class="muted">{{ e.code }} · subsidy share</small>
               </div>
               <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
@@ -474,10 +475,10 @@ interface SharePreview {
     }
     @if (disabling(); as d) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="fs-off-title">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-scrollable">
           <div class="modal-content">
             <div class="modal-header">
-              <h4 class="m-0" id="fs-off-title">Disable the {{ d.name }} subsidy?</h4>
+              <h4 class="m-0 fs-title" id="fs-off-title">Disable the {{ d.name }} subsidy?</h4>
               <button type="button" class="btn-close" aria-label="Close" (click)="disabling.set(null)"></button>
             </div>
             <div class="modal-body">
@@ -499,16 +500,11 @@ interface SharePreview {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
-  styleUrl: './fee-structure-switch.scss',
+  styleUrls: ['./fee-structure-switch.scss', './fee-structure-dialog.scss'],
   styles: `
     .page-head { align-items: flex-end; }
     .fs-type { flex-direction: column; align-items: flex-start; gap: 4px; }
     .fs-type-label { font-size: 12px; font-weight: 600; color: #5f6f70; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft); color: var(--zt-ink); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     /* A card per level: picks the level shown below. */
     .lv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -560,7 +556,8 @@ interface SharePreview {
     .unsaved { font-weight: 600; color: #8a6100; }
 
     .fs-table td, .fs-table th { vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .fs-table td.fs-cat { white-space: normal; overflow-wrap: anywhere; min-width: 180px; }
+    .fs-table td.fs-cat { white-space: normal; overflow-wrap: break-word; min-width: 180px; }
+    .fs-actions-h { width: 1%; }
     .fs-table tbody tr:hover td { background-color: var(--zt-pale); }
     .fs-table td.col-pay, .fs-table td.col-net { background-color: #eaf6ee; color: #1e7a3c; }
     .fs-table tbody tr:hover td.col-pay, .fs-table tbody tr:hover td.col-net { background-color: #dff0e5; }
@@ -572,29 +569,6 @@ interface SharePreview {
     .reward-note { color: #3f3a7a; font-weight: 600; }
     .fs-share { color: var(--zt-mid2); }
 
-    /* The share pop-up: the fields, and a preview beside them. */
-    .modal > .modal-dialog.modal-lg.fs-dialog { max-width: 880px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
-    .fs-edit { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; align-items: start; }
-    .fs-group { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
-    .fs-share-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
-    .modal .fs-dialog label.toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px;
-      margin: 0; cursor: pointer; font-weight: 600; }
-    .toggle-card.active { border-color: #45a5ad; background: #f4fafa; }
-    .toggle-card .form-check-input { float: none; flex: none; margin: 3px 0 0; }
-    .toggle-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
-    .fs-preview { background: #f4f8f8; border-radius: 12px; padding: 14px; }
-    .fs-preview h6 { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; }
-    .pv-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #dfe9ea; }
-    .pv-bar span { display: block; height: 100%; }
-    .pv-goi { background: #45a5ad; }
-    .pv-msme { background: #2e9e5b; }
-    .pv-legend { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #5f6f70; margin: 6px 0 10px; }
-    .pv-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 4px; margin-right: 5px; }
-    .pv-numbers { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 5px 10px; margin: 0; font-size: 13px; }
-    .pv-numbers dt { color: #5f6f70; font-weight: 600; }
-    .pv-numbers dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: #232527; }
-    .pv-numbers .pv-pays { color: #1e7a3c; font-weight: 700; border-top: 1px solid #dfe9ea; padding-top: 5px; }
-    .pv-warn { color: #a8303a; background: #fdeef0; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin: 0; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 
     @media (max-width: 991.98px) {

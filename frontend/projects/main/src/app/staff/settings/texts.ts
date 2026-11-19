@@ -103,9 +103,9 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
             <tr>
               <th class="text-center col-sno">S.No</th>
               <th>Text</th>
-              <th class="text-center col-status">Status</th>
-              <th class="text-center col-change">Last change</th>
-              <th class="text-center col-action">Action</th>
+              <th class="col-status">Status</th>
+              <th class="col-change">Last change</th>
+              <th class="text-end col-action">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -121,23 +121,23 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                     </div>
                   </div>
                 </td>
-                <td class="text-center">
+                <td>
                   <div class="status-stack">
                     <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
                     @if (t.customised && t.enabled) { <span class="status-badge is-info">Changed by Admin</span> }
                   </div>
                 </td>
-                <td class="text-center">
+                <td class="text-nowrap">
                   @if (t.updatedOn) {
                     <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
                   } @else {
                     <span class="muted" title="Not changed">—</span>
                   }
                 </td>
-                <td class="text-center">
-                  <div class="row-actions justify-content-center">
-                    <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
-                    @if (t.customised) { <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button> }
+                <td class="text-end">
+                  <div class="tx-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(t)">Edit</button>
+                    @if (t.customised) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(t)">Reset</button> }
                   </div>
                 </td>
               </tr>
@@ -160,10 +160,8 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                 <div class="modal-title" id="textTitle">{{ e.item.name }}</div>
                 <small class="muted">{{ e.item.channel }} · {{ e.item.group }}</small>
               </div>
-              <div class="head-right">
-                <span class="status-badge" [class.is-active]="e.enabled" [class.is-inactive]="!e.enabled">{{ e.enabled ? 'Shown' : 'Hidden' }}</span>
-                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
-              </div>
+              <!-- 2026-11-19 (admin audit: status shown twice): the switch below is the one indicator, no badge here. -->
+              <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
             </div>
             <div class="modal-body editor-body">
               <div class="switch-row" [class.off]="!e.enabled">
@@ -198,7 +196,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                 <div class="pane">
                   <div class="pane-head">
                     <span class="ed-label">Preview</span>
-                    <div class="seg seg-sm" role="group" aria-label="Preview width">
+                    <div class="seg" role="group" aria-label="Preview width">
                       <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
                       <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
                     </div>
@@ -213,8 +211,8 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
             </div>
           </div>
         </div>
@@ -244,28 +242,24 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     .tx-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
-    .seg-sm button { padding: 3px 10px; font-size: 12px; }
 
     .tx-table { min-width: 720px; margin-bottom: 8px; }
     .tx-table td { vertical-align: middle; }
     .tx-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .tx-table tr.is-off .tx-text strong { color: #8a9899; }
-    .col-sno { width: 70px; }
-    .col-status { width: 160px; }
-    .col-change { width: 160px; }
-    .col-action { width: 170px; }
+    .col-sno { width: 64px; }
+    .col-status { width: 170px; }
+    .col-change { width: 170px; }
+    .col-action { width: 150px; }
+    .tx-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+    .tx-actions > * { flex: none; }
     .tx { display: flex; gap: 12px; align-items: center; }
     .tx-icon { flex: 0 0 38px; height: 34px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
     .tx-icon.app { background: #f1f0fb; color: #3f3a7a; }
     .tx-text { min-width: 0; }
     .tx-text strong { color: #232527; }
-    .tx-text small { margin-top: 2px; overflow-wrap: anywhere; }
-    .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .tx-text small { margin-top: 2px; overflow-wrap: break-word; }
+    .status-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
     /* Editor pop-up: wide, the full height, the header and footer fixed and the body scrolling. */
     @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1180px, calc(100vw - 32px)); } }
@@ -273,7 +267,6 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .title-block { min-width: 0; }
     .title-block .muted { display: block; margin-top: 2px; font-size: 13px; }
-    .head-right { display: flex; align-items: center; gap: 12px; }
     .editor-body { display: flex; flex-direction: column; gap: 16px; }
     .ed-label { display: block; margin: 0; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
     .fields .ed-label { margin-bottom: 6px; }
@@ -303,9 +296,21 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     .frame-bar { display: flex; align-items: center; gap: 5px; padding: 6px 10px; background: #f1f4f4; border-bottom: 1px solid #dfe9ea; font-size: 11px; color: #5f6f70; }
     .frame-bar i { width: 8px; height: 8px; border-radius: 4px; background: #cfd8d9; }
     .frame-bar span { margin-left: 6px; }
-    .preview { flex: 1 1 auto; min-height: 400px; background: #fff; padding: 14px 16px; overflow: auto; overflow-wrap: anywhere; }
+    .preview { flex: 1 1 auto; min-height: 400px; background: #fff; padding: 14px 16px; overflow: auto; overflow-wrap: break-word; }
     @media (max-width: 991.98px) { .editor textarea.form-control.code, .preview { min-height: 340px; } }
-    @media (max-width: 767.98px) { .tx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    /* Phone: one card per text, no sideways scroll. */
+    @media (max-width: 767.98px) {
+      .tx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .list-card { padding: 12px; }
+      .tx-table { min-width: 0; }
+      .tx-table thead { display: none; }
+      .tx-table, .tx-table tbody, .tx-table tr, .tx-table td { display: block; width: 100%; }
+      .tx-table tr { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+      .tx-table td { border: 0; padding: 4px 0; text-align: left !important; }
+      .tx-table td:first-child { display: none; }
+      .tx-actions { justify-content: flex-start; }
+      .status-stack { flex-direction: row; flex-wrap: wrap; }
+    }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class TextsPage {

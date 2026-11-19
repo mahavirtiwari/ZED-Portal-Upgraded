@@ -89,7 +89,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
         <p class="page-sub">The ESG and Social / OHS questions of the assessment in the mobile apps, with their options and follow-up questions.</p>
       </div>
       @if (loaded()) {
-        <span class="status-badge" [class.is-active]="customised()" [class.is-info]="!customised()">
+        <span class="status-badge esg-state" [class.is-active]="customised()" [class.is-info]="!customised()">
           @if (customised()) { Changed{{ updatedBy() ? ' by ' + updatedBy() : '' }}{{ updatedOn() ? ', ' + (updatedOn() | indianTime) : '' }} } @else { Standard checklist }
         </span>
       }
@@ -133,9 +133,9 @@ const SHOW_ON = ['Yes', 'No'] as const;
                     <label class="visually-hidden" [for]="'q-' + si + '-' + qi">Question {{ qi + 1 }}</label>
                     <textarea class="form-control q-text" rows="2" maxlength="500" placeholder="Question" [id]="'q-' + si + '-' + qi" [(ngModel)]="q.question"></textarea>
                     <div class="esg-tools">
-                      <button type="button" class="btn btn-default tool" title="Move up" [disabled]="qi === 0" (click)="move(s, qi, -1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' up'">&uarr;</button>
-                      <button type="button" class="btn btn-default tool" title="Move down" [disabled]="qi === s.questions.length - 1" (click)="move(s, qi, 1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' down'">&darr;</button>
-                      <button type="button" class="btn btn-outline-danger tool" title="Remove" [disabled]="s.questions.length === 1" (click)="remove(s, qi)" [attr.aria-label]="'Remove question ' + (qi + 1)">Remove</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" title="Move up" [disabled]="qi === 0" (click)="move(s, qi, -1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' up'">&uarr;</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" title="Move down" [disabled]="qi === s.questions.length - 1" (click)="move(s, qi, 1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' down'">&darr;</button>
+                      <button type="button" class="btn btn-outline-danger btn-sm tool" title="Remove" [disabled]="s.questions.length === 1" (click)="remove(s, qi)" [attr.aria-label]="'Remove question ' + (qi + 1)">Remove</button>
                     </div>
                   </div>
 
@@ -231,7 +231,10 @@ const SHOW_ON = ['Yes', 'No'] as const;
     .esg-no { flex: none; width: 30px; height: 30px; margin-top: 4px; border-radius: 50%; background: #45a5ad; color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px; }
     .q-text { flex: 1 1 auto; min-width: 0; font-weight: 600; color: #232527; min-height: 0 !important; resize: vertical; }
     .esg-tools { display: flex; gap: 4px; flex: none; }
-    .esg-tools .tool { padding: 4px 10px; font-size: 13px; border-radius: 6px; text-transform: none; }
+    .esg-tools .tool { white-space: nowrap; text-transform: none; }
+    .esg-tools .tool-move { width: 32px; padding-left: 0; padding-right: 0; font-weight: 700; }
+    /* The checklist state beside the title, in sentence case (not a lone uppercase badge). */
+    .esg-state { text-transform: none; letter-spacing: 0; white-space: normal; }
     .q-body { margin-left: 42px; }
     .esg-sub { display: block; margin: 10px 0 4px; font-size: 13px; font-weight: 600; color: #3b4b4c; }
     .esg-sub small { font-weight: 400; color: #5f6f70; }

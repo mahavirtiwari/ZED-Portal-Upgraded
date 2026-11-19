@@ -40,12 +40,19 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
   selector: 'zed-staff-incentive-form',
   imports: [FormsModule, RouterLink],
   template: `
+    <div class="back-row">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span>Incentives</span><span aria-hidden="true">›</span>
+        <a [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">{{ group().label }}</a><span aria-hidden="true">›</span>
+        <span aria-current="page">{{ editId() ? 'Edit' : 'Create' }}</span>
+      </nav>
+      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">← Back</a>
+    </div>
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ editId() ? 'Edit Incentive' : 'Create New Incentive' }} <span class="zed-chip">{{ group().label }}</span></h3>
         <p class="page-sub">{{ editId() ? group().subtitle : group().createSubtitle }}</p>
       </div>
-      <a class="btn btn-default" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">← Back to the list</a>
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -227,7 +234,7 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
         </div>
         <div class="form-actions save-bar" [class.is-dirty]="dirty()">
           @if (dirty()) { <span class="unsaved me-auto">Not saved yet. All fields marked * are mandatory.</span> }
-          @else { <span class="muted me-auto">All fields marked * are mandatory.</span> }
+          @else { <span class="muted me-auto save-note">All fields marked * are mandatory.</span> }
           <a class="btn btn-default" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">Cancel</a>
           <button type="submit" class="btn btn-primary" [disabled]="busy()">Save Incentive</button>
         </div>
@@ -240,6 +247,11 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .page-head { align-items: center; }
+    .back-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: #5f6f70; }
+    .crumbs a { color: var(--zt-mid2, #2f7c83); font-weight: 600; text-decoration: none; }
+    .crumbs [aria-current] { color: var(--zt-dark, #1f5c61); font-weight: 700; }
+    .back-btn { white-space: nowrap; }
     .inc-form { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
     .inc-sections { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     .inc-sections .zed-card { margin: 0; }
@@ -251,10 +263,9 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .doc-row .form-control { min-width: 0; }
 
     .level-options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
-    .act-seg { margin-top: 10px; display: inline-flex; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .act-seg button { min-width: 130px; border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13.5px; font-weight: 600; padding: 8px 16px; }
-    .act-seg button + button { border-left: 1px solid #cbd9da; }
-    .act-seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
+    /* The look is the shared .seg; here only its place and width (never wider than the card). */
+    .act-seg { margin-top: 10px; max-width: 100%; }
+    .act-seg button { min-width: 110px; }
     .level-option { --accent: #45a5ad; display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea;
       border-left: 4px solid var(--accent); border-radius: 10px; background: #fff; cursor: pointer; font-weight: 400; }
     .level-option.lv-bronze { --accent: #d07b5c; }
@@ -263,7 +274,8 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .level-option.lv-zedx { --accent: #2f7c83; }
     .level-option:hover { border-color: var(--accent); }
     .level-option.is-on { background: #f4fafa; box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
-    .level-option .form-check-input { flex: none; margin: 3px 0 0; float: none; }
+    .level-option .form-check-input { flex: none; margin: 3px 0 0; float: none; border: 1.5px solid var(--accent); }
+    .level-option .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
     .level-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .level-name { font-weight: 700; color: #23474a; }
     .level-help { font-size: 12.5px; color: #5f6f70; }
@@ -276,7 +288,7 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
       background: #fff; cursor: pointer; transition: border-color .15s, background .15s; }
     .where-option:hover { border-color: #45a5ad; }
     .where-option.is-on { border-color: #45a5ad; background: #eef6f6; box-shadow: inset 0 0 0 1px #45a5ad; }
-    .where-option .form-check-input { flex: 0 0 auto; margin: 3px 0 0; }
+    .where-option .form-check-input { flex: 0 0 auto; margin: 3px 0 0; border: 1.5px solid #6f8f92; }
     .where-body { display: flex; flex-direction: column; gap: 2px; }
     .where-title { font-weight: 700; color: #23474a; }
     .where-help { font-size: 13px; color: #5f6f70; }
@@ -292,16 +304,16 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .pv-card-head img.pv-wide { width: 130px; }
     .pv-avail { background: #45a5ad; color: #fff; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 4px 10px; text-transform: uppercase; }
     .pv-card-body { padding: 10px 16px 16px; }
-    .pv-title { font-weight: 700; font-size: 17px; color: #232527; margin-bottom: 6px; overflow-wrap: anywhere; }
-    .pv-text { margin: 0; font-size: 14px; color: #232527; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .pv-title { font-weight: 700; font-size: 17px; color: #232527; margin-bottom: 6px; overflow-wrap: break-word; }
+    .pv-text { margin: 0; font-size: 14px; color: #232527; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .pv-spot { color: #27aae1; font-weight: 700; }
-    .pv-row { background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
+    .pv-row { background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; padding: 10px 12px; overflow-wrap: break-word; }
     .pv-facts { margin: 14px 0 6px; font-size: 13px; }
     .pv-facts > div { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid #e3ecec; align-items: center; }
     .pv-facts dt { font-weight: 600; color: #5f6f70; }
     .pv-facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
     .pv-missing { color: #a8303a; font-size: 12.5px; }
-    .lv-chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 2px 10px; }
+    .lv-chip { display: inline-block; white-space: nowrap; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 2px 10px; }
     .lv-chip.lv-bronze { background: #fbeee8; color: #8a4a33; }
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
     .lv-chip.lv-gold { background: #fbf3d9; color: #7a6110; }
@@ -318,9 +330,14 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
       .inc-preview { position: static; }
     }
     @media (max-width: 640px) {
-      .inc-pair, .where-options, .level-options { grid-template-columns: minmax(0, 1fr); }
-      .save-bar .me-auto { flex-basis: 100%; }
+      .inc-pair, .where-options { grid-template-columns: minmax(0, 1fr); }
+      .act-seg { display: flex; width: 100%; }
+      .act-seg button { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; }
+      .save-bar { padding: 8px 12px; gap: 8px; }
+      .save-bar .me-auto { flex-basis: 100%; font-size: 12.5px; }
+      .save-bar .save-note { display: none; }
     }
+    @media (max-width: 419.98px) { .level-options { grid-template-columns: minmax(0, 1fr); } }
   `,
 })
 export class IncentiveFormPage {

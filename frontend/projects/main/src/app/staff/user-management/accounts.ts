@@ -182,7 +182,7 @@ const typeHints: Readonly<Record<number, string>> = {
           <thead>
             <tr>
               <th>User</th>@if (!neft) {<th class="text-center">Login Type</th>}<th>Contact</th>
-              <th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 140px">Actions</th>
+              <th class="text-center acc-status-head">Status</th><th class="text-center acc-actions-head">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -226,7 +226,7 @@ const typeHints: Readonly<Record<number, string>> = {
                       <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="act(a, 'reset-password')">Reset Password</button>
                       <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">Block</button>
                     } @else {
-                      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">UnBlock</button>
+                      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">Unblock</button>
                     }
                   </div>
                 </td>
@@ -540,18 +540,23 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
       color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); font-weight: 700; font-size: 13px; letter-spacing: .03em; }
     tr.is-blocked .acc-avatar { background: #f3e9e9; color: #9b4a4a; }
-    .acc-name { display: block; font-weight: 600; color: #232527; overflow-wrap: anywhere; }
+    .acc-name { display: block; font-weight: 600; color: #232527; overflow-wrap: break-word; }
     .acc-id { display: block; font-size: 12px; color: #6b7f80; letter-spacing: .3px; }
-    .acc-badge-phone { display: none; }
+    /* Phones only (the Status column is hidden there): one status per row. */
+    .acc-user .acc-badge-phone { display: none !important; }
+    .acc-table .status-badge { white-space: nowrap; overflow-wrap: normal; }
+    .acc-status-head { width: 110px; }
+    .acc-actions-head, .acc-actions-cell { width: 1%; white-space: nowrap; }
     .acc-type-cell .zed-chip { margin: 0; }
     .acc-state { display: block; margin-top: 4px; font-size: 12px; color: #5f6f70; }
     .acc-contact { min-width: 220px; }
-    .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; overflow-wrap: anywhere; }
+    .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; overflow-wrap: break-word; }
     .acc-contact .acc-mail { min-width: 0; }
     .acc-contact .acc-txt { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
     .acc-contact .acc-mail { font-size: 13px; color: #5f6f70; }
     .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
-    .acc-actions-cell .row-actions { flex-wrap: nowrap; }
+    /* One row of equal-height actions (Edit, Reset Password, Block). */
+    .acc-actions-cell .row-actions { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; }
     .acc-empty .btn-link { font-weight: 600; }
 
     /* The Add / Edit login pop-up's layout (2026-11-15): styles/_v4-skin.scss, "User Management pop-up" (the size budget). */
@@ -562,14 +567,15 @@ const typeHints: Readonly<Record<number, string>> = {
     .choice-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
     /* The skin makes pop-up labels bold; on these cards only the type's name is. */
     .modal .modal-popup label.choice-card { font-weight: 400; color: #232527; }
-    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
+    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; border: 1.5px solid #6f8f92; }
     .choice-card strong { color: #23474a; }
     .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .acc-type-fixed .zed-chip { margin: 0; }
     .acc-actions-cell zed-row-menu { vertical-align: middle; }
 
     @media (max-width: 767.98px) {
-      .acc-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+      .acc-tabs { flex-wrap: wrap; gap: 6px; }
+      .acc-tab { padding: 6px 12px; font-size: 13px; }
       .acc-search { max-width: none; }
       .acc-table { min-width: 0; }
       .acc-table thead { display: none; }
@@ -582,7 +588,8 @@ const typeHints: Readonly<Record<number, string>> = {
       .acc-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
       .acc-user { min-width: 0; }
       .acc-who { flex: 1 1 auto; }
-      .acc-badge-phone { display: inline-block; }
+      .acc-user .acc-badge-phone { display: inline-flex !important; flex: none; }
+      .acc-actions-head, .acc-actions-cell { width: 100%; white-space: normal; }
       .acc-status-cell { display: none !important; }
       .acc-contact { min-width: 0; }
       .acc-actions-cell .row-actions { flex-wrap: wrap; justify-content: flex-start !important; }

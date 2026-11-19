@@ -62,7 +62,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
 
     @if (cards(); as c) {
       <div class="dc-stats">
-        <div class="stat"><span class="stat-value">{{ stats().seen }}</span><span class="stat-label">Cards MSMEs see (with the 4 stakeholder cards)</span></div>
+        <div class="stat" title="Including the 4 stakeholder cards"><span class="stat-value">{{ stats().seen }}</span><span class="stat-label">Cards MSMEs see</span></div>
         <div class="stat"><span class="stat-value">{{ shownBuiltIn() }}<small>/{{ c.builtIn.length }}</small></span><span class="stat-label">Built-in cards shown</span></div>
         <div class="stat"><span class="stat-value">{{ stats().activeIncentives }}<small>/{{ c.incentives.length }}</small></span><span class="stat-label">Incentive cards active</span></div>
         <div class="stat" [class.stat-warn]="stats().off > 0"><span class="stat-value">{{ stats().off }}</span><span class="stat-label">Hidden or inactive</span></div>
@@ -235,7 +235,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-value small { font-size: 15px; color: #8a9899; font-weight: 600; }
-    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: break-word; }
     .stat.stat-warn { border-color: #f1dca0; background: #fffcf2; }
     .stat.stat-warn .stat-value { color: #8a6100; }
 
@@ -243,11 +243,9 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .dc-head-row { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px; }
     .dc-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; color: #23474a; }
     .dc-step { flex: none; width: 24px; height: 24px; border-radius: 12px; display: inline-grid; place-items: center; background: #45a5ad; color: #fff; font-size: 12px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
+    /* The look is the shared .seg; here the count beside each label. */
+    .seg { max-width: 100%; }
+    .seg button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
     .seg-count { font-size: 12px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
 
@@ -260,7 +258,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .dc-card.is-off .pv-card { opacity: .5; }
     .dc-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .dc-order { font-size: 12px; font-weight: 700; color: #8a9899; }
-    .dc-stake { font-size: 12px; color: #5f6f70; text-align: right; overflow-wrap: anywhere; }
+    .dc-stake { font-size: 12px; color: #5f6f70; text-align: right; overflow-wrap: break-word; }
     .pv-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 6px 14px rgba(0, 0, 0, .08); overflow: hidden; flex: 1 1 auto; }
     .pv-card.is-faded { opacity: .5; }
     /* As the MSME dashboard's incentive cards (msme/dashboard: 90 x 72 picture, 16px padding). */
@@ -268,8 +266,8 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .pv-head img { width: 90px; height: 72px; object-fit: contain; }
     .pv-avail { background: #45a5ad; color: #fff; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 3px 9px; text-transform: uppercase; }
     .pv-body { padding: 12px 16px 16px; }
-    .pv-body h6 { margin: 0 0 6px; font-weight: 700; font-size: 16px; color: #232527; overflow-wrap: anywhere; }
-    .pv-body p { margin: 0; font-size: 13px; color: #232527; overflow-wrap: anywhere; }
+    .pv-body h6 { margin: 0 0 6px; font-weight: 700; font-size: 16px; color: #232527; overflow-wrap: break-word; }
+    .pv-body p { margin: 0; font-size: 13px; color: #232527; overflow-wrap: break-word; }
     .clr-spot { color: #27aae1; font-weight: 700; }
     .dc-action { font-size: 12px; }
     .dc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; }

@@ -208,7 +208,7 @@ interface DocumentIcon {
 
     @if (adding()) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="doc-add-title">
-        <div class="modal-dialog modal-popup modal-xl modal-dialog-centered doc-dialog">
+        <div class="modal-dialog modal-popup modal-xl modal-dialog-centered modal-dialog-scrollable doc-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
@@ -269,7 +269,7 @@ interface DocumentIcon {
               }
             </div>
             <div class="modal-footer">
-              <span class="me-auto d-flex flex-wrap gap-3">
+              <span class="me-auto d-flex flex-wrap gap-3 doc-also">
                 @if (cons()) {
                   <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> Also show on the Consultancy portal</label>
                 }
@@ -288,7 +288,7 @@ interface DocumentIcon {
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="doc-edit-title">
-        <div class="modal-dialog modal-popup modal-xl modal-dialog-centered doc-dialog">
+        <div class="modal-dialog modal-popup modal-xl modal-dialog-centered modal-dialog-scrollable doc-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
@@ -357,17 +357,12 @@ interface DocumentIcon {
     .doc-h { font-weight: 700; color: #23474a; display: flex; align-items: center; gap: 8px; }
     .doc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .doc-search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .role-filter { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid #eef3f3; }
     .role-filter-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-right: 4px; }
     .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
       color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; cursor: pointer; }
     .role-pill:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
-    .role-pill.none:not(.active) { color: #8a9899; }
+    .role-pill.none:not(.active) { color: #4f6365; background: #eef3f3; border-color: #dfe9ea; }
     .role-pill.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .pill-count { font-size: 11px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .role-pill.active .pill-count { background: rgba(255,255,255,.25); color: #fff; }
@@ -383,10 +378,11 @@ interface DocumentIcon {
     .tone-video { background: #23474a; color: #fff; }
     .doc-item-main { flex: 1 1 auto; min-width: 0; }
     .doc-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .doc-title strong { color: #232527; font-size: 15px; overflow-wrap: anywhere; }
+    .doc-title strong { color: #232527; font-size: 15px; overflow-wrap: break-word; min-width: 0; }
+    .kind-badge, .doc-chip, .doc-added, .portal-tick { white-space: nowrap; }
     .kind-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .kind-badge.video { background: #f1f0fb; color: #3f3a7a; }
-    .doc-desc { color: #5f6f70; font-size: 13.5px; margin: 3px 0 6px; overflow-wrap: anywhere; }
+    .doc-desc { color: #5f6f70; font-size: 13.5px; margin: 3px 0 6px; overflow-wrap: break-word; }
     .doc-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
     .doc-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .doc-chip.legacy { background: #fff4d6; color: #8a6100; }
@@ -419,13 +415,13 @@ interface DocumentIcon {
     .kind-card:hover { border-color: #45a5ad; }
     .kind-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
     .doc-drop { position: relative; display: flex !important; flex-direction: column; align-items: center; gap: 4px; padding: 22px 16px; margin: 0;
-      border: 2px dashed #b9d3d5; border-radius: 12px; background: #f8fbfb; color: var(--zt-mid2, #2f7c83); cursor: pointer; text-align: center; overflow-wrap: anywhere; }
+      border: 2px dashed #b9d3d5; border-radius: 12px; background: #f8fbfb; color: var(--zt-mid2, #2f7c83); cursor: pointer; text-align: center; overflow-wrap: break-word; }
     .doc-drop:hover, .doc-drop:focus-within { border-color: #45a5ad; background: #f1f8f8; }
     .doc-drop.picked { border-style: solid; border-color: #45a5ad; }
     .doc-drop-title { font-weight: 600; color: #23474a; }
     .doc-drop .muted { font-size: 12.5px; }
     .doc-drop input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-    .file-note { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; background: #f8fbfb; color: #23474a; font-weight: 600; overflow-wrap: anywhere; }
+    .file-note { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; background: #f8fbfb; color: #23474a; font-weight: 600; overflow-wrap: break-word; }
     .file-note small { font-weight: 400; }
     .doc-roles-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .doc-role-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
@@ -446,6 +442,13 @@ interface DocumentIcon {
       .doc-item { flex-wrap: wrap; }
       .doc-item-main { flex-basis: calc(100% - 58px); }
       .doc-item .row-actions { flex-basis: 100%; flex-wrap: wrap; padding-left: 58px; }
+    }
+    /* Phones: the pop-up fills the screen; header and footer stay, the body scrolls. */
+    @media (max-width: 575.98px) {
+      .modal > .modal-dialog.modal-xl.doc-dialog { width: auto; max-width: none; margin: 8px; height: calc(100% - 16px); }
+      .doc-dialog .registration-title { font-size: 17px; }
+      .doc-dialog .doc-also { flex-basis: 100%; margin-bottom: 4px; }
+      .doc-item .row-actions { padding-left: 0; }
     }
   `,
 })

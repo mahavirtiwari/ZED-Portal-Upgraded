@@ -1,0 +1,25 @@
+/* Master → Payments: the share and disable pop-ups (apart from the page styles for the component style budget). */
+/* The share pop-up: the fields, and a preview beside them. */
+.modal > .modal-dialog.modal-lg.fs-dialog { max-width: 880px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
+.fs-edit { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; align-items: start; }
+.fs-group { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+.fs-share-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.modal .fs-dialog label.toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px;
+  margin: 0; cursor: pointer; font-weight: 600; }
+.toggle-card.active { border-color: #45a5ad; background: #f4fafa; }
+.toggle-card .form-check-input { float: none; flex: none; margin: 3px 0 0; }
+.toggle-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
+.fs-preview { background: #f4f8f8; border-radius: 12px; padding: 14px; }
+.fs-preview h6 { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 10px; }
+.pv-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #dfe9ea; }
+.pv-bar span { display: block; height: 100%; }
+.pv-goi { background: #45a5ad; }
+.pv-msme { background: #2e9e5b; }
+.pv-legend { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #5f6f70; margin: 6px 0 10px; }
+.pv-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 4px; margin-right: 5px; }
+.pv-numbers { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 5px 10px; margin: 0; font-size: 13px; }
+.pv-numbers dt { color: #5f6f70; font-weight: 600; }
+.pv-numbers dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: #232527; }
+.pv-numbers .pv-pays { color: #1e7a3c; font-weight: 700; border-top: 1px solid #dfe9ea; padding-top: 5px; }
+.pv-warn { color: #a8303a; background: #fdeef0; border-radius: 8px; padding: 8px 10px; font-size: 13px; margin: 0; }
+.fs-title { font-weight: 700; color: #17373b; }

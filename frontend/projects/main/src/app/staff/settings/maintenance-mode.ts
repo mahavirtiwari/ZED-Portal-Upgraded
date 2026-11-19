@@ -34,6 +34,8 @@ export interface MaintenanceRow {
     <form class="zed-card mm-card" (ngSubmit)="save()" novalidate>
       <div class="table-responsive">
         <table class="table table-zed mm-table">
+          <!-- 2026-11-19 (admin audit): the message gets the room; the window is two date boxes of their own width. -->
+          <colgroup><col style="width: 19%" /><col style="width: 104px" /><col /><col style="width: 390px" /></colgroup>
           <thead>
             <tr><th>Portal / app</th><th class="text-center">State</th><th>Message shown to users</th><th>Window (optional)</th></tr>
           </thead>
@@ -80,10 +82,11 @@ export interface MaintenanceRow {
   styles: `
     .mm-sub { margin: -8px 0 14px; color: #5f6f70; }
     .mm-card { padding: 16px; }
+    .mm-table { table-layout: fixed; min-width: 880px; }
     .mm-table td { vertical-align: middle; }
     .mm-table tr.is-down td { background: #fdf6f5; }
     .mm-now { display: inline-block; margin-left: 8px; font-size: 11.5px; font-weight: 700; color: #b03a2e; background: #fbe4e1; border-radius: 4px; padding: 1px 7px; }
-    .mm-switch { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    .mm-switch { position: relative; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
     .mm-switch.down { color: #b03a2e; }
     .mm-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .mm-track { position: relative; width: 34px; height: 18px; border-radius: 10px; background: #45a5ad; flex: none; transition: background .15s; }
@@ -92,10 +95,22 @@ export interface MaintenanceRow {
     .mm-switch.down .mm-track::after { left: 18px; }
     .mm-switch input:focus-visible + .mm-track { outline: 2px solid var(--zt-dark, #23656b); outline-offset: 2px; }
     .mm-window { display: flex; align-items: center; gap: 6px; }
-    .mm-window .form-control { min-width: 0; }
+    .mm-window .form-control { min-width: 0; flex: 1 1 0; }
+    .mm-window .muted { flex: none; }
     .mm-note { font-size: 13px; margin: 8px 0 0; }
     .mm-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
-    @media (max-width: 991.98px) { .mm-window { flex-wrap: wrap; } }
+    /* Phone and tablet: one card per portal, no sideways scroll. */
+    @media (max-width: 991.98px) {
+      .mm-table { min-width: 0; table-layout: auto; }
+      .mm-table thead, .mm-table colgroup { display: none; }
+      .mm-table, .mm-table tbody, .mm-table tr, .mm-table td { display: block; width: 100%; }
+      .mm-table tr { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+      .mm-table td { border: 0; padding: 4px 0; text-align: left !important; background: none !important; }
+      .mm-table tr.is-down { background: #fdf6f5; }
+      .mm-table td[data-label="Message"]::before, .mm-table td[data-label="Window"]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
+      .mm-window { flex-wrap: wrap; }
+      .mm-window .form-control { flex: 1 1 180px; }
+    }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

@@ -42,7 +42,7 @@ import { LoginShell } from '../login-shell/login-shell';
                      [(ngModel)]="confirmPassword" required maxlength="50" />
             </div>
             <div class="register-btn">
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">CHANGE PASSWORD</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">Change Password</button>
               <a routerLink="/msme/login" class="btn btn-dark">LOGIN</a>
             </div>
             @if (error()) {

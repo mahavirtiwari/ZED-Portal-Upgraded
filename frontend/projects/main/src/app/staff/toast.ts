@@ -80,7 +80,7 @@ export class ToastService {
     .tt-icon { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #2f9e58; }
     .tt-error .tt-icon { background: #c8473c; }
     .tt-icon svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .tt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; overflow-wrap: anywhere; }
+    .tt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; overflow-wrap: break-word; }
     .tt-text b { font-weight: 700; }
     .tt-text small { font-size: 12px; font-weight: 500; color: #bcd8da; }
     .tt-x { flex: none; border: 0; background: none; color: #bcd8da; font-size: 22px; line-height: 1; padding: 0 2px; }

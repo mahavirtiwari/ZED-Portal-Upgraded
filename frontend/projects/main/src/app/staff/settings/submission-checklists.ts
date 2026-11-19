@@ -97,7 +97,7 @@ interface Editing {
       <div class="st-tiles">
         <div class="st-tile"><b>{{ c.items.length }}</b><small>Items ({{ activeCount() }} on)</small></div>
         <div class="st-tile"><b>{{ stageCounts() }}</b><small>{{ c.stages.length ? 'Asked at ' + stageNames(c) : 'Asked at every final submit' }}</small></div>
-        <div class="st-tile"><b>{{ c.customised ? 'Changed' : 'Standard' }}</b><small>{{ c.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
+        <div class="st-tile"><b class="st-word">{{ c.customised ? 'Changed' : 'Standard' }}</b><small>{{ c.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
       </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
@@ -125,21 +125,20 @@ interface Editing {
                 <td class="text-center"><span class="order-no">{{ n + 1 }}</span></td>
                 <td>
                   <span class="item-text">{{ i.text }}</span>
-                  @if (!i.active) { <span class="status-badge is-inactive">Off</span> }
                 </td>
                 @if (c.stages.length) {
                   <td><div class="scope">@for (s of i.stages; track s) { <span class="zed-chip">{{ stageLabel(s) }}</span> }</div></td>
                 }
                 <td>
                   <div class="st-actions">
-                    <button type="button" class="st-icon" title="Move up" aria-label="Move up" [disabled]="n === 0 || busy()" (click)="move(c, n, -1)">↑</button>
-                    <button type="button" class="st-icon" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(c, n, 1)">↓</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="n === 0 || busy()" (click)="move(c, n, -1)">↑</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(c, n, 1)">↓</button>
                     <label class="st-switch" [class.off]="!i.active" [title]="i.active ? 'Switch this item off' : 'Switch this item on'">
                       <input type="checkbox" role="switch" [checked]="i.active" [disabled]="busy()" [attr.aria-label]="(i.active ? 'Switch off ' : 'Switch on ') + i.text"
                         (click)="$event.preventDefault(); toggle(c, n)" />
                       <span class="st-track" aria-hidden="true"></span>{{ i.active ? 'On' : 'Off' }}
                     </label>
-                    <button type="button" class="st-edit" [disabled]="busy()" (click)="edit(i)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(i)">Edit</button>
                   </div>
                 </td>
               </tr>
@@ -155,7 +154,7 @@ interface Editing {
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="itemTitle">
-        <div class="modal-dialog item-dialog">
+        <div class="modal-dialog modal-dialog-scrollable item-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-start gap-3">
@@ -181,15 +180,15 @@ interface Editing {
                 </div>
                 @if (p.stages) { <small class="invalid">{{ p.stages }}</small> }
               }
-              <div class="form-check mt-3">
+              <label class="check-line mt-3" for="itemActive">
                 <input class="form-check-input" type="checkbox" id="itemActive" [(ngModel)]="e.active" />
-                <label class="form-check-label" for="itemActive">On (asked)</label>
-              </div>
+                <span>On (asked)</span>
+              </label>
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
             </div>
           </div>
         </div>
@@ -205,15 +204,11 @@ interface Editing {
     .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .cl-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; }
     .cl-pick-label { font-size: 13px; color: #5f6f70; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .sync-note { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-start; color: #5f6f70; font-size: 13px; margin: 0 0 12px; }
     .info-dot { flex: 0 0 18px; height: 18px; border-radius: 9px; background: #45a5ad; color: #fff; font-size: 12px; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif; }
     .items-table { table-layout: fixed; width: 100%; min-width: 800px; margin-bottom: 0; }
-    .items-table td { overflow-wrap: anywhere; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+    .items-table td { overflow-wrap: break-word; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .items-table tr.is-off td { color: #8a9899; }
     .item-text { font-size: 14px; color: #232527; margin-right: 6px; }
     .is-off .item-text { color: #8a9899; }
@@ -225,14 +220,13 @@ interface Editing {
     .st-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; }
     .st-tile b { font-size: 20px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .st-tile small { font-size: 12.5px; color: #5f6f70; }
+    .st-tile b.st-word { font-size: 16px; line-height: 1.5; }
     /* 2026-11-19 (admin audit: "Edi/t" and "O/n" at 1536px): the action column is wide enough and its buttons never wrap. */
     .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow-wrap: normal; }
     .st-actions > * { flex: none; }
-    .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
-      color: #23474a; font-weight: 700; padding: 0; }
-    .st-icon:disabled { opacity: .35; cursor: default; }
-    .st-edit { border: 1px solid #9cc9cd; background: #fff; color: var(--zt-dark, #23656b); border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
-    .st-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    .st-actions .st-move { width: 32px; padding-left: 0; padding-right: 0; font-weight: 700; }
+    /* position: relative keeps the hidden input inside the table's scroll box (it widened the page on phones). */
+    .st-switch { position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
     .st-switch.off { color: #8a9899; }
     .st-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .st-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; flex: none; }
@@ -244,8 +238,20 @@ interface Editing {
     .stage-ticks .form-check { display: inline-flex; align-items: center; gap: 6px; padding-left: 0; }
     .stage-ticks .form-check-input { margin: 0; float: none; }
     .modal .item-dialog textarea.form-control { min-height: 72px; height: auto; }
+    /* Phone: one card per row, no sideways scroll. */
+    @media (max-width: 767.98px) {
+      .st-tiles { grid-template-columns: minmax(0, 1fr); }
+      .items-table { min-width: 0; table-layout: auto; }
+      .items-table thead { display: none; }
+      .items-table, .items-table tbody, .items-table tr, .items-table td { display: block; width: 100%; }
+      .items-table tr { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: #fff; }
+      .items-table td { border: 0; padding: 4px 0; text-align: left !important; }
+      .items-table td:first-child { display: none; }
+      .items-table .st-actions { justify-content: flex-start; flex-wrap: wrap; padding-top: 4px; }
+    }
+    .check-line { display: flex; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; }
+    .check-line .form-check-input { margin: 0; float: none; flex: none; }
     .invalid { display: block; color: #a8303a; font-size: 12.5px; margin-top: 3px; }
-    @media (max-width: 767.98px) { .st-tiles { grid-template-columns: minmax(0, 1fr); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class SubmissionChecklistsPage {

@@ -137,22 +137,25 @@ let nextId = 0;
   `,
   styles: `
     .modal .modal-dialog.modal-popup.cd-dialog { max-width: 560px; }
-    .cd { border-radius: 16px; }
-    .cd-head { display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px 18px; border-bottom: 1px solid #dde7e8; background: #fff; }
+    /* 2026-11-19 (Admin UI audit): the staff pop-up frame (styles/_staff-shared.scss): never taller than the window less 16px above
+       and below; the head and the buttons stay in view and the body scrolls; on phones 16px from the window's sides. */
+    .cd { border-radius: 16px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; }
+    .cd > form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+    .cd-head { flex: none; display: flex; align-items: flex-start; gap: 14px; padding: 20px 24px 18px; border-bottom: 1px solid #dde7e8; background: #fff; }
     .cd-tile { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
     .cd-tile.is-danger { background: #fbe9e7; color: #c8473c; }
     .cd-tile.is-warn { background: #fdf2dc; color: #9a5f06; }
     .cd-tile svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .cd-titles { flex: 1; min-width: 0; padding-top: 1px; }
-    .cd-titles h3 { font-size: 18px; font-weight: 700; line-height: 1.3; color: #17373b; overflow-wrap: anywhere; }
-    .cd-titles small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: #6f8487; overflow-wrap: anywhere; }
+    .cd-titles h3 { font-size: 18px; font-weight: 700; line-height: 1.3; color: #17373b; overflow-wrap: break-word; }
+    .cd-titles small { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: #6f8487; overflow-wrap: break-word; }
     .cd-x { flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; display: grid; place-items: center; background: #eef3f3; color: #17373b; }
     .cd-x:hover { background: #e2eaea; }
     .cd-x svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-    .cd-body { padding: 20px 28px 24px; }
+    .cd-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px 28px 24px; }
     .cd-person { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 18px; border: 1px solid #cfe3e5; border-radius: 12px; background: #f6fbfb; }
     .cd-av { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-size: 13px; font-weight: 800; }
-    .cd-pi { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+    .cd-pi { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: break-word; }
     .cd-pi strong { font-size: 15px; color: #17373b; }
     .cd-pi small { font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .cd-pi span { font-size: 12.5px; font-weight: 600; color: #17373b; }
@@ -174,11 +177,18 @@ let nextId = 0;
     .cd-check { display: flex; align-items: center; gap: 12px; margin: 18px 0 0; font-size: 13.5px; font-weight: 600; color: #17373b; text-transform: none; cursor: pointer; }
     .cd-check input { flex: none; width: 20px; height: 20px; margin: 0; border-radius: 5px; accent-color: #24666b; }
     .help-block { display: block; margin-top: 8px; color: #c8473c; font-size: 13px; }
-    .cd-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 28px; border-top: 1px solid #dde7e8; }
+    .cd-foot { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 28px; border-top: 1px solid #dde7e8; }
     .cd-foot .btn { min-height: 40px; padding: 8px 20px; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
     .cd-foot .cd-no { min-width: 110px; }
     .cd-foot .cd-ok { min-width: 140px; }
-    .cd-ok:disabled { opacity: 0.55; }
+    .cd-ok:disabled { opacity: 0.55; cursor: not-allowed; }
+    @media (max-width: 575.98px) {
+      .modal .modal-dialog.modal-popup.cd-dialog { width: auto; max-width: none; margin: 16px; }
+      .cd-head { padding: 16px 16px 14px; gap: 12px; }
+      .cd-body { padding: 16px; }
+      .cd-foot { padding: 12px 16px; }
+      .cd-foot .cd-no, .cd-foot .cd-ok { min-width: 0; flex: 1 1 auto; }
+    }
   `,
 })
 export class ConfirmDialog {

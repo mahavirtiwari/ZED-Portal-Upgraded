@@ -285,7 +285,8 @@ const API = '/api/staff/settings/levels';
             <h5>{{ l.name | uppercase }} CERTIFICATION</h5>
             <code class="lv-code" title="Code">{{ l.code }}</code>
           </div>
-          @if (l.description) { <p class="lv-desc">{{ l.description }}</p> }
+          <!-- Always present (empty when none) and clamped, so the facts of the cards line up across a row. -->
+          <p class="lv-desc" [attr.title]="l.description || null">{{ l.description }}</p>
           <dl class="lv-facts">
             <div><dt>Assessment</dt><dd>{{ flowOf(l) }}</dd></div>
             <div><dt>NCs</dt><dd data-nc-fact>{{ ncFact(i) }}</dd></div>
@@ -419,7 +420,12 @@ const API = '/api/staff/settings/levels';
                           <label for="lv-logo">Logo</label>
                           <div class="lv-logo-row">
                             @if (logoOf(e.code); as url) { <img [src]="url" alt="Current logo" class="lv-logo-small" /> }
-                            <input id="lv-logo" type="file" class="form-control" accept="image/png,image/jpeg" (change)="pickLogo($event)" />
+                            <!-- 2026-11-19 (admin audit): a styled upload control instead of the browser's native file input. -->
+                            <input id="lv-logo" type="file" class="visually-hidden" accept="image/png,image/jpeg" (change)="pickLogo($event)" />
+                            <label class="lv-upload" for="lv-logo">
+                              <span class="btn btn-outline-primary btn-sm">{{ logoName() ? 'Choose another' : 'Choose logo' }}</span>
+                              <span class="lv-upload-name" [class.muted]="!logoName()">{{ logoName() || 'No file chosen' }}</span>
+                            </label>
                             <small class="muted d-block w-100">PNG or JPG, up to 1 MB.</small>
                           </div>
                         }
@@ -647,8 +653,8 @@ const API = '/api/staff/settings/levels';
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
-  // The readiness checklist's rules are in their own file (the per-file style budget, 2026-11-08).
-  styleUrl: './certification-levels-checklist.scss',
+  // The readiness checklist's and the pop-up's rules are in their own files (the per-file style budget).
+  styleUrls: ['./certification-levels-checklist.scss', './certification-levels-dialog.scss'],
   styles: `
     .lv-builtin { margin-top: 4px; font-size: 12px; color: #8a6100; background: #fff4d6; border-radius: 6px; padding: 4px 8px; }
     .page-head { align-items: center; }
@@ -667,92 +673,27 @@ const API = '/api/staff/settings/levels';
     .lv-box.is-off .lv-band { opacity: .35; }
     .lv-box.is-off .lv-logo, .lv-box.is-off h5, .lv-box.is-off .lv-desc { opacity: .55; }
     .lv-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .lv-top .status-badge { text-transform: none; letter-spacing: 0; white-space: nowrap; flex: none; }
     .lv-logo { height: 72px; max-width: 150px; object-fit: contain; }
     .lv-logo-none { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 0 10px; border-radius: 50%;
       background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; font-weight: 800; letter-spacing: .5px; }
     .lv-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+    .lv-title { min-height: 44px; align-content: flex-start; }
     .lv-box h5 { margin: 0; font-size: 15px; font-weight: 800; color: #23474a; letter-spacing: .3px; }
     .lv-code { font-size: 11.5px; color: #23474a; background: #eef6f6; border-radius: 10px; padding: 1px 8px; }
-    .lv-desc { margin: 0; font-size: 13px; color: #3b4b4c; }
+    .lv-desc { margin: 0; font-size: 13px; line-height: 1.45; color: #3b4b4c; min-height: 4.35em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .lv-facts { margin: 0; font-size: 13px; border-top: 1px solid #eef3f3; }
     .lv-facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef3f3; }
     .lv-facts dt { font-weight: 600; color: #5f6f70; }
-    .lv-facts dd { margin: 0; overflow-wrap: anywhere; color: #232527; }
+    .lv-facts dd { margin: 0; overflow-wrap: break-word; color: #232527; }
     .lv-sample { font-size: 12px; color: #23474a; background: #f4f8f8; border-radius: 4px; padding: 1px 6px; }
     .lv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px; }
+    .lv-actions .btn { white-space: nowrap; }
     .lv-note { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #5f6f70; background: none; }
     .info-dot { flex: 0 0 18px; height: 18px; border-radius: 9px; background: #45a5ad; color: #fff; font-size: 12px; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif; }
 
-    /* The pop-up: tabs, the fields, and a preview beside them. Wider than the skin's 760px form pop-ups. */
-    .modal > .modal-dialog.modal-xl.lv-dialog { max-width: 1080px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
-    .d-contents { display: contents; }
-    .modal .lv-dialog textarea.form-control { min-height: 0; height: auto; }
-    .modal .lv-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
-    .lv-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 16px; }
-    .lv-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
-    .lv-tab:hover { color: var(--zt-mid2, #2f7c83); }
-    .lv-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
-    .lv-nc { border: 1px dashed #9fcfd3; border-radius: 6px; padding: 10px 12px; }
-    .lv-nc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
-    .lv-nc-row label { margin: 0; }
-    .lv-edit { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
-    /* The portal's form styles stretch every field; the numbers stay short. */
-    .form-grid input.lv-short { width: 110px !important; max-width: 110px !important; flex: none; }
-    .lv-mono { font-family: Consolas, 'Courier New', monospace; }
-    .lv-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
-    .choice-card.active { border-color: #45a5ad; background: #f4fafa; }
-    .choice-card .form-check-input { flex: none; margin: 3px 0 0; }
-    .choice-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
-    .lv-switch { display: flex; align-items: center; gap: 8px; padding-left: 0; margin: 0; }
-    .lv-switch .form-check-input { float: none; margin: 0; }
-    .lv-surv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .form-grid select.lv-select { width: auto !important; max-width: 260px; flex: none; }
-    .lv-check { display: flex; align-items: flex-start; gap: 8px; padding-left: 0; margin: 0; }
-    .lv-check .form-check-input { float: none; flex: none; margin: 3px 0 0; }
-    .modal .lv-check .form-check-label { font-weight: 400; }
-    .lv-logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .lv-logo-small { height: 40px; }
-    .lv-tokens { display: flex; flex-wrap: wrap; gap: 4px; }
-    .token { font-size: 12px; background: #eef6f6; color: #23474a; border-radius: 4px; padding: 1px 6px; }
-    .label-like { font-weight: 600; color: #3b4b4c; font-size: 14px; }
-    .label-like.top { align-self: start; padding-top: 2px; }
-
-    .lv-preview { position: sticky; top: 0; background: #f4f8f8; border-radius: 12px; padding: 14px; }
-    .lv-preview h4 { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
-    .pv-box { --accent: #45a5ad; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08); }
-    .pv-box.is-off { opacity: .5; }
-    .pv-head { background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; padding: 10px 12px; letter-spacing: .3px; overflow-wrap: anywhere; }
-    .pv-body { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px; }
-    .pv-status { color: #e8a33d; font-weight: 700; font-size: 13px; }
-    .pv-steps { display: flex; gap: 14px; margin-top: 10px; }
-    .pv-steps i { width: 10px; height: 10px; border-radius: 5px; background: #dfe5e6; }
-    .pv-logo { height: 52px; max-width: 90px; object-fit: contain; }
-    .pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 10px; font-weight: 800;
-      background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; overflow: hidden; }
-    .pv-desc { font-size: 12px; color: #3b4b4c; margin: 0; padding: 0 12px 10px; }
-    .lv-fees { font-size: 13px; }
-    .lv-fees-missing { color: #a15c00; font-size: 13px; }
-    .pv-fee { font-size: 12px; font-weight: 700; color: #23474a; padding: 0 12px 10px; }
-    .pv-numbers { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
-    .pv-numbers dt { color: #5f6f70; font-weight: 600; }
-    .pv-numbers dd { margin: 0; overflow-wrap: anywhere; }
-    .pv-timeline { position: relative; height: 46px; margin: 4px 12px 2px 4px; }
-    .tl-bar { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #cfe5e6, #45a5ad); }
-    .tl-mark, .tl-end { position: absolute; top: 2px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
-    .tl-mark b { width: 22px; height: 22px; border-radius: 11px; background: #fff; border: 2px solid #23474a; font-size: 10px; display: grid; place-items: center; color: #23474a; }
-    .tl-mark small, .tl-end small { font-size: 11px; color: #5f6f70; margin-top: 2px; }
-    .tl-end { left: 100%; top: 26px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    @media (max-width: 991.98px) {
-      .lv-edit { grid-template-columns: minmax(0, 1fr); }
-      .lv-preview { position: static; }
-    }
-    @media (max-width: 575.98px) {
-      .modal .lv-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
-      .lv-choice { grid-template-columns: minmax(0, 1fr); }
-    }
   `,
 })
 export class CertificationLevelsPage {
@@ -880,6 +821,8 @@ export class CertificationLevelsPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private logo: File | null = null;
+  /** The chosen logo file's name, shown by the upload control. */
+  protected readonly logoName = signal('');
 
   constructor() {
     void this.load();
@@ -946,6 +889,7 @@ export class CertificationLevelsPage {
 
   protected startAdd(): void {
     this.logo = null;
+    this.logoName.set('');
     this.tab.set('box');
     this.editError.set('');
     this.editing.set({
@@ -989,6 +933,7 @@ export class CertificationLevelsPage {
   protected edit(i: LevelItem): void {
     const l = i.level;
     this.logo = null;
+    this.logoName.set('');
     this.tab.set('box');
     this.editError.set('');
     this.editing.set({
@@ -1014,10 +959,12 @@ export class CertificationLevelsPage {
     if (file && (file.size > 1024 * 1024 || !/\.(png|jpe?g)$/i.test(file.name))) {
       input.value = '';
       this.logo = null;
+      this.logoName.set('');
       this.editError.set('Please choose a PNG or JPG image of up to 1 MB.');
       return;
     }
     this.logo = file;
+    this.logoName.set(file?.name ?? '');
   }
 
   protected async save(): Promise<void> {

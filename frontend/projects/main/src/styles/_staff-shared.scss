@@ -1,0 +1,253 @@
+// 2026-11-19 (Admin UI audit, the user: 'fix the UI for all the sections, pop-ups, buttons, texts wrapping/alignments,
+// adaptability'): the shared fixes of every staff page. Loaded inside .zed-legacy.zed-v4 (the staff layout) after
+// styles/_v4-skin.scss, so the MSME and public pages are not touched. The Admin login's dark buttons are in
+// styles/_admin-skin.scss.
+// Many rules are a little heavier than they need to be (".seg.seg", "> tbody > tr > td"): the pages' own copies of these
+// blocks are component styles ([_ngcontent] attributes count as classes and load after this file), and these must win.
+
+$ink: #17373b;
+$muted: #6f8487;
+$line: #dde7e8;
+
+// ---- Wrapping: whole words only ------------------------------------------------------------------------------------
+// "overflow-wrap: anywhere" let a cell, button or pill break inside a word ("Edi/t", "O/n", "Inacti/ve", "Manufactur/e"),
+// because it also lets the box shrink below its longest word. Free text breaks between words; a word is split only when it
+// cannot fit on a line of its own (a long e-mail or link), and then it does not make its box narrower.
+.table > tbody > tr > td,
+.table > tbody > tr > th {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.ph-title, .registration-title, .modal-title, .zed-card, .list-card { overflow-wrap: break-word; word-break: normal; }
+
+// Things read as one unit stay on one line: buttons, pills, chips, switches, dates and amounts.
+.btn,
+.status-badge, .zed-chip, .chip, .lv-tag, .req-chip, .type-name, .group-chip, .badge,
+.st-switch, .af-switch, .quick-switch, .mm-switch, .head-switch, .form-switch > .form-check-label,
+time, .date, .num, td.num, .text-nowrap {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.status-badge { max-width: none; }
+// Phones: a page button may go onto two lines, but only between words.
+@media (max-width: 575.98px) {
+  .btn:not(td .btn):not(.modal-footer .btn):not(.seg .btn) { white-space: normal; text-align: center; }
+}
+// A cell meant to be one line: cut with "…" (give the element the full text as its title).
+.zed-ellipsis { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+// The action column takes the width of its buttons, no more: the row buttons side by side on one line (they used to stack
+// one under the other in uneven widths), the table scrolling inside its box when the buttons need the room.
+.table > tbody > tr > td > .row-actions.row-actions { flex-direction: row; flex-wrap: nowrap; }
+.table > tbody > tr > td:has(> .row-actions),
+.table > tbody > tr > td.actions,
+.table > thead > tr > th.actions { width: 1%; white-space: nowrap; }
+
+// ---- On/off switches inside tables ----------------------------------------------------------------------------------
+// The switches' hidden <input> is position: absolute; with no positioned box between it and the page it was placed against a
+// far ancestor, outside the table's scroll box, and made the whole page scroll sideways on phones (+150 to +430px).
+.st-switch, .af-switch, .quick-switch, .mm-switch, .head-switch, .doc-role, .cp-opt, .sr-switch, .ai-switch, .bronze-switch {
+  position: relative;
+}
+:is(.st-switch, .af-switch, .quick-switch, .mm-switch, .doc-role, .cp-opt) > input:is([type='checkbox'], [type='radio']) {
+  inset: 0;
+}
+// And whatever else is absolutely placed in a table stays inside its scroll box.
+.table-responsive { position: relative; max-width: 100%; }
+
+// ---- Pop-ups: one frame ---------------------------------------------------------------------------------------------
+// White head (18px bold title, optional grey line under it, a 32px grey square close button), the body scrolls inside the
+// pop-up (the head and the buttons stay in view), the buttons right-aligned at 40px, 16px from the window's edges.
+.modal .modal-dialog { margin-top: 16px; margin-bottom: 16px; }
+.modal .modal-dialog-centered { min-height: calc(100% - 32px); }
+.modal .modal-content {
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+.modal .modal-content > form,
+.modal .modal-content > :has(> .modal-body) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.modal .modal-header, .modal .modal-footer { flex: none; }
+.modal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.modal .modal-header { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 16px 20px; }
+.modal .modal-header > .modal-title { flex: 1 1 auto; min-width: 0; }
+// (Not the pop-ups that keep a dark title bar for the other roles: acc-head; the Admin's is white, styles/_admin-skin.scss.)
+.modal .modal-header:not(.acc-head) :is(.modal-title, .registration-title, h2, h3, h4, h5) {
+  margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; color: $ink;
+}
+.modal .modal-header:not(.acc-head) :is(.modal-title, .registration-title) :is(small, .sub) { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 500; color: $muted; }
+// The close buttons: Bootstrap's ×, the image buttons of the older pop-ups (btn-link with close.svg) and "close" links.
+.modal .modal-header:not(.acc-head) .btn-close,
+.modal .modal-header .close,
+.modal .modal-header .btn-link[aria-label='Close'] {
+  flex: none;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background-color: #eef3f3;
+  color: $ink;
+  opacity: 1;
+  box-shadow: none;
+}
+.modal .modal-header:not(.acc-head) .btn-close {
+  background: #eef3f3 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2317373b' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 16px no-repeat;
+}
+.modal .modal-header .btn-link[aria-label='Close'] > img { width: 14px; height: 14px; }
+.modal .modal-header:not(.acc-head) :is(.btn-close, .close, .btn-link[aria-label='Close']):hover { background-color: #e2eaea; }
+.modal .modal-header :is(.btn-close, .close, .btn-link[aria-label='Close']):focus-visible { outline: 2px solid var(--zt-dark, #1f5c61); outline-offset: 2px; box-shadow: none; }
+.modal .modal-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 20px; }
+.modal .modal-footer > * { margin: 0; }
+.modal .modal-footer .btn:not(.btn-link) { min-height: 40px; padding-top: 8px; padding-bottom: 8px; }
+// The footers that use <input type="button" class="btn">: the same as the buttons.
+input.btn { -webkit-appearance: none; appearance: none; font-family: inherit; cursor: pointer; }
+// Phones: the pop-up is the window's width less 16px on each side.
+@media (max-width: 575.98px) {
+  .modal .modal-dialog,
+  .modal .modal-dialog.modal-popup,
+  .modal .modal-dialog[class*='-dialog'] { width: auto; max-width: none; margin: 16px; }
+  .modal .modal-header { padding: 14px 16px; min-height: 56px; }
+  .modal .modal-body { padding: 14px 16px; }
+  .modal .modal-footer { padding: 10px 16px; }
+}
+
+// ---- Segmented controls and the portal switch ----------------------------------------------------------------------
+// One look (the copies of ".seg" in the pages: 15 of them): 34px buttons in one bordered strip, the chosen one solid teal.
+// On phones the strip stays one row and scrolls sideways inside its place (no ragged second row, no page overflow).
+.seg:has(> button), .zed-seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid #cbd9da;
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--zt-soft, #d9eef0);
+  vertical-align: middle;
+}
+.seg.seg > button, .zed-seg.zed-seg > button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 0;
+  background: var(--zt-soft, #d9eef0);
+  color: var(--zt-ink, #174a4e);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.seg.seg > button + button, .zed-seg.zed-seg > button + button { border-left: 1px solid #cbd9da; }
+.seg.seg > button:not(.active):not([aria-pressed='true']):hover,
+.zed-seg.zed-seg > button:not(.active):not([aria-pressed='true']):hover { background: var(--zt-soft-2, #c5e5e8); }
+.seg.seg > button:is(.active, [aria-pressed='true']),
+.zed-seg.zed-seg > button:is(.active, [aria-pressed='true']) { background: var(--zt-dark, #1f5c61); color: #fff; }
+.seg.seg > button:focus-visible, .zed-seg.zed-seg > button:focus-visible { outline: 2px solid var(--zt-dark, #1f5c61); outline-offset: -3px; }
+.seg.seg > button:disabled, .zed-seg.zed-seg > button:disabled { opacity: 0.55; cursor: not-allowed; }
+// The portal switch (ZED Certification / Consultancy / Surveillance) at the top of the Admin settings.
+.portal-switch.portal-switch { flex-wrap: wrap; row-gap: 6px; }
+.portal-switch.portal-switch > .ps-tab { min-height: 34px; padding: 0 14px; border-radius: 9px; white-space: nowrap; line-height: 1.2; }
+@media (max-width: 767.98px) {
+  .seg:has(> button), .zed-seg {
+    display: flex;
+    width: max-content;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+  }
+  .portal-switch.portal-switch { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; max-width: 100%; padding-bottom: 2px; }
+  .portal-switch.portal-switch > * { flex: none; }
+}
+
+// ---- Responsive page frame ----------------------------------------------------------------------------------------
+// Cards never push the page wider than the window; a table in a card scrolls inside the card (its .table-responsive).
+.zed-card, .list-card, .card { min-width: 0; max-width: 100%; }
+.zed-card > .table-responsive, .list-card > .table-responsive, .card-body > .table-responsive { overflow-x: auto; }
+// Filter and tool rows wrap instead of running off the side.
+:is(.filter-bar, .filters, .filter-row, .list-toolbar, .toolbar, .page-actions, .ph-actions, .form-actions, .list-card-head) { flex-wrap: wrap; min-width: 0; }
+@media (max-width: 575.98px) {
+  // The page's buttons go under its title.
+  .page-head { flex-direction: column; align-items: stretch; }
+  .page-head > .page-actions, .ph > .ph-actions { width: 100%; padding-top: 0; }
+  .filter-bar > .filter, .filter-bar > .filter.wide { max-width: none; flex-basis: 100%; }
+}
+
+// ---- Native controls ----------------------------------------------------------------------------------------------
+// Tick boxes and radio buttons that the pages draw with the browser's own look: 18px and in the ZED teal (an unchosen radio
+// used to be a very pale ring). :where() keeps this light, so a page's own size still wins.
+:where(input[type='checkbox'], input[type='radio']):not(.form-check-input):not(.btn-check) {
+  accent-color: var(--zt-dark, #1f5c61);
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+  cursor: pointer;
+}
+.form-check-input { border: 1.5px solid #7d9093; }
+.form-check-input:checked { background-color: var(--zt-dark, #1f5c61); border-color: var(--zt-dark, #1f5c61); }
+.form-check-input:disabled { opacity: 0.55; }
+// File inputs: a bordered field with a proper button ("Choose file"), the same everywhere.
+input[type='file']:not(.d-none):not([hidden]) { max-width: 100%; font-size: 13px; color: #3d5559; }
+input[type='file']:not(.form-control):not(.d-none):not([hidden]) { padding: 5px; border: 1px dashed #b9cdcf; border-radius: 9px; background: #fff; }
+input[type='file']::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 7px;
+  background: #e7eeee;
+  color: $ink;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+input[type='file']::file-selector-button:hover { background: #d9e3e3; }
+
+// ---- Menu bar (staff-layout.ts; here for the component style budget) ------------------------------------------------
+// A long drop-down (Administration, 15 entries) uses the window's height, scrolls inside itself with a thin visible scroll bar,
+// and shows a soft shadow at the edge where more entries are hidden.
+.zed-navbar.zed-navbar .dropdown-menu {
+  max-height: min(640px, calc(100vh - 140px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  background:
+    linear-gradient(#fff 30%, rgba(255, 255, 255, 0)) top / 100% 24px no-repeat local,
+    linear-gradient(rgba(255, 255, 255, 0), #fff 70%) bottom / 100% 24px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(16, 61, 64, 0.18), transparent) top / 100% 8px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(16, 61, 64, 0.18), transparent) bottom / 100% 8px no-repeat scroll,
+    #fff;
+}
+// The phone menu button: a white icon and outline on the teal bar (Bootstrap's default icon is dark, almost invisible there).
+.zed-navbar.zed-navbar .navbar-toggler { padding: 6px 9px; border: 1px solid rgba(255, 255, 255, 0.55); border-radius: 8px; }
+.zed-navbar.zed-navbar .navbar-toggler:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: none; }
+.zed-navbar.zed-navbar .navbar-toggler-icon {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2.2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+// Phones and tablets: the open menu never makes the page wider than the window.
+@media (max-width: 991.98px) {
+  .zed-navbar.zed-navbar .nav-bar-sec { flex-wrap: wrap; }
+  .zed-navbar.zed-navbar .navbar-collapse { max-width: 100%; }
+  .zed-navbar.zed-navbar .dropdown-menu { position: static; max-width: 100%; max-height: 60vh; }
+  .zed-navbar.zed-navbar .dropdown-item { white-space: normal; }
+}

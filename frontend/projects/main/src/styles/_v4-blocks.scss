@@ -42,7 +42,9 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 // Small labels inside cells.
 .zed-chip { display: inline-block; background: $teal-tint; color: $teal-ink; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
 // 2026-11-14 (approved): smaller corners and the text wraps, so the Status column can be narrow (about 110px).
-.status-badge { display: inline-block; max-width: 100%; border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700; line-height: 1.3; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+// 2026-11-19 (Admin UI audit: "Inacti/ve"): it wraps between words only (overflow-wrap: anywhere split the words); on the staff
+// pages it stays on one line (styles/_staff-shared.scss).
+.status-badge { display: inline-block; max-width: 100%; border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700; line-height: 1.3; white-space: normal; text-align: center; overflow-wrap: normal; word-break: normal; }
 .status-badge.is-active, .status-badge.is-success { background: #e6f6ec; color: #1e7a3c; }
 .status-badge.is-inactive { background: #eef1f2; color: #5f6f70; }
 .status-badge.is-pending { background: #fff4d6; color: #8a6100; }
@@ -75,17 +77,9 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .xl-group-label { font-size: 11.5px; font-weight: 600; color: #5f6f70; margin: 0 2px; }
 // A user without a mobile number in the lists' contact cells (2026-11-13).
 .no-mobile { color: #8a9899; font-style: italic; font-weight: 400; }
-// 2026-11-13 (option B): the other buttons a soft teal fill; the selected one (tabs, stage filters) solid teal.
-.btn.btn-outline-primary { color: var(--zt-dark, var(--zt-ink, #174a4e)); border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0); }
-.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { background: var(--zt-soft-2, #c5e5e8); color: var(--zt-ink, #123b3e); border-color: var(--zt-soft-2, #c5e5e8); }
-.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
+// 2026-11-19 (Admin UI audit): the soft outline buttons are defined once, in styles.scss (this file had a copy of them, a third
+// .btn-outline-primary rule); only the badge on a chosen one stays here.
 .btn.btn-outline-primary.active .badge, .btn.btn-outline-primary[aria-pressed='true'] .badge { background: rgba(255, 255, 255, 0.22) !important; color: #fff !important; }
-.btn.btn-outline-warning { color: #7a4700; border: 1px solid #fff1d6; background: #fff1d6; }
-.btn.btn-outline-warning:hover { background: #ffe6b5; border-color: #ffe6b5; color: #6a3d00; }
-.btn.btn-outline-success { color: #1e6b3a; border: 1px solid #dff2e5; background: #dff2e5; }
-.btn.btn-outline-success:hover { background: #cbead5; border-color: #cbead5; }
-.btn.btn-outline-secondary { color: #24393b; border: 1px solid #e6eded; background: #e6eded; }
-.btn.btn-outline-secondary:hover { background: #d6e2e3; border-color: #d6e2e3; }
 // Long text in a table cell: three lines, the rest on hover (title) or "more".
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .muted { color: $muted; }
@@ -196,7 +190,7 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .dp-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #eef1f1; font-size: 14px; }
 .dp-rows > div:last-child { border-bottom: 0; }
 .dp-rows dt { font-weight: 400; color: #7a8a8b; }
-.dp-rows dd { margin: 0; font-weight: 600; color: #232527; text-align: right; overflow-wrap: anywhere; }
+.dp-rows dd { margin: 0; font-weight: 600; color: #232527; text-align: right; overflow-wrap: break-word; min-width: 0; }
 .dp-note { font-size: 13.5px; color: #5f6f70; margin: 8px 0 0; }
 .dp-sub { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--zt-mid2, #2f7c83); margin: 12px 0 6px; }
 .dp-list { margin: 0; padding-left: 18px; font-size: 14px; }
@@ -213,9 +207,9 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .af-edit { border: 1px solid #9cc9cd; background: #fff; color: var(--zt-dark, #23656b); border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
 .af-edit:hover { background: #eef6f6; }
 .af-reset { border: 0; background: none; padding: 0 2px; color: #7a8a8b; font-size: 12.5px; text-decoration: underline; }
-.af-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+.af-switch { position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
 .af-switch.off { color: #8a9899; }
-.af-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.af-switch input { position: absolute; inset: 0; opacity: 0; width: 1px; height: 1px; }
 .af-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; flex: none; transition: background .15s; }
 .af-track::after { content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
 .af-switch.off .af-track { background: #c3cdce; }

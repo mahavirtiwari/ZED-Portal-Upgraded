@@ -114,6 +114,32 @@ describe('pager', () => {
     expect(el.querySelectorAll('.zp-num').length).toBe(1);
   });
 
+  // 2026-11-19 (the user, Admin login: 'make the buttons in dark color').
+  it('draws Prev / Next solid dark with white text for the Admin login only', async () => {
+    @Component({
+      imports: [PagerComponent],
+      template: `<div [class.zed-admin]="admin()"><zed-pager [pager]="view" /></div>`,
+    })
+    class Host {
+      readonly admin = signal(true);
+      readonly view = new PagedView(() => rows(25));
+    }
+    const fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    const el: HTMLElement = fixture.nativeElement;
+    const [prev, next] = [...el.querySelectorAll<HTMLButtonElement>('.zp-btn:not(.zp-num)')];
+    expect(prev.disabled).toBe(true);
+    expect(getComputedStyle(next).backgroundColor).toBe('rgb(61, 90, 94)');
+    expect(getComputedStyle(next).color).toBe('rgb(255, 255, 255)');
+    expect(getComputedStyle(prev).cursor).toBe('not-allowed');
+    // The page numbers stay boxes.
+    expect(getComputedStyle(el.querySelector('.zp-num:not(.on)')!).backgroundColor).toBe('rgb(255, 255, 255)');
+
+    fixture.componentInstance.admin.set(false);
+    await fixture.whenStable();
+    expect(getComputedStyle(next).backgroundColor).toBe('rgb(255, 255, 255)');
+  });
+
   it('searchRows finds every word in any column, nested values too', () => {
     const list = [
       { id: 1, unit: 'Shree Ganesh Industries', state: 'UTTAR PRADESH', contact: { email: 'ganesh@example.org' } },

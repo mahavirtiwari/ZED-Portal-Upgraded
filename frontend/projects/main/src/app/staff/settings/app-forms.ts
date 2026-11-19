@@ -194,9 +194,9 @@ const TYPE_GLYPHS: Record<string, string> = {
             <colgroup>
               <col style="width: 52px" />
               <col />
-              <col style="width: 150px" />
-              <col style="width: 96px" />
-              <col style="width: 300px" />
+              <col style="width: 140px" />
+              <col style="width: 92px" />
+              <col style="width: 280px" />
             </colgroup>
             <thead>
               <tr>
@@ -241,14 +241,14 @@ const TYPE_GLYPHS: Record<string, string> = {
                   <td><span class="req-chip" [class.is-yes]="f.required">{{ f.required ? 'Yes' : 'No' }}</span></td>
                   <td>
                     <div class="af-actions">
-                      <button type="button" class="af-icon" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
-                      <button type="button" class="af-icon" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
                       <label class="af-switch" [class.off]="!f.enabled" [title]="status(f)">
                         <input type="checkbox" role="switch" [checked]="f.enabled" [disabled]="busy()" [attr.aria-label]="(f.enabled ? 'Switch off ' : 'Switch on ') + f.label" (click)="$event.preventDefault(); toggle(f)" />
                         <span class="af-track" aria-hidden="true"></span>{{ f.enabled ? 'On' : 'Off' }}
                       </label>
-                      <button type="button" class="af-edit" (click)="edit(f)">Edit</button>
-                      @if (f.customised && !f.custom) { <button type="button" class="af-reset" (click)="reset(f)">Reset</button> }
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(f)">Edit</button>
+                      @if (f.customised && !f.custom) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(f)">Reset</button> }
                     </div>
                     @if (f.enabled && !f.active) { <small class="af-note">{{ status(f) }}</small> }
                   </td>
@@ -269,8 +269,8 @@ const TYPE_GLYPHS: Record<string, string> = {
                           <input type="checkbox" role="switch" [checked]="c.enabled" [disabled]="busy()" [attr.aria-label]="(c.enabled ? 'Switch off ' : 'Switch on ') + c.label" (click)="$event.preventDefault(); toggle(c)" />
                           <span class="af-track" aria-hidden="true"></span>{{ c.enabled ? 'On' : 'Off' }}
                         </label>
-                        <button type="button" class="af-edit" (click)="edit(c)">Edit</button>
-                        @if (c.customised) { <button type="button" class="af-reset" (click)="reset(c)">Reset</button> }
+                        <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(c)">Edit</button>
+                        @if (c.customised) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(c)">Reset</button> }
                       </div>
                     </td>
                   </tr>
@@ -476,8 +476,8 @@ const TYPE_GLYPHS: Record<string, string> = {
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
             </div>
           </div>
         </div>
@@ -489,6 +489,7 @@ const TYPE_GLYPHS: Record<string, string> = {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  styleUrl: './app-forms-dialog.scss',
   styles: `
     /* The forms, one tile each. */
     .form-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 10px; }
@@ -511,11 +512,10 @@ const TYPE_GLYPHS: Record<string, string> = {
 
     /* The fields of a section. */
     zed-collapse-card .table-responsive { margin-bottom: 0; }
-    .fields-table { table-layout: fixed; width: 100%; min-width: 900px; }
-    .fields-table td { overflow-wrap: anywhere; }
+    .fields-table { table-layout: fixed; width: 100%; min-width: 820px; }
+    .fields-table td { overflow-wrap: break-word; }
     .changed-on { display: block; font-size: 11.5px; color: #8a9899; margin-top: 4px; }
-    .row-actions .btn { text-transform: none; }
-    .fields-table td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+        .fields-table td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .fields-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .fields-table tr.is-off td { color: #8a9899; }
     .order-no {
@@ -535,77 +535,23 @@ const TYPE_GLYPHS: Record<string, string> = {
     .scope .zed-chip.sector { background: #f1f0fb; color: #3f3a7a; }
     .type-name { font-size: 13px; color: #3b4b4c; }
     .status-badge.wrap { white-space: normal; }
-    /* The row controls (af-*, req-chip): styles/_v4-blocks.scss (the component style budget). */
-
-    /* The pop-up: the field and who is asked on the left; the preview and the settings on the right. */
-    .sec-no { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; background: #45a5ad; color: #fff; font-size: 11px; margin-right: 6px; vertical-align: 1px; }
-    .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
-    .type-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 1px solid #dfe9ea; border-radius: 10px;
-      background: #fff; cursor: pointer; text-align: center; margin: 0; transition: border-color .1s, background .1s; }
-    .type-tile:hover { border-color: #45a5ad; }
-    .type-tile.active { border: 2px solid #45a5ad; padding: 9px 5px; background: #f4fafa; }
-    .type-tile:focus-within { outline: 2px solid #45a5ad; outline-offset: 2px; }
-    .type-glyph { font: 700 15px/1 Consolas, 'Courier New', monospace; color: var(--zt-mid2, #2f7c83); height: 18px; }
-    .type-name { font-size: 12px; font-weight: 600; color: #3b4b4c; line-height: 1.25; }
-    .type-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 12px; padding: 2px 10px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
-    .dialog-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 14px; }
-    .side-settings { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-    .side-settings h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
-    .phone-notch { width: 54px; height: 5px; border-radius: 3px; background: #dfe5e6; margin: -6px auto 12px; }
-    /* Wider than the skin's 760px form pop-ups (.zed-legacy.zed-v4 .modal-dialog:has(.form-grid)). */
-    .modal > .modal-dialog.modal-xl.field-dialog { max-width: 1040px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
-    .modal .field-dialog .form-grid { grid-template-columns: 150px minmax(0, 1fr); }
-    .field-dialog .form-grid > .label { display: block; text-align: left; white-space: normal; text-transform: none; padding: 0; font-size: 14px;
-      font-weight: 600; color: #3b4b4c; background: none; border-radius: 0; }
-    .field-dialog .form-grid > .label.top { padding-top: 8px; }
-    .modal .field-dialog textarea.form-control { min-height: 64px; height: auto; }
-    .dialog-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; }
-    .dialog-section { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
-    .dialog-section:last-child { margin-bottom: 0; }
-    .dialog-section h4, .dialog-preview h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 12px; }
-    .form-grid > .top { align-self: start; padding-top: 8px; }
-    .choices { display: flex; flex-direction: column; gap: 6px; }
-    .rows-editor { display: flex; flex-direction: column; gap: 8px; }
-    .col-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 150px auto 28px; gap: 6px; align-items: center; }
-    .col-row .col-extra { grid-column: 2 / -1; }
-    .col-req { display: flex; gap: 4px; align-items: center; font-size: 13px; margin: 0; white-space: nowrap; }
-    .col-num { width: 80px; margin-left: 6px; }
-    .choice { display: flex; align-items: center; gap: 8px; }
-    .choice-no { flex: 0 0 24px; height: 24px; border-radius: 12px; background: #eef6f6; color: #23474a; font-size: 12px; font-weight: 700;
-      display: inline-flex; align-items: center; justify-content: center; }
-    .choice-remove { color: #a8303a; text-decoration: none; padding: 2px 8px; }
-    .add-choice { align-self: flex-start; }
-    .toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
-    .toggle-card.no-validation { cursor: default; background: #f6f8f8; }
-    .toggle-card .form-check-input { flex: 0 0 auto; margin: 3px 0 0; }
-    .toggle-card.form-switch { padding-left: 12px; }
-    .toggle-card.form-switch .form-check-input { margin-left: 0; width: 2em; }
-    .dialog-preview { background: #f4f8f8; border-radius: 12px; padding: 14px; }
-    .phone { background: #fff; border: 1px solid #dfe9ea; border-radius: 18px; padding: 16px 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
-    .phone-field.is-off { opacity: .45; }
-    .pf-label { font-size: 13px; font-weight: 600; color: #232527; margin-bottom: 6px; overflow-wrap: anywhere; }
-    .pf-input { border: 1px solid #cbd9da; border-radius: 8px; min-height: 34px; padding: 6px 10px; font-size: 13px; color: #8a9899; }
-    .pf-select { position: relative; padding-right: 26px; }
-    .pf-select::after { content: ''; position: absolute; right: 10px; top: 12px; width: 7px; height: 7px; border-right: 2px solid #5f6f70; border-bottom: 2px solid #5f6f70; transform: rotate(45deg); }
-    .pf-radios { display: flex; gap: 18px; font-size: 13px; }
-    .pf-radios i, .pf-check i { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #8a9899; border-radius: 50%; vertical-align: -2px; margin-right: 4px; }
-    .pf-check { font-size: 13px; margin-bottom: 4px; }
-    .pf-check i { border-radius: 3px; }
-    .pf-photo { border: 1.5px dashed #45a5ad; border-radius: 8px; color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 600; text-align: center; padding: 18px 8px; }
-    .pf-help { font-size: 12px; color: #5f6f70; margin-top: 6px; overflow-wrap: anywhere; }
-
-    @media (max-width: 991.98px) {
-      .dialog-grid { grid-template-columns: minmax(0, 1fr); }
-      .dialog-side { position: static; }
+    /* The row controls (af-actions, af-switch, req-chip): styles/_v4-blocks.scss; the buttons are the standard btn classes. */
+    .af-actions .st-move { width: 32px; padding-left: 0; padding-right: 0; font-weight: 700; }
+    /* position: relative keeps the switch's hidden input inside the table's scroll box (it widened the page on phones). */
+    .af-switch { position: relative; white-space: nowrap; }
+    /* Phone: one card per field, no sideways scroll. */
+    @media (max-width: 767.98px) {
+      .fields-table { min-width: 0; table-layout: auto; }
+      .fields-table thead { display: none; }
+      .fields-table, .fields-table tbody, .fields-table tr, .fields-table td { display: block; width: 100%; }
+      .fields-table tr { border-bottom: 1px solid #dfe9ea; padding: 8px 0; }
+      .fields-table td { border: 0; padding: 3px 0 !important; text-align: left !important; }
+      .fields-table td:first-child { display: none; }
+      .fields-table tr.column { padding-left: 16px; }
+      .fields-table .af-actions { justify-content: flex-start; flex-wrap: wrap; }
+      .fields-table .af-note { text-align: left; }
     }
-    @media (max-width: 575.98px) {
-      .modal .field-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
-    }
+
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class AppFormsPage {

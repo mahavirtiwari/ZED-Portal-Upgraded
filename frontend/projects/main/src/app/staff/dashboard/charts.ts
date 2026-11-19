@@ -301,7 +301,7 @@ export function axisTicks(max: number): number[] {
             }
           </div>
           <div class="gc-axis" [style.--cols]="items().length || 1">
-            @for (it of items(); track it.label) { <span class="gc-label">{{ it.label }}</span> }
+            @for (it of items(); track it.label) { <span class="gc-label" [title]="it.label">{{ it.label }}</span> }
           </div>
         </div>
       </div>

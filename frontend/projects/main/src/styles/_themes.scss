@@ -24,10 +24,8 @@ html[data-zed-theme] {
     background-color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important;
   }
   .btn-primary:hover, .btn-primary:focus-visible, .ml-login:hover, .zl-login:hover { filter: brightness(1.12); }
-  // The soft buttons (Refresh, More filters…): the theme's pale tint, as the teal ones.
-  .btn-outline-primary { color: var(--zt-dark) !important; background-color: var(--zt-soft) !important; border-color: var(--zt-soft) !important; }
-  .btn-outline-primary:hover, .btn-outline-primary:focus-visible { background-color: var(--zt-soft-2) !important; border-color: var(--zt-soft-2) !important; }
-  .btn-outline-primary.active, .btn-outline-primary[aria-pressed='true'] { background-color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important; }
+  // 2026-11-19 (Admin UI audit): no rule of its own for .btn-outline-primary any more. It turned the staff pages' white outlined
+  // buttons into soft ones under a theme only; the button rules (styles.scss, _v4-skin, _admin-skin) use the theme variables.
   // Not the menu bar's drop-down tabs and user button (btn-link too): they keep their light text on the dark bar.
   .btn-link:not(.nav-link) { color: var(--zt-dark) !important; }
 

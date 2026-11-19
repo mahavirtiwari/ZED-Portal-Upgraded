@@ -62,7 +62,7 @@ export interface ListCount {
     .lc-item b.is-bad { color: #c8473c; }
     .lc-item b.is-good { color: #2f9e58; }
     .lc-item b.is-info { color: var(--zt-dark, #24666b); }
-    .lc-label { font-size: 12.5px; color: #3d5559; font-weight: 500; line-height: 1.4; overflow-wrap: anywhere; }
+    .lc-label { font-size: 12.5px; color: #3d5559; font-weight: 500; line-height: 1.4; overflow-wrap: break-word; }
     .lc-sub { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); }
     .lc-delta { position: absolute; right: 16px; bottom: 14px; font-size: 12px; font-weight: 700; color: #2f9e58; }
     .lc-delta.down { color: #c8473c; }

@@ -98,7 +98,7 @@ type Section = 'partners' | 'apis' | 'services';
     <div class="ai-stats">
       <div class="stat"><span class="stat-value">{{ stats().enabled }}<small>/{{ stats().partners }}</small></span><span class="stat-label">Partners enabled</span></div>
       <div class="stat"><span class="stat-value">{{ stats().apisOn }}<small>/{{ stats().apis }}</small></span><span class="stat-label">Partner APIs on</span></div>
-      <div class="stat"><span class="stat-value stat-text">{{ stats().lastToken ? (stats().lastToken!.on | date: 'dd-MM-yyyy HH:mm') : '—' }}</span>
+      <div class="stat"><span class="stat-value stat-text">{{ stats().lastToken ? (stats().lastToken!.on | date: 'dd-MM-yyyy HH:mm') : 'None yet' }}</span>
         <span class="stat-label">Latest token{{ stats().lastToken ? ': ' + stats().lastToken!.name : '' }}</span></div>
       <div class="stat"><span class="stat-value">{{ stats().servicesInUse }}</span><span class="stat-label">Services ZED calls</span></div>
     </div>
@@ -332,7 +332,7 @@ type Section = 'partners' | 'apis' | 'services';
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-value small { font-size: 15px; color: #8a9899; font-weight: 600; }
     .stat-value.stat-text { font-size: 16px; padding: 4px 0 3px; }
-    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: break-word; }
 
     .ai-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .ai-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
@@ -368,7 +368,7 @@ type Section = 'partners' | 'apis' | 'services';
 
     .ai-switch { display: inline-flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; white-space: nowrap; }
     .ai-switch .form-check-input { float: none; margin: 0; width: 2.2em; height: 1.2em; }
-    .ai-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .ai-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-rows: 1fr; gap: 12px; }
     .ai-group { display: flex; flex-direction: column; border: 1px solid #dfe9ea; border-top: 4px solid #45a5ad; border-radius: 12px; padding: 14px; background: #fff; }
     .ai-group.ai-off { border-top-color: #cbd5d6; border-style: dashed; border-top-style: solid; }
     .ai-group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -391,7 +391,8 @@ type Section = 'partners' | 'apis' | 'services';
     .choice-card.active { border-color: #45a5ad; background: #f4fafa; }
     /* The skin makes pop-up labels bold; on these cards only the option's name is. */
     .modal .modal-popup label.choice-card, .modal .modal-popup label.toggle-card { font-weight: 400; color: #232527; }
-    .choice-card .form-check-input, .toggle-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
+    .choice-card .form-check-input, .toggle-card .form-check-input { flex: none; margin: 3px 0 0; float: none; border: 2px solid #5f7f82; }
+    .choice-card .form-check-input:checked, .toggle-card .form-check-input:checked { border-color: var(--zt-dark, #23656b); background-color: var(--zt-dark, #23656b); }
     .toggle-card.form-switch { padding-left: 12px; }
     .toggle-card.form-switch .form-check-input { margin-left: 0; width: 2em; }
     .ai-secrets { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; margin-bottom: 12px; align-items: center; }
@@ -406,6 +407,15 @@ type Section = 'partners' | 'apis' | 'services';
     @media (max-width: 767.98px) {
       .ai-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .ai-search { flex-basis: 100%; }
+      .ai-groups { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+      /* Phone: one card per partner, no sideways scroll (also when the list is empty). */
+      .ai-table thead { display: none; }
+      .ai-table, .ai-table tbody, .ai-table tr, .ai-table td { display: block; width: 100%; }
+      .ai-table tr { border-bottom: 1px solid #dfe9ea; padding: 8px 0; }
+      .ai-table td { border: 0; padding: 4px 0; text-align: left !important; }
+      .partner { min-width: 0; }
+      .ai-url { max-width: 100%; }
+      .activity { white-space: normal; }
     }
   `,
 })

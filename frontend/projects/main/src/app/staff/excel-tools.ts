@@ -144,7 +144,7 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
             <div class="modal-footer xl-foot" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
               <span class="muted">@if (check() && !applied()) { Rows with errors are skipped. Correct them in the file and upload again, or apply the others now. }</span>
               <span>
-                <button type="button" class="btn btn-default" (click)="close()">{{ applied() ? 'CLOSE' : 'CANCEL' }}</button>
+                <button type="button" class="btn btn-default" (click)="close()">{{ applied() ? 'Close' : 'Cancel' }}</button>
                 @if (check(); as c) {
                   @if (!applied()) {
                     <button type="button" class="btn btn-primary" [disabled]="busy() === 'apply' || c.new + c.changed === 0" (click)="apply()">

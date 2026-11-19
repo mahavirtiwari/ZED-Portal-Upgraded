@@ -94,8 +94,8 @@ interface ApiForm {
               <input id="pv-url" name="url" class="form-control" maxlength="500" placeholder="https://" [(ngModel)]="api.url" />
               <span class="af-label">Method</span>
               <div class="pv-methods" role="radiogroup" aria-label="Method">
-                <label><input type="radio" name="method" value="POST" [(ngModel)]="api.method" /> POST (JSON body)</label>
-                <label><input type="radio" name="method" value="GET" [(ngModel)]="api.method" /> GET (query string)</label>
+                <label class="pv-rc" [class.on]="api.method === 'POST'"><input type="radio" name="method" value="POST" [(ngModel)]="api.method" /> POST (JSON body)</label>
+                <label class="pv-rc" [class.on]="api.method === 'GET'"><input type="radio" name="method" value="GET" [(ngModel)]="api.method" /> GET (query string)</label>
               </div>
               <label for="pv-header">Key header</label>
               <input id="pv-header" name="keyHeader" class="form-control pv-short" maxlength="100" placeholder="x-api-key" [(ngModel)]="api.keyHeader" />
@@ -157,11 +157,17 @@ interface ApiForm {
     .pv-option:hover { border-color: #45a5ad; }
     .pv-option.is-on { border-color: #45a5ad; background: #eef6f6; box-shadow: inset 0 0 0 1px #45a5ad; }
     .pv-head { display: flex; align-items: center; gap: 10px; }
-    .pv-option .form-check-input { flex: 0 0 auto; margin: 0; }
+    .pv-option .form-check-input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; border: 2px solid #5f7f82; }
+    .pv-option .form-check-input:checked { border-color: var(--zt-dark, #23656b); background-color: var(--zt-dark, #23656b); }
     .pv-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; color: #23474a; font-size: 15px; }
     .pv-help { font-size: 13px; color: #5f6f70; }
     .pv-api { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eef3f3; }
-    .pv-methods { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+    .pv-methods { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    /* Styled radio cards instead of the browser's native radios. */
+    .pv-methods label.pv-rc { min-height: 36px; padding: 6px 16px 6px 12px; border: 1px solid #cbd9da; border-radius: 8px; background: #fff; color: #23474a; font-weight: 600; cursor: pointer; }
+    .pv-methods label.pv-rc:hover { border-color: #45a5ad; }
+    .pv-methods label.pv-rc.on { border-color: var(--zt-dark, #23656b); background: #eef6f6; box-shadow: inset 0 0 0 1px var(--zt-dark, #23656b); }
+    .pv-rc input { width: 16px; height: 16px; margin: 0; accent-color: var(--zt-dark, #23656b); }
     .pv-methods label, .pv-remove { display: inline-flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; }
     .pv-remove { font-size: 13px; margin-top: 4px; }
     .form-grid .form-control.pv-short { max-width: 340px; }

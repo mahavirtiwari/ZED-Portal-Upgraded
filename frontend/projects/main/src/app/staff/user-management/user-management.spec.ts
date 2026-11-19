@@ -309,7 +309,7 @@ describe('User management', () => {
       await settle();
       expect(el.querySelectorAll('tbody tr').length).toBe(1);
       expect(el.querySelector('tbody .acc-id')!.textContent).toBe('ZEDV4MA02');
-      expect(button('UnBlock')).toBeTruthy();
+      expect(button('Unblock')).toBeTruthy();
 
       type('#acc-search', 'nobody');
       await settle();

@@ -53,7 +53,7 @@ describe('SubsidyRegionsPage', () => {
   it('shows the counts, the categories with their level and counts, and the entries of the one picked', async () => {
     expect(stats(el)).toEqual(['112 Districts get the additional subsidy', '1/2 Entries enabled', '1 States / UTs with an enabled entry', '2 Region lists']);
     expect([...el.querySelectorAll('[role=tab]')].map((t) => [...t.children].map((c) => c.textContent!.trim()).join(' | '))).toEqual(['Aspirational Districts | By district | 1/1 enabled', 'North Eastern Region | By state | 0/1 enabled']);
-    expect(el.querySelector('tbody')!.textContent).toContain('SONBHADRA');
+    expect(el.querySelector('tbody')!.textContent).toContain('Sonbhadra');
     // Changed at 20:00 UTC on the 16th: the 17th in India.
     expect(el.querySelector('tbody .sr-when')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('ADMIN1 · 17-11-2026');
     button(el, 'North Eastern Region').click();
@@ -111,14 +111,14 @@ describe('SubsidyRegionsPage', () => {
     expect(el.querySelector('.zed-pager')!.textContent).toContain('Showing 1 to 10 of 25');
     button(el, 'Next').click();
     await settle(fixture);
-    expect(names()[0]).toBe('DISTRICT 11');
+    expect(names()[0]).toBe('District 11');
     (el.querySelector('[aria-label="Disable DISTRICT 11"]') as HTMLInputElement).click();
     await settle(fixture);
     http.expectOne((r) => r.method === 'PUT').flush({ message: 'Disabled.' });
     await settle(fixture);
     http.expectOne(url).flush({ ...data, regions: [...many.map((r, i) => (i === 10 ? { ...r, enabled: false } : r)), data.regions[1]] });
     await settle(fixture);
-    expect(names()[0]).toBe('DISTRICT 11');
+    expect(names()[0]).toBe('District 11');
   });
 
   it('adds a district after choosing the state, and asks for the district first', async () => {
@@ -152,20 +152,21 @@ describe('SubsidyRegionsPage', () => {
     await settle(fixture);
     const names = () => [...el.querySelectorAll('tbody tr td:nth-child(2)')].map((c) => c.textContent!.trim());
     const chips = () => [...el.querySelectorAll('.sr-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim());
-    expect(names()).toEqual(['SONBHADRA', 'MIRZAPUR', 'ARARIA']);
-    expect(chips()).toEqual(['BIHAR 1/1', 'UTTAR PRADESH 1/2']);
+    // Names kept in capitals show in title case.
+    expect(names()).toEqual(['Sonbhadra', 'Mirzapur', 'Araria']);
+    expect(chips()).toEqual(['Bihar 1/1', 'Uttar Pradesh 1/2']);
     expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All 3', 'Enabled 2', 'Disabled 1']);
 
     button(el, 'Disabled').click();
     await settle(fixture);
-    expect(names()).toEqual(['MIRZAPUR']);
+    expect(names()).toEqual(['Mirzapur']);
     button(el, 'All').click();
     await settle(fixture);
-    button(el, 'BIHAR').click();
+    button(el, 'Bihar').click();
     await settle(fixture);
-    expect(names()).toEqual(['ARARIA']);
-    expect(button(el, 'BIHAR').getAttribute('aria-pressed')).toBe('true');
-    button(el, 'BIHAR').click();
+    expect(names()).toEqual(['Araria']);
+    expect(button(el, 'Bihar').getAttribute('aria-pressed')).toBe('true');
+    button(el, 'Bihar').click();
     await settle(fixture);
     expect(names().length).toBe(3);
 
@@ -175,7 +176,7 @@ describe('SubsidyRegionsPage', () => {
     await settle(fixture);
     // Another category shows all its entries again.
     expect(el.querySelector('.seg button.active')!.textContent).toContain('All');
-    expect(el.querySelector('tbody')!.textContent).toContain('ASSAM');
+    expect(el.querySelector('tbody')!.textContent).toContain('Assam');
   });
 });
 

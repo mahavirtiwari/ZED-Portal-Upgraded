@@ -16,13 +16,18 @@ import { MastersApi, TechnologyRequest } from './masters.api';
   selector: 'zed-staff-technology-form',
   imports: [FormsModule, RouterLink, MultiSelect],
   template: `
+    <div class="back-row">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span>Technology Upgradation</span><span aria-hidden="true">›</span>
+        <a routerLink="/staff/masters/technologies">Technologies</a><span aria-hidden="true">›</span>
+        <span aria-current="page">{{ id ? 'Edit' : 'Add' }}</span>
+      </nav>
+      <a routerLink="/staff/masters/technologies" class="btn btn-outline-primary btn-sm back-btn">← Back</a>
+    </div>
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ id ? 'Edit Technology' : 'Add New Technology' }}</h3>
         <p class="page-sub">A technology the MSMEs can choose under Technology Upgradation, with the NIC sectors and categories it applies to.</p>
-      </div>
-      <div class="page-actions">
-        <a routerLink="/staff/masters/technologies" class="btn btn-default">Back</a>
       </div>
     </div>
     @if (error()) {
@@ -69,6 +74,11 @@ import { MastersApi, TechnologyRequest } from './masters.api';
                     placeholder="What the technology is and which units it suits"></textarea>
           <small class="muted d-block mt-1 text-end tf-count">{{ model.description.length }} / 2000</small>
         </section>
+        <!-- 2026-11-19 (admin audit): Save under the fields, not under the preview. -->
+        <div class="form-actions tf-actions">
+          <a routerLink="/staff/masters/technologies" class="btn btn-default">Cancel</a>
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">Save</button>
+        </div>
       </div>
 
       <aside class="tf-side">
@@ -82,14 +92,20 @@ import { MastersApi, TechnologyRequest } from './masters.api';
           <div class="tf-label">Categories</div>
           <div>@for (c of model.categories; track c) { <span class="zed-chip cat">{{ c }}</span> } @empty { <span class="muted">—</span> }</div>
         </div>
-        <div class="form-actions tf-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">Save</button>
-        </div>
       </aside>
     </form>
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
+    .back-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: #5f6f70; }
+    .crumbs a { color: var(--zt-mid2, #2f7c83); font-weight: 600; text-decoration: none; }
+    .crumbs [aria-current] { color: var(--zt-dark, #1f5c61); font-weight: 700; }
+    .back-btn { white-space: nowrap; }
+    /* Long option names (categories) wrap inside their tile; the list never scrolls sideways. */
+    .tf-section ::ng-deep .options, .tf-section ::ng-deep .options.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+    .tf-section ::ng-deep .options > li { min-width: 0; }
+    .tf-section ::ng-deep .option > span { min-width: 0; overflow-wrap: break-word; }
     .form-grid > label.top { align-self: start; padding-top: 8px; }
     @media (min-width: 768px) { .form-grid { grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); } }
 
@@ -105,13 +121,14 @@ import { MastersApi, TechnologyRequest } from './masters.api';
     .tf-preview-h { display: block; font-size: 12px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
     .tf-row { margin-bottom: 8px; }
     .code-badge { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 10px; border-radius: 14px; background: #eef6f6; color: #23474a;
-      font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
-    .tf-name { font-weight: 700; color: #232527; font-size: 15px; overflow-wrap: anywhere; }
-    .tf-desc { white-space: pre-wrap; color: #5f6f70; font-size: 13px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+      font-weight: 700; font-size: 13px; overflow-wrap: break-word; max-width: 100%; }
+    .tf-name { font-weight: 700; color: #232527; font-size: 15px; overflow-wrap: break-word; }
+    .tf-desc { white-space: pre-wrap; color: #5f6f70; font-size: 13px; line-height: 1.5; margin-top: 4px; overflow-wrap: break-word; }
     .tf-label { font-size: 12px; font-weight: 600; color: #5f6f70; margin: 10px 0 2px; }
-    .zed-chip { overflow-wrap: anywhere; }
+    .tf-preview { min-width: 0; overflow-wrap: break-word; }
+    .zed-chip { overflow-wrap: break-word; max-width: 100%; }
     .zed-chip.cat { background: #f1f0fb; color: #3f3a7a; }
-    .tf-actions { margin-top: 0; }
+    .tf-actions { margin-top: 0; display: flex; justify-content: flex-end; gap: 8px; }
 
     @media (max-width: 991.98px) {
       .tf-layout { grid-template-columns: minmax(0, 1fr); }

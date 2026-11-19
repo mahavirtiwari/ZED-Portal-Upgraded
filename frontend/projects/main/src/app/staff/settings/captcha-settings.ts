@@ -59,7 +59,7 @@ interface CaptchaSettings {
                          [disabled]="o.mode === 'google' && !googleAvailable()" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
                   <span class="captcha-title">
                     {{ o.title }}
-                    @if (saved() === o.mode) { <span class="status-badge is-active">Current</span> }
+                    @if (saved() === o.mode) { <span class="status-badge is-active cap-current">Current</span> }
                   </span>
                 </span>
                 <span class="captcha-help">{{ o.help }}</span>
@@ -79,7 +79,7 @@ interface CaptchaSettings {
                       <span class="mock-recaptcha"><i></i> I'm not a robot <b>reCAPTCHA</b></span>
                     }
                   }
-                  <span class="mock-button">LOGIN</span>
+                  <span class="mock-button">Login</span>
                 </span>
               </label>
             }
@@ -117,7 +117,10 @@ interface CaptchaSettings {
     .captcha-option.is-on { border-color: #45a5ad; background: #eef6f6; box-shadow: inset 0 0 0 1px #45a5ad; }
     .captcha-option.is-disabled { cursor: not-allowed; opacity: .7; }
     .opt-head { display: flex; align-items: center; gap: 10px; }
-    .captcha-option .form-check-input { flex: 0 0 auto; margin: 0; border: 1px solid #8aa3a5; }
+    /* A clearly visible radio circle on every card (the unselected one was almost invisible). */
+    .captcha-option .form-check-input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; border: 2px solid #5f7f82; background-color: #fff; }
+    .captcha-option .form-check-input:checked { border-color: var(--zt-dark, #23656b); background-color: var(--zt-dark, #23656b); }
+    .cap-current { text-transform: none; letter-spacing: 0; white-space: nowrap; }
     .captcha-title { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #23474a; font-size: 15px; }
     .captcha-help { font-size: 13px; color: #5f6f70; font-weight: 400; }
     .captcha-help.warn { color: #8a6100; }
@@ -125,7 +128,7 @@ interface CaptchaSettings {
     /* A small login form showing where the captcha sits. */
     .mock { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding: 12px; border: 1px dashed #cfdcdd; border-radius: 10px; background: #fbfdfd; }
     .captcha-option.is-on .mock { background: #fff; }
-    .mock-title { font-size: 11px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .05em; }
+    .mock-title { font-size: 12px; font-weight: 700; color: #5f6f70; }
     .mock-input { height: 22px; border: 1px solid #dfe5e6; border-radius: 5px; background: #fff; }
     .mock-captcha { display: flex; gap: 8px; align-items: center; }
     .small-input { flex: 1 1 auto; }

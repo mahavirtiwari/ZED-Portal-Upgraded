@@ -92,17 +92,17 @@ type Ask = { kind: 'delete'; relation: TatRelation } | { kind: 'suggested' };
         </div>
         <div class="table-responsive">
           <table class="table table-zed tat-table">
-            <thead><tr><th>Name</th><th>Level</th><th>From → To</th><th class="text-center">Days</th><th class="text-end">Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Level</th><th>From → To</th><th class="text-end">Days</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
               @for (r of d.relations; track r.id) {
                 <tr [attr.data-id]="r.id" [class.is-off]="!r.isActive">
-                  <td><b>{{ r.name }}</b>@if (!r.isActive) { <span class="status-badge is-inactive">Inactive</span> }</td>
+                  <td><b>{{ r.name }}</b>@if (!r.isActive) { <span class="status-badge is-inactive ms-1">Inactive</span> }</td>
                   <td>{{ levelLabel(r.certification) }}</td>
                   <td>{{ pointName(r.fromStatus) }} → {{ pointName(r.toStatus) }}</td>
-                  <td class="text-center">{{ r.days }}</td>
+                  <td class="text-end">{{ r.days }}</td>
                   <td class="text-end text-nowrap">
-                    <button type="button" class="btn btn-sm btn-default" [disabled]="busy()" (click)="toggle(r)">{{ r.isActive ? 'Deactivate' : 'Activate' }}</button>
-                    <button type="button" class="btn btn-sm btn-default" [disabled]="busy()" (click)="edit(r)">Edit</button>
+                    <button type="button" class="btn btn-sm" [class.btn-outline-danger]="r.isActive" [class.btn-outline-primary]="!r.isActive" [disabled]="busy()" (click)="toggle(r)">{{ r.isActive ? 'Deactivate' : 'Activate' }}</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="busy()" (click)="edit(r)">Edit</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="ask.set({ kind: 'delete', relation: r })">Delete</button>
                   </td>
                 </tr>
@@ -169,7 +169,8 @@ type Ask = { kind: 'delete'; relation: TatRelation } | { kind: 'suggested' };
     .tat-h { margin: 0; font-size: 17px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .tat-acts { display: flex; flex-wrap: wrap; gap: 8px; }
     .tat-table { margin-bottom: 0; }
-    .tat-table td { vertical-align: middle; overflow-wrap: anywhere; }
+    .tat-table td { vertical-align: middle; overflow-wrap: break-word; }
+    .tat-table .status-badge { white-space: nowrap; }
     .tat-table tr.is-off td { color: #8a9899; }
     .tat-table .sub { display: block; color: #6f8487; font-size: 11.5px; }
     .tat-days { width: 170px; }

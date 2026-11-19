@@ -88,11 +88,12 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
       <div class="table-responsive">
         <table class="table table-zed param-table">
           <colgroup>
-            <col style="width: 96px" />
+            <col style="width: 84px" />
             <col />
-            <col style="width: 190px" />
-            <col style="width: 130px" />
-            <col style="width: 220px" />
+            <col style="width: 170px" />
+            <col style="width: 116px" />
+            @if (onMain) { <col style="width: 116px" /> }
+            <col style="width: 290px" />
           </colgroup>
           <thead>
             <tr>
@@ -136,7 +137,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
                     <a class="btn btn-primary" [href]="requirementsUrl(s)">Requirements</a>
-                    <button type="button" class="btn btn-outline-secondary btn-toggle-off" [disabled]="toggling() === s.id"
+                    <button type="button" class="btn btn-toggle-off" [class.btn-outline-danger]="!s.disabled" [class.btn-outline-success]="s.disabled" [disabled]="toggling() === s.id"
                             [attr.aria-label]="(s.disabled ? 'Enable ' : 'Disable ') + s.sectionCode" (click)="toggleDisabled(s)">{{ s.disabled ? 'Enable' : 'Disable' }}</button>
                   </div>
                 </td>
@@ -152,7 +153,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
 
     @if (adding()) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="add-parameter-title">
-        <div class="modal-dialog modal-popup modal-lg">
+        <div class="modal-dialog modal-popup modal-lg modal-dialog-scrollable">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
@@ -210,7 +211,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="edit-parameter-title">
-        <div class="modal-dialog modal-popup modal-lg">
+        <div class="modal-dialog modal-popup modal-lg modal-dialog-scrollable">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
@@ -247,7 +248,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Update</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
               </div>
             </form>
           </div>
@@ -283,14 +284,13 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     .list-card { padding: 16px; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
+    /* The pop-ups: header and footer stay, the body scrolls (the form sits between the content and the body). */
+    .modal-content > form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 
-    .param-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 8px; }
-    .param-table td { vertical-align: top; overflow-wrap: anywhere; padding-top: 14px; padding-bottom: 14px; }
+    .param-table { table-layout: fixed; width: 100%; min-width: 900px; margin-bottom: 8px; }
+    .param-table td { vertical-align: top; overflow-wrap: break-word; padding-top: 14px; padding-bottom: 14px; }
+    .param-table .status-badge, .off-badge { white-space: nowrap; overflow-wrap: normal; }
+    .param-table .row-actions { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; }
     .param-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .code-badge {
       display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px; border-radius: 18px;
@@ -300,7 +300,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .more { font-size: 13px; }
     .all-sectors { font-size: 13px; }
-    pre { width: auto; max-width: 100%; color: #5f6f70; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; background-color: transparent; font-family: inherit; margin: 0; }
+    pre { width: auto; max-width: 100%; color: #5f6f70; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: break-word; background-color: transparent; font-family: inherit; margin: 0; }
 
     /* Phones: a card per parameter. */
     @media (max-width: 767.98px) {
@@ -314,7 +314,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
       .param-table td { border: 0; padding: 6px 0; text-align: left !important; }
       .param-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
       .param-table td.code-cell::before { display: none; }
-      .row-actions { justify-content: flex-start !important; }
+      .param-table .row-actions { justify-content: flex-start !important; flex-wrap: wrap; }
     }
   `,
 })

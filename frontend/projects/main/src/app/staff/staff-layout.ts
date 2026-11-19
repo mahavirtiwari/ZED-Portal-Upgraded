@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
-import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
@@ -26,7 +26,9 @@ import { PORTAL_SYSTEM } from '../portal-system';
 @Component({
   selector: 'zed-staff-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost, ConfirmHost],
-  host: { class: 'zed-legacy zed-v4 d-block' },
+  // 2026-11-19 (the user, Admin login: 'make the buttons in dark color'): .zed-admin while the signed-in role is Admin
+  // (RoleId 1), the scope of the dark buttons (styles/_admin-skin.scss); the other staff roles keep the designs' buttons.
+  host: { class: 'zed-legacy zed-v4 d-block', '[class.zed-admin]': 'isAdmin()' },
   template: `
     <div class="main-container">
       <header class="zed-header zed-smooth" id="main_header">
@@ -191,6 +193,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
     .zed-navbar .nav > li > button.nav-link { margin-top: 10px; color: #fff; font-size: 14px; font-weight: 600; line-height: 24px; border: 0; border-radius: 0;
       background: transparent; box-shadow: none; }
     .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 10px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
+    /* 2026-11-19 (Admin UI audit): the long drop-downs, the white phone menu button and the phone menu are in styles/_staff-shared.scss. */
     .zed-navbar .avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #cdeccf;
       color: var(--zt-dark, #24666b); font-size: 13px; font-weight: 800; }
     .zed-navbar .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: left; }
@@ -267,6 +270,8 @@ export class StaffLayout {
   protected readonly hasDocuments = computed(() => this.menu().some((i) => i.route === '/staff/documents'));
   /** The privacy policy page is on the main portal. */
   protected readonly main = PORTAL_SYSTEM === 'main';
+  /** 2026-11-19: the Admin login (RoleId 1) gets the dark buttons (host class zed-admin). */
+  protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.Admin);
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
 

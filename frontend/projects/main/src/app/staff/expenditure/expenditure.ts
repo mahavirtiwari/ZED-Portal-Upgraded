@@ -36,13 +36,20 @@ type View = 'agencies' | 'organisations';
     .xp-tabs button { border: 0; background: #fff; padding: 8px 14px; font-weight: 600; font-size: 13px; color: #3d5559; }
     .xp-tabs button.on { background: var(--zt-dark, #24666b); color: #fff; }
     .xp-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding: 12px 16px; margin-bottom: 16px; }
-    .xp-bar label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: #6f8487; }
-    .xp-bar .form-select, .xp-bar .form-control { height: 38px; min-width: 150px; }
+    .xp-bar label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; font-weight: 600; color: #6f8487; flex: 1 1 160px; max-width: 260px; margin: 0; }
+    .xp-bar .form-select, .xp-bar .form-control { height: 38px; width: 100%; min-width: 0; }
     .xp-clear { margin-left: auto; border: 0; background: none; font-weight: 700; font-size: 12.5px; color: #6f8487; }
     .xp-card { padding: 0; overflow: hidden; margin-bottom: 16px; }
     .xp-card h2 { margin: 0; padding: 14px 16px; font-size: 16px; font-weight: 700; color: #17373b; display: flex; align-items: center; gap: 8px; }
     .xp-card h2 .btn { margin-left: auto; }
-    .xp-table { min-width: 1100px; margin: 0; }
+    .xp-table { min-width: 1040px; margin: 0; }
+    .xp-table th, .xp-table td { padding-left: 10px; padding-right: 10px; }
+    .xp-table th { white-space: nowrap; }
+    /* The row's button stays in view while the table scrolls sideways. */
+    .xp-table th:last-child, .xp-table td:last-child { position: sticky; right: 0; background: #fff; box-shadow: -6px 0 8px -6px rgba(16, 61, 64, .18); }
+    .xp-table tbody tr:hover td:last-child { background: #f4fafa; }
+    .xp-table td:has(> .no-data) { position: static; box-shadow: none; }
+    @media (max-width: 575.98px) { .xp-bar label { flex-basis: 100%; max-width: none; } .xp-clear { margin-left: 0; } }
     .num { text-align: right; white-space: nowrap; }
     td small { display: block; color: #6f8487; font-size: 11.5px; }
     .owe { color: #9a5f06; font-weight: 700; }

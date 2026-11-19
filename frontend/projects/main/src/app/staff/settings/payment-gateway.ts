@@ -112,9 +112,9 @@ export interface PaymentGatewayInfo {
         </div>
         <div class="grid">
           <span class="lbl">Payments</span>
-          <span>
-            <label class="me-3"><input type="radio" name="payments" [value]="true" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> On</label>
-            <label><input type="radio" name="payments" [value]="false" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> Off</label>
+          <span class="rc-group" role="radiogroup" aria-label="Payments">
+            <label class="rc" [class.on]="paymentsOn() === true"><input type="radio" name="payments" [value]="true" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> On</label>
+            <label class="rc" [class.on]="paymentsOn() === false"><input type="radio" name="payments" [value]="false" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> Off</label>
           </span>
         </div>
         <small class="muted d-block mt-2">
@@ -148,11 +148,13 @@ export interface PaymentGatewayInfo {
         <div class="grid">
           <span class="lbl">Gateway</span>
           <span>
-            <label class="me-3"><input type="radio" name="mode" value="live" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Live</label>
-            <label [class.text-muted]="!i.gateway.testAllowed">
-              <input type="radio" name="mode" value="test" [disabled]="!i.gateway.testAllowed" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Test
-            </label>
-            @if (!i.gateway.testAllowed) { <small class="muted d-block">The test gateway cannot be used on the live portal.</small> }
+            <span class="rc-group" role="radiogroup" aria-label="Gateway">
+              <label class="rc" [class.on]="mode() === 'live'"><input type="radio" name="mode" value="live" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Live</label>
+              <label class="rc" [class.on]="mode() === 'test'" [class.is-disabled]="!i.gateway.testAllowed">
+                <input type="radio" name="mode" value="test" [disabled]="!i.gateway.testAllowed" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Test
+              </label>
+            </span>
+            @if (!i.gateway.testAllowed) { <small class="muted d-block mt-1">The test gateway cannot be used on the live portal.</small> }
           </span>
           <label class="lbl" for="pg-merchant">Merchant ID</label>
           <input id="pg-merchant" name="merchantId" class="form-control" inputmode="numeric" maxlength="20" [(ngModel)]="merchantId" />
@@ -179,7 +181,7 @@ export interface PaymentGatewayInfo {
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
           @if (i.gateway.saved) {
-            <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="useFile()">Use server file again</button>
+            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useFile()">Use server file again</button>
           }
         </div>
       </form>
@@ -191,9 +193,9 @@ export interface PaymentGatewayInfo {
         </div>
         <div class="grid">
           <span class="lbl">Invoices</span>
-          <span>
-            <label class="me-3"><input type="radio" name="invoices" [value]="true" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> On</label>
-            <label><input type="radio" name="invoices" [value]="false" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> Off</label>
+          <span class="rc-group" role="radiogroup" aria-label="Invoices">
+            <label class="rc" [class.on]="invoicesOn() === true"><input type="radio" name="invoices" [value]="true" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> On</label>
+            <label class="rc" [class.on]="invoicesOn() === false"><input type="radio" name="invoices" [value]="false" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> Off</label>
           </span>
           @if (!i.invoices.setup) {
             <span class="lbl">Invoice numbers</span>
@@ -270,7 +272,7 @@ export interface PaymentGatewayInfo {
             <div class="inv-pair mt-2">
               <input id="inv-unit" name="newUnit" class="form-control inv-unit" maxlength="25" autocomplete="off" placeholder="UDYAM-XX-00-0000000"
                      aria-label="Add a UDYAM number" [(ngModel)]="newUnit" (keydown.enter)="$event.preventDefault(); addUnit()" />
-              <button type="button" class="btn btn-outline-secondary" (click)="addUnit()">Add</button>
+              <button type="button" class="btn btn-outline-primary" (click)="addUnit()">Add</button>
               <span class="muted">Payments of these units are not posted to the ERP.</span>
             </div>
             @if (unitProblem()) {
@@ -321,7 +323,7 @@ export interface PaymentGatewayInfo {
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
           @if (i.invoices.erp?.saved) {
-            <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="useErpFile()">Use server file again</button>
+            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useErpFile()">Use server file again</button>
           }
         </div>
       </form>
@@ -333,12 +335,16 @@ export interface PaymentGatewayInfo {
     }
   `,
   styles: `
-    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    /* The state badge next to the title (not floating far right), in sentence case. */
+    .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+    .card-head .card-title { margin: 0; }
+    .card-head .status-badge { text-transform: none; letter-spacing: 0; white-space: nowrap; }
     /* 2026-11-15: the sections on the left (as Questionnaire), the chosen one on the right. */
     .pg-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
     .pg-nav { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 8px; position: sticky; top: 72px; display: flex; flex-direction: column; gap: 9px; }
     .pg-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 1px solid transparent;
-      border-radius: 8px; background: transparent; padding: 10px 12px; color: #23474a; }
+      border-radius: 8px; background: transparent; padding: 10px 12px; color: #23474a; min-height: 76px; }
+    .pg-item > span:first-child { min-width: 0; }
     /* A clear line between the sections (the user, 2026-11-15). */
     .pg-item:not(:last-child)::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: -5px; height: 1px; background: #c5d6d8; pointer-events: none; }
     .pg-item .chip { white-space: nowrap; }
@@ -353,7 +359,18 @@ export interface PaymentGatewayInfo {
     .pg-detail > .zed-card { margin: 0; }
     .pg-detail > form[hidden] { display: none !important; }
     @media (max-width: 900px) { .pg-layout { grid-template-columns: minmax(0, 1fr); } .pg-nav { position: static; } }
-    .grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px 14px; align-items: center; max-width: 720px; }
+    .grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px 14px; align-items: center; max-width: 900px; }
+    /* Long values (URLs, endpoints) use the full column instead of a fixed narrow box. */
+    .grid > .form-control, .grid > span > .form-control { width: 100%; max-width: none; }
+    /* Styled radio cards instead of the browser's native radios. */
+    .rc-group { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+    .rc { display: inline-flex; align-items: center; gap: 8px; margin: 0; min-height: 36px; padding: 6px 16px 6px 12px; border: 1px solid #cbd9da; border-radius: 8px;
+      background: #fff; color: #23474a; font-weight: 600; cursor: pointer; text-transform: none; }
+    .rc:hover { border-color: #45a5ad; }
+    .rc.on { border-color: var(--zt-dark, #23656b); background: #eef6f6; box-shadow: inset 0 0 0 1px var(--zt-dark, #23656b); }
+    .rc input { width: 16px; height: 16px; margin: 0; accent-color: var(--zt-dark, #23656b); cursor: pointer; }
+    .rc.is-disabled { opacity: .55; cursor: not-allowed; }
+    .rc.is-disabled input { cursor: not-allowed; }
     .lbl { color: #5f6f70; font-weight: 600; }
     .muted { color: #6b7a7b; font-size: 13px; }
     .form-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
@@ -364,7 +381,9 @@ export interface PaymentGatewayInfo {
     .inv-unit { max-width: 240px; }
     .inv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
     .inv-tag { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #cbd9da; border-radius: 4px; padding: 2px 4px 2px 8px; font-size: 12.5px; background: #fff; }
-    .inv-x { border: 0; background: transparent; color: #b03a2e; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
+    .inv-x { display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: #b03a2e;
+      font-size: 18px; line-height: 1; padding: 0; cursor: pointer; }
+    .inv-x:hover { background: #fbe4e1; }
     @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,

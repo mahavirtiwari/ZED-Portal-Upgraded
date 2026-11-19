@@ -263,8 +263,9 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
     .an-kpis { display: grid; grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
     .an-kpi { --accent: #24666b; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 80px; padding: 8px 16px 8px 18px; min-width: 0; }
     .an-kpi-value { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 28px; font-variant-numeric: tabular-nums; }
-    .an-kpi-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; line-height: 17px; }
-    .an-kpi-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 500; color: #3d5559; }
+    /* 2026-11-19 (admin audit): the label wraps under the "+n this month" note instead of being cut ("Registered …"). */
+    .an-kpi-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; min-width: 0; line-height: 17px; }
+    .an-kpi-label { min-width: 0; font-size: 12.5px; font-weight: 500; color: #3d5559; overflow-wrap: break-word; }
     .an-kpi-note { margin-left: auto; flex: none; font-size: 11px; font-weight: 600; color: #2f9e58; white-space: nowrap; }
     .an-h { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #6f8487; margin: 0 0 10px; }
     .an-card h5 { flex: 1; min-width: 160px; font-size: 16px; font-weight: 700; color: #17373b; margin: 0; }
@@ -274,7 +275,7 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
     .an-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 56px; margin: 0 -24px 16px -20px; padding: 8px 24px 8px 20px; border-bottom: 1px solid #dde7e8; }
     .an-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #e6f2f3; color: #24666b; }
     .an-period { display: inline-flex; padding: 2px; border-radius: 7px; background: #f1f5f5; }
-    .an-period button { border: 0; background: none; border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 600; color: #6f8487; }
+    .an-period button { border: 0; background: none; border-radius: 5px; min-height: 26px; padding: 2px 10px; font-size: 12px; font-weight: 600; color: #4f6366; }
     .an-period button.on { background: #fff; color: #17373b; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
     .an-legend { display: flex; gap: 22px; list-style: none; margin: 0 4px 0 0; padding: 0; font-size: 12px; font-weight: 600; color: #3d5559; }
     .an-legend li { display: flex; align-items: center; gap: 7px; }

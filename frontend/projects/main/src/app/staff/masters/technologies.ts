@@ -71,12 +71,12 @@ type StatusFilter = 'all' | 'active' | 'inactive';
       <div class="table-responsive">
         <table class="table table-zed tech-table">
           <colgroup>
-            <col style="width: 120px" />
+            <col style="width: 92px" />
             <col />
-            <col style="width: 22%" />
-            <col style="width: 16%" />
-            <col style="width: 96px" />
-            <col style="width: 190px" />
+            <col style="width: 17%" />
+            <col style="width: 13%" />
+            <col style="width: 104px" />
+            <col style="width: 200px" />
           </colgroup>
           <thead>
             <tr>
@@ -109,8 +109,8 @@ type StatusFilter = 'all' | 'active' | 'inactive';
                 <td data-label="Categories">
                   @for (c of t.categories; track $index) { <span class="zed-chip cat" [title]="c">{{ c }}</span> } @empty { <span class="muted">—</span> }
                 </td>
-                <td data-label="Status"><span class="status-badge" [class.is-active]="t.isActive" [class.is-inactive]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span></td>
-                <td data-label="Actions">
+                <td class="status-cell" data-label="Status"><span class="status-badge" [class.is-active]="t.isActive" [class.is-inactive]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span></td>
+                <td class="actions-cell" data-label="Actions">
                   <div class="row-actions">
                     <a class="btn btn-outline-primary" [routerLink]="['/staff/masters/technologies', t.id]">Edit</a>
                     @if (t.isActive) {
@@ -138,17 +138,12 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-on .stat-value { color: #1e7a3c; }
-    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: break-word; }
 
     .list-card { padding: 16px; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
     .list-toolbar .seg { margin-left: auto; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     /* 2026-11-15 (the user): the category is a filter beside the search, not a row of chips. */
     .cat-filter { display: flex; align-items: center; gap: 8px; margin: 0; flex: 0 1 300px; }
@@ -157,11 +152,14 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .cat-count { font-weight: 400; opacity: .8; margin-left: 2px; }
 
     .tech-table { table-layout: fixed; width: 100%; min-width: 900px; margin-bottom: 8px; }
-    .tech-table td { vertical-align: top; overflow-wrap: anywhere; padding-top: 14px; padding-bottom: 14px; }
+    .tech-table td { vertical-align: top; overflow-wrap: break-word; padding-top: 14px; padding-bottom: 14px; }
+    .tech-table .status-cell .status-badge { white-space: nowrap; overflow-wrap: normal; }
+    .tech-table .actions-cell .row-actions { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; }
+    .tech-table .zed-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
     .tech-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .tech-table tr.is-off .tech-name, .tech-table tr.is-off .code-badge { opacity: .65; }
     .code-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 3px 10px; border-radius: 15px; background: #eef6f6;
-      color: #23474a; font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+      color: #23474a; font-weight: 700; font-size: 13px; overflow-wrap: break-word; max-width: 100%; }
     .tech-name { font-weight: 700; color: #232527; font-size: 15px; margin-bottom: 4px; }
     .description .tech-desc { white-space: pre-wrap; color: #5f6f70; font-size: 13.5px; line-height: 1.5; }
     .more { font-size: 13px; }
@@ -179,6 +177,8 @@ type StatusFilter = 'all' | 'active' | 'inactive';
       .tech-table td { border: 0; padding: 6px 0; text-align: left !important; }
       .tech-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
       .tech-table td.code-cell::before, .tech-table td.description::before { display: none; }
+      .tech-table .actions-cell .row-actions { justify-content: flex-start; flex-wrap: wrap; }
+      .list-toolbar .seg { margin-left: 0; }
     }
   `,
 })
@@ -221,7 +221,8 @@ export class TechnologiesPage {
 
   protected async load(): Promise<void> {
     try {
-      this.rows.set(await firstValueFrom(this.api.technologies()));
+      // The codes in number order (1, 2, … 10), not as text.
+      this.rows.set([...(await firstValueFrom(this.api.technologies()))].sort((a, b) => a.technologyCode.localeCompare(b.technologyCode, undefined, { numeric: true })));
       this.pager.refresh(this.filtered());
     } catch (err) {
       this.error.set(apiErrorMessage(err));

@@ -251,6 +251,10 @@ export function pageWindow(current: number, last: number): number[] {
     .zp-num { min-width: 32px; padding: 0 8px; }
     .zp-btn.on { background: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); color: #fff; font-weight: 700; }
     .zp-gap { padding: 0 2px; color: #8a9899; }
+    /* 2026-11-19 (the user, Admin login: dark buttons): Prev and Next solid dark with white text (the page numbers stay boxes). */
+    :host-context(.zed-admin) .zp-btn:not(.zp-num) { background: #3d5a5e; border-color: #3d5a5e; color: #fff; }
+    :host-context(.zed-admin) .zp-btn:not(.zp-num):hover:not(:disabled) { background: #2c4346; border-color: #2c4346; }
+    :host-context(.zed-admin) .zp-btn:not(.zp-num):disabled { background: #637a7d; border-color: #637a7d; color: #fff; cursor: not-allowed; }
     @media (max-width: 575.98px) { .zp, .zp-info { gap: 8px; } }
   `,
 })

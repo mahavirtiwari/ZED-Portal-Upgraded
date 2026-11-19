@@ -153,7 +153,7 @@
             @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="current.set(null)">CANCEL</button>
+            <button type="button" class="btn btn-default" (click)="current.set(null)">Cancel</button>
             <button type="submit" class="btn btn-primary" [disabled]="!canSubmit() || saving()">SUBMIT</button>
           </div>
         </form>

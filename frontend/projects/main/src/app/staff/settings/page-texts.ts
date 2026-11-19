@@ -150,10 +150,10 @@ const SEARCH_LIMIT = 300;
     .pt-row:last-child { border-bottom: 0; }
     .pt-row.is-changed { background: #fbfaf2; }
     .pt-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
-    .pt-meta code { font-size: 11px; color: #6f8487; overflow-wrap: anywhere; }
+    .pt-meta code { font-size: 11px; color: #6f8487; overflow-wrap: break-word; }
     .pt-kind { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #e6f2f3; color: #24666b; white-space: nowrap; }
-    .pt-text { margin: 0 0 4px; color: #17373b; white-space: pre-line; overflow-wrap: anywhere; }
-    .pt-std { display: block; color: #6f8487; overflow-wrap: anywhere; white-space: pre-line; }
+    .pt-text { margin: 0 0 4px; color: #17373b; white-space: pre-line; overflow-wrap: break-word; }
+    .pt-std { display: block; color: #6f8487; overflow-wrap: break-word; white-space: pre-line; }
     .pt-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
     .pt-len { margin-left: auto; color: #6f8487; }
     .pt-edit textarea { resize: vertical; }

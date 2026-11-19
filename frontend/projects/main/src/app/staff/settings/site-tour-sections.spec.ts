@@ -83,8 +83,12 @@ describe('SiteTourSectionsPage', () => {
     expect(r[0]).toContain('All levels · All sectors');
     expect([...row('production').querySelectorAll('.num')].map((x) => x.textContent!.trim())).toEqual(['3', '5']);
     expect([...row('production').querySelectorAll('.zed-chip')].map((x) => x.textContent!.trim())).toEqual(['ZED-X', 'NIC 24']);
-    expect(row('utilities').querySelector('.status-badge')!.textContent!.trim()).toBe('Off');
-    expect(row('entrance').querySelector('.status-badge')).toBeNull();
+    // One status indicator per row (2026-11-19 admin audit): the switch, no second "Off" badge.
+    expect(row('utilities').classList).toContain('is-off');
+    expect(row('utilities').querySelector('.status-badge')).toBeNull();
+    expect(row('utilities').querySelector('.st-switch')!.textContent!.trim()).toBe('Off');
+    expect(row('entrance').querySelector('.st-switch')!.textContent!.trim()).toBe('On');
+    expect(row('entrance').querySelector('.st-edit')!.classList).toContain('btn-outline-primary');
     expect(button('↑', row('entrance')).disabled).toBe(true);
     expect(button('↓', row('utilities')).disabled).toBe(true);
     // The photos of the sections in use only.

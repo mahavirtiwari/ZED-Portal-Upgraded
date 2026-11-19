@@ -114,7 +114,7 @@ interface EmailSettingItem {
     .mb-row:last-child { border-bottom: 0; }
     .mb-label label { font-weight: 600; color: #232527; font-size: 14px; margin: 0; }
     .mb-label small { font-size: 12.5px; margin-top: 2px; }
-    .mb-uses { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 12.5px; color: #3b4b4c; overflow-wrap: anywhere; }
+    .mb-uses { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 12.5px; color: #3b4b4c; overflow-wrap: break-word; }
     .uses-dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #45a5ad; }
     .uses-dot.own { background: #2e9e5b; }
     .uses-dot.none { background: #e0a43a; }

@@ -151,9 +151,9 @@ const standardBodySample =
             <tr>
               <th class="text-center col-sno">S.No</th>
               <th>E-mail</th>
-              <th class="text-center col-status">Status</th>
-              <th class="text-center col-change">Last change</th>
-              <th class="text-center col-action">Action</th>
+              <th class="col-status">Status</th>
+              <th class="col-change">Last change</th>
+              <th class="text-end col-action">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -164,37 +164,38 @@ const standardBodySample =
                   <div class="mail">
                     <span class="mail-icon" [class.db]="t.database" aria-hidden="true">{{ t.database ? 'DB' : '✉' }}</span>
                     <div class="mail-text">
-                      <strong>{{ t.name }}</strong>
-                      @if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
+                      <div class="mail-title">
+                        <strong>{{ t.name }}</strong>
+                        @if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
+                      </div>
                       @if (t.subject) {<small class="muted d-block subject">Subject: {{ t.subject }}</small>}
                       @else {<small class="muted d-block subject">Standard subject</small>}
                     </div>
                   </div>
                 </td>
-                <td class="text-center">
+                <td>
+                  <!-- 2026-11-19 (admin audit: status shown twice): the switch is the one status indicator, labelled Sent / Switched off. -->
                   <div class="status-stack">
-                    <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Sent' : 'Switched off' }}</span>
+                    <label class="quick-switch" [class.off]="!t.enabled" [title]="t.enabled ? 'Switch this e-mail off' : 'Switch this e-mail on'">
+                      <input type="checkbox" role="switch" [checked]="t.enabled" [attr.aria-label]="(t.enabled ? 'Switch off ' : 'Switch on ') + t.name"
+                             (click)="$event.preventDefault(); toggle(t)" />
+                      <span class="qs-track" aria-hidden="true"></span>{{ t.enabled ? 'Sent' : 'Switched off' }}
+                    </label>
                     @if (t.customised && t.enabled) {<span class="status-badge is-info">Changed by Admin</span>}
                   </div>
                 </td>
-                <td class="text-center">
+                <td class="col-change-cell">
                   @if (t.updatedOn) {
                     <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
                   } @else {
                     <span class="muted" title="Not changed">—</span>
                   }
                 </td>
-                <td class="text-center">
-                  <div class="row-actions justify-content-center">
-                    <!-- 2026-11-15 (design approved): switch an e-mail on or off from the list. -->
-                    <label class="quick-switch" [class.off]="!t.enabled" [title]="t.enabled ? 'Switch this e-mail off' : 'Switch this e-mail on'">
-                      <input type="checkbox" role="switch" [checked]="t.enabled" [attr.aria-label]="(t.enabled ? 'Switch off ' : 'Switch on ') + t.name"
-                             (click)="$event.preventDefault(); toggle(t)" />
-                      <span class="qs-track" aria-hidden="true"></span>{{ t.enabled ? 'On' : 'Off' }}
-                    </label>
-                    <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
+                <td class="text-end">
+                  <div class="et-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(t)">Edit</button>
                     @if (t.customised) {
-                      <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button>
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(t)">Reset</button>
                     }
                   </div>
                 </td>
@@ -224,7 +225,7 @@ const standardBodySample =
                   <input class="form-check-input" type="checkbox" role="switch" id="templateEnabled" [(ngModel)]="e.enabled" />
                   <span>{{ e.enabled ? 'Sent (switch off to stop it)' : 'Switched off (not sent)' }}</span>
                 </label>
-                <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="editing.set(null)"></button>
+                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
               </div>
             </div>
             <div class="ed-strip">
@@ -255,7 +256,7 @@ const standardBodySample =
                 <div class="pane">
                   <div class="pane-head">
                     <span class="ed-label">Preview</span>
-                    <div class="seg seg-sm" role="group" aria-label="Preview width">
+                    <div class="seg" role="group" aria-label="Preview width">
                       <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
                       <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
                     </div>
@@ -291,8 +292,8 @@ const standardBodySample =
                 }
               </span>
               <span class="ed-foot-actions">
-                <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
-                <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
               </span>
             </div>
           </div>
@@ -305,6 +306,7 @@ const standardBodySample =
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  styleUrl: './email-templates-dialog.scss',
   styles: `
     .et-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; }
@@ -320,81 +322,31 @@ const standardBodySample =
     .et-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
-    .seg-sm button { padding: 3px 10px; font-size: 12px; }
 
     .et-table { min-width: 760px; margin-bottom: 8px; }
     .et-table td { vertical-align: middle; }
     .et-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .et-table tr.is-off .mail-text strong { color: #8a9899; }
-    .col-sno { width: 70px; }
-    .col-status { width: 160px; }
-    .col-change { width: 160px; }
-    .col-action { width: 230px; }
+    .col-sno { width: 64px; }
+    .col-status { width: 190px; }
+    .col-change { width: 170px; }
+    .col-action { width: 150px; }
+    .col-change-cell { white-space: nowrap; }
+    .et-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
+    .et-actions > * { flex: none; }
     .mail { display: flex; gap: 12px; align-items: flex-start; }
     .mail-icon { flex: 0 0 34px; height: 34px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 16px; font-weight: 700; }
     .mail-icon.db { background: #f1f0fb; color: #3f3a7a; font-size: 11px; }
     .mail-text { min-width: 0; }
-    .mail-text strong { color: #232527; margin-right: 6px; }
-    .group-chip { display: inline-block; font-size: 11px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 10px; padding: 1px 8px; vertical-align: 1px; }
-    .subject { margin-top: 2px; overflow-wrap: anywhere; }
-    .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .mail-title { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+    .mail-text strong { color: #232527; }
+    .group-chip { display: inline-block; font-size: 11px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+    .subject { margin-top: 2px; overflow-wrap: break-word; }
+    .status-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
-    /* 2026-11-15 (design approved): the editor pop-up fills the window; only the two panes scroll. */
-    .modal .modal-dialog.editor-dialog { max-width: min(1240px, calc(100vw - 32px)); height: calc(100vh - 2rem); margin: 1rem auto; }
-    .ed-content { height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; }
-    .modal .ed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--zt-dark, #23656b); color: #fff; border-bottom: 0; padding: 10px 16px; flex: none; }
-    .modal .ed-head .modal-title { color: #fff; font-size: 17px; font-weight: 700; }
-    .title-block { min-width: 0; }
-    .title-block small { display: block; margin-top: 2px; font-size: 12.5px; color: #c9e8a0; }
-    .head-right { display: flex; align-items: center; gap: 14px; flex: none; }
-    .head-switch { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 4px 12px 4px 6px; border-radius: 16px; background: rgba(255,255,255,.14);
-      color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; text-transform: none; }
-    .modal .modal-dialog .head-switch { color: #fff; }
-    .head-switch.off { background: rgba(0,0,0,.25); }
-    .head-switch .form-check-input { float: none; width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
-    .head-switch .form-check-input:checked { background-color: #c9e8a0; border-color: #c9e8a0; }
-    .ed-strip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; padding: 10px 16px; background: #f6f9f9; border-bottom: 1px solid #dfe9ea; flex: none; }
-    .ed-strip .ed-label { margin-bottom: 4px; font-size: 12.5px; }
-    .ed-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 64px; overflow-y: auto; }
-    .chip { padding: 2px 8px; border: 1px solid #9cc9cd; border-radius: 4px; background: #fff; color: #23474a; cursor: pointer;
-      font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; }
-    .chip:hover { background: #dff0f1; border-color: #45a5ad; }
-    .chip:focus-visible { outline: 2px solid #45a5ad; outline-offset: 2px; }
-    .modal .ed-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px; overflow: hidden; }
-    .editor { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-    .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-    .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 6px; flex: none; }
-    .pane-head .ed-label { margin: 0; }
-    .pane-head .muted { font-size: 12px; }
-    .editor textarea.form-control.code { flex: 1 1 auto; min-height: 0; height: auto; width: 100%; max-width: 100%; resize: none; overflow: auto;
-      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #1f2a2b; color: #e6f1f1; border-color: #1f2a2b; border-radius: 8px; }
-    .editor textarea.form-control.code:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, .35); }
-    /* The preview as a mail on a grey well: the subject line on top; Phone keeps a 390px frame inside the pane. */
-    .preview-well { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; background: #eef2f3; border: 1px solid #dfe9ea; border-radius: 8px; padding: 10px; }
-    .mail-frame { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; border: 1px solid #dfe9ea; border-radius: 6px; overflow: hidden; background: #fff; }
-    .mail-frame.phone { max-width: 390px; border-radius: 18px; border-width: 6px; border-color: #2a3435; }
-    .mail-meta { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; background: #fff; border-bottom: 1px solid #dfe9ea; font-size: 13px; flex: none; }
-    .meta-label { color: #5f6f70; font-weight: 600; flex: none; }
-    .meta-subject { color: #232527; font-weight: 600; overflow-wrap: anywhere; }
-    .preview { flex: 1 1 auto; display: block; width: 100%; min-height: 0; border: 0; background: #fff; }
-    .ed-note { margin-top: 8px; font-size: 12px; flex: none; }
-    .modal .ed-foot { justify-content: space-between; border-top: 1px solid #dfe9ea; padding: 10px 16px; flex: none; }
-    .ed-foot-actions { display: inline-flex; gap: 8px; }
-    @media (max-width: 991.98px) {
-      .modal .modal-dialog.editor-dialog { height: auto; }
-      .ed-content { height: auto; max-height: calc(100vh - 2rem); }
-      .modal .ed-body { overflow-y: auto; }
-      .ed-strip, .editor { grid-template-columns: minmax(0, 1fr); }
-      .editor textarea.form-control.code, .preview-well { min-height: 360px; }
-    }
     /* The on / off switch of a row. */
-    .quick-switch { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    /* position: relative keeps the hidden input inside the table's scroll box (it widened the page on phones). */
+    .quick-switch { position: relative; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
     .quick-switch.off { color: #8a9899; }
     .quick-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .qs-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; transition: background .15s; flex: none; }
@@ -402,7 +354,19 @@ const standardBodySample =
     .quick-switch.off .qs-track { background: #c3cdce; }
     .quick-switch.off .qs-track::after { left: 2px; }
     .quick-switch input:focus-visible + .qs-track { outline: 2px solid var(--zt-dark, #23656b); outline-offset: 2px; }
-    @media (max-width: 767.98px) { .et-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    /* Phone: one card per e-mail, no sideways scroll. */
+    @media (max-width: 767.98px) {
+      .et-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .list-card { padding: 12px; }
+      .et-table { min-width: 0; }
+      .et-table thead { display: none; }
+      .et-table, .et-table tbody, .et-table tr, .et-table td { display: block; width: 100%; }
+      .et-table tr { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+      .et-table td { border: 0; padding: 4px 0; text-align: left !important; }
+      .et-table td:first-child { display: none; }
+      .et-actions { justify-content: flex-start; }
+      .status-stack { flex-direction: row; flex-wrap: wrap; align-items: center; }
+    }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class EmailTemplatesPage {

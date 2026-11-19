@@ -152,7 +152,7 @@ interface ServerForm {
           <small class="muted">{{ ownCount() }} with their own server · the others use Default</small>
         </div>
         <div class="table-responsive">
-          <table class="table mods mb-2">
+          <table class="table table-zed mods mb-2">
             <thead>
               <tr><th>Module</th><th>Mail server used</th><th>Uses</th><th class="text-center">Actions</th></tr>
             </thead>
@@ -247,7 +247,7 @@ interface ServerForm {
             <input id="smtpPort" name="smtpPort" class="form-control port" [class.is-invalid]="formError()?.field === 'port'" type="number" min="1" max="65535" aria-label="Port"
                    [ngModel]="form().port" (ngModelChange)="set('port', +$event)" />
           </div>
-          <label for="smtpTls">Secure connection</label>
+          <label class="top" for="smtpTls">Secure connection</label>
           <div class="form-check">
             <input id="smtpTls" name="smtpTls" class="form-check-input" type="checkbox"
                    [ngModel]="form().startTls" (ngModelChange)="set('startTls', $event)" />
@@ -256,7 +256,7 @@ interface ServerForm {
           <label for="smtpFrom">From<span class="req">*</span></label>
           <input id="smtpFrom" name="smtpFrom" class="form-control" [class.is-invalid]="formError()?.field === 'from'" maxlength="320" placeholder="ZED <noreply@example.org>"
                  [ngModel]="form().from" (ngModelChange)="set('from', $event)" />
-          <label for="smtpUser">Sign-in name</label>
+          <label class="top" for="smtpUser">Sign-in name</label>
           <div>
             <input id="smtpUser" name="smtpUser" class="form-control" [class.is-invalid]="formError()?.field === 'userName'" maxlength="320" autocomplete="off"
                    placeholder="Usually the mailbox address; empty: no sign-in"
@@ -265,7 +265,7 @@ interface ServerForm {
               <small class="help-block">This mail service only accepts the full mailbox address as the sign-in name, e.g. {{ addressHint() }}.</small>
             }
           </div>
-          <label for="smtpPassword">Password</label>
+          <label class="top" for="smtpPassword">Password</label>
           <div>
             <input id="smtpPassword" name="smtpPassword" class="form-control" [class.is-invalid]="formError()?.field === 'password'" type="password" maxlength="256" autocomplete="new-password"
                    [placeholder]="m.saved?.passwordSet ? 'Saved. Leave empty to keep it' : ''"
@@ -311,7 +311,8 @@ interface ServerForm {
     .mods-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
     .mods-title { font-weight: 700; color: #23474a; font-size: 15px; }
     .mail-servers .table td, .mail-servers .table th { text-align: left; vertical-align: middle; }
-    .mail-servers .table th:last-child { text-align: center; width: 190px; }
+    .mail-servers .table th:last-child { text-align: center; width: 200px; }
+    .mods .row-actions { flex-wrap: nowrap; white-space: nowrap; }
     .mail-servers td small { display: block; }
     .mods td .fw-semibold { color: #232527; }
     .mods td small.muted { font-size: 12.5px; }
@@ -322,7 +323,12 @@ interface ServerForm {
     .mail-servers .uses div { margin-top: 4px; }
     .edit-row > td { background: #f7fafa; }
     .server-form h6 { font-weight: 700; color: #23474a; margin: 4px 0 12px; }
-    .server-form .form-check-label { font-size: 14px; }
+    .server-form .form-check-label { font-size: 14px; font-weight: 400; }
+    /* Labels sit level with their input (not centred against the input + help lines); checkboxes line up with the inputs. */
+    .server-form .form-grid > label.top { align-self: start; padding-top: 8px; }
+    .server-form .form-check { display: flex; align-items: flex-start; gap: 8px; padding-left: 0; margin: 0; min-height: 0; }
+    .server-form .form-check .form-check-input { float: none; flex: none; margin: 3px 0 0; }
+    .server-form .form-grid > .form-check { align-self: center; }
     .host-port { display: flex; gap: 8px; }
     .host-port .port { flex: 0 0 110px; }
 

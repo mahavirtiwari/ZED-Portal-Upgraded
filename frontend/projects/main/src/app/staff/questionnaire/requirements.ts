@@ -67,13 +67,16 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
   imports: [FormsModule, RouterLink, ListSearchComponent, ExcelToolsComponent, PortalSwitchComponent],
   template: `
     <zed-portal-switch [portals]="questionnairePortals" title="Questionnaire of" />
-    <nav class="crumbs" aria-label="Breadcrumb">
-      <a [routerLink]="['/staff/masters/parameters', sectionType]">Questionnaire</a>
-      <span aria-hidden="true">›</span>
-      <a [routerLink]="['/staff/masters/parameters', sectionType]">{{ levelLabel() }}</a>
-      <span aria-hidden="true">›</span>
-      <span>Parameter {{ sectionCode }}</span>
-    </nav>
+    <div class="back-row">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <a [routerLink]="['/staff/masters/parameters', sectionType]">Questionnaire</a>
+        <span aria-hidden="true">›</span>
+        <a [routerLink]="['/staff/masters/parameters', sectionType]">{{ levelLabel() }}</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Parameter {{ sectionCode }}</span>
+      </nav>
+      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/masters/parameters', sectionType]">← Back</a>
+    </div>
     <div class="page-head">
       <div>
         @if (data(); as d) {
@@ -94,7 +97,6 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
             <zed-excel-tools [api]="api.levelRequirementsUrl(sectionType)" [title]="'Requirements of all ' + levelLabel() + ' parameters'"
                              [fileName]="'requirements-' + sectionType.toLowerCase() + '-all-parameters'" (applied)="load()" /></span>
         }
-        <a class="btn btn-default" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; Back</a>
       </div>
     </div>
 
@@ -133,7 +135,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
               <li class="no-data">{{ requirements().length ? 'No requirement matches the search.' : 'No requirement yet.' }}</li>
             }
           </ul>
-          <button type="button" class="btn rq-add add-requirement" [disabled]="d.checklistReady === false" (click)="startNew()">+ Add requirement</button>
+          <button type="button" class="btn btn-outline-primary w-100 mt-2 add-requirement" [disabled]="d.checklistReady === false" (click)="startNew()">+ Add requirement</button>
         </aside>
 
         <!-- Right: the chosen requirement, or the editor in its place. -->
@@ -189,7 +191,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
                       @for (e of c.evidences; track e; let j = $index) {
                         <div class="ev">
                           <div class="item">
-                            <input class="form-control" [name]="'ev-' + i + '-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" placeholder="Evidence"
+                            <input class="form-control" [name]="'ev-' + i + '-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" placeholder="Evidence"
                                    [attr.aria-label]="'Evidence ' + (j + 1) + ' of checkpoint ' + (i + 1)" />
                             <label class="tick"><input type="checkbox" class="form-check-input" [name]="'evm-' + i + '-' + j" [(ngModel)]="e.mandatory" /> Mandatory</label>
                             <button type="button" class="btn btn-link x" aria-label="Remove evidence" (click)="removeEvidence(c.evidences, j)">✕</button>
@@ -207,19 +209,19 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
                           </div>
                         </div>
                       }
-                      <button type="button" class="btn btn-sm btn-add-evidence" (click)="c.evidences.push(newEvidence()); touch()">+ Add evidence</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-evidence" (click)="c.evidences.push(newEvidence()); touch()">+ Add evidence</button>
                     </div>
                     <div class="side side-no">
                       <h5><span class="chip c-no">If No</span><span class="chip c-part">or Partial</span> Action needed</h5>
                       @for (a of c.actions; track $index; let j = $index) {
                         <div class="item">
                           <input class="form-control" [name]="'ac-' + i + '-' + j" [maxlength]="actionMax" [ngModel]="a" (ngModelChange)="c.actions[j] = $event"
-                                 placeholder="Action needed" [attr.aria-label]="'Action ' + (j + 1) + ' of checkpoint ' + (i + 1)" />
+                                 [title]="a" placeholder="Action needed" [attr.aria-label]="'Action ' + (j + 1) + ' of checkpoint ' + (i + 1)" />
                           <small class="count">{{ a.length }} / {{ actionMax }}</small>
                           <button type="button" class="btn btn-link x" aria-label="Remove action" (click)="c.actions.splice(j, 1); touch()">✕</button>
                         </div>
                       }
-                      <button type="button" class="btn btn-sm btn-add-action" (click)="c.actions.push(''); touch()">+ Add action</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-action" (click)="c.actions.push(''); touch()">+ Add action</button>
                     </div>
                   </div>
                 </section>
@@ -232,7 +234,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
                   <div class="side">
                     @for (e of f.general; track e; let j = $index) {
                       <div class="item">
-                        <input class="form-control" [name]="'gev-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [attr.aria-label]="'Evidence ' + (j + 1) + ' of the whole requirement'" />
+                        <input class="form-control" [name]="'gev-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" [attr.aria-label]="'Evidence ' + (j + 1) + ' of the whole requirement'" />
                         <label class="tick"><input type="checkbox" class="form-check-input" [name]="'gevm-' + j" [(ngModel)]="e.mandatory" /> Mandatory</label>
                         <button type="button" class="btn btn-link x" aria-label="Remove evidence" (click)="removeEvidence(f.general, j)">✕</button>
                       </div>
@@ -243,7 +245,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
 
               @if (formError()) { <span class="help-block d-block mt-2" role="alert">{{ formError() }}</span> }
               <div class="foot">
-                <button type="button" class="btn btn-add-checkpoint" (click)="f.checkpoints.push(newCheckpoint()); touch()">+ Add checkpoint</button>
+                <button type="button" class="btn btn-primary btn-add-checkpoint" (click)="f.checkpoints.push(newCheckpoint()); touch()">+ Add checkpoint</button>
                 <span>
                   <button type="button" class="btn btn-default" (click)="closeForm()">Cancel</button>
                   <button type="submit" class="btn btn-primary" [disabled]="saving() || d.checklistReady === false">{{ f.id ? 'Update requirement' : 'Save requirement' }}</button>
@@ -326,7 +328,10 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
     .muted { color: #8a9899; font-size: 13px; }
-    .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: #5f6f70; margin-bottom: 6px; }
+    .back-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: #5f6f70; }
+    .crumbs [aria-current] { color: var(--zt-dark, #1f5c61); font-weight: 700; }
+    .back-btn { white-space: nowrap; }
     .crumbs a { color: var(--zt-mid2, #2f7c83); text-decoration: none; font-weight: 600; }
     .crumbs a:hover { text-decoration: underline; }
     .lvl { font-size: 15px; color: #5f6f70; font-weight: 500; }
@@ -348,8 +353,6 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .rq-name { font-size: 13.5px; color: #23474a; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .rq-missing { font-size: 11.5px; color: #8a5a00; }
     .rq-ok { font-size: 11.5px; color: #1e7a3c; font-weight: 600; }
-    .rq-add { width: 100%; margin-top: 10px; border: 1px dashed #45a5ad; color: var(--zt-mid2, #2f7c83); background: #f5fafa; font-weight: 700; border-radius: 10px; }
-    .rq-add:hover { background: #45a5ad; color: #fff; }
     .rq-detail { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; padding: 16px 18px; min-width: 0; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
     .det-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
     .det-head h4 { margin: 0; font-size: 18px; font-weight: 700; color: #23474a; display: flex; align-items: center; gap: 8px; }
@@ -365,14 +368,14 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
 
     /* Purpose and benefits. */
     .pb { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; font-size: 14px; }
-    .pb div { border: 1px solid #e3ecec; border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .pb div { border: 1px solid #e3ecec; border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: break-word; }
     .pb b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--zt-mid2, #2f7c83); margin-bottom: 3px; }
     .pb .empty { color: #8a5a00; }
 
     /* A checkpoint (view). */
     .cpv { border: 1px solid #e3ecec; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
     .cpv-head { display: flex; gap: 10px; align-items: flex-start; background: #f4fafa; padding: 9px 12px; font-size: 14px; font-weight: 600; color: #23474a; }
-    .point-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .point-text { white-space: pre-wrap; overflow-wrap: break-word; min-width: 0; }
     .cpv .bullets { margin: 8px 12px 0 34px; }
     .cpv .option-image { margin: 8px 12px 0; }
     .cpv-body { display: grid; grid-template-columns: 1fr 1fr; }
@@ -381,7 +384,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .cpv-title { font-size: 12px; font-weight: 700; margin: 0 0 6px; color: #23474a; }
     .cpv-title.t-yes { color: #1e7a3c; } .cpv-title.t-no { color: #a8303a; }
     .general-row { padding: 10px 12px; background: #fcfefe; }
-    .tag { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12.5px; margin: 0 6px 6px 0; overflow-wrap: anywhere; }
+    .tag { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12.5px; margin: 0 6px 6px 0; overflow-wrap: break-word; max-width: 100%; }
     .tag-ev { background: #e6f6ec; color: #17602f; }
     .tag-ac { background: #fdeef0; color: #8a2630; }
     .m { font-size: 10px; font-weight: 700; color: var(--zt-mid2, #2f7c83); background: #fff; border-radius: 4px; padding: 0 5px; }
@@ -412,14 +415,10 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .tick .form-check-input { margin: 0; }
     .x { color: #8a9899; font-weight: 700; text-decoration: none; padding: 0 4px; }
     .sample { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #5f6f70; padding-left: 2px; }
-    .file { background: #eef6f6; color: var(--zt-mid2, #2f7c83); border-radius: 6px; padding: 2px 8px; font-weight: 700; overflow-wrap: anywhere; }
+    .file { background: #eef6f6; color: var(--zt-mid2, #2f7c83); border-radius: 6px; padding: 2px 8px; font-weight: 700; overflow-wrap: break-word; max-width: 100%; }
     .up { border: 1px dashed #45a5ad; color: var(--zt-mid2, #2f7c83); border-radius: 6px; padding: 2px 8px; font-weight: 700; cursor: pointer; margin: 0; }
     .hint { color: #8a9899; font-size: 12px; }
-    /* The add buttons, in colour (2026-11-07): evidence green, action red, checkpoint teal. */
-    .btn-add-evidence, .btn-add-action, .btn-add-checkpoint { color: #fff; font-weight: 700; border-radius: 8px; border: 0; padding: 5px 12px; font-size: 12.5px; }
-    .btn-add-evidence { background: #2e8b4e; } .btn-add-evidence:hover { background: #1e7a3c; color: #fff; }
-    .btn-add-action { background: #c9424e; } .btn-add-action:hover { background: #a8303a; color: #fff; }
-    .btn-add-checkpoint { background: #45a5ad; padding: 7px 16px; font-size: 13.5px; } .btn-add-checkpoint:hover { background: #368289; color: #fff; }
+    /* The add buttons: the standard skin (2026-11-19 admin audit: no green / red add buttons). */
     .bullets { margin: 6px 0 0; padding-left: 18px; color: #3b4b4c; list-style: disc; font-size: 13px; }
     .general .side { background: #fcfefe; }
     .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
@@ -435,6 +434,9 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     }
     @media (max-width: 767.98px) {
       .two, .pb { grid-template-columns: minmax(0, 1fr); }
+      .page-actions { width: 100%; }
+      .page-actions .xl-group { width: 100%; }
+      .det-head h4 { flex-wrap: wrap; }
     }
   `,
 })

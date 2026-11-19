@@ -130,7 +130,7 @@
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="disabling.set(null)">CANCEL</button>
+          <button type="button" class="btn btn-default" (click)="disabling.set(null)">Cancel</button>
           <button type="button" class="btn btn-primary" [disabled]="!disableRemarks.trim() || saving()" (click)="submitDisable()">SUBMIT</button>
         </div>
       </div>

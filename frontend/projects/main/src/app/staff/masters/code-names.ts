@@ -245,7 +245,7 @@ interface OtherList {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Update</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
               </div>
             </form>
           </div>
@@ -280,14 +280,12 @@ interface OtherList {
     .list-card { padding: 16px; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     .cn-table { width: 100%; margin-bottom: 8px; }
-    .cn-table td { vertical-align: middle; overflow-wrap: anywhere; }
+    .cn-table td { vertical-align: middle; }
+    .cn-table .name-cell { overflow-wrap: break-word; }
+    .cn-table .code-cell, .cn-table .type-cell, .cn-table .actions-cell { white-space: nowrap; }
+    .activity-badge, .off-badge, .pchip { white-space: nowrap; }
     .cn-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .name-cell strong { color: #232527; font-weight: 600; }
     .code-badge {
@@ -303,7 +301,7 @@ interface OtherList {
     .choice-card.active { border-color: #45a5ad; background: #f4fafa; }
     /* The skin makes pop-up labels bold; on these cards only the option's name is. */
     .modal .modal-popup label.choice-card { font-weight: 400; color: #232527; }
-    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
+    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; border: 1.5px solid #6f8f92; }
     .choice-card strong { color: #23474a; }
 
     /* Phones: a card per row. */
@@ -312,14 +310,18 @@ interface OtherList {
       .list-toolbar .search { max-width: none; flex-basis: 100%; }
       .cn-table thead { display: none; }
       .cn-table, .cn-table tbody { display: block; width: 100%; }
-      .cn-table tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+      /* Two columns (code | name, type); the other portals and the actions take a full row below. */
+      .cn-table tr { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center;
         border: 1px solid #dfe9ea; border-radius: 12px; margin-bottom: 10px; padding: 10px 12px; }
       .cn-table tr.empty-row { display: block; border: 0; padding: 0; }
-      .cn-table td { display: block; border: 0; padding: 0; text-align: left !important; }
-      .cn-table tr:has(.type-cell) .code-cell { grid-row: span 2; }
+      .cn-table td { display: block; border: 0; padding: 0; text-align: left !important; min-width: 0; width: auto !important; }
+      .cn-table .code-cell { grid-column: 1; align-self: start; }
+      .cn-table tr:has(.type-cell) .code-cell { grid-row: 1 / span 2; }
       .cn-table .code-badge { min-width: 48px; }
-      .cn-table .type-cell { grid-column: 2; }
-      .cn-table .actions-cell { grid-column: 3; grid-row: 1 / span 2; }
+      .cn-table .name-cell, .cn-table .type-cell { grid-column: 2; }
+      .cn-table .portals-cell, .cn-table .actions-cell { grid-column: 1 / -1; }
+      .cn-table .actions-cell { border-top: 1px solid #eef3f3; padding-top: 8px; }
+      .cn-table .actions-cell .row-actions { flex-direction: row; justify-content: flex-start !important; flex-wrap: wrap; }
       .activity-choice { grid-template-columns: minmax(0, 1fr); }
     }
   `,

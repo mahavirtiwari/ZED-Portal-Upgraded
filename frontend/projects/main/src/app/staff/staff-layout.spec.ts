@@ -17,7 +17,10 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= NoResizeObserver;
   });
 
-  async function render(links: Partial<Record<PortalLinkKey, string | null>> = {}) {
+  type SignedIn = { userId: string; userName: string; roleId: number; role: string };
+  const MASTER_ADMIN: SignedIn = { userId: 'ZEDV4MA01', userName: 'MASTER ADMIN', roleId: 7, role: 'MasterAdmin' };
+
+  async function render(links: Partial<Record<PortalLinkKey, string | null>> = {}, user: SignedIn = MASTER_ADMIN) {
     TestBed.configureTestingModule({
       imports: [StaffLayout],
       providers: [
@@ -27,7 +30,7 @@ describe('StaffLayout (2026-11-18 designs)', () => {
         { provide: PortalLinksService, useValue: { url: (k: PortalLinkKey) => (k in links ? links[k]! : PORTAL_LINK_DEFAULTS[k]) } },
       ],
     });
-    TestBed.inject(AuthService).setUser({ userId: 'ZEDV4MA01', userName: 'MASTER ADMIN', roleId: 7, role: 'MasterAdmin', subRoles: [] });
+    TestBed.inject(AuthService).setUser({ ...user, subRoles: [] });
     const fixture = TestBed.createComponent(StaffLayout);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
@@ -65,5 +68,17 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     // The account's documents (Master Admin has "Documents") and the main portal's privacy page; no "Terms of use".
     expect(links.map((a) => a.textContent!.trim())).toEqual(['Scheme guidelines', 'Privacy policy', 'Help desk']);
     expect(links.slice(0, 2).map((a) => a.getAttribute('href'))).toEqual(['/staff/documents', '/privacy-policy']);
+  });
+
+  // 2026-11-19 (the user, Admin login: 'make the buttons in dark color'): the dark buttons are scoped to .zed-admin.
+  it('marks the frame zed-admin for the Admin login only (the scope of the dark buttons)', async () => {
+    const admin = await render({}, { userId: 'ZEDV4AD01', userName: 'ADMIN', roleId: 1, role: 'Admin' });
+    expect(admin.classList).toContain('zed-legacy');
+    expect(admin.classList).toContain('zed-v4');
+    expect(admin.classList).toContain('zed-admin');
+    TestBed.resetTestingModule();
+    const master = await render();
+    expect(master.classList).toContain('zed-v4');
+    expect(master.classList).not.toContain('zed-admin');
   });
 });

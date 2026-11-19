@@ -135,7 +135,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
             @for (s of stateChips(); track s.name) {
               <button type="button" class="sr-chip" [class.is-on]="pager.search() === s.name" [class.is-off]="!s.enabled" [attr.aria-pressed]="pager.search() === s.name"
                       [title]="s.enabled + ' of ' + s.total + ' enabled'" (click)="searchState(s.name)">
-                {{ s.name }} <span class="sr-chip-count">{{ s.enabled }}/{{ s.total }}</span>
+                {{ nice(s.name) }} <span class="sr-chip-count">{{ s.enabled }}/{{ s.total }}</span>
               </button>
             }
           </div>
@@ -158,13 +158,13 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
             <tbody>
               @for (r of pager.page(); track r.stateCode + '-' + r.districtCode) {
                 <tr [class.sr-off]="!r.enabled">
-                  <td data-label="State / UT"><span class="sr-place"><span class="sr-pin" aria-hidden="true">{{ initials(r.stateName || r.stateCode) }}</span>{{ r.stateName || 'State ' + r.stateCode }}</span></td>
-                  <td data-label="District">@if (r.districtCode) { {{ r.districtName || 'District ' + r.districtCode }} } @else { <span class="zed-chip sr-whole">Whole state</span> }</td>
-                  <td class="muted sr-when" data-label="Last changed">@if (r.updatedOn) { {{ r.updatedBy }} · {{ r.updatedOn | indianTime: 'dd-MM-yyyy' }} } @else { {{ r.updatedBy || '—' }} }</td>
+                  <td data-label="State / UT"><span class="sr-place"><span class="sr-pin" aria-hidden="true">{{ initials(r.stateName || r.stateCode) }}</span>{{ nice(r.stateName) || 'State ' + r.stateCode }}</span></td>
+                  <td data-label="District">@if (r.districtCode) { {{ nice(r.districtName) || 'District ' + r.districtCode }} } @else { <span class="zed-chip sr-whole">Whole state</span> }</td>
+                  <td class="muted sr-when" data-label="Last changed">@if (r.updatedOn) { {{ who(r.updatedBy) }} · {{ r.updatedOn | indianTime: 'dd-MM-yyyy' }} } @else { {{ who(r.updatedBy) || '—' }} }</td>
                   <td class="text-center" data-label="Status">
                     <label class="sr-switch form-switch">
                       <input type="checkbox" class="form-check-input" role="switch" [checked]="r.enabled" [disabled]="busy()" [attr.aria-label]="(r.enabled ? 'Disable ' : 'Enable ') + label(r)" (change)="set(r, $any($event.target))" />
-                      <span class="status-badge" [class.is-active]="r.enabled" [class.is-inactive]="!r.enabled">{{ r.enabled ? 'Enabled' : 'Disabled' }}</span>
+                      <span class="sr-switch-text" [class.is-on]="r.enabled">{{ r.enabled ? 'Enabled' : 'Disabled' }}</span>
                     </label>
                   </td>
                   <td class="text-center" data-label="Action"><button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" [attr.aria-label]="'Remove ' + label(r)" (click)="remove(r)">Remove</button></td>
@@ -194,15 +194,15 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
     .stat-main .stat-value { color: #1e7a3c; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-value small { font-size: 15px; color: #8a9899; font-weight: 600; }
-    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: break-word; }
 
     /* A card per region list; the picked one is filled. */
-    .sr-cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .sr-cats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
     .sr-cat { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; border: 1px solid #dfe9ea; border-top: 4px solid #cbd9da;
       background: #fff; border-radius: 12px; padding: 12px 14px; color: #23474a; cursor: pointer; min-width: 0; }
     .sr-cat:hover { border-color: #45a5ad; background: var(--zt-pale, #f7fbfb); }
     .sr-cat.is-on { border-color: #45a5ad; border-top-color: var(--zt-mid2, #2f7c83); background: #eef6f6; box-shadow: 0 0 0 1px #45a5ad inset; }
-    .sr-cat-name { font-weight: 700; font-size: 15px; overflow-wrap: anywhere; }
+    .sr-cat-name { font-weight: 700; font-size: 15px; overflow-wrap: break-word; }
     .sr-cat-count { font-size: 13px; color: #5f6f70; }
     .sr-cat-count strong { color: #1e7a3c; font-size: 15px; }
     .sr-level { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
@@ -232,14 +232,12 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
 
     .sr-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .sr-search { flex: 1 1 260px; max-width: 420px; }
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .seg-count { font-weight: 400; opacity: .85; margin-left: 2px; }
 
-    .sr-table td { vertical-align: middle; overflow-wrap: anywhere; }
+    .sr-table td { vertical-align: middle; overflow-wrap: break-word; }
+    .sr-when { white-space: nowrap; }
+    .sr-switch-text { font-size: 13px; font-weight: 600; color: #5f6f70; white-space: nowrap; }
+    .sr-switch-text.is-on { color: #1e7a3c; }
     .sr-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .sr-place { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; color: #232527; }
     .sr-pin { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 15px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800;
@@ -330,6 +328,18 @@ export class SubsidyRegionsPage {
 
   protected label(r: RegionRow): string {
     return r.districtCode ? (r.districtName ?? r.districtCode) : (r.stateName ?? r.stateCode);
+  }
+
+  /** A name kept in capitals in the database, shown in title case (UTTAR PRADESH → Uttar Pradesh); mixed case stays as it is. */
+  protected nice(name: string | null | undefined): string {
+    if (!name || name !== name.toUpperCase()) return name ?? '';
+    return name.toLowerCase().replace(/(^|[\s(/-])([a-z])/g, (_, sep: string, c: string) => sep + c.toUpperCase())
+      .replace(/ (And|Of|The) /g, (w) => w.toLowerCase());
+  }
+
+  /** Who changed the entry; a database script ("migration-0024") shows as System. */
+  protected who(by: string | null | undefined): string {
+    return by && /^migration/i.test(by) ? 'System' : (by ?? '');
   }
 
   /** Two letters for the state's round badge (UTTAR PRADESH → UP). */

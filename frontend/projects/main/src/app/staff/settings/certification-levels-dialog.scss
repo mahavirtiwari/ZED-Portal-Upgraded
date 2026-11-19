@@ -1,0 +1,72 @@
+/* Certification Levels: the edit / add level pop-up and its preview (apart from the page styles for the component style budget). */
+/* The pop-up: tabs, the fields, and a preview beside them. Wider than the skin's 760px form pop-ups. */
+.modal > .modal-dialog.modal-xl.lv-dialog { max-width: 1080px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
+.d-contents { display: contents; }
+.modal .lv-dialog textarea.form-control { min-height: 0; height: auto; }
+.modal .lv-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
+.lv-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 16px; }
+.lv-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+.lv-tab:hover { color: var(--zt-mid2, #2f7c83); }
+.lv-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
+.lv-nc { border: 1px dashed #9fcfd3; border-radius: 6px; padding: 10px 12px; }
+.lv-nc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+.lv-nc-row label { margin: 0; }
+.lv-edit { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+/* The portal's form styles stretch every field; the numbers stay short. */
+.form-grid input.lv-short { width: 110px !important; max-width: 110px !important; flex: none; }
+.lv-mono { font-family: Consolas, 'Courier New', monospace; }
+.lv-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
+.choice-card.active { border-color: #45a5ad; background: #f4fafa; }
+.choice-card .form-check-input { flex: none; margin: 3px 0 0; }
+.choice-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
+.lv-switch { display: flex; align-items: center; gap: 8px; padding-left: 0; margin: 0; }
+.lv-switch .form-check-input { float: none; margin: 0; }
+.lv-surv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.form-grid select.lv-select { width: auto !important; max-width: 260px; flex: none; }
+.lv-check { display: flex; align-items: flex-start; gap: 8px; padding-left: 0; margin: 0; }
+.lv-check .form-check-input { float: none; flex: none; margin: 3px 0 0; }
+.modal .lv-check .form-check-label { font-weight: 400; }
+.lv-logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lv-logo-small { height: 40px; }
+.lv-upload { display: inline-flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; min-width: 0; font-weight: 400; }
+.lv-upload-name { font-size: 13px; color: #232527; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+#lv-logo:focus-visible + .lv-upload .btn { outline: 2px solid #45a5ad; outline-offset: 2px; }
+.lv-tokens { display: flex; flex-wrap: wrap; gap: 4px; }
+.token { font-size: 12px; background: #eef6f6; color: #23474a; border-radius: 4px; padding: 1px 6px; }
+.label-like { font-weight: 600; color: #3b4b4c; font-size: 14px; }
+.label-like.top { align-self: start; padding-top: 2px; }
+
+.lv-preview { position: sticky; top: 0; background: #f4f8f8; border-radius: 12px; padding: 14px; }
+.lv-preview h4 { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+.pv-box { --accent: #45a5ad; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08); }
+.pv-box.is-off { opacity: .5; }
+.pv-head { background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; padding: 10px 12px; letter-spacing: .3px; overflow-wrap: break-word; }
+.pv-body { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px; }
+.pv-status { color: #e8a33d; font-weight: 700; font-size: 13px; }
+.pv-steps { display: flex; gap: 14px; margin-top: 10px; }
+.pv-steps i { width: 10px; height: 10px; border-radius: 5px; background: #dfe5e6; }
+.pv-logo { height: 52px; max-width: 90px; object-fit: contain; }
+.pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 10px; font-weight: 800;
+  background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; overflow: hidden; }
+.pv-desc { font-size: 12px; color: #3b4b4c; margin: 0; padding: 0 12px 10px; }
+.lv-fees { font-size: 13px; }
+.lv-fees-missing { color: #a15c00; font-size: 13px; }
+.pv-fee { font-size: 12px; font-weight: 700; color: #23474a; padding: 0 12px 10px; }
+.pv-numbers { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
+.pv-numbers dt { color: #5f6f70; font-weight: 600; }
+.pv-numbers dd { margin: 0; overflow-wrap: break-word; }
+.pv-timeline { position: relative; height: 46px; margin: 4px 12px 2px 4px; }
+.tl-bar { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #cfe5e6, #45a5ad); }
+.tl-mark, .tl-end { position: absolute; top: 2px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.tl-mark b { width: 22px; height: 22px; border-radius: 11px; background: #fff; border: 2px solid #23474a; font-size: 10px; display: grid; place-items: center; color: #23474a; }
+.tl-mark small, .tl-end small { font-size: 11px; color: #5f6f70; margin-top: 2px; }
+.tl-end { left: 100%; top: 26px; }
+@media (max-width: 991.98px) {
+  .lv-edit { grid-template-columns: minmax(0, 1fr); }
+  .lv-preview { position: static; }
+}
+@media (max-width: 575.98px) {
+  .modal .lv-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .lv-choice { grid-template-columns: minmax(0, 1fr); }
+}

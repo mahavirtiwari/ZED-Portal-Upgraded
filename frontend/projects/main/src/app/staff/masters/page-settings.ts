@@ -108,7 +108,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
     }
   `,
   styles: `
-    .ps-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .ps-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
     .img-card { display: flex; flex-direction: column; gap: 12px; margin: 0; }
     .img-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .ps-h { font-weight: 700; color: #23474a; }
@@ -121,9 +121,9 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
     .img-missing { color: #8a5a00; font-weight: 600; }
     .img-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
     .img-meta dt { font-weight: 600; color: #5f6f70; }
-    .img-meta dd { margin: 0; color: #232527; overflow-wrap: anywhere; }
+    .img-meta dd { margin: 0; color: #232527; overflow-wrap: break-word; }
     .img-card > .btn { align-self: flex-start; }
-    .picked-name { margin: -4px 0 0; font-weight: 600; color: #23474a; overflow-wrap: anywhere; }
+    .picked-name { margin: -4px 0 0; font-weight: 600; color: #23474a; overflow-wrap: break-word; }
 
     /* The drop area: the file input covers it, so a click opens the picker and a dropped file is taken. */
     .drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0; padding: 30px 16px; text-align: center;
@@ -134,7 +134,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
     .drop input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
     .hints { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; padding: 0; font-size: 13px; }
     .hint-chip { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
-    .form-actions { margin-top: 0; }
+    .form-actions { margin-top: auto; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     @media (max-width: 991.98px) { .ps-grid { grid-template-columns: minmax(0, 1fr); } }
   `,

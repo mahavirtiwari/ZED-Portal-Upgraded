@@ -158,7 +158,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
     /* The three steps; the current one is outlined, the ones done have a green number. */
     .lgd-steps { list-style: none; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .lgd-step { display: flex; gap: 12px; align-items: flex-start; background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 14px; min-width: 0; }
-    .lgd-step > div { min-width: 0; font-size: 13.5px; color: #3b4b4c; overflow-wrap: anywhere; }
+    .lgd-step > div { min-width: 0; font-size: 13.5px; color: #3b4b4c; overflow-wrap: break-word; }
     .lgd-step > div > strong { display: block; color: #23474a; font-size: 14.5px; margin-bottom: 2px; }
     .lgd-no { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 15px; display: inline-grid; place-items: center; font-weight: 800; font-size: 14px;
       background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
@@ -175,7 +175,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
     .lgd-drop:hover { border-color: #45a5ad; background: #eef6f6; }
     .lgd-drop.has-file { border-style: solid; border-color: #b9dfc8; background: #f3faf5; color: #2e9e5b; }
     .lgd-drop svg { flex: none; }
-    .lgd-drop-text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+    .lgd-drop-text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: break-word; }
     .lgd-drop-text strong { color: #23474a; }
 
     .lgd-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -203,7 +203,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
     .lgd-badge.is-rename { background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .lgd-badge.is-drop { background: #fdeef0; color: #a8303a; }
     .lgd-list table { min-width: 680px; }
-    .lgd-list td { vertical-align: middle; overflow-wrap: anywhere; }
+    .lgd-list td { vertical-align: middle; overflow-wrap: break-word; }
     .lgd-list tr.is-ticked { background: var(--zt-pale, #f7fbfb); }
     .lgd-list s { color: #8a9899; text-decoration: line-through; }
 

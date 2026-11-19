@@ -38,8 +38,9 @@ describe('LinksPage', () => {
   const card = (key: string) => el.querySelector(`#${key}-url`)!.closest('form') as HTMLFormElement;
   const toggle = (key: string) => el.querySelector(`#${key}-enabled`) as HTMLInputElement;
   const address = (key: string) => el.querySelector(`#${key}-url`) as HTMLInputElement;
-  const saveButton = (key: string) => card(key).querySelector('button[type=submit]') as HTMLButtonElement;
-  const badge = (key: string) => card(key).querySelector('.link-title .status-badge')!.textContent!.trim();
+  const saveButton = (key: string) => card(key).querySelector('button[type=submit]') as HTMLButtonElement | null;
+  // One status indicator per card (2026-11-19 admin audit): the switch's label, no second badge.
+  const badge = (key: string) => card(key).querySelector('.link-switch .form-check-label')!.textContent!.trim();
   const chip = (key: string) => card(key).querySelector('.addr-chip')!.textContent!.trim();
   const stats = () => [...el.querySelectorAll('.links-stats .stat')].map((t) => `${t.querySelector('.stat-value')!.textContent} ${t.querySelector('.stat-label')!.textContent}`);
 
@@ -56,7 +57,9 @@ describe('LinksPage', () => {
     expect(toggle('lgd').checked).toBe(false);
     expect(address('lgd').value).toBe('https://lgd.example.org/download');
     expect(address('contact').placeholder).toBe(contact.defaultUrl);
-    expect(saveButton('contact').disabled).toBe(true);
+    expect(card('contact').querySelector('.link-title .status-badge')).toBeNull();
+    // Save shows only once a card has a change.
+    expect(saveButton('contact')).toBeNull();
 
     toggle('contact').click();
     await settle();
@@ -65,7 +68,8 @@ describe('LinksPage', () => {
     expect(card('contact').querySelector('.form-actions')!.textContent).toContain('Not saved yet.');
     expect(card('contact').classList).toContain('is-dirty');
     expect(stats()[1]).toBe('1/2 Enabled');
-    expect(saveButton('lgd').disabled).toBe(true);
+    expect(saveButton('contact')!.disabled).toBe(false);
+    expect(saveButton('lgd')).toBeNull();
 
     card('contact').dispatchEvent(new Event('submit'));
     await settle();
@@ -77,7 +81,7 @@ describe('LinksPage', () => {
     await settle();
     expect(badge('contact')).toBe('Disabled');
     expect(card('contact').querySelector('.alert-success')!.textContent).toContain('Contact ZED saved.');
-    expect(saveButton('contact').disabled).toBe(true);
+    expect(saveButton('contact')).toBeNull();
     expect(stats()).toEqual(['2 Links', '0/2 Enabled', '1 Own address', '2 Switched off']);
     expect(card('contact').classList).not.toContain('is-dirty');
   });
@@ -120,6 +124,6 @@ describe('LinksPage', () => {
     await settle();
     expect(address('lgd').value).toBe('https://lgd.example.org/download');
     expect(card('lgd').querySelector('.help-block')).toBeNull();
-    expect(saveButton('lgd').disabled).toBe(true);
+    expect(saveButton('lgd')).toBeNull();
   });
 });

@@ -108,7 +108,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
       <div class="st-tiles">
         <div class="st-tile"><b>{{ d.sections.length }}</b><small>Sections ({{ activeCount() }} on)</small></div>
         <div class="st-tile"><b>{{ photoRange() }}</b><small>Photos per site tour</small></div>
-        <div class="st-tile"><b>{{ d.customised ? 'Changed' : 'Standard' }}</b><small>{{ d.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
+        <div class="st-tile"><b class="st-word">{{ d.customised ? 'Changed' : 'Standard' }}</b><small>{{ d.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
       </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
@@ -140,7 +140,6 @@ export function sectionId(title: string, taken: readonly string[]): string {
                 <td>
                   <div class="section-title">
                     <strong>{{ s.title }}</strong>
-                    @if (!s.active) { <span class="status-badge is-inactive">Off</span> }
                   </div>
                   @if (s.hint) { <small class="section-hint">{{ s.hint }}</small> }
                 </td>
@@ -165,15 +164,15 @@ export function sectionId(title: string, taken: readonly string[]): string {
                 </td>
                 <td>
                   <div class="st-actions">
-                    <button type="button" class="st-icon" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
-                    <button type="button" class="st-icon" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
                     <!-- 2026-11-15 (the user): switch a section off (or on) from the list. -->
                     <label class="st-switch" [class.off]="!s.active" [title]="s.active ? 'Switch this section off' : 'Switch this section on'">
                       <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()" [attr.aria-label]="(s.active ? 'Switch off ' : 'Switch on ') + s.title"
                              (click)="$event.preventDefault(); toggle(i)" />
                       <span class="st-track" aria-hidden="true"></span>{{ s.active ? 'On' : 'Off' }}
                     </label>
-                    <button type="button" class="st-edit" [disabled]="busy()" (click)="edit(s)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(s)">Edit</button>
                   </div>
                 </td>
               </tr>
@@ -247,10 +246,10 @@ export function sectionId(title: string, taken: readonly string[]): string {
                   </div>
                   <span class="label">In use</span>
                   <div>
-                    <div class="form-check m-0">
+                    <label class="check-line" for="sectionActive">
                       <input class="form-check-input" type="checkbox" id="sectionActive" [(ngModel)]="e.active" />
-                      <label class="form-check-label" for="sectionActive">Section is in use</label>
-                    </div>
+                      <span>Section is in use</span>
+                    </label>
                     @if (p.active) { <small class="invalid">{{ p.active }}</small> }
                     @else if (!e.active) { <small class="text-muted d-block">Not asked in the app; photos already taken are kept.</small> }
                   </div>
@@ -260,8 +259,8 @@ export function sectionId(title: string, taken: readonly string[]): string {
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="Save" [disabled]="busy()" (click)="save(e)" />
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
             </div>
           </div>
         </div>
@@ -282,7 +281,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
     }
     .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .sections-table { table-layout: fixed; width: 100%; min-width: 880px; margin-bottom: 0; }
-    .sections-table td { overflow-wrap: anywhere; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+    .sections-table td { overflow-wrap: break-word; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .sections-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .sections-table tr.is-off td { color: #8a9899; }
     .row-actions .btn { text-transform: none; }
@@ -300,16 +299,24 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .st-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; }
     .st-tile b { font-size: 20px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .st-tile small { font-size: 12.5px; color: #5f6f70; }
+    .st-tile b.st-word { font-size: 16px; line-height: 1.5; }
+    /* Phone: one card per section, no sideways scroll. */
+    @media (max-width: 767.98px) {
+      .st-tiles { grid-template-columns: minmax(0, 1fr); }
+      .sections-table { min-width: 0; table-layout: auto; }
+      .sections-table thead { display: none; }
+      .sections-table, .sections-table tbody, .sections-table tr, .sections-table td { display: block; width: 100%; }
+      .sections-table tr { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; background: #fff; }
+      .sections-table td { border: 0; padding: 4px 0; text-align: left !important; }
+      .sections-table td:first-child { display: none; }
+      .sections-table .st-actions { justify-content: flex-start; flex-wrap: wrap; padding-top: 4px; }
+    }
     /* 2026-11-19 (admin audit: "Edi/t" and "O/n" at 1536px): the action column is wide enough and its buttons never wrap. */
     .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow-wrap: normal; }
     .st-actions > * { flex: none; }
-    .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
-      color: #23474a; font-weight: 700; padding: 0; }
-    .st-icon:hover:not(:disabled) { border-color: #45a5ad; background: #eef6f6; }
-    .st-icon:disabled { opacity: .35; cursor: default; }
-    .st-edit { border: 1px solid #9cc9cd; background: #fff; color: var(--zt-dark, #23656b); border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
-    .st-edit:hover:not(:disabled) { background: #eef6f6; }
-    .st-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    .st-actions .st-move { width: 32px; padding-left: 0; padding-right: 0; font-weight: 700; }
+    /* position: relative keeps the hidden input inside the table's scroll box (it widened the page on phones). */
+    .st-switch { position: relative; display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
     .st-switch.off { color: #8a9899; }
     .st-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
     .st-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; flex: none; transition: background .15s; }
@@ -317,7 +324,6 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .st-switch.off .st-track { background: #c3cdce; }
     .st-switch.off .st-track::after { left: 2px; }
     .st-switch input:focus-visible + .st-track { outline: 2px solid var(--zt-dark, #23656b); outline-offset: 2px; }
-    @media (max-width: 767.98px) { .st-tiles { grid-template-columns: minmax(0, 1fr); } }
     .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
     .scope .zed-chip { font-size: 11px; padding: 1px 8px; }
     .scope .zed-chip.sector { background: #f1f0fb; color: #3f3a7a; }
@@ -325,17 +331,14 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .totals { color: #3b4b4c; font-size: 13px; font-weight: 600; margin: 10px 0 0; }
 
     /* The pop-up (as App Forms'). */
-    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
-    .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
-    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .modal .section-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
     .section-dialog .form-grid > .label { display: block; text-align: left; white-space: normal; text-transform: none; padding: 0; font-size: 14px;
       font-weight: 600; color: #3b4b4c; background: none; border-radius: 0; }
     .section-dialog .form-grid > .label.top, .form-grid > .top { align-self: start; padding-top: 8px; }
     .modal .section-dialog textarea.form-control { min-height: 64px; height: auto; }
     .num-input { max-width: 120px; }
+    .check-line { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; cursor: pointer; }
+    .check-line .form-check-input { margin: 0; float: none; flex: none; }
     .invalid { display: block; color: #a8303a; font-size: 12.5px; margin-top: 3px; }
     @media (max-width: 575.98px) {
       .modal .section-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }

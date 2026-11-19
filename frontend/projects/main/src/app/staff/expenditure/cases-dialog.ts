@@ -29,8 +29,8 @@ import { ExpenditureApi, ExpenditureCase, ExpenditureFilter, caseText, rupees, s
               <tbody>
                 @for (c of rows(); track $index) {
                   <tr>
-                    <td>{{ c.zedId }}</td><td>{{ c.unitName || '—' }}</td><td>{{ c.state || '—' }}</td>
-                    <td>{{ caseText(c) }}</td><td>{{ date(c.countedOn) }}</td><td class="num">{{ money(c.rate) }}</td>
+                    <td class="nowrap">{{ c.zedId }}</td><td>{{ c.unitName || '—' }}</td><td>{{ c.state || '—' }}</td>
+                    <td>{{ caseText(c) }}</td><td class="nowrap">{{ date(c.countedOn) }}</td><td class="num">{{ money(c.rate) }}</td>
                   </tr>
                 } @empty {
                   <tr><td colspan="6"><div class="no-data">No case counted in this period.</div></td></tr>

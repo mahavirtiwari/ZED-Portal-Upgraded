@@ -124,6 +124,16 @@ describe('staff shared UI', () => {
       expect(document.activeElement).toBe(trigger);
     });
 
+    // 2026-11-19 (the user, Admin login: 'make the buttons in dark color').
+    it('draws the "⋯" button solid dark with white dots inside the Admin frame only', async () => {
+      const { fixture, el, trigger } = await setup();
+      expect(getComputedStyle(trigger).backgroundColor).not.toBe('rgb(61, 90, 94)');
+      el.classList.add('zed-admin');
+      await fixture.whenStable();
+      expect(getComputedStyle(trigger).backgroundColor).toBe('rgb(61, 90, 94)');
+      expect(getComputedStyle(trigger).color).toBe('rgb(255, 255, 255)');
+    });
+
     it('moves with the arrow keys past disabled items, and closes on Esc or a click outside', async () => {
       const { fixture, el, trigger } = await setup();
       trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -239,6 +249,32 @@ describe('staff shared UI', () => {
       expect(el.querySelector('.cd-ok')!.classList).toContain('btn-primary');
       (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
       expect(fixture.componentInstance.done).toEqual(['']);
+    });
+
+    // 2026-11-19 (Admin UI audit: pop-ups taller than the window, the buttons off-screen): one frame for every staff pop-up.
+    it('has the staff pop-up frame: a fixed head, a body that scrolls inside, Cancel left of the main action', async () => {
+      const fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.ask.set({
+        title: 'Disable the Sector Manufacturing of Food Products and Beverages', subtitle: 'Code 10 · used by 12 units',
+        points: Array.from({ length: 30 }, (_, i) => `Effect ${i + 1}`), confirmLabel: 'Disable', danger: true,
+      });
+      await fixture.whenStable();
+      const el: HTMLElement = fixture.nativeElement;
+      const content = el.querySelector('.modal-content.cd')!;
+      // Head, then the form with the body and the buttons: the body is the only part that scrolls.
+      expect([...content.children].map((c) => c.tagName === 'FORM' ? 'form' : c.className)).toEqual(['cd-head', 'form']);
+      expect([...content.querySelector('form')!.children].map((c) => c.className)).toEqual(['cd-body', 'cd-foot']);
+      const body = el.querySelector('.cd-body') as HTMLElement;
+      expect(getComputedStyle(body).overflowY).toBe('auto');
+      expect(getComputedStyle(content).display).toBe('flex');
+      expect(getComputedStyle(content).flexDirection).toBe('column');
+      expect(getComputedStyle(el.querySelector('.cd-head')!).flexShrink).toBe('0');
+      expect(getComputedStyle(el.querySelector('.cd-foot')!).flexShrink).toBe('0');
+      // Cancel first (left), the main action last (right); the 32px close button in the head.
+      expect([...el.querySelectorAll('.cd-foot .btn')].map((b) => text(b))).toEqual(['Cancel', 'Disable']);
+      expect(el.querySelector('.cd-head .cd-x')!.getAttribute('aria-label')).toBe('Close');
+      expect(text(el.querySelector('.cd-titles small'))).toBe('Code 10 · used by 12 units');
+      expect(el.querySelectorAll('.cd-pts li').length).toBe(30);
     });
 
     it('keeps ReasonDialog working on top of it', async () => {

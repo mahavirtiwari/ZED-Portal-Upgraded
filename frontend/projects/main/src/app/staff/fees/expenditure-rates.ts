@@ -38,21 +38,32 @@ const NEW = '';
     .xr-card { padding: 0; overflow: hidden; }
     .xr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #dde7e8; }
     .xr-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #17373b; }
-    .xr-head .xr-from { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: #6f8487; }
+    /* The "Date of effect" picker on its own line in both cards, so the two tables start level. */
+    .xr-head h3 { flex: 1 1 0; min-width: 0; }
+    .xr-head .xr-from { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; color: #6f8487; }
     .xr-head .form-select, .xr-head .form-control { width: auto; height: 36px; }
-    .xr-card table { margin: 0; }
-    .xr-card input.form-control { width: 120px; margin-left: auto; text-align: right; height: 34px; }
+    .xr-card table { margin: 0; table-layout: fixed; min-width: 560px; }
+    .xr-c-level { width: 116px; }
+    .xr-c-flow { width: 136px; }
+    .xr-c-count { width: 96px; }
+    .xr-level, .xr-flow { white-space: nowrap; }
+    .xr-card th { white-space: normal; overflow-wrap: normal; vertical-align: bottom; }
+    .xr-card input.form-control { width: 100%; max-width: 120px; margin-left: auto; text-align: right; height: 34px; }
     .xr-na { color: #9aa9ab; font-size: 12px; }
     .xr-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid #dde7e8; font-size: 12.5px; color: #6f8487; }
     .xr-foot .btn { margin-left: auto; }
     .xr-gst { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 13px; }
     .xr-gst input { width: 90px; }
+    .rh-table td { vertical-align: top; }
+    .rh-c-payee { width: 170px; } .rh-c-date { width: 150px; } .rh-c-gst { width: 64px; } .rh-c-by { width: 120px; } .rh-c-on { width: 110px; }
+    .rh-replaced { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #eef1f1; color: #5f6f70; font-size: 11px; }
+    .rh-line { display: block; white-space: nowrap; }
     @media (max-width: 575.98px) { .xr-two { grid-template-columns: 1fr; } }
   `,
   template: `
     <zed-page-head [crumbs]="crumbs" title="Expenditure rates"
                    subtitle="Amount paid per case to the assessment agency and the consultant organisation, before GST. A case keeps the rate in force on the day it counted.">
-      <button type="button" class="btn btn-default" (click)="openHistory()">Rate history</button>
+      <button type="button" class="btn btn-outline-primary" (click)="openHistory()">Rate history</button>
     </zed-page-head>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
@@ -80,20 +91,22 @@ const NEW = '';
             <div class="table-responsive">
               <table class="table table-zed">
                 @if (kind === 'Agency') {
+                  <colgroup><col class="xr-c-level" /><col class="xr-c-flow" /><col /><col /><col /></colgroup>
                   <thead><tr><th>Level</th><th>Assessment flow (Admin)</th><th class="num">Completed</th><th class="num">Rejected after assessment</th><th class="num">Surveillance visit</th></tr></thead>
                   <tbody>
                     @for (l of d.agencyLevels; track l.level; let i = $index) {
-                      <tr><td>{{ l.name }}</td><td><small>{{ l.flow }}</small></td>
+                      <tr><td class="xr-level">{{ l.name }}</td><td class="xr-flow"><small>{{ l.flow }}</small></td>
                         <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' completed'" [(ngModel)]="e.levels[i].completed" /></td>
                         <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' rejected'" [(ngModel)]="e.levels[i].rejected" /></td>
                         <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' surveillance'" [(ngModel)]="e.levels[i].surveillance" /></td></tr>
                     }
                   </tbody>
                 } @else {
-                  <thead><tr><th>Level</th><th>Milestones</th>@for (m of milestoneColumns(); track m) { <th class="num">Milestone {{ m }}</th> }</tr></thead>
+                  <colgroup><col class="xr-c-level" /><col class="xr-c-count" />@for (m of milestoneColumns(); track m) { <col /> }</colgroup>
+                  <thead><tr><th>Level</th><th class="num">Milestones</th>@for (m of milestoneColumns(); track m) { <th class="num">Milestone {{ m }}</th> }</tr></thead>
                   <tbody>
                     @for (l of d.consultantLevels; track l.level; let i = $index) {
-                      <tr><td>{{ l.name }}</td><td>{{ l.milestones }}</td>
+                      <tr><td class="xr-level">{{ l.name }}</td><td class="num">{{ l.milestones }}</td>
                         @for (m of milestoneColumns(); track m) {
                           <td class="num">@if (m <= l.milestones) {
                               <input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' milestone ' + m" [(ngModel)]="e.levels[i].milestones[m - 1]" />
@@ -127,12 +140,13 @@ const NEW = '';
         <div class="xd-head"><span class="xd-ico" aria-hidden="true">⟲</span><div><h3 id="rh-title">Rate history</h3><small>Every save of every rate set</small></div>
           <button type="button" class="xd-x" aria-label="Close" (click)="history.set(null)">×</button></div>
         <div class="xd-body">
-          <table class="table table-zed">
+          <table class="table table-zed rh-table">
+            <colgroup><col class="rh-c-payee" /><col class="rh-c-date" /><col /><col class="rh-c-gst" /><col class="rh-c-by" /><col class="rh-c-on" /></colgroup>
             <thead><tr><th>Payee</th><th>Date of effect</th><th>Rates</th><th class="num">GST</th><th>Saved by</th><th>Saved on</th></tr></thead>
             <tbody>
               @for (r of h; track $index) {
-                <tr><td>{{ r.kind === 'Agency' ? 'Assessment agency' : 'Consultant organisation' }}</td><td>{{ dmy(r.effectiveFrom) }}@if (!r.current) { <small>replaced</small> }</td>
-                  <td><small>{{ ratesText(r) }}</small></td><td class="num">{{ r.gstPercent }}%</td><td>{{ r.savedBy || '—' }}</td><td>{{ date(r.savedOn) }}</td></tr>
+                <tr><td>{{ r.kind === 'Agency' ? 'Assessment agency' : 'Consultant organisation' }}</td><td class="nowrap">{{ dmy(r.effectiveFrom) }}@if (!r.current) { <small class="rh-replaced">replaced</small> }</td>
+                  <td><small>@for (line of ratesText(r).split(' · '); track $index) { <span class="rh-line">{{ line }}</span> }</small></td><td class="num">{{ r.gstPercent }}%</td><td>{{ r.savedBy || '—' }}</td><td class="nowrap">{{ date(r.savedOn) }}</td></tr>
               } @empty { <tr><td colspan="6"><div class="no-data">No rates saved yet.</div></td></tr> }
             </tbody>
           </table>

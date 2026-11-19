@@ -58,7 +58,7 @@ describe('ApiIntegrationsPage', () => {
 
   it('shows the counts, a tab per section and how each partner signs in', async () => {
     // 1 of 2 partners enabled, 1 of 1 API on, no token yet, 1 service in use.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.replace(/\s+/g, ''))).toEqual(['1/2', '1/1', '—', '1']);
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.replace(/\s+/g, ''))).toEqual(['1/2', '1/1', 'Noneyet', '1']);
     const section = (id: string) => el.querySelector(`section[aria-labelledby="${id}"]`) as HTMLElement;
     expect([section('ai-clients').hidden, section('ai-groups').hidden, section('ai-outbound').hidden]).toEqual([false, true, true]);
     ([...el.querySelectorAll('.ai-tab')].find((t) => t.textContent!.includes('Partner APIs')) as HTMLButtonElement).click();

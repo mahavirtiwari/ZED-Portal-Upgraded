@@ -19,7 +19,7 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
   imports: [FormsModule, NgTemplateOutlet, PageHead, ProfileShell],
   template: `
     <!-- Redesigned 2026-11-07: one card with the title and the signed-in ID, the rules of the new password ticked as typed
-         with a strength bar, and CHANGE PASSWORD. -->
+         with a strength bar, and Change Password. -->
     <!-- 2026-11-17 (the user's approved design "Enterprise profile"): for the applicant, "Account & security" of the profile,
          with the profile's section menu on the left; the staff keep the centred card. -->
     @if (applicant) {
@@ -84,7 +84,7 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
                 @if (confirmPassword && newPassword && confirmPassword !== newPassword) { <span class="field-validation-error d-block">The passwords do not match yet.</span> }
               </div>
               <div class="d-grid">
-                <button type="submit" class="btn btn-primary submit-btn" [disabled]="busy()">CHANGE PASSWORD</button>
+                <button type="submit" class="btn btn-primary submit-btn" [disabled]="busy()">Change Password</button>
               </div>
             </form>
           </div>
@@ -99,7 +99,7 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
     .cp-title { font-size: 1.3rem; font-weight: 700; margin: 0; }
     .cp-sub { color: #7a7d80; font-size: 0.9rem; }
     label { font-weight: 600; }
-    .submit-btn { height: 48px; font-weight: 700; letter-spacing: 0.5px; }
+    .submit-btn { min-height: 40px; font-weight: 700; }
     .cp-strength { height: 5px; border-radius: 3px; background: #e3e6e8; overflow: hidden; margin: 4px 0 8px; }
     .cp-strength span { display: block; height: 100%; background: #f0ad4e; transition: width 0.2s; }
     .cp-strength span.ok { background: #45a5ad; }

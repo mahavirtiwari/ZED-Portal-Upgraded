@@ -207,7 +207,7 @@ input.btn-default {
 .btn.btn-outline-primary { color: var(--zt-dark, #24666b); border: 1.5px solid var(--zt-dark, #24666b); background: #fff; }
 .btn.btn-outline-primary:not(.btn-link) { padding: 6.5px 17.5px; }
 .btn-sm.btn-outline-primary:not(.btn-link) { padding: 4.5px 11.5px; }
-.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); background: #e6f2f3; }
+.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); background: color-mix(in srgb, var(--zt-dark, #24666b) 11%, #fff); }
 .btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { color: #fff; border-color: var(--zt-dark, #24666b); background: var(--zt-dark, #24666b); }
 .btn.btn-danger { background-color: #c8473c; border-color: #c8473c; color: #fff; }
 .btn.btn-danger:hover { background-color: #b03d33; border-color: #b03d33; }
@@ -400,7 +400,7 @@ $card-shadow: 0 3px 10px rgba(0, 0, 0, 0.09);
   :is(.row-actions .btn, td.text-center > .btn).btn-outline-primary {
     padding: 3.5px 11.5px; background: #fff !important; border: 1.5px solid var(--zt-dark, #24666b) !important; color: var(--zt-dark, #24666b) !important;
   }
-  :is(.row-actions .btn, td.text-center > .btn).btn-outline-primary:is(:hover, :focus-visible) { background: #e6f2f3 !important; }
+  :is(.row-actions .btn, td.text-center > .btn).btn-outline-primary:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--zt-dark, #24666b) 11%, #fff) !important; }
   :is(.row-actions .btn, td.text-center > .btn):is(.btn-default, .btn-outline-secondary, .btn-light, .btn-secondary) {
     background: #e7eeee !important; border: 1px solid #e7eeee !important; color: #17373b !important;
   }

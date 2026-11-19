@@ -13,6 +13,7 @@ const ICONS: [RegExp, string][] = [
   [/image|upload image/i, 'M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01'],
   [/upload/i, 'M12 16V4M7 9l5-5 5 5M5 20h14'],
   [/sector|master/i, 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
+  [/expenditure|invoice/i, 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3'],
   [/payment|fee|neft|transaction/i, 'M3 6h18v12H3zM3 10h18M7 15h4'],
   [/user|admin|login|assessor|consultant|agenc|organisation/i, 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0'],
   [/setting/i, 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19 12l2-1-2-4-2 1-2-1-1-2h-4l-1 2-2 1-2-1-2 4 2 1v0l-2 1 2 4 2-1 2 1 1 2h4l1-2 2-1 2 1 2-4z'],
@@ -130,7 +131,8 @@ export function iconFor(label: string): string {
       background: #fff; border: 1px solid #dfe9ea; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
       color: #232527; font-weight: 600; text-decoration: none; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
     }
-    .tile .label { flex: 1 1 auto; }
+    /* Not the old site's .label (capitals, padding): every tile in title case. */
+    .tile .label { flex: 1 1 auto; min-width: 0; padding: 0; text-transform: none; overflow-wrap: break-word; }
     .tile .arrow { color: #45a5ad; font-size: 22px; line-height: 1; }
     .tile:hover, .tile:focus { border-color: #45a5ad; box-shadow: 0 6px 16px rgba(69, 165, 173, 0.18); transform: translateY(-1px); color: #232527; }
     .group-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; padding: 16px 18px 10px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }

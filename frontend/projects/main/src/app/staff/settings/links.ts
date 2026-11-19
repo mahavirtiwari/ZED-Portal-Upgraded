@@ -47,8 +47,8 @@ function addressProblem(value: string): string {
         </span>
         <div class="link-title">
           <h5 [id]="l.key + '-name'">{{ l.name }}</h5>
+          <!-- 2026-11-19 (admin audit: status shown twice): the switch is the one Enabled / Disabled indicator. -->
           <div class="link-badges">
-            <span class="status-badge" [class.is-active]="l.enabled" [class.is-inactive]="!l.enabled">{{ l.enabled ? 'Enabled' : 'Disabled' }}</span>
             <span class="addr-chip" [class.own]="!!l.url">{{ l.url ? 'Own address' : 'Default address' }}</span>
           </div>
         </div>
@@ -66,7 +66,7 @@ function addressProblem(value: string): string {
           <input [id]="l.key + '-url'" name="url" type="url" class="form-control" maxlength="500" autocomplete="off"
                  [class.is-invalid]="!!problem()" [placeholder]="l.defaultUrl" [ngModel]="url()"
                  (ngModelChange)="url.set($event); problem.set(''); message.set(null)" />
-          <a class="btn btn-outline-secondary" [href]="url().trim() || l.defaultUrl" target="_blank" rel="noopener" title="Open the address in a new tab to test it">
+          <a class="btn btn-outline-primary link-open" [href]="url().trim() || l.defaultUrl" target="_blank" rel="noopener" title="Open the address in a new tab to test it">
             Open
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
@@ -88,13 +88,16 @@ function addressProblem(value: string): string {
         }
       </div>
 
-      <div class="form-actions">
-        @if (dirty()) {
+      <!-- 2026-11-19 (admin audit: eight greyed Save buttons): Cancel / Save appear once the card has a change. -->
+      @if (dirty()) {
+        <div class="form-actions">
           <span class="unsaved me-auto">Not saved yet.</span>
           <button type="button" class="btn btn-default" [disabled]="busy()" (click)="undo()">Cancel</button>
-        }
-        <button type="submit" class="btn btn-primary" [disabled]="busy() || !dirty()">Save</button>
-      </div>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+        </div>
+      } @else {
+        <div class="form-actions-spacer"></div>
+      }
     </form>
   `,
   styles: `
@@ -107,7 +110,7 @@ function addressProblem(value: string): string {
     .link-icon { flex: 0 0 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
       background: #eef6f6; color: #2e858c; transition: background .15s, color .15s; }
     .link-title { flex: 1 1 auto; min-width: 0; }
-    .link-title h5 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
+    .link-title h5 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #23474a; overflow-wrap: break-word; }
     .link-badges { display: flex; flex-wrap: wrap; gap: 6px; }
     .addr-chip { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; background: #eef6f6; color: var(--zt-mid2, #2f7c83); white-space: nowrap; }
     .addr-chip.own { background: #f1f0fb; color: #3f3a7a; }
@@ -115,18 +118,20 @@ function addressProblem(value: string): string {
     .link-switch .form-check-input { float: none; margin: 0; width: 2.6em; height: 1.4em; cursor: pointer; }
     .link-switch .form-check-input:checked { background-color: #45a5ad; border-color: #45a5ad; }
     .link-switch .form-check-label { min-width: 62px; font-weight: 600; color: #3b4b4c; cursor: pointer; }
-    .link-where { margin: 0 20px; padding: 0 0 12px 56px; font-size: 13px; color: #5f6f70; border-bottom: 1px solid #e6eeef; overflow-wrap: anywhere; }
+    .link-where { margin: 0 20px; padding: 0 0 12px 56px; font-size: 13px; color: #5f6f70; border-bottom: 1px solid #e6eeef; overflow-wrap: break-word; }
     .where-label { display: inline-block; margin-right: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--zt-mid2, #2f7c83); }
     .link-body { flex: 1 1 auto; padding: 14px 20px 4px; }
     .link-body > label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #3b4b4c; }
     .input-group { flex-wrap: nowrap; }
     .input-group .form-control { max-width: none; min-width: 0; }
-    .input-group .btn { display: inline-flex; align-items: center; gap: 6px; }
-    .link-hint { display: block; margin-top: 6px; font-size: 13px; color: #6c7a7b; overflow-wrap: anywhere; }
+    .input-group .btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .input-group .link-open { height: auto; border-radius: 0 var(--bs-border-radius, 6px) var(--bs-border-radius, 6px) 0; }
+    .link-hint { display: block; margin-top: 6px; font-size: 13px; color: #6c7a7b; overflow-wrap: break-word; }
     .link-off-note { margin-top: 12px; padding: 8px 12px; border-radius: 8px; background: #f4f6f7; color: #5f6f70; font-size: 13px; }
     .link-card.is-off .link-icon { background: #eef1f2; color: #8a9798; }
     .link-card.is-off .input-group { opacity: .65; }
     .form-actions { align-items: center; margin-top: 12px; padding: 0 20px 16px; }
+    .form-actions-spacer { height: 16px; }
     .unsaved { font-weight: 600; color: #8a6100; }
     @media (max-width: 575.98px) {
       .link-head { flex-wrap: wrap; padding: 14px 16px 8px; }
