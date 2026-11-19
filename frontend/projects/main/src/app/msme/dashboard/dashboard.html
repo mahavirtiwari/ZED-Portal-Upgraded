@@ -1,9 +1,10 @@
+<!-- 2026-11-19 (the user: "All page wording"): every wording through the t pipe (Admin → Texts → Page wording, msme.dashboard.*). -->
 <div class="container form-page" id="zed_user_form">
   <div class="Dashboard-msme">
     @if (error()) {
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
-        <button type="button" class="btn btn-link" (click)="load()">Try again</button>
+        <button type="button" class="btn btn-link" (click)="load()">{{ 'Try again' | t: 'msme.dashboard.error.retryButton' }}</button>
       </div>
     }
 
@@ -11,28 +12,27 @@
       @switch (step()) {
         @case ('home') {
           <!-- 2026-11-17 (the user's Home design): breadcrumb, "Welcome, <unit>", when it was refreshed, and Refresh. -->
-          <zed-page-head [crumbs]="[{ label: 'Home' }, { label: 'Dashboard' }]" [title]="'Welcome' + (msme()['EnterpriseName'] ? ', ' + msme()['EnterpriseName'] : '')"
-                         [subtitle]="refreshedText()">
-            @if (ubpReturnUrl) { <a class="btn btn-primary btn-sm" [href]="ubpReturnUrl">Back to UBP</a> }
-            <button type="button" class="btn btn-ph refresh-btn" (click)="load()" [title]="refreshedText()"><zed-dash-icon name="refresh" [size]="15" /><span>Refresh</span></button>
+          <zed-page-head [crumbs]="crumbs()" [title]="welcome()" [subtitle]="refreshedText()">
+            @if (ubpReturnUrl) { <a class="btn btn-primary btn-sm" [href]="ubpReturnUrl">{{ 'Back to UBP' | t: 'msme.dashboard.ubpButton' }}</a> }
+            <button type="button" class="btn btn-ph refresh-btn" (click)="load()" [title]="refreshedText()"><zed-dash-icon name="refresh" [size]="15" /><span>{{ 'Refresh' | t: 'msme.dashboard.refreshButton' }}</span></button>
           </zed-page-head>
 
           <!-- The unit: enterprise type, name, Udyam / ZED ID / plant, the pledge; on the right its current level. -->
-          <section class="unit-card" aria-label="Your unit">
+          <section class="unit-card" [attr.aria-label]="'Your unit' | t: 'msme.dashboard.unit.aria'">
             <div class="uc-main">
               <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true"><b>{{ entType().charAt(0) || '?' }}</b><small>{{ entType().toUpperCase() }}</small></span>
               <div class="uc-name">
                 <h3>{{ msme()['EnterpriseName'] }}</h3>
                 <div class="uc-ids">
-                  @if (basic()['UdyogAadharNo']) { <span class="id-tag"><i>UDYAM</i>{{ basic()['UdyogAadharNo'] }}</span> }
-                  <span class="id-tag"><i>ZED ID</i>{{ msme()['ZedId'] }}</span>
-                  @if (msme()['PUnitName']) { <span class="id-tag"><i>PLANT</i>{{ msme()['PUnitName'] }}{{ msme()['PDistrictName'] ? ', ' + msme()['PDistrictName'] : '' }}</span> }
+                  @if (basic()['UdyogAadharNo']) { <span class="id-tag"><i>{{ 'UDYAM' | t: 'msme.dashboard.unit.udyamLabel' }}</i>{{ basic()['UdyogAadharNo'] }}</span> }
+                  <span class="id-tag"><i>{{ 'ZED ID' | t: 'msme.dashboard.unit.zedIdLabel' }}</i>{{ msme()['ZedId'] }}</span>
+                  @if (msme()['PUnitName']) { <span class="id-tag"><i>{{ 'PLANT' | t: 'msme.dashboard.unit.plantLabel' }}</i>{{ msme()['PUnitName'] }}{{ msme()['PDistrictName'] ? ', ' + msme()['PDistrictName'] : '' }}</span> }
                 </div>
                 @if (msme()['PledgeOn']) {
                   <p class="pledge">
                     <span class="pl-ok"><zed-dash-icon name="check" [size]="11" [stroke]="3.5" /></span>
-                    <span>ZED Pledge taken on {{ msme()['PledgeOn'] }}</span>
-                    <a routerLink="/msme/pledge-certificate"><zed-dash-icon name="download" [size]="14" /> Download pledge</a>
+                    <span>{{ 'ZED Pledge taken on {date}' | t: 'msme.dashboard.unit.pledge' : { date: msme()['PledgeOn'] } }}</span>
+                    <a routerLink="/msme/pledge-certificate"><zed-dash-icon name="download" [size]="14" /> {{ 'Download pledge' | t: 'msme.dashboard.unit.pledgeButton' }}</a>
                   </p>
                 }
               </div>
@@ -40,7 +40,7 @@
             @if (unitFacts(); as f) {
               <dl class="uc-facts">
                 <div>
-                  <dt>Current level</dt>
+                  <dt>{{ 'Current level' | t: 'msme.dashboard.unit.currentLevelLabel' }}</dt>
                   <dd><span class="uc-level"><img [src]="f.logo" alt="" />{{ f.name }}</span><small>{{ f.certified }}</small></dd>
                 </div>
                 <!-- 2026-11-18 (the user's applicant designs): VALID TILL "13 Nov 2031" / "5-year validity" once the certification date is known. -->
@@ -57,7 +57,7 @@
 
           <!-- Your next steps: up to three, from the unit's state. -->
           @if (nextSteps().length) {
-            <h2 class="dash-label">Your next steps</h2>
+            <h2 class="dash-label">{{ 'Your next steps' | t: 'msme.dashboard.nextSteps.title' }}</h2>
             <div class="ns-grid">
               @for (s of nextSteps(); track s.key) {
                 <article class="ns-card" [class.next-step]="s.progress" [class.is-nc]="s.tone === 'nc'" [class.is-hi]="s.tone === 'hi'">
@@ -82,11 +82,11 @@
           <section class="band band-cert" id="certifications" aria-labelledby="myCertTitle">
             <div class="band-head">
               <div>
-                <h2 id="myCertTitle">My Certifications</h2>
-                <p>Apply for {{ levelsText() }} certification.</p>
+                <h2 id="myCertTitle">{{ 'My Certifications' | t: 'msme.dashboard.certifications.title' }}</h2>
+                <p>{{ 'Apply for {levels} certification.' | t: 'msme.dashboard.certifications.sub' : { levels: levelsText() } }}</p>
               </div>
-              <button type="button" class="band-link" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
-                <zed-dash-icon name="info" [size]="15" /><span>About certifications</span>
+              <button type="button" class="band-link" [attr.aria-label]="'About certifications' | t: 'msme.dashboard.certifications.infoButton'" (click)="open({ kind: 'info', topic: 'My' })">
+                <zed-dash-icon name="info" [size]="15" /><span>{{ 'About certifications' | t: 'msme.dashboard.certifications.infoButton' }}</span>
               </button>
             </div>
             <div class="band-body">
@@ -102,11 +102,11 @@
           <section class="band band-inc" id="incentives" aria-labelledby="myIncTitle">
             <div class="band-head">
               <div>
-                <h2 id="myIncTitle">My Incentives</h2>
-                <p>Benefits unlocked by your certification level. Apply to avail them.</p>
+                <h2 id="myIncTitle">{{ 'My Incentives' | t: 'msme.dashboard.incentives.title' }}</h2>
+                <p>{{ 'Benefits unlocked by your certification level. Apply to avail them.' | t: 'msme.dashboard.incentives.sub' }}</p>
               </div>
-              <button type="button" class="band-link" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
-                <zed-dash-icon name="info" [size]="15" /><span>How incentives work</span>
+              <button type="button" class="band-link" [attr.aria-label]="'About incentives' | t: 'msme.dashboard.incentives.infoAria'" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
+                <zed-dash-icon name="info" [size]="15" /><span>{{ 'How incentives work' | t: 'msme.dashboard.incentives.infoButton' }}</span>
               </button>
             </div>
             <div class="band-body">
@@ -140,39 +140,39 @@
         <div class="modal-header dp-head">
           <h3 class="dp-title" id="dashPopTitle">
             @switch (m.kind) {
-              @case ('apply-info') { {{ levelName(m.level) }} Certification }
+              @case ('apply-info') { {{ '{level} Certification' | t: 'msme.dashboard.popup.levelTitle' : { level: levelName(m.level) } }} }
               @case ('info') { {{ infoTitle(m.topic) }} }
-              @case ('joining') { Joining Reward }
-              @case ('fa') { Financial Assistance }
-              @case ('tu') { Technology Upgradation }
+              @case ('joining') { {{ 'Joining Reward' | t: 'msme.dashboard.popup.joiningTitle' }} }
+              @case ('fa') { {{ 'Financial Assistance' | t: 'msme.dashboard.popup.faTitle' }} }
+              @case ('tu') { {{ 'Technology Upgradation' | t: 'msme.dashboard.popup.tuTitle' }} }
               @case ('incentive') { {{ m.card.title }} }
             }
-            @if (availed(m.kind)) { <span class="dp-chip">Availed</span> }
+            @if (availed(m.kind)) { <span class="dp-chip">{{ 'Availed' | t: 'msme.dashboard.popup.availedChip' }}</span> }
           </h3>
-          <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="modal.set(null)"></button>
+          <button type="button" class="btn-close btn-close-white" [attr.aria-label]="'Close' | t: 'msme.dashboard.popup.closeAria'" (click)="modal.set(null)"></button>
         </div>
         <div class="modal-body dp-body">
           @switch (m.kind) {
             @case ('incentive') {
               @let c = m.card;
-              @if (c.highlight) { <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Benefit</small><b>{{ c.highlight }}</b></div></div> }
+              @if (c.highlight) { <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>{{ 'Benefit' | t: 'msme.dashboard.popup.benefitLabel' }}</small><b>{{ c.highlight }}</b></div></div> }
               <p class="incentive-details">{{ c.details }}</p>
               <dl class="dp-rows">
-                @if (c.department) { <div><dt>Department</dt><dd>{{ c.department }}</dd></div> }
-                <div><dt>Applicable for</dt><dd>{{ levelsOf(c) }} certified MSMEs</dd></div>
-                @if (c.contactPerson) { <div><dt>Contact person</dt><dd>{{ c.contactPerson }}</dd></div> }
-                @if (c.email) { <div><dt>E-mail</dt><dd><a [href]="'mailto:' + c.email">{{ c.email }}</a></dd></div> }
-                @if (c.mobileNo) { <div><dt>Phone</dt><dd>{{ c.mobileNo }}</dd></div> }
+                @if (c.department) { <div><dt>{{ 'Department' | t: 'msme.dashboard.popup.departmentLabel' }}</dt><dd>{{ c.department }}</dd></div> }
+                <div><dt>{{ 'Applicable for' | t: 'msme.dashboard.popup.applicableLabel' }}</dt><dd>{{ '{levels} certified MSMEs' | t: 'msme.dashboard.popup.applicableValue' : { levels: levelsOf(c) } }}</dd></div>
+                @if (c.contactPerson) { <div><dt>{{ 'Contact person' | t: 'msme.dashboard.popup.contactLabel' }}</dt><dd>{{ c.contactPerson }}</dd></div> }
+                @if (c.email) { <div><dt>{{ 'E-mail' | t: 'msme.dashboard.popup.emailLabel' }}</dt><dd><a [href]="'mailto:' + c.email">{{ c.email }}</a></dd></div> }
+                @if (c.mobileNo) { <div><dt>{{ 'Phone' | t: 'msme.dashboard.popup.phoneLabel' }}</dt><dd>{{ c.mobileNo }}</dd></div> }
               </dl>
-              @if (!eligibleFor(c)) { <p class="dp-note">Available once your unit is certified at {{ levelsOf(c, ' or ') }} level.</p> }
+              @if (!eligibleFor(c)) { <p class="dp-note">{{ 'Available once your unit is certified at {levels} level.' | t: 'msme.dashboard.popup.notEligible' : { levels: levelsOf(c, true) } }}</p> }
               <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
-                @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">Apply on the scheme portal</a> }
-                @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">Watch video</a> }
+                @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">{{ 'Apply on the scheme portal' | t: 'msme.dashboard.popup.schemeButton' }}</a> }
+                @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">{{ 'Watch video' | t: 'msme.dashboard.popup.videoButton' }}</a> }
               </div>
             }
             @case ('apply-info') {
               <div class="text-center"><img [src]="levelLogo(m.level)" alt="" class="apply-logo" /></div>
-              <p class="dp-note text-center mt-3">Click Apply to start the application.</p>
+              <p class="dp-note text-center mt-3">{{ 'Click Apply to start the application.' | t: 'msme.dashboard.popup.applyNote' }}</p>
             }
             @case ('info') {
               <div class="dp-text">
@@ -189,10 +189,10 @@
             }
             @case ('joining') {
               @if (is(msme(), 'IsCouponUsed', 1)) {
-                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">🎁</span><div><small>Reward amount</small><b>{{ rupees(msme()['JoiningRewardAmount']) }}</b></div></div>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">🎁</span><div><small>{{ 'Reward amount' | t: 'msme.dashboard.popup.rewardAmountLabel' }}</small><b>{{ rupees(msme()['JoiningRewardAmount']) }}</b></div></div>
                 <div class="dp-tiles">
-                  <div><small>Date of avail</small><b>{{ msme()['DateOfAvail'] }}</b></div>
-                  <div><small>Certification level</small><span class="dp-level dp-level-{{ (msme()['LatestCertification'] || '').toString().toLowerCase() }}">{{ msme()['LatestCertification'] }}</span></div>
+                  <div><small>{{ 'Date of avail' | t: 'msme.dashboard.popup.availDateLabel' }}</small><b>{{ msme()['DateOfAvail'] }}</b></div>
+                  <div><small>{{ 'Certification level' | t: 'msme.dashboard.popup.certificationLevelLabel' }}</small><span class="dp-level dp-level-{{ (msme()['LatestCertification'] || '').toString().toLowerCase() }}">{{ msme()['LatestCertification'] }}</span></div>
                 </div>
               } @else {
                 <div class="dp-text"><zed-text key="msme.dashboard.joiningReward.availInfo" /></div>
@@ -200,39 +200,39 @@
             }
             @case ('fa') {
               @if (is(cert(), 'FinancialAssistanceStatus', 0)) {
-                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Amount</small><b>{{ rupees(cert()['FaAmount']) }}</b></div></div>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>{{ 'Amount' | t: 'msme.dashboard.popup.amountLabel' }}</small><b>{{ rupees(cert()['FaAmount']) }}</b></div></div>
                 <dl class="dp-rows">
-                  <div><dt>Level of certification</dt><dd>{{ cert()['LevelOfCertificationForFa'] }}</dd></div>
-                  <div><dt>Date of avail</dt><dd>{{ cert()['DateOfFaAvail'] }}</dd></div>
-                  <div><dt>Reference no.</dt><dd>{{ cert()['FaReferenceNo'] }}</dd></div>
-                  <div><dt>Certification category</dt><dd>{{ cert()['FaCertificationCategory'] }}</dd></div>
+                  <div><dt>{{ 'Level of certification' | t: 'msme.dashboard.popup.levelLabel' }}</dt><dd>{{ cert()['LevelOfCertificationForFa'] }}</dd></div>
+                  <div><dt>{{ 'Date of avail' | t: 'msme.dashboard.popup.availDateLabel' }}</dt><dd>{{ cert()['DateOfFaAvail'] }}</dd></div>
+                  <div><dt>{{ 'Reference no.' | t: 'msme.dashboard.popup.referenceLabel' }}</dt><dd>{{ cert()['FaReferenceNo'] }}</dd></div>
+                  <div><dt>{{ 'Certification category' | t: 'msme.dashboard.popup.categoryLabel' }}</dt><dd>{{ cert()['FaCertificationCategory'] }}</dd></div>
                 </dl>
               } @else {
-                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>75% subsidy</small><b>Up to ₹ 50,000</b></div></div>
-                <p class="dp-note">For system certification, product certification or product testing.</p>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>{{ '75% subsidy' | t: 'msme.dashboard.popup.faSubsidyLabel' }}</small><b>{{ 'Up to ₹ 50,000' | t: 'msme.dashboard.popup.faAmount' }}</b></div></div>
+                <p class="dp-note">{{ 'For system certification, product certification or product testing.' | t: 'msme.dashboard.popup.faNote' }}</p>
               }
             }
             @case ('tu') {
               @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
-                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Amount</small><b>{{ rupees(cert()['TuAmount']) }}</b></div></div>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>{{ 'Amount' | t: 'msme.dashboard.popup.amountLabel' }}</small><b>{{ rupees(cert()['TuAmount']) }}</b></div></div>
                 <dl class="dp-rows">
-                  <div><dt>Level of certification</dt><dd>{{ cert()['LevelOfCertificationForTu'] }}</dd></div>
-                  <div><dt>Date of availing</dt><dd>{{ cert()['DateOfTuAvail'] }}</dd></div>
-                  <div><dt>Reference no.</dt><dd>{{ cert()['TuReferenceNo'] }}</dd></div>
+                  <div><dt>{{ 'Level of certification' | t: 'msme.dashboard.popup.levelLabel' }}</dt><dd>{{ cert()['LevelOfCertificationForTu'] }}</dd></div>
+                  <div><dt>{{ 'Date of availing' | t: 'msme.dashboard.popup.availingDateLabel' }}</dt><dd>{{ cert()['DateOfTuAvail'] }}</dd></div>
+                  <div><dt>{{ 'Reference no.' | t: 'msme.dashboard.popup.referenceLabel' }}</dt><dd>{{ cert()['TuReferenceNo'] }}</dd></div>
                 </dl>
                 @if (technologies().length) {
-                  <p class="dp-sub">Recommended technologies</p>
+                  <p class="dp-sub">{{ 'Recommended technologies' | t: 'msme.dashboard.popup.technologiesLabel' }}</p>
                   <ul class="dp-list">@for (t of technologies(); track $index) { <li>{{ t }}</li> }</ul>
                 }
               } @else {
-                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Support</small><b>Up to ₹ 3,00,000</b></div></div>
-                <p class="dp-note">For moving towards Zero Effect Solutions.</p>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>{{ 'Support' | t: 'msme.dashboard.popup.tuSupportLabel' }}</small><b>{{ 'Up to ₹ 3,00,000' | t: 'msme.dashboard.popup.tuAmount' }}</b></div></div>
+                <p class="dp-note">{{ 'For moving towards Zero Effect Solutions.' | t: 'msme.dashboard.popup.tuNote' }}</p>
               }
             }
           }
         </div>
         <div class="modal-footer dp-foot">
-          <button type="button" class="btn btn-default" (click)="modal.set(null)">Close</button>
+          <button type="button" class="btn btn-default" (click)="modal.set(null)">{{ 'Close' | t: 'msme.dashboard.popup.closeButton' }}</button>
         </div>
       </div>
     </div>
@@ -244,7 +244,7 @@
   <div class="loadingdiv" role="status" aria-live="polite">
     <div class="text-center text-white">
       <div class="spinner-border text-light"></div>
-      <div><small>Please wait ...</small></div>
+      <div><small>{{ 'Please wait ...' | t: 'msme.dashboard.loading' }}</small></div>
     </div>
   </div>
 }

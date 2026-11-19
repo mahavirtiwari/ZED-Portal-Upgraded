@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Page wording the Admin can change: written by frontend/tools/extract-texts.mjs (npm run texts), never by hand. -->
+    <EmbeddedResource Include="Content\PageTexts.json" LogicalName="Zed.Core.Content.PageTexts.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

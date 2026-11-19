@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EsgChecklistPage, EsgChecklistResponse } from './esg-checklist';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
 
 describe('EsgChecklistPage', () => {
   let fixture: ComponentFixture<EsgChecklistPage>;
@@ -108,16 +109,19 @@ describe('EsgChecklistPage', () => {
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('ESG checklist saved.');
     expect(el.textContent).toContain('Changed by ADMIN1');
+    // Saved at 10:00 UTC: 15:30 in India (2026-11-19 admin audit: it showed the UTC time).
+    expect(el.textContent).toContain('Changed by ADMIN1, 27-10-2026 15:30');
     expect(button('Save').disabled).toBe(true);
   });
 
   it('moves and removes questions, and shows why the server refused', async () => {
     await open();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     (el.querySelector('[aria-label="Move question 2 up"]') as HTMLButtonElement).click();
     await settle();
     (el.querySelector('[aria-label="Remove question 2"]') as HTMLButtonElement).click();
     await settle();
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Remove Question 2?', danger: true }));
     expect([...sections()[0].querySelectorAll('textarea')].map((t) => t.value)).toEqual(['Is COE and COO applicable to you?']);
     // The last question of a section cannot be removed.
     expect((el.querySelector('[aria-label="Remove question 1"]') as HTMLButtonElement).disabled).toBe(true);
@@ -158,11 +162,13 @@ describe('EsgChecklistPage', () => {
 
   it('goes back to the standard checklist after a confirmation', async () => {
     await open(checklist(true));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const native = vi.spyOn(window, 'confirm');
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     button('Reset to standard').click();
     await settle();
     http.expectNone((r) => r.method === 'DELETE');
-    confirm.mockReturnValue(true);
+    expect(native).not.toHaveBeenCalled();
+    confirm.mockResolvedValue(true);
     button('Reset to standard').click();
     await settle();
     http.expectOne((r) => r.method === 'DELETE').flush({ message: 'The standard ESG checklist is used again.' });

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, Injectable, computed, inject, input, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { setPageTexts } from './page-text';
 
 export interface ContentText {
   key: string;
@@ -49,6 +50,11 @@ export class ContentService {
     return this.texts()?.get(key) ?? null;
   }
 
+  /** Starts loading the texts (app start: the page wording of t() / the t pipe needs them on every page). */
+  preload(): void {
+    void this.load();
+  }
+
   /** Loads the texts again after a failure. */
   retry(): void {
     if (!this.loadFailed()) return;
@@ -59,7 +65,11 @@ export class ContentService {
 
   private load(): Promise<void> {
     this.loading ??= firstValueFrom(this.http.get<ContentText[]>('/api/content'))
-      .then((list) => this.texts.set(new Map(list.map((t) => [t.key, t]))))
+      .then((list) => {
+        this.texts.set(new Map(list.map((t) => [t.key, t])));
+        // 2026-11-19: the Admin's page wording (Texts → Page wording) comes in the same answer.
+        setPageTexts(list);
+      })
       .catch(() => this.loadFailed.set(true));
     return this.loading;
   }

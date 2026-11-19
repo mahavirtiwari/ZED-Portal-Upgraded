@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmService } from '../confirm-dialog';
 import { AppFieldItem, AppFormDetails, AppFormItem, AppFormsPage } from './app-forms';
 
 describe('AppFormsPage', () => {
@@ -17,7 +18,7 @@ describe('AppFormsPage', () => {
   });
   const forms: AppFormItem[] = [
     { key: 'msme.basicInfo', name: 'Basic Information', app: 'MSME app / Bronze surveillance app', fields: 4, customFields: 1, disabled: 1, updatedOn: null },
-    { key: 'assessor.basicInfo', name: 'Basic Information', app: 'Site assessment app', fields: 3, customFields: 0, disabled: 0, updatedOn: null },
+    { key: 'assessor.basicInfo', name: 'Basic Information', app: 'Site assessment app', fields: 3, customFields: 0, disabled: 0, updatedOn: '2026-11-18T23:22:10' },
   ];
   const details = (): AppFormDetails => ({
     levels: [{ code: 'Bronze', name: 'Bronze' }, { code: 'ZEDX', name: 'ZED-X' }],
@@ -27,7 +28,8 @@ describe('AppFormsPage', () => {
     sections: [{ key: 'basic', label: 'Basic Information' }],
     customTypes: ['text', 'number', 'decimal', 'date', 'yesno', 'dropdown', 'multiselect', 'checkboxes'],
     fields: [
-      field('auditsConducted', 'Audited by a third party?', { type: 'yesno', standardLabel: 'Whether 3rd Party Financial Audits are conducted?', customised: true }),
+      field('auditsConducted', 'Audited by a third party?', { type: 'yesno', standardLabel: 'Whether 3rd Party Financial Audits are conducted?', customised: true,
+        updatedBy: 'ADMIN1', updatedOn: '2026-11-18T23:22:10' }),
       field('productDetailsList', 'Products', {
         type: 'rows', order: 20,
         columns: [field('productDetailsList/productName', 'Name of Product manufactured'), field('productDetailsList/productPhoto', 'Product Photo', { type: 'photo', enabled: false })],
@@ -75,6 +77,12 @@ describe('AppFormsPage', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('shows the change times (saved in UTC) in Indian time', () => {
+    // 2026-11-19 (admin audit): "Changed 18-11-2026 23:22" for a change at 04:52 IST on the 19th.
+    expect(el.querySelector('.form-tile[data-key="assessor.basicInfo"] .tile-updated')!.textContent!.trim()).toBe('Changed 19-11-2026');
+    expect(row('auditsConducted').querySelector('.changed-on')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Changed 19-11-2026 04:52 by ADMIN1');
+  });
 
   it('lists the fields of the first form with their columns, type, required and status', () => {
     // One tile per form, with its counts; the first chosen.
@@ -293,9 +301,10 @@ describe('AppFormsPage', () => {
     enabled.flush({ message: '"Name of Product manufactured" is no longer shown in the apps.' });
     await reloaded('is no longer shown in the apps.');
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button('Reset', row('auditsConducted')).click();
     await settle();
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reset to the Standard Field?' }));
     const reset = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/reset`);
     expect(reset.request.body).toEqual({ key: 'auditsConducted' });
     reset.flush({ message: 'The standard field is shown again.' });

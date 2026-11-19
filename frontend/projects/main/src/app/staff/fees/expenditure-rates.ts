@@ -4,11 +4,12 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PageHead } from '../../msme/shared/page-head';
 import {
-  ExpenditureApi, PayeeKind, RateHistoryEntry, RateSet, RatesResponse, SetLevel, dmy, rupees, shownDate,
+  ExpenditureApi, PayeeKind, RateHistoryEntry, RateSet, RatesResponse, SetLevel, dmy, rupees,
 } from '../expenditure/expenditure.api';
 import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
+import { indianTime } from '../utc-time';
 
 /** A card's editor: the set chosen (or a new one) and its rates as typed. */
 interface Editor {
@@ -158,7 +159,8 @@ export class ExpenditureRatesPage {
   private readonly editors = signal<Record<PayeeKind, Editor> | null>(null);
   protected gst: number | null = 18;
   protected readonly dmy = dmy;
-  protected readonly date = shownDate;
+  /** When a set was saved (stored in UTC): its day in India (2026-11-19 admin audit: the UTC day was shown). */
+  protected readonly date = (v: string | null | undefined): string => indianTime(v, 'dd MMM yyyy') || '—';
 
   /** The most milestones any level has (the columns; a level with fewer shows "not used"). */
   protected readonly milestoneColumns = computed(() => {
@@ -268,7 +270,7 @@ export class ExpenditureRatesPage {
 
   protected async exportHistory(h: RateHistoryEntry[]): Promise<void> {
     const rows = h.flatMap((r) => r.levels.map((l) => [r.kind === 'Agency' ? 'Assessment agency' : 'Consultant organisation', r.effectiveFrom, l.level,
-      l.completed, l.rejected, l.surveillance, l.milestones[0] ?? null, l.milestones[1] ?? null, l.milestones[2] ?? null, r.gstPercent, r.savedBy, r.savedOn,
+      l.completed, l.rejected, l.surveillance, l.milestones[0] ?? null, l.milestones[1] ?? null, l.milestones[2] ?? null, r.gstPercent, r.savedBy, indianTime(r.savedOn),
       r.current ? 'Current' : 'Replaced']));
     try {
       await this.excel.xlsx('expenditure-rate-history', [{

@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmService } from '../confirm-dialog';
 import { TextItem, TextsPage } from './texts';
 
 describe('TextsPage', () => {
@@ -14,7 +15,7 @@ describe('TextsPage', () => {
   });
   const items = [
     item('msme.payment.disclaimer', 'Payment disclaimer', 'Website', { placeholders: ['Fee'] }),
-    item('msme.payment.instructions', 'Payment instructions', 'Website', { enabled: false, customised: true }),
+    item('msme.payment.instructions', 'Payment instructions', 'Website', { enabled: false, customised: true, updatedBy: 'Admin', updatedOn: '2026-11-18T23:01:55' }),
     item('app.msme.undertaking', 'Undertaking', 'Mobile app', { group: 'MSME app' }),
   ];
 
@@ -42,9 +43,9 @@ describe('TextsPage', () => {
   afterEach(() => http.verify());
 
   it('lists the website and the app texts on their tabs', async () => {
-    expect([...el.querySelectorAll('[role=tab]')].map((t) => t.textContent!.trim())).toEqual(['Website (2)', 'Mobile app (1)']);
+    expect([...el.querySelectorAll('.tx-tab[role=tab]')].map((t) => t.textContent!.trim())).toEqual(['Website (2)', 'Mobile app (1)']);
     expect(rows()[1]).toContain('Hidden');
-    (el.querySelectorAll('[role=tab]')[1] as HTMLElement).click();
+    (el.querySelectorAll('.tx-tab[role=tab]')[1] as HTMLElement).click();
     await settle();
     expect(rows()).toEqual([expect.stringContaining('Undertaking')]);
   });
@@ -113,7 +114,7 @@ describe('TextsPage', () => {
     await settle();
     expect(rows()[0]).toContain('fields: Fee');
 
-    (el.querySelectorAll('[role=tab]')[1] as HTMLElement).click();
+    (el.querySelectorAll('.tx-tab[role=tab]')[1] as HTMLElement).click();
     await settle();
     button('Edit').click();
     await settle();
@@ -135,8 +136,23 @@ describe('TextsPage', () => {
     await settle();
   });
 
+  it('shows the last change (saved in UTC) in Indian time', () => {
+    // 2026-11-19 (admin audit): 23:01 UTC on the 18th was shown as such; it is 04:31 on the 19th in India.
+    expect(rows()[1]).toContain('19-11-2026 04:31');
+  });
+
+  it('asks in the app pop-up, not the browser box, before resetting', async () => {
+    const native = vi.spyOn(window, 'confirm');
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
+    button('Reset').click();
+    await settle();
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reset to the Standard Text?', danger: true }));
+    expect(native).not.toHaveBeenCalled();
+    http.expectNone((r) => r.method === 'DELETE');
+  });
+
   it('resets a changed text after confirming', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button('Reset').click();
     await settle();
     http.expectOne((r) => r.method === 'DELETE' && r.url === `${url}/msme.payment.instructions`).flush({ message: 'The standard text is shown again.' });

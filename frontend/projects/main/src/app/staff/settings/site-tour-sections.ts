@@ -5,6 +5,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { AdminPortalService, PortalSwitchComponent, SITE_TOUR_PORTALS } from '../admin-portal';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
+import { ConfirmService } from '../confirm-dialog';
 
 /** A section of the site tour (Zed.Core.Assessment.SiteTourSection). Empty levels / sectors: all. */
 export interface SiteTourSection {
@@ -121,7 +122,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
             <col />
             <col style="width: 120px" />
             <col style="width: 240px" />
-            <col style="width: 220px" />
+            <col class="col-actions" style="width: 268px" />
           </colgroup>
           <thead>
             <tr>
@@ -280,7 +281,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
       display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif;
     }
     .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    .sections-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 0; }
+    .sections-table { table-layout: fixed; width: 100%; min-width: 880px; margin-bottom: 0; }
     .sections-table td { overflow-wrap: anywhere; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .sections-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .sections-table tr.is-off td { color: #8a9899; }
@@ -299,7 +300,9 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .st-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; }
     .st-tile b { font-size: 20px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .st-tile small { font-size: 12.5px; color: #5f6f70; }
-    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    /* 2026-11-19 (admin audit: "Edi/t" and "O/n" at 1536px): the action column is wide enough and its buttons never wrap. */
+    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow-wrap: normal; }
+    .st-actions > * { flex: none; }
     .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
       color: #23474a; font-weight: 700; padding: 0; }
     .st-icon:hover:not(:disabled) { border-color: #45a5ad; background: #eef6f6; }
@@ -341,6 +344,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
 })
 export class SiteTourSectionsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/site-tour-sections';
 
   protected readonly limits = SITE_TOUR_LIMITS;
@@ -466,11 +470,13 @@ export class SiteTourSectionsPage {
   });
 
   /** The list's switch: a section off (no longer asked for in the app) or on again; asks before switching off. */
-  protected toggle(index: number): Promise<void> {
+  protected async toggle(index: number): Promise<void> {
     const sections = (this.data()?.sections ?? []).map((x) => ({ ...x }));
     const s = sections[index];
     if (!s) return Promise.resolve();
-    if (s.active && !confirm(`Switch "${s.title}" off? The app no longer asks for its photos.`)) return Promise.resolve();
+    if (s.active && !(await this.confirms.ask({
+      title: 'Switch the Section Off?', message: `"${s.title}": the app no longer asks for its photos.`, confirmLabel: 'Switch Off', danger: true,
+    }))) return;
     s.active = !s.active;
     return this.change(() => this.http.put<MessageResponse>(SiteTourSectionsPage.url, { sections }));
   }
@@ -483,8 +489,11 @@ export class SiteTourSectionsPage {
     return this.change(() => this.http.put<MessageResponse>(SiteTourSectionsPage.url, { sections }));
   }
 
-  protected resetAll(): Promise<void> {
-    if (!confirm('Go back to the ten standard site tour sections? The sections added or changed here are removed.')) return Promise.resolve();
+  protected async resetAll(): Promise<void> {
+    if (!(await this.confirms.ask({
+      title: 'Reset to the Standard Sections?', message: 'The ten standard site tour sections are used again. The sections added or changed here are removed.',
+      confirmLabel: 'Reset', danger: true,
+    }))) return;
     return this.change(() => this.http.delete<MessageResponse>(SiteTourSectionsPage.url));
   }
 

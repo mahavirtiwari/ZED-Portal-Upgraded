@@ -1,0 +1,4321 @@
+{
+  "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
+  "count": 343,
+  "texts": [
+    {
+      "key": "msme.apply.acceptButton",
+      "standard": "Accept & proceed →",
+      "kind": "button",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.assessment.desktop",
+      "standard": "Desktop assessment",
+      "kind": "text",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.assessment.site",
+      "standard": "Desktop check and site visit",
+      "kind": "text",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.backButton",
+      "standard": "← Back",
+      "kind": "button",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.consent.label",
+      "standard": "I have read and understood the disclaimer and accept it on behalf of {unit}.",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [
+        "unit"
+      ],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.consent.myUnit",
+      "standard": "my unit",
+      "kind": "text",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.crumb.apply",
+      "standard": "Apply",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.crumb.certifications",
+      "standard": "Certifications",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.crumb.home",
+      "standard": "Home",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.dashboardButton",
+      "standard": "← Back to dashboard",
+      "kind": "button",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.disclaimer.title",
+      "standard": "Disclaimer / declaration",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.fact.validityLabel",
+      "standard": "Validity",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.freeNote",
+      "standard": "Nothing is charged at this step.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.instructions.title",
+      "standard": "Instructions",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.fee",
+      "standard": "The fee is non-refundable, non-adjustable and non-transferable.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.late",
+      "standard": "Late documents or responses can forfeit the amount paid.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.reward",
+      "standard": "The Joining Reward works once: once used on a level, it cannot be used again.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.rewardUsed",
+      "standard": "The Joining Reward works once. You used it on {level}.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.rewardUsedOn",
+      "standard": "The Joining Reward works once. You used it on {level} ({date}).",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [
+        "level",
+        "date"
+      ],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.subsidy",
+      "standard": "Subsidy is already applied; you pay only the beneficiary contribution.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.keys.title",
+      "standard": "Key points at a glance",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.rail.applyingTitle",
+      "standard": "You are applying for",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.rail.assessmentLabel",
+      "standard": "Assessment",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.rail.level",
+      "standard": "{level} Certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.confirmation",
+      "standard": "Confirmation",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.confirmationNote",
+      "standard": "Receipt and next steps",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.disclaimer",
+      "standard": "Disclaimer",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.disclaimerNote",
+      "standard": "Read and accept",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.fee",
+      "standard": "Fee & tax details",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.feeNote",
+      "standard": "GSTIN, TDS, coupon",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.here",
+      "standard": "You are here",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.label",
+      "standard": "Application steps",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.payment",
+      "standard": "Payment",
+      "kind": "label",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.steps.paymentNote",
+      "standard": "Secure gateway",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.sub.disclaimer",
+      "standard": "Step 1 of 4: read and accept the disclaimer before payment.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.sub.instructions",
+      "standard": "Step 1 of 4: read the instructions before payment.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.sub.payment",
+      "standard": "Step 2 of 4: confirm tax details and the amount before you pay.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.apply.title",
+      "standard": "Apply for {level} Certification",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "apply",
+      "pageName": "Apply",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/apply-flow.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.app.androidButton",
+      "standard": "Android app",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.app.iosButton",
+      "standard": "iOS app",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.app.qrAlt",
+      "standard": "QR code for the ZED MSME app",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.app.text",
+      "standard": "Needed for Basic Information and document upload.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.app.title",
+      "standard": "Get the ZED MSME mobile app",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.certifications.infoButton",
+      "standard": "About certifications",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.certifications.sub",
+      "standard": "Apply for {levels} certification.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.certifications.title",
+      "standard": "My Certifications",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.certified",
+      "standard": "Certified",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.certifiedOn",
+      "standard": "Certified · {date}",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.inProgress",
+      "standard": "In progress",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.locked",
+      "standard": "Locked",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.notStarted",
+      "standard": "Not started",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.chip.ready",
+      "standard": "Ready to apply",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.crumb.dashboard",
+      "standard": "Dashboard",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.crumb.home",
+      "standard": "Home",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.error.retryButton",
+      "standard": "Try again",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feeLabel",
+      "standard": "Your fee",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feeNil",
+      "standard": "Nil",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feeNilNote",
+      "standard": "fully subsidised",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feeNote",
+      "standard": "incl. GST, after subsidy",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.surveillanceLabel",
+      "standard": "Surveillance",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.validLabel",
+      "standard": "Valid for",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.visit",
+      "standard": "{count} visit (month {months})",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "count",
+        "months"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.visits",
+      "standard": "{count} visits (month {months})",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "count",
+        "months"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.contactButton",
+      "standard": "Contact ZED",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.guidelinesButton",
+      "standard": "Scheme guidelines",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.stepsTitle",
+      "standard": "HOW ZED CERTIFICATION WORKS",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.text",
+      "standard": "Talk to the ZED helpdesk.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.textGuidelines",
+      "standard": "Talk to the ZED helpdesk or read the scheme guidelines.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.help.title",
+      "standard": "Need help with your application?",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dash-extras.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.availButton",
+      "standard": "Avail",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.browseButton",
+      "standard": "Browse incentives",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.chip.availed",
+      "standard": "Availed",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.chip.inProgress",
+      "standard": "In progress",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.chip.locked",
+      "standard": "Locked",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.chip.open",
+      "standard": "Open",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.detailsButton",
+      "standard": "View details",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.forLevels",
+      "standard": "For {levels} certified units",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.milestonesButton",
+      "standard": "View milestones",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.notCertified",
+      "standard": "Unlocks once your unit is certified",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.notEligible",
+      "standard": "Not yet available for your unit",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentives.infoAria",
+      "standard": "About incentives",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentives.infoButton",
+      "standard": "How incentives work",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentives.sub",
+      "standard": "Benefits unlocked by your certification level. Apply to avail them.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentives.title",
+      "standard": "My Incentives",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.applyButton",
+      "standard": "Apply",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.certificateButton",
+      "standard": "Certificate",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.continueAria",
+      "standard": "Continue {level}",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.continueButton",
+      "standard": "Continue",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.detailsButton",
+      "standard": "View details",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.infoAria",
+      "standard": "About {level}",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.lockedNote",
+      "standard": "Available after your current certification is completed.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.reCertification",
+      "standard": "Re-certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.surveillanceAria",
+      "standard": "{level} surveillance details",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.surveillanceLink",
+      "standard": "Surveillance",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelCard.title",
+      "standard": "{level} CERTIFICATION",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/level-card.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.levelsList",
+      "standard": "{list} or {last}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "list",
+        "last"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.loading",
+      "standard": "Please wait ...",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.button",
+      "standard": "Apply for {level}",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.desktop",
+      "standard": "Desktop assessment of your documents.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.fee",
+      "standard": "Your fee is {fee} incl. GST, after subsidy.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "fee"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.feeNil",
+      "standard": "Fully subsidised for your unit.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.site",
+      "standard": "Desktop check plus a site visit.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.apply.title",
+      "standard": "Apply for {level} certification",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.detailsButton",
+      "standard": "View details",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.entry.text",
+      "standard": "Complete Basic Information & Documents in the ZED MSME app and final submit.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.entry.title",
+      "standard": "Continue {level} certification",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.handholding.button",
+      "standard": "View milestones",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.handholding.text",
+      "standard": "Track the milestones of your handholding support.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.handholding.title",
+      "standard": "Continue handholding",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.incentives.button",
+      "standard": "View incentives",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.incentives.textMany",
+      "standard": "{list} are open to you.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "list"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.incentives.textMore",
+      "standard": "{list} and more are open to you.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "list"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.incentives.textOne",
+      "standard": "{list} is open to you.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "list"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.incentives.title",
+      "standard": "Avail your {level} incentives",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.nc.text",
+      "standard": "Answer the non-conformances raised in the assessment in the ZED MSME app.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.nc.title",
+      "standard": "Answer the {level} non-conformances",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.surveillance.applyButton",
+      "standard": "Apply for surveillance",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.surveillance.paidText",
+      "standard": "Your surveillance is under way. See its details and next step.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.surveillance.text",
+      "standard": "Apply and pay for the surveillance of your certificate.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.surveillance.title",
+      "standard": "{level} surveillance due",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.surveillance.viewButton",
+      "standard": "View surveillance",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.title",
+      "standard": "Your next steps",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.wait.text",
+      "standard": "Your application is under assessment. We will notify you of the next step.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.nextSteps.wait.title",
+      "standard": "{level} certification under assessment",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.or",
+      "standard": "or",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.period.monthAdjective",
+      "standard": "{n}-month",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.period.months",
+      "standard": "{n} months",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.period.year",
+      "standard": "{n} year",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.period.yearAdjective",
+      "standard": "{n}-year",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.period.years",
+      "standard": "{n} years",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.amountLabel",
+      "standard": "Amount",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.applicableLabel",
+      "standard": "Applicable for",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.applicableValue",
+      "standard": "{levels} certified MSMEs",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.applyNote",
+      "standard": "Click Apply to start the application.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.availDateLabel",
+      "standard": "Date of avail",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.availedChip",
+      "standard": "Availed",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.availingDateLabel",
+      "standard": "Date of availing",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.benefitLabel",
+      "standard": "Benefit",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.categoryLabel",
+      "standard": "Certification category",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.certificationLevelLabel",
+      "standard": "Certification level",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.certificationTitle",
+      "standard": "My Certification",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.closeAria",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.closeButton",
+      "standard": "Close",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.contactLabel",
+      "standard": "Contact person",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.departmentLabel",
+      "standard": "Department",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.emailLabel",
+      "standard": "E-mail",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.faAmount",
+      "standard": "Up to ₹ 50,000",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.faNote",
+      "standard": "For system certification, product certification or product testing.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.faSubsidyLabel",
+      "standard": "75% subsidy",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.faTitle",
+      "standard": "Financial Assistance",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.incentivesTitle",
+      "standard": "My Incentives",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.joiningTitle",
+      "standard": "Joining Reward",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.levelLabel",
+      "standard": "Level of certification",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.levelTitle",
+      "standard": "{level} Certification",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.html",
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.notEligible",
+      "standard": "Available once your unit is certified at {levels} level.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.phoneLabel",
+      "standard": "Phone",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.referenceLabel",
+      "standard": "Reference no.",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.rewardAmountLabel",
+      "standard": "Reward amount",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.schemeButton",
+      "standard": "Apply on the scheme portal",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.technologiesLabel",
+      "standard": "Recommended technologies",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.tuAmount",
+      "standard": "Up to ₹ 3,00,000",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.tuNote",
+      "standard": "For moving towards Zero Effect Solutions.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.tuSupportLabel",
+      "standard": "Support",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.tuTitle",
+      "standard": "Technology Upgradation",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.popup.videoButton",
+      "standard": "Watch video",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.refreshButton",
+      "standard": "Refresh",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.refreshed",
+      "standard": "Last refreshed on {date}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.financial.text",
+      "standard": "Incentives by Financial Institutions for ZED Certified MSMEs",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.financial.title",
+      "standard": "Financial Institutions",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.msme.text",
+      "standard": "Incentives by MoMSME through its schemes, for ZED Certified MSMEs",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.msme.title",
+      "standard": "Ministry of MSME",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.other.text",
+      "standard": "Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.other.title",
+      "standard": "Other Incentives",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.states.text",
+      "standard": "Incentives by States/UTs for ZED Certified MSMEs",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.stakeholder.states.title",
+      "standard": "States/UTs",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.step.assessment",
+      "standard": "Assessment",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.step.certified",
+      "standard": "Certified",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.step.desktop",
+      "standard": "Desktop",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.step.details",
+      "standard": "Details",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.step.siteVisit",
+      "standard": "Site visit",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.ubpButton",
+      "standard": "Back to UBP",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.aria",
+      "standard": "Your unit",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.certified",
+      "standard": "Certified",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.certifiedOn",
+      "standard": "Certified {date}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.currentLevelLabel",
+      "standard": "Current level",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.nextSurveillanceLabel",
+      "standard": "Next surveillance",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.plantLabel",
+      "standard": "PLANT",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.pledge",
+      "standard": "ZED Pledge taken on {date}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.pledgeButton",
+      "standard": "Download pledge",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.surveillanceApply",
+      "standard": "Apply and pay",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.surveillanceDue",
+      "standard": "Due now",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.surveillanceMonths",
+      "standard": "Month {months}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "months"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.surveillanceUnderWay",
+      "standard": "Under way",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.udyamLabel",
+      "standard": "UDYAM",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.validForNote",
+      "standard": "from certification",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.validTillLabel",
+      "standard": "Valid till",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.validityNote",
+      "standard": "{period} validity",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "period"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.visitAfter",
+      "standard": "{count} visit after certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.visitOf",
+      "standard": "{ordinal} of {count} visits",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "ordinal",
+        "count"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.visitOfOne",
+      "standard": "{ordinal} of {count} visit",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "ordinal",
+        "count"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.visitsAfter",
+      "standard": "{count} visits after certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.unit.zedIdLabel",
+      "standard": "ZED ID",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.html"
+      ]
+    },
+    {
+      "key": "msme.dashboard.welcome",
+      "standard": "Welcome, {name}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.welcomeNoName",
+      "standard": "Welcome",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.addButton",
+      "standard": "+ Add {word}",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.confirmButton",
+      "standard": "Block {word}",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.consultant",
+      "standard": "consultant",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.consultants",
+      "standard": "consultants",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.point1",
+      "standard": "{name} cannot sign in until it is unblocked.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.point2",
+      "standard": "Nothing is deleted. You can unblock the {word} at any time.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.point3",
+      "standard": "The reason is kept in its history and e-mailed to the {word} SPOC.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.reasonLabel",
+      "standard": "Reason for blocking",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.reasonPlaceholder",
+      "standard": "Shown in the {word}'s history",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.subtitle",
+      "standard": "{id} · {count} {people}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "id",
+        "count",
+        "people"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.block.title",
+      "standard": "Block {name}?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.chip.active",
+      "standard": "Active",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.chip.all",
+      "standard": "All",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.chip.inactive",
+      "standard": "In-active",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.chip.sectorNotSet",
+      "standard": "Not set",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.actions",
+      "standard": "Actions",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.agency",
+      "standard": "Agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.allocated",
+      "standard": "Allocated",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.assessors",
+      "standard": "{assessors}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "assessors"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.category",
+      "standard": "Category and sector type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.consultants",
+      "standard": "No. of Consultant",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.organisation",
+      "standard": "Consultant Organisation",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.spoc",
+      "standard": "SPOC",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.column.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.count.active",
+      "standard": "Active",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.count.agencies",
+      "standard": "Agencies",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.count.assessors",
+      "standard": "{assessors}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "assessors"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.count.inactive",
+      "standard": "In-active",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.count.organisations",
+      "standard": "Organisations",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.countsLabel",
+      "standard": "{agencies} by status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "agencies"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.empty.clearButton",
+      "standard": "Clear filters",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.empty.filtered",
+      "standard": "No {word} matches the search or filter.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.empty.none",
+      "standard": "No {agencies} yet. Use + Add {word} to add the first one.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "agencies",
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.filter.sector",
+      "standard": "Sector type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.filter.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.chip.allOn",
+      "standard": "All levels on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.chip.anyOff",
+      "standard": "Any level off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.count.enabled",
+      "standard": "{level} enabled",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.count.off",
+      "standard": "{count} off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.countsLabel",
+      "standard": "Agencies per level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.empty",
+      "standard": "No agencies yet. Agencies added under {agencies} are listed here.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "agencies"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off",
+      "standard": "Off",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.cancelButton",
+      "standard": "Keep {level} on",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.confirmButton",
+      "standard": "Turn off {level}",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.note",
+      "standard": "The reason is e-mailed to the agency SPOC.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.point2",
+      "standard": "You can turn {level} back on at any time.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.reasonLabel",
+      "standard": "Reason for turning it off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.reasonPlaceholder",
+      "standard": "Why {level} assessments are turned off",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.off.title",
+      "standard": "Turn off {level} for this agency?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.offReason",
+      "standard": "{level} off: “{reason}”",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level",
+        "reason"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on",
+      "standard": "On",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on.cancelButton",
+      "standard": "Keep {level} off",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on.confirmButton",
+      "standard": "Turn on {level}",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on.point1",
+      "standard": "{name} can be allotted new {level} assessments again.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name",
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on.point2",
+      "standard": "The agency SPOC is told by e-mail.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.on.title",
+      "standard": "Turn on {level} for this agency?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.subtitle",
+      "standard": "Choose which certification levels each agency can be allotted.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.switchAria",
+      "standard": "{level} assessments for {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level",
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.levels.title",
+      "standard": "Agency Level Allocation",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.loading",
+      "standard": "Loading…",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.assessors",
+      "standard": "View {assessors}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "assessors"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.block",
+      "standard": "Block {word}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.consultants",
+      "standard": "View consultants",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.edit",
+      "standard": "Edit {word}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.history",
+      "standard": "View history",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.po",
+      "standard": "Purchase orders",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.reset",
+      "standard": "Send reset link",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.menu.unblock",
+      "standard": "Unblock {word}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "word"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.po.closeButton",
+      "standard": "Close purchase orders",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.reset.agency",
+      "standard": "Assessment agency",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.reset.organisation",
+      "standard": "Consultant organisation",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.allocatedAria",
+      "standard": "Units allocated to {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.assessorsButton",
+      "standard": "{assessors}",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "assessors"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.blocked",
+      "standard": "Blocked",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.consultantsButton",
+      "standard": "Consultants",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.menuAria",
+      "standard": "More actions for {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.noAddress",
+      "standard": "Address not saved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.noMobile",
+      "standard": "Mobile not saved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.noSector",
+      "standard": "Sector type not set",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.poAria",
+      "standard": "Purchase orders of {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.row.poButton",
+      "standard": "Purchase orders",
+      "kind": "button",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.search.aria",
+      "standard": "Search agencies",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.search.placeholder",
+      "standard": "Search ID, name, SPOC, mobile or e-mail",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
+      "key": "staff.agencies.title",
+      "standard": "{agencies}",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "agencies"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.blocked",
+      "standard": "{name} blocked",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.levelOff",
+      "standard": "{level} turned off",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.levelOn",
+      "standard": "{level} turned on",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.resetSent",
+      "standard": "Reset link sent",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.resetTo",
+      "standard": "E-mailed to {to}",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "to"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.toast.unblocked",
+      "standard": "{name} unblocked",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.word.agency",
+      "standard": "agency",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.agencies.word.organisation",
+      "standard": "organisation",
+      "kind": "text",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.count",
+      "standard": "{count} wordings · {changed} changed",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "count",
+        "changed"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.edit.aria",
+      "standard": "Wording",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.edit.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.edit.saveButton",
+      "standard": "Save",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.edit.standard",
+      "standard": "Standard: {text}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "text"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.edit.values",
+      "standard": "Values filled in by the page:",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.empty",
+      "standard": "No page wording found",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.filter.allKinds",
+      "standard": "All kinds",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.filter.allPages",
+      "standard": "All pages",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.filter.changedOnly",
+      "standard": "Changed only",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.filter.kind",
+      "standard": "Kind",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.filter.portal",
+      "standard": "Portal",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.group.changed",
+      "standard": "{changed} changed",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "changed"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.group.count",
+      "standard": "{count} wordings",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.button",
+      "standard": "Buttons and links",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.heading",
+      "standard": "Headings",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.label",
+      "standard": "Labels",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.message",
+      "standard": "Messages",
+      "kind": "message",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.note",
+      "standard": "Lines and notes",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.placeholder",
+      "standard": "Placeholders",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.text",
+      "standard": "Other wording",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kind.tooltip",
+      "standard": "Tooltips and screen-reader text",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.button",
+      "standard": "Button",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.heading",
+      "standard": "Heading",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.label",
+      "standard": "Label",
+      "kind": "label",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.message",
+      "standard": "Message",
+      "kind": "message",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.note",
+      "standard": "Line",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.placeholder",
+      "standard": "Placeholder",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.text",
+      "standard": "Wording",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.kindName.tooltip",
+      "standard": "Tooltip",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.more",
+      "standard": "The first {count} matches are shown. Refine the search to see the rest.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.portal.common",
+      "standard": "Every page",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.portal.msme",
+      "standard": "MSME pages",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.portal.public",
+      "standard": "Public pages",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.portal.staff",
+      "standard": "Staff pages",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.reset.confirmButton",
+      "standard": "Reset to standard",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.reset.point",
+      "standard": "Standard: {text}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "text"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.reset.title",
+      "standard": "Show the standard wording again?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.resetDone",
+      "standard": "The standard wording is shown again.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.row.changedBy",
+      "standard": "Changed by {user} on {date}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [
+        "user",
+        "date"
+      ],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.row.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.row.resetButton",
+      "standard": "Reset to standard",
+      "kind": "button",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.saved",
+      "standard": "Wording saved. Pages opened or reloaded from now show it.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.savedStandard",
+      "standard": "This is the standard wording: it is shown again.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.search.aria",
+      "standard": "Search page wording",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    },
+    {
+      "key": "staff.pageTexts.search.placeholder",
+      "standard": "Search wording, page or key",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "pageTexts",
+      "pageName": "Page texts",
+      "placeholders": [],
+      "files": [
+        "staff/settings/page-texts.ts"
+      ]
+    }
+  ]
+}

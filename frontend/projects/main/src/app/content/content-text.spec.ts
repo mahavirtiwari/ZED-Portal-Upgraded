@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ContentService, ContentTextComponent, fillText, textParts } from './content-text';
+import { setPageTexts, t } from './page-text';
 
 @Component({
   imports: [ContentTextComponent],
@@ -37,6 +38,20 @@ describe('zed-text', () => {
     await fixture.whenStable();
     fixture.detectChanges();
   }
+
+  it('preload() asks once at the start and hands the Admin page wording to t()', async () => {
+    const content = TestBed.inject(ContentService);
+    content.preload();
+    content.preload();
+    http.expectOne('/api/content').flush([
+      { key: 'msme.payment.disclaimer', enabled: true, html: '<p>Disclaimer</p>' },
+      { key: 'staff.agencies.title', enabled: true, html: 'Agencies' },
+    ]);
+    await new Promise((r) => setTimeout(r));
+    expect(t('staff.agencies.title', 'Assessment Agencies')).toBe('Agencies');
+    expect(t('staff.agencies.addButton', '+ Add {word}', { word: 'agency' })).toBe('+ Add agency');
+    setPageTexts([]);
+  });
 
   it('shows the own copy until the texts arrive, then the Admin version with the fields filled in', async () => {
     const fixture = TestBed.createComponent(Host);

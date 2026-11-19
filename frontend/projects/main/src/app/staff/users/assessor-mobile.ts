@@ -7,6 +7,7 @@ import { ADMIN_PORTAL } from '../admin-portal';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { ToastService } from '../toast';
+import { asUtc } from '../utc-time';
 import { PHONES_URL, releaseMobileAsk, releasePhone } from './assessor-phone';
 
 /** The portals whose apps have the one-phone rule (AssessorMobileController): all three. */
@@ -67,11 +68,8 @@ export function canSeeAssessorMobile(roleId: number | null | undefined): boolean
   return roleId === StaffRole.Admin || roleId === StaffRole.MasterAdmin;
 }
 
-/** A UTC time sent without a zone ("2026-11-03T10:15:00") read as UTC, so it shows in the viewer's local time. */
-export function asUtc(value: string | null): string | null {
-  if (!value) return value;
-  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : value + 'Z';
-}
+/** A UTC time sent without a zone read as UTC (moved to the shared utc-time.ts on 2026-11-19; kept here for its callers). */
+export { asUtc } from '../utc-time';
 
 /** "Android 13 · API 33". */
 export function osLine(d: AssessorDevice): string {

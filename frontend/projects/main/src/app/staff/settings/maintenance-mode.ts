@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PageHead } from '../../msme/shared/page-head';
+import { ConfirmService } from '../confirm-dialog';
 
 export interface MaintenanceRow {
   key: string;
@@ -100,6 +101,7 @@ export interface MaintenanceRow {
 })
 export class MaintenanceModePage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/maintenance';
   protected readonly rows = signal<MaintenanceRow[]>([]);
   protected readonly busy = signal(false);
@@ -112,7 +114,9 @@ export class MaintenanceModePage {
 
   protected async save(): Promise<void> {
     const down = this.rows().filter((r) => r.down && !this.loaded.get(r.key));
-    if (down.length && !confirm(`Take ${down.map((r) => r.name).join(', ')} down now? Its users see the maintenance message.`)) return;
+    if (down.length && !(await this.confirms.ask({
+      title: 'Take It Down Now?', message: `${down.map((r) => r.name).join(', ')}: its users see the maintenance message.`, confirmLabel: 'Take Down', danger: true,
+    }))) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');

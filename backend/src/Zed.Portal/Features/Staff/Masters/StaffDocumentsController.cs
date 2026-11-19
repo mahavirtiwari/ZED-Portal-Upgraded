@@ -197,7 +197,11 @@ public sealed class StaffDocumentsController(
         return path is null ? NotFound() : Serve(path, inline: MsmeFilePaths.IsInline(path));
     }
 
-    public sealed record PageSettingsResponse(bool HasBanner, string? FileName, string? UpdatedOn, string? ImageUrl);
+    /// <param name="FileMissing">
+    /// 2026-11-19 (admin audit: "No banner saved" shown with a file and date): a banner is recorded but its file is not in the
+    /// storage root, so the page asks for it to be uploaded again instead of contradicting itself.
+    /// </param>
+    public sealed record PageSettingsResponse(bool HasBanner, string? FileName, string? UpdatedOn, string? ImageUrl, bool FileMissing = false);
 
     /// <summary>Current home page banner (SP_MASTER_GET_HOME_PAGE_SETTINGS 'HomePageBanner').</summary>
     // The home page banner and page settings: main and consultancy only (Surveillance has no public pages).
@@ -210,7 +214,8 @@ public sealed class StaffDocumentsController(
         var stored = path is not null && System.IO.File.Exists(MsmeFilePaths.Resolve(StorageRoot, path) ?? "");
         var updated = row?.TryGetValue("CreatedDate", out var d) == true && d is DateTime dt ? dt.ToString("dd-MM-yyyy HH:mm") : null;
         return new PageSettingsResponse(stored, path is null ? null : Path.GetFileName(path), updated,
-            stored ? "/api/staff/masters/page-settings/banner?v=" + Uri.EscapeDataString(Path.GetFileNameWithoutExtension(path!)) : null);
+            stored ? "/api/staff/masters/page-settings/banner?v=" + Uri.EscapeDataString(Path.GetFileNameWithoutExtension(path!)) : null,
+            FileMissing: path is not null && !stored);
     }
 
     // The home page banner and page settings: main and consultancy only (Surveillance has no public pages).

@@ -267,6 +267,37 @@ public sealed class MastersTests : IDisposable
     }
 
     [Fact]
+    public async Task Page_settings_say_when_the_recorded_banner_file_is_missing()
+    {
+        // 2026-11-19 (admin audit): the page said "No banner saved" yet listed Banner_20260820121144.png and its date, because
+        // the record points to a file that is not in the storage root. The API now says so (fileMissing).
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        _host.Sql.Procs["SP_MASTER_GET_HOME_PAGE_SETTINGS"] = _ => FakeSql.Sets();
+        var none = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/page-settings");
+        Assert.False(none.GetProperty("hasBanner").GetBoolean());
+        Assert.False(none.GetProperty("fileMissing").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, none.GetProperty("fileName").ValueKind);
+
+        _host.Sql.Procs["SP_MASTER_GET_HOME_PAGE_SETTINGS"] = _ => FakeSql.Sets([new
+        {
+            FileName = "HomePageBanner", FilePath = "https://loginzed.msme.gov.in/Images/HomePage/Banner_20260820121144.png", CreatedDate = new DateTime(2026, 8, 20, 12, 11, 0),
+        }]);
+        var missing = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/page-settings");
+        Assert.False(missing.GetProperty("hasBanner").GetBoolean());
+        Assert.True(missing.GetProperty("fileMissing").GetBoolean());
+        Assert.Equal("Banner_20260820121144.png", missing.GetProperty("fileName").GetString());
+        Assert.Equal(JsonValueKind.Null, missing.GetProperty("imageUrl").ValueKind);
+
+        // Uploaded again: the file is there, nothing is missing.
+        (await client.PostAsync("/api/staff/masters/page-settings/banner", Upload(PngBytes, "x.png", "image/png", null))).EnsureSuccessStatusCode();
+        var stored = FakeSql.Arg(Call("SP_MASTER_INSERT_HOME_PAGE_SETTINGS").Args, "FilePath")!;
+        _host.Sql.Procs["SP_MASTER_GET_HOME_PAGE_SETTINGS"] = _ => FakeSql.Sets([new { FileName = "HomePageBanner", FilePath = "https://loginzed.msme.gov.in/" + stored.Replace('\\', '/'), CreatedDate = new DateTime(2026, 11, 19, 10, 0, 0) }]);
+        var shown = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/page-settings");
+        Assert.True(shown.GetProperty("hasBanner").GetBoolean());
+        Assert.False(shown.GetProperty("fileMissing").GetBoolean());
+    }
+
+    [Fact]
     public async Task Banner_must_be_a_real_png_and_is_stored_under_images_homepage()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

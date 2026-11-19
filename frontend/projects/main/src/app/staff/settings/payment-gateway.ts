@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmService } from '../confirm-dialog';
 
 /** A saved CCAvenue account as the API shows it: never a key, only whether one is saved. */
 export interface SavedGateway {
@@ -370,6 +371,7 @@ export interface PaymentGatewayInfo {
 })
 export class PaymentGatewayPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/payment-gateway';
 
   protected readonly info = signal<PaymentGatewayInfo | null>(null);
@@ -439,7 +441,7 @@ export class PaymentGatewayPage {
   }
 
   protected async useErpFile(): Promise<void> {
-    if (!confirm('ERP postings will use the account in the server settings file again. Continue?')) return;
+    if (!(await this.confirms.ask({ title: 'Use the Settings File Account?', message: 'ERP postings will use the account in the server settings file again.', confirmLabel: 'Continue' }))) return;
     await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${PaymentGatewayPage.url}/erp`)));
   }
   protected merchantId = '';
@@ -473,7 +475,7 @@ export class PaymentGatewayPage {
   }
 
   protected async useFile(): Promise<void> {
-    if (!confirm('Payments will use the account in the server settings file again. Continue?')) return;
+    if (!(await this.confirms.ask({ title: 'Use the Settings File Account?', message: 'Payments will use the account in the server settings file again.', confirmLabel: 'Continue' }))) return;
     await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(PaymentGatewayPage.url)));
   }
 

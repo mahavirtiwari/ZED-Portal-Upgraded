@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { PaymentBilling } from '../payment/payment-step';
 import { ApplyFlow, ApplyLevelVm, ApplyStep } from './apply-flow';
 import { isLegacyLevel, levelLogo, levelName } from '../shared/levels';
@@ -44,6 +45,8 @@ interface PublicLevel {
   surveillance?: { firstDueMonths: number; count: number | null; intervalMonths: number | null } | null;
 }
 type InfoTopic = Level | 'My' | 'MyIncentives';
+/** The stakeholders' incentive lists (/incentives?it=…). */
+type Stakeholder = 'Common' | 'States' | 'Financial' | 'Other';
 type Modal = { kind: 'apply-info'; level: Level } | { kind: 'info'; topic: InfoTopic } | { kind: 'joining' } | { kind: 'fa' } | { kind: 'tu' }
   | { kind: 'incentive'; card: IncentiveCard };
 
@@ -160,10 +163,13 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
  * 2026-11-17 (the user's Home design): the shared page head ("Welcome, <unit>", last refreshed, Refresh), the unit card with
  * its current level, "Your next steps" (up to three, from the unit's state), the level cards (child LevelCard, the
  * recommended next level outlined), the incentives with a status chip each (child IncentiveTile), and the foot (DashExtras).
+ * 2026-11-19 (the user: "All page wording"): every wording is the Admin's (Texts → Page wording, msme.dashboard.*) or the
+ * standard one written here and in dashboard.html (t pipe, t()). The step names and fact ids stay as they are for the logic;
+ * only what is shown goes through t().
  */
 @Component({
   selector: 'zed-msme-dashboard',
-  imports: [RouterLink, ApplyFlow, ContentTextComponent, PageHead, LevelCard, IncentiveTile, DashExtras, DashIcon],
+  imports: [RouterLink, ApplyFlow, ContentTextComponent, PageHead, LevelCard, IncentiveTile, DashExtras, DashIcon, TextPipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -200,16 +206,36 @@ export class DashboardPage {
   /** "Bronze, Silver, Gold or ZED-X" for the panel's line. */
   protected readonly levelsText = computed(() => {
     const names = this.levels().map((l) => this.levelName(l));
-    return names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}` : names[0];
+    return names.length > 1 ? t('msme.dashboard.levelsList', '{list} or {last}', { list: names.slice(0, -1).join(', '), last: names[names.length - 1] }) : names[0];
+  });
+
+  protected readonly crumbs = computed(() => [{ label: t('msme.dashboard.crumb.home', 'Home') }, { label: t('msme.dashboard.crumb.dashboard', 'Dashboard') }]);
+  /** "Welcome, <unit>" (the page head's title). */
+  protected readonly welcome = computed(() => {
+    const name = this.msme()['EnterpriseName'];
+    return name ? t('msme.dashboard.welcome', 'Welcome, {name}', { name }) : t('msme.dashboard.welcomeNoName', 'Welcome');
   });
 
 
-  protected readonly incentives = [
-    { type: 'Common', title: 'Ministry of MSME', text: 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs', image: '/Images/Dashboard/dash-msme.PNG', imageStyle: 'width: 140px; height: 90px; object-fit: contain;' },
-    { type: 'States', title: 'States/UTs', text: 'Incentives by States/UTs for ZED Certified MSMEs', image: '/Images/Dashboard/stateUts.png', imageStyle: null },
-    { type: 'Financial', title: 'Financial Institutions', text: 'Incentives by Financial Institutions for ZED Certified MSMEs', image: '/Images/Dashboard/financial-Institution.png', imageStyle: null },
-    { type: 'Other', title: 'Other Incentives', text: 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs', image: '/Images/Dashboard/incentive.png', imageStyle: null },
-  ] as const;
+  protected readonly incentives: readonly Stakeholder[] = ['Common', 'States', 'Financial', 'Other'];
+
+  /** The stakeholders' incentive lists (the last cards of My Incentives). */
+  private stakeholder(type: Stakeholder): { title: string; text: string } {
+    switch (type) {
+      case 'Common':
+        return { title: t('msme.dashboard.stakeholder.msme.title', 'Ministry of MSME'),
+          text: t('msme.dashboard.stakeholder.msme.text', 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs') };
+      case 'States':
+        return { title: t('msme.dashboard.stakeholder.states.title', 'States/UTs'),
+          text: t('msme.dashboard.stakeholder.states.text', 'Incentives by States/UTs for ZED Certified MSMEs') };
+      case 'Financial':
+        return { title: t('msme.dashboard.stakeholder.financial.title', 'Financial Institutions'),
+          text: t('msme.dashboard.stakeholder.financial.text', 'Incentives by Financial Institutions for ZED Certified MSMEs') };
+      default:
+        return { title: t('msme.dashboard.stakeholder.other.title', 'Other Incentives'),
+          text: t('msme.dashboard.stakeholder.other.text', 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs') };
+    }
+  }
 
   /** "My Incentives" as the Admin set it: the built-in cards' wording (or hidden) and the incentives put on the dashboard. */
   protected readonly builtInCards = signal<BuiltInCard[]>([]);
@@ -292,9 +318,10 @@ export class DashboardPage {
       || (!!c.applicableForZEDX && this.status('ZEDX') === completedStatus('ZEDX'));
   }
 
-  protected levelsOf(c: IncentiveCard, separator = ', '): string {
+  /** "Bronze, Silver" (or: "Bronze or Silver"). */
+  protected levelsOf(c: IncentiveCard, or = false): string {
     return [c.applicableForBronze && 'Bronze', c.applicableForSilver && 'Silver', c.applicableForGold && 'Gold', c.applicableForZEDX && 'ZED-X']
-      .filter(Boolean).join(separator);
+      .filter(Boolean).join(or ? ` ${t('msme.dashboard.or', 'or')} ` : ', ');
   }
 
   protected async load(): Promise<void> {
@@ -345,20 +372,45 @@ export class DashboardPage {
 
   /** "5 years" / "18 months"; adjective: "5-year" / "18-month" (as in "5-year validity"). */
   protected months(n: number, adjective = false): string {
-    if (adjective) return n % 12 === 0 ? `${n / 12}-year` : `${n}-month`;
-    return n % 12 === 0 ? `${n / 12} year${n === 12 ? '' : 's'}` : `${n} months`;
+    if (adjective) return n % 12 === 0 ? t('msme.dashboard.period.yearAdjective', '{n}-year', { n: n / 12 }) : t('msme.dashboard.period.monthAdjective', '{n}-month', { n });
+    if (n === 12) return t('msme.dashboard.period.year', '{n} year', { n: 1 });
+    return n % 12 === 0 ? t('msme.dashboard.period.years', '{n} years', { n: n / 12 }) : t('msme.dashboard.period.months', '{n} months', { n });
+  }
+
+  /** "1 visit" / "2 visits" with the months: "1 visit (month 15)". */
+  private visitsText(visits: number[]): string {
+    const v = { count: visits.length, months: visits.join(', ') };
+    return visits.length > 1 ? t('msme.dashboard.fact.visits', '{count} visits (month {months})', v) : t('msme.dashboard.fact.visit', '{count} visit (month {months})', v);
+  }
+
+  /** The unit's fee of a level as a fact (the card and the apply rail). */
+  private feeFact(fee: number): LevelFact {
+    return fee > 0
+      ? { id: 'fee', label: t('msme.dashboard.fact.feeLabel', 'Your fee'), value: this.inr(fee), note: t('msme.dashboard.fact.feeNote', 'incl. GST, after subsidy') }
+      : { id: 'fee', label: t('msme.dashboard.fact.feeLabel', 'Your fee'), value: t('msme.dashboard.fact.feeNil', 'Nil'), note: t('msme.dashboard.fact.feeNilNote', 'fully subsidised') };
+  }
+
+  /** What a step of a level's card is called (the steps keep their English names for the logic). */
+  private stepLabel(label: string): string {
+    switch (label) {
+      case 'Details': return t('msme.dashboard.step.details', 'Details');
+      case 'Desktop': return t('msme.dashboard.step.desktop', 'Desktop');
+      case 'Site visit': return t('msme.dashboard.step.siteVisit', 'Site visit');
+      case 'Assessment': return t('msme.dashboard.step.assessment', 'Assessment');
+      case 'Certified': return t('msme.dashboard.step.certified', 'Certified');
+      default: return label;
+    }
   }
 
   /** Valid for, Surveillance and Fee of a level's card, as Administration → Certification Levels sets them. */
   protected facts(level: Level): LevelFact[] {
     const l = this.publicLevels().find((p) => p.code === level);
     if (!l) return [];
-    const rows: LevelFact[] = [{ label: 'Valid for', value: this.months(l.validityMonths) }];
+    const rows: LevelFact[] = [{ id: 'valid', label: t('msme.dashboard.fact.validLabel', 'Valid for'), value: this.months(l.validityMonths) }];
     const visits = this.surveillanceMonths(level);
-    if (visits.length) rows.push({ label: 'Surveillance', value: `${visits.length} visit${visits.length > 1 ? 's' : ''} (month ${visits.join(', ')})` });
+    if (visits.length) rows.push({ id: 'surveillance', label: t('msme.dashboard.fact.surveillanceLabel', 'Surveillance'), value: this.visitsText(visits) });
     const fee = this.levelFees()[level];
-    if (typeof fee === 'number')
-      rows.push(fee > 0 ? { label: 'Your fee', value: this.inr(fee), note: 'incl. GST, after subsidy' } : { label: 'Your fee', value: 'Nil', note: 'fully subsidised' });
+    if (typeof fee === 'number') rows.push(this.feeFact(fee));
     return rows;
   }
 
@@ -379,7 +431,8 @@ export class DashboardPage {
   }
 
   /** "Last refreshed on 17 Nov 2026, 06:06 AM" under the title. */
-  protected readonly refreshedText = computed(() => `Last refreshed on ${formatDate(this.refreshedAt(), 'd MMM y, hh:mm a', 'en-US')}`);
+  protected readonly refreshedText = computed(() =>
+    t('msme.dashboard.refreshed', 'Last refreshed on {date}', { date: formatDate(this.refreshedAt(), 'd MMM y, hh:mm a', 'en-US') }));
 
   /** The highest level the unit is certified at (the last certified one in the Admin's order). */
   protected readonly currentLevel = computed<Level | null>(() => this.levels().filter((l) => this.certified(l)).pop() ?? null);
@@ -415,24 +468,30 @@ export class DashboardPage {
     const on = this.certifiedOn(level);
     const day = (d: Date) => formatDate(d, 'd MMM y', 'en-US');
     const validity = !pl ? null
-      : on ? { label: 'Valid till', value: day(addDays(addMonths(on, pl.validityMonths), -1)), note: `${this.months(pl.validityMonths, true)} validity` }
-        : { label: 'Valid for', value: this.months(pl.validityMonths), note: 'from certification' };
+      : on ? { label: t('msme.dashboard.unit.validTillLabel', 'Valid till'), value: day(addDays(addMonths(on, pl.validityMonths), -1)),
+          note: t('msme.dashboard.unit.validityNote', '{period} validity', { period: this.months(pl.validityMonths, true) }) }
+        : { label: t('msme.dashboard.fact.validLabel', 'Valid for'), value: this.months(pl.validityMonths), note: t('msme.dashboard.unit.validForNote', 'from certification') };
+    const visitCount = (n: number) => (n > 1 ? t('msme.dashboard.unit.visitsAfter', '{count} visits after certification', { count: n })
+      : t('msme.dashboard.unit.visitAfter', '{count} visit after certification', { count: n }));
     // The first visit whose month has not passed yet.
     const now = new Date();
     const thisMonth = now.getFullYear() * 12 + now.getMonth();
     const next = on ? visits.map((m) => addMonths(on, m)).findIndex((d) => d.getFullYear() * 12 + d.getMonth() >= thisMonth) : -1;
     return {
       level, name: this.levelName(level), logo: this.levelLogo(level),
-      certified: on ? `Certified ${day(on)}` : 'Certified',
+      certified: on ? t('msme.dashboard.unit.certifiedOn', 'Certified {date}', { date: day(on) }) : t('msme.dashboard.unit.certified', 'Certified'),
       validity,
       surveillance: open
-        ? { label: 'Next surveillance', value: 'Due now', note: paid ? 'Under way' : 'Apply and pay',
+        ? { label: t('msme.dashboard.unit.nextSurveillanceLabel', 'Next surveillance'), value: t('msme.dashboard.unit.surveillanceDue', 'Due now'),
+            note: paid ? t('msme.dashboard.unit.surveillanceUnderWay', 'Under way') : t('msme.dashboard.unit.surveillanceApply', 'Apply and pay'),
             link: paid ? ['/msme/certification', level + 'Surveillance'] : ['/msme/surveillance-payment', level] }
         : on && next >= 0
-          ? { label: 'Next surveillance', value: formatDate(addMonths(on, visits[next]), 'MMM y', 'en-US'),
-              note: `${ordinal(next + 1)} of ${visits.length} visit${visits.length > 1 ? 's' : ''}`, link: null }
+          ? { label: t('msme.dashboard.unit.nextSurveillanceLabel', 'Next surveillance'), value: formatDate(addMonths(on, visits[next]), 'MMM y', 'en-US'),
+              note: visits.length > 1 ? t('msme.dashboard.unit.visitOf', '{ordinal} of {count} visits', { ordinal: ordinal(next + 1), count: visits.length })
+                : t('msme.dashboard.unit.visitOfOne', '{ordinal} of {count} visit', { ordinal: ordinal(next + 1), count: visits.length }), link: null }
           : visits.length
-            ? { label: 'Surveillance', value: `Month ${visits.join(', ')}`, note: `${visits.length} visit${visits.length > 1 ? 's' : ''} after certification`, link: null }
+            ? { label: t('msme.dashboard.fact.surveillanceLabel', 'Surveillance'), value: t('msme.dashboard.unit.surveillanceMonths', 'Month {months}', { months: visits.join(', ') }),
+                note: visitCount(visits.length), link: null }
             : null,
     };
   });
@@ -455,15 +514,15 @@ export class DashboardPage {
 
   /** The status chip of a level's card. */
   private chip(level: Level): LevelCardVm['chip'] {
-    if (this.levelDisabled(level)) return { label: 'Locked', tone: 'locked' };
+    if (this.levelDisabled(level)) return { label: t('msme.dashboard.chip.locked', 'Locked'), tone: 'locked' };
     const s = this.status(level);
     if (s === completedStatus(level)) {
       // 2026-11-18 (the user's applicant designs): "CERTIFIED · 14 NOV 2026" once the date is known.
       const on = this.certifiedOn(level);
-      return { label: on ? `Certified · ${formatDate(on, 'd MMM y', 'en-US')}` : 'Certified', tone: 'done' };
+      return { label: on ? t('msme.dashboard.chip.certifiedOn', 'Certified · {date}', { date: formatDate(on, 'd MMM y', 'en-US') }) : t('msme.dashboard.chip.certified', 'Certified'), tone: 'done' };
     }
-    if (s === 0) return this.recommended() === level ? { label: 'Ready to apply', tone: 'ready' } : { label: 'Not started', tone: 'new' };
-    return s > 0 && s < completedStatus(level) ? { label: 'In progress', tone: 'prog' } : null;
+    if (s === 0) return this.recommended() === level ? { label: t('msme.dashboard.chip.ready', 'Ready to apply'), tone: 'ready' } : { label: t('msme.dashboard.chip.notStarted', 'Not started'), tone: 'new' };
+    return s > 0 && s < completedStatus(level) ? { label: t('msme.dashboard.chip.inProgress', 'In progress'), tone: 'prog' } : null;
   }
 
   /** One card of "My Certifications" per enabled level. */
@@ -471,7 +530,7 @@ export class DashboardPage {
     this.levels().map((level) => ({
       code: level, name: this.levelName(level), logo: this.levelLogo(level), added: this.addedLevel(level), disabled: this.levelDisabled(level),
       recommended: this.recommended() === level, facts: this.facts(level), chip: this.chip(level),
-      steps: this.steps(level).map((r) => ({ label: r.label, cls: this.stepClass(level, r) })), fill: this.fill(level),
+      steps: this.steps(level).map((r) => ({ label: this.stepLabel(r.label), cls: this.stepClass(level, r) })), fill: this.fill(level),
       paid: this.paid(level), certified: this.certified(level),
       surveillance: this.surveillanceVisible(level) ? { paid: this.surveillancePaid(level) } : null,
       reCertification: this.reCertificationVisible(level),
@@ -480,8 +539,10 @@ export class DashboardPage {
 
   /** "My Incentives": the built-in cards as the Admin set them, the Admin's dashboard incentives, then the stakeholders' lists. */
   protected readonly incentiveTiles = computed<(IncentiveTileVm & { modal?: Modal })[]>(() => {
-    const notCertified = 'Unlocks once your unit is certified';
-    const notEligible = 'Not yet available for your unit';
+    const notCertified = t('msme.dashboard.incentive.notCertified', 'Unlocks once your unit is certified');
+    const notEligible = t('msme.dashboard.incentive.notEligible', 'Not yet available for your unit');
+    const details = t('msme.dashboard.incentive.detailsButton', 'View details');
+    const avail = t('msme.dashboard.incentive.availButton', 'Avail');
     const tiles: (IncentiveTileVm & { modal?: Modal })[] = [];
     const base = (key: string, icon: string, b: BuiltInCard) => ({ key, icon, title: b.title, highlight: b.highlight, details: b.details, note: null });
     const benefits = this.is(this.basic(), 'IsEligibleForBenefits', 1);
@@ -489,43 +550,46 @@ export class DashboardPage {
     const joining = this.card('JOINING_REWARD');
     if (joining) {
       const used = this.is(this.msme(), 'IsCouponUsed', 1);
-      tiles.push({ ...base('joining', 'award', joining), state: used ? 'availed' : 'open', action: { label: used ? 'View details' : 'Avail' }, modal: { kind: 'joining' } });
+      tiles.push({ ...base('joining', 'award', joining), state: used ? 'availed' : 'open', action: { label: used ? details : avail }, modal: { kind: 'joining' } });
     }
     const fa = this.card('FINANCIAL_ASSISTANCE');
     if (fa) {
       const eligible = this.is(this.basic(), 'IsEligibleForFinancial', 1);
       const availed = eligible && this.is(this.cert(), 'FinancialAssistanceStatus', 0);
       tiles.push(!eligible ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: notEligible }
-        : availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: 'View details' }, modal: { kind: 'fa' } }
-          : { ...base('fa', 'rupee', fa), state: 'open', action: { label: 'Avail', link: '/msme/financial-assistance' } });
+        : availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: details }, modal: { kind: 'fa' } }
+          : { ...base('fa', 'rupee', fa), state: 'open', action: { label: avail, link: '/msme/financial-assistance' } });
     }
     const hh = this.card('HANDHOLDING');
     if (hh) {
       const open = this.anyCertified() && benefits;
       const running = this.num('ConsultancyStatus') > 0;
       tiles.push(!open ? { ...base('hh', 'users', hh), state: 'locked', action: null, note: this.anyCertified() ? notEligible : notCertified }
-        : { ...base('hh', 'users', hh), state: running ? 'progress' : 'open', action: { label: running ? 'View milestones' : 'Avail', link: '/msme/handholding' } });
+        : { ...base('hh', 'users', hh), state: running ? 'progress' : 'open', action: { label: running ? t('msme.dashboard.incentive.milestonesButton', 'View milestones') : avail, link: '/msme/handholding' } });
     }
     const tu = this.card('TECHNOLOGY_UPGRADATION');
     if (tu) {
       const availed = this.is(this.cert(), 'TechnologyUpgradationStatus', 0);
       const open = (availed || this.is(this.cert(), 'TechnologyUpgradationStatus', 1)) && benefits;
       tiles.push(!open ? { ...base('tu', 'zap', tu), state: 'locked', action: null, note: notEligible }
-        : availed ? { ...base('tu', 'zap', tu), state: 'availed', action: { label: 'View details' }, modal: { kind: 'tu' } }
-          : { ...base('tu', 'zap', tu), state: 'open', action: { label: 'Avail', link: '/msme/technology-upgradation' } });
+        : availed ? { ...base('tu', 'zap', tu), state: 'availed', action: { label: details }, modal: { kind: 'tu' } }
+          : { ...base('tu', 'zap', tu), state: 'open', action: { label: avail, link: '/msme/technology-upgradation' } });
     }
     for (const c of this.incentiveCards()) {
       const ok = this.eligibleFor(c);
-      const levels = this.levelsOf(c, ' or ');
+      const levels = this.levelsOf(c, true);
       tiles.push({ key: `inc-${c.id}`, icon: 'star', title: c.title, highlight: c.highlight, details: c.details, clamp: true,
-        state: ok ? 'open' : 'locked', action: { label: ok ? 'Avail' : 'View details' }, note: ok ? null : levels ? `For ${levels} certified units` : notEligible,
+        state: ok ? 'open' : 'locked', action: { label: ok ? avail : details },
+        note: ok ? null : levels ? t('msme.dashboard.incentive.forLevels', 'For {levels} certified units', { levels }) : notEligible,
         modal: { kind: 'incentive', card: c } });
     }
     const icons: Record<string, string> = { Common: 'building', States: 'pin', Financial: 'bank', Other: 'trend' };
-    for (const inc of this.incentives) {
+    for (const type of this.incentives) {
       const ok = this.anyCertified();
-      tiles.push({ key: inc.type, icon: icons[inc.type], title: inc.title, highlight: null, details: inc.text, state: ok ? 'open' : 'locked',
-        action: ok ? { label: 'Browse incentives', link: '/incentives', query: this.incentiveQuery(inc.type) } : null, note: ok ? null : notCertified });
+      const { title, text } = this.stakeholder(type);
+      tiles.push({ key: type, icon: icons[type], title, highlight: null, details: text, state: ok ? 'open' : 'locked',
+        action: ok ? { label: t('msme.dashboard.incentive.browseButton', 'Browse incentives'), link: '/incentives', query: this.incentiveQuery(type) } : null,
+        note: ok ? null : notCertified });
     }
     return tiles;
   });
@@ -537,33 +601,47 @@ export class DashboardPage {
     if (n) {
       const name = this.levelName(n.level);
       out.push({ key: 'progress', icon: n.kind === 'nc' ? 'alert' : n.kind === 'entry' ? 'file' : 'clock', tone: n.kind === 'nc' ? 'nc' : 'plain', progress: true,
-        title: n.kind === 'nc' ? `Answer the ${name} non-conformances` : n.kind === 'entry' ? `Continue ${name} certification` : `${name} certification under assessment`,
-        text: n.text, action: 'View details', link: n.link });
+        title: n.kind === 'nc' ? t('msme.dashboard.nextSteps.nc.title', 'Answer the {level} non-conformances', { level: name })
+          : n.kind === 'entry' ? t('msme.dashboard.nextSteps.entry.title', 'Continue {level} certification', { level: name })
+            : t('msme.dashboard.nextSteps.wait.title', '{level} certification under assessment', { level: name }),
+        text: n.text, action: t('msme.dashboard.nextSteps.detailsButton', 'View details'), link: n.link });
     }
     for (const level of this.levels().filter((l) => this.certified(l) && this.surveillanceOpen(l))) {
       const paid = this.surveillancePaid(level);
-      out.push({ key: `sur-${level}`, icon: 'shield', tone: 'plain', title: `${this.levelName(level)} surveillance due`,
-        text: paid ? 'Your surveillance is under way. See its details and next step.' : 'Apply and pay for the surveillance of your certificate.',
-        action: paid ? 'View surveillance' : 'Apply for surveillance',
+      out.push({ key: `sur-${level}`, icon: 'shield', tone: 'plain', title: t('msme.dashboard.nextSteps.surveillance.title', '{level} surveillance due', { level: this.levelName(level) }),
+        text: paid ? t('msme.dashboard.nextSteps.surveillance.paidText', 'Your surveillance is under way. See its details and next step.')
+          : t('msme.dashboard.nextSteps.surveillance.text', 'Apply and pay for the surveillance of your certificate.'),
+        action: paid ? t('msme.dashboard.nextSteps.surveillance.viewButton', 'View surveillance') : t('msme.dashboard.nextSteps.surveillance.applyButton', 'Apply for surveillance'),
         link: paid ? ['/msme/certification', level + 'Surveillance'] : ['/msme/surveillance-payment', level] });
     }
     const current = this.currentLevel();
     const open = this.incentiveTiles().filter((t) => t.state === 'open').map((t) => t.title).filter((t): t is string => !!t);
     if (current && open.length) {
-      out.push({ key: 'incentives', icon: 'gift', tone: 'hi', title: `Avail your ${this.levelName(current)} incentives`,
-        text: `${open.slice(0, 3).join(', ')}${open.length > 3 ? ' and more' : ''} ${open.length > 1 ? 'are' : 'is'} open to you.`, action: 'View incentives', scroll: true });
+      const list = open.slice(0, 3).join(', ');
+      out.push({ key: 'incentives', icon: 'gift', tone: 'hi', title: t('msme.dashboard.nextSteps.incentives.title', 'Avail your {level} incentives', { level: this.levelName(current) }),
+        text: open.length > 3 ? t('msme.dashboard.nextSteps.incentives.textMore', '{list} and more are open to you.', { list })
+          : open.length > 1 ? t('msme.dashboard.nextSteps.incentives.textMany', '{list} are open to you.', { list })
+            : t('msme.dashboard.nextSteps.incentives.textOne', '{list} is open to you.', { list }),
+        action: t('msme.dashboard.nextSteps.incentives.button', 'View incentives'), scroll: true });
     }
     const rec = this.recommended();
     if (rec && !n && this.canApply(rec)) {
       const fee = this.levelFees()[rec];
-      const feeText = typeof fee === 'number' ? (fee > 0 ? `Your fee is ${this.inr(fee)} incl. GST, after subsidy. ` : 'Fully subsidised for your unit. ') : '';
+      // Two sentences: the fee (when known) and the assessment.
+      const feeText = typeof fee === 'number'
+        ? (fee > 0 ? t('msme.dashboard.nextSteps.apply.fee', 'Your fee is {fee} incl. GST, after subsidy.', { fee: this.inr(fee) })
+          : t('msme.dashboard.nextSteps.apply.feeNil', 'Fully subsidised for your unit.')) + ' '
+        : '';
       const site = this.steps(rec).some((r) => r.label === 'Site visit');
-      out.push({ key: 'apply', icon: 'award', tone: 'plain', logo: this.levelLogo(rec), title: `Apply for ${this.levelName(rec)} certification`,
-        text: feeText + (site ? 'Desktop check plus a site visit.' : 'Desktop assessment of your documents.'), action: `Apply for ${this.levelName(rec)}`, apply: rec });
+      const level = this.levelName(rec);
+      out.push({ key: 'apply', icon: 'award', tone: 'plain', logo: this.levelLogo(rec), title: t('msme.dashboard.nextSteps.apply.title', 'Apply for {level} certification', { level }),
+        text: feeText + (site ? t('msme.dashboard.nextSteps.apply.site', 'Desktop check plus a site visit.') : t('msme.dashboard.nextSteps.apply.desktop', 'Desktop assessment of your documents.')),
+        action: t('msme.dashboard.nextSteps.apply.button', 'Apply for {level}', { level }), apply: rec });
     }
     if (this.num('ConsultancyStatus') > 0 && this.card('HANDHOLDING')) {
-      out.push({ key: 'handholding', icon: 'users', tone: 'plain', title: 'Continue handholding', text: 'Track the milestones of your handholding support.',
-        action: 'View milestones', link: ['/msme/handholding'] });
+      out.push({ key: 'handholding', icon: 'users', tone: 'plain', title: t('msme.dashboard.nextSteps.handholding.title', 'Continue handholding'),
+        text: t('msme.dashboard.nextSteps.handholding.text', 'Track the milestones of your handholding support.'),
+        action: t('msme.dashboard.nextSteps.handholding.button', 'View milestones'), link: ['/msme/handholding'] });
     }
     return out.slice(0, 3);
   });
@@ -597,12 +675,12 @@ export class DashboardPage {
       if (s === completedStatus(level) || s === 7 || s === 17) continue;
       // 2026-11-14: basic information, documents and NC answers are entered in the ZED MSME app (no web entry).
       if (s <= 1)
-        return { level, kind: 'entry', text: 'Complete Basic Information & Documents in the ZED MSME app and final submit.', action: 'DETAILS',
+        return { level, kind: 'entry', text: t('msme.dashboard.nextSteps.entry.text', 'Complete Basic Information & Documents in the ZED MSME app and final submit.'), action: 'DETAILS',
           link: ['/msme/certification', level] };
       if (s === 4 || s === 14)
-        return { level, kind: 'nc', text: 'Answer the non-conformances raised in the assessment in the ZED MSME app.', action: 'DETAILS',
+        return { level, kind: 'nc', text: t('msme.dashboard.nextSteps.nc.text', 'Answer the non-conformances raised in the assessment in the ZED MSME app.'), action: 'DETAILS',
           link: ['/msme/certification', level] };
-      return { level, kind: 'wait', text: 'Your application is under assessment. We will notify you of the next step.', action: 'DETAILS',
+      return { level, kind: 'wait', text: t('msme.dashboard.nextSteps.wait.text', 'Your application is under assessment. We will notify you of the next step.'), action: 'DETAILS',
         link: ['/msme/certification', level] };
     }
     return null;
@@ -683,7 +761,7 @@ export class DashboardPage {
   }
 
   /** Query of the public incentive list (/incentives), as the old Incentive/Details link carried it. */
-  protected incentiveQuery(type: 'Common' | 'States' | 'Financial' | 'Other'): Record<string, string> {
+  protected incentiveQuery(type: Stakeholder): Record<string, string> {
     const q: Record<string, string> = { it: type, ct: String(this.msme()['LatestCertification'] ?? '') };
     if (type === 'States') q['id'] = String(this.msme()['StateId'] ?? '');
     return q;
@@ -720,17 +798,15 @@ export class DashboardPage {
     const level = this.applyLevel();
     const used = this.is(this.msme(), 'IsCouponUsed', 1);
     const fee = this.levelFees()[level];
-    const fees: LevelFact[] = [
-      ...(typeof fee === 'number' ? [fee > 0 ? { label: 'Your fee', value: this.inr(fee), note: 'incl. GST, after subsidy' } : { label: 'Your fee', value: 'Nil', note: 'fully subsidised' }] : []),
-      ...this.facts(level).filter((f) => f.label !== 'Your fee'),
-    ];
-    const order = ['Your fee', 'Valid for', 'Surveillance'];
+    const fees: LevelFact[] = [...(typeof fee === 'number' ? [this.feeFact(fee)] : []), ...this.facts(level).filter((f) => f.id !== 'fee')];
+    const order = ['fee', 'valid', 'surveillance'];
     return {
       code: level, name: this.levelName(level), logo: this.levelLogo(level),
       unitName: String(this.msme()['EnterpriseName'] ?? ''), zedId: String(this.msme()['ZedId'] ?? ''),
-      facts: order.map((l) => fees.find((f) => f.label === l)).filter((f): f is LevelFact => !!f)
-        .map((f) => (f.label === 'Valid for' ? { ...f, label: 'Validity' } : f)),
-      assessment: this.steps(level).some((r) => r.label === 'Site visit') ? 'Desktop check and site visit' : 'Desktop assessment',
+      facts: order.map((id) => fees.find((f) => f.id === id)).filter((f): f is LevelFact => !!f)
+        .map((f) => (f.id === 'valid' ? { ...f, label: t('msme.apply.fact.validityLabel', 'Validity') } : f)),
+      assessment: this.steps(level).some((r) => r.label === 'Site visit') ? t('msme.apply.assessment.site', 'Desktop check and site visit')
+        : t('msme.apply.assessment.desktop', 'Desktop assessment'),
       reCertification: this.num('ReCertification', this.basic()) > 0,
       rewardUsed: used ? { level: String(this.msme()['LatestCertification'] ?? ''), date: String(this.msme()['DateOfAvail'] ?? '') } : null,
     };
@@ -739,10 +815,10 @@ export class DashboardPage {
   /** The billing details of the fee step, from the unit's registration as the dashboard has it. */
   protected readonly billing = computed<PaymentBilling>(() => {
     const m = this.msme();
-    const t = (k: string) => String(m[k] ?? '').trim();
-    const address = [t('PUnitName'), t('PAddress'), t('PDistrictName'), [t('PStateName'), t('PPin')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-    return { name: t('EnterpriseName') || null, address: address || null, zedId: t('ZedId') || null,
-      unit: [t('EnterpriseName'), t('ZedId')].filter(Boolean).join(' · ') || null };
+    const f = (k: string) => String(m[k] ?? '').trim();
+    const address = [f('PUnitName'), f('PAddress'), f('PDistrictName'), [f('PStateName'), f('PPin')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return { name: f('EnterpriseName') || null, address: address || null, zedId: f('ZedId') || null,
+      unit: [f('EnterpriseName'), f('ZedId')].filter(Boolean).join(' · ') || null };
   });
 
   protected goStep(step: 'home' | 'disclaimer' | 'instructions' | 'payment'): void {
@@ -751,7 +827,8 @@ export class DashboardPage {
   }
 
   protected infoTitle(topic: InfoTopic): string {
-    return topic === 'MyIncentives' ? 'My Incentives' : topic === 'My' ? 'My Certification' : `${this.levelName(topic)} Certification`;
+    return topic === 'MyIncentives' ? t('msme.dashboard.popup.incentivesTitle', 'My Incentives') : topic === 'My' ? t('msme.dashboard.popup.certificationTitle', 'My Certification')
+      : t('msme.dashboard.popup.levelTitle', '{level} Certification', { level: this.levelName(topic) });
   }
 }
 

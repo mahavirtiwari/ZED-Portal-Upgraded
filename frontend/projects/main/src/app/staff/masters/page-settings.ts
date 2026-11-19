@@ -36,6 +36,8 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
           <h5 class="ps-h m-0" id="ps-current-h">Current banner</h5>
           @if (settings()?.imageUrl) {
             <span class="status-badge is-active">In use</span>
+          } @else if (settings()?.fileMissing) {
+            <span class="status-badge is-pending">File missing</span>
           } @else if (settings()) {
             <span class="status-badge is-inactive">None saved</span>
           }
@@ -46,18 +48,23 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
           } @else {
             <div class="img-empty">
               <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="m3 16 5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><circle cx="16" cy="9.5" r="1.6" fill="currentColor" /></svg>
-              <span>No banner saved. Choose a PNG to add one.</span>
+              @if (settings()?.fileMissing) {
+                <span class="img-missing" role="status">The saved banner file is missing — upload it again.</span>
+              } @else {
+                <span>No banner saved. Choose a PNG to add one.</span>
+              }
             </div>
           }
         </div>
         <dl class="img-meta">
           <dt>Shown on</dt>
           <dd><span class="zed-chip">Home (login) page</span></dd>
-          @if (settings()?.fileName) {
+          <!-- 2026-11-19 (admin audit): the file and date only with a banner shown, or with the missing one named as missing. -->
+          @if (settings()?.fileName && (settings()?.imageUrl || settings()?.fileMissing)) {
             <dt>File</dt>
-            <dd>{{ settings()?.fileName }}</dd>
+            <dd>{{ settings()?.fileName }}@if (settings()?.fileMissing) {&ngsp;<span class="muted">(missing)</span>}</dd>
           }
-          @if (settings()?.updatedOn) {
+          @if (settings()?.updatedOn && (settings()?.imageUrl || settings()?.fileMissing)) {
             <dt>Saved on</dt>
             <dd>{{ settings()?.updatedOn }}</dd>
           }
@@ -69,7 +76,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
 
       <form class="zed-card img-card" aria-labelledby="ps-upload-h" (submit)="$event.preventDefault(); save()" novalidate>
         <div class="img-card-head">
-          <h5 class="ps-h m-0" id="ps-upload-h">{{ settings()?.imageUrl ? 'Replace the banner' : 'Add a banner' }}</h5>
+          <h5 class="ps-h m-0" id="ps-upload-h">{{ settings()?.imageUrl ? 'Replace the banner' : settings()?.fileMissing ? 'Upload the banner again' : 'Add a banner' }}</h5>
           @if (preview()) { <span class="status-badge is-pending">Not saved yet</span> }
         </div>
         @if (preview(); as url) {
@@ -111,6 +118,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
     .img-frame.picked { border: 2px solid #45a5ad; }
     .img-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #5f6f70; font-size: 14px; text-align: center; padding: 16px; }
     .img-empty svg { color: #8a9899; }
+    .img-missing { color: #8a5a00; font-weight: 600; }
     .img-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
     .img-meta dt { font-weight: 600; color: #5f6f70; }
     .img-meta dd { margin: 0; color: #232527; overflow-wrap: anywhere; }

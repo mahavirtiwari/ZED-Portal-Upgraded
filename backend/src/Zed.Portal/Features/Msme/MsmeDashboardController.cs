@@ -130,16 +130,17 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     public sealed record BuiltInCard(string Card, string? Title, string? Highlight, string? Details, bool Active);
 
     /// <summary>An incentive the Admin put on the dashboard ("Where it appears": Main dashboard), active ones only.</summary>
+    /// <remarks>
+    /// 2026-11-19 (admin audit: GET api/public/incentive-cards answered 500 every time): Dapper builds a positional record only
+    /// through a constructor with exactly the columns of <see cref="IncentiveCardsSql"/>, in their order and types, and checks
+    /// it before reading any row. ApplicableForZEDX and ApplicableActivity (migration 0091) were init properties, so the 15
+    /// columns had no 15-parameter constructor and every read threw (not a DbException, so not caught). They are parameters now.
+    /// </remarks>
+    /// <param name="ApplicableForZEDX">2026-11-16 (migration 0091): ZED-X (Export) certified units too.</param>
+    /// <param name="ApplicableActivity">2026-11-16 (migration 0091): Manufacturing or Services; null = both.</param>
     public sealed record IncentiveCard(long Id, string? Title, string? Highlight, string? Details, string? Department,
         string? ContactPerson, string? Email, string? MobileNo, string? WebLink, string? VideoLink,
-        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold)
-    {
-        /// <summary>2026-11-16 (migration 0091): ZED-X (Export) certified units too.</summary>
-        public bool ApplicableForZEDX { get; init; }
-
-        /// <summary>2026-11-16 (migration 0091): Manufacturing or Services; null = both.</summary>
-        public string? ApplicableActivity { get; init; }
-    }
+        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ApplicableForZEDX = false, string? ApplicableActivity = null);
 
     public sealed record IncentiveCardsResponse(IReadOnlyList<BuiltInCard> BuiltIn, IReadOnlyList<IncentiveCard> Incentives);
 

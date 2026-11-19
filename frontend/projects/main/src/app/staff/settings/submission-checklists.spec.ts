@@ -3,6 +3,16 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ObservationReasonsPage, ObservationReasonsResponse } from './observation-reasons';
 import { ChecklistView, SubmissionChecklistsPage, itemId } from './submission-checklists';
+import { ConfirmService } from '../confirm-dialog';
+
+/** The action cell keeps Edit and the On / Off label on one line (2026-11-19 admin audit: "Edi/t", "O/n" at 1536px). */
+function expectOneLineActions(el: HTMLElement) {
+  expect((el.querySelector('col.col-actions') as HTMLTableColElement).style.width).toBe('268px');
+  const actions = el.querySelector('tbody .st-actions') as HTMLElement;
+  expect(getComputedStyle(actions).whiteSpace).toBe('nowrap');
+  expect(getComputedStyle(actions.querySelector('.st-edit')!).flexShrink).toBe('0');
+  expect(getComputedStyle(actions.querySelector('.st-switch')!).flexShrink).toBe('0');
+}
 
 /** 2026-11-17 (approved): Admin → Submission checklists and Admin → Observation reasons. */
 async function settle(fixture: ComponentFixture<unknown>) {
@@ -107,6 +117,16 @@ describe('SubmissionChecklistsPage', () => {
     await settle(fixture);
   });
 
+  it('keeps the action buttons on one line', () => expectOneLineActions(el));
+
+  it('asks in the app pop-up before switching an item off', async () => {
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
+    (el.querySelector('[aria-label="Switch off Exemptions reviewed."]') as HTMLInputElement).click();
+    await settle(fixture);
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Switch the Item Off?', subtitle: 'Exemptions reviewed.', danger: true }));
+    http.expectNone((r) => r.method === 'PUT');
+  });
+
   it('makes a key from the text', () => {
     expect(itemId('All photos seen!', [])).toBe('all-photos-seen');
     expect(itemId('All photos seen', ['all-photos-seen'])).toBe('all-photos-seen-2');
@@ -152,6 +172,21 @@ describe('ObservationReasonsPage', () => {
     expect(row('conduct')).toContain('Critical');
     expect(row('other')).toContain('Off');
     expect(el.textContent).toContain('holds the final submit');
+  });
+
+  it('keeps the action buttons on one line', () => expectOneLineActions(el));
+
+  it('switches a reason off after confirming in the app pop-up', async () => {
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
+    (el.querySelector('[aria-label="Switch off Conduct"]') as HTMLInputElement).click();
+    await settle(fixture);
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Switch the Reason Off?', danger: true }));
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
+    expect(put.request.body.reasons[1]).toEqual(expect.objectContaining({ id: 'conduct', active: false }));
+    put.flush({ message: 'Observation reasons saved.' });
+    await settle(fixture);
+    http.expectOne(url).flush(response());
+    await settle(fixture);
   });
 
   it('edits a reason and its severity', async () => {

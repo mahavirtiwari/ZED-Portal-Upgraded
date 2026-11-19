@@ -9,6 +9,7 @@ import { BrandingService } from './branding';
 import { routes } from './app.routes';
 import { PublicLevels } from './msme/shared/levels';
 import { PublicStates } from './msme/shared/states';
+import { ContentService } from './content/content-text';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -29,6 +30,11 @@ export const appConfig: ApplicationConfig = {
       const levels = inject(PublicLevels);
       void levels.load();
       void levels.loadAll();
+    }),
+    // 2026-11-19: the Admin's Texts and page wording (one api/content call), without holding up the start: pages show their
+    // own wording until it arrives (content/page-text.ts).
+    provideAppInitializer(() => {
+      inject(ContentService).preload();
     }),
     // The states of the LG Directory masters for the state drop-downs (waits at most 3 seconds, else the built-in list).
     provideAppInitializer(() => inject(PublicStates).load()),

@@ -7,6 +7,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, OffCategory, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
+import { ConfirmService } from '../confirm-dialog';
 
 /** Consultancy's handholding milestones (AssessmentFee.MileStone); one fee each per handholding level. */
 const MILESTONES = ['1', '2', '3'] as const;
@@ -631,6 +632,7 @@ export class FeeStructurePage {
   /** The special categories, in their order (the Add fees form's additional shares). */
   protected readonly specialCategories = CATEGORY_ORDER.filter((id) => id !== 0).map((id) => ({ id, ...CATEGORIES[id] }));
   private readonly api = inject(FeesApi);
+  private readonly confirms = inject(ConfirmService);
   /**
    * The cards: Consultancy's milestones; elsewhere every level of Administration → Certification Levels (2026-11-08: the
    * Admin's too, disabled ones included, so their fees can be added before they are enabled) and any level with fee rows.
@@ -910,7 +912,9 @@ export class FeeStructurePage {
   }
 
   protected async enableSubsidy(s: StructureRow): Promise<void> {
-    if (!window.confirm(`Enable the ${s.name} subsidy again on the three portals? Units in this category get it from their next payment.`)) return;
+    if (!(await this.confirms.ask({
+      title: `Enable the ${s.name} Subsidy Again?`, message: 'It is enabled on the three portals. Units in this category get it from their next payment.', confirmLabel: 'Enable',
+    }))) return;
     await this.run(() => this.api.switchSubsidy(s.category, false, null));
   }
 

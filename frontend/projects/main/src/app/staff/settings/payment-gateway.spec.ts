@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PaymentGatewayInfo, PaymentGatewayPage } from './payment-gateway';
+import { ConfirmService } from '../confirm-dialog';
 
 describe('PaymentGatewayPage', () => {
   const url = '/api/staff/settings/payment-gateway';
@@ -192,7 +193,7 @@ describe('PaymentGatewayPage', () => {
 
   it('goes back to the server file after confirming', async () => {
     await create(info({ inUse: 'page', saved: savedAccount }));
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     const button = [...el.querySelectorAll('button')].find((b) => b.textContent!.includes('Use server file again')) as HTMLButtonElement;
     button.click();
     await settle();

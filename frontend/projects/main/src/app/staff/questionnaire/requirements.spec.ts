@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { RequirementsPage } from './requirements';
 import { RequirementsResponse } from './questionnaire.api';
+import { ConfirmService } from '../confirm-dialog';
 
 const BASE = '/api/staff/questionnaire/Bronze/P1/requirements';
 
@@ -208,7 +209,7 @@ describe('RequirementsPage', () => {
   });
 
   it('removes the last requirement after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     (el.querySelectorAll('.rq-item')[1] as HTMLButtonElement).click();
     await settle(fixture);
     (el.querySelector('.remove-requirement') as HTMLButtonElement).click();

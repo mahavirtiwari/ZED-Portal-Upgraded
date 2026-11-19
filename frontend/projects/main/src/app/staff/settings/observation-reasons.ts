@@ -5,6 +5,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ALL_PORTALS, PortalSwitchComponent } from '../admin-portal';
 import { itemId } from './submission-checklists';
+import { ConfirmService } from '../confirm-dialog';
 
 export type Severity = 'Minor' | 'Major' | 'Critical';
 
@@ -81,7 +82,7 @@ interface Editing {
             <col />
             <col style="width: 120px" />
             <col style="width: 80px" />
-            <col style="width: 220px" />
+            <col class="col-actions" style="width: 268px" />
           </colgroup>
           <thead>
             <tr>
@@ -174,7 +175,7 @@ interface Editing {
     .sev { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #eef2f2; color: #3d4f50; border: 1px solid #d9e2e2; }
     .sev-major { background: #fdf3e1; color: #8a5a00; border-color: #f2d9a6; }
     .sev-critical { background: #fdecec; color: #a32d2d; border-color: #f2c4c4; }
-    .reasons-table { table-layout: fixed; width: 100%; min-width: 640px; margin-bottom: 0; }
+    .reasons-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 0; }
     .reasons-table td { overflow-wrap: anywhere; vertical-align: middle; }
     .reasons-table tr.is-off td { color: #8a9899; }
     .reason-text { font-size: 14px; color: #232527; }
@@ -185,7 +186,9 @@ interface Editing {
     .standard-note { font-weight: 600; color: #23474a; }
     .info-dot { flex: 0 0 18px; height: 18px; border-radius: 9px; background: #45a5ad; color: #fff; font-size: 12px; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif; }
-    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    /* 2026-11-19 (admin audit: "Edi/t" and "O/n" at 1536px): the action column is wide enough and its buttons never wrap. */
+    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow-wrap: normal; }
+    .st-actions > * { flex: none; }
     .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
       color: #23474a; font-weight: 700; padding: 0; }
     .st-icon:disabled { opacity: .35; cursor: default; }
@@ -207,6 +210,7 @@ interface Editing {
 })
 export class ObservationReasonsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/observation-reasons';
 
   protected readonly limits = REASON_LIMITS;
@@ -288,11 +292,13 @@ export class ObservationReasonsPage {
     }
   }
 
-  protected toggle(index: number): Promise<void> {
+  protected async toggle(index: number): Promise<void> {
     const reasons = (this.data()?.reasons ?? []).map((x) => ({ ...x }));
     const r = reasons[index];
     if (!r) return Promise.resolve();
-    if (r.active && !confirm(`Switch "${r.text}" off? It is no longer offered for new observations.`)) return Promise.resolve();
+    if (r.active && !(await this.confirms.ask({
+      title: 'Switch the Reason Off?', message: `"${r.text}" is no longer offered for new observations.`, confirmLabel: 'Switch Off', danger: true,
+    }))) return;
     r.active = !r.active;
     return this.change(() => this.http.put<MessageResponse>(ObservationReasonsPage.url, { reasons }));
   }
@@ -305,8 +311,10 @@ export class ObservationReasonsPage {
     return this.change(() => this.http.put<MessageResponse>(ObservationReasonsPage.url, { reasons }));
   }
 
-  protected resetAll(): Promise<void> {
-    if (!confirm('Go back to the standard reasons? The reasons added or changed here are removed.')) return Promise.resolve();
+  protected async resetAll(): Promise<void> {
+    if (!(await this.confirms.ask({
+      title: 'Reset to the Standard Reasons?', message: 'The reasons added or changed here are removed.', confirmLabel: 'Reset', danger: true,
+    }))) return;
     return this.change(() => this.http.delete<MessageResponse>(ObservationReasonsPage.url));
   }
 

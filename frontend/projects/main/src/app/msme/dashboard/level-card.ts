@@ -1,9 +1,12 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TextPipe } from '../../content/page-text';
 import { DashIcon } from './dash-icon';
 
 /** A row of a level's facts: Valid for, Surveillance, Your fee (with a note under the value, e.g. "incl. GST, after subsidy"). */
 export interface LevelFact {
+  /** Which fact it is (the label is the Admin's wording, so the code goes by this). */
+  id?: 'valid' | 'surveillance' | 'fee';
   label: string;
   value: string;
   note?: string;
@@ -38,17 +41,18 @@ export interface LevelCardVm {
  * Continue or Certificate). 2026-11-18 (the user): no "Recommended next" tag or outline.
  * 2026-11-18 (the user's applicant designs): the header colours, sizes and spacing of zed-msme-00-home-dashboard.svg, the
  * certified chip with its date ("CERTIFIED · 14 NOV 2026"), two equal 34px buttons, and the extra lines in title case.
+ * 2026-11-19 (the user: "All page wording"): its wording through the t pipe (msme.dashboard.levelCard.*).
  */
 @Component({
   selector: 'zed-dash-level-card',
-  imports: [RouterLink, DashIcon],
+  imports: [RouterLink, DashIcon, TextPipe],
   host: { class: 'd-block h-100' },
   template: `
     @let v = vm();
     <article class="lv-card panel-{{ v.code.toLowerCase() }}" [class.panel-added]="v.added" [class.plant-activity-disabled]="v.disabled">
       <div class="panel-heading lv-head">
-        <h5>{{ v.name.toUpperCase() }} CERTIFICATION</h5>
-        <button type="button" class="lv-info" [attr.aria-label]="'About ' + v.name" (click)="info.emit()"><zed-dash-icon name="info" [size]="18" /></button>
+        <h5>{{ '{level} CERTIFICATION' | t: 'msme.dashboard.levelCard.title' : { level: v.name.toUpperCase() } }}</h5>
+        <button type="button" class="lv-info" [attr.aria-label]="'About {level}' | t: 'msme.dashboard.levelCard.infoAria' : { level: v.name }" (click)="info.emit()"><zed-dash-icon name="info" [size]="18" /></button>
       </div>
       <div class="lv-body">
         <div class="inner2 lv-logo"><img [src]="v.logo" alt="" /></div>
@@ -62,7 +66,7 @@ export interface LevelCardVm {
         @if (v.chip; as c) {
           <p class="lv-status is-{{ c.tone }}">@if (c.tone === 'done') { <zed-dash-icon name="check" [size]="12" [stroke]="3" /> }<span>{{ c.label }}</span></p>
         }
-        @if (v.disabled) { <p class="lv-lock-note">Available after your current certification is completed.</p> }
+        @if (v.disabled) { <p class="lv-lock-note">{{ 'Available after your current certification is completed.' | t: 'msme.dashboard.levelCard.lockedNote' }}</p> }
         <div class="stepper lv-steps" [style.--fill]="v.fill" role="img" [attr.aria-label]="v.chip?.label ?? ''">
           <ol>@for (s of v.steps; track $index) { <li [class]="s.cls"><span class="dot"></span></li> }</ol>
           <div class="lv-steps-labels" aria-hidden="true">
@@ -71,30 +75,31 @@ export interface LevelCardVm {
         </div>
         <div class="lv-actions">
           @if (v.paid) {
-            <a class="btn btn-outline-primary" [routerLink]="['/msme/certification', v.code]">View details</a>
-            <a class="btn btn-primary" [routerLink]="['/msme/certification', v.code]" [attr.aria-label]="'Continue ' + v.name">
-              @if (v.certified) { <zed-dash-icon name="download" [size]="15" /> Certificate } @else { Continue <zed-dash-icon name="arrow" [size]="15" /> }
+            <a class="btn btn-outline-primary" [routerLink]="['/msme/certification', v.code]">{{ 'View details' | t: 'msme.dashboard.levelCard.detailsButton' }}</a>
+            <a class="btn btn-primary" [routerLink]="['/msme/certification', v.code]" [attr.aria-label]="'Continue {level}' | t: 'msme.dashboard.levelCard.continueAria' : { level: v.name }">
+              @if (v.certified) { <zed-dash-icon name="download" [size]="15" /> {{ 'Certificate' | t: 'msme.dashboard.levelCard.certificateButton' }} }
+              @else { {{ 'Continue' | t: 'msme.dashboard.levelCard.continueButton' }} <zed-dash-icon name="arrow" [size]="15" /> }
             </a>
           } @else {
-            <button type="button" class="btn btn-outline-primary" (click)="details.emit()">View details</button>
-            <button type="button" class="btn btn-primary apply-btn" (click)="apply.emit()">Apply <zed-dash-icon name="arrow" [size]="15" /></button>
+            <button type="button" class="btn btn-outline-primary" (click)="details.emit()">{{ 'View details' | t: 'msme.dashboard.levelCard.detailsButton' }}</button>
+            <button type="button" class="btn btn-primary apply-btn" (click)="apply.emit()">{{ 'Apply' | t: 'msme.dashboard.levelCard.applyButton' }} <zed-dash-icon name="arrow" [size]="15" /></button>
           }
         </div>
         @if (v.surveillance; as s) {
           <div class="lv-extra">
             @if (s.paid) {
-              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']">Surveillance</a>
-              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']" [attr.aria-label]="v.name + ' surveillance details'"><zed-dash-icon name="arrow" [size]="16" /></a>
+              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']">{{ 'Surveillance' | t: 'msme.dashboard.levelCard.surveillanceLink' }}</a>
+              <a [routerLink]="['/msme/certification', v.code + 'Surveillance']" [attr.aria-label]="'{level} surveillance details' | t: 'msme.dashboard.levelCard.surveillanceAria' : { level: v.name }"><zed-dash-icon name="arrow" [size]="16" /></a>
             } @else {
-              <a [routerLink]="['/msme/surveillance-payment', v.code]">Surveillance</a>
-              <a [routerLink]="['/msme/surveillance-payment', v.code]" class="btn btn-primary btn-sm">Apply</a>
+              <a [routerLink]="['/msme/surveillance-payment', v.code]">{{ 'Surveillance' | t: 'msme.dashboard.levelCard.surveillanceLink' }}</a>
+              <a [routerLink]="['/msme/surveillance-payment', v.code]" class="btn btn-primary btn-sm">{{ 'Apply' | t: 'msme.dashboard.levelCard.applyButton' }}</a>
             }
           </div>
         }
         @if (v.reCertification) {
           <div class="lv-extra">
-            <span class="clickable" (click)="apply.emit()">Re-certification</span>
-            <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply.emit()" (keydown.enter)="apply.emit()">Apply</span>
+            <span class="clickable" (click)="apply.emit()">{{ 'Re-certification' | t: 'msme.dashboard.levelCard.reCertification' }}</span>
+            <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply.emit()" (keydown.enter)="apply.emit()">{{ 'Apply' | t: 'msme.dashboard.levelCard.applyButton' }}</span>
           </div>
         }
       </div>

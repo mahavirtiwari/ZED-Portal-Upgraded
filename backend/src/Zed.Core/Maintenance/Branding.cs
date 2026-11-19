@@ -41,7 +41,8 @@ public static partial class Branding
 
     public static readonly IReadOnlyList<Theme> Themes =
     [
-        new(DefaultTheme, "ZED Teal (today)", "#23656b", "#45a5ad", "#c9e8a0"),
+        // 2026-11-19 (admin audit): no "(today)" in the name; the Branding page marks the theme saved for a portal or app as current.
+        new(DefaultTheme, "ZED Teal", "#23656b", "#45a5ad", "#c9e8a0"),
         new("navy", "Navy", "#1f3b73", "#3c6fc4", "#f2c14e"),
         new("forest", "Forest", "#1e5e3a", "#3f9a63", "#e8d48a"),
         new("maroon", "Maroon", "#6b1f2a", "#a8424f", "#f0c9a0"),

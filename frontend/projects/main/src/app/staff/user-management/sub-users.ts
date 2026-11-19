@@ -1,4 +1,5 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
+import { IndianTimePipe } from '../utc-time';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
@@ -88,7 +89,7 @@ const API = '/api/staff/sub-users';
  */
 @Component({
   selector: 'zed-staff-sub-users',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, PagerComponent, ListSearchComponent, MultiSelect, PageHead, ListCounts, RowMenu, ConfirmDialog],
+  imports: [FormsModule, DatePipe, IndianTimePipe, NgTemplateOutlet, PagerComponent, ListSearchComponent, MultiSelect, PageHead, ListCounts, RowMenu, ConfirmDialog],
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="accountType() + 's'"
                    subtitle="They sign in with their own User ID and work as your login on the screens you give them. Their work is recorded under your login.">
@@ -142,7 +143,7 @@ const API = '/api/staff/sub-users';
                 </td>
                 <td class="su-scope" data-label="Scope"><span class="su-scope-pill" data-scope>{{ scopeText(u) }}</span></td>
                 <td class="su-login" data-label="Last Login">
-                  @if (u.lastLoginAt) { {{ u.lastLoginAt + 'Z' | date: 'dd-MM-yyyy HH:mm' }} } @else { <span class="su-never">Never signed in</span> }
+                  @if (u.lastLoginAt) { {{ u.lastLoginAt | indianTime }} } @else { <span class="su-never">Never signed in</span> }
                   <small class="d-block muted">Added {{ u.createdAt | date: 'dd-MM-yyyy' }}</small>
                 </td>
                 <td class="text-center su-status-cell"><ng-container *ngTemplateOutlet="badge; context: { $implicit: u }" /></td>

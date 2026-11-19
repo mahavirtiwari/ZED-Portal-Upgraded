@@ -54,6 +54,14 @@ describe('ExpenditureRatesPage', () => {
     expect(cards[1].textContent).toContain('not used');
   });
 
+  it('shows when a set was saved (stored in UTC) as the day in India', async () => {
+    // 2026-11-19 (admin audit): "Saved by ADMIN, 18 Nov 2026" for a save at 04:31 IST on the 19th (23:01 UTC on the 18th).
+    const r = rates();
+    r.sets[0].savedOn = '2026-11-18T23:01:55';
+    await create(r);
+    expect(el.querySelectorAll('.xr-card')[0].textContent).toContain('Saved by Admin, 19 Nov 2026');
+  });
+
   it('adds a new rate set with its date of effect', async () => {
     await create(rates());
     const card = el.querySelectorAll('.xr-card')[0];

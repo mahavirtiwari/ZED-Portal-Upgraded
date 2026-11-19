@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { setPageTexts } from '../../content/page-text';
 import { DashboardPage } from './dashboard';
 
 describe('DashboardPage', () => {
@@ -452,5 +453,24 @@ describe('DashboardPage', () => {
     expect([...el.querySelectorAll('.cert-steps .step-details zed-text')].map((t) => t.getAttribute('data-key'))).toEqual(
       [1, 2, 3, 4, 5].map((n) => `msme.dashboard.certificationSteps.${n}`),
     );
+  });
+
+  it("shows the Admin's page wording (Texts → Page wording), the standard wording for the rest (2026-11-19)", async () => {
+    setPageTexts([
+      { key: 'msme.dashboard.nextSteps.title', enabled: true, html: 'What to do next' },
+      { key: 'msme.dashboard.welcome', enabled: true, html: 'Hello, {name}' },
+      { key: 'msme.dashboard.chip.notStarted', enabled: true, html: 'Not applied' },
+      { key: 'msme.dashboard.levelCard.applyButton', enabled: true, html: 'Start' },
+    ]);
+    try {
+      await render({});
+      expect(el.querySelector('zed-page-head .ph-title')!.textContent).toBe('Hello, Acme Castings');
+      expect(el.querySelector('.dash-label')!.textContent).toBe('What to do next');
+      expect(card('silver').textContent).toContain('Not applied');
+      expect(card('bronze').querySelector('.apply-btn')!.textContent!.trim()).toBe('Start');
+      expect(el.textContent).toContain('My Certifications');
+    } finally {
+      setPageTexts([]);
+    }
   });
 });

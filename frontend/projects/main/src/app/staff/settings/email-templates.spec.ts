@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmService } from '../confirm-dialog';
 import { EmailTemplateItem, EmailTemplatesPage, fillSampleFields, insertAtCursor, portalBaseUrl } from './email-templates';
 
 describe('email template preview helpers', () => {
@@ -196,10 +197,15 @@ describe('EmailTemplatesPage', () => {
     expect(el.querySelector('[role=dialog] .alert-danger')!.textContent).toContain('is not a field of this e-mail');
   });
 
+  it('shows the last change (saved in UTC) in Indian time', () => {
+    expect(el.querySelector('tbody')!.textContent).toContain('01-10-2026 15:30');
+  });
+
   it('resets a changed mail after confirming', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button('Reset').click();
     await settle();
+    expect(ask).toHaveBeenCalledWith(expect.objectContaining({ title: 'Reset to the Standard E-mail?', danger: true }));
     http.expectOne((r) => r.method === 'DELETE' && r.url === `${url}/ContactQueryEmail`).flush({ message: 'The standard e-mail is used again.' });
     await settle();
     http.expectOne((r) => r.method === 'GET').flush(items);
@@ -208,12 +214,12 @@ describe('EmailTemplatesPage', () => {
   });
 
   it("switches a mail off from the list after confirming, keeping its subject and text", async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     const sw = () => el.querySelector('[aria-label="Switch off Payment Confirmation"]') as HTMLInputElement;
     sw().click();
     await settle();
     expect(confirm).toHaveBeenCalled();   // refused: nothing is asked of the server
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     sw().click();
     await settle();
     http.expectOne(`${url}/PaymentConfirmationEmail`).flush({

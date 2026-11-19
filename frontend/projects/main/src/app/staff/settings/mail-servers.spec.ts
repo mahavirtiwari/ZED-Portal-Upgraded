@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MailServerInfo, MailServersCard } from './mail-servers';
+import { ConfirmService } from '../confirm-dialog';
 
 describe('MailServersCard', () => {
   let fixture: ComponentFixture<MailServersCard>;
@@ -165,10 +166,10 @@ describe('MailServersCard', () => {
   });
 
   it('puts a module back on Default after asking', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button(row('Payment'), 'Use Default').click();
     await settle();
-    expect(confirm).toHaveBeenCalledWith('Remove the mail server of Payment confirmation? Its mails will use Default.');
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ title: 'Remove the Mail Server?', message: 'The mails of Payment confirmation will use Default.' }));
     http.expectOne((r) => r.method === 'DELETE' && r.url === '/api/staff/settings/email/servers/Payment').flush({ message: 'cleared' });
     await settle();
     http.expectOne('/api/staff/settings/email/servers').flush(info);

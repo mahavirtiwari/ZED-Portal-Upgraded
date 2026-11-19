@@ -1,10 +1,11 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 
 /** Main saved, the surveillance portal did not: its message says which. */
 class PartlySavedError extends Error {}
@@ -80,7 +81,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
  */
 @Component({
   selector: 'zed-staff-esg-checklist',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, IndianTimePipe],
   template: `
     <div class="page-head">
       <div>
@@ -89,7 +90,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
       </div>
       @if (loaded()) {
         <span class="status-badge" [class.is-active]="customised()" [class.is-info]="!customised()">
-          @if (customised()) { Changed{{ updatedBy() ? ' by ' + updatedBy() : '' }}{{ updatedOn() ? ', ' + (updatedOn() | date: 'dd-MM-yyyy HH:mm') : '' }} } @else { Standard checklist }
+          @if (customised()) { Changed{{ updatedBy() ? ' by ' + updatedBy() : '' }}{{ updatedOn() ? ', ' + (updatedOn() | indianTime) : '' }} } @else { Standard checklist }
         </span>
       }
     </div>
@@ -270,6 +271,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
 })
 export class EsgChecklistPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private readonly portals = inject(AdminPortalService);
   private static readonly url = '/api/staff/settings/esg-checklist';
   private static readonly onSurveillance = new HttpContext().set(ADMIN_PORTAL, 'surveillance');
@@ -317,8 +319,9 @@ export class EsgChecklistPage {
     this.changed();
   }
 
-  protected remove(s: SectionDraft, index: number): void {
-    if (!confirm(`Remove question ${index + 1}? Answers already given keep it.`)) return;
+  protected async remove(s: SectionDraft, index: number): Promise<void> {
+    const ok = await this.confirms.ask({ title: `Remove Question ${index + 1}?`, message: 'Answers already given keep it.', confirmLabel: 'Remove', danger: true });
+    if (!ok) return;
     s.questions.splice(index, 1);
     this.changed();
   }
@@ -376,7 +379,10 @@ export class EsgChecklistPage {
   }
 
   protected async reset(): Promise<void> {
-    if (!confirm('Use the standard ESG checklist again? Your questions are removed.')) return;
+    const ok = await this.confirms.ask({
+      title: 'Reset to the Standard Checklist?', message: 'The standard ESG checklist is used again. Your questions are removed.', confirmLabel: 'Reset', danger: true,
+    });
+    if (!ok) return;
     await this.send(async () => {
       const r = await firstValueFrom(this.http.delete<MessageResponse>(EsgChecklistPage.url));
       if (this.withSurveillance()) await firstValueFrom(this.http.delete<MessageResponse>(EsgChecklistPage.url, { context: EsgChecklistPage.onSurveillance }));

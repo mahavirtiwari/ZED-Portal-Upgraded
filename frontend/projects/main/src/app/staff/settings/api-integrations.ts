@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 
 export interface ApiClientItem {
   id: number;
@@ -77,7 +79,7 @@ type Section = 'partners' | 'apis' | 'services';
  */
 @Component({
   selector: 'zed-staff-api-integrations',
-  imports: [DatePipe, FormsModule, PagerComponent],
+  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -147,7 +149,7 @@ type Section = 'partners' | 'apis' | 'services';
                 </td>
                 <td class="text-center">
                   <span class="status-badge" [class.is-active]="c.enabled" [class.is-rejected]="!c.enabled">{{ c.enabled ? 'Enabled' : 'Disabled' }}</span>
-                  @if (c.updatedOn) { <small class="d-block muted mt-1">{{ c.updatedBy }} · {{ c.updatedOn | date: 'dd-MM-yyyy' }}</small> }
+                  @if (c.updatedOn) { <small class="d-block muted mt-1">{{ c.updatedBy }} · {{ c.updatedOn | indianTime: 'dd-MM-yyyy' }}</small> }
                 </td>
                 <td class="text-center ai-actions">
                   <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" [attr.aria-label]="'Edit ' + c.name" (click)="edit(c)">Edit</button>
@@ -409,6 +411,7 @@ type Section = 'partners' | 'apis' | 'services';
 })
 export class ApiIntegrationsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/integrations';
 
   /** The partners, ten at a time; a switch keeps the page. */
@@ -471,7 +474,7 @@ export class ApiIntegrationsPage {
   }
 
   protected async setClient(c: ApiClientItem, enabled: boolean): Promise<void> {
-    if (!enabled && !confirm(`Disable ${c.name}? Its calls to ZED will be refused.`)) return;
+    if (!enabled && !(await this.confirms.ask({ title: `Disable ${c.name}?`, message: 'Its calls to ZED will be refused.', confirmLabel: 'Disable', danger: true }))) return;
     await this.run(() => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/clients/${c.id}`, { enabled }));
   }
 
@@ -536,7 +539,7 @@ export class ApiIntegrationsPage {
 
   protected async setGroup(g: ApiGroupItem, input: HTMLInputElement): Promise<void> {
     const enabled = input.checked;
-    if (!enabled && !confirm(`Switch off ${g.name} for every partner?`)) {
+    if (!enabled && !(await this.confirms.ask({ title: `Switch Off ${g.name}?`, message: 'It is switched off for every partner.', confirmLabel: 'Switch Off', danger: true }))) {
       input.checked = true;
       return;
     }

@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { MastersApi, Technology } from './masters.api';
+import { ConfirmService } from '../confirm-dialog';
 
 /** Which technologies the list shows (the buttons beside the search box). */
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -183,6 +184,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 })
 export class TechnologiesPage {
   private readonly api = inject(MastersApi);
+  private readonly confirms = inject(ConfirmService);
 
   /** Every technology; the pager holds those the status and category filters let through. */
   private readonly rows = signal<Technology[]>([]);
@@ -251,7 +253,9 @@ export class TechnologiesPage {
   }
 
   protected async setActive(t: Technology, active: boolean): Promise<void> {
-    if (!active && !window.confirm('Are you sure that you want to de-activate this technology?')) return;
+    if (!active && !(await this.confirms.ask({
+      title: 'Deactivate the Technology?', message: `${t.technologyName || 'This technology'} is no longer offered to MSMEs.`, confirmLabel: 'Deactivate', danger: true,
+    }))) return;
     this.saving.set(true);
     this.error.set('');
     this.success.set('');

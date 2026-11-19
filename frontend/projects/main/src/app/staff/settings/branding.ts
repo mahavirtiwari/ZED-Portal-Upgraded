@@ -4,6 +4,8 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { BrandingService, ThemeColours } from '../../branding';
 import { PageHead } from '../../msme/shared/page-head';
+import { ConfirmService } from '../confirm-dialog';
+import { ToastService } from '../toast';
 
 export interface BrandingLogo {
   slot: string;
@@ -51,7 +53,6 @@ const TODAY: Record<string, string> = {
     <zed-page-head title="Branding" [crumbs]="[{ label: 'All settings', link: '/staff/administration' }, { label: 'Branding' }]" />
     <p class="page-sub br-sub">Logos and colours of each portal and app. A spot without a saved logo shows today's.</p>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
-    @if (success()) { <div class="alert alert-success" role="status">{{ success() }}</div> }
 
     @if (current(); as t) {
       <div class="zed-card br-card">
@@ -97,7 +98,7 @@ const TODAY: Record<string, string> = {
           @for (th of themes(); track th.key) {
             <button type="button" role="radio" class="br-theme" [class.on]="chosen() === th.key" [attr.aria-checked]="chosen() === th.key" (click)="chosen.set(th.key)">
               <span class="br-sw"><i [style.background]="th.dark"></i><i [style.background]="th.mid"></i><i [style.background]="th.accent"></i></span>
-              {{ th.name }}
+              {{ themeName(th) }}@if (th.key === t.theme) {&ngsp;<span class="br-current">(current)</span>}
             </button>
           }
         </div>
@@ -136,6 +137,7 @@ const TODAY: Record<string, string> = {
     .br-theme.on { border: 2px solid #23656b; padding: 7px; font-weight: 600; }
     .br-sw { display: flex; height: 26px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
     .br-sw i { flex: 1; }
+    .br-current { color: #2f7c83; font-weight: 600; white-space: nowrap; }
     .br-note { font-size: 12.5px; margin: 8px 0 0; }
     .br-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -143,6 +145,9 @@ const TODAY: Record<string, string> = {
 })
 export class BrandingPage implements OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
+  /** 2026-11-19 (admin audit): saved messages as a toast at the bottom, beside Save theme (the alert at the top was out of view). */
+  private readonly toast = inject(ToastService);
   private readonly brand = inject(BrandingService);
   private static readonly url = '/api/staff/settings/branding';
   protected readonly targets = signal<BrandingTarget[]>([]);
@@ -153,7 +158,6 @@ export class BrandingPage implements OnDestroy {
   protected readonly previewing = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   /** The page's own theme before a preview. */
   private readonly own = this.brand.theme();
 
@@ -163,6 +167,11 @@ export class BrandingPage implements OnDestroy {
 
   ngOnDestroy(): void {
     if (this.previewing()) this.brand.apply(this.own);
+  }
+
+  /** A theme's name; "(today)" of older servers is left out: the saved theme of the portal or app shown is marked "(current)". */
+  protected themeName(th: BrandingTheme): string {
+    return th.name.replace(/\s*\(today\)\s*$/i, '');
   }
 
   protected today(slot: string): string | null {
@@ -203,7 +212,7 @@ export class BrandingPage implements OnDestroy {
   }
 
   protected async reset(t: BrandingTarget, l: BrandingLogo): Promise<void> {
-    if (!confirm(`Use today's logo again for "${l.label}" (${t.name})?`)) return;
+    if (!(await this.confirms.ask({ title: 'Reset the Logo?', message: `"${l.label}" (${t.name}) uses today's logo again.`, confirmLabel: 'Reset', danger: true }))) return;
     await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${BrandingPage.url}/${t.key}/logos/${l.slot}`)));
   }
 
@@ -216,9 +225,8 @@ export class BrandingPage implements OnDestroy {
   private async run(change: () => Promise<MessageResponse>): Promise<void> {
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
-      this.success.set((await change()).message);
+      this.toast.success((await change()).message);
       await this.load(false);
     } catch (err) {
       this.error.set(apiErrorMessage(err));

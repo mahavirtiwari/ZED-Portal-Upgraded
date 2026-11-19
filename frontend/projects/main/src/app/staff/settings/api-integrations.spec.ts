@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmService } from '../confirm-dialog';
 import { ApiIntegrationsPage } from './api-integrations';
 
 describe('ApiIntegrationsPage', () => {
@@ -94,14 +95,15 @@ describe('ApiIntegrationsPage', () => {
   });
 
   it('disables a partner after a confirmation and does nothing when cancelled', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     const disable = () => el.querySelector('[aria-label="Disable RAMP Dashboard"]') as HTMLButtonElement;
     expect(disable().textContent!.trim()).toBe('Disable');
     disable().click();
     await settle();
     http.expectNone((r) => r.method === 'PUT');
 
-    confirm.mockReturnValue(true);
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ title: 'Disable RAMP Dashboard?', danger: true }));
+    confirm.mockResolvedValue(true);
     disable().click();
     await settle();
     const put = http.expectOne(`${url}/clients/1`);

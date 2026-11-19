@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CollapseCard } from '../collapse-card';
+import { ConfirmService } from '../confirm-dialog';
 
 /** A mail server as the API shows it: never the password, only whether one is saved. */
 export interface SmtpServerView {
@@ -351,6 +352,7 @@ interface ServerForm {
 })
 export class MailServersCard {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/email';
 
   protected readonly info = signal<MailServerInfo | null>(null);
@@ -478,7 +480,7 @@ export class MailServersCard {
 
   protected async clear(m: MailModuleView): Promise<void> {
     const then = m.key === 'Default' ? "the server's settings file" : 'Default';
-    if (!window.confirm(`Remove the mail server of ${m.label}? Its mails will use ${then}.`)) return;
+    if (!(await this.confirms.ask({ title: 'Remove the Mail Server?', message: `The mails of ${m.label} will use ${then}.`, confirmLabel: 'Remove', danger: true }))) return;
     this.busy.set(true);
     this.message.set(null);
     try {

@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { ToastService } from '../toast';
+import { setPageTexts } from '../../content/page-text';
 import { AgenciesPage } from './agencies';
 import { AgencyRow } from './users.api';
 
@@ -304,5 +305,27 @@ describe('AgenciesPage', () => {
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001')]);
     await settle();
     expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).not.toContain('Allocated');
+  });
+  it("shows the Admin's page wording (Texts → Page wording) in the template and in the code (2026-11-19)", async () => {
+    await create('all');
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001')]);
+    await settle();
+    setPageTexts([
+      { key: 'staff.agencies.title', enabled: true, html: 'Agencies of {agencies}' },
+      { key: 'staff.agencies.addButton', enabled: true, html: 'New {word}' },
+      { key: 'staff.agencies.search.placeholder', enabled: true, html: 'Find an agency' },
+      { key: 'staff.agencies.menu.block', enabled: true, html: 'Stop {word}' },
+    ]);
+    try {
+      await settle();
+      expect(el.querySelector('h2')!.textContent).toContain('Agencies of Assessment Agencies');
+      expect(el.textContent).toContain('New agency');
+      expect((el.querySelector('.ag-search input') as HTMLInputElement).placeholder).toBe('Find an agency');
+      (rows()[0].querySelector('.rm-btn') as HTMLButtonElement).click();
+      await settle();
+      expect([...rows()[0].querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toContain('Stop agency');
+    } finally {
+      setPageTexts([]);
+    }
   });
 });

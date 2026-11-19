@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
+import { ToastService } from '../toast';
 import { MastersApi, TechnologyRequest } from './masters.api';
 
 /**
@@ -26,9 +27,6 @@ import { MastersApi, TechnologyRequest } from './masters.api';
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
     }
     <form class="tf-layout" (ngSubmit)="save()" novalidate>
       <div class="tf-main">
@@ -123,6 +121,8 @@ import { MastersApi, TechnologyRequest } from './masters.api';
 })
 export class TechnologyFormPage {
   private readonly api = inject(MastersApi);
+  /** 2026-11-19 (admin audit): the saved message as a toast at the bottom, near Save (the alert at the top was out of view). */
+  private readonly toast = inject(ToastService);
 
   protected readonly id: number | null = Number(inject(ActivatedRoute).snapshot.paramMap.get('id')) || null;
   protected model: TechnologyRequest = emptyTechnology();
@@ -133,7 +133,6 @@ export class TechnologyFormPage {
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
 
   constructor() {
     void this.load();
@@ -165,7 +164,6 @@ export class TechnologyFormPage {
   protected async save(): Promise<void> {
     this.submitted.set(true);
     this.error.set('');
-    this.success.set('');
     if (!this.model.technologyCode.trim() || !this.model.technologyName.trim()) {
       this.error.set('Please enter valid data.');
       return;
@@ -175,12 +173,12 @@ export class TechnologyFormPage {
       // The old page stayed on the form: an added technology cleared it ("Sector saved.", its wording), an edit kept it.
       if (this.id) {
         await firstValueFrom(this.api.updateTechnology(this.id, this.model));
-        this.success.set('Technology data updated.');
+        this.toast.success('Technology data updated.');
       } else {
         await firstValueFrom(this.api.addTechnology(this.model));
         this.model = emptyTechnology();
         this.submitted.set(false);
-        this.success.set('Sector saved.');
+        this.toast.success('Sector saved.');
       }
     } catch (err) {
       this.error.set(apiErrorMessage(err));

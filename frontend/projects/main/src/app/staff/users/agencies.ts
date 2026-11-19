@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentService, fillText } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { LABELS } from '../../portal-labels';
 import { ChipFilter, FilterChip } from '../chip-filter';
@@ -45,10 +46,12 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
  * a light table where each row has Edit and Assessors plus a ⋮ menu (reset link, history, block / unblock, each confirmed),
  * the SPOC mobile and e-mail (in full since 2026-11-18, the user: never masked), toasts for completed actions; the levels page has one
  * switch per level in its own column: on asks to confirm, off asks for the reason (e-mailed to the agency).
+ * 2026-11-19 (the user: "All page wording"): every wording is the Admin's (Texts → Page wording, staff.agencies.*) or the
+ * standard one written here and in agencies.html (t pipe, t()).
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel, PoCard, LevelCounts],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ConfirmDialog, ListCounts, ChipFilter, RowMenu, UserHistoryPanel, PoCard, LevelCounts, TextPipe],
   templateUrl: './agencies.html',
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-01 / staff-03 column widths (fixed layout, the
@@ -120,14 +123,21 @@ export class AgenciesPage {
   protected readonly mode: Mode = ['bronze', 'levels'].includes(inject(ActivatedRoute).snapshot.data['mode']) ? 'levels' : 'all';
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly labels = LABELS[this.system];
-  protected readonly title = this.mode === 'levels' ? 'Agency Level Allocation' : this.labels.agencies;
-  protected readonly crumbs = staffCrumbs({ label: this.title });
-  protected readonly subtitle = this.mode === 'levels' ? 'Choose which certification levels each agency can be allotted.' : null;
+  protected readonly title = computed(() =>
+    this.mode === 'levels' ? t('staff.agencies.levels.title', 'Agency Level Allocation') : t('staff.agencies.title', '{agencies}', { agencies: this.labels.agencies }));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
+  protected readonly subtitle = computed(() =>
+    this.mode === 'levels' ? t('staff.agencies.levels.subtitle', 'Choose which certification levels each agency can be allotted.') : null);
   /** Every level (Administration → Certification Levels, the Admin's too; 2026-11-08), and any the server's rows name. */
   protected readonly levels = computed(() => agencyLevels(this.agencies()));
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
-  protected readonly word = this.consultancy ? 'organisation' : 'agency';
+  protected readonly word = computed(() => (this.consultancy ? t('staff.agencies.word.organisation', 'organisation') : t('staff.agencies.word.agency', 'agency')));
+  /** The column and the row button of the agency's people (consultants on Consultancy). */
+  protected readonly peopleColumn = computed(() =>
+    this.consultancy ? t('staff.agencies.column.consultants', 'No. of Consultant') : t('staff.agencies.column.assessors', '{assessors}', { assessors: this.labels.assessors }));
+  protected readonly peopleButton = computed(() =>
+    this.consultancy ? t('staff.agencies.row.consultantsButton', 'Consultants') : t('staff.agencies.row.assessorsButton', '{assessors}', { assessors: this.labels.assessors }));
   /** 2026-11-18 (the user): units allocated per certification level, beside the category (main list only). */
   protected readonly showsAllocated = this.mode === 'all' && !this.consultancy;
   /** 2026-11-18 (expenditure monitoring): the agency (organisation) whose purchase orders card is open. */
@@ -159,21 +169,24 @@ export class AgenciesPage {
     if (this.mode === 'levels') {
       return this.levels().map((l) => {
         const on = this.agencies().filter((a) => this.allowed(a, l.code)).length;
-        return { key: 'level-' + l.code, label: `${l.name} enabled`, value: on, sub: `${this.agencies().length - on} off` };
+        return { key: 'level-' + l.code, label: t('staff.agencies.levels.count.enabled', '{level} enabled', { level: l.name }), value: on,
+          sub: t('staff.agencies.levels.count.off', '{count} off', { count: this.agencies().length - on }) };
       });
     }
     const s = this.stats();
     return [
-      { key: 'all', label: this.consultancy ? 'Organisations' : 'Agencies', value: s.total },
-      { key: 'on', label: 'Active', value: s.on, tone: 'good' },
-      { key: 'off', label: 'In-active', value: s.off, tone: 'bad' },
-      { key: 'assessors', label: this.labels.assessors, value: s.assessors },
+      { key: 'all', label: this.consultancy ? t('staff.agencies.count.organisations', 'Organisations') : t('staff.agencies.count.agencies', 'Agencies'), value: s.total },
+      { key: 'on', label: t('staff.agencies.count.active', 'Active'), value: s.on, tone: 'good' },
+      { key: 'off', label: t('staff.agencies.count.inactive', 'In-active'), value: s.off, tone: 'bad' },
+      { key: 'assessors', label: t('staff.agencies.count.assessors', '{assessors}', { assessors: this.labels.assessors }), value: s.assessors },
     ];
   });
-  protected readonly statusChips: FilterChip[] =
+  protected readonly statusChips = computed<FilterChip[]>(() =>
     this.mode === 'levels'
-      ? [{ key: 'all', label: 'All' }, { key: 'off', label: 'Any level off' }, { key: 'on', label: 'All levels on' }]
-      : [{ key: 'all', label: 'All' }, { key: 'on', label: 'Active' }, { key: 'off', label: 'In-active' }];
+      ? [{ key: 'all', label: t('staff.agencies.chip.all', 'All') }, { key: 'off', label: t('staff.agencies.levels.chip.anyOff', 'Any level off') },
+          { key: 'on', label: t('staff.agencies.levels.chip.allOn', 'All levels on') }]
+      : [{ key: 'all', label: t('staff.agencies.chip.all', 'All') }, { key: 'on', label: t('staff.agencies.chip.active', 'Active') },
+          { key: 'off', label: t('staff.agencies.chip.inactive', 'In-active') }]);
   protected readonly sectorChips = computed<FilterChip[]>(() => {
     const counts: Record<SectorFilter, number> = { all: 0, Manufacturing: 0, Services: 0, Both: 0, none: 0 };
     for (const a of this.agencies()) {
@@ -182,8 +195,8 @@ export class AgenciesPage {
     }
     // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design has All / Manufacturing / Services / Both;
     // "Not set" only while some agency has no sector type (or it is the chosen filter).
-    const none = counts.none || this.sector() === 'none' ? [{ key: 'none', label: 'Not set' }] : [];
-    return [{ key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), ...none]
+    const none = counts.none || this.sector() === 'none' ? [{ key: 'none', label: t('staff.agencies.chip.sectorNotSet', 'Not set') }] : [];
+    return [{ key: 'all', label: t('staff.agencies.chip.all', 'All') }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), ...none]
       .map((c) => ({ ...c, count: counts[c.key as SectorFilter] }));
   });
   protected readonly filtering = computed(() => !!this.search().trim() || this.status() !== 'all' || this.sector() !== 'all');
@@ -251,15 +264,18 @@ export class AgenciesPage {
   }
 
   protected menu(a: AgencyRow): RowMenuItem[] {
-    const assessors = this.consultancy ? 'View consultants' : `View ${this.labels.assessors.toLowerCase()}`;
+    const word = this.word();
+    const assessors = this.consultancy ? t('staff.agencies.menu.consultants', 'View consultants')
+      : t('staff.agencies.menu.assessors', 'View {assessors}', { assessors: this.labels.assessors.toLowerCase() });
     const items: RowMenuItem[] = [
-      { key: 'edit', label: `Edit ${this.word}`, icon: 'edit' },
+      { key: 'edit', label: t('staff.agencies.menu.edit', 'Edit {word}', { word }), icon: 'edit' },
       { key: 'assessors', label: assessors, icon: 'people' },
     ];
-    if (a.IsActive) items.push({ key: 'reset', label: 'Send reset link', icon: 'mail' });
-    items.push({ key: 'history', label: 'View history', icon: 'history' });
-    items.push({ key: 'po', label: 'Purchase orders', icon: 'file' });
-    items.push(a.IsActive ? { key: 'block', label: `Block ${this.word}`, icon: 'lock', danger: true } : { key: 'unblock', label: `Unblock ${this.word}`, icon: 'unlock' });
+    if (a.IsActive) items.push({ key: 'reset', label: t('staff.agencies.menu.reset', 'Send reset link'), icon: 'mail' });
+    items.push({ key: 'history', label: t('staff.agencies.menu.history', 'View history'), icon: 'history' });
+    items.push({ key: 'po', label: t('staff.agencies.menu.po', 'Purchase orders'), icon: 'file' });
+    items.push(a.IsActive ? { key: 'block', label: t('staff.agencies.menu.block', 'Block {word}', { word }), icon: 'lock', danger: true }
+      : { key: 'unblock', label: t('staff.agencies.menu.unblock', 'Unblock {word}', { word }), icon: 'unlock' });
     return items;
   }
 
@@ -267,7 +283,7 @@ export class AgenciesPage {
     switch (key) {
       case 'edit': void this.router.navigate(['/staff/users/agencies', a.UserId]); break;
       case 'assessors': void this.router.navigate(['/staff/users/assessors'], { queryParams: { agencyId: a.UserId } }); break;
-      case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email, this.consultancy ? 'Consultant organisation' : 'Assessment agency') }); break;
+      case 'reset': this.ask({ kind: 'reset', agency: a, ask: resetLinkAsk(a.UserName, a.UserId, a.Email, this.consultancy ? t('staff.agencies.reset.organisation', 'Consultant organisation') : t('staff.agencies.reset.agency', 'Assessment agency')) }); break;
       case 'history': void this.openHistory(a); break;
       case 'po': this.poFor.set(a); break;
       case 'block': this.ask({ kind: 'block', agency: a, ask: this.blockAsk(a) }); break;
@@ -284,19 +300,23 @@ export class AgenciesPage {
   private blockAsk(a: AgencyRow): ConfirmAsk {
     const name = a.UserName || a.UserId;
     const n = a.NoOfUsers ?? 0;
-    const people = this.consultancy ? (n === 1 ? 'consultant' : 'consultants') : n === 1 ? this.labels.assessor.toLowerCase() : this.labels.assessors.toLowerCase();
+    const word = this.word();
+    // One and many as two wordings (plural forms differ).
+    const people = this.consultancy ? (n === 1 ? t('staff.agencies.block.consultant', 'consultant') : t('staff.agencies.block.consultants', 'consultants'))
+      : (n === 1 ? this.labels.assessor : this.labels.assessors).toLowerCase();
     return {
-      title: `Block ${name}?`,
-      subtitle: `${a.UserId} · ${n} ${people}`,
+      title: t('staff.agencies.block.title', 'Block {name}?', { name }),
+      subtitle: t('staff.agencies.block.subtitle', '{id} · {count} {people}', { id: a.UserId, count: n, people }),
       icon: 'lock',
       points: [
-        `${name} cannot sign in until it is unblocked.`,
-        `Nothing is deleted. You can unblock the ${this.word} at any time.`,
-        `The reason is kept in its history and e-mailed to the ${this.word} SPOC.`,
+        t('staff.agencies.block.point1', '{name} cannot sign in until it is unblocked.', { name }),
+        t('staff.agencies.block.point2', 'Nothing is deleted. You can unblock the {word} at any time.', { word }),
+        t('staff.agencies.block.point3', 'The reason is kept in its history and e-mailed to the {word} SPOC.', { word }),
       ],
-      confirmLabel: `Block ${this.word}`,
+      confirmLabel: t('staff.agencies.block.confirmButton', 'Block {word}', { word }),
       danger: true,
-      reason: { label: 'Reason for blocking', placeholder: `Shown in the ${this.word}'s history`, maxLength: 2000 },
+      reason: { label: t('staff.agencies.block.reasonLabel', 'Reason for blocking'),
+        placeholder: t('staff.agencies.block.reasonPlaceholder', "Shown in the {word}'s history", { word }), maxLength: 2000 },
     };
   }
 
@@ -307,25 +327,28 @@ export class AgenciesPage {
     // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-09: a warning tile, "Agency · ID" under the title,
     // amber bullets; the reason stays when a level is turned off (the user: "keep the reason when turning a level off"). The
     // level API always e-mails the agency, so the design's tick box is a line instead.
+    const v = { level: n, name: a.UserName };
     const ask: ConfirmAsk = allow
       ? {
-          title: `Turn on ${n} for this agency?`,
+          title: t('staff.agencies.levels.on.title', 'Turn on {level} for this agency?', v),
           subtitle: `${a.UserName} · ${a.UserId}`,
           icon: 'check',
-          points: [`${a.UserName} can be allotted new ${n} assessments again.`, `The agency SPOC is told by e-mail.`],
-          confirmLabel: `Turn on ${n}`,
-          cancelLabel: `Keep ${n} off`,
+          points: [t('staff.agencies.levels.on.point1', '{name} can be allotted new {level} assessments again.', v),
+            t('staff.agencies.levels.on.point2', 'The agency SPOC is told by e-mail.')],
+          confirmLabel: t('staff.agencies.levels.on.confirmButton', 'Turn on {level}', v),
+          cancelLabel: t('staff.agencies.levels.on.cancelButton', 'Keep {level} off', v),
         }
       : {
-          title: `Turn off ${n} for this agency?`,
+          title: t('staff.agencies.levels.off.title', 'Turn off {level} for this agency?', v),
           subtitle: `${a.UserName} · ${a.UserId}`,
           icon: 'warn',
           tone: 'warn',
-          points: [this.disableNote(a, n), `You can turn ${n} back on at any time.`].filter(Boolean),
-          note: 'The reason is e-mailed to the agency SPOC.',
-          confirmLabel: `Turn off ${n}`,
-          cancelLabel: `Keep ${n} on`,
-          reason: { label: 'Reason for turning it off', placeholder: `Why ${n} assessments are turned off`, maxLength: 2000 },
+          points: [this.disableNote(a, n), t('staff.agencies.levels.off.point2', 'You can turn {level} back on at any time.', v)].filter(Boolean),
+          note: t('staff.agencies.levels.off.note', 'The reason is e-mailed to the agency SPOC.'),
+          confirmLabel: t('staff.agencies.levels.off.confirmButton', 'Turn off {level}', v),
+          cancelLabel: t('staff.agencies.levels.off.cancelButton', 'Keep {level} on', v),
+          reason: { label: t('staff.agencies.levels.off.reasonLabel', 'Reason for turning it off'),
+            placeholder: t('staff.agencies.levels.off.reasonPlaceholder', 'Why {level} assessments are turned off', v), maxLength: 2000 },
         };
     this.ask({ kind: 'level', agency: a, ask, level: { code: level.code, name: n, allow } });
   }
@@ -359,16 +382,18 @@ export class AgenciesPage {
     const message = await this.run(call, this.failed);
     if (message === null) return;
     this.pending.set(null);
-    if (p.kind === 'reset') this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(message, p.agency.Email));
-    else if (p.kind === 'block') this.toast.success(`${p.agency.UserName} blocked`, message);
-    else this.toast.success(`${p.level!.name} turned ${p.level!.allow ? 'on' : 'off'}`, message);
+    if (p.kind === 'reset')
+      this.toast.success(t('staff.agencies.toast.resetSent', 'Reset link sent'), t('staff.agencies.toast.resetTo', 'E-mailed to {to}', { to: sentTo(message, p.agency.Email) }));
+    else if (p.kind === 'block') this.toast.success(t('staff.agencies.toast.blocked', '{name} blocked', { name: p.agency.UserName }), message);
+    else if (p.level!.allow) this.toast.success(t('staff.agencies.toast.levelOn', '{level} turned on', { level: p.level!.name }), message);
+    else this.toast.success(t('staff.agencies.toast.levelOff', '{level} turned off', { level: p.level!.name }), message);
   }
 
   protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
     const message = await this.run(this.api.unblock('agencies', r.userId, reason), this.failed);
     if (message === null) return;
     this.reasonAsk.set(null);
-    this.toast.success(`${r.userName || r.userId} unblocked`, message);
+    this.toast.success(t('staff.agencies.toast.unblocked', '{name} unblocked', { name: r.userName || r.userId }), message);
   }
 
   protected closeAsk(): void {
@@ -381,7 +406,7 @@ export class AgenciesPage {
   protected async openHistory(a: AgencyRow): Promise<void> {
     this.history.set({ agency: a, items: null, error: '' });
     try {
-      const items = blockHistoryItems(await firstValueFrom(this.api.agencyHistory(a.UserId)), this.word);
+      const items = blockHistoryItems(await firstValueFrom(this.api.agencyHistory(a.UserId)), this.word());
       if (this.history()?.agency === a) this.history.set({ agency: a, items, error: '' });
     } catch (err) {
       if (this.history()?.agency === a) this.history.set({ agency: a, items: [], error: apiErrorMessage(err) });

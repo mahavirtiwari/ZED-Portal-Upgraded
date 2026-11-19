@@ -4,6 +4,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CertificationLevel, CertificationLevelsPage, formatCertificateNo } from './certification-levels';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
+import { ToastService } from '../toast';
+
+/** The newest toast (2026-11-19: the saved message is a toast at the bottom, not an alert at the top out of view). */
+const lastToast = () => TestBed.inject(ToastService).toasts().at(-1)?.title ?? '';
 
 describe('CertificationLevelsPage', () => {
   let fixture: ComponentFixture<CertificationLevelsPage>;
@@ -88,7 +92,8 @@ describe('CertificationLevelsPage', () => {
     http.expectOne(api).flush(response(true));
     await settle();
     expect(box('ZED-X').classList).not.toContain('is-off');
-    expect(el.querySelector('.alert-success')!.textContent).toContain('ZED-X is enabled');
+    expect(lastToast()).toContain('ZED-X is enabled');
+    expect(el.querySelector('.alert-success')).toBeNull();
   });
 
   it('edits the certificate number formats with a preview and checks them', async () => {
@@ -116,6 +121,8 @@ describe('CertificationLevelsPage', () => {
     http.expectOne(api).flush(response(false));
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
+    // The confirmation is a toast at the bottom, seen wherever the page is scrolled.
+    expect(lastToast()).toBe('ZED-X saved.');
   });
 
   it('lets Bronze choose any assessment flow the server runs (2026-11-15)', async () => {
@@ -359,7 +366,7 @@ describe('CertificationLevelsPage (one Admin)', () => {
     await settle();
     http.expectOne(api).flush(levels(true));
     await settle();
-    const message = el.querySelector('.alert-success')!.textContent!;
+    const message = lastToast();
     expect(message).toContain('ZED-X is enabled');
     expect(message).toContain('Not saved on the Surveillance portal: The levels cannot be saved');
     http.verify();
@@ -448,7 +455,7 @@ describe('CertificationLevelsPage (a level the Admin added)', () => {
     await settle();
     http.expectOne(api).flush(platinum({ ...notReady, artwork: true }));
     await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('certificate artwork of Platinum is saved');
+    expect(lastToast()).toContain('certificate artwork of Platinum is saved');
     expect(row('artwork').classList).toContain('ok');
 
     // Too large: refused before sending.

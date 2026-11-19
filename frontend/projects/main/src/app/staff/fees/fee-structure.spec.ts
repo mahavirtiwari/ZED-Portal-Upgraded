@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { FeeStructurePage } from './fee-structure';
 import { setAllLevels } from '../../msme/shared/levels';
 import { FeeRow, FeesResponse } from './fees.api';
+import { ConfirmService } from '../confirm-dialog';
 
 /** The subsidy switches the page reads beside the fees (2026-11-13): none switched off. */
 function flushSwitches(http: HttpTestingController): void {
@@ -105,7 +106,7 @@ describe('FeeStructurePage', () => {
     expect(el.querySelector('.off-badge')!.textContent).toContain('Off');
     expect(el.querySelector('.off-note')!.textContent).toContain('13-11-2026 by ADMIN1');
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button('Enable').click();
     await settle();
     const on = http.expectOne((r) => r.method === 'PUT' && r.url === `/api/staff/fees/subsidy-switches/${category}`);

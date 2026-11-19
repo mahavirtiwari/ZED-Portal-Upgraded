@@ -85,6 +85,8 @@ export interface PageSettings {
   fileName: string | null;
   updatedOn: string | null;
   imageUrl: string | null;
+  /** 2026-11-19: a banner is recorded but its file is not on the server (upload it again). */
+  fileMissing?: boolean;
 }
 
 export interface ParameterLevel {

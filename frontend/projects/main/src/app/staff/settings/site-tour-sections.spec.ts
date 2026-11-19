@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SiteTourSection, SiteTourSectionsPage, SiteTourSectionsResponse, sectionId } from './site-tour-sections';
+import { ConfirmService } from '../confirm-dialog';
 
 describe('SiteTourSectionsPage', () => {
   let fixture: ComponentFixture<SiteTourSectionsPage>;
@@ -64,6 +65,14 @@ describe('SiteTourSectionsPage', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('keeps the action buttons and the On / Off label on one line (2026-11-19: "Edi/t", "O/n" at 1536px)', () => {
+    expect((el.querySelector('col.col-actions') as HTMLTableColElement).style.width).toBe('268px');
+    const actions = row('entrance').querySelector('.st-actions') as HTMLElement;
+    expect(getComputedStyle(actions).whiteSpace).toBe('nowrap');
+    expect(getComputedStyle(actions.querySelector('.st-edit')!).flexShrink).toBe('0');
+    expect(getComputedStyle(actions.querySelector('.st-switch')!).flexShrink).toBe('0');
+  });
 
   it('lists the sections in order with their photos, scope and status', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Site tour sections');
@@ -195,12 +204,12 @@ describe('SiteTourSectionsPage', () => {
   });
 
   it('switches a section off from the list after confirming, and on again without asking', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     const sw = (label: string) => el.querySelector(`[aria-label="${label}"]`) as HTMLInputElement;
     sw('Switch off Unit Entrance & Signage').click();
     await settle();
     http.expectNone((r) => r.method === 'PUT');
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     sw('Switch off Unit Entrance & Signage').click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
@@ -226,12 +235,12 @@ describe('SiteTourSectionsPage', () => {
     http.expectOne((r) => r.method === 'PUT').flush({ message: 'Saved.' });
     await reloaded('Saved.');
 
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     button('Reset to standard sections').click();
     await settle();
     http.expectNone((r) => r.method === 'DELETE');
 
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     button('Reset to standard sections').click();
     await settle();
     http.expectOne((r) => r.method === 'DELETE' && r.url === url).flush({ message: 'Site tour sections reset to the standard ten sections.' });

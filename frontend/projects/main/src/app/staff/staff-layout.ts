@@ -7,6 +7,7 @@ import { RemoteAllotments } from './remote-allotments';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
 import { ToastHost } from './toast';
+import { ConfirmHost } from './confirm-dialog';
 import { PORTAL_SYSTEM } from '../portal-system';
 
 /**
@@ -24,7 +25,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
  */
 @Component({
   selector: 'zed-staff-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost, ConfirmHost],
   host: { class: 'zed-legacy zed-v4 d-block' },
   template: `
     <div class="main-container">
@@ -159,6 +160,8 @@ import { PORTAL_SYSTEM } from '../portal-system';
       </footer>
     </div>
     <zed-toast />
+    <!-- 2026-11-19: the pages' confirmations (ConfirmService), in place of the browser's confirm() box. -->
+    <zed-confirm-host />
   `,
   styles: `
     :host { color: #333; }

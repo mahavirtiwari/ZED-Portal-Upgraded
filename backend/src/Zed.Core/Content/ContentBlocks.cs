@@ -1,3 +1,6 @@
+﻿using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Zed.Core.Data;
@@ -73,17 +76,48 @@ public sealed class SqlContentBlockStore(ISqlExecutor db, ILogger<SqlContentBloc
     }
 }
 
+/// <summary>The texts of a system and channel as shown, and their version (the ETag of api/content).</summary>
+public sealed record ContentSnapshot(IReadOnlyList<ContentText> Texts, string ETag);
+
 /// <summary>The texts of a system and channel as shown (served to the web pages and to the apps).</summary>
 public sealed class ContentTexts(IContentBlockStore store)
 {
-    public async Task<IReadOnlyList<ContentText>> ForAsync(PortalSystem system, ContentChannel channel, CancellationToken ct = default)
+    private readonly ConcurrentDictionary<(PortalSystem, ContentChannel), (object Saved, ContentSnapshot Snapshot)> built = new();
+
+    public async Task<IReadOnlyList<ContentText>> ForAsync(PortalSystem system, ContentChannel channel, CancellationToken ct = default) =>
+        (await SnapshotAsync(system, channel, ct)).Texts;
+
+    /// <summary>
+    /// The texts and their version, worked out again only when the saved versions were read again (the store keeps them
+    /// for 30 seconds). The web pages also get the Admin's page wording (<see cref="PageTextCatalogue"/>): only the changed
+    /// ones, as plain text in Html (a page shows its own wording for the others).
+    /// </summary>
+    public async Task<ContentSnapshot> SnapshotAsync(PortalSystem system, ContentChannel channel, CancellationToken ct = default)
     {
         var saved = await store.AllAsync(ct);
-        return ContentCatalogue.For(system).Where(b => b.Channel == channel).Select(b =>
+        if (built.TryGetValue((system, channel), out var b) && ReferenceEquals(b.Saved, saved)) return b.Snapshot;
+        var texts = ContentCatalogue.For(system).Where(x => x.Channel == channel).Select(x =>
         {
-            var o = saved.GetValueOrDefault(b.Key);
-            return new ContentText(b.Key, o?.Enabled ?? true, o is { Enabled: true, BodyHtml: { Length: > 0 } html } ? html : b.DefaultHtml);
+            var o = saved.GetValueOrDefault(x.Key);
+            return new ContentText(x.Key, o?.Enabled ?? true, o is { Enabled: true, BodyHtml: { Length: > 0 } html } ? html : x.DefaultHtml);
         }).ToList();
+        if (channel == ContentChannel.Web)
+        {
+            foreach (var o in saved.Values.Where(o => o is { Enabled: true, BodyHtml.Length: > 0 }).OrderBy(o => o.BlockKey, StringComparer.Ordinal))
+            {
+                if (PageTextCatalogue.Find(system, o.BlockKey) is { } p) texts.Add(new ContentText(p.Key, true, o.BodyHtml!));
+            }
+        }
+        var snapshot = new ContentSnapshot(texts, ETagOf(texts));
+        built[(system, channel)] = (saved, snapshot);
+        return snapshot;
+    }
+
+    private static string ETagOf(IReadOnlyList<ContentText> texts)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var t in texts) hash.AppendData(Encoding.UTF8.GetBytes($"{t.Key}\u0001{(t.Enabled ? 1 : 0)}\u0001{t.Html}\u0002"));
+        return "\"" + Convert.ToHexString(hash.GetHashAndReset(), 0, 16).ToLowerInvariant() + "\"";
     }
 
     /// <summary>The {{Fields}} a text may use: its own, nothing else (the page fills them in).</summary>

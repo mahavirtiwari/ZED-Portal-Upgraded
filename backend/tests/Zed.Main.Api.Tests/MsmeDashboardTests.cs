@@ -100,6 +100,65 @@ public sealed class MsmeDashboardTests : IDisposable
         Assert.Equal(3, app.GetProperty("incentives").GetArrayLength());
     }
 
+    /// <summary>The names of a SELECT's columns (the alias, else the column), in order.</summary>
+    private static List<string> SelectedColumns(string sql)
+    {
+        var list = sql[(sql.IndexOf("SELECT ", StringComparison.Ordinal) + 7)..sql.IndexOf(" FROM ", StringComparison.Ordinal)];
+        var names = new List<string>();
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i <= list.Length; i++)
+        {
+            if (i < list.Length && list[i] == '(') depth++;
+            else if (i < list.Length && list[i] == ')') depth--;
+            else if (i == list.Length || (list[i] == ',' && depth == 0))
+            {
+                var item = list[start..i].Trim();
+                var alias = item.LastIndexOf(" AS ", StringComparison.OrdinalIgnoreCase);
+                names.Add(alias >= 0 && !item[alias..].Contains(')') ? item[(alias + 4)..].Trim() : item);
+                start = i + 1;
+            }
+        }
+        return names;
+    }
+
+    [Fact]
+    public void Incentive_card_rows_are_read_by_dapper_as_the_server_reads_them()
+    {
+        // 2026-11-19 (admin audit): GET api/public/incentive-cards answered 500 every time. The test host converts rows through
+        // JSON, but the server reads them with Dapper, which builds a positional record only through a constructor with exactly
+        // the selected columns, in order and type, and checks it before reading any row. ApplicableForZEDX and
+        // ApplicableActivity were init properties: 15 columns, a 13-parameter constructor, so every read threw.
+        (string Name, Type Type, object Value)[] incentive =
+        [
+            ("Id", typeof(long), 57L), ("Title", typeof(string), "Scheme B"), ("Highlight", typeof(string), "Rs. 5,000/-"), ("Details", typeof(string), "D"),
+            ("Department", typeof(string), "MoMSME"), ("ContactPerson", typeof(string), "Officer"), ("Email", typeof(string), "o@msme.gov.in"),
+            ("MobileNo", typeof(string), "011"), ("WebLink", typeof(string), "https://msme.gov.in"), ("VideoLink", typeof(string), DBNull.Value),
+            ("ApplicableForBronze", typeof(bool), true), ("ApplicableForSilver", typeof(bool), false), ("ApplicableForGold", typeof(bool), false),
+            ("ApplicableForZEDX", typeof(bool), true), ("ApplicableActivity", typeof(string), "Services"),
+        ];
+        (string Name, Type Type, object Value)[] builtIn =
+        [
+            ("Card", typeof(string), "HANDHOLDING"), ("Title", typeof(string), "Handholding Support"), ("Highlight", typeof(string), DBNull.Value),
+            ("Details", typeof(string), "Systems"), ("Active", typeof(bool), true),
+        ];
+        Assert.Equal(incentive.Select(c => c.Name), SelectedColumns(Zed.Portal.Features.Msme.MsmeDashboardController.IncentiveCardsSql));
+        Assert.Equal(builtIn.Select(c => c.Name), SelectedColumns(Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql));
+
+        static System.Data.DataTableReader Reader((string Name, Type Type, object Value)[] columns)
+        {
+            var table = new System.Data.DataTable();
+            foreach (var c in columns) table.Columns.Add(c.Name, c.Type);
+            table.Rows.Add(columns.Select(c => c.Value).ToArray());
+            return table.CreateDataReader();
+        }
+
+        var card = Assert.Single(Dapper.SqlMapper.Parse<Zed.Portal.Features.Msme.MsmeDashboardController.IncentiveCard>(Reader(incentive)).ToList());
+        Assert.Equal((57L, "Scheme B", true, "Services", (string?)null), (card.Id, card.Title, card.ApplicableForZEDX, card.ApplicableActivity, card.VideoLink));
+        var shown = Assert.Single(Dapper.SqlMapper.Parse<Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCard>(Reader(builtIn)).ToList());
+        Assert.Equal(("HANDHOLDING", true), (shown.Card, shown.Active));
+    }
+
     [Fact]
     public async Task Dashboard_gives_the_zedx_flag_and_status()
     {

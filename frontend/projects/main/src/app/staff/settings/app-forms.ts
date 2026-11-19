@@ -1,7 +1,8 @@
-import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { PortalSwitchComponent } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -141,7 +142,7 @@ const TYPE_GLYPHS: Record<string, string> = {
  */
 @Component({
   selector: 'zed-staff-app-forms',
-  imports: [DatePipe, FormsModule, CollapseCard, MultiSelect, PortalSwitchComponent],
+  imports: [IndianTimePipe, FormsModule, CollapseCard, MultiSelect, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -174,7 +175,7 @@ const TYPE_GLYPHS: Record<string, string> = {
               @if (f.customFields) { <span>{{ f.customFields }} added</span> }
               @if (f.disabled) { <span>{{ f.disabled }} disabled</span> }
             </span>
-            @if (f.updatedOn) { <span class="tile-updated">Changed {{ f.updatedOn | date: 'dd-MM-yyyy' }}</span> }
+            @if (f.updatedOn) { <span class="tile-updated">Changed {{ f.updatedOn | indianTime: 'dd-MM-yyyy' }}</span> }
           </button>
         }
       </div>
@@ -222,7 +223,7 @@ const TYPE_GLYPHS: Record<string, string> = {
                     @if (f.help) { <small class="field-help">{{ f.help }}</small> }
                     @if (f.shownWhen) { <small class="field-note"><span class="cond">IF</span> Asked when {{ f.shownWhen }}</small> }
                     @if (f.options?.length) { <small class="field-note">Choices: {{ f.options!.join(', ') }}</small> }
-                    @if (f.updatedOn) { <small class="changed-on">Changed {{ f.updatedOn | date: 'dd-MM-yyyy HH:mm' }}@if (f.updatedBy) { by {{ f.updatedBy }} }</small> }
+                    @if (f.updatedOn) { <small class="changed-on">Changed {{ f.updatedOn | indianTime }}@if (f.updatedBy) { by {{ f.updatedBy }} }</small> }
                     <div class="scope" [title]="scopeText(f)">
                       @if (f.levels?.length) {
                         @for (l of f.levels!; track l) { <span class="zed-chip">{{ levelName(l) }}</span> }
@@ -258,7 +259,7 @@ const TYPE_GLYPHS: Record<string, string> = {
                     <td class="column-cell">↳ {{ c.label }}
                       @if (c.standardLabel && c.standardLabel !== c.label) { <small class="field-note">Standard: {{ c.standardLabel }}</small> }
                       @if (c.help) { <small class="field-help">{{ c.help }}</small> }
-                      @if (c.updatedOn) { <small class="changed-on">Changed {{ c.updatedOn | date: 'dd-MM-yyyy HH:mm' }}@if (c.updatedBy) { by {{ c.updatedBy }} }</small> }
+                      @if (c.updatedOn) { <small class="changed-on">Changed {{ c.updatedOn | indianTime }}@if (c.updatedBy) { by {{ c.updatedBy }} }</small> }
                     </td>
                     <td><span class="type-name">{{ typeName(c) }}</span></td>
                     <td><span class="req-chip" [class.is-yes]="c.required">{{ c.required ? 'Yes' : 'No' }}</span></td>
@@ -609,6 +610,7 @@ const TYPE_GLYPHS: Record<string, string> = {
 })
 export class AppFormsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/app-forms';
 
   protected readonly types = FIELD_TYPES;
@@ -830,8 +832,11 @@ export class AppFormsPage {
     return this.change(() => this.http.put<MessageResponse>(`${this.formUrl()}/order`, { section, keys }));
   }
 
-  protected reset(f: AppFieldItem): Promise<void> {
-    if (!confirm(`Use the standard field again for "${f.label}"?`)) return Promise.resolve();
+  protected async reset(f: AppFieldItem): Promise<void> {
+    const ok = await this.confirms.ask({
+      title: 'Reset to the Standard Field?', message: `"${f.label}" uses the standard label, help and settings again.`, confirmLabel: 'Reset', danger: true,
+    });
+    if (!ok) return;
     return this.change(() => this.http.post<MessageResponse>(`${this.formUrl()}/reset`, { key: f.key }));
   }
 

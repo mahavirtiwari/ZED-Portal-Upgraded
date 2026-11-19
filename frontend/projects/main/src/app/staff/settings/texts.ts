@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, DOCUMENT, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -6,7 +5,10 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { PortalSwitchComponent } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 import { fillSampleFields, insertAtCursor, portalBaseUrl } from './email-templates';
+import { PageTextsPanel } from './page-texts';
 
 export interface TextItem {
   key: string;
@@ -47,7 +49,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
  */
 @Component({
   selector: 'zed-staff-texts',
-  imports: [DatePipe, FormsModule, PagerComponent, PortalSwitchComponent],
+  imports: [IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent, PageTextsPanel],
   template: `
     <div class="page-head">
       <div>
@@ -64,6 +66,15 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
+    <!-- 2026-11-19 (the user: "all the text are configurable"): the pages' wording (headings, labels, buttons, notes) beside
+         the HTML texts. -->
+    <div class="tx-kinds" role="tablist" aria-label="Kind of text">
+      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'texts'" [attr.aria-selected]="kind() === 'texts'" (click)="kind.set('texts')">Messages and documents</button>
+      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'wording'" [attr.aria-selected]="kind() === 'wording'" (click)="kind.set('wording')">Page wording</button>
+    </div>
+    @if (kind() === 'wording') {
+      <zed-page-texts />
+    } @else {
     <div class="tx-stats">
       <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Texts</span></div>
       <div class="stat"><span class="stat-value is-shown">{{ stats().shown }}</span><span class="stat-label">Shown</span></div>
@@ -118,7 +129,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                 </td>
                 <td class="text-center">
                   @if (t.updatedOn) {
-                    <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
+                    <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
                   } @else {
                     <span class="muted" title="Not changed">—</span>
                   }
@@ -138,6 +149,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
       </div>
       <zed-pager [pager]="view" />
     </div>
+    }
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="textTitle">
@@ -224,6 +236,9 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
 
     .list-card { padding: 16px; }
     .tx-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 14px; }
+    .tx-kinds { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #dfe9ea; }
+    .tx-kind { border: 0; background: none; padding: 9px 18px; font-weight: 700; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .tx-kind.active { color: #23474a; border-bottom-color: var(--zt-dark, #24666b); }
     .tx-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
     .tx-tab:hover { color: var(--zt-mid2, #2f7c83); }
     .tx-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
@@ -295,10 +310,14 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
 })
 export class TextsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/texts';
   /** {{PublicBaseUrl}} in the preview. */
   private readonly baseUrl = portalBaseUrl(inject(DOCUMENT));
   private readonly bodyBox = viewChild<ElementRef<HTMLTextAreaElement>>('bodyBox');
+  /** Messages and documents (the HTML texts) or the pages' wording. */
+  protected readonly kind = signal<'texts' | 'wording'>('texts');
+  private readonly wordingPanel = viewChild(PageTextsPanel);
 
   protected readonly channels = ['Website', 'Mobile app'];
   protected readonly items = signal<TextItem[]>([]);
@@ -409,7 +428,11 @@ export class TextsPage {
   }
 
   protected async reset(item: TextItem): Promise<void> {
-    if (!confirm(`Show the standard text again for "${item.name}"?`)) return;
+    const ok = await this.confirms.ask({
+      title: 'Reset to the Standard Text?', message: `"${item.name}" shows the standard text again. The saved text is removed.`,
+      confirmLabel: 'Reset', danger: true,
+    });
+    if (!ok) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');
@@ -425,6 +448,7 @@ export class TextsPage {
   }
 
   protected reload(): void {
+    this.wordingPanel()?.reload();
     this.editing.set(null);
     this.error.set('');
     this.success.set('');

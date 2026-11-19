@@ -8,6 +8,7 @@ import { ExcelToolsComponent } from '../excel-tools';
 import { levelName } from '../../msme/shared/levels';
 import { ListSearchComponent, searchRows } from '../pager';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
 
 export const PURPOSE_MAX = 500;
 /** The requirement's text (Requirements.RequirementName), as the server allows (2026-11-13). */
@@ -441,6 +442,7 @@ export class RequirementsPage {
   protected readonly questionnairePortals = QUESTIONNAIRE_PORTALS;
   protected readonly api = inject(QuestionnaireApi);
   private readonly route = inject(ActivatedRoute).snapshot.paramMap;
+  private readonly confirms = inject(ConfirmService);
 
   protected readonly sectionType = this.route.get('sectionType') ?? 'Bronze';
   protected readonly sectionCode = this.route.get('sectionCode') ?? '';
@@ -520,8 +522,10 @@ export class RequirementsPage {
   }
 
   /** Shows a requirement on the right (an open editor is closed after asking). */
-  protected select(q: Requirement): void {
-    if (this.form() && !window.confirm('Leave the requirement you are editing without saving?')) return;
+  protected async select(q: Requirement): Promise<void> {
+    if (this.form() && !(await this.confirms.ask({
+      title: 'Leave Without Saving?', message: 'The requirement you are editing is not saved.', confirmLabel: 'Leave', danger: true,
+    }))) return;
     this.form.set(null);
     this.formError.set('');
     this.selectedId.set(q.id);
@@ -599,11 +603,13 @@ export class RequirementsPage {
     this.reveal();
   }
 
-  protected removeCheckpoint(i: number): void {
+  protected async removeCheckpoint(i: number): Promise<void> {
     const f = this.form();
     if (!f) return;
     const c = f.checkpoints[i];
-    if (c.optionCode && !window.confirm(`Remove checkpoint ${i + 1} with its evidence and actions?`)) return;
+    if (c.optionCode && !(await this.confirms.ask({
+      title: `Remove Checkpoint ${i + 1}?`, message: 'It is removed with its evidence and actions.', confirmLabel: 'Remove', danger: true,
+    }))) return;
     f.checkpoints.splice(i, 1);
     this.touch();
   }
@@ -693,7 +699,9 @@ export class RequirementsPage {
   }
 
   protected async removeRequirement(q: Requirement): Promise<void> {
-    if (!window.confirm(`Remove requirement ${this.data()?.sectionCode}.${q.requirementCode} with its checkpoints and evidences?`)) return;
+    if (!(await this.confirms.ask({
+      title: `Remove Requirement ${this.data()?.sectionCode}.${q.requirementCode}?`, message: 'It is removed with its checkpoints and evidences.', confirmLabel: 'Remove', danger: true,
+    }))) return;
     this.clearMessages();
     this.saving.set(true);
     try {

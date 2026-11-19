@@ -4,6 +4,7 @@ import { MessageResponse, PortalLinksService, apiErrorMessage } from '@zed/share
 import { firstValueFrom } from 'rxjs';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
+import { ConfirmService } from '../confirm-dialog';
 
 export type ChangeKind = 'addState' | 'renameState' | 'addDistrict' | 'renameDistrict' | 'deactivateDistrict';
 
@@ -225,6 +226,7 @@ export class LgdDirectoryPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/masters/lgd';
 
   protected file: File | null = null;
@@ -311,7 +313,7 @@ export class LgdDirectoryPage {
     const r = this.result();
     if (!r) return;
     const changes = r.changes.filter((_, i) => this.ticked().has(i));
-    if (!confirm(`Apply ${changes.length} change(s) to the states and districts?`)) return;
+    if (!(await this.confirms.ask({ title: 'Apply the Changes?', message: `${changes.length} change(s) are applied to the states and districts.`, confirmLabel: 'Apply' }))) return;
     this.busy.set(true);
     this.error.set('');
     try {

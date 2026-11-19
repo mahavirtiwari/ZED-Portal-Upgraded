@@ -1,5 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { t } from '../../content/page-text';
 import { DashIcon } from './dash-icon';
 
 export type IncentiveState = 'availed' | 'open' | 'progress' | 'locked';
@@ -20,7 +21,15 @@ export interface IncentiveTileVm {
   clamp?: boolean;
 }
 
-const CHIPS: Record<IncentiveState, string> = { availed: 'Availed', open: 'Open', progress: 'In progress', locked: 'Locked' };
+/** The status chip of a card. */
+function chipOf(state: IncentiveState): string {
+  switch (state) {
+    case 'availed': return t('msme.dashboard.incentive.chip.availed', 'Availed');
+    case 'open': return t('msme.dashboard.incentive.chip.open', 'Open');
+    case 'progress': return t('msme.dashboard.incentive.chip.inProgress', 'In progress');
+    default: return t('msme.dashboard.incentive.chip.locked', 'Locked');
+  }
+}
 
 /**
  * 2026-11-17 (the user's Home design): one incentive: its icon and status chip (Availed / Open / In progress / Locked), the
@@ -83,5 +92,5 @@ export class IncentiveTile {
   readonly tile = input.required<IncentiveTileVm>();
   /** The card's button (a card without a link): the dashboard opens its pop-up. */
   readonly act = output<void>();
-  protected readonly chip = computed(() => CHIPS[this.tile().state]);
+  protected readonly chip = computed(() => chipOf(this.tile().state));
 }

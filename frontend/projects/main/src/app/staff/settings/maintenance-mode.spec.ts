@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { MaintenanceModePage, MaintenanceRow } from './maintenance-mode';
+import { ConfirmService } from '../confirm-dialog';
 
 describe('MaintenanceModePage', () => {
   let fixture: ComponentFixture<MaintenanceModePage>;
@@ -35,7 +36,7 @@ describe('MaintenanceModePage', () => {
 
   it('switches a portal down after confirming and saves every row', async () => {
     expect([...el.querySelectorAll('tbody tr strong')].map((s) => s.textContent!.trim())).toEqual(['ZED Certification portal', 'Consultancy portal']);
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirm = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(false);
     (el.querySelector('[aria-label="ZED Certification portal down"]') as HTMLInputElement).click();
     const msg = el.querySelector('[aria-label="Message of ZED Certification portal"]') as HTMLInputElement;
     msg.value = 'Back at 6 pm.';
@@ -44,9 +45,9 @@ describe('MaintenanceModePage', () => {
     expect(el.querySelector('.mm-switch.down')!.textContent).toContain('Down');
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     await settle();
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('ZED Certification portal'));
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('ZED Certification portal') }));
     http.expectNone(url, 'refused: nothing saved');
-    confirm.mockReturnValue(true);
+    confirm.mockResolvedValue(true);
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);

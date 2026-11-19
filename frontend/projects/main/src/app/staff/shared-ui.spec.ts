@@ -6,7 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { ListCount, ListCounts } from './list-counts';
 import { ChipFilter, FilterChip } from './chip-filter';
 import { RowMenu, RowMenuItem } from './row-menu';
-import { ConfirmAsk, ConfirmDialog } from './confirm-dialog';
+import { ConfirmAsk, ConfirmDialog, ConfirmHost, ConfirmService } from './confirm-dialog';
 import { ReasonDialog } from './users/reason-dialog';
 import { ToastHost, ToastService } from './toast';
 import { ATTENTION_API, AttentionBell, AttentionService } from './attention';
@@ -197,6 +197,37 @@ describe('staff shared UI', () => {
       expect(text(el.querySelector('[role="alert"]'))).toBe('Not allowed.');
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       expect(fixture.componentInstance.cancelled).toBe(1);
+    });
+
+    it("the pages' ConfirmService asks in the layout's pop-up and answers true / false (2026-11-19, no browser confirm box)", async () => {
+      const fixture = TestBed.createComponent(ConfirmHost);
+      const service = TestBed.inject(ConfirmService);
+      const el: HTMLElement = fixture.nativeElement;
+      await fixture.whenStable();
+      expect(el.querySelector('[role="dialog"]')).toBeNull();
+
+      const yes = service.ask({ title: 'Reset to the Standard Text?', message: 'The saved text is removed.', confirmLabel: 'Reset', danger: true });
+      await fixture.whenStable();
+      expect(text(el.querySelector('h3'))).toBe('Reset to the Standard Text?');
+      expect(text(el.querySelector('.cd-ok'))).toBe('Reset');
+      (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      expect(await yes).toBe(true);
+      await fixture.whenStable();
+      expect(el.querySelector('[role="dialog"]')).toBeNull();
+
+      const no = service.ask({ title: 'Switch the Item Off?' });
+      await fixture.whenStable();
+      (el.querySelector('.cd-no') as HTMLButtonElement).click();
+      expect(await no).toBe(false);
+
+      // A newer question answers the open one false.
+      const first = service.ask({ title: 'First' });
+      const second = service.ask({ title: 'Second' });
+      expect(await first).toBe(false);
+      await fixture.whenStable();
+      expect(text(el.querySelector('h3'))).toBe('Second');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(await second).toBe(false);
     });
 
     it('confirms at once without a reason, with a teal button', async () => {

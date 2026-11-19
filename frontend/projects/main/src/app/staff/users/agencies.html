@@ -1,8 +1,9 @@
 <!-- 2026-11-17 (approved staff redesign, staff-01 / staff-03).
      2026-11-18 (the user: staff pages 'not aligned with SVG files'): fixed column widths as staff-01 / staff-03 (the long address
-     clamped to one line), no wrapping row buttons, "Assessors" as the quiet grey button, 150px level columns. -->
-<zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  @if (mode === 'all') { <a routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add {{ word }}</a> }
+     clamped to one line), no wrapping row buttons, "Assessors" as the quiet grey button, 150px level columns.
+     2026-11-19 (the user: "All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.agencies.*). -->
+<zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+  @if (mode === 'all') { <a routerLink="/staff/users/agencies/new" class="btn btn-primary">{{ '+ Add {word}' | t: 'staff.agencies.addButton' : { word: word() } }}</a> }
 </zed-page-head>
 
 @if (error()) {
@@ -10,27 +11,27 @@
 }
 
 @if (mode === 'levels') {
-  <zed-list-counts [counts]="counts()" label="Agencies per level" />
+  <zed-list-counts [counts]="counts()" [label]="'Agencies per level' | t: 'staff.agencies.levels.countsLabel'" />
 } @else {
-  <zed-list-counts [counts]="counts()" [selected]="status()" [label]="labels.agencies + ' by status'" (pick)="pickCount($event)" />
+  <zed-list-counts [counts]="counts()" [selected]="status()" [label]="'{agencies} by status' | t: 'staff.agencies.countsLabel' : { agencies: labels.agencies }" (pick)="pickCount($event)" />
 }
 
 <div class="zed-card ag-bar">
   <div class="ag-search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-    <input type="search" class="form-control" placeholder="Search ID, name, SPOC, mobile or e-mail" aria-label="Search agencies"
-           [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    <input type="search" class="form-control" [placeholder]="'Search ID, name, SPOC, mobile or e-mail' | t: 'staff.agencies.search.placeholder'"
+           [attr.aria-label]="'Search agencies' | t: 'staff.agencies.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
-  <zed-chip-filter label="Status" data-filter="status" [chips]="statusChips" [value]="status()" (valueChange)="setStatus($event)" />
+  <zed-chip-filter [label]="'Status' | t: 'staff.agencies.filter.status'" data-filter="status" [chips]="statusChips()" [value]="status()" (valueChange)="setStatus($event)" />
   @if (!consultancy) {
-    <zed-chip-filter label="Sector type" data-filter="sector" [chips]="sectorChips()" [value]="sector()" (valueChange)="setSector($event)" />
+    <zed-chip-filter [label]="'Sector type' | t: 'staff.agencies.filter.sector'" data-filter="sector" [chips]="sectorChips()" [value]="sector()" (valueChange)="setSector($event)" />
   }
 </div>
 
 @if (poFor(); as po) {
   <!-- 2026-11-18 (expenditure monitoring): the purchase orders of the agency (organisation) chosen in its row. -->
-  <div class="text-end mb-1"><button type="button" class="btn btn-default btn-sm" (click)="poFor.set(null)">Close purchase orders</button></div>
-  <zed-po-card [partyId]="po.UserId" [partyName]="po.UserName || po.UserId" [word]="word" />
+  <div class="text-end mb-1"><button type="button" class="btn btn-default btn-sm" (click)="poFor.set(null)">{{ 'Close purchase orders' | t: 'staff.agencies.po.closeButton' }}</button></div>
+  <zed-po-card [partyId]="po.UserId" [partyName]="po.UserName || po.UserId" [word]="word()" />
 }
 
 <div class="zed-card ag-card">
@@ -38,16 +39,16 @@
     <table class="table table-zed ag-table" [class.is-levels]="mode === 'levels'" [class.has-alloc]="showsAllocated">
       <thead>
         <tr>
-          <th class="c-ag">{{ consultancy ? 'Consultant Organisation' : 'Agency' }}</th>
-          @if (mode === 'all') { <th class="c-spoc">SPOC</th> }
-          @if (!consultancy) { <th class="c-cat">Category and sector type</th> }
-          @if (showsAllocated) { <th class="c-alloc">Allocated</th> }
+          <th class="c-ag">{{ consultancy ? ('Consultant Organisation' | t: 'staff.agencies.column.organisation') : ('Agency' | t: 'staff.agencies.column.agency') }}</th>
+          @if (mode === 'all') { <th class="c-spoc">{{ 'SPOC' | t: 'staff.agencies.column.spoc' }}</th> }
+          @if (!consultancy) { <th class="c-cat">{{ 'Category and sector type' | t: 'staff.agencies.column.category' }}</th> }
+          @if (showsAllocated) { <th class="c-alloc">{{ 'Allocated' | t: 'staff.agencies.column.allocated' }}</th> }
           @if (mode === 'levels') {
             @for (l of levels(); track l.code) { <th class="text-center c-lv">{{ l.name }}</th> }
           } @else {
-            <th class="text-center c-n">{{ consultancy ? 'No. of Consultant' : labels.assessors }}</th>
-            <th class="text-center c-st">Status</th>
-            <th class="text-end c-act">Actions</th>
+            <th class="text-center c-n">{{ peopleColumn() }}</th>
+            <th class="text-center c-st">{{ 'Status' | t: 'staff.agencies.column.status' }}</th>
+            <th class="text-end c-act">{{ 'Actions' | t: 'staff.agencies.column.actions' }}</th>
           }
         </tr>
       </thead>
@@ -61,58 +62,64 @@
                   <strong class="ag-name">{{ a.UserName }}</strong>
                   <span class="ag-id">{{ a.UserId }}</span>
                   @if (mode === 'levels') {
-                    <button type="button" class="btn btn-default btn-sm align-self-start" [attr.aria-label]="'Purchase orders of ' + a.UserName" (click)="poFor.set(a)">Purchase orders</button>
+                    <button type="button" class="btn btn-default btn-sm align-self-start" [attr.aria-label]="'Purchase orders of {name}' | t: 'staff.agencies.row.poAria' : { name: a.UserName }"
+                            (click)="poFor.set(a)">{{ 'Purchase orders' | t: 'staff.agencies.row.poButton' }}</button>
                   }
-                  @let addr = a.Address || a.Pincode ? (a.Address ?? '') + (a.Address && a.Pincode ? ' ' : '') + (a.Pincode ?? '') : 'Address not saved';
+                  @let addr = a.Address || a.Pincode ? (a.Address ?? '') + (a.Address && a.Pincode ? ' ' : '') + (a.Pincode ?? '') : ('Address not saved' | t: 'staff.agencies.row.noAddress');
                   <span class="ag-addr" [title]="addr">{{ addr }}</span>
                 </div>
               </div>
             </td>
             @if (mode === 'all') {
-              <td data-label="SPOC">
+              <td [attr.data-label]="'SPOC' | t: 'staff.agencies.column.spoc'">
                 <div class="spoc">
                   <strong [title]="a.SpocName || ''">{{ a.SpocName || '—' }}</strong>
-                  <span>{{ a.MobileNo || 'Mobile not saved' }}</span>
+                  <span>{{ a.MobileNo || ('Mobile not saved' | t: 'staff.agencies.row.noMobile') }}</span>
                   @if (a.Email) { <span [title]="a.Email">{{ a.Email }}</span> }
                 </div>
               </td>
             }
             @if (!consultancy) {
-              <td data-label="Category and sector type">
+              <td [attr.data-label]="'Category and sector type' | t: 'staff.agencies.column.category'">
                 <div class="chips">
                   @for (c of categories(a); track c) { <span>{{ c }}</span> }
-                  @if (mode === 'levels' && !a.IsActive) { <span class="is-unset">{{ a.IdStatus || 'Blocked' }}</span> }
-                  @if (a.SectorActivity) { <span class="is-sector" title="Sector type">{{ a.SectorActivity }}</span> }
-                  @else { <span class="is-unset">Sector type not set</span> }
+                  @if (mode === 'levels' && !a.IsActive) { <span class="is-unset">{{ a.IdStatus || ('Blocked' | t: 'staff.agencies.row.blocked') }}</span> }
+                  @if (a.SectorActivity) { <span class="is-sector" [title]="'Sector type' | t: 'staff.agencies.filter.sector'">{{ a.SectorActivity }}</span> }
+                  @else { <span class="is-unset">{{ 'Sector type not set' | t: 'staff.agencies.row.noSector' }}</span> }
                 </div>
               </td>
             }
             @if (showsAllocated) {
               <!-- 2026-11-18 (the user): units allocated to the agency per certification level; the tooltip splits them. -->
-              <td class="ag-alloc" data-label="Allocated"><zed-level-counts [counts]="a.LevelCounts" [label]="'Units allocated to ' + a.UserName" /></td>
+              <td class="ag-alloc" [attr.data-label]="'Allocated' | t: 'staff.agencies.column.allocated'">
+                <zed-level-counts [counts]="a.LevelCounts" [label]="'Units allocated to {name}' | t: 'staff.agencies.row.allocatedAria' : { name: a.UserName }" />
+              </td>
             }
             @if (mode === 'levels') {
               @for (l of levels(); track l.code) {
                 <td class="lv-cell half" [attr.data-label]="l.name">
                   <button type="button" class="sw" role="switch" [class.on]="allowed(a, l.code)" [class.off]="!allowed(a, l.code)" [disabled]="saving()"
-                          [attr.data-level]="l.code" [attr.aria-checked]="allowed(a, l.code)" [attr.aria-label]="l.name + ' assessments for ' + a.UserName"
+                          [attr.data-level]="l.code" [attr.aria-checked]="allowed(a, l.code)"
+                          [attr.aria-label]="'{level} assessments for {name}' | t: 'staff.agencies.levels.switchAria' : { level: l.name, name: a.UserName }"
                           (click)="toggleLevel(a, l)"></button>
-                  <span class="lv-state">{{ allowed(a, l.code) ? 'On' : 'Off' }}</span>
-                  @if (!allowed(a, l.code) && reason(a, l.code)) { <span class="lv-why">{{ l.name }} off: “{{ reason(a, l.code) }}”</span> }
+                  <span class="lv-state">{{ allowed(a, l.code) ? ('On' | t: 'staff.agencies.levels.on') : ('Off' | t: 'staff.agencies.levels.off') }}</span>
+                  @if (!allowed(a, l.code) && reason(a, l.code)) {
+                    <span class="lv-why">{{ '{level} off: “{reason}”' | t: 'staff.agencies.levels.offReason' : { level: l.name, reason: reason(a, l.code) } }}</span>
+                  }
                 </td>
               }
             } @else {
-              <td class="text-center half" [attr.data-label]="consultancy ? 'No. of Consultant' : labels.assessors">
+              <td class="text-center half" [attr.data-label]="peopleColumn()">
                 <span class="count">{{ a.NoOfUsers ?? 0 }}</span>
               </td>
-              <td class="text-center half" data-label="Status">
+              <td class="text-center half" [attr.data-label]="'Status' | t: 'staff.agencies.column.status'">
                 <span class="status-badge" [class.is-active]="a.IsActive" [class.is-rejected]="!a.IsActive">{{ a.IdStatus }}</span>
               </td>
               <td class="text-end">
                 <div class="acts row-actions">
-                  <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-outline-primary">Edit</a>
-                  <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default">{{ consultancy ? 'Consultants' : labels.assessors }}</a>
-                  <zed-row-menu [items]="menu(a)" [label]="'More actions for ' + a.UserName" (picked)="picked(a, $event)" />
+                  <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-outline-primary">{{ 'Edit' | t: 'staff.agencies.row.editButton' }}</a>
+                  <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default">{{ peopleButton() }}</a>
+                  <zed-row-menu [items]="menu(a)" [label]="'More actions for {name}' | t: 'staff.agencies.row.menuAria' : { name: a.UserName }" (picked)="picked(a, $event)" />
                 </div>
               </td>
             }
@@ -123,12 +130,12 @@
               <td [attr.colspan]="mode === 'levels' ? 2 + levels().length : consultancy ? 5 : 7" style="padding: 0">
                 <div class="no-data">
                   @if (filtering()) {
-                    No {{ word }} matches the search or filter.
-                    <div><button type="button" class="btn btn-outline-primary" (click)="clearFilters()">Clear filters</button></div>
+                    {{ 'No {word} matches the search or filter.' | t: 'staff.agencies.empty.filtered' : { word: word() } }}
+                    <div><button type="button" class="btn btn-outline-primary" (click)="clearFilters()">{{ 'Clear filters' | t: 'staff.agencies.empty.clearButton' }}</button></div>
                   } @else if (mode === 'all') {
-                    No {{ labels.agencies.toLowerCase() }} yet. Use + Add {{ word }} to add the first one.
+                    {{ 'No {agencies} yet. Use + Add {word} to add the first one.' | t: 'staff.agencies.empty.none' : { agencies: labels.agencies.toLowerCase(), word: word() } }}
                   } @else {
-                    No agencies yet. Agencies added under {{ labels.agencies }} are listed here.
+                    {{ 'No agencies yet. Agencies added under {agencies} are listed here.' | t: 'staff.agencies.levels.empty' : { agencies: labels.agencies } }}
                   }
                 </div>
               </td>
@@ -152,5 +159,5 @@
                     [fileName]="'history-' + h.agency.UserId" (closed)="history.set(null)" />
 }
 @if (loading()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.agencies.loading' }}</span></div>
 }

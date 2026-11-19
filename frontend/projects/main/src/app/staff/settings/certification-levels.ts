@@ -6,6 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ConfirmService } from '../confirm-dialog';
+import { ToastService } from '../toast';
 
 export interface CertificationLevel {
   /** Stored everywhere (Bronze, Silver, Gold, ZEDX); cannot change. */
@@ -251,9 +253,6 @@ const API = '/api/staff/settings/levels';
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
     }
     @if (loaded() && !stored()) {
       <div class="alert alert-warning" role="alert">These are the built-in levels. They can be changed once the administrator has applied database migration 0028.</div>
@@ -816,7 +815,6 @@ export class CertificationLevelsPage {
     input.value = '';
     if (!file) return;
     this.error.set('');
-    this.success.set('');
     if (file.size > 2 * 1024 * 1024 || !/\.(png|jpe?g)$/i.test(file.name)) {
       this.error.set('Please choose a JPG or PNG image of up to 2 MB.');
       return;
@@ -826,7 +824,7 @@ export class CertificationLevelsPage {
       const form = new FormData();
       form.append('file', file, file.name);
       const r = await firstValueFrom(this.http.post<MessageResponse>(`${API}/${encodeURIComponent(code)}/artwork`, form, { params: { kind } }));
-      this.success.set(r.message);
+      this.toast.success(r.message);
       await this.load();
     } catch (err) {
       this.error.set(apiErrorMessage(err));
@@ -861,6 +859,9 @@ export class CertificationLevelsPage {
     return code === 'Bronze' || code === 'Silver' || code === 'Gold';
   }
   private readonly portals = inject(AdminPortalService);
+  private readonly confirms = inject(ConfirmService);
+  /** 2026-11-19 (admin audit): the saved message as a toast at the bottom, where Update was clicked (the top alert was out of view). */
+  private readonly toast = inject(ToastService);
   private readonly http = inject(HttpClient);
 
   protected readonly levels = signal<LevelItem[]>([]);
@@ -878,7 +879,6 @@ export class CertificationLevelsPage {
   protected readonly editError = signal('');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly success = signal('');
   private logo: File | null = null;
 
   constructor() {
@@ -1028,7 +1028,6 @@ export class CertificationLevelsPage {
     this.busy.set(true);
     this.editError.set('');
     this.error.set('');
-    this.success.set('');
     const body = {
       code: e.isNew ? e.code.trim() : undefined, name: e.name.trim(), description: e.description, comment: e.comment, isEnabled: e.isEnabled,
       assessmentMode: e.assessmentMode, validityMonths: e.validityMonths, surveillanceEnabled: e.surveillanceEnabled,
@@ -1070,7 +1069,7 @@ export class CertificationLevelsPage {
         if (this.logo && !e.isNew) await firstValueFrom(logo(context));
       });
       this.editing.set(null);
-      this.success.set(message);
+      this.toast.success(message);
       await this.load();
     } catch (err) {
       this.editError.set(apiErrorMessage(err));
@@ -1080,14 +1079,13 @@ export class CertificationLevelsPage {
   }
 
   protected async toggle(l: CertificationLevel): Promise<void> {
-    if (l.isEnabled && !confirm(`Disable ${l.name}? MSMEs will no longer see it or apply for it.`)) return;
+    if (l.isEnabled && !(await this.confirms.ask({ title: `Disable ${l.name}?`, message: 'MSMEs will no longer see it or apply for it.', confirmLabel: 'Disable', danger: true }))) return;
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
       const enabled = (context?: HttpContext) => this.http.put<MessageResponse>(`${API}/${encodeURIComponent(l.code)}/enabled`, { enabled: !l.isEnabled }, { context });
       const message = (await firstValueFrom(enabled())).message;
-      this.success.set(message + (await this.onSurveillance(async (context) => { await firstValueFrom(enabled(context)); })));
+      this.toast.success(message + (await this.onSurveillance(async (context) => { await firstValueFrom(enabled(context)); })));
       await this.load();
     } catch (err) {
       this.error.set(apiErrorMessage(err));

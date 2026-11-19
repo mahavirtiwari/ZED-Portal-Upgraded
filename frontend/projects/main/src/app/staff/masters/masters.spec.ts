@@ -9,6 +9,7 @@ import { CodeNamesPage } from './code-names';
 import { DocumentsAdminPage } from './documents';
 import { PageSettingsPage } from './page-settings';
 import { ParametersPage } from './parameters';
+import { ConfirmService } from '../confirm-dialog';
 
 async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
@@ -103,7 +104,7 @@ describe('DocumentsAdminPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('shown on the Consultancy portal too');
 
     // Unticked: removed there after a confirmation.
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     tick('ZED Guidelines').click();
     await settle(fixture);
     const del = http.expectOne((r) => r.method === 'DELETE' && onCons(r, '/api/staff/masters/documents/40'));
@@ -288,7 +289,7 @@ describe('DocumentsAdminPage', () => {
     http.expectOne('/api/staff/masters/documents').flush({ documents: [doc(4, 'Old')], roles });
     await settle(fixture);
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     type(el, 'input[aria-label="Search documents"]', '');
     await settle(fixture);
     (el.querySelector('[aria-label="Delete Old"]') as HTMLButtonElement).click();
@@ -346,6 +347,34 @@ describe('PageSettingsPage', () => {
     req.flush({ message: 'Document saved.' });
     await settle(fixture);
     http.expectOne('/api/staff/masters/page-settings').flush({ hasBanner: true, fileName: 'Banner_2.png', updatedOn: null, imageUrl: '/api/staff/masters/page-settings/banner?v=2' });
+    http.verify();
+  });
+
+  it('says the saved banner file is missing instead of "No banner saved" with a file and date (2026-11-19)', async () => {
+    const { fixture, http, el } = await setup(PageSettingsPage);
+    http.expectOne('/api/staff/masters/page-settings').flush({
+      hasBanner: false, fileName: 'Banner_20260820121144.png', updatedOn: '20-08-2026 12:11', imageUrl: null, fileMissing: true,
+    });
+    await settle(fixture);
+    expect(el.querySelector('.img-empty')!.textContent).toContain('The saved banner file is missing — upload it again.');
+    expect(el.querySelector('.img-empty')!.textContent).not.toContain('No banner saved');
+    expect(el.querySelector('.img-card-head .status-badge')!.textContent!.trim()).toBe('File missing');
+    const meta = el.querySelector('.img-meta')!.textContent!.replace(/\s+/g, ' ');
+    expect(meta).toContain('Banner_20260820121144.png (missing)');
+    expect(meta).toContain('20-08-2026 12:11');
+    expect(el.querySelector('#ps-upload-h')!.textContent).toBe('Upload the banner again');
+    http.verify();
+  });
+
+  it('lists no file or date when no banner is recorded', async () => {
+    const { fixture, http, el } = await setup(PageSettingsPage);
+    // An older server: a file name without a banner and without fileMissing is not shown as if saved.
+    http.expectOne('/api/staff/masters/page-settings').flush({ hasBanner: false, fileName: 'Banner_1.png', updatedOn: '20-08-2026 12:11', imageUrl: null });
+    await settle(fixture);
+    expect(el.querySelector('.img-empty')!.textContent).toContain('No banner saved');
+    const meta = el.querySelector('.img-meta')!.textContent!;
+    expect(meta).not.toContain('Banner_1.png');
+    expect(meta).not.toContain('20-08-2026');
     http.verify();
   });
 

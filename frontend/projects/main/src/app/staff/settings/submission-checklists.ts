@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ALL_PORTALS, PortalSwitchComponent } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
 
 /** An item ticked before a submission (Zed.Core.Assessment.ChecklistItem). Empty stages: always asked. */
 export interface ChecklistItemDef {
@@ -108,7 +109,7 @@ interface Editing {
             <col style="width: 56px" />
             <col />
             @if (c.stages.length) { <col style="width: 220px" /> }
-            <col style="width: 220px" />
+            <col class="col-actions" style="width: 268px" />
           </colgroup>
           <thead>
             <tr>
@@ -211,7 +212,7 @@ interface Editing {
     .sync-note { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: flex-start; color: #5f6f70; font-size: 13px; margin: 0 0 12px; }
     .info-dot { flex: 0 0 18px; height: 18px; border-radius: 9px; background: #45a5ad; color: #fff; font-size: 12px; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif; }
-    .items-table { table-layout: fixed; width: 100%; min-width: 640px; margin-bottom: 0; }
+    .items-table { table-layout: fixed; width: 100%; min-width: 800px; margin-bottom: 0; }
     .items-table td { overflow-wrap: anywhere; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .items-table tr.is-off td { color: #8a9899; }
     .item-text { font-size: 14px; color: #232527; margin-right: 6px; }
@@ -224,7 +225,9 @@ interface Editing {
     .st-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; }
     .st-tile b { font-size: 20px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .st-tile small { font-size: 12.5px; color: #5f6f70; }
-    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    /* 2026-11-19 (admin audit: "Edi/t" and "O/n" at 1536px): the action column is wide enough and its buttons never wrap. */
+    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; overflow-wrap: normal; }
+    .st-actions > * { flex: none; }
     .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
       color: #23474a; font-weight: 700; padding: 0; }
     .st-icon:disabled { opacity: .35; cursor: default; }
@@ -247,6 +250,7 @@ interface Editing {
 })
 export class SubmissionChecklistsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/settings/submission-checklists';
 
   protected readonly limits = CHECKLIST_LIMITS;
@@ -357,11 +361,11 @@ export class SubmissionChecklistsPage {
     }
   }
 
-  protected toggle(c: ChecklistView, index: number): Promise<void> {
+  protected async toggle(c: ChecklistView, index: number): Promise<void> {
     const items = c.items.map((x) => ({ ...x }));
     const i = items[index];
     if (!i) return Promise.resolve();
-    if (i.active && !confirm(`Switch this item off? It is no longer asked.\n\n${i.text}`)) return Promise.resolve();
+    if (i.active && !(await this.confirms.ask({ title: 'Switch the Item Off?', subtitle: i.text, message: 'It is no longer asked.', confirmLabel: 'Switch Off', danger: true }))) return;
     i.active = !i.active;
     return this.change(() => this.http.put<MessageResponse>(`${SubmissionChecklistsPage.url}/${c.code}`, { items }));
   }
@@ -374,8 +378,11 @@ export class SubmissionChecklistsPage {
     return this.change(() => this.http.put<MessageResponse>(`${SubmissionChecklistsPage.url}/${c.code}`, { items }));
   }
 
-  protected resetAll(c: ChecklistView): Promise<void> {
-    if (!confirm(`Go back to the standard items of the ${c.title} checklist? The items added or changed here are removed.`)) return Promise.resolve();
+  protected async resetAll(c: ChecklistView): Promise<void> {
+    if (!(await this.confirms.ask({
+      title: 'Reset to the Standard Items?', message: `The ${c.title} checklist uses its standard items again. The items added or changed here are removed.`,
+      confirmLabel: 'Reset', danger: true,
+    }))) return;
     return this.change(() => this.http.delete<MessageResponse>(`${SubmissionChecklistsPage.url}/${c.code}`));
   }
 

@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ToastService } from '../toast';
 import { BrandingPage, BrandingTarget, BrandingTheme } from './branding';
 
 describe('BrandingPage', () => {
@@ -71,11 +72,20 @@ describe('BrandingPage', () => {
     expect(put.request.body).toEqual({ theme: 'navy' });
     put.flush({ message: 'Colour theme saved.' });
     await settle();
-    http.expectOne(url).flush({ targets, themes });
+    // The confirmation is a toast at the bottom, beside Save theme (2026-11-19: the alert at the top was out of view).
+    expect(TestBed.inject(ToastService).toasts().at(-1)?.title).toBe('Colour theme saved.');
+    expect(el.querySelector('.alert-success')).toBeNull();
+    http.expectOne(url).flush({ targets: [{ ...targets[0], theme: 'navy' }, targets[1]], themes });
     await settle();
+    // The saved theme is the one marked current; ZED Teal no longer says "(today)".
+    expect([...el.querySelectorAll('.br-theme')].map((b) => b.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['ZED Teal', 'Navy (current)']);
     http.expectOne('/api/public/branding').flush({ theme: themes[1], logos: {} });
     await settle();
     expect(document.documentElement.dataset['zedTheme']).toBe('navy');
+  });
+
+  it('marks the theme saved for the portal shown as current', () => {
+    expect([...el.querySelectorAll('.br-theme')].map((b) => b.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['ZED Teal (current)', 'Navy']);
   });
 
   it('shows the app tab with its one logo spot', async () => {

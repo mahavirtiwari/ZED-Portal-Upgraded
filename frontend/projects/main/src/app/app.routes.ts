@@ -2,7 +2,7 @@ import { Route, Routes, UrlMatcher } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { STAFF_ROLE_IDS, StaffRole as R } from './staff/staff-menu';
 import { staffScreenGuard } from './staff/assessment/assessment-shared';
-import { staffHomeRedirect } from './staff/staff-home.guard';
+import { STAFF_UNKNOWN_ROUTE, staffHomeRedirect, unknownAddressRedirect } from './staff/staff-home.guard';
 import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessment/assessment.routes';
 import { VERIFY_ROUTES } from './verify/verify.routes';
 import { SITE_REVIEW_LEGACY_REDIRECTS, SITE_REVIEW_ROUTES } from './staff/site-review/site-review.routes';
@@ -188,6 +188,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
     loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
   },
   STAFF_MSME_PROFILE,
+  // 2026-11-19: last, an address under /staff that is no screen here opens the user's home (it fell through to /msme/login).
+  STAFF_UNKNOWN_ROUTE,
 ];
 
 /** Main (ZEDCS) routes: the MSME portal, the staff screens and the old MVC addresses. */
@@ -391,7 +393,9 @@ const MAIN_ROUTES: Routes = [
   // Public certificate verification (QR codes) and old report links from e-mails.
   ...VERIFY_ROUTES,
 
-  { path: '**', redirectTo: 'msme/login' },
+  // 2026-11-19 (admin audit: /documents sent a signed-in Admin to /msme/login): staff go to the address under /staff (or their
+  // home), an MSME to its dashboard, others to the MSME login as before.
+  { path: '**', canActivate: [unknownAddressRedirect('/msme/login')], children: [] },
 ];
 
 // ============================================================================================================
@@ -606,13 +610,13 @@ const SYSTEM_ROUTES: Routes = [
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
     loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
-    children: PORTAL_SYSTEM === 'consultancy' ? CONSULTANCY_STAFF_CHILDREN : SURVEILLANCE_STAFF_CHILDREN,
+    children: [...(PORTAL_SYSTEM === 'consultancy' ? CONSULTANCY_STAFF_CHILDREN : SURVEILLANCE_STAFF_CHILDREN), STAFF_UNKNOWN_ROUTE],
   },
   // Old addresses with query parameters (links in mails and lists).
   ...ASSESSMENT_LEGACY_REDIRECTS.filter((r) => r.path === 'Assessment/DaDetails'),
   ...(PORTAL_SYSTEM === 'consultancy' ? MILESTONE_LEGACY_REDIRECTS : SURVEILLANCE_LEGACY_REDIRECTS),
   { matcher: legacyMatcher, redirectTo: ({ url }) => systemLegacyTarget(url.map((s) => s.path)) ?? '/login' },
-  { path: '**', redirectTo: 'login' },
+  { path: '**', canActivate: [unknownAddressRedirect('/login')], children: [] },
 ];
 
 /** The routes of this build (see portal-system.ts). */

@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { DocumentRole, DocumentRow, MastersApi } from './masters.api';
 import { PagedView, PagerComponent } from '../pager';
 import { AdminPortalService, PORTAL_API_BASE } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
 
 /** Same list as the API (MasterUploads.DocumentTypes); the API checks type, content and size again. */
 export const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.txt', '.jpg', '.jpeg', '.png'];
@@ -450,6 +451,7 @@ interface DocumentIcon {
 })
 export class DocumentsAdminPage {
   private readonly api = inject(MastersApi);
+  private readonly confirms = inject(ConfirmService);
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
@@ -592,7 +594,9 @@ export class DocumentsAdminPage {
     const name = PORTAL_NAMES[p];
     const twin = this.twinOf(d, p);
     if (twin) {
-      if (!window.confirm(`Remove "${d.documentName}" from the ${name} portal? It stays on ZED Certification.`)) {
+      if (!(await this.confirms.ask({
+        title: `Remove from the ${name} Portal?`, message: `"${d.documentName}" is removed from the ${name} portal. It stays on ZED Certification.`, confirmLabel: 'Remove', danger: true,
+      }))) {
         this.store(p).set({ ...this.store(p)()! });
         return;
       }
@@ -620,7 +624,10 @@ export class DocumentsAdminPage {
   }
 
   protected async removeFrom(d: DocumentRow, p: OtherPortal): Promise<void> {
-    if (!window.confirm(`Remove "${d.documentName}" from the ${PORTAL_NAMES[p]} portal? No one there will see it any more.`)) return;
+    if (!(await this.confirms.ask({
+      title: `Remove from the ${PORTAL_NAMES[p]} Portal?`, message: `"${d.documentName}" is removed from the ${PORTAL_NAMES[p]} portal. No one there will see it any more.`,
+      confirmLabel: 'Remove', danger: true,
+    }))) return;
     await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id, p))).message);
   }
 
@@ -773,7 +780,7 @@ export class DocumentsAdminPage {
   }
 
   protected async remove(d: DocumentRow): Promise<void> {
-    if (!window.confirm(`Remove "${d.documentName}"? No one will see it any more.`)) return;
+    if (!(await this.confirms.ask({ title: 'Remove the Document?', message: `"${d.documentName}" is removed. No one will see it any more.`, confirmLabel: 'Remove', danger: true }))) return;
     await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id))).message);
   }
 

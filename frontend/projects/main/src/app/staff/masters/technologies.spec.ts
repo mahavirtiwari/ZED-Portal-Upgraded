@@ -7,6 +7,8 @@ import { USERS_ROUTES } from '../users/users.routes';
 import { MASTERS_ROUTES } from './masters.routes';
 import { TechnologiesPage } from './technologies';
 import { TechnologyFormPage } from './technology-form';
+import { ConfirmService } from '../confirm-dialog';
+import { ToastService } from '../toast';
 
 async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
@@ -33,7 +35,7 @@ describe('TechnologiesPage', () => {
     expect(el.querySelector('tbody .status-badge')!.textContent!.trim()).toBe('Active');
     expect(el.querySelector('tbody a')!.getAttribute('href')).toBe('/staff/masters/technologies/9');
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Deactivate') as HTMLButtonElement).click();
     await settle(fixture);
     const req = http.expectOne('/api/staff/masters/technologies/9/active');
@@ -121,7 +123,9 @@ describe('TechnologyFormPage', () => {
     await settle(fixture);
     // Stays on the form with the values, as the old page.
     expect(navigate).not.toHaveBeenCalled();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Technology data updated.');
+    // A toast at the bottom, near Save (2026-11-19: the alert at the top was out of view).
+    expect(TestBed.inject(ToastService).toasts().at(-1)?.title).toBe('Technology data updated.');
+    expect(el.querySelector('.alert-success')).toBeNull();
     expect((el.querySelector('#technologyCode') as HTMLInputElement).value).toBe('T1');
     http.verify();
     vi.restoreAllMocks();
@@ -163,7 +167,7 @@ describe('TechnologyFormPage', () => {
     await settle(fixture);
     await settle(fixture);
     expect(navigate).not.toHaveBeenCalled();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Sector saved.');
+    expect(TestBed.inject(ToastService).toasts().at(-1)?.title).toBe('Sector saved.');
     expect((el.querySelector('#technologyCode') as HTMLInputElement).value).toBe('');
     expect(el.querySelector('.help-block')).toBeNull();
     http.verify();

@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 
 export interface RegionCategory {
   key: string;
@@ -52,7 +53,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
  */
 @Component({
   selector: 'zed-staff-subsidy-regions',
-  imports: [FormsModule, PagerComponent, DatePipe, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, IndianTimePipe, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
@@ -159,7 +160,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
                 <tr [class.sr-off]="!r.enabled">
                   <td data-label="State / UT"><span class="sr-place"><span class="sr-pin" aria-hidden="true">{{ initials(r.stateName || r.stateCode) }}</span>{{ r.stateName || 'State ' + r.stateCode }}</span></td>
                   <td data-label="District">@if (r.districtCode) { {{ r.districtName || 'District ' + r.districtCode }} } @else { <span class="zed-chip sr-whole">Whole state</span> }</td>
-                  <td class="muted sr-when" data-label="Last changed">@if (r.updatedOn) { {{ r.updatedBy }} · {{ r.updatedOn + 'Z' | date: 'dd-MM-yyyy' }} } @else { {{ r.updatedBy || '—' }} }</td>
+                  <td class="muted sr-when" data-label="Last changed">@if (r.updatedOn) { {{ r.updatedBy }} · {{ r.updatedOn | indianTime: 'dd-MM-yyyy' }} } @else { {{ r.updatedBy || '—' }} }</td>
                   <td class="text-center" data-label="Status">
                     <label class="sr-switch form-switch">
                       <input type="checkbox" class="form-check-input" role="switch" [checked]="r.enabled" [disabled]="busy()" [attr.aria-label]="(r.enabled ? 'Disable ' : 'Enable ') + label(r)" (change)="set(r, $any($event.target))" />
@@ -267,6 +268,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
 })
 export class SubsidyRegionsPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private static readonly url = '/api/staff/masters/regions';
 
   protected readonly categories = signal<RegionCategory[]>([]);
@@ -392,7 +394,7 @@ export class SubsidyRegionsPage {
   }
 
   protected async remove(r: RegionRow): Promise<void> {
-    if (!confirm(`Remove ${this.label(r)} from this list?`)) return;
+    if (!(await this.confirms.ask({ title: 'Remove from the List?', message: `${this.label(r)} is removed from this list.`, confirmLabel: 'Remove', danger: true }))) return;
     await this.run(() => this.http.delete<MessageResponse>(SubsidyRegionsPage.url, { params: { category: r.category, stateCode: r.stateCode, districtCode: r.districtCode } }));
   }
 

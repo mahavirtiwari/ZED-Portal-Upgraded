@@ -4,6 +4,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { PaymentBilling, PaymentStep } from '../payment/payment-step';
 import { PageHead } from '../shared/page-head';
 import { StepTracker, TrackerStep } from '../shared/step-tracker';
+import { TextPipe, t } from '../../content/page-text';
 import { LevelFact } from './level-card';
 
 export type ApplyStep = 'disclaimer' | 'instructions' | 'payment';
@@ -30,17 +31,17 @@ export interface ApplyLevelVm {
  * the disclaimer (the Admin's texts as they are, an explicit consent tick before Accept & proceed, the consent bar pinned to
  * the bottom on a laptop; on the right "You are applying for" and "Key points at a glance"), the instructions (also step 1),
  * and the fee step (zed-payment-step). The dashboard keeps which step is open.
+ * 2026-11-19 (the user: "All page wording"): its wording through the t pipe and t() (msme.apply.*).
  */
 @Component({
   selector: 'zed-apply-flow',
-  imports: [FormsModule, ContentTextComponent, PageHead, StepTracker, PaymentStep],
+  imports: [FormsModule, ContentTextComponent, PageHead, StepTracker, PaymentStep, TextPipe],
   template: `
     @let v = vm();
-    <zed-page-head [crumbs]="[{ label: 'Home' }, { label: 'Certifications' }, { label: v.name }, { label: 'Apply' }]"
-                   [title]="'Apply for ' + v.name + ' Certification'" [subtitle]="subtitle()">
-      <button type="button" class="btn btn-ph" (click)="go.emit(step() === 'payment' ? 'disclaimer' : 'home')">← Back</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="'Apply for {level} Certification' | t: 'msme.apply.title' : { level: v.name }" [subtitle]="subtitle()">
+      <button type="button" class="btn btn-ph" (click)="go.emit(step() === 'payment' ? 'disclaimer' : 'home')">{{ '← Back' | t: 'msme.apply.backButton' }}</button>
     </zed-page-head>
-    <zed-step-tracker class="af-tracker" [steps]="steps()" [current]="step() === 'payment' ? 1 : 0" label="Application steps" />
+    <zed-step-tracker class="af-tracker" [steps]="steps()" [current]="step() === 'payment' ? 1 : 0" [label]="'Application steps' | t: 'msme.apply.steps.label'" />
 
     @if (step() === 'payment') {
       <zed-payment-step [certification]="v.code" [billing]="billing()" (back)="go.emit('home')" (previous)="go.emit('disclaimer')" />
@@ -49,7 +50,7 @@ export interface ApplyLevelVm {
         <section class="af-card disclaimer-sec" [attr.aria-labelledby]="'afTitle'">
           <header class="af-head">
             <span class="af-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg></span>
-            <h3 id="afTitle">{{ step() === 'disclaimer' ? 'Disclaimer / declaration' : 'Instructions' }}</h3>
+            <h3 id="afTitle">{{ step() === 'disclaimer' ? ('Disclaimer / declaration' | t: 'msme.apply.disclaimer.title') : ('Instructions' | t: 'msme.apply.instructions.title') }}</h3>
           </header>
           <div class="af-body disclaimer-points">
             @if (step() === 'disclaimer') {
@@ -69,40 +70,43 @@ export interface ApplyLevelVm {
             @if (step() === 'disclaimer') {
               <label class="af-consent">
                 <input type="checkbox" name="consent" [ngModel]="consent()" (ngModelChange)="consent.set($event)" />
-                <span>I have read and understood the disclaimer and accept it on behalf of {{ v.unitName || 'my unit' }}.</span>
+                <span>{{ 'I have read and understood the disclaimer and accept it on behalf of {unit}.' | t: 'msme.apply.consent.label' : { unit: v.unitName || ('my unit' | t: 'msme.apply.consent.myUnit') } }}</span>
               </label>
             }
             <div class="af-actions">
-              <button type="button" class="btn af-soft" (click)="go.emit('home')">← Back to dashboard</button>
+              <button type="button" class="btn af-soft" (click)="go.emit('home')">{{ '← Back to dashboard' | t: 'msme.apply.dashboardButton' }}</button>
               <button type="button" class="btn btn-primary af-go" [disabled]="!textsLoaded() || (step() === 'disclaimer' && !consent())"
-                      (click)="go.emit(step() === 'disclaimer' ? 'instructions' : 'payment')">Accept &amp; proceed →</button>
-              <span class="af-free">Nothing is charged at this step.</span>
+                      (click)="go.emit(step() === 'disclaimer' ? 'instructions' : 'payment')">{{ 'Accept & proceed →' | t: 'msme.apply.acceptButton' }}</button>
+              <span class="af-free">{{ 'Nothing is charged at this step.' | t: 'msme.apply.freeNote' }}</span>
             </div>
           </div>
         </section>
 
         <aside class="af-rail">
           <section class="af-card" aria-labelledby="afApplying">
-            <h3 class="af-rh" id="afApplying">You are applying for</h3>
+            <h3 class="af-rh" id="afApplying">{{ 'You are applying for' | t: 'msme.apply.rail.applyingTitle' }}</h3>
             <div class="af-level">
               <img [src]="v.logo" alt="" />
-              <div><b>{{ v.name }} Certification</b><small>{{ v.unitName }}{{ v.unitName && v.zedId ? ' · ' : '' }}{{ v.zedId }}</small></div>
+              <div><b>{{ '{level} Certification' | t: 'msme.apply.rail.level' : { level: v.name } }}</b><small>{{ v.unitName }}{{ v.unitName && v.zedId ? ' · ' : '' }}{{ v.zedId }}</small></div>
             </div>
             <dl class="af-facts">
               @for (f of v.facts; track f.label) { <div><dt>{{ f.label }}</dt><dd>{{ f.value }}@if (f.note) { <small> {{ f.note }}</small> }</dd></div> }
-              <div><dt>Assessment</dt><dd>{{ v.assessment }}</dd></div>
+              <div><dt>{{ 'Assessment' | t: 'msme.apply.rail.assessmentLabel' }}</dt><dd>{{ v.assessment }}</dd></div>
             </dl>
           </section>
           <section class="af-card" aria-labelledby="afKey">
-            <h3 class="af-rh" id="afKey">Key points at a glance</h3>
+            <h3 class="af-rh" id="afKey">{{ 'Key points at a glance' | t: 'msme.apply.keys.title' }}</h3>
             <ul class="af-keys">
-              <li><span class="k-warn" aria-hidden="true">!</span>The fee is non-refundable, non-adjustable and non-transferable.</li>
+              <li><span class="k-warn" aria-hidden="true">!</span>{{ 'The fee is non-refundable, non-adjustable and non-transferable.' | t: 'msme.apply.keys.fee' }}</li>
               <li><span aria-hidden="true">★</span>
-                @if (v.rewardUsed; as r) { The Joining Reward works once. You used it on {{ r.level }}@if (r.date) { ({{ r.date }})}. }
-                @else { The Joining Reward works once: once used on a level, it cannot be used again. }
+                @if (v.rewardUsed; as r) {
+                  @if (r.date) { {{ 'The Joining Reward works once. You used it on {level} ({date}).' | t: 'msme.apply.keys.rewardUsedOn' : { level: r.level, date: r.date } }} }
+                  @else { {{ 'The Joining Reward works once. You used it on {level}.' | t: 'msme.apply.keys.rewardUsed' : { level: r.level } }} }
+                }
+                @else { {{ 'The Joining Reward works once: once used on a level, it cannot be used again.' | t: 'msme.apply.keys.reward' }} }
               </li>
-              <li><span aria-hidden="true">₹</span>Subsidy is already applied; you pay only the beneficiary contribution.</li>
-              <li><span aria-hidden="true">◷</span>Late documents or responses can forfeit the amount paid.</li>
+              <li><span aria-hidden="true">₹</span>{{ 'Subsidy is already applied; you pay only the beneficiary contribution.' | t: 'msme.apply.keys.subsidy' }}</li>
+              <li><span aria-hidden="true">◷</span>{{ 'Late documents or responses can forfeit the amount paid.' | t: 'msme.apply.keys.late' }}</li>
             </ul>
           </section>
         </aside>
@@ -183,18 +187,22 @@ export class ApplyFlow {
   /** The explicit consent to the disclaimer. */
   protected readonly consent = signal(false);
 
+  protected readonly crumbs = computed(() => [{ label: t('msme.apply.crumb.home', 'Home') }, { label: t('msme.apply.crumb.certifications', 'Certifications') },
+    { label: this.vm().name }, { label: t('msme.apply.crumb.apply', 'Apply') }]);
+
   protected readonly subtitle = computed(() =>
-    this.step() === 'payment' ? 'Step 2 of 4: confirm tax details and the amount before you pay.'
-      : this.step() === 'instructions' ? 'Step 1 of 4: read the instructions before payment.'
-        : 'Step 1 of 4: read and accept the disclaimer before payment.');
+    this.step() === 'payment' ? t('msme.apply.sub.payment', 'Step 2 of 4: confirm tax details and the amount before you pay.')
+      : this.step() === 'instructions' ? t('msme.apply.sub.instructions', 'Step 1 of 4: read the instructions before payment.')
+        : t('msme.apply.sub.disclaimer', 'Step 1 of 4: read and accept the disclaimer before payment.'));
 
   protected readonly steps = computed<TrackerStep[]>(() => {
     const atFee = this.step() === 'payment';
+    const here = t('msme.apply.steps.here', 'You are here');
     return [
-      { label: 'Disclaimer', note: atFee ? 'Read and accept' : 'You are here' },
-      { label: 'Fee & tax details', note: atFee ? 'You are here' : 'GSTIN, TDS, coupon' },
-      { label: 'Payment', note: 'Secure gateway' },
-      { label: 'Confirmation', note: 'Receipt and next steps' },
+      { label: t('msme.apply.steps.disclaimer', 'Disclaimer'), note: atFee ? t('msme.apply.steps.disclaimerNote', 'Read and accept') : here },
+      { label: t('msme.apply.steps.fee', 'Fee & tax details'), note: atFee ? here : t('msme.apply.steps.feeNote', 'GSTIN, TDS, coupon') },
+      { label: t('msme.apply.steps.payment', 'Payment'), note: t('msme.apply.steps.paymentNote', 'Secure gateway') },
+      { label: t('msme.apply.steps.confirmation', 'Confirmation'), note: t('msme.apply.steps.confirmationNote', 'Receipt and next steps') },
     ];
   });
 }

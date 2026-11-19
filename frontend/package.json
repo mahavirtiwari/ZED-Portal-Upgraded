@@ -4,9 +4,14 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "prebuild": "node tools/extract-texts.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "pretest": "node --test tools/extract-texts.test.mjs",
+    "test": "ng test",
+    "texts": "node tools/extract-texts.mjs",
+    "texts:check": "node tools/extract-texts.mjs --check",
+    "test:texts": "node --test tools/extract-texts.test.mjs"
   },
   "private": true,
   "packageManager": "npm@11.17.0",

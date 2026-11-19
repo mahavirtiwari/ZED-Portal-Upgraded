@@ -2,6 +2,8 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, DOCUMENT, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { PortalSwitchComponent } from '../admin-portal';
+import { ConfirmService } from '../confirm-dialog';
+import { IndianTimePipe } from '../utc-time';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -104,7 +106,7 @@ const standardBodySample =
  */
 @Component({
   selector: 'zed-staff-email-templates',
-  imports: [DatePipe, FormsModule, PagerComponent, PortalSwitchComponent],
+  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -177,7 +179,7 @@ const standardBodySample =
                 </td>
                 <td class="text-center">
                   @if (t.updatedOn) {
-                    <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
+                    <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
                   } @else {
                     <span class="muted" title="Not changed">—</span>
                   }
@@ -405,6 +407,7 @@ const standardBodySample =
 })
 export class EmailTemplatesPage {
   private readonly http = inject(HttpClient);
+  private readonly confirms = inject(ConfirmService);
   private readonly sanitizer = inject(DomSanitizer);
   private static readonly url = '/api/staff/settings/email-templates';
   /** {{PublicBaseUrl}} in the preview. */
@@ -555,7 +558,9 @@ export class EmailTemplatesPage {
   /** The list's switch: on or off, the saved subject and text kept (read first, then saved with only the switch changed). */
   protected async toggle(item: EmailTemplateItem): Promise<void> {
     const on = !item.enabled;
-    if (!on && !confirm(`Switch "${item.name}" off? It is no longer sent until it is switched on again.`)) return;
+    if (!on && !(await this.confirms.ask({
+      title: 'Switch This E-mail Off?', message: `"${item.name}" is no longer sent until it is switched on again.`, confirmLabel: 'Switch Off', danger: true,
+    }))) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');
@@ -577,15 +582,22 @@ export class EmailTemplatesPage {
     }
   }
 
+  private askReset(item: EmailTemplateItem): Promise<boolean> {
+    return this.confirms.ask({
+      title: 'Reset to the Standard E-mail?', message: `"${item.name}" uses the standard e-mail again. The saved subject and text are removed.`,
+      confirmLabel: 'Reset', danger: true,
+    });
+  }
+
   /** "Reset to standard" in the pop-up: as the list's Reset, then the pop-up closes. */
   protected async resetFromEditor(e: Editing): Promise<void> {
-    if (!confirm(`Use the standard e-mail again for "${e.item.name}"? The saved subject and text are removed.`)) return;
+    if (!(await this.askReset(e.item))) return;
     this.editing.set(null);
     await this.reset(e.item, false);
   }
 
   protected async reset(item: EmailTemplateItem, ask = true): Promise<void> {
-    if (ask && !confirm(`Use the standard e-mail again for "${item.name}"? The saved subject and text are removed.`)) return;
+    if (ask && !(await this.askReset(item))) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');

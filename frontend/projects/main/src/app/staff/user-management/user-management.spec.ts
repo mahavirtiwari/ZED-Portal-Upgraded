@@ -564,6 +564,8 @@ describe('User management', () => {
       expect(rows()[0].querySelector('.su-chip-more')!.getAttribute('title')).toBe('Screen E');
       expect(rows()[1].querySelector('.su-screens')!.textContent!.trim()).toBe('All 6 screens');
       expect(rows()[0].querySelector('.su-never')!.textContent).toBe('Never signed in');
+      // The last sign-in (UTC) in Indian time.
+      expect(rows()[1].textContent).toContain('29-10-2026 15:12');
 
       (el.querySelectorAll('zed-list-counts .lc-btn')[3] as HTMLButtonElement).click();
       await settle();

@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, Injectable, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 /** The icon in the pop-up's tile (popups 03 / 04 / 09). */
@@ -240,4 +240,49 @@ export class ConfirmDialog {
     this.confirmed.emit(reason);
     this.decided.emit({ reason, checked: !!this.ask().checkbox && this.checked() });
   }
+}
+
+/** The question the staff layout's pop-up is showing, and how it is answered. */
+export interface PendingConfirm {
+  ask: ConfirmAsk;
+  done: (ok: boolean) => void;
+}
+
+/**
+ * 2026-11-19 (admin audit: the Reset / switch-off buttons asked with the browser's own confirm() box): the staff pages ask
+ * through this instead, <code>if (!(await confirms.ask({ title, message, danger })) return;</code>, and the staff layout shows
+ * the shared pop-up above (<code>zed-confirm-host</code>). Confirm answers true; Cancel, Esc, a click outside or a newer
+ * question answer false.
+ */
+@Injectable({ providedIn: 'root' })
+export class ConfirmService {
+  readonly pending = signal<PendingConfirm | null>(null);
+
+  ask(ask: ConfirmAsk): Promise<boolean> {
+    this.pending()?.done(false);
+    return new Promise<boolean>((resolve) => {
+      const p: PendingConfirm = {
+        ask,
+        done: (ok) => {
+          if (this.pending() === p) this.pending.set(null);
+          resolve(ok);
+        },
+      };
+      this.pending.set(p);
+    });
+  }
+}
+
+/** The pop-up of <code>ConfirmService</code> (once, in the staff layout, beside the toasts). */
+@Component({
+  selector: 'zed-confirm-host',
+  imports: [ConfirmDialog],
+  template: `
+    @if (service.pending(); as p) {
+      <zed-confirm-dialog [ask]="p.ask" inputId="zed-confirm-host-text" (confirmed)="p.done(true)" (cancel)="p.done(false)" />
+    }
+  `,
+})
+export class ConfirmHost {
+  protected readonly service = inject(ConfirmService);
 }

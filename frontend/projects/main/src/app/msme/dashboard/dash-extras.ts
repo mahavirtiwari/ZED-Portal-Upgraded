@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { PortalLinksService } from '@zed/shared';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe } from '../../content/page-text';
 import { DashIcon } from './dash-icon';
 
 /**
@@ -9,14 +10,15 @@ import { DashIcon } from './dash-icon';
  * Admin → Links; a link the Admin switched off is left out).
  * 2026-11-18 (the user's applicant designs): "Scheme guidelines" next to Contact ZED (Admin → Links, guidelines), the app's
  * QR code on the right of the app card (the picture the certification details page shows), and the design's sizes.
+ * 2026-11-19 (the user: "All page wording"): its wording through the t pipe (msme.dashboard.help.*).
  */
 @Component({
   selector: 'zed-dash-extras',
-  imports: [ContentTextComponent, DashIcon],
+  imports: [ContentTextComponent, DashIcon, TextPipe],
   host: { class: 'd-block' },
   template: `
     <section class="hiw" aria-labelledby="hiwTitle">
-      <h3 class="hiw-title" id="hiwTitle">HOW ZED CERTIFICATION WORKS</h3>
+      <h3 class="hiw-title" id="hiwTitle">{{ 'HOW ZED CERTIFICATION WORKS' | t: 'msme.dashboard.help.stepsTitle' }}</h3>
       <ol class="cert-steps">
         @for (s of steps; track $index) {
           <li>
@@ -30,14 +32,14 @@ import { DashIcon } from './dash-icon';
       <section class="hcard">
         <span class="h-ic"><zed-dash-icon name="help" /></span>
         <div class="h-text">
-          <h3>Need help with your application?</h3>
-          <p>{{ links.url('guidelines') ? 'Talk to the ZED helpdesk or read the scheme guidelines.' : 'Talk to the ZED helpdesk.' }}</p>
+          <h3>{{ 'Need help with your application?' | t: 'msme.dashboard.help.title' }}</h3>
+          <p>{{ links.url('guidelines') ? ('Talk to the ZED helpdesk or read the scheme guidelines.' | t: 'msme.dashboard.help.textGuidelines') : ('Talk to the ZED helpdesk.' | t: 'msme.dashboard.help.text') }}</p>
           <div class="h-btns">
             @if (links.url('contact'); as url) {
-              <a class="btn btn-outline-primary" [href]="url" target="_blank" rel="noopener noreferrer">Contact ZED</a>
+              <a class="btn btn-outline-primary" [href]="url" target="_blank" rel="noopener noreferrer">{{ 'Contact ZED' | t: 'msme.dashboard.help.contactButton' }}</a>
             }
             @if (links.url('guidelines'); as url) {
-              <a class="btn h-quiet" [href]="url" target="_blank" rel="noopener noreferrer">Scheme guidelines</a>
+              <a class="btn h-quiet" [href]="url" target="_blank" rel="noopener noreferrer">{{ 'Scheme guidelines' | t: 'msme.dashboard.help.guidelinesButton' }}</a>
             }
           </div>
         </div>
@@ -45,18 +47,18 @@ import { DashIcon } from './dash-icon';
       <section class="hcard">
         <span class="h-ic"><zed-dash-icon name="phone" /></span>
         <div class="h-text">
-          <h3>Get the ZED MSME mobile app</h3>
-          <p>Needed for Basic Information and document upload.</p>
+          <h3>{{ 'Get the ZED MSME mobile app' | t: 'msme.dashboard.app.title' }}</h3>
+          <p>{{ 'Needed for Basic Information and document upload.' | t: 'msme.dashboard.app.text' }}</p>
           <div class="h-btns">
             @if (links.url('appStore'); as url) {
-              <a class="btn h-dark" [href]="url" target="_blank" rel="noopener noreferrer"><zed-dash-icon name="download" [size]="15" /> iOS app</a>
+              <a class="btn h-dark" [href]="url" target="_blank" rel="noopener noreferrer"><zed-dash-icon name="download" [size]="15" /> {{ 'iOS app' | t: 'msme.dashboard.app.iosButton' }}</a>
             }
             @if (links.url('playStore'); as url) {
-              <a class="btn h-dark" [href]="url" target="_blank" rel="noopener noreferrer"><zed-dash-icon name="download" [size]="15" /> Android app</a>
+              <a class="btn h-dark" [href]="url" target="_blank" rel="noopener noreferrer"><zed-dash-icon name="download" [size]="15" /> {{ 'Android app' | t: 'msme.dashboard.app.androidButton' }}</a>
             }
           </div>
         </div>
-        <span class="h-qr"><img src="/Images/qrcode.png" alt="QR code for the ZED MSME app" /></span>
+        <span class="h-qr"><img src="/Images/qrcode.png" [alt]="'QR code for the ZED MSME app' | t: 'msme.dashboard.app.qrAlt'" /></span>
       </section>
     </div>
   `,

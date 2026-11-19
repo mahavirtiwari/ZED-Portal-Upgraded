@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ConfirmService } from '../confirm-dialog';
 import { LgdDirectoryPage } from './lgd-directory';
 import { RegionsResponse, SubsidyRegionsPage } from './subsidy-regions';
 
@@ -27,7 +28,7 @@ describe('SubsidyRegionsPage', () => {
       { key: 'NER', name: 'North Eastern Region', description: 'Eight states', level: 'state' },
     ],
     regions: [
-      { category: 'ASPIRATIONAL', stateCode: '9', districtCode: '170', enabled: true, updatedBy: null, updatedOn: null, stateName: 'UTTAR PRADESH', districtName: 'SONBHADRA' },
+      { category: 'ASPIRATIONAL', stateCode: '9', districtCode: '170', enabled: true, updatedBy: 'ADMIN1', updatedOn: '2026-11-16T20:00:00', stateName: 'UTTAR PRADESH', districtName: 'SONBHADRA' },
       { category: 'NER', stateCode: '18', districtCode: '', enabled: false, updatedBy: null, updatedOn: null, stateName: 'ASSAM', districtName: null },
     ],
     states: [{ code: '9', name: 'UTTAR PRADESH' }, { code: '18', name: 'ASSAM' }],
@@ -53,6 +54,8 @@ describe('SubsidyRegionsPage', () => {
     expect(stats(el)).toEqual(['112 Districts get the additional subsidy', '1/2 Entries enabled', '1 States / UTs with an enabled entry', '2 Region lists']);
     expect([...el.querySelectorAll('[role=tab]')].map((t) => [...t.children].map((c) => c.textContent!.trim()).join(' | '))).toEqual(['Aspirational Districts | By district | 1/1 enabled', 'North Eastern Region | By state | 0/1 enabled']);
     expect(el.querySelector('tbody')!.textContent).toContain('SONBHADRA');
+    // Changed at 20:00 UTC on the 16th: the 17th in India.
+    expect(el.querySelector('tbody .sr-when')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('ADMIN1 · 17-11-2026');
     button(el, 'North Eastern Region').click();
     await settle(fixture);
     expect(el.querySelector('tbody')!.textContent).toContain('Whole state');
@@ -208,7 +211,7 @@ describe('LgdDirectoryPage', () => {
     expect(el.querySelector('.lgd-count')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('2 of 3 ticked');
     expect(el.querySelectorAll('.lgd-step.is-now .lgd-no')[0].textContent).toBe('3');
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
     button(el, 'Apply ticked changes').click();
     await settle(fixture);
     const apply = http.expectOne('/api/staff/masters/lgd/apply');
