@@ -27,7 +27,18 @@ public sealed class MsmeDocumentsController(
     public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct)
     {
         var root = MsmeFilePaths.Root(env, portal.Value);
-        var sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
+        ResultSets sets;
+        try
+        {
+            sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            // 2026-11-20: the page failed for a unit with two records of a level (fixed by migration 0104). A procedure error
+            // no longer fails the whole page: the pledge certificate (drawn, never read from disk) is still offered.
+            log.LogError(ex, "My Documents: SP_MSME_GET_MY_DOCUMENTS failed for {ZedId}; only the pledge certificate is listed", ZedId);
+            sets = MsmeMyDocuments.PledgeOnly(ZedId);
+        }
         await MsmeMyDocuments.AddV4LevelsAsync(db, sets, ZedId, ct);
         var result = MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(sets, await access.AllAsync(ct)), ZedId,
             path => MsmeFilePaths.Find(root, path) is not null);
@@ -133,6 +144,15 @@ public static class MsmeMyDocuments
 
     public static Task<ResultSets> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         db.QueryProcMultipleAsync(Procedure, new { ZedId = zedId }, ct);
+
+    /// <summary>The procedure's answer with only the pledge certificate (when the procedure cannot be read).</summary>
+    public static ResultSets PledgeOnly(string zedId) => new(
+    [
+        [],
+        [new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["ZedId"] = zedId, ["Pledge"] = $"Certificates/{zedId}/Pledge.pdf" }],
+        [],
+        [],
+    ]);
 
     /// <summary>
     /// The certificates of V4 levels (ZED-X and, since 2026-11-08, the levels the Admin added; the procedure lists Bronze,

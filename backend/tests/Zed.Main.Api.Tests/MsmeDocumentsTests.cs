@@ -357,6 +357,21 @@ public sealed class MsmeDocumentsTests : IDisposable
         Assert.Equal("inline", r.Content.Headers.ContentDisposition!.DispositionType);
         Assert.StartsWith("%PDF", await r.Content.ReadAsStringAsync());
     }
+
+    /// <summary>2026-11-20: a procedure error (two records of a level, before migration 0104) no longer fails the page.</summary>
+    [Fact]
+    public async Task A_failing_procedure_still_answers_with_the_pledge_certificate()
+    {
+        _host.Sql.Procs[MsmeMyDocuments.Procedure] = _ => throw new DocumentsDbException("Subquery returned more than 1 value.");
+        var client = await SignInAsync();
+        var r = await client.GetAsync("/api/msme/documents");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var body = await r.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal($"/api/msme/files/Certificates/{Me}/Pledge.pdf", body.GetProperty("Certificates")[0].GetProperty("Pledge").GetString());
+        Assert.Empty(body.GetProperty("Guidelines").EnumerateArray());
+    }
+
+    private sealed class DocumentsDbException(string message) : System.Data.Common.DbException(message);
 }
 
 public sealed class MsmeFilePathsTests
@@ -446,4 +461,5 @@ public sealed class MsmeFilePathsTests
             Directory.Delete(root, recursive: true);
         }
     }
+
 }
