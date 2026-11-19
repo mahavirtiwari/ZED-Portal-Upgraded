@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { canonicalLevelCode, isV4Level, levelName } from '../msme/shared/levels';
+import { TextPipe, t } from '../content/page-text';
 
 /** GET /api/verify/{type}/{code}. */
 export interface VerifyResponse {
@@ -26,11 +27,12 @@ interface Line {
  */
 @Component({
   selector: 'zed-verify',
+  imports: [TextPipe],
   host: { class: 'd-block' },
   template: `
     <header class="verify-header">
-      @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" />}
-      <img src="/Images/header/zed-logo.png" alt="ZED" width="100" />
+      @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.verify.ministryLogoAlt'" width="200" /></a>} @else {<img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.verify.ministryLogoAlt'" width="200" />}
+      <img src="/Images/header/zed-logo.png" [alt]="'ZED' | t: 'public.verify.zedLogoAlt'" width="100" />
     </header>
     <div class="container form-page">
       <div class="row justify-content-center">
@@ -43,7 +45,7 @@ interface Line {
               <thead>
                 <tr>
                   <th class="text-center">
-                    <h3 style="color: #fff">{{ levelName(r.certification) }} Certification Details</h3>
+                    <h3 style="color: #fff">{{ '{level} Certification Details' | t: 'public.verify.title' : { level: levelName(r.certification) } }}</h3>
                     <small>{{ r.certification === 'Pledge' ? r.details['DateOfPledge'] : r.details['DateOfCertification'] }}</small>
                   </th>
                 </tr>
@@ -89,30 +91,34 @@ export class VerifyPage {
     if (!r) return [];
     const d = r.details;
     const common: Line[] = [
-      { label: 'Unit Name', value: d['EnterpriseName'] },
-      { label: 'Udyam Registration No.', value: d['UdyogAadharNo'] },
-      { label: 'Address', value: d['Address'] },
+      { label: t('public.verify.unitNameLabel', 'Unit Name'), value: d['EnterpriseName'] },
+      { label: t('public.verify.udyamLabel', 'Udyam Registration No.'), value: d['UdyogAadharNo'] },
+      { label: t('public.verify.addressLabel', 'Address'), value: d['Address'] },
     ];
     if (r.certification === 'Pledge') {
-      return [...common, { label: 'Date of Pledge', value: d['DateOfPledge'] }, { label: 'Certificate No.', value: d['CertificateNo'] }];
+      return [...common, { label: t('public.verify.pledgeDateLabel', 'Date of Pledge'), value: d['DateOfPledge'] }, { label: t('public.verify.certificateNoLabel', 'Certificate No.'), value: d['CertificateNo'] }];
     }
     const lines: Line[] = [
       ...common,
-      { label: 'Date of Certification', value: d['DateOfCertification'] },
-      { label: 'Certificate Valid upto', value: d['DateOfExpiry'] },
-      { label: 'Certificate No.', value: d['CertificateNo'] },
-      { label: 'Certification Status', value: d['CertificationPhase'] },
+      { label: t('public.verify.certificationDateLabel', 'Date of Certification'), value: d['DateOfCertification'] },
+      { label: t('public.verify.validUptoLabel', 'Certificate Valid upto'), value: d['DateOfExpiry'] },
+      { label: t('public.verify.certificateNoLabel', 'Certificate No.'), value: d['CertificateNo'] },
+      { label: t('public.verify.statusLabel', 'Certification Status'), value: d['CertificationPhase'] },
     ];
     const completed = d['SurveillanceCompletionDate'];
     if (r.certification === 'Bronze') {
-      lines.push(completed ? { label: 'Surveillance completed on', value: completed } : { label: 'Surveillance Due Date', value: d['FirstSurveDueDate'] });
+      lines.push(completed
+        ? { label: t('public.verify.surveillanceDoneLabel', 'Surveillance completed on'), value: completed }
+        : { label: t('public.verify.surveillanceDueLabel', 'Surveillance Due Date'), value: d['FirstSurveDueDate'] });
     } else if (d['OldSurveillanceDate']) {
-      lines.push({ label: 'Surveillance 1 completed on', value: d['OldSurveillanceDate'] });
-      lines.push({ label: 'Surveillance 2 completed on', value: completed });
+      lines.push({ label: t('public.verify.surveillance1DoneLabel', 'Surveillance 1 completed on'), value: d['OldSurveillanceDate'] });
+      lines.push({ label: t('public.verify.surveillance2DoneLabel', 'Surveillance 2 completed on'), value: completed });
     } else {
-      lines.push(completed ? { label: 'Surveillance 1 completed on', value: completed } : { label: 'Surveillance 1 Due Date', value: d['FirstSurveDueDate'] });
+      lines.push(completed
+        ? { label: t('public.verify.surveillance1DoneLabel', 'Surveillance 1 completed on'), value: completed }
+        : { label: t('public.verify.surveillance1DueLabel', 'Surveillance 1 Due Date'), value: d['FirstSurveDueDate'] });
       // V4 (migration 0050): the second due date from the level's settings, once surveillance 1 is completed.
-      if (completed && d['SecondSurveDueDate']) lines.push({ label: 'Surveillance 2 Due Date', value: d['SecondSurveDueDate'] });
+      if (completed && d['SecondSurveDueDate']) lines.push({ label: t('public.verify.surveillance2DueLabel', 'Surveillance 2 Due Date'), value: d['SecondSurveDueDate'] });
     }
     return lines;
   });
@@ -130,7 +136,7 @@ export class VerifyPage {
     this.result.set(null);
     this.error.set('');
     if (!isType(type) || !/^[A-Za-z0-9]{1,50}$/.test(code)) {
-      this.error.set('Invalid verification link.');
+      this.error.set(t('public.verify.invalidError', 'Invalid verification link.'));
       return;
     }
     this.loading.set(true);

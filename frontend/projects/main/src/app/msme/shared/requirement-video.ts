@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { TextPipe } from '../../content/page-text';
 
 /**
  * "Watch video" next to a requirement (2026-11-08): the video the Admin gave it in Questionnaire → Requirements, on the
@@ -7,12 +8,13 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 @Component({
   selector: 'zed-requirement-video',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TextPipe],
   template: `
     @if (href(); as url) {
-      <a class="req-video" [href]="url" target="_blank" rel="noopener noreferrer" [attr.title]="'Watch the video on requirement ' + (code() ?? '')"
+      <a class="req-video" [href]="url" target="_blank" rel="noopener noreferrer" [attr.title]="'Watch the video on requirement {code}' | t: 'common.requirementVideo.tooltip' : { code: code() ?? '' }"
          [class.compact]="compact()">
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg>
-        @if (!compact()) { <span>Watch video</span> } @else { <span class="visually-hidden">Watch video</span> }
+        @if (!compact()) { <span>{{ 'Watch video' | t: 'common.requirementVideo.button' }}</span> } @else { <span class="visually-hidden">{{ 'Watch video' | t: 'common.requirementVideo.button' }}</span> }
       </a>
     }
   `,

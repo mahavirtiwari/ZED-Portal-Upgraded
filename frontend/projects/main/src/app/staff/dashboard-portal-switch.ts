@@ -2,9 +2,14 @@ import { Component, Provider, computed, inject, input } from '@angular/core';
 import { AuthService } from '@zed/shared';
 import { AdminPortalService, PortalSwitchComponent, dashboardPortals, isDashboardAdmin } from './admin-portal';
 import { STAFF_SYSTEM } from './staff-menu';
+import { t } from '../content/page-text';
 
 /** The portals' names on a Dashboard Admin's switch. */
-export const DASHBOARD_PORTAL_LABELS = { main: 'ZED Certification', consultancy: 'Handholding', surveillance: 'Surveillance' } as const;
+export const DASHBOARD_PORTAL_LABELS: { readonly main: string; readonly consultancy: string; readonly surveillance: string } = {
+  get main() { return t('staff.portalSwitch.dashboard.mainLabel', 'ZED Certification'); },
+  get consultancy() { return t('staff.portalSwitch.dashboard.consultancyLabel', 'Handholding'); },
+  get surveillance() { return t('staff.portalSwitch.dashboard.surveillanceLabel', 'Surveillance'); },
+};
 
 /**
  * One Dashboard Admin (2026-11-07): the portal switch on its screens (dashboard, registered MSMEs, reports, ...), listing the

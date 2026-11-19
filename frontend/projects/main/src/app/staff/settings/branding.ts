@@ -6,6 +6,7 @@ import { BrandingService, ThemeColours } from '../../branding';
 import { PageHead } from '../../msme/shared/page-head';
 import { ConfirmService } from '../confirm-dialog';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface BrandingLogo {
   slot: string;
@@ -48,21 +49,21 @@ const TODAY: Record<string, string> = {
  */
 @Component({
   selector: 'zed-branding',
-  imports: [PageHead],
+  imports: [PageHead, TextPipe],
   template: `
-    <zed-page-head title="Branding" [crumbs]="[{ label: 'All settings', link: '/staff/administration' }, { label: 'Branding' }]" />
-    <p class="page-sub br-sub">Logos and colours of each portal and app. A spot without a saved logo shows today's.</p>
+    <zed-page-head [title]="'Branding' | t: 'staff.branding.title'" [crumbs]="crumbs()" />
+    <p class="page-sub br-sub">{{ "Logos and colours of each portal and app. A spot without a saved logo shows today's." | t: 'staff.branding.sub' }}</p>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
     @if (current(); as t) {
       <div class="zed-card br-card">
-        <div class="br-tabs" role="tablist" aria-label="Portal or app">
+        <div class="br-tabs" role="tablist" [attr.aria-label]="'Portal or app' | t: 'staff.branding.tabs.aria'">
           @for (x of targets(); track x.key) {
             <button type="button" role="tab" class="br-tab" [class.active]="x.key === t.key" [attr.aria-selected]="x.key === t.key" (click)="choose(x.key)">{{ x.name }}</button>
           }
         </div>
 
-        <h6 class="br-title">Logos</h6>
+        <h6 class="br-title">{{ 'Logos' | t: 'staff.branding.logos.title' }}</h6>
         <div class="br-logos">
           @for (l of t.logos; track l.slot) {
             <div class="br-logo" [attr.data-slot]="l.slot">
@@ -72,44 +73,48 @@ const TODAY: Record<string, string> = {
                 @if (l.url || today(l.slot)) {
                   <img [src]="l.url ?? today(l.slot)" [alt]="l.label" />
                 } @else {
-                  <span class="muted">Today's app logo</span>
+                  <span class="muted">{{ "Today's app logo" | t: 'staff.branding.logo.todayApp' }}</span>
                 }
               </div>
               <div class="br-actions">
                 <label class="btn btn-outline-primary btn-sm br-upload">
-                  Upload PNG / JPG
-                  <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" [attr.aria-label]="'Upload ' + l.label" (change)="upload(t, l, $event)" />
+                  {{ 'Upload PNG / JPG' | t: 'staff.branding.logo.uploadButton' }}
+                  <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" [attr.aria-label]="'Upload {logo}' | t: 'staff.branding.logo.uploadAria' : { logo: l.label }" (change)="upload(t, l, $event)" />
                 </label>
                 @if (l.url) {
-                  <button type="button" class="btn btn-link btn-sm text-danger" (click)="reset(t, l)">Reset</button>
+                  <button type="button" class="btn btn-link btn-sm text-danger" (click)="reset(t, l)">{{ 'Reset' | t: 'staff.branding.logo.resetButton' }}</button>
                 } @else {
-                  <span class="muted br-today">Today's</span>
+                  <span class="muted br-today">{{ "Today's" | t: 'staff.branding.logo.today' }}</span>
                 }
               </div>
             </div>
           }
         </div>
         @if (t.isApp) {
-          <p class="muted br-note">The logo on the app's sign-in and home screens, from the app's next start. The app icon and the splash screen change only with a new app build.</p>
+          <p class="muted br-note">{{ "The logo on the app's sign-in and home screens, from the app's next start. The app icon and the splash screen change only with a new app build." | t: 'staff.branding.logos.appNote' }}</p>
         }
 
-        <h6 class="br-title">Colour theme</h6>
-        <div class="br-themes" role="radiogroup" aria-label="Colour theme">
+        <h6 class="br-title">{{ 'Colour theme' | t: 'staff.branding.theme.title' }}</h6>
+        <div class="br-themes" role="radiogroup" [attr.aria-label]="'Colour theme' | t: 'staff.branding.theme.title'">
           @for (th of themes(); track th.key) {
             <button type="button" role="radio" class="br-theme" [class.on]="chosen() === th.key" [attr.aria-checked]="chosen() === th.key" (click)="chosen.set(th.key)">
               <span class="br-sw"><i [style.background]="th.dark"></i><i [style.background]="th.mid"></i><i [style.background]="th.accent"></i></span>
-              {{ themeName(th) }}@if (th.key === t.theme) {&ngsp;<span class="br-current">(current)</span>}
+              {{ themeName(th) }}@if (th.key === t.theme) {&ngsp;<span class="br-current">{{ '(current)' | t: 'staff.branding.theme.current' }}</span>}
             </button>
           }
         </div>
         <p class="muted br-note">
-          Recolours the menu bar, buttons, table headings, pop-up title bars and links of {{ t.isApp ? 'the app (after its update that reads the colours)' : 'this portal' }}.
+          @if (t.isApp) {
+            {{ 'Recolours the menu bar, buttons, table headings, pop-up title bars and links of the app (after its update that reads the colours).' | t: 'staff.branding.theme.appNote' }}
+          } @else {
+            {{ 'Recolours the menu bar, buttons, table headings, pop-up title bars and links of this portal.' | t: 'staff.branding.theme.portalNote' }}
+          }
         </p>
         <div class="br-foot">
           @if (!t.isApp) {
-            <button type="button" class="btn btn-default" (click)="preview()">{{ previewing() ? 'End preview' : 'Preview on this page' }}</button>
+            <button type="button" class="btn btn-default" (click)="preview()">{{ previewing() ? ('End preview' | t: 'staff.branding.theme.endPreviewButton') : ('Preview on this page' | t: 'staff.branding.theme.previewButton') }}</button>
           }
-          <button type="button" class="btn btn-primary" [disabled]="busy() || chosen() === t.theme" (click)="saveTheme(t)">Save theme</button>
+          <button type="button" class="btn btn-primary" [disabled]="busy() || chosen() === t.theme" (click)="saveTheme(t)">{{ 'Save theme' | t: 'staff.branding.theme.saveButton' }}</button>
         </div>
       </div>
     }
@@ -150,6 +155,10 @@ export class BrandingPage implements OnDestroy {
   private readonly toast = inject(ToastService);
   private readonly brand = inject(BrandingService);
   private static readonly url = '/api/staff/settings/branding';
+  protected readonly crumbs = computed(() => [
+    { label: t('staff.branding.crumb.settings', 'All settings'), link: '/staff/administration' },
+    { label: t('staff.branding.crumb.page', 'Branding') },
+  ]);
   protected readonly targets = signal<BrandingTarget[]>([]);
   protected readonly themes = signal<BrandingTheme[]>([]);
   protected readonly selected = signal('main');
@@ -211,9 +220,13 @@ export class BrandingPage implements OnDestroy {
     await this.run(() => firstValueFrom(this.http.post<MessageResponse>(`${BrandingPage.url}/${t.key}/logos/${l.slot}`, form)));
   }
 
-  protected async reset(t: BrandingTarget, l: BrandingLogo): Promise<void> {
-    if (!(await this.confirms.ask({ title: 'Reset the Logo?', message: `"${l.label}" (${t.name}) uses today's logo again.`, confirmLabel: 'Reset', danger: true }))) return;
-    await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${BrandingPage.url}/${t.key}/logos/${l.slot}`)));
+  protected async reset(target: BrandingTarget, l: BrandingLogo): Promise<void> {
+    if (!(await this.confirms.ask({
+      title: t('staff.branding.confirm.resetTitle', 'Reset the Logo?'),
+      message: t('staff.branding.confirm.resetMessage', '"{logo}" ({target}) uses today\'s logo again.', { logo: l.label, target: target.name }),
+      confirmLabel: t('staff.branding.confirm.resetButton', 'Reset'), danger: true,
+    }))) return;
+    await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${BrandingPage.url}/${target.key}/logos/${l.slot}`)));
   }
 
   protected async saveTheme(t: BrandingTarget): Promise<void> {

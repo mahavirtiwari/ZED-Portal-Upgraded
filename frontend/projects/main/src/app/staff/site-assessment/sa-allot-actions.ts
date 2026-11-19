@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { AllotRequest, Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, isWebLink, todayIso } from './site-assessment.api';
 import { mayAssess } from '../users/assessor-scope';
 import { ConfirmAsk } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-18 (the user: "accept, reject, view details ... similar to combination one"): the agency's Accept (allot / re-allot
@@ -39,11 +40,13 @@ export function siteAssessorsFor(unit: Row, assessors: Assessor[], surveillance:
 /** The Reject confirmation (reason required; the procedure keeps 100 characters). */
 export function siteRejectAsk(unit: Row): ConfirmAsk {
   return {
-    title: 'Reject assessment?',
-    message: `${str(unit['ZedId'])} (${str(unit['Certification'])}) goes back to the ZED team with your reason.`,
-    confirmLabel: 'Reject',
+    title: t('staff.saAllotment.actions.reject.title', 'Reject assessment?'),
+    message: t('staff.saAllotment.actions.reject.message', '{zedId} ({level}) goes back to the ZED team with your reason.',
+      { zedId: str(unit['ZedId']), level: str(unit['Certification']) }),
+    confirmLabel: t('staff.saAllotment.actions.reject.confirmButton', 'Reject'),
     danger: true,
-    reason: { label: 'Reason for rejection', maxLength: 100, requiredMessage: 'Please enter reason for rejection.' },
+    reason: { label: t('staff.saAllotment.actions.reject.reasonLabel', 'Reason for rejection'), maxLength: 100,
+      requiredMessage: t('staff.saAllotment.actions.reject.reasonRequired.message', 'Please enter reason for rejection.') },
   };
 }
 
@@ -56,7 +59,7 @@ export interface SiteAllotChoice {
 /** Accept / Re-allot of the site assessment: date, mode, assessors and (remote, surveillance) the meeting link. */
 @Component({
   selector: 'zed-sa-allot-dialog',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @let u = unit();
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allot-title" (click)="cancel.emit()">
@@ -64,64 +67,64 @@ export interface SiteAllotChoice {
         <div class="modal-content sa-pop">
           <div class="modal-header justify-content-between">
             <div>
-              <h3 class="sa-pop-title" id="allot-title">{{ u['SiteAssessorId'] ? 'Re-allot unit' : 'Accept assessment' }}</h3>
+              <h3 class="sa-pop-title" id="allot-title">{{ u['SiteAssessorId'] ? ('Re-allot unit' | t: 'staff.saAllotment.actions.reallotTitle') : ('Accept assessment' | t: 'staff.saAllotment.actions.acceptTitle') }}</h3>
               <p class="sa-pop-sub">{{ u['ZedId'] }} · {{ u['Certification'] }}@if (u['PUnitName']) { · {{ u['PUnitName'] }} }</p>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="cancel.emit()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.saAllotment.actions.closeAria'" (click)="cancel.emit()"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label" for="FinalSaDate">{{ surveillance ? 'Surveillance Assessment Date' : 'Assessment Date' }}<span class="req">*</span></label>
+              <label class="form-label" for="FinalSaDate">{{ surveillance ? ('Surveillance Assessment Date' | t: 'staff.saAllotment.actions.surveillanceDate.label') : ('Assessment Date' | t: 'staff.saAllotment.actions.date.label') }}<span class="req">*</span></label>
               <input type="date" id="FinalSaDate" name="FinalSaDate" class="form-control" [min]="minDate" [(ngModel)]="assessmentDate" />
             </div>
             <div class="mb-3">
-              <label class="form-label" for="ModeOfAssessment">Mode of Assessment<span class="req">*</span></label>
+              <label class="form-label" for="ModeOfAssessment">{{ 'Mode of Assessment' | t: 'staff.saAllotment.actions.mode.label' }}<span class="req">*</span></label>
               <select id="ModeOfAssessment" name="ModeOfAssessment" class="form-select" [(ngModel)]="modeOfAssessment">
-                <option value="">--Select--</option>
+                <option value="">{{ '--Select--' | t: 'staff.saAllotment.actions.selectLabel' }}</option>
                 <!-- Surveillance stores Onsite but the assessment runs on the meeting link (the old page showed "Remote Assessment"). -->
                 <!-- 2026-11-14: a main unit whose level is assessed remotely (Desktop + Remote, Remote only) is allotted Remote. -->
                 @if (remoteUnit()) {
-                  <option [value]="remote">Remote Assessment</option>
+                  <option [value]="remote">{{ 'Remote Assessment' | t: 'staff.saAllotment.actions.mode.remote.label' }}</option>
                 } @else {
-                  <option [value]="onsite">{{ surveillance && !onsiteVisit() ? 'Remote Assessment' : 'Onsite Assessment' }}</option>
+                  <option [value]="onsite">{{ surveillance && !onsiteVisit() ? ('Remote Assessment' | t: 'staff.saAllotment.actions.mode.remote.label') : ('Onsite Assessment' | t: 'staff.saAllotment.actions.mode.onsite.label') }}</option>
                 }
               </select>
             </div>
             @if (needsLink()) {
               <div class="mb-3">
-                <label class="form-label" for="MeetingLink">Meeting Link<span class="req">*</span></label>
-                <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="5000" rows="4" placeholder="https://..." [(ngModel)]="meetingLink"></textarea>
+                <label class="form-label" for="MeetingLink">{{ 'Meeting Link' | t: 'staff.saAllotment.actions.link.label' }}<span class="req">*</span></label>
+                <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="5000" rows="4" [placeholder]="'https://...' | t: 'staff.saAllotment.actions.link.placeholder'" [(ngModel)]="meetingLink"></textarea>
               </div>
             }
             <div class="mb-3">
-              <label class="form-label" for="SiteAssessorId">{{ surveillance ? 'Assessor' : 'Lead Assessor' }}<span class="req">*</span></label>
+              <label class="form-label" for="SiteAssessorId">{{ surveillance ? ('Assessor' | t: 'staff.saAllotment.actions.assessor.label') : ('Lead Assessor' | t: 'staff.saAllotment.actions.lead.label') }}<span class="req">*</span></label>
               <select id="SiteAssessorId" name="SiteAssessorId" class="form-select" [(ngModel)]="siteAssessorId" (ngModelChange)="coAssessorId = ''">
-                <option value="">--Select--</option>
+                <option value="">{{ '--Select--' | t: 'staff.saAllotment.actions.selectLabel' }}</option>
                 @for (a of offered(); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
               </select>
             </div>
             <!-- Surveillance: the old page had no co-assessor choice (its select was commented out); only one assessor is allotted. -->
             @if (modeOfAssessment === onsite && !surveillance) {
               <div class="mb-3">
-                <label class="form-label" for="CoAssessorId">Co Assessor</label>
+                <label class="form-label" for="CoAssessorId">{{ 'Co Assessor' | t: 'staff.saAllotment.actions.co.label' }}</label>
                 <select id="CoAssessorId" name="CoAssessorId" class="form-select" [(ngModel)]="coAssessorId">
-                  <option value="">--Select--</option>
+                  <option value="">{{ '--Select--' | t: 'staff.saAllotment.actions.selectLabel' }}</option>
                   @for (a of offered(); track a.userId) { @if (a.userId !== siteAssessorId) { <option [value]="a.userId">{{ a.userName }}</option> } }
                 </select>
               </div>
             }
             @if (surveillance) {
               <div class="original">
-                <div><strong>Onsite Assessment Done by</strong></div>
-                <div><span class="muted">Onsite Lead Assessor:</span> {{ u['LeadInCertification'] }} - {{ u['LeadNameInCertification'] }}</div>
-                <div><span class="muted">Onsite Co Assessor:</span> {{ u['CoInCertification'] }} - {{ u['CoNameInCertification'] }}</div>
+                <div><strong>{{ 'Onsite Assessment Done by' | t: 'staff.saAllotment.actions.original.heading' }}</strong></div>
+                <div><span class="muted">{{ 'Onsite Lead Assessor:' | t: 'staff.saAllotment.actions.original.lead.label' }}</span> {{ u['LeadInCertification'] }} - {{ u['LeadNameInCertification'] }}</div>
+                <div><span class="muted">{{ 'Onsite Co Assessor:' | t: 'staff.saAllotment.actions.original.co.label' }}</span> {{ u['CoInCertification'] }} - {{ u['CoNameInCertification'] }}</div>
               </div>
             }
             @if (missing() || failed()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ missing() || failed() }}</div> }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-light" (click)="cancel.emit()">Cancel</button>
-            <button type="button" class="btn btn-primary sa-ok" [disabled]="busy()" (click)="submit()">Allot</button>
+            <button type="button" class="btn btn-light" (click)="cancel.emit()">{{ 'Cancel' | t: 'staff.saAllotment.actions.cancelButton' }}</button>
+            <button type="button" class="btn btn-primary sa-ok" [disabled]="busy()" (click)="submit()">{{ 'Allot' | t: 'staff.saAllotment.actions.allotButton' }}</button>
           </div>
         </div>
       </div>
@@ -171,11 +174,11 @@ export class SaAllotDialog implements OnInit {
 
   protected submit(): void {
     if (!this.siteAssessorId || !this.modeOfAssessment || !this.assessmentDate) {
-      this.missing.set('Please select valid data.');
+      this.missing.set(t('staff.saAllotment.actions.selectError', 'Please select valid data.'));
       return;
     }
     if (this.needsLink() && !isWebLink(this.meetingLink)) {
-      this.missing.set('Please enter a valid meeting link (starting with https:// or http://).');
+      this.missing.set(t('staff.saAllotment.actions.linkError', 'Please enter a valid meeting link (starting with https:// or http://).'));
       return;
     }
     this.missing.set('');

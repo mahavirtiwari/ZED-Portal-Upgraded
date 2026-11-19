@@ -2,6 +2,7 @@ import { HttpClient, HttpContext } from '@angular/common/http';
 import { Component, computed, input } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { t } from '../../content/page-text';
 import { ConfirmAsk } from '../confirm-dialog';
 
 /**
@@ -34,13 +35,17 @@ export function phoneChip(p: PhoneSummary | null | undefined): { label: string; 
   const model = p?.model?.trim() || p?.make?.trim() || '';
   if (p?.refusedToday) {
     return {
-      label: 'Refused sign-in today',
+      label: t('staff.assessorMobile.chip.refused', 'Refused sign-in today'),
       tone: 'warn',
-      title: model ? `A sign-in from another phone was refused today. Registered: ${model}.` : 'A sign-in from another phone was refused today.',
+      title: model ? t('staff.assessorMobile.chip.refusedModelTooltip', 'A sign-in from another phone was refused today. Registered: {model}.', { model })
+        : t('staff.assessorMobile.chip.refusedTooltip', 'A sign-in from another phone was refused today.'),
     };
   }
-  if (p?.lastLoginAt || model) return { label: model ? `Registered · ${model}` : 'Registered', tone: 'ok', title: 'The app signs in on this phone only.' };
-  return { label: 'Not registered', tone: 'none', title: 'No phone registered: the next sign-in registers the phone it comes from.' };
+  if (p?.lastLoginAt || model)
+    return { label: model ? t('staff.assessorMobile.chip.registeredModel', 'Registered · {model}', { model }) : t('staff.assessorMobile.chip.registered', 'Registered'),
+      tone: 'ok', title: t('staff.assessorMobile.chip.registeredTooltip', 'The app signs in on this phone only.') };
+  return { label: t('staff.assessorMobile.chip.notRegistered', 'Not registered'), tone: 'none',
+    title: t('staff.assessorMobile.chip.notRegisteredTooltip', 'No phone registered: the next sign-in registers the phone it comes from.') };
 }
 
 /** The user has a phone that can be released (registered, as the list knows it). */
@@ -55,8 +60,6 @@ export function phonesById(list: PhoneSummary[] | null | undefined): Map<string,
   return map;
 }
 
-export const RELEASE_REASON_REQUIRED = 'Please enter the reason for releasing the mobile.';
-
 /**
  * The "Release mobile?" confirmation (popup-03 style): what releasing does and a required reason (kept in the release
  * history). `word` is "assessor" or "consultant".
@@ -64,19 +67,21 @@ export const RELEASE_REASON_REQUIRED = 'Please enter the reason for releasing th
 export function releaseMobileAsk(name: string | null | undefined, userId: string, model: string | null | undefined, word: string): ConfirmAsk {
   const phone = model?.trim();
   return {
-    title: `Release the mobile of ${name?.trim() || userId}?`,
+    title: t('staff.assessorMobile.release.title', 'Release the mobile of {name}?', { name: name?.trim() || userId }),
     subtitle: phone ? `${userId} · ${phone}` : userId,
     icon: 'unlock',
     tone: 'warn',
     points: [
-      `The ${word} can no longer use the app on ${phone ? 'the ' + phone : 'the registered phone'}.`,
-      `The next sign-in registers the phone it comes from; only that phone can be used then.`,
-      'The release, with your reason, is kept in the release history.',
+      phone ? t('staff.assessorMobile.release.point1Model', 'The {word} can no longer use the app on the {phone}.', { word, phone })
+        : t('staff.assessorMobile.release.point1', 'The {word} can no longer use the app on the registered phone.', { word }),
+      t('staff.assessorMobile.release.point2', 'The next sign-in registers the phone it comes from; only that phone can be used then.'),
+      t('staff.assessorMobile.release.point3', 'The release, with your reason, is kept in the release history.'),
     ],
-    confirmLabel: 'Release Mobile',
+    confirmLabel: t('staff.assessorMobile.release.confirmButton', 'Release Mobile'),
     reason: {
-      label: 'Reason for releasing', placeholder: 'e.g. phone lost, phone replaced', maxLength: 500,
-      requiredMessage: RELEASE_REASON_REQUIRED,
+      label: t('staff.assessorMobile.release.reasonLabel', 'Reason for releasing'),
+      placeholder: t('staff.assessorMobile.release.reasonPlaceholder', 'e.g. phone lost, phone replaced'), maxLength: 500,
+      requiredMessage: t('staff.assessorMobile.release.reasonRequired', 'Please enter the reason for releasing the mobile.'),
     },
   };
 }

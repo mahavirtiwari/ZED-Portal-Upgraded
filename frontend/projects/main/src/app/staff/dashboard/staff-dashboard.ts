@@ -16,6 +16,7 @@ import { TableExport } from '../table-export';
 import { AttentionRow } from './attention-row';
 import { DashboardExportDialog } from './export-dialog';
 import { ExportChoice, ExportSection, KeyedSheet, exportName, flattenSheets, sharePercent } from './dashboard-export';
+import { TextPipe, t } from '../../content/page-text';
 
 interface Card {
   css: string;
@@ -134,6 +135,37 @@ export const CONSULTANT_TILES = [
   { css: 'panel-consultant', title: 'Consultants', field: 'SiteAssessors' },
 ];
 
+/**
+ * 2026-11-19 ("All page wording"): the wording shown for a card's line, title or tile (Admin → Texts → Page wording). The
+ * tables above keep the code values (the status colour and the level name are worked out from them).
+ */
+const CARD_TEXTS: Readonly<Record<string, () => string>> = {
+  'Total applications': () => t('staff.dashboard.status.totalLabel', 'Total applications'),
+  'Total Applications': () => t('staff.dashboard.status.milestoneTotalLabel', 'Total Applications'),
+  'Assessment pending': () => t('staff.dashboard.status.assessmentPendingLabel', 'Assessment pending'),
+  'NC raised': () => t('staff.dashboard.status.ncRaisedLabel', 'NC raised'),
+  'Certified': () => t('staff.dashboard.status.certifiedLabel', 'Certified'),
+  'Rejected': () => t('staff.dashboard.status.rejectedLabel', 'Rejected'),
+  'Approved': () => t('staff.dashboard.status.approvedLabel', 'Approved'),
+  'Pending': () => t('staff.dashboard.status.pendingLabel', 'Pending'),
+  'Surveillance pending': () => t('staff.dashboard.status.surveillancePendingLabel', 'Surveillance pending'),
+  'Surveillance completed': () => t('staff.dashboard.status.surveillanceCompletedLabel', 'Surveillance completed'),
+  'Milestone 1 Payment Received': () => t('staff.dashboard.status.m1PaymentLabel', 'Milestone 1 Payment Received'),
+  'Milestone 1 Completed': () => t('staff.dashboard.status.m1CompletedLabel', 'Milestone 1 Completed'),
+  'Milestone 2 Payment Received': () => t('staff.dashboard.status.m2PaymentLabel', 'Milestone 2 Payment Received'),
+  'Milestone 2 Completed': () => t('staff.dashboard.status.m2CompletedLabel', 'Milestone 2 Completed'),
+  'Milestone 3 Payment Received': () => t('staff.dashboard.status.m3PaymentLabel', 'Milestone 3 Payment Received'),
+  'Milestone 3 Completed': () => t('staff.dashboard.status.m3CompletedLabel', 'Milestone 3 Completed'),
+  'Technology Intervention': () => t('staff.dashboard.card.technologyInterventionTitle', 'Technology Intervention'),
+  'Empanelled Consultant Organisations': () => t('staff.dashboard.tile.organisationsTitle', 'Empanelled Consultant Organisations'),
+  'Consultants': () => t('staff.dashboard.tile.consultantsTitle', 'Consultants'),
+};
+
+/** The wording shown for a card line's label, a card's title or a tile's title (the code value when not listed). */
+export function cardText(label: string): string {
+  return CARD_TEXTS[label]?.() ?? label;
+}
+
 
 /**
  * Staff home dashboard. Port of Views/Dashboard/Index.cshtml: the status cards (scoped to the user by the API). V4, all
@@ -149,15 +181,15 @@ export const CONSULTANT_TILES = [
 @Component({
   selector: 'zed-staff-dashboard',
   providers: [dashboardSystemProvider(['dash-registered', 'dash-certified'])],
-  imports: [StaffAnalytics, NgTemplateOutlet, DecimalPipe, DashboardPortalSwitchComponent, PageHead, AttentionRow, DashboardExportDialog],
+  imports: [StaffAnalytics, NgTemplateOutlet, DecimalPipe, DashboardPortalSwitchComponent, PageHead, AttentionRow, DashboardExportDialog, TextPipe],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['dash-registered', 'dash-certified']" />
     <div class="dash-export" #exportArea>
-    <zed-page-head [crumbs]="crumbs" title="Dashboard" [subtitle]="updated()">
+    <zed-page-head [crumbs]="crumbs()" [title]="'Dashboard' | t: 'staff.dashboard.title'" [subtitle]="updated()">
       @if (analytics(); as an) {
         @if (an.views.length > 1) {
-          <div class="dash-basis" role="tablist" aria-label="Count by">
+          <div class="dash-basis" role="tablist" [attr.aria-label]="'Count by' | t: 'staff.dashboard.basis.aria'">
             @for (v of an.views; track v) {
               <button type="button" role="tab" class="an-basis-tab" [attr.data-view]="v" [class.active]="an.view() === v" [attr.aria-selected]="an.view() === v"
                       (click)="an.setView(v)">{{ an.basisLabel(v) }}</button>
@@ -165,23 +197,23 @@ export const CONSULTANT_TILES = [
           </div>
         }
         <button type="button" class="btn btn-ph dash-refresh no-export" [disabled]="an.loading()" (click)="refresh()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> Refresh
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> {{ 'Refresh' | t: 'staff.dashboard.refreshButton' }}
         </button>
         <button type="button" class="btn btn-primary dash-export-btn no-export" [disabled]="!an.data() || exporting()" aria-haspopup="dialog" (click)="openExport()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg> {{ exporting() ? 'Exporting…' : 'Export' }}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg> {{ exporting() ? ('Exporting…' | t: 'staff.dashboard.exportingButton') : ('Export' | t: 'staff.dashboard.exportButton') }}
         </button>
       }
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">
-        {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try Again</button>
+        {{ error() }} <button type="button" class="btn btn-link" (click)="load()">{{ 'Try Again' | t: 'staff.dashboard.tryAgainButton' }}</button>
       </div>
     }
     @if (showConsultantTiles()) {
       <div class="dash-grid" data-export="headline">
         @for (tile of consultantTiles; track tile.field) {
           <div class="dash-card dash-tile" [class]="tile.css">
-            <h5>{{ tile.title }}</h5>
+            <h5>{{ cardText(tile.title) }}</h5>
             <div class="dash-count" [attr.data-field]="tile.field">{{ value(tile.field, tiles()) }}</div>
           </div>
         }
@@ -197,18 +229,18 @@ export const CONSULTANT_TILES = [
                 <span class="app-level">{{ levelName(card) }}</span>
                 <span class="app-total">
                   <span class="app-total-value" [attr.data-field]="card.lines[0].field">{{ value(card.lines[0].field) }}</span>
-                  <span class="app-total-label">total applications</span>
+                  <span class="app-total-label">{{ 'total applications' | t: 'staff.dashboard.card.totalLabel' }}</span>
                 </span>
               </div>
               <div class="app-body">
-                <div class="ms-head" aria-hidden="true"><span></span><span>Payment received</span><span>Completed</span></div>
+                <div class="ms-head" aria-hidden="true"><span></span><span>{{ 'Payment received' | t: 'staff.dashboard.milestone.paymentColumn' }}</span><span>{{ 'Completed' | t: 'staff.dashboard.milestone.completedColumn' }}</span></div>
                 <ol class="ms-list">
                   @for (m of milestones(card); track m.no) {
                     <li>
-                      <span class="ms-no">Milestone {{ m.no }}</span>
+                      <span class="ms-no">{{ 'Milestone {no}' | t: 'staff.dashboard.milestone.label' : { no: m.no } }}</span>
                       @for (part of m.parts; track part.field) {
                         <span class="ms-cell" [class.is-done]="$last">
-                          <span class="ms-figure"><span class="app-value" [attr.data-field]="part.field" [attr.title]="part.label">{{ value(part.field) }}</span>
+                          <span class="ms-figure"><span class="app-value" [attr.data-field]="part.field" [attr.title]="cardText(part.label)">{{ value(part.field) }}</span>
                             <span class="app-share">({{ share(card, part.field) | number: '1.0-1' }}%)</span></span>
                           <span class="ms-bar" aria-hidden="true"><span [style.width.%]="share(card, part.field)"></span></span>
                         </span>
@@ -224,20 +256,20 @@ export const CONSULTANT_TILES = [
               <span class="app-level">{{ levelName(card) }}</span>
               <span class="app-total">
                 <span class="app-total-value" [attr.data-field]="card.lines[0].field">{{ value(card.lines[0].field) }}</span>
-                <span class="app-total-label">total applications</span>
+                <span class="app-total-label">{{ 'total applications' | t: 'staff.dashboard.card.totalLabel' }}</span>
               </span>
             </div>
             <div class="app-body">
               <div class="app-bar" role="img" [attr.aria-label]="barLabel(card)">
                 @for (line of card.lines.slice(1); track line.field) {
-                  <span [class]="'app-seg is-' + statusKind(line.label)" [style.width.%]="share(card, line.field)" [title]="line.label + ': ' + value(line.field)"></span>
+                  <span [class]="'app-seg is-' + statusKind(line.label)" [style.width.%]="share(card, line.field)" [title]="'{status}: {count}' | t: 'staff.dashboard.card.segmentTooltip' : { status: cardText(line.label), count: value(line.field) }"></span>
                 }
               </div>
               <ul class="app-stats">
                 @for (line of card.lines.slice(1); track line.field) {
                   <li [class]="'is-' + statusKind(line.label)">
                     <span class="app-dot" aria-hidden="true"></span>
-                    <span class="app-label" [title]="line.label">{{ line.label }}</span>
+                    <span class="app-label" [title]="cardText(line.label)">{{ cardText(line.label) }}</span>
                     <span class="app-figure"><span class="app-value" [attr.data-field]="line.field">{{ value(line.field) }}</span>
                       <span class="app-share">({{ share(card, line.field) | number: '1.0-1' }}%)</span></span>
                   </li>
@@ -260,7 +292,7 @@ export const CONSULTANT_TILES = [
       <zed-dashboard-export [filters]="exportFilters()" [busy]="exporting()" [error]="exportError()" (export)="runExport($event)" (close)="closeExport()" />
     }
     @if (loading()) {
-      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
+      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.dashboard.loadingText' }}</small></div></div></div>
     }
   `,
   styles: `
@@ -329,7 +361,8 @@ export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
   private readonly tables = inject(TableExport);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Dashboard' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.dashboard.crumb.dashboard', 'Dashboard') }));
+  protected readonly cardText = cardText;
   protected readonly system = inject(STAFF_SYSTEM);
   private readonly fixedCards = DASHBOARD_CARDS[this.system];
   /** The fixed cards, then (main portal) one card per level the Admin added, as ZED-X's (2026-11-08). */
@@ -348,7 +381,7 @@ export class StaffDashboardPage {
   private readonly exportArea = viewChild<ElementRef<HTMLElement>>('exportArea');
   protected readonly updated = computed(() => {
     const at = this.analytics()?.data()?.generatedAt;
-    return at ? `Updated ${formatDate(at, 'dd-MM-yyyy HH:mm', 'en-US')}` : null;
+    return at ? t('staff.dashboard.updatedSub', 'Updated {time}', { time: formatDate(at, 'dd-MM-yyyy HH:mm', 'en-US') }) : null;
   });
   protected readonly exportOpen = signal(false);
   protected readonly exporting = signal(false);
@@ -386,7 +419,7 @@ export class StaffDashboardPage {
       }
       this.exportOpen.set(false);
     } catch {
-      this.exportError.set('The dashboard could not be exported. Please try again.');
+      this.exportError.set(t('staff.dashboard.export.error', 'The dashboard could not be exported. Please try again.'));
     } finally {
       this.exporting.set(false);
     }
@@ -398,7 +431,7 @@ export class StaffDashboardPage {
     const out: KeyedSheet[] = [an.filterSheet()];
     if (has('headline')) {
       const head = an.headlineSheet();
-      if (this.showConsultantTiles()) head.rows.push(...this.consultantTiles.map((t) => [t.title, this.num(t.field, this.tiles()), null]));
+      if (this.showConsultantTiles()) head.rows.push(...this.consultantTiles.map((tile) => [cardText(tile.title), this.num(tile.field, this.tiles()), null]));
       out.push(head);
     }
     if (has('levels')) out.push(this.levelSheet());
@@ -412,9 +445,13 @@ export class StaffDashboardPage {
   private levelSheet(): KeyedSheet {
     const rows = this.cardList().flatMap((card) => {
       const total = this.num(card.lines[0].field);
-      return card.lines.map((l, i) => [this.levelName(card), l.label, this.num(l.field), i ? sharePercent(this.num(l.field), total) : null]);
+      return card.lines.map((l, i) => [this.levelName(card), cardText(l.label), this.num(l.field), i ? sharePercent(this.num(l.field), total) : null]);
     });
-    return { name: 'Applications by level', keys: 2, columns: ['Level', 'Status', 'Count', 'Share of the level (%)'], rows };
+    const columns = [
+      t('staff.dashboard.export.column.level', 'Level'), t('staff.dashboard.export.column.status', 'Status'),
+      t('staff.dashboard.export.column.count', 'Count'), t('staff.dashboard.export.column.share', 'Share of the level (%)'),
+    ];
+    return { name: 'Applications by level', keys: 2, columns, rows };
   }
 
   /** The page as a one-page PDF (today's capture) without the sections left out. */
@@ -433,8 +470,8 @@ export class StaffDashboardPage {
 
   /** Consultancy MasterAdmin's tiles, shown when the API sent their columns (it does for MasterAdmin only). */
   protected showConsultantTiles(): boolean {
-    const t = this.tiles();
-    return t !== null && 'AssessmentAgencies' in t;
+    const row = this.tiles();
+    return row !== null && 'AssessmentAgencies' in row;
   }
 
   /** The status cards' counts, with the figures' filters (from the analytics section). */
@@ -464,7 +501,7 @@ export class StaffDashboardPage {
   protected levelName(card: Card): string {
     if (card.name) return card.name;
     const m = /^([\w-]+) (certification|surveillance|level)$/i.exec(card.title);
-    if (!m) return card.title;
+    if (!m) return cardText(card.title);
     // "ZED-X" keeps its capitals.
     return m[1].includes('-') ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
   }
@@ -489,7 +526,7 @@ export class StaffDashboardPage {
   }
 
   protected barLabel(card: Card): string {
-    return card.lines.slice(1).map((l) => `${l.label} ${this.value(l.field)}`).join(', ');
+    return card.lines.slice(1).map((l) => t('staff.dashboard.card.barItemAria', '{status} {count}', { status: cardText(l.label), count: this.value(l.field) })).join(', ');
   }
 
   private num(field: string, s = this.summary()): number {

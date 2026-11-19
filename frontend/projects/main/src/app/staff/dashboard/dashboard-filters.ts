@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { Row } from './dashboard.api';
 import { onStates } from '../../msme/shared/states';
+import { t } from '../../content/page-text';
 
 export interface Option {
   value: string;
@@ -22,9 +23,9 @@ onStates((list) => {
 export const CERTIFICATIONS = ['Bronze', 'Silver', 'Gold'];
 export const SIZES = ['Micro', 'Small', 'Medium'];
 export const GENDERS: Option[] = [
-  { value: 'male', label: 'Male' },
-  { value: 'female', label: 'Female' },
-  { value: 'Others', label: 'Others' },
+  { value: 'male', get label() { return t('staff.listFilters.gender.male', 'Male'); } },
+  { value: 'female', get label() { return t('staff.listFilters.gender.female', 'Female'); } },
+  { value: 'Others', get label() { return t('staff.listFilters.gender.others', 'Others'); } },
 ];
 
 export function text(row: Row, field: string): string {

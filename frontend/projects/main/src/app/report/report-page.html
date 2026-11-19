@@ -6,16 +6,17 @@
     <span class="rp-sp"></span>
     @if (report(); as r) {
       @if (!r.storedPdf) {
-        <button type="button" class="rp-btn rp-btn-o" (click)="doPrint()">Print</button>
-        <button type="button" class="rp-btn" (click)="downloadPdf()" title="Choose 'Save as PDF'" aria-label="Download PDF (choose 'Save as PDF')">
-          <span aria-hidden="true">⬇</span> Download PDF
+        <button type="button" class="rp-btn rp-btn-o" (click)="doPrint()">{{ 'Print' | t: 'common.report.printButton' }}</button>
+        <button type="button" class="rp-btn" (click)="downloadPdf()" [title]="'Choose \'Save as PDF\'' | t: 'common.report.pdfTooltip'"
+                [attr.aria-label]="'Download PDF (choose \'Save as PDF\')' | t: 'common.report.pdfAria'">
+          <span aria-hidden="true">⬇</span> {{ 'Download PDF' | t: 'common.report.pdfButton' }}
         </button>
       }
     }
   </header>
 
   @if (chips().length) {
-    <nav class="rp-toc" aria-label="Report sections">
+    <nav class="rp-toc" [attr.aria-label]="'Report sections' | t: 'common.report.sectionsAria'">
       @for (c of chips(); track c.id) {
         <button type="button" (click)="scrollTo(c.id)">{{ c.label }}</button>
       }
@@ -23,7 +24,7 @@
   }
 
   @if (loading()) {
-    <p class="rp-state">Opening the report ...</p>
+    <p class="rp-state">{{ 'Opening the report ...' | t: 'common.report.loadingText' }}</p>
   } @else if (error()) {
     <div class="rp-state"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
   } @else if (report(); as r) {
@@ -31,9 +32,9 @@
       <!-- An earlier handholding milestone: its report was stored as a PDF when the milestone was completed. -->
       <div class="rp-state">
         <div class="rp-note" role="note">
-          <b>Milestone {{ r.milestone?.number }} report</b>
-          <p>This report was saved as a PDF when the milestone was completed, so it opens as that file.</p>
-          <a class="rp-btn" [href]="api(r.storedPdf)" target="_blank" rel="noopener">Open PDF</a>
+          <b>{{ 'Milestone {no} report' | t: 'common.report.stored.title' : { no: r.milestone?.number } }}</b>
+          <p>{{ 'This report was saved as a PDF when the milestone was completed, so it opens as that file.' | t: 'common.report.stored.text' }}</p>
+          <a class="rp-btn" [href]="api(r.storedPdf)" target="_blank" rel="noopener">{{ 'Open PDF' | t: 'common.report.stored.openButton' }}</a>
         </div>
       </div>
     } @else {

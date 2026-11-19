@@ -10,6 +10,7 @@ import { PORTAL_SYSTEM } from '../../portal-system';
 import { dashboardSetting } from '../admin-portal';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
+import { TextPipe, t } from '../../content/page-text';
 
 export type ProfileRow = Record<string, string | number | boolean | null>;
 
@@ -39,7 +40,7 @@ type EditField = keyof StaffMsmeProfileUpdate;
 
 /** One label and value of a card; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address); `oneLine` = one line, cut with "…" and the full value as the tooltip (an e-mail). */
 export interface InfoRow {
-  label: string;
+  readonly label: string;
   source: 'unit' | 'enterprise';
   field: string;
   edit?: EditField;
@@ -51,7 +52,7 @@ export interface InfoRow {
 
 /** One fact card of the profile (2026-11-17, the user's staff design 15: four cards in a two-column grid). */
 export interface InfoSection {
-  title: string;
+  readonly title: string;
   icon: 'person' | 'pin' | 'unit' | 'list';
   rows: InfoRow[];
   /** The full-width card under the two-column grid. */
@@ -66,60 +67,60 @@ export const PROFILE_SECTIONS: InfoSection[] = [
   // 2026-11-18 (the user: staff pages 'not aligned with SVG files', staff-15): the four cards hold the design's fields, side by side
   // at equal heights; the other registration fields are kept in a full-width card under them.
   {
-    title: 'Owner and enterprise',
+    get title() { return t('staff.msmeProfile.section.ownerTitle', 'Owner and enterprise'); },
     icon: 'person',
     rows: [
-      { label: 'Owner name', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
-      { label: 'Enterprise name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
-      { label: 'PAN', source: 'enterprise', field: 'PanNo' },
-      { label: 'Enterprise type', source: 'enterprise', field: 'EnterpriseTypee' },
-      { label: 'Gender', source: 'enterprise', field: 'Gender' },
-      { label: 'Social category', source: 'enterprise', field: 'SocialCategoryName' },
+      { get label() { return t('staff.msmeProfile.field.ownerName', 'Owner name'); }, source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
+      { get label() { return t('staff.msmeProfile.field.enterpriseName', 'Enterprise name'); }, source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
+      { get label() { return t('staff.msmeProfile.field.panNo', 'PAN'); }, source: 'enterprise', field: 'PanNo' },
+      { get label() { return t('staff.msmeProfile.field.enterpriseTypee', 'Enterprise type'); }, source: 'enterprise', field: 'EnterpriseTypee' },
+      { get label() { return t('staff.msmeProfile.field.gender', 'Gender'); }, source: 'enterprise', field: 'Gender' },
+      { get label() { return t('staff.msmeProfile.field.socialCategoryName', 'Social category'); }, source: 'enterprise', field: 'SocialCategoryName' },
     ],
   },
   {
-    title: 'Address and business',
+    get title() { return t('staff.msmeProfile.section.addressTitle', 'Address and business'); },
     icon: 'pin',
     rows: [
-      { label: 'Registered address', source: 'enterprise', field: 'Address' },
-      { label: 'State / District', source: 'enterprise', field: 'StateName', also: 'DistrictName' },
-      { label: 'Registered e-mail', source: 'enterprise', field: 'EmailId', edit: 'emailId', oneLine: true },
-      { label: 'Mobile', source: 'enterprise', field: 'MobileNo' },
+      { get label() { return t('staff.msmeProfile.field.address', 'Registered address'); }, source: 'enterprise', field: 'Address' },
+      { get label() { return t('staff.msmeProfile.field.stateName', 'State / District'); }, source: 'enterprise', field: 'StateName', also: 'DistrictName' },
+      { get label() { return t('staff.msmeProfile.field.emailId', 'Registered e-mail'); }, source: 'enterprise', field: 'EmailId', edit: 'emailId', oneLine: true },
+      { get label() { return t('staff.msmeProfile.field.mobileNo', 'Mobile'); }, source: 'enterprise', field: 'MobileNo' },
     ],
   },
   {
-    title: 'Selected unit',
+    get title() { return t('staff.msmeProfile.section.unitTitle', 'Selected unit'); },
     icon: 'unit',
     rows: [
-      { label: 'Unit name', source: 'unit', field: 'PUnitName', edit: 'pUnitName' },
-      { label: 'Location', source: 'unit', field: 'PAddress' },
+      { get label() { return t('staff.msmeProfile.field.pUnitName', 'Unit name'); }, source: 'unit', field: 'PUnitName', edit: 'pUnitName' },
+      { get label() { return t('staff.msmeProfile.field.pAddress', 'Location'); }, source: 'unit', field: 'PAddress' },
     ],
   },
   {
-    title: 'Selected unit activity (NIC)',
+    get title() { return t('staff.msmeProfile.section.activityTitle', 'Selected unit activity (NIC)'); },
     icon: 'list',
     rows: [
-      { label: 'Activity', source: 'unit', field: 'Activity' },
-      { label: 'NIC 2 digit', source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
-      { label: 'NIC 4 digit', source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
-      { label: 'NIC 5 digit', source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
+      { get label() { return t('staff.msmeProfile.field.activity', 'Activity'); }, source: 'unit', field: 'Activity' },
+      { get label() { return t('staff.msmeProfile.field.twoDigitActivity', 'NIC 2 digit'); }, source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
+      { get label() { return t('staff.msmeProfile.field.fourDigitActivity', 'NIC 4 digit'); }, source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
+      { get label() { return t('staff.msmeProfile.field.fiveDigitActivity', 'NIC 5 digit'); }, source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
     ],
   },
   {
-    title: 'Other registration details',
+    get title() { return t('staff.msmeProfile.section.otherTitle', 'Other registration details'); },
     icon: 'list',
     full: true,
     rows: [
-      { label: 'Organisation type', source: 'enterprise', field: 'OrganisationTypeName' },
-      { label: 'Physically handicapped', source: 'enterprise', field: 'PH' },
-      { label: 'Pincode', source: 'enterprise', field: 'Pincode' },
-      { label: 'DIC name', source: 'enterprise', field: 'DicName' },
-      { label: 'Major activity', source: 'enterprise', field: 'MajorActivityName' },
-      { label: 'Incorporation date', source: 'unit', field: 'IncorporationDate' },
-      { label: 'Production commenced', source: 'unit', field: 'WhetherProdCommenced' },
-      { label: 'Commencement date', source: 'enterprise', field: 'CommmenceDate' },
-      { label: 'Total employees', source: 'enterprise', field: 'TotalEmp' },
-      { label: 'Applied date', source: 'enterprise', field: 'AppliedDate' },
+      { get label() { return t('staff.msmeProfile.field.organisationTypeName', 'Organisation type'); }, source: 'enterprise', field: 'OrganisationTypeName' },
+      { get label() { return t('staff.msmeProfile.field.pH', 'Physically handicapped'); }, source: 'enterprise', field: 'PH' },
+      { get label() { return t('staff.msmeProfile.field.pincode', 'Pincode'); }, source: 'enterprise', field: 'Pincode' },
+      { get label() { return t('staff.msmeProfile.field.dicName', 'DIC name'); }, source: 'enterprise', field: 'DicName' },
+      { get label() { return t('staff.msmeProfile.field.majorActivityName', 'Major activity'); }, source: 'enterprise', field: 'MajorActivityName' },
+      { get label() { return t('staff.msmeProfile.field.incorporationDate', 'Incorporation date'); }, source: 'unit', field: 'IncorporationDate' },
+      { get label() { return t('staff.msmeProfile.field.whetherProdCommenced', 'Production commenced'); }, source: 'unit', field: 'WhetherProdCommenced' },
+      { get label() { return t('staff.msmeProfile.field.commmenceDate', 'Commencement date'); }, source: 'enterprise', field: 'CommmenceDate' },
+      { get label() { return t('staff.msmeProfile.field.totalEmp', 'Total employees'); }, source: 'enterprise', field: 'TotalEmp' },
+      { get label() { return t('staff.msmeProfile.field.appliedDate', 'Applied date'); }, source: 'enterprise', field: 'AppliedDate' },
     ],
   },
 ];
@@ -137,7 +138,7 @@ export const PROFILE_SECTIONS: InfoSection[] = [
  */
 @Component({
   selector: 'zed-staff-msme-profile',
-  imports: [FormsModule, RouterLink, EditHistoryTable, SamePanUnits, PageHead],
+  imports: [FormsModule, RouterLink, EditHistoryTable, SamePanUnits, PageHead, TextPipe],
   templateUrl: './msme-profile.html',
   styleUrl: './msme-profile.css',
 })
@@ -147,14 +148,14 @@ export class StaffMsmeProfilePage {
   protected readonly zedId = inject(ActivatedRoute).snapshot.paramMap.get('zedId') ?? '';
   protected readonly sections = PROFILE_SECTIONS.filter((x) => !x.full);
   protected readonly more = PROFILE_SECTIONS.find((x) => x.full)!;
-  protected readonly crumbs = staffCrumbs({ label: 'MSME Profile' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.msmeProfile.crumb', 'MSME Profile') }));
   /** ZED ID history: the logins with that screen (Master Admin and the dashboard logins). */
   protected readonly historyLink = [7, 10, 11, 17].includes(this.roleId) ? ['/staff/history'] : null;
   /** Assessment details of each level (not on the consultancy portal: handholding has no assessment pages). */
   protected readonly assessmentLinks = computed(() => {
     if (PORTAL_SYSTEM === 'consultancy' || ![7, 2, 3, 10, 8, 11, 17].includes(this.roleId)) return [];
     const levels = this.profile()?.certifications ?? [];
-    return levels.map((c) => ({ level: c, link: ['/staff/assessment/da-details', this.zedId, c], label: levels.length > 1 ? `Assessment details · ${c}` : 'Assessment details' }));
+    return levels.map((c) => ({ level: c, link: ['/staff/assessment/da-details', this.zedId, c], label: levels.length > 1 ? t('staff.msmeProfile.assessmentLevelLink', 'Assessment details · {level}', { level: c }) : t('staff.msmeProfile.assessmentLink', 'Assessment details') }));
   });
   protected readonly profile = signal<StaffMsmeProfile | null>(null);
   protected readonly loading = signal(true);
@@ -190,7 +191,8 @@ export class StaffMsmeProfilePage {
     try {
       this.profile.set(await firstValueFrom(this.http.get<StaffMsmeProfile>(this.url)));
     } catch (err) {
-      this.error.set(apiErrorMessage(err) === 'Unexpected error occurred. Please try after some time.' ? 'This unit was not found or is not allotted to you.' : apiErrorMessage(err));
+      this.error.set(apiErrorMessage(err) === 'Unexpected error occurred. Please try after some time.'
+        ? t('staff.msmeProfile.notFoundError', 'This unit was not found or is not allotted to you.') : apiErrorMessage(err));
     } finally {
       this.loading.set(false);
     }
@@ -233,7 +235,7 @@ export class StaffMsmeProfilePage {
       const r = await firstValueFrom(this.http.put<MessageResponse>(this.url, this.form));
       this.editing.set(false);
       await this.load();
-      this.success.set(r.message || 'Success');
+      this.success.set(r.message || t('staff.msmeProfile.toast.saved', 'Success'));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       window.scrollTo({ top: 0, behavior: 'smooth' });

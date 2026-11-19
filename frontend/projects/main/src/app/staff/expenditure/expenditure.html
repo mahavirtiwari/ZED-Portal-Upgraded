@@ -1,13 +1,13 @@
 <!-- 2026-11-18 (approved design "Expenditure monitoring", section 3 and 4). -->
-<zed-page-head [crumbs]="crumbs" title="Expenditure">
+<zed-page-head [crumbs]="crumbs()" [title]="'Expenditure' | t: 'staff.expenditure.title'">
   @if (views().length > 1) {
-    <div class="xp-tabs" role="group" aria-label="View">
-      <button type="button" [class.on]="view() === 'agencies'" [attr.aria-pressed]="view() === 'agencies'" (click)="setView('agencies')">Assessment agencies</button>
-      <button type="button" [class.on]="view() === 'organisations'" [attr.aria-pressed]="view() === 'organisations'" (click)="setView('organisations')">Consultant organisations</button>
+    <div class="xp-tabs" role="group" [attr.aria-label]="'View' | t: 'staff.expenditure.viewAria'">
+      <button type="button" [class.on]="view() === 'agencies'" [attr.aria-pressed]="view() === 'agencies'" (click)="setView('agencies')">{{ 'Assessment agencies' | t: 'staff.expenditure.view.agencies' }}</button>
+      <button type="button" [class.on]="view() === 'organisations'" [attr.aria-pressed]="view() === 'organisations'" (click)="setView('organisations')">{{ 'Consultant organisations' | t: 'staff.expenditure.view.organisations' }}</button>
     </div>
   }
-  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">Refresh</button>
-  <button type="button" class="btn btn-primary" [disabled]="!data()" (click)="export()">Export</button>
+  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">{{ 'Refresh' | t: 'staff.expenditure.refreshButton' }}</button>
+  <button type="button" class="btn btn-primary" [disabled]="!data()" (click)="export()">{{ 'Export' | t: 'staff.expenditure.exportButton' }}</button>
 </zed-page-head>
 
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
@@ -15,42 +15,42 @@
 <div class="zed-card xp-bar">
   <label>{{ word() }}
     <select class="form-select" name="party" [ngModel]="partyId()" (ngModelChange)="partyId.set($event); load()">
-      <option value="">{{ consultant() ? 'All organisations' : 'All agencies' }}</option>
+      <option value="">{{ consultant() ? ('All organisations' | t: 'staff.expenditure.filter.allOrganisations') : ('All agencies' | t: 'staff.expenditure.filter.allAgencies') }}</option>
       @for (p of parties(); track p.code) { <option [value]="p.code">{{ p.name }}</option> }
     </select>
   </label>
-  <label>Level
+  <label>{{ 'Level' | t: 'staff.expenditure.filter.levelLabel' }}
     <select class="form-select" name="level" [ngModel]="level()" (ngModelChange)="level.set($event); load()">
-      <option value="">All levels</option>
+      <option value="">{{ 'All levels' | t: 'staff.expenditure.filter.allLevels' }}</option>
       @for (l of data()?.levels ?? []; track l.code) { <option [value]="l.code">{{ l.name }}</option> }
     </select>
   </label>
-  <label>State
+  <label>{{ 'State' | t: 'staff.expenditure.filter.stateLabel' }}
     <select class="form-select" name="state" [ngModel]="state()" (ngModelChange)="state.set($event); load()">
-      <option value="">All states</option>
+      <option value="">{{ 'All states' | t: 'staff.expenditure.filter.allStates' }}</option>
       @for (s of data()?.states ?? []; track s) { <option [value]="s">{{ s }}</option> }
     </select>
   </label>
-  <label>From <input type="date" class="form-control" name="from" [ngModel]="from()" (ngModelChange)="from.set($event); load()" /></label>
-  <label>To <input type="date" class="form-control" name="to" [ngModel]="to()" (ngModelChange)="to.set($event); load()" /></label>
-  @if (filtering()) { <button type="button" class="xp-clear" (click)="clearAll()">Clear all</button> }
+  <label>{{ 'From' | t: 'staff.expenditure.filter.fromLabel' }} <input type="date" class="form-control" name="from" [ngModel]="from()" (ngModelChange)="from.set($event); load()" /></label>
+  <label>{{ 'To' | t: 'staff.expenditure.filter.toLabel' }} <input type="date" class="form-control" name="to" [ngModel]="to()" (ngModelChange)="to.set($event); load()" /></label>
+  @if (filtering()) { <button type="button" class="xp-clear" (click)="clearAll()">{{ 'Clear all' | t: 'staff.expenditure.clearAllButton' }}</button> }
 </div>
 
 @if (partyId() && data()?.tax) {
   <!-- 2026-11-18: the chosen agency's one-time GSTIN and PAN, read-only, with their documents. -->
   <zed-tax-details [tax]="data()!.tax" [partyId]="partyId()" [portal]="portal()" />
 }
-<zed-list-counts [counts]="counts()" label="Expenditure in figures" />
+<zed-list-counts [counts]="counts()" [label]="'Expenditure in figures' | t: 'staff.expenditure.countsAria'" />
 
 <div class="zed-card xp-card">
   <div class="table-responsive">
     <table class="table table-zed xp-table">
       <thead>
         <tr>
-          <th>{{ word() }}</th><th>Level</th><th>PO</th>
-          @if (consultant()) { <th class="num">Milestones</th> }
-          @else { <th class="num">Completed</th><th class="num">Rejected</th><th class="num">Surv.</th> }
-          <th class="num">Balance</th><th class="num">Payable</th><th class="num">Invoiced</th><th class="num">Outstanding</th><th></th>
+          <th>{{ word() }}</th><th>{{ 'Level' | t: 'staff.expenditure.column.level' }}</th><th>{{ 'PO' | t: 'staff.expenditure.column.po' }}</th>
+          @if (consultant()) { <th class="num">{{ 'Milestones' | t: 'staff.expenditure.column.milestones' }}</th> }
+          @else { <th class="num">{{ 'Completed' | t: 'staff.expenditure.column.completed' }}</th><th class="num">{{ 'Rejected' | t: 'staff.expenditure.column.rejected' }}</th><th class="num">{{ 'Surv.' | t: 'staff.expenditure.column.surveillance' }}</th> }
+          <th class="num">{{ 'Balance' | t: 'staff.expenditure.column.balance' }}</th><th class="num">{{ 'Payable' | t: 'staff.expenditure.column.payable' }}</th><th class="num">{{ 'Invoiced' | t: 'staff.expenditure.column.invoiced' }}</th><th class="num">{{ 'Outstanding' | t: 'staff.expenditure.column.outstanding' }}</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -59,7 +59,7 @@
           <tr>
             <td><b>{{ r.partyName }}</b><small>{{ r.partyId }}</small></td>
             <td>{{ r.levelName }}</td>
-            <td>{{ r.poLabel ?? 'No PO' }}@if (r.poCases) { <small>{{ r.poCases }} cases</small> }</td>
+            <td>{{ r.poLabel ?? ('No PO' | t: 'staff.expenditure.po.noPoLabel') }}@if (r.poCases) { <small>{{ casesText(r.poCases) }}</small> }</td>
             @if (consultant()) { <td class="num">{{ r.milestones }}</td> }
             @else { <td class="num">{{ r.completed }}</td><td class="num">{{ r.rejected }}</td><td class="num">{{ r.surveillance }}</td> }
             <td class="num">
@@ -69,11 +69,11 @@
             <td class="num"><b>{{ money(r.payable) }}</b></td>
             <td class="num">{{ money(r.invoiced) }}</td>
             <td class="num" [class.owe]="r.outstanding > 0">{{ money(r.outstanding) }}</td>
-            <td class="num"><button type="button" class="btn btn-default btn-sm" (click)="openCases(r)">Cases</button></td>
+            <td class="num"><button type="button" class="btn btn-default btn-sm" (click)="openCases(r)">{{ 'Cases' | t: 'staff.expenditure.casesButton' }}</button></td>
           </tr>
         } @empty {
           <tr><td [attr.colspan]="consultant() ? 9 : 11" style="padding: 0">
-            <div class="no-data">{{ loading() ? 'Loading…' : filtering() ? 'Nothing matches the filters.' : 'No case counted and no purchase order yet.' }}</div>
+            <div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.expenditure.loadingText') : filtering() ? ('Nothing matches the filters.' | t: 'staff.expenditure.filteredEmpty') : ('No case counted and no purchase order yet.' | t: 'staff.expenditure.empty') }}</div>
           </td></tr>
         }
       </tbody>
@@ -83,28 +83,28 @@
 </div>
 
 <div class="zed-card xp-card">
-  <h2>Monthly invoices</h2>
+  <h2>{{ 'Monthly invoices' | t: 'staff.expenditure.invoices.title' }}</h2>
   <div class="table-responsive">
     <table class="table table-zed xp-table">
-      <thead><tr><th>{{ word() }}</th><th>Month</th><th>Invoice</th><th class="num">Cases</th><th class="num">Amount (incl. GST)</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>{{ word() }}</th><th>{{ 'Month' | t: 'staff.expenditure.invoices.column.month' }}</th><th>{{ 'Invoice' | t: 'staff.expenditure.invoices.column.invoice' }}</th><th class="num">{{ 'Cases' | t: 'staff.expenditure.invoices.column.cases' }}</th><th class="num">{{ 'Amount (incl. GST)' | t: 'staff.expenditure.invoices.column.amount' }}</th><th>{{ 'Status' | t: 'staff.expenditure.invoices.column.status' }}</th><th></th></tr></thead>
       <tbody>
         @for (i of invoices(); track i.id) {
           <tr>
             <td>{{ i.partyName }}</td>
             <td>{{ i.monthLabel }}</td>
-            <td>{{ i.invoiceNo }}<small>{{ date(i.invoiceDate) }} · PDF</small></td>
+            <td>{{ i.invoiceNo }}<small>{{ '{date} · PDF' | t: 'staff.expenditure.invoices.dateText' : { date: date(i.invoiceDate) } }}</small></td>
             <td class="num">{{ i.portalCases }}</td>
             <td class="num">{{ money(i.invoiceAmount) }}</td>
             <td><span class="status-badge" [class]="tone(i.status)">{{ i.status }}</span>
-              @if (i.status === 'Approved') { <small>ERP: {{ (i.erpExport || 'pending').toLowerCase() }}</small> }
+              @if (i.status === 'Approved') { <small>{{ 'ERP: {state}' | t: 'staff.expenditure.invoices.erpText' : { state: i.erpExport ? i.erpExport.toLowerCase() : ('pending' | t: 'staff.expenditure.invoices.erpPending') } }}</small> }
               @else if (i.status === 'Returned' && i.remarks) { <small>{{ i.remarks }}</small> }</td>
             <td class="num">
               <button type="button" [class]="i.canReview ? 'btn btn-outline-primary btn-sm' : 'btn btn-default btn-sm'" (click)="reviewing.set(i.id)">
-                {{ i.canReview ? 'Review' : 'View' }}</button>
+                {{ i.canReview ? ('Review' | t: 'staff.expenditure.invoices.reviewButton') : ('View' | t: 'staff.expenditure.invoices.viewButton') }}</button>
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="7" style="padding: 0"><div class="no-data">No invoice uploaded yet.</div></td></tr>
+          <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ 'No invoice uploaded yet.' | t: 'staff.expenditure.invoices.empty' }}</div></td></tr>
         }
       </tbody>
     </table>
@@ -112,12 +112,12 @@
 </div>
 
 @if (casesOf(); as c) {
-  <zed-expenditure-cases [filter]="c.filter" [portal]="portal()" [title]="c.row.partyName + ' · ' + c.row.levelName" [subtitle]="c.row.partyId"
+  <zed-expenditure-cases [filter]="c.filter" [portal]="portal()" [title]="casesTitle(c.row)" [subtitle]="c.row.partyId"
                          (closed)="casesOf.set(null)" />
 }
 @if (reviewing(); as id) {
   <zed-invoice-review [invoiceId]="id" [portal]="portal()" (closed)="reviewed($event)" />
 }
 @if (loading()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.expenditure.loadingText' }}</span></div>
 }

@@ -4,58 +4,58 @@
   <form (ngSubmit)="proceed()" class="pst" novalidate>
     <div class="pst-main">
       <section class="pst-card" aria-labelledby="taxTitle">
-        <header class="pst-head"><span class="pst-ico" aria-hidden="true">≡</span><h3 id="taxTitle">Tax details</h3></header>
+        <header class="pst-head"><span class="pst-ico" aria-hidden="true">≡</span><h3 id="taxTitle">{{ 'Tax details' | t: 'msme.payment.tax.title' }}</h3></header>
 
         <div class="pst-q">
           <div class="pst-qtext">
-            <p class="pst-qlabel" id="gstinLabel">Is this unit registered under GST?</p>
-            <p class="pst-help">If yes, your GSTIN is printed on the tax invoice.</p>
+            <p class="pst-qlabel" id="gstinLabel">{{ 'Is this unit registered under GST?' | t: 'msme.payment.gstin.questionLabel' }}</p>
+            <p class="pst-help">{{ 'If yes, your GSTIN is printed on the tax invoice.' | t: 'msme.payment.gstin.help' }}</p>
           </div>
           <div class="seg" role="radiogroup" aria-labelledby="gstinLabel">
-            <label [class.on]="gstinApplicable === 'Yes'"><input type="radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /><span>Yes</span></label>
-            <label [class.on]="gstinApplicable === 'No'"><input type="radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /><span>No</span></label>
+            <label [class.on]="gstinApplicable === 'Yes'"><input type="radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /><span>{{ 'Yes' | t: 'msme.payment.option.yes' }}</span></label>
+            <label [class.on]="gstinApplicable === 'No'"><input type="radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /><span>{{ 'No' | t: 'msme.payment.option.no' }}</span></label>
           </div>
-          @if (submitted() && !gstinApplicable) { <span class="pst-err">This is required.</span> }
+          @if (submitted() && !gstinApplicable) { <span class="pst-err">{{ 'This is required.' | t: 'msme.payment.requiredError' }}</span> }
           <div class="pst-field">
             <div>
-              <label for="gstin">Unit GSTIN</label>
+              <label for="gstin">{{ 'Unit GSTIN' | t: 'msme.payment.gstin.label' }}</label>
               <input id="gstin" type="text" class="form-control" name="gstin" maxlength="15" [(ngModel)]="gstin" [disabled]="gstinApplicable !== 'Yes'"
-                     [placeholder]="gstinApplicable === 'Yes' ? '15 characters, e.g. 07ABCDE1234F1Z5' : 'Required only when registered under GST'" />
-              @if (submitted() && gstinInvalid()) { <span class="pst-err">Please enter valid GSTIN.</span> }
-              <p class="pst-help">The PAN inside the GSTIN must match the PAN on your Udyam registration.</p>
+                     [placeholder]="gstinApplicable === 'Yes' ? ('15 characters, e.g. 07ABCDE1234F1Z5' | t: 'msme.payment.gstin.placeholder') : ('Required only when registered under GST' | t: 'msme.payment.gstin.disabledPlaceholder')" />
+              @if (submitted() && gstinInvalid()) { <span class="pst-err">{{ 'Please enter valid GSTIN.' | t: 'msme.payment.gstin.error' }}</span> }
+              <p class="pst-help">{{ 'The PAN inside the GSTIN must match the PAN on your Udyam registration.' | t: 'msme.payment.gstin.panHelp' }}</p>
             </div>
             @if (gstinApplicable === 'Yes') {
-              <p class="pst-note" role="note"><span aria-hidden="true">i</span>If the PAN does not match, you will be asked to enter the correct PAN before you can pay.</p>
+              <p class="pst-note" role="note"><span aria-hidden="true">i</span>{{ 'If the PAN does not match, you will be asked to enter the correct PAN before you can pay.' | t: 'msme.payment.gstin.panNote' }}</p>
             }
           </div>
         </div>
 
         <div class="pst-q">
           <div class="pst-qtext">
-            <p class="pst-qlabel" id="tdsLabel">Will you deduct TDS on this payment?</p>
-            <p class="pst-help">Choose Yes only if you must deduct tax at source. A TAN is then mandatory.</p>
+            <p class="pst-qlabel" id="tdsLabel">{{ 'Will you deduct TDS on this payment?' | t: 'msme.payment.tds.questionLabel' }}</p>
+            <p class="pst-help">{{ 'Choose Yes only if you must deduct tax at source. A TAN is then mandatory.' | t: 'msme.payment.tds.help' }}</p>
           </div>
           <div class="seg" role="radiogroup" aria-labelledby="tdsLabel">
-            <label [class.on]="tdsDeductible === 'Yes'"><input type="radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /><span>Yes</span></label>
-            <label [class.on]="tdsDeductible === 'No'"><input type="radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /><span>No</span></label>
+            <label [class.on]="tdsDeductible === 'Yes'"><input type="radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /><span>{{ 'Yes' | t: 'msme.payment.option.yes' }}</span></label>
+            <label [class.on]="tdsDeductible === 'No'"><input type="radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /><span>{{ 'No' | t: 'msme.payment.option.no' }}</span></label>
           </div>
-          @if (submitted() && !tdsDeductible) { <span class="pst-err">This is required.</span> }
+          @if (submitted() && !tdsDeductible) { <span class="pst-err">{{ 'This is required.' | t: 'msme.payment.requiredError' }}</span> }
           <div class="pst-field">
             @if (tdsDeductible === 'Yes') {
               <div>
-                <p class="pst-sub" id="tdsAmountLabel">TDS rate</p>
+                <p class="pst-sub" id="tdsAmountLabel">{{ 'TDS rate' | t: 'msme.payment.tds.rateLabel' }}</p>
                 <div class="seg seg-sm" role="radiogroup" aria-labelledby="tdsAmountLabel">
                   <label [class.on]="tds === '1.5'"><input type="radio" name="tds" value="1.5" [(ngModel)]="tds" /><span>2%</span></label>
                   <label [class.on]="tds === '7.5'"><input type="radio" name="tds" value="7.5" [(ngModel)]="tds" /><span>10%</span></label>
                 </div>
-                @if (submitted() && !tds) { <span class="pst-err">This is required.</span> }
+                @if (submitted() && !tds) { <span class="pst-err">{{ 'This is required.' | t: 'msme.payment.requiredError' }}</span> }
               </div>
             }
             <div>
-              <label for="tan">TAN number</label>
+              <label for="tan">{{ 'TAN number' | t: 'msme.payment.tan.label' }}</label>
               <input id="tan" type="text" class="form-control" name="tan" maxlength="10" [(ngModel)]="tan" [disabled]="tdsDeductible !== 'Yes'"
-                     [placeholder]="tdsDeductible === 'Yes' ? '10 characters, e.g. ABCD12345E' : 'Required only when TDS is deducted'" />
-              @if (submitted() && tanInvalid()) { <span class="pst-err">Please enter valid TAN Number.</span> }
+                     [placeholder]="tdsDeductible === 'Yes' ? ('10 characters, e.g. ABCD12345E' | t: 'msme.payment.tan.placeholder') : ('Required only when TDS is deducted' | t: 'msme.payment.tan.disabledPlaceholder')" />
+              @if (submitted() && tanInvalid()) { <span class="pst-err">{{ 'Please enter valid TAN Number.' | t: 'msme.payment.tan.error' }}</span> }
             </div>
           </div>
         </div>
@@ -64,20 +64,20 @@
       @if (billing(); as b) {
         <section class="pst-card" aria-labelledby="billTitle">
           <header class="pst-head">
-            <span class="pst-ico" aria-hidden="true">▤</span><h3 id="billTitle">Billing details</h3>
-            <a class="pst-link" routerLink="/msme/profile">Edit in profile</a>
+            <span class="pst-ico" aria-hidden="true">▤</span><h3 id="billTitle">{{ 'Billing details' | t: 'msme.payment.billing.title' }}</h3>
+            <a class="pst-link" routerLink="/msme/profile">{{ 'Edit in profile' | t: 'msme.payment.billing.editLink' }}</a>
           </header>
           <dl class="pst-bill">
-            @if (b.name) { <div><dt>Billed to</dt><dd>{{ b.name }}</dd></div> }
-            @if (b.address) { <div><dt>Unit address</dt><dd>{{ b.address }}</dd></div> }
-            @if (b.zedId) { <div><dt>ZED ID</dt><dd>{{ b.zedId }}</dd></div> }
+            @if (b.name) { <div><dt>{{ 'Billed to' | t: 'msme.payment.billing.nameLabel' }}</dt><dd>{{ b.name }}</dd></div> }
+            @if (b.address) { <div><dt>{{ 'Unit address' | t: 'msme.payment.billing.addressLabel' }}</dt><dd>{{ b.address }}</dd></div> }
+            @if (b.zedId) { <div><dt>{{ 'ZED ID' | t: 'msme.payment.billing.zedIdLabel' }}</dt><dd>{{ b.zedId }}</dd></div> }
           </dl>
         </section>
       }
 
       <div class="pst-foot">
-        <button type="button" class="btn pst-btn-soft" (click)="previous.emit()">← Back to disclaimer</button>
-        <button type="button" class="btn btn-link pst-cancel" (click)="back.emit()">Cancel application</button>
+        <button type="button" class="btn pst-btn-soft" (click)="previous.emit()">{{ '← Back to disclaimer' | t: 'msme.payment.backButton' }}</button>
+        <button type="button" class="btn btn-link pst-cancel" (click)="back.emit()">{{ 'Cancel application' | t: 'msme.payment.cancelButton' }}</button>
       </div>
     </div>
 
@@ -85,56 +85,56 @@
     <aside class="pst-card pst-rail payment-summary" aria-labelledby="paySummaryTitle">
       <div class="pst-level">
         <img [src]="logo()" alt="" />
-        <div><h3>{{ name() }} Certification</h3>@if (billing()?.unit; as u) { <p>{{ u }}</p> }</div>
+        <div><h3>{{ '{level} Certification' | t: 'msme.payment.summary.levelTitle' : { level: name() } }}</h3>@if (billing()?.unit; as u) { <p>{{ u }}</p> }</div>
       </div>
-      <h4 class="pst-cap" id="paySummaryTitle">Fee summary</h4>
+      <h4 class="pst-cap" id="paySummaryTitle">{{ 'Fee summary' | t: 'msme.payment.summary.heading' }}</h4>
       <div class="summary-rows">
-        <div><span>Certification fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
+        <div><span>{{ 'Certification fee' | t: 'msme.payment.summary.feeLabel' }}</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
         @if (o.rewardAvailable || useReward()) {
           <div class="payment-reward-block">
-            <span>Joining Reward<small><zed-text key="msme.payment.joiningReward.note" [inline]="true" /></small>
-              @if (useReward()) { <small class="ok">Reward applied</small> }</span>
+            <span>{{ 'Joining Reward' | t: 'msme.payment.summary.rewardLabel' }}<small><zed-text key="msme.payment.joiningReward.note" [inline]="true" /></small>
+              @if (useReward()) { <small class="ok">{{ 'Reward applied' | t: 'msme.payment.summary.rewardAppliedNote' }}</small> }</span>
             <span class="reward-action">
               @if (useReward()) {
                 <strong>− ₹ {{ n('Coupon') | number: '1.2-2' }}</strong>
-                <button type="button" class="btn btn-link btn-sm" (click)="useReward.set(false)">Remove</button>
+                <button type="button" class="btn btn-link btn-sm" (click)="useReward.set(false)">{{ 'Remove' | t: 'msme.payment.summary.removeRewardButton' }}</button>
               } @else {
-                <button type="button" class="btn btn-sm pst-apply" (click)="useReward.set(true)">Apply reward</button>
+                <button type="button" class="btn btn-sm pst-apply" (click)="useReward.set(true)">{{ 'Apply reward' | t: 'msme.payment.summary.applyRewardButton' }}</button>
               }
             </span>
           </div>
           @if (useReward()) {
-            <div><span>Fee after joining reward</span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
+            <div><span>{{ 'Fee after joining reward' | t: 'msme.payment.summary.afterRewardLabel' }}</span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
           }
         }
-        <div><span>Subsidy {{ text('SubsidyLabel') }}<small>On the final certification fee</small></span><strong>− ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong></div>
+        <div><span>{{ 'Subsidy {rate}' | t: 'msme.payment.summary.subsidyLabel' : { rate: text('SubsidyLabel') } }}<small>{{ 'On the final certification fee' | t: 'msme.payment.summary.subsidyNote' }}</small></span><strong>− ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong></div>
         @if (text('StateSubsidyLabel')) {
-          <div><span>Andhra Pradesh Govt. subsidy {{ text('StateSubsidyLabel') }}<small>On the final certification fee</small></span><strong>− ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+          <div><span>{{ 'Andhra Pradesh Govt. subsidy {rate}' | t: 'msme.payment.summary.stateSubsidyLabel' : { rate: text('StateSubsidyLabel') } }}<small>{{ 'On the final certification fee' | t: 'msme.payment.summary.subsidyNote' }}</small></span><strong>− ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
         }
-        <div><span>Amount before GST</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
-        <div><span>GST &#64; 18%</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
-        <div><span>Amount payable<small>incl. GST</small></span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+        <div><span>{{ 'Amount before GST' | t: 'msme.payment.summary.beforeGstLabel' }}</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
+        <div><span>{{ gstLabel() }}</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
+        <div><span>{{ 'Amount payable' | t: 'msme.payment.summary.payableLabel' }}<small>{{ 'incl. GST' | t: 'msme.payment.summary.inclGstNote' }}</small></span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
         @if (tdsDeductible === 'Yes' && tds) {
-          <div><span>TDS Deducted ({{ tds === '1.5' ? '2%' : '10%' }})</span><strong>− ₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong></div>
+          <div><span>{{ 'TDS Deducted ({rate})' | t: 'msme.payment.summary.tdsLabel' : { rate: tds === '1.5' ? '2%' : '10%' } }}</span><strong>− ₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong></div>
         } @else {
-          <div><span>TDS deducted<small>Not opted</small></span><strong>− ₹ 0.00</strong></div>
+          <div><span>{{ 'TDS deducted' | t: 'msme.payment.summary.noTdsLabel' }}<small>{{ 'Not opted' | t: 'msme.payment.summary.noTdsNote' }}</small></span><strong>− ₹ 0.00</strong></div>
         }
       </div>
-      <div class="net"><span><b>Net payable</b><small>incl. GST</small></span><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
+      <div class="net"><span><b>{{ 'Net payable' | t: 'msme.payment.summary.netLabel' }}</b><small>{{ 'incl. GST' | t: 'msme.payment.summary.inclGstNote' }}</small></span><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
       @if (nothingToPay()) {
-        <p class="pst-zero" data-zero-payment>Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.</p>
+        <p class="pst-zero" data-zero-payment>{{ 'Nothing to pay after the subsidy. Confirm to complete this step; no payment gateway is needed.' | t: 'msme.payment.summary.zeroNote' }}</p>
       }
       <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">
-        @if (nothingToPay()) { Confirm (nothing to pay) } @else { <svg class="pay-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg> Save &amp; proceed to pay }
+        @if (nothingToPay()) { {{ 'Confirm (nothing to pay)' | t: 'msme.payment.confirmZeroButton' }} } @else { <svg class="pay-lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg> {{ 'Save & proceed to pay' | t: 'msme.payment.payButton' }} }
       </button>
-      @if (!nothingToPay()) { <p class="pst-line ok">You will be taken to a secure payment gateway.</p> }
-      <p class="pst-line warn">The amount once remitted is non-refundable.</p>
+      @if (!nothingToPay()) { <p class="pst-line ok">{{ 'You will be taken to a secure payment gateway.' | t: 'msme.payment.gatewayNote' }}</p> }
+      <p class="pst-line warn">{{ 'The amount once remitted is non-refundable.' | t: 'msme.payment.nonRefundableNote' }}</p>
     </aside>
   </form>
 } @else if (!busy()) {
   <!-- As the legacy step 4 (always rendered): the way back stays when the fee summary could not load. -->
   <div class="stepper-footer-sec">
-    <button type="button" class="btn btn-default" (click)="back.emit()">Back to dashboard</button>
+    <button type="button" class="btn btn-default" (click)="back.emit()">{{ 'Back to dashboard' | t: 'msme.payment.dashboardButton' }}</button>
   </div>
 }
 
@@ -143,15 +143,15 @@
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="panTitle">
     <div class="modal-dialog modal-md modal-dialog-centered">
       <div class="modal-content">
-        <div class="modal-header"><h4 class="modal-title" id="panTitle">PAN Mismatch Detected</h4></div>
+        <div class="modal-header"><h4 class="modal-title" id="panTitle">{{ 'PAN Mismatch Detected' | t: 'msme.payment.panModal.title' }}</h4></div>
         <div class="modal-body">
-          <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
-          <label for="correctedPan">Please enter the correct PAN number:</label>
-          <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
+          <p>{{ 'PAN registered in your Udyam portal is not matching with given GSTIN Number.' | t: 'msme.payment.panModal.text' }}</p>
+          <label for="correctedPan">{{ 'Please enter the correct PAN number:' | t: 'msme.payment.panModal.panLabel' }}</label>
+          <input id="correctedPan" type="text" class="form-control" maxlength="10" [placeholder]="'Enter Correct PAN' | t: 'msme.payment.panModal.panPlaceholder'" [(ngModel)]="correctedPan" />
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
-          <button type="button" class="btn btn-primary" (click)="savePan()">Save &amp; Proceed</button>
+          <button type="button" class="btn btn-default" (click)="panModal.set(false)">{{ 'Cancel' | t: 'msme.payment.panModal.cancelButton' }}</button>
+          <button type="button" class="btn btn-primary" (click)="savePan()">{{ 'Save & Proceed' | t: 'msme.payment.panModal.saveButton' }}</button>
         </div>
       </div>
     </div>
@@ -165,13 +165,13 @@
       <!-- 2026-11-18 (the user's applicant designs, zed-msme-08): the hand-off to the payment gateway. -->
       <div class="pst-handoff">
         <span class="pst-handoff-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg></span>
-        <h3>Taking you to the secure payment gateway</h3>
-        <p>Paying <b>₹ {{ netPayable() | number: '1.2-2' }}</b></p>
-        <p class="pst-handoff-warn">Do not refresh this page or press Back until you see the confirmation.</p>
+        <h3>{{ 'Taking you to the secure payment gateway' | t: 'msme.payment.handoff.title' }}</h3>
+        <p>{{ 'Paying' | t: 'msme.payment.handoff.payingLabel' }} <b>₹ {{ netPayable() | number: '1.2-2' }}</b></p>
+        <p class="pst-handoff-warn">{{ 'Do not refresh this page or press Back until you see the confirmation.' | t: 'msme.payment.handoff.warnNote' }}</p>
         <div class="spinner-border" aria-hidden="true"></div>
       </div>
     } @else {
-      <div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span>
+      <div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Please wait…' | t: 'msme.payment.waitText' }}</span>
     }
   </div>
 }

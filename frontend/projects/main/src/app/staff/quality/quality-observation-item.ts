@@ -3,7 +3,8 @@ import { Component, inject, input, output, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
-import { QoObservation, QualityApi, aboutLabels } from './quality.api';
+import { QoObservation, QualityApi, aboutLabels, severityLabel, statusLabel, stepLabel } from './quality.api';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-16 (approved): one quality observation: severity, category, what and whom it is about, the text, its time
@@ -17,50 +18,56 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
  */
 @Component({
   selector: 'zed-qo-item',
-  imports: [DatePipe],
+  imports: [DatePipe, TextPipe],
   template: `
     @let o = item();
     <article class="qo" [attr.data-qo]="o.id" [attr.data-status]="o.status">
       <div class="qo-head">
-        <span class="qo-chip" [attr.data-sev]="o.severity">{{ o.severity }}</span>
-        <span class="qo-status" [attr.data-status]="o.status">{{ o.status === 'Responded' ? 'Replied' : o.status }}</span>
+        <span class="qo-chip" [attr.data-sev]="o.severity">{{ severityLabel(o.severity) }}</span>
+        <span class="qo-status" [attr.data-status]="o.status">{{ statusLabel(o.status) }}</span>
       </div>
       <b class="qo-cat">{{ o.category }}</b>
       @if (showUnit()) { <div class="qo-unit">{{ o.zedId }} · {{ o.certification }}</div> }
-      <div class="qo-ref">{{ o.refLabel || (o.refType === 'Overall' || !o.refType ? (handholding ? 'Whole milestone' : 'Whole assessment') : o.refType) }}</div>
+      <div class="qo-ref">{{ o.refLabel || (o.refType === 'Overall' || !o.refType
+        ? (handholding ? ('Whole milestone' | t: 'staff.quality.item.wholeMilestone.label') : ('Whole assessment' | t: 'staff.quality.item.wholeAssessment.label')) : o.refType) }}</div>
       <div class="qo-meta">
-        About {{ aboutLabel(o) }}{{ o.aboutName ? ': ' + o.aboutName : '' }}
+        {{ o.aboutName ? ('About {who}: {name}' | t: 'staff.quality.item.aboutNamed.label' : { who: aboutLabel(o), name: o.aboutName })
+          : ('About {who}' | t: 'staff.quality.item.about.label' : { who: aboutLabel(o) }) }}
         @if (o.stage) { · {{ o.stage }}{{ o.stage === 'NC' && o.round ? ' ' + o.round : '' }} }
       </div>
       <p class="qo-text">{{ o.text }}</p>
-      <button type="button" class="btn btn-link p-0 qo-toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">{{ open() ? 'Hide' : 'Show' }} history ({{ o.history.length }})</button>
+      <button type="button" class="btn btn-link p-0 qo-toggle" [attr.aria-expanded]="open()" (click)="open.set(!open())">{{ open()
+        ? ('Hide history ({count})' | t: 'staff.quality.item.hideHistory.button' : { count: o.history.length })
+        : ('Show history ({count})' | t: 'staff.quality.item.showHistory.button' : { count: o.history.length }) }}</button>
       @if (open()) {
         <ol class="qo-history" data-qo-history>
           @for (h of o.history; track $index) {
-            <li><b>{{ h.kind }}</b> · {{ h.at | date: 'd MMM yyyy, h:mm a' }} · {{ h.byName || h.by }}@if (h.text) { <span class="d-block">{{ h.text }}</span> }</li>
+            <li><b>{{ stepLabel(h.kind) }}</b> · {{ h.at | date: 'd MMM yyyy, h:mm a' }} · {{ h.byName || h.by }}@if (h.text) { <span class="d-block">{{ h.text }}</span> }</li>
           }
         </ol>
         <div class="qo-times">
-          Reply in {{ o.replyHours != null ? o.replyHours + ' h' : '—' }} · closed in {{ o.closeHours != null ? o.closeHours + ' h' : '—' }}
-          @if (o.reopens) { · reopened {{ o.reopens }}× }
+          {{ 'Reply in {reply} · closed in {close}' | t: 'staff.quality.item.times.label' : { reply: hoursOf(o.replyHours), close: hoursOf(o.closeHours) } }}
+          @if (o.reopens) { {{ '· reopened {count}×' | t: 'staff.quality.item.reopens.label' : { count: o.reopens } }} }
         </div>
       }
       @if (canRespond() && o.status !== 'Closed') {
         <div class="qo-act">
-          <textarea class="form-control" rows="2" maxlength="2000" [attr.aria-label]="'Reply to observation ' + o.id" placeholder="Your reply"
+          <textarea class="form-control" rows="2" maxlength="2000" [attr.aria-label]="'Reply to observation {id}' | t: 'staff.quality.item.reply.aria' : { id: o.id }"
+            [placeholder]="'Your reply' | t: 'staff.quality.item.reply.placeholder'"
             [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
-          <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.respond(o.id, note().trim()))">Reply</button>
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || !note().trim()" (click)="act(api.respond(o.id, note().trim()))">{{ 'Reply' | t: 'staff.quality.item.reply.button' }}</button>
         </div>
       }
       @if (canClose()) {
         <div class="qo-act">
-          <input type="text" class="form-control qo-note" maxlength="2000" [attr.aria-label]="'Note on observation ' + o.id"
-            [placeholder]="o.status === 'Closed' ? 'Why it is reopened' : 'Note (optional)'" [value]="note()" (input)="note.set($any($event.target).value)" />
+          <input type="text" class="form-control qo-note" maxlength="2000" [attr.aria-label]="'Note on observation {id}' | t: 'staff.quality.item.note.aria' : { id: o.id }"
+            [placeholder]="o.status === 'Closed' ? ('Why it is reopened' | t: 'staff.quality.item.reopen.placeholder') : ('Note (optional)' | t: 'staff.quality.item.note.placeholder')"
+            [value]="note()" (input)="note.set($any($event.target).value)" />
           <!-- Reopen stays disabled until the reason is typed. -->
           @if (o.status === 'Closed') {
-            <button type="button" class="btn btn-light btn-sm qo-reopen" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">Reopen</button>
+            <button type="button" class="btn btn-light btn-sm qo-reopen" [disabled]="busy() || !note().trim()" (click)="act(api.reopen(o.id, note().trim()))">{{ 'Reopen' | t: 'staff.quality.item.reopen.button' }}</button>
           } @else {
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="act(api.close(o.id, note().trim() || null))">Close</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="act(api.close(o.id, note().trim() || null))">{{ 'Close' | t: 'staff.quality.item.close.button' }}</button>
           }
         </div>
       }
@@ -97,8 +104,11 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
 })
 export class QualityObservationItem {
   protected readonly api = inject(QualityApi);
-  private readonly labels = aboutLabels(inject(ASSESSMENT_SYSTEM));
-  protected readonly handholding = inject(ASSESSMENT_SYSTEM) === 'consultancy';
+  private readonly system = inject(ASSESSMENT_SYSTEM);
+  protected readonly handholding = this.system === 'consultancy';
+  protected readonly severityLabel = severityLabel;
+  protected readonly statusLabel = statusLabel;
+  protected readonly stepLabel = stepLabel;
 
   readonly item = input.required<QoObservation>();
   readonly canRespond = input(false);
@@ -114,7 +124,12 @@ export class QualityObservationItem {
   protected readonly error = signal('');
 
   protected aboutLabel(o: QoObservation): string {
-    return (o.about && this.labels[o.about]) || 'the assessment';
+    return (o.about && aboutLabels(this.system)[o.about]) || t('staff.quality.item.aboutAssessment.label', 'the assessment');
+  }
+
+  /** "12 h", or — when not yet. */
+  protected hoursOf(h: number | null | undefined): string {
+    return h != null ? t('staff.quality.time.hours.label', '{count} h', { count: h }) : '—';
   }
 
   protected async act(call: Observable<{ message: string }>): Promise<void> {

@@ -5,12 +5,12 @@
      2026-11-18 (the user's applicant designs): the design's sizes, the pledge date as d MMM yyyy, Verified after the mobile when
      it is the Udyam record's, the profile completeness card under the menu; the buttons are the MSME skin's, in title case. -->
 <div class="container pp">
-  <zed-page-head [crumbs]="crumbs" title="Enterprise profile" />
+  <zed-page-head [crumbs]="crumbs()" [title]="'Enterprise profile' | t: 'msme.profile.title'" />
 
   <zed-profile-shell [here]="true" [active]="active()" [units]="unitCount()" [changes]="changes()" (pick)="go($event)">
     @if (loaded()) {
       <section ps-aside class="pcomp" aria-labelledby="completeTitle" data-testid="completeness">
-        <div class="pcomp-top"><h3 id="completeTitle">Profile completeness</h3><b>{{ completeness().percent }}%</b></div>
+        <div class="pcomp-top"><h3 id="completeTitle">{{ 'Profile completeness' | t: 'msme.profile.completeness.title' }}</h3><b>{{ completeness().percent }}%</b></div>
         <div class="pcomp-bar" role="progressbar" aria-labelledby="completeTitle" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="completeness().percent">
           <span [style.width.%]="completeness().percent"></span>
         </div>
@@ -18,20 +18,20 @@
       </section>
     }
     @if (enterpriseName()) {
-      <section class="pc hero" aria-label="Your enterprise">
+      <section class="pc hero" [attr.aria-label]="'Your enterprise' | t: 'msme.profile.hero.aria'">
         @if (entType()) { <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true">{{ entType().charAt(0) }}</span> }
         <div class="hero-text">
           <h3>{{ enterpriseName() }}</h3>
           <div class="chips">
             @if (entType()) { <span class="chip chip-size">{{ entType() }}</span> }
-            @if (level(); as l) { <span class="chip chip-cert"><span aria-hidden="true">✓</span> {{ l.name }} certified</span> }
-            @if (pledgeOn()) { <span class="chip">Pledge taken {{ pledgeOn() }}</span> }
-            @if (zedId()) { <span class="chip chip-id">ZED ID {{ zedId() }}</span> }
+            @if (level(); as l) { <span class="chip chip-cert"><span aria-hidden="true">✓</span> {{ '{level} certified' | t: 'msme.profile.hero.chip.certified' : { level: l.name } }}</span> }
+            @if (pledgeOn()) { <span class="chip">{{ 'Pledge taken {date}' | t: 'msme.profile.hero.chip.pledge' : { date: pledgeOn() } }}</span> }
+            @if (zedId()) { <span class="chip chip-id">{{ 'ZED ID {id}' | t: 'msme.profile.hero.chip.zedId' : { id: zedId() } }}</span> }
           </div>
         </div>
         <a class="btn btn-outline-primary dl" routerLink="/msme/pledge-certificate">
           <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-          Download pledge
+          {{ 'Download pledge' | t: 'msme.profile.hero.pledgeButton' }}
         </a>
       </section>
     }
@@ -39,32 +39,32 @@
     <section class="pc" id="sec-enterprise" aria-labelledby="enterpriseTitle">
       <header class="pc-head">
         <span class="pc-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V5l8-2v17M12 9h8v11M3 20h18M7 8h2M7 12h2M7 16h2M15 13h2M15 16h2"/></svg></span>
-        <h3 id="enterpriseTitle">Enterprise</h3>
-        <span class="ro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"/></svg> Synced from Udyam · read-only</span>
+        <h3 id="enterpriseTitle">{{ 'Enterprise' | t: 'msme.profile.enterprise.title' }}</h3>
+        <span class="ro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"/></svg> {{ 'Synced from Udyam · read-only' | t: 'msme.profile.enterprise.readOnlyNote' }}</span>
         @if (moreRows().length) {
           <button type="button" class="lnk end" (click)="showAll.set(!showAll())" [attr.aria-expanded]="showAll()">
-            {{ showAll() ? 'Show fewer details' : 'Show all details' }}
+            {{ showAll() ? ('Show fewer details' | t: 'msme.profile.enterprise.fewerButton') : ('Show all details' | t: 'msme.profile.enterprise.allButton') }}
           </button>
         }
       </header>
       @if (text(basicInfo(), 'UdyogAadharNo') || text(basicInfo(), 'OwnerName') || pan() || entType() || place() || address()) {
         <dl class="fields">
-          @if (text(basicInfo(), 'UdyogAadharNo'); as v) { <div><dt>Udyam number</dt><dd>{{ v }}</dd></div> }
-          @if (text(basicInfo(), 'OwnerName'); as v) { <div><dt>Owner name</dt><dd>{{ v }}</dd></div> }
+          @if (text(basicInfo(), 'UdyogAadharNo'); as v) { <div><dt>{{ 'Udyam number' | t: 'msme.profile.enterprise.udyamLabel' }}</dt><dd>{{ v }}</dd></div> }
+          @if (text(basicInfo(), 'OwnerName'); as v) { <div><dt>{{ 'Owner name' | t: 'msme.profile.enterprise.ownerLabel' }}</dt><dd>{{ v }}</dd></div> }
           @if (pan()) {
             <div>
-              <dt>PAN</dt>
+              <dt>{{ 'PAN' | t: 'msme.profile.enterprise.panLabel' }}</dt>
               <dd><span data-testid="pan">{{ pan() }}</span></dd>
             </div>
           }
-          @if (entType()) { <div><dt>Enterprise type</dt><dd>{{ entType() }}</dd></div> }
-          @if (place()) { <div><dt>State / district</dt><dd>{{ place() }}</dd></div> }
+          @if (entType()) { <div><dt>{{ 'Enterprise type' | t: 'msme.profile.enterprise.typeLabel' }}</dt><dd>{{ entType() }}</dd></div> }
+          @if (place()) { <div><dt>{{ 'State / district' | t: 'msme.profile.enterprise.placeLabel' }}</dt><dd>{{ place() }}</dd></div> }
           @if (address()) {
             <div>
-              <dt>Registered address</dt>
+              <dt>{{ 'Registered address' | t: 'msme.profile.enterprise.addressLabel' }}</dt>
               <dd class="addr"><span [class.clip]="!fullAddress()">{{ address() }}</span>
                 @if (address().length > 40) {
-                  <button type="button" class="lnk" [attr.aria-expanded]="fullAddress()" (click)="fullAddress.set(!fullAddress())">{{ fullAddress() ? 'Show less' : 'View full' }}</button>
+                  <button type="button" class="lnk" [attr.aria-expanded]="fullAddress()" (click)="fullAddress.set(!fullAddress())">{{ fullAddress() ? ('Show less' | t: 'msme.profile.enterprise.addressLessButton') : ('View full' | t: 'msme.profile.enterprise.addressFullButton') }}</button>
                 }</dd>
             </div>
           }
@@ -73,34 +73,34 @@
           }
         </dl>
       } @else {
-        <p class="muted pad">The Udyam details are not available yet.</p>
+        <p class="muted pad">{{ 'The Udyam details are not available yet.' | t: 'msme.profile.enterprise.empty' }}</p>
       }
     </section>
 
     <section class="pc" id="sec-contact" aria-labelledby="contactTitle">
       <header class="pc-head">
         <span class="pc-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg></span>
-        <h3 id="contactTitle">Contact</h3>
+        <h3 id="contactTitle">{{ 'Contact' | t: 'msme.profile.contact.title' }}</h3>
         <span class="end">
-          @if (emailStep() === 'idle') { <button type="button" class="lnk" (click)="startEmailChange()">Edit contact</button> }
+          @if (emailStep() === 'idle') { <button type="button" class="lnk" (click)="startEmailChange()">{{ 'Edit contact' | t: 'msme.profile.contact.editButton' }}</button> }
         </span>
       </header>
       <dl class="fields">
         <div>
-          <dt>Registered e-mail <small>(ZED mails &amp; password links)</small></dt>
+          <dt>{{ 'Registered e-mail' | t: 'msme.profile.contact.emailLabel' }} <small>{{ '(ZED mails & password links)' | t: 'msme.profile.contact.emailNote' }}</small></dt>
           <dd>
-            <span data-testid="registered-email" class="one-line" [attr.title]="registeredEmail() || null">{{ registeredEmail() || 'Not given' }}</span>
+            <span data-testid="registered-email" class="one-line" [attr.title]="registeredEmail() || null">{{ registeredEmail() || ('Not given' | t: 'msme.profile.contact.notGiven') }}</span>
             <!-- The registered e-mail is only ever set with an OTP sent to it (pledge registration, Change e-mail). -->
-            @if (registeredEmail()) { <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span> }
+            @if (registeredEmail()) { <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>{{ 'Verified' | t: 'msme.profile.contact.verifiedLabel' }}</span> }
           </dd>
         </div>
         <div>
-          <dt>Mobile</dt>
+          <dt>{{ 'Mobile' | t: 'msme.profile.contact.mobileLabel' }}</dt>
           <dd>
-            <span data-testid="mobile">{{ mobile() || 'Not given' }}</span>
+            <span data-testid="mobile">{{ mobile() || ('Not given' | t: 'msme.profile.contact.notGiven') }}</span>
             <!-- 2026-11-18: the mobile the Udyam service accepted for the Udyam number at registration (no OTP to the mobile). -->
             @if (mobile() && mobileVerified()) {
-              <span class="ok" title="The mobile number of your Udyam registration"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>Verified</span>
+              <span class="ok" [title]="'The mobile number of your Udyam registration' | t: 'msme.profile.contact.mobileVerifiedTooltip'"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7.5 12.5 3 3 6-6"/></svg>{{ 'Verified' | t: 'msme.profile.contact.verifiedLabel' }}</span>
             }
           </dd>
         </div>
@@ -108,31 +108,31 @@
 
       @if (emailStep() !== 'idle') {
         <div class="email-change" data-testid="email-change">
-          <h4>Change e-mail</h4>
+          <h4>{{ 'Change e-mail' | t: 'msme.profile.emailChange.title' }}</h4>
           @if (emailStep() === 'enter') {
             <form class="d-flex gap-2 flex-wrap align-items-start" (ngSubmit)="sendEmailOtp()" novalidate>
               <div class="flex-grow-1">
-                <label for="newEmail" class="visually-hidden">New e-mail address</label>
-                <input id="newEmail" name="newEmail" type="email" class="form-control" placeholder="New e-mail address" maxlength="100"
+                <label for="newEmail" class="visually-hidden">{{ 'New e-mail address' | t: 'msme.profile.emailChange.emailLabel' }}</label>
+                <input id="newEmail" name="newEmail" type="email" class="form-control" [placeholder]="'New e-mail address' | t: 'msme.profile.emailChange.emailPlaceholder'" maxlength="100"
                        [(ngModel)]="newEmail" />
               </div>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">Send OTP</button>
-              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Send OTP' | t: 'msme.profile.emailChange.sendButton' }}</button>
+              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">{{ 'Cancel' | t: 'msme.profile.emailChange.cancelButton' }}</button>
             </form>
           } @else {
-            <p class="mb-2">An OTP has been sent to <b>{{ newEmail }}</b>. It is valid for 10 minutes.</p>
+            <p class="mb-2">{{ 'An OTP has been sent to {email}. It is valid for 10 minutes.' | t: 'msme.profile.emailChange.sentNote' : { email: newEmail } }}</p>
             <form class="d-flex gap-2 flex-wrap align-items-start" (ngSubmit)="verifyEmailOtp()" novalidate>
               <div>
-                <label for="emailOtp" class="visually-hidden">OTP</label>
-                <input id="emailOtp" name="emailOtp" class="form-control otp" inputmode="numeric" maxlength="6" placeholder="6-digit OTP"
+                <label for="emailOtp" class="visually-hidden">{{ 'OTP' | t: 'msme.profile.emailChange.otpLabel' }}</label>
+                <input id="emailOtp" name="emailOtp" class="form-control otp" inputmode="numeric" maxlength="6" [placeholder]="'6-digit OTP' | t: 'msme.profile.emailChange.otpPlaceholder'"
                        [(ngModel)]="emailOtp" />
               </div>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">Verify and change</button>
-              <button type="button" class="btn btn-link" (click)="sendEmailOtp()" [disabled]="busy()">Resend OTP</button>
-              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Verify and change' | t: 'msme.profile.emailChange.verifyButton' }}</button>
+              <button type="button" class="btn btn-link" (click)="sendEmailOtp()" [disabled]="busy()">{{ 'Resend OTP' | t: 'msme.profile.emailChange.resendButton' }}</button>
+              <button type="button" class="btn btn-default" (click)="cancelEmailChange()">{{ 'Cancel' | t: 'msme.profile.emailChange.cancelButton' }}</button>
             </form>
           }
-          <p class="muted small mb-0 mt-2">The e-mail changes only after the OTP is verified; the old address gets a notice.</p>
+          <p class="muted small mb-0 mt-2">{{ 'The e-mail changes only after the OTP is verified; the old address gets a notice.' | t: 'msme.profile.emailChange.note' }}</p>
         </div>
       }
     </section>
@@ -140,25 +140,25 @@
     <section class="pc" id="sec-units" aria-labelledby="unitTitle">
       <header class="pc-head">
         <span class="pc-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
-        <h3 id="unitTitle">Units / plants</h3>
+        <h3 id="unitTitle">{{ 'Units / plants' | t: 'msme.profile.units.title' }}</h3>
       </header>
       <div class="units">
         @if (hasUnit()) {
           <div class="unit">
-            <div class="unit-top"><b>{{ text(msme(), 'PUnitName') }}</b><span class="tag">Selected</span></div>
+            <div class="unit-top"><b>{{ text(msme(), 'PUnitName') }}</b><span class="tag">{{ 'Selected' | t: 'msme.profile.units.selectedLabel' }}</span></div>
             @if (unitAddress()) { <p>{{ unitAddress() }}</p> }
-            @if (level(); as l) { <div class="unit-cert"><img [src]="l.logo" alt="" />{{ l.name }} certified</div> }
+            @if (level(); as l) { <div class="unit-cert"><img [src]="l.logo" alt="" />{{ '{level} certified' | t: 'msme.profile.units.certifiedLabel' : { level: l.name } }}</div> }
           </div>
         } @else {
-          <p class="muted unit-none">No unit selected yet.</p>
+          <p class="muted unit-none">{{ 'No unit selected yet.' | t: 'msme.profile.units.empty' }}</p>
         }
 
         <div class="nic" id="sec-activity" aria-labelledby="activityTitle">
           <div class="nic-head">
-            <h4 id="activityTitle">Unit activity (NIC)</h4>
+            <h4 id="activityTitle">{{ 'Unit activity (NIC)' | t: 'msme.profile.activity.title' }}</h4>
             @if (!editMode()) {
               <button type="button" class="lnk" [disabled]="busy()" (click)="editActivity()">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></svg>Edit activity
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></svg>{{ 'Edit activity' | t: 'msme.profile.activity.editButton' }}
               </button>
             }
           </div>
@@ -170,10 +170,10 @@
                 }
               </ul>
             } @else {
-              <p class="muted mb-0">Not set</p>
+              <p class="muted mb-0">{{ 'Not set' | t: 'msme.profile.activity.empty' }}</p>
             }
           } @else {
-            <div class="panel-units" role="radiogroup" aria-label="Unit activity">
+            <div class="panel-units" role="radiogroup" [attr.aria-label]="'Unit activity' | t: 'msme.profile.activity.optionsAria'">
               @for (a of activities(); track $index) {
                 <label class="activity-option" [class.panel-selected]="selected() === a.Five_DigitActivity">
                   <input type="radio" class="option-input yes radio" name="Activity" [value]="a.Five_DigitActivity"
@@ -186,12 +186,12 @@
               }
             </div>
             @if (!selected()) {
-              <span class="help-block">This is required.</span>
+              <span class="help-block">{{ 'This is required.' | t: 'msme.profile.activity.requiredError' }}</span>
             }
             <div class="text-center mt-3">
-              <button type="button" class="btn btn-default" (click)="cancelEdit()">Cancel</button>
+              <button type="button" class="btn btn-default" (click)="cancelEdit()">{{ 'Cancel' | t: 'msme.profile.activity.cancelButton' }}</button>
               @if (changed()) {
-                <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">Update</button>
+                <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">{{ 'Update' | t: 'msme.profile.activity.updateButton' }}</button>
               }
             </div>
           }
@@ -202,7 +202,7 @@
 </div>
 
 @if (busy()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'msme.profile.loading' }}</span></div>
 }
 
 <zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

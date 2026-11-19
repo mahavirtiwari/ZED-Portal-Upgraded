@@ -8,7 +8,7 @@ import { MonitoringApi, MonitoringCounts, Row, StageCount } from './monitoring.a
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { TableExport } from '../table-export';
 import {
-  DATE_LABELS, DELAY_CHIPS, PENDING, STEP_ORDER, delayClass, stepChips, stepLabels, stepState, tatDaysLeft, trackOf, trackTabs,
+  PENDING, STEP_ORDER, dateLabel, delayChips, delayClass, stepChips, stepLabels, stepState, tatDaysLeft, trackOf, trackTabs,
 } from './monitoring-tat';
 import { PagedView, PagerComponent } from '../pager';
 import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
@@ -20,6 +20,7 @@ import { ToastService } from '../toast';
 import { daysUntil, shortDate } from '../assessment/allot';
 import { LevelMedal } from '../assessment/level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
+import { TextPipe, t } from '../../content/page-text';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -52,7 +53,7 @@ const DEFAULT_STATUS = 3;
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon, ChipFilter],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon, ChipFilter, TextPipe],
   host: { class: 'list-v2 d-block' },
   templateUrl: './monitoring.html',
   styles: `
@@ -118,27 +119,28 @@ export class MonitoringPage {
   protected readonly main = this.system === 'main';
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
-  protected readonly title = this.consultancy ? 'Consultancy Monitoring' : this.surveillance ? 'Surveillance Monitoring' : 'Assessment Monitoring';
-  protected readonly crumbs = staffCrumbs({ label: this.title });
+  protected readonly title = computed(() => this.consultancy ? t('staff.monitoring.consultancy.title', 'Consultancy Monitoring')
+    : this.surveillance ? t('staff.monitoring.surveillance.title', 'Surveillance Monitoring') : t('staff.monitoring.title', 'Assessment Monitoring'));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
   /** 2026-11-18: staff-10 has no subtitle (Consultancy keeps its line). */
-  protected readonly subtitle = this.consultancy ? 'Follow the handholding units by milestone stage.' : null;
+  protected readonly subtitle = computed(() => this.consultancy ? t('staff.monitoring.consultancy.sub', 'Follow the handholding units by milestone stage.') : null);
 
   // V4: ZED-X is assessed on the main portal only.
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
   protected readonly levels = computed(() => (this.consultancy ? [...HANDHOLDING_LEVEL_CODES] : levelCodes()));
   protected readonly levelName = levelName;
-  protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
+  protected readonly tabs: readonly { status: number; count: keyof MonitoringCounts }[] = this.consultancy
     ? [
-        { status: 2, label: 'Scheduled, not started', count: 'NotStarted' },
-        { status: 3, label: 'Consultancy in progress', count: 'InProgress' },
-        { status: 5, label: 'Quality check', count: 'Qc' },
+        { status: 2, count: 'NotStarted' },
+        { status: 3, count: 'InProgress' },
+        { status: 5, count: 'Qc' },
       ]
     : [
-        { status: 2, label: 'Scheduled, not started', count: 'NotStarted' },
-        { status: 3, label: this.surveillance ? 'In progress' : 'Assessment in progress', count: 'InProgress' },
-        { status: 5, label: 'Quality check', count: 'Qc' },
-        { status: 4, label: 'Non-conformance', count: 'Nc' },
-        { status: 7, label: 'Rejected', count: 'Rj' },
+        { status: 2, count: 'NotStarted' },
+        { status: 3, count: 'InProgress' },
+        { status: 5, count: 'Qc' },
+        { status: 4, count: 'Nc' },
+        { status: 7, count: 'Rj' },
       ];
   /** "No. of Days to Extend": 0 to 30, 0 chosen first, as the old pop-up. */
   protected readonly extendDays = Array.from({ length: 31 }, (_, i) => i);
@@ -162,27 +164,31 @@ export class MonitoringPage {
   protected readonly to = signal('');
   protected readonly step = signal('');
   protected readonly delay = signal('');
-  protected readonly trackTabs = trackTabs(this.system);
-  protected readonly stepNames = stepLabels(this.system);
+  protected readonly trackTabs = computed(() => trackTabs(this.system));
+  protected readonly stepNames = computed(() => stepLabels(this.system));
   protected readonly stepOrder = STEP_ORDER;
   protected readonly stepState = stepState;
   protected readonly delayClass = delayClass;
-  protected readonly dateLabel = computed(() => DATE_LABELS[this.status() ?? 0] ?? 'Between');
+  protected readonly dateLabel = computed(() => dateLabel(this.status()));
   /** The stage tiles (clickable: they choose the stage), with their sub-sections and delayed cases. */
   protected readonly stageCounts = computed<ListCount[]>(() => {
     const c = this.counts();
     const stages = this.stages();
     const tone: Partial<Record<keyof MonitoringCounts, ListCount['tone']>> = { Nc: 'warn', Rj: 'bad' };
-    return this.tabs.map((t) => {
-      const s = stages?.find((x) => x.status === t.status);
+    return this.tabs.map((tab) => {
+      const s = stages?.find((x) => x.status === tab.status);
       let sub: string | null = null;
       if (s) {
+        const delayed = tab.status === 5 && s.delayed ? s.delayed : 0;
+        const m = { m1: s.tracks['m1'] ?? 0, m2: s.tracks['m2'] ?? 0, m3: s.tracks['m3'] ?? 0, delayed };
+        const d = { desktop: s.tracks['desktop'] ?? 0, site: s.tracks['site'] ?? 0, delayed };
         sub = this.consultancy
-          ? ['m1', 'm2', 'm3'].map((m, i) => `M${i + 1} ${s.tracks[m] ?? 0}`).join(' · ')
-          : `Desktop ${s.tracks['desktop'] ?? 0} · Site ${s.tracks['site'] ?? 0}`;
-        if (t.status === 5 && s.delayed) sub += ` · ${s.delayed} delayed`;
+          ? delayed ? t('staff.monitoring.stage.milestonesDelayed.sub', 'M1 {m1} · M2 {m2} · M3 {m3} · {delayed} delayed', m)
+            : t('staff.monitoring.stage.milestones.sub', 'M1 {m1} · M2 {m2} · M3 {m3}', m)
+          : delayed ? t('staff.monitoring.stage.tracksDelayed.sub', 'Desktop {desktop} · Site {site} · {delayed} delayed', d)
+            : t('staff.monitoring.stage.tracks.sub', 'Desktop {desktop} · Site {site}', d);
       }
-      return { key: String(t.status), label: t.label, value: s ? s.total : (c[t.count] ?? 0), tone: tone[t.count], sub };
+      return { key: String(tab.status), label: this.stageLabel(tab.status), value: s ? s.total : (c[tab.count] ?? 0), tone: tone[tab.count], sub };
     });
   });
   /** Agencies and modes of the loaded list, for the filters. */
@@ -199,14 +205,14 @@ export class MonitoringPage {
   /** The sub-tabs with their counts. */
   protected readonly tracks = computed(() => {
     const rows = this.base();
-    return this.trackTabs.map((t) => ({ ...t, count: t.key === 'all' ? rows.length : rows.filter((r) => trackOf(r, this.system) === t.key).length }));
+    return this.trackTabs().map((tab) => ({ ...tab, count: tab.key === 'all' ? rows.length : rows.filter((r) => trackOf(r, this.system) === tab.key).length }));
   });
   /** The chosen sub-section, else the first with cases (Consultancy: all milestones). */
   protected readonly track = computed(() => {
     const tabs = this.tracks();
     const picked = this.trackPick();
-    if (picked && tabs.some((t) => t.key === picked)) return picked;
-    return this.consultancy ? 'all' : (tabs.find((t) => t.count > 0) ?? tabs[0]).key;
+    if (picked && tabs.some((x) => x.key === picked)) return picked;
+    return this.consultancy ? 'all' : (tabs.find((x) => x.count > 0) ?? tabs[0]).key;
   });
   private readonly trackRows = computed(() => {
     const track = this.track();
@@ -217,14 +223,14 @@ export class MonitoringPage {
   protected readonly showSteps = computed(() => this.status() === 3 && (this.consultancy || this.track() === 'site'));
   protected readonly stepFilter = computed<FilterChip[]>(() => {
     const rows = this.trackRows();
-    return [{ key: '', label: 'All', count: rows.length },
+    return [{ key: '', label: t('staff.monitoring.stepChip.all.chip', 'All'), count: rows.length },
       ...stepChips(this.system).map((c) => ({ ...c, count: rows.filter((r) => this.inStep(r, c.key)).length }))];
   });
   /** Quality check: the delay chips (TAT). */
   protected readonly showDelays = computed(() => this.status() === 5);
   protected readonly delayFilter = computed<FilterChip[]>(() => {
     const rows = this.trackRows();
-    return [{ key: '', label: 'All', count: rows.length }, ...DELAY_CHIPS.map((c) => ({ ...c, count: rows.filter((r) => r['TatBucket'] === c.key).length }))];
+    return [{ key: '', label: t('staff.monitoring.delay.all.chip', 'All'), count: rows.length }, ...delayChips().map((c) => ({ ...c, count: rows.filter((r) => r['TatBucket'] === c.key).length }))];
   });
   protected readonly filtered = computed(() => !!(this.search() || this.certification() || this.agency() || this.modeFilter() || this.from() || this.to() || this.step() || this.delay()));
   protected readonly shown = computed(() => {
@@ -251,7 +257,7 @@ export class MonitoringPage {
   constructor() {
     // The header bell opens a stage: ?status=4 (NC closures overdue) or ?status=5 (quality check).
     const asked = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('status'));
-    if (this.tabs.some((t) => t.status === asked)) this.status.set(asked);
+    if (this.tabs.some((x) => x.status === asked)) this.status.set(asked);
     void this.load();
   }
 
@@ -280,8 +286,8 @@ export class MonitoringPage {
 
   protected setRange(which: 'from' | 'to', value: string): void {
     (which === 'from' ? this.from : this.to).set(value ?? '');
-    const f = this.from(), t = this.to();
-    if (!f || !t || f <= t) void this.load();
+    const f = this.from(), to = this.to();
+    if (!f || !to || f <= to) void this.load();
   }
 
   protected clearAll(): void {
@@ -303,21 +309,44 @@ export class MonitoringPage {
   }
 
   protected exportList(): void {
-    const columns = ['ZED ID', 'Unit', 'Level', this.consultancy ? 'CO' : 'Agency', this.consultancy ? 'CO ID' : 'Agency ID', 'Sub-section', 'Mode',
-      this.consultancy ? 'Consultants' : 'Assessors', 'Date', 'Due / Delay', 'TAT rule', 'Contact', 'Contact mobile', 'Contact e-mail'];
-    const tabName = (r: Row) => this.trackTabs.find((t) => t.key === trackOf(r, this.system))?.label ?? '';
+    const columns = [
+      t('staff.monitoring.export.column.zedId', 'ZED ID'), t('staff.monitoring.export.column.unit', 'Unit'), t('staff.monitoring.export.column.level', 'Level'),
+      this.consultancy ? t('staff.monitoring.export.column.co', 'CO') : t('staff.monitoring.export.column.agency', 'Agency'),
+      this.consultancy ? t('staff.monitoring.export.column.coId', 'CO ID') : t('staff.monitoring.export.column.agencyId', 'Agency ID'),
+      t('staff.monitoring.export.column.subSection', 'Sub-section'), t('staff.monitoring.export.column.mode', 'Mode'),
+      this.consultancy ? t('staff.monitoring.export.column.consultants', 'Consultants') : t('staff.monitoring.export.column.assessors', 'Assessors'),
+      t('staff.monitoring.export.column.date', 'Date'), t('staff.monitoring.export.column.due', 'Due / Delay'), t('staff.monitoring.export.column.tatRule', 'TAT rule'),
+      t('staff.monitoring.export.column.contact', 'Contact'), t('staff.monitoring.export.column.contactMobile', 'Contact mobile'),
+      t('staff.monitoring.export.column.contactEmail', 'Contact e-mail')];
+    const tabName = (r: Row) => this.trackTabs().find((x) => x.key === trackOf(r, this.system))?.label ?? '';
     const rows = this.shown().map((r) => [
       text(r, 'ZedId'), text(r, 'PUnitName'), this.levelName(text(r, 'Certification')), text(r, 'AgencyName'), text(r, 'CertificationBodyUserId'), tabName(r),
       text(r, 'ModeOfAssessment'), this.assessors(r).map((p) => [p.name, p.id].filter((x) => x).join(' ')).join(', '), shortDate(r['StageDate']) || text(r, 'SaAssessmentDate'),
       this.due(r)?.label ?? '', text(r, 'TatRule'), text(r, 'UnitSpocName'), text(r, 'UnitSpocMobileNo'), text(r, 'UnitSpocEmailId'),
     ]);
-    const stage = this.tabs.find((t) => t.status === this.status())?.label ?? '';
-    void this.exporter.xlsx(`${this.title} ${stage}`.trim(), [{ name: stage || this.title, columns, rows }]).catch((err) => this.toast.error('Export', apiErrorMessage(err)));
+    const status = this.status();
+    const stage = this.tabs.some((x) => x.status === status) ? this.stageLabel(status!) : '';
+    const title = this.title();
+    void this.exporter.xlsx(`${title} ${stage}`.trim(), [{ name: stage || title, columns, rows }])
+      .catch((err) => this.toast.error(t('staff.monitoring.toast.exportFailed', 'Export'), apiErrorMessage(err)));
+  }
+
+  /** The stage's name (tiles, export). */
+  protected stageLabel(status: number): string {
+    switch (status) {
+      case 2: return t('staff.monitoring.stage.notStarted.label', 'Scheduled, not started');
+      case 3: return this.consultancy ? t('staff.monitoring.stage.consultancyInProgress.label', 'Consultancy in progress')
+        : this.surveillance ? t('staff.monitoring.stage.inProgress.label', 'In progress') : t('staff.monitoring.stage.assessmentInProgress.label', 'Assessment in progress');
+      case 5: return t('staff.monitoring.stage.qualityCheck.label', 'Quality check');
+      case 4: return t('staff.monitoring.stage.nc.label', 'Non-conformance');
+      case 7: return t('staff.monitoring.stage.rejected.label', 'Rejected');
+      default: return '';
+    }
   }
 
   protected pickStage(key: string | undefined): void {
     const status = Number(key);
-    if (this.tabs.some((t) => t.status === status)) this.setStatus(status);
+    if (this.tabs.some((x) => x.status === status)) this.setStatus(status);
   }
 
   protected toggleDueSort(): void {
@@ -358,7 +387,7 @@ export class MonitoringPage {
     return Number(r[field] ?? 0) || 0;
   }
 
-  protected t(r: Row, field: string): string {
+  protected col(r: Row, field: string): string {
     return text(r, field);
   }
 
@@ -370,7 +399,8 @@ export class MonitoringPage {
   protected mode(r: Row): string {
     const m = text(r, 'ModeOfAssessment');
     if (this.surveillance) return m;
-    return m === 'Remote Assessment' ? 'Remote' : m === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
+    return m === 'Remote Assessment' ? t('staff.monitoring.mode.remote.chip', 'Remote')
+      : m === 'Onsite Assessment' ? t('staff.monitoring.mode.onsite.chip', 'Onsite') : t('staff.monitoring.mode.desktop.chip', 'Desktop');
   }
 
   protected assessors(r: Row): { name: string; id: string }[] {
@@ -401,9 +431,11 @@ export class MonitoringPage {
     }
     const d = this.dueDays(r);
     if (d === null) return null;
-    if (d < 0) return { label: `Overdue ${-d} ${d === -1 ? 'day' : 'days'}`, cls: 'is-bad' };
-    if (d === 0) return { label: 'Due today', cls: 'is-warn' };
-    return { label: `${d} ${d === 1 ? 'day' : 'days'} left`, cls: d <= 5 ? 'is-warn' : '' };
+    if (d < 0) return { label: d === -1 ? t('staff.monitoring.due.overdueDay.chip', 'Overdue {count} day', { count: -d })
+      : t('staff.monitoring.due.overdueDays.chip', 'Overdue {count} days', { count: -d }), cls: 'is-bad' };
+    if (d === 0) return { label: t('staff.monitoring.due.today.chip', 'Due today'), cls: 'is-warn' };
+    return { label: d === 1 ? t('staff.monitoring.due.dayLeft.chip', '{count} day left', { count: d })
+      : t('staff.monitoring.due.daysLeft.chip', '{count} days left', { count: d }), cls: d <= 5 ? 'is-warn' : '' };
   }
 
   protected readonly shortDate = shortDate;
@@ -433,14 +465,14 @@ export class MonitoringPage {
   /** The row's actions: as its old buttons (the master admin's per stage). */
   menu(r: Row): RowMenuItem[] {
     const items: RowMenuItem[] = [
-      { key: 'details', label: this.consultancy ? 'View details' : 'Assessment details', icon: 'eye' },
-      { key: 'profile', label: 'View MSME profile', icon: 'people' },
+      { key: 'details', label: this.consultancy ? t('staff.monitoring.menu.viewDetails.label', 'View details') : t('staff.monitoring.menu.assessmentDetails.label', 'Assessment details'), icon: 'eye' },
+      { key: 'profile', label: t('staff.monitoring.menu.profile.label', 'View MSME profile'), icon: 'people' },
     ];
     if (this.canManage() && !this.consultancy) {
       const status = this.status();
-      if (status === 4 || (this.surveillance && status === 7)) items.push({ key: 'extend', label: 'Extend NC final closure date', icon: 'history' });
-      if (status === 4) items.push({ key: 'stepBack', label: `Step back to NC${this.num(r, 'NcCount') - 1}`, icon: 'refresh', danger: true });
-      if (this.canSendBack(r)) items.push({ key: 'sendBack', label: 'Send back to agency', icon: 'refresh', danger: true });
+      if (status === 4 || (this.surveillance && status === 7)) items.push({ key: 'extend', label: t('staff.monitoring.menu.extend.label', 'Extend NC final closure date'), icon: 'history' });
+      if (status === 4) items.push({ key: 'stepBack', label: t('staff.monitoring.menu.stepBack.label', 'Step back to NC{round}', { round: this.num(r, 'NcCount') - 1 }), icon: 'refresh', danger: true });
+      if (this.canSendBack(r)) items.push({ key: 'sendBack', label: t('staff.monitoring.menu.sendBack.label', 'Send back to agency'), icon: 'refresh', danger: true });
     }
     return items;
   }
@@ -469,7 +501,7 @@ export class MonitoringPage {
   protected async submit(a: Action): Promise<void> {
     // The API extends by 1 to 30 days; 0 (the old default) would change nothing.
     if (a.kind === 'extend' && !(Number(a.days) >= 1 && Number(a.days) <= 30)) {
-      this.actionError.set('Please select the number of days (1 to 30).');
+      this.actionError.set(t('staff.monitoring.extend.daysError', 'Please select the number of days (1 to 30).'));
       return;
     }
     const zedId = String(a.unit['ZedId']);

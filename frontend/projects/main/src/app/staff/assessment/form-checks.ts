@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { withApiBase } from '../../api-base';
+import { TextPipe, t } from '../../content/page-text';
 
 /** One answer to check (Zed.Core.Forms.AppFormCheckItem). */
 export interface FormCheckItem {
@@ -51,18 +52,18 @@ export function formChecksUrl(kind: FormChecksKind, zedId: string, certification
  */
 @Component({
   selector: 'zed-form-checks',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @if (data(); as d) {
       @if (d.applies && d.items.length) {
         <div class="card mb-3 form-checks" data-testid="form-checks">
           <div class="card-header d-flex justify-content-between">
-            <strong>{{ d.items[0].formName }} · to validate</strong>
-            <small class="text-muted">{{ checked() }} of {{ d.items.length }} checked</small>
+            <strong>{{ '{form} · to validate' | t: 'staff.formChecks.heading' : { form: d.items[0].formName } }}</strong>
+            <small class="text-muted">{{ '{checked} of {total} checked' | t: 'staff.formChecks.checkedText' : { checked: checked(), total: d.items.length } }}</small>
           </div>
           <div class="card-body py-2">
-            @if (d.ncRound) { <p class="small text-muted mb-2">NC {{ d.round }}: the unit's new answers to the fields found not valid.</p> }
-            @if (kind() === 'agency') { <p class="small text-muted mb-2" data-agency-note>The site assessor's answers. Not valid sends the answer back to the site assessor, who corrects it in the assessor app; final submit once every answer is Valid.</p> }
+            @if (d.ncRound) { <p class="small text-muted mb-2">{{ "NC {round}: the unit's new answers to the fields found not valid." | t: 'staff.formChecks.ncRound.note' : { round: d.round } }}</p> }
+            @if (kind() === 'agency') { <p class="small text-muted mb-2" data-agency-note>{{ "The site assessor's answers. Not valid sends the answer back to the site assessor, who corrects it in the assessor app; final submit once every answer is Valid." | t: 'staff.formChecks.agency.note' }}</p> }
             @if (error()) { <div class="alert alert-danger py-1 small mb-2" role="alert">{{ error() }}</div> }
             @for (i of d.items; track i.form + i.key) {
               <div class="fc-row" [attr.data-key]="i.key">
@@ -71,31 +72,32 @@ export function formChecksUrl(kind: FormChecksKind, zedId: string, certification
                     <div class="small text-muted">{{ i.label }}</div>
                     <div class="fc-value">{{ i.value || '—' }}</div>
                     @if (i.ncRound) {
-                      <div class="small text-muted">Earlier answer: {{ i.previousValue || '—' }} · Remark: {{ i.ncRemarks }}</div>
-                      @if (!i.answered) { <div class="small text-danger">The unit has not answered this NC.</div> }
+                      <div class="small text-muted">{{ 'Earlier answer: {answer} · Remark: {remark}' | t: 'staff.formChecks.earlierText' : { answer: i.previousValue || '—', remark: i.ncRemarks } }}</div>
+                      @if (!i.answered) { <div class="small text-danger">{{ 'The unit has not answered this NC.' | t: 'staff.formChecks.notAnsweredText' }}</div> }
                     }
                   </div>
                   @if (d.canCheck) {
-                    <div class="btn-group btn-group-sm fc-buttons" role="group" [attr.aria-label]="'Check ' + i.label">
+                    <div class="btn-group btn-group-sm fc-buttons" role="group" [attr.aria-label]="'Check {field}' | t: 'staff.formChecks.checkAria' : { field: i.label }">
                       <button type="button" class="btn" [class.btn-success]="i.status === 'Yes'" [class.btn-outline-success]="i.status !== 'Yes'"
-                              [disabled]="busy()" (click)="valid(i)">✓ Valid</button>
+                              [disabled]="busy()" (click)="valid(i)">{{ '✓ Valid' | t: 'staff.formChecks.validButton' }}</button>
                       <button type="button" class="btn" [class.btn-danger]="isNotValid(i)" [class.btn-outline-danger]="!isNotValid(i)"
-                              [disabled]="busy()" (click)="notValid(i)">✕ Not valid</button>
+                              [disabled]="busy()" (click)="notValid(i)">{{ '✕ Not valid' | t: 'staff.formChecks.notValidButton' }}</button>
                     </div>
                   } @else {
                     <span class="badge" [class.text-bg-success]="i.status === 'Yes'" [class.text-bg-danger]="i.status === 'No'"
-                          [class.text-bg-secondary]="!i.status">{{ i.status === 'Yes' ? 'Valid' : i.status === 'No' ? 'Not valid' : 'Not checked' }}</span>
+                          [class.text-bg-secondary]="!i.status">{{ i.status === 'Yes' ? ('Valid' | t: 'staff.formChecks.status.validLabel') : i.status === 'No' ? ('Not valid' | t: 'staff.formChecks.status.notValidLabel') : ('Not checked' | t: 'staff.formChecks.status.notCheckedLabel') }}</span>
                   }
                 </div>
                 @if (editing() === i.form + i.key) {
                   <div class="fc-remark">
-                    <input class="form-control form-control-sm" maxlength="1000" [placeholder]="kind() === 'agency' ? 'Why the answer is not valid (sent back to the site assessor)' : 'Why the answer is not valid (raises an NC)'"
-                           [attr.aria-label]="'Remark on ' + i.label" [(ngModel)]="remark" />
-                    <button type="button" class="btn btn-sm btn-danger" [disabled]="busy()" (click)="saveNotValid(i)">Save</button>
-                    <button type="button" class="btn btn-sm btn-link" (click)="editing.set(null)">Cancel</button>
+                    <input class="form-control form-control-sm" maxlength="1000" [placeholder]="kind() === 'agency' ? ('Why the answer is not valid (sent back to the site assessor)' | t: 'staff.formChecks.remark.agencyPlaceholder')
+                             : ('Why the answer is not valid (raises an NC)' | t: 'staff.formChecks.remark.placeholder')"
+                           [attr.aria-label]="'Remark on {field}' | t: 'staff.formChecks.remarkAria' : { field: i.label }" [(ngModel)]="remark" />
+                    <button type="button" class="btn btn-sm btn-danger" [disabled]="busy()" (click)="saveNotValid(i)">{{ 'Save' | t: 'staff.formChecks.saveButton' }}</button>
+                    <button type="button" class="btn btn-sm btn-link" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.formChecks.cancelButton' }}</button>
                   </div>
                 } @else if (i.status === 'No' && i.remarks) {
-                  <div class="small text-danger">Remark: {{ i.remarks }}</div>
+                  <div class="small text-danger">{{ 'Remark: {remark}' | t: 'staff.formChecks.remarkText' : { remark: i.remarks } }}</div>
                 }
               </div>
             }
@@ -153,7 +155,7 @@ export class FormChecksPanel {
 
   protected saveNotValid(i: FormCheckItem): void {
     if (!this.remark.trim()) {
-      this.error.set('Please enter a remark: why the answer is not valid.');
+      this.error.set(t('staff.formChecks.remarkError', 'Please enter a remark: why the answer is not valid.'));
       return;
     }
     void this.save(i, 'No', this.remark.trim());

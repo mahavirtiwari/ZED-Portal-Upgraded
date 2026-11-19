@@ -1,4 +1,5 @@
 import { ExportSheet } from '../table-export';
+import { t } from '../../content/page-text';
 
 /** 2026-11-17 (approved staff redesign, pop-up "Export dashboard"): the parts of the dashboard an export can hold. */
 export type ExportSection = 'headline' | 'levels' | 'trend' | 'who' | 'tables';
@@ -16,12 +17,12 @@ export interface ExportChoice {
  * (api/staff/dashboard/registered-msme, at most 1,000 rows a page) filters by state, level, size and gender only, not by
  * district, social category, sector, date basis or dates, so it cannot give the units the dashboard's filters select.
  */
-export const EXPORT_SECTIONS: readonly { key: ExportSection; label: string }[] = [
-  { key: 'headline', label: 'Headline numbers' },
-  { key: 'levels', label: 'Applications by level' },
-  { key: 'trend', label: 'Monthly and yearly trend' },
-  { key: 'who', label: 'MSME size, gender and social category' },
-  { key: 'tables', label: 'State, district and sector tables' },
+export const EXPORT_SECTIONS: readonly { key: ExportSection; readonly label: string }[] = [
+  { key: 'headline', get label() { return t('staff.dashboard.export.section.headline', 'Headline numbers'); } },
+  { key: 'levels', get label() { return t('staff.dashboard.export.section.levels', 'Applications by level'); } },
+  { key: 'trend', get label() { return t('staff.dashboard.export.section.trend', 'Monthly and yearly trend'); } },
+  { key: 'who', get label() { return t('staff.dashboard.export.section.who', 'MSME size, gender and social category'); } },
+  { key: 'tables', get label() { return t('staff.dashboard.export.section.tables', 'State, district and sector tables'); } },
 ];
 
 /** A sheet and how many of its first columns name the row (the others are figures): how the CSV lists it. */
@@ -44,7 +45,11 @@ export function flattenSheets(name: string, sheets: KeyedSheet[]): ExportSheet {
       }
     }
   }
-  return { name, columns: ['Section', 'Item', 'Figure', 'Value'], rows };
+  const columns = [
+    t('staff.dashboard.export.csv.column.section', 'Section'), t('staff.dashboard.export.csv.column.item', 'Item'),
+    t('staff.dashboard.export.csv.column.figure', 'Figure'), t('staff.dashboard.export.csv.column.value', 'Value'),
+  ];
+  return { name, columns, rows };
 }
 
 /** A share in percent with one decimal (null without a total). */

@@ -7,16 +7,17 @@ import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PageHead } from '../shared/page-head';
 import { ProfileShell } from '../profile/profile-shell';
+import { TextPipe, t } from '../../content/page-text';
 
 /** ChangePwdViewModel's RegularExpression on the new and the confirm password. */
 /** As PasswordPolicy on the server: 8 to 50 characters, upper and lower case, a digit and any other character. */
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
-const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.';
+const weakPassword = () => t('common.changePassword.weakError', 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.');
 
 /** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml, in the live page's layout (eye toggles in the fields). */
 @Component({
   selector: 'zed-msme-change-password',
-  imports: [FormsModule, NgTemplateOutlet, PageHead, ProfileShell],
+  imports: [FormsModule, NgTemplateOutlet, PageHead, ProfileShell, TextPipe],
   template: `
     <!-- Redesigned 2026-11-07: one card with the title and the signed-in ID, the rules of the new password ticked as typed
          with a strength bar, and Change Password. -->
@@ -24,7 +25,7 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
          with the profile's section menu on the left; the staff keep the centred card. -->
     @if (applicant) {
       <div class="container form-page cp-page" id="zed_user_form">
-        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Change password' }]" title="Change password" />
+        <zed-page-head [crumbs]="crumbs()" [title]="'Change password' | t: 'msme.changePassword.title'" />
         <zed-profile-shell active="security"><ng-container [ngTemplateOutlet]="card" /></zed-profile-shell>
       </div>
     } @else {
@@ -41,50 +42,50 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
                 <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
               </span>
               <div>
-                @if (!applicant) { <h2 class="cp-title">Change password</h2> }
-                <div class="cp-sub">@if (userId()) { {{ userId() }} · }you'll be signed out and log in again with the new password</div>
+                @if (!applicant) { <h2 class="cp-title">{{ 'Change password' | t: 'common.changePassword.title' }}</h2> }
+                <div class="cp-sub">@if (userId()) { {{ userId() }} · }{{ "you'll be signed out and log in again with the new password" | t: 'common.changePassword.sub' }}</div>
               </div>
             </div>
             @if (error()) {
               <div class="alert alert-danger" role="alert">{{ error() }}</div>
             }
             <form (ngSubmit)="submit()" novalidate>
-              <label for="oldPassword">Current password</label>
+              <label for="oldPassword">{{ 'Current password' | t: 'common.changePassword.currentLabel' }}</label>
               <div class="mb-3 pwd-field">
                 <input id="oldPassword" name="oldPassword" class="form-control" autocomplete="current-password"
                        [type]="show().old ? 'text' : 'password'" [(ngModel)]="oldPassword" required maxlength="50" />
-                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? 'Hide password' : 'Show password'" (click)="toggle('old')">
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? ('Hide password' | t: 'common.changePassword.hideAria') : ('Show password' | t: 'common.changePassword.showAria')" (click)="toggle('old')">
                   <img [src]="show().old ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                 </button>
                 @if (problem(oldPassword, false); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
               </div>
-              <label for="newPassword">New password</label>
+              <label for="newPassword">{{ 'New password' | t: 'common.changePassword.newLabel' }}</label>
               <div class="mb-1 pwd-field">
                 <input id="newPassword" name="newPassword" class="form-control" autocomplete="new-password"
                        [type]="show().new ? 'text' : 'password'" [(ngModel)]="newPassword" required maxlength="50" />
-                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? 'Hide password' : 'Show password'" (click)="toggle('new')">
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? ('Hide password' | t: 'common.changePassword.hideAria') : ('Show password' | t: 'common.changePassword.showAria')" (click)="toggle('new')">
                   <img [src]="show().new ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                 </button>
               </div>
               <div class="cp-strength" aria-hidden="true"><span [style.width.%]="strength() * 20" [class.ok]="strength() === 5"></span></div>
-              <ul class="cp-rules" aria-label="Rules for the new password">
+              <ul class="cp-rules" [attr.aria-label]="'Rules for the new password' | t: 'common.changePassword.rulesAria'">
                 @for (r of rules(); track r.label) {
                   <li [class.met]="r.met"><span aria-hidden="true">{{ r.met ? '✓' : '○' }}</span> {{ r.label }}</li>
                 }
               </ul>
               @if (problem(newPassword); as p) { <span class="field-validation-error d-block mb-2">{{ p }}</span> }
-              <label for="confirmPassword">Confirm new password</label>
+              <label for="confirmPassword">{{ 'Confirm new password' | t: 'common.changePassword.confirmLabel' }}</label>
               <div class="mb-3 pwd-field">
                 <input id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password"
                        [type]="show().confirm ? 'text' : 'password'" [(ngModel)]="confirmPassword" required maxlength="50" />
-                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggle('confirm')">
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? ('Hide password' | t: 'common.changePassword.hideAria') : ('Show password' | t: 'common.changePassword.showAria')" (click)="toggle('confirm')">
                   <img [src]="show().confirm ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                 </button>
                 @if (problem(confirmPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
-                @if (confirmPassword && newPassword && confirmPassword !== newPassword) { <span class="field-validation-error d-block">The passwords do not match yet.</span> }
+                @if (confirmPassword && newPassword && confirmPassword !== newPassword) { <span class="field-validation-error d-block">{{ 'The passwords do not match yet.' | t: 'common.changePassword.mismatchNote' }}</span> }
               </div>
               <div class="d-grid">
-                <button type="submit" class="btn btn-primary submit-btn" [disabled]="busy()">Change Password</button>
+                <button type="submit" class="btn btn-primary submit-btn" [disabled]="busy()">{{ 'Change Password' | t: 'common.changePassword.submitButton' }}</button>
               </div>
             </form>
           </div>
@@ -130,16 +131,21 @@ export class ChangePasswordPage {
   protected confirmPassword = '';
   /** The signed-in ID in the heading. */
   protected readonly userId = computed(() => this.auth.currentUser()?.userId ?? '');
+  protected readonly crumbs = computed(() => [
+    { label: t('msme.changePassword.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.changePassword.crumb.profile', 'Profile'), link: '/msme/profile' },
+    { label: t('msme.changePassword.crumb.changePassword', 'Change password') },
+  ]);
 
   /** The rules of the new password (PasswordPolicy), ticked as it is typed; 0-5 met for the bar. */
   protected rules(): { label: string; met: boolean }[] {
     const v = this.newPassword;
     return [
-      { label: '8+ characters', met: v.length >= 8 && v.length <= 50 },
-      { label: 'an upper-case letter', met: /[A-Z]/.test(v) },
-      { label: 'a lower-case letter', met: /[a-z]/.test(v) },
-      { label: 'a number', met: /\d/.test(v) },
-      { label: 'a symbol', met: /[^A-Za-z0-9]/.test(v) },
+      { label: t('common.changePassword.rule.length', '8+ characters'), met: v.length >= 8 && v.length <= 50 },
+      { label: t('common.changePassword.rule.upper', 'an upper-case letter'), met: /[A-Z]/.test(v) },
+      { label: t('common.changePassword.rule.lower', 'a lower-case letter'), met: /[a-z]/.test(v) },
+      { label: t('common.changePassword.rule.number', 'a number'), met: /\d/.test(v) },
+      { label: t('common.changePassword.rule.symbol', 'a symbol'), met: /[^A-Za-z0-9]/.test(v) },
     ];
   }
 
@@ -154,8 +160,8 @@ export class ChangePasswordPage {
   /** The ChangePwdViewModel message under a field, or '' (`strong`: the new / confirm password rule). */
   protected problem(value: string, strong = true): string {
     if (!this.submitted()) return '';
-    if (!value) return 'This is required';
-    return strong && !STRONG_PASSWORD.test(value) ? WEAK_PASSWORD : '';
+    if (!value) return t('common.changePassword.requiredError', 'This is required');
+    return strong && !STRONG_PASSWORD.test(value) ? weakPassword() : '';
   }
 
   protected async submit(): Promise<void> {
@@ -163,7 +169,7 @@ export class ChangePasswordPage {
     this.submitted.set(true);
     if (this.problem(this.oldPassword, false) || this.problem(this.newPassword) || this.problem(this.confirmPassword)) return;
     if (this.newPassword !== this.confirmPassword) {
-      this.error.set('The new password and its confirmation do not match.');
+      this.error.set(t('common.changePassword.mismatchError', 'The new password and its confirmation do not match.'));
       return;
     }
     this.busy.set(true);
@@ -177,7 +183,7 @@ export class ChangePasswordPage {
       );
       // The API signs the user out, as the old page did; log in again with the new password.
       this.auth.setUser(null);
-      await this.router.navigate([this.loginUrl], { state: { message: 'Password changed. Please login with your new password.' } });
+      await this.router.navigate([this.loginUrl], { state: { message: t('common.changePassword.doneMessage', 'Password changed. Please login with your new password.') } });
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       this.oldPassword = this.newPassword = this.confirmPassword = '';

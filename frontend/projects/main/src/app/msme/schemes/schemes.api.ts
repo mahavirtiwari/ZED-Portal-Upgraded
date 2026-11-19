@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { t } from '../../content/page-text';
 import { onStates } from '../shared/states';
 
 export type Row = Record<string, string | number | boolean | null>;
@@ -201,8 +202,8 @@ export class SchemesApi {
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export function uploadProblem(file: File): string | null {
-  if (file.size > MAX_UPLOAD_BYTES) return 'Please upload document less than 5 MB.';
-  if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) return 'Please upload valid document (PDF / JPG / PNG).';
+  if (file.size > MAX_UPLOAD_BYTES) return t('msme.schemeUpload.sizeError', 'Please upload document less than 5 MB.');
+  if (file.type !== 'application/pdf' && !file.type.startsWith('image/')) return t('msme.schemeUpload.typeError', 'Please upload valid document (PDF / JPG / PNG).');
   return null;
 }
 

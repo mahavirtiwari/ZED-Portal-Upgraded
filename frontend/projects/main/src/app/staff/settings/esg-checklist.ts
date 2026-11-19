@@ -6,6 +6,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 import { ConfirmService } from '../confirm-dialog';
 import { IndianTimePipe } from '../utc-time';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Main saved, the surveillance portal did not: its message says which. */
 class PartlySavedError extends Error {}
@@ -81,16 +82,20 @@ const SHOW_ON = ['Yes', 'No'] as const;
  */
 @Component({
   selector: 'zed-staff-esg-checklist',
-  imports: [FormsModule, IndianTimePipe],
+  imports: [FormsModule, IndianTimePipe, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">ESG Checklist</h3>
-        <p class="page-sub">The ESG and Social / OHS questions of the assessment in the mobile apps, with their options and follow-up questions.</p>
+        <h3 class="registration-title">{{ 'ESG Checklist' | t: 'staff.esgChecklist.title' }}</h3>
+        <p class="page-sub">{{ 'The ESG and Social / OHS questions of the assessment in the mobile apps, with their options and follow-up questions.' | t: 'staff.esgChecklist.sub' }}</p>
       </div>
       @if (loaded()) {
         <span class="status-badge esg-state" [class.is-active]="customised()" [class.is-info]="!customised()">
-          @if (customised()) { Changed{{ updatedBy() ? ' by ' + updatedBy() : '' }}{{ updatedOn() ? ', ' + (updatedOn() | indianTime) : '' }} } @else { Standard checklist }
+          @if (!customised()) { {{ 'Standard checklist' | t: 'staff.esgChecklist.state.standard' }} }
+          @else if (updatedBy() && updatedOn()) { {{ 'Changed by {name}, {date}' | t: 'staff.esgChecklist.state.changedByOn' : { name: updatedBy(), date: (updatedOn() | indianTime) } }} }
+          @else if (updatedBy()) { {{ 'Changed by {name}' | t: 'staff.esgChecklist.state.changedBy' : { name: updatedBy() } }} }
+          @else if (updatedOn()) { {{ 'Changed, {date}' | t: 'staff.esgChecklist.state.changedOn' : { date: (updatedOn() | indianTime) } }} }
+          @else { {{ 'Changed' | t: 'staff.esgChecklist.state.changed' }} }
         </span>
       }
     </div>
@@ -101,19 +106,19 @@ const SHOW_ON = ['Yes', 'No'] as const;
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
     @if (survError()) {
-      <div class="alert alert-warning" role="status">Surveillance portal: {{ survError() }} Only the ZED Certification checklist is shown and saved.</div>
+      <div class="alert alert-warning" role="status">{{ 'Surveillance portal: {error} Only the ZED Certification checklist is shown and saved.' | t: 'staff.esgChecklist.survError' : { error: survError() } }}</div>
     }
     @if (loaded()) {
       <div class="esg-stats">
-        <div class="stat"><span class="stat-value">{{ sections().length }}</span><span class="stat-label">Sections</span></div>
-        <div class="stat"><span class="stat-value">{{ totals().questions }}</span><span class="stat-label">Questions</span></div>
-        <div class="stat"><span class="stat-value">{{ totals().followUps }}</span><span class="stat-label">Follow-up questions</span></div>
+        <div class="stat"><span class="stat-value">{{ sections().length }}</span><span class="stat-label">{{ 'Sections' | t: 'staff.esgChecklist.stat.sections' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ totals().questions }}</span><span class="stat-label">{{ 'Questions' | t: 'staff.esgChecklist.stat.questions' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ totals().followUps }}</span><span class="stat-label">{{ 'Follow-up questions' | t: 'staff.esgChecklist.stat.followUps' }}</span></div>
       </div>
 
-      <div class="esg-tabs" role="tablist" aria-label="Sections">
+      <div class="esg-tabs" role="tablist" [attr.aria-label]="'Sections' | t: 'staff.esgChecklist.tabs.aria'">
         @for (s of sections(); track $index; let si = $index) {
           <button type="button" role="tab" class="esg-tab" [class.active]="active() === si" [attr.aria-selected]="active() === si" (click)="active.set(si)">
-            {{ s.title || 'Section ' + (si + 1) }} <span class="tab-count">{{ s.questions.length }}</span>
+            {{ s.title || ('Section {number}' | t: 'staff.esgChecklist.tabs.untitled' : { number: si + 1 }) }} <span class="tab-count">{{ s.questions.length }}</span>
           </button>
         }
       </div>
@@ -122,7 +127,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
         @for (s of sections(); track $index; let si = $index) {
           <section class="zed-card esg-section" [attr.aria-label]="s.title" [hidden]="active() !== si">
             <div class="section-head">
-              <label class="form-label m-0" [for]="'esg-title-' + si">Section {{ si + 1 }} title</label>
+              <label class="form-label m-0" [for]="'esg-title-' + si">{{ 'Section {number} title' | t: 'staff.esgChecklist.section.titleLabel' : { number: si + 1 } }}</label>
               <input class="form-control esg-title" [id]="'esg-title-' + si" maxlength="100" [(ngModel)]="s.title" />
             </div>
             <ol class="esg-list">
@@ -130,38 +135,38 @@ const SHOW_ON = ['Yes', 'No'] as const;
                 <li class="esg-q">
                   <div class="q-head">
                     <span class="esg-no">{{ qi + 1 }}</span>
-                    <label class="visually-hidden" [for]="'q-' + si + '-' + qi">Question {{ qi + 1 }}</label>
-                    <textarea class="form-control q-text" rows="2" maxlength="500" placeholder="Question" [id]="'q-' + si + '-' + qi" [(ngModel)]="q.question"></textarea>
+                    <label class="visually-hidden" [for]="'q-' + si + '-' + qi">{{ 'Question {number}' | t: 'staff.esgChecklist.question.label' : { number: qi + 1 } }}</label>
+                    <textarea class="form-control q-text" rows="2" maxlength="500" [placeholder]="'Question' | t: 'staff.esgChecklist.question.placeholder'" [id]="'q-' + si + '-' + qi" [(ngModel)]="q.question"></textarea>
                     <div class="esg-tools">
-                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" title="Move up" [disabled]="qi === 0" (click)="move(s, qi, -1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' up'">&uarr;</button>
-                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" title="Move down" [disabled]="qi === s.questions.length - 1" (click)="move(s, qi, 1)" [attr.aria-label]="'Move question ' + (qi + 1) + ' down'">&darr;</button>
-                      <button type="button" class="btn btn-outline-danger btn-sm tool" title="Remove" [disabled]="s.questions.length === 1" (click)="remove(s, qi)" [attr.aria-label]="'Remove question ' + (qi + 1)">Remove</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" [title]="'Move up' | t: 'staff.esgChecklist.question.moveUpTooltip'" [disabled]="qi === 0" (click)="move(s, qi, -1)" [attr.aria-label]="'Move question {number} up' | t: 'staff.esgChecklist.question.moveUpAria' : { number: qi + 1 }">&uarr;</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm tool tool-move" [title]="'Move down' | t: 'staff.esgChecklist.question.moveDownTooltip'" [disabled]="qi === s.questions.length - 1" (click)="move(s, qi, 1)" [attr.aria-label]="'Move question {number} down' | t: 'staff.esgChecklist.question.moveDownAria' : { number: qi + 1 }">&darr;</button>
+                      <button type="button" class="btn btn-outline-danger btn-sm tool" [title]="'Remove' | t: 'staff.esgChecklist.question.removeButton'" [disabled]="s.questions.length === 1" (click)="remove(s, qi)" [attr.aria-label]="'Remove question {number}' | t: 'staff.esgChecklist.question.removeAria' : { number: qi + 1 }">{{ 'Remove' | t: 'staff.esgChecklist.question.removeButton' }}</button>
                     </div>
                   </div>
 
                   <div class="q-body">
                     @if (withSurveillance()) {
-                      <div class="used-in" role="group" [attr.aria-label]="'Question ' + (qi + 1) + ' used in'">
-                        <span class="esg-sub m-0">Used in</span>
-                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inMain" /> ZED Certification</label>
-                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inSurveillance" /> Surveillance</label>
-                        @if (!q.inMain && !q.inSurveillance) { <span class="unused">Not used: it is removed when saved.</span> }
+                      <div class="used-in" role="group" [attr.aria-label]="'Question {number} used in' | t: 'staff.esgChecklist.question.usedInAria' : { number: qi + 1 }">
+                        <span class="esg-sub m-0">{{ 'Used in' | t: 'staff.esgChecklist.question.usedInLabel' }}</span>
+                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inMain" /> {{ 'ZED Certification' | t: 'staff.esgChecklist.question.usedInMain' }}</label>
+                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inSurveillance" /> {{ 'Surveillance' | t: 'staff.esgChecklist.question.usedInSurveillance' }}</label>
+                        @if (!q.inMain && !q.inSurveillance) { <span class="unused">{{ 'Not used: it is removed when saved.' | t: 'staff.esgChecklist.question.unused' }}</span> }
                       </div>
                     }
                     <div class="opt-row">
-                      <label class="esg-sub" [for]="'o-' + si + '-' + qi">Options <small>(comma-separated)</small></label>
-                      <input class="form-control" [id]="'o-' + si + '-' + qi" placeholder="Yes, No, Not Applicable" [(ngModel)]="q.optionsText" />
+                      <label class="esg-sub" [for]="'o-' + si + '-' + qi">{{ 'Options' | t: 'staff.esgChecklist.question.optionsLabel' }} <small>{{ '(comma-separated)' | t: 'staff.esgChecklist.question.optionsNote' }}</small></label>
+                      <input class="form-control" [id]="'o-' + si + '-' + qi" [placeholder]="'Yes, No, Not Applicable' | t: 'staff.esgChecklist.question.optionsPlaceholder'" [(ngModel)]="q.optionsText" />
                       <div class="chips" aria-hidden="true">
                         @for (o of options(q.optionsText); track $index) { <span class="opt-chip">{{ o }}</span> }
                       </div>
                     </div>
 
                     <div class="follow-toggles">
-                      <span class="esg-sub">Follow-up question</span>
+                      <span class="esg-sub">{{ 'Follow-up question' | t: 'staff.esgChecklist.followUp.label' }}</span>
                       @for (on of showOn; track on) {
                         <div class="form-check form-switch follow-switch">
                           <input class="form-check-input" type="checkbox" role="switch" [id]="'f-' + on + si + '-' + qi" [checked]="!!follow(q, on)" (change)="toggle(q, on)" />
-                          <label class="form-check-label" [for]="'f-' + on + si + '-' + qi">When the answer is {{ on }}</label>
+                          <label class="form-check-label" [for]="'f-' + on + si + '-' + qi">{{ 'When the answer is {answer}' | t: 'staff.esgChecklist.followUp.switch' : { answer: on } }}</label>
                         </div>
                       }
                     </div>
@@ -169,17 +174,17 @@ const SHOW_ON = ['Yes', 'No'] as const;
                     @for (on of showOn; track on) {
                       @if (follow(q, on); as f) {
                         <div class="esg-follow" [class.on-no]="on === 'No'">
-                          <span class="branch">If the answer is {{ on }}</span>
+                          <span class="branch">{{ 'If the answer is {answer}' | t: 'staff.esgChecklist.followUp.branch' : { answer: on } }}</span>
                           <div class="follow-grid">
-                            <input class="form-control" maxlength="500" placeholder="Follow-up question" [attr.aria-label]="'Follow-up on ' + on" [(ngModel)]="f.question" />
-                            <select class="form-select" [attr.aria-label]="'Answer type of the follow-up on ' + on" [(ngModel)]="f.type">
-                              <option value="single_choice">Single choice</option>
-                              <option value="text_box">Text</option>
+                            <input class="form-control" maxlength="500" [placeholder]="'Follow-up question' | t: 'staff.esgChecklist.followUp.placeholder'" [attr.aria-label]="'Follow-up on {answer}' | t: 'staff.esgChecklist.followUp.questionAria' : { answer: on }" [(ngModel)]="f.question" />
+                            <select class="form-select" [attr.aria-label]="'Answer type of the follow-up on {answer}' | t: 'staff.esgChecklist.followUp.typeAria' : { answer: on }" [(ngModel)]="f.type">
+                              <option value="single_choice">{{ 'Single choice' | t: 'staff.esgChecklist.followUp.typeSingle' }}</option>
+                              <option value="text_box">{{ 'Text' | t: 'staff.esgChecklist.followUp.typeText' }}</option>
                             </select>
                             @if (f.type === 'single_choice') {
-                              <input class="form-control span-2" placeholder="Options, comma-separated" [attr.aria-label]="'Options of the follow-up on ' + on" [(ngModel)]="f.optionsText" />
+                              <input class="form-control span-2" [placeholder]="'Options, comma-separated' | t: 'staff.esgChecklist.followUp.optionsPlaceholder'" [attr.aria-label]="'Options of the follow-up on {answer}' | t: 'staff.esgChecklist.followUp.optionsAria' : { answer: on }" [(ngModel)]="f.optionsText" />
                             } @else {
-                              <small class="muted span-2">The unit types its answer.</small>
+                              <small class="muted span-2">{{ 'The unit types its answer.' | t: 'staff.esgChecklist.followUp.textNote' }}</small>
                             }
                           </div>
                         </div>
@@ -189,14 +194,14 @@ const SHOW_ON = ['Yes', 'No'] as const;
                 </li>
               }
             </ol>
-            <button type="button" class="btn btn-outline-primary btn-sm add-q" (click)="add(s)">+ Add question</button>
+            <button type="button" class="btn btn-outline-primary btn-sm add-q" (click)="add(s)">{{ '+ Add question' | t: 'staff.esgChecklist.addButton' }}</button>
           </section>
         }
-        <small class="text-muted d-block">Answers already given keep the questions as they were asked. The apps get a change the next time they open the checklist.</small>
+        <small class="text-muted d-block">{{ 'Answers already given keep the questions as they were asked. The apps get a change the next time they open the checklist.' | t: 'staff.esgChecklist.note' }}</small>
         <div class="save-bar" [class.is-dirty]="dirty()">
-          @if (dirty()) { <span class="unsaved me-auto">Not saved yet.</span> } @else { <span class="muted me-auto">All changes saved.</span> }
-          @if (customised()) { <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="reset()">Reset to standard</button> }
-          <button type="button" class="btn btn-primary" [disabled]="busy() || !dirty()" (click)="save()">Save</button>
+          @if (dirty()) { <span class="unsaved me-auto">{{ 'Not saved yet.' | t: 'staff.esgChecklist.unsaved' }}</span> } @else { <span class="muted me-auto">{{ 'All changes saved.' | t: 'staff.esgChecklist.saved' }}</span> }
+          @if (customised()) { <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="reset()">{{ 'Reset to standard' | t: 'staff.esgChecklist.resetButton' }}</button> }
+          <button type="button" class="btn btn-primary" [disabled]="busy() || !dirty()" (click)="save()">{{ 'Save' | t: 'staff.esgChecklist.saveButton' }}</button>
         </div>
       </div>
     }
@@ -323,7 +328,11 @@ export class EsgChecklistPage {
   }
 
   protected async remove(s: SectionDraft, index: number): Promise<void> {
-    const ok = await this.confirms.ask({ title: `Remove Question ${index + 1}?`, message: 'Answers already given keep it.', confirmLabel: 'Remove', danger: true });
+    const ok = await this.confirms.ask({
+      title: t('staff.esgChecklist.removeConfirm.title', 'Remove Question {number}?', { number: index + 1 }),
+      message: t('staff.esgChecklist.removeConfirm.message', 'Answers already given keep it.'),
+      confirmLabel: t('staff.esgChecklist.removeConfirm.button', 'Remove'), danger: true,
+    });
     if (!ok) return;
     s.questions.splice(index, 1);
     this.changed();
@@ -341,11 +350,17 @@ export class EsgChecklistPage {
       return;
     }
     // The checklist of each portal needs a question in every section (its two lists in the apps).
-    for (const [portal, keep] of [['ZED Certification', (q: QuestionDraft) => q.inMain], ['Surveillance', (q: QuestionDraft) => q.inSurveillance]] as const) {
+    const needs = [
+      { keep: (q: QuestionDraft) => q.inMain,
+        message: (section: string) => t('staff.esgChecklist.error.emptyMain', 'The section "{section}" needs at least one question for ZED Certification.', { section }) },
+      { keep: (q: QuestionDraft) => q.inSurveillance,
+        message: (section: string) => t('staff.esgChecklist.error.emptySurveillance', 'The section "{section}" needs at least one question for Surveillance.', { section }) },
+    ];
+    for (const { keep, message } of needs) {
       const empty = this.sections().find((x) => !x.questions.some(keep));
       if (empty) {
         this.success.set('');
-        this.error.set(`The section "${empty.title}" needs at least one question for ${portal}.`);
+        this.error.set(message(empty.title));
         return;
       }
     }
@@ -375,15 +390,17 @@ export class EsgChecklistPage {
       } catch (err) {
         // Main is already saved: say so, so the admin saves again for Surveillance only rather than doubting both.
         await this.load(false);
-        throw new PartlySavedError(`The checklist was saved for ZED Certification, but not for Surveillance: ${apiErrorMessage(err)} Please save again.`);
+        throw new PartlySavedError(t('staff.esgChecklist.error.partlySaved', 'The checklist was saved for ZED Certification, but not for Surveillance: {error} Please save again.', { error: apiErrorMessage(err) }));
       }
-      return { message: main.message.replace('ESG checklist saved.', 'ESG checklist saved for ZED Certification and Surveillance.') };
+      return { message: main.message.replace('ESG checklist saved.', t('staff.esgChecklist.toast.savedBoth', 'ESG checklist saved for ZED Certification and Surveillance.')) };
     });
   }
 
   protected async reset(): Promise<void> {
     const ok = await this.confirms.ask({
-      title: 'Reset to the Standard Checklist?', message: 'The standard ESG checklist is used again. Your questions are removed.', confirmLabel: 'Reset', danger: true,
+      title: t('staff.esgChecklist.resetConfirm.title', 'Reset to the Standard Checklist?'),
+      message: t('staff.esgChecklist.resetConfirm.message', 'The standard ESG checklist is used again. Your questions are removed.'),
+      confirmLabel: t('staff.esgChecklist.resetConfirm.button', 'Reset'), danger: true,
     });
     if (!ok) return;
     await this.send(async () => {

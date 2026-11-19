@@ -77,7 +77,8 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "providersFile": "projects/main/src/test-providers.ts"
+            "providersFile": "projects/main/src/test-providers.ts",
+            "setupFiles": ["projects/main/src/test-setup.ts"]
           }
         }
       }

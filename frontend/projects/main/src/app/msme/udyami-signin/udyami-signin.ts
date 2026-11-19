@@ -3,6 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Where the dashboard finds the "Back to UBP" address for this browser tab. */
 export const UBP_RETURN_KEY = 'zed.ubpReturnUrl';
@@ -19,15 +20,15 @@ interface SignInResponse {
  */
 @Component({
   selector: 'zed-udyami-signin',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   host: { class: 'zed-login' },
   template: `
     <div class="container py-5 text-center">
       @if (error()) {
         <div class="alert alert-danger d-inline-block" role="alert">{{ error() }}</div>
-        <p><a routerLink="/msme/login">Go to the MSME login</a></p>
+        <p><a routerLink="/msme/login">{{ 'Go to the MSME login' | t: 'public.udyamiSignIn.loginLink' }}</a></p>
       } @else {
-        <p class="text-muted" role="status">Signing you in from Udyami Bharat…</p>
+        <p class="text-muted" role="status">{{ 'Signing you in from Udyami Bharat…' | t: 'public.udyamiSignIn.signingInNote' }}</p>
       }
     </div>
   `,
@@ -46,7 +47,7 @@ export class UdyamiSignInPage implements OnInit {
     // The one-time token should not stay in the address bar or history.
     history.replaceState(history.state, '', '/Msme/ZedDashboard');
     if (!applicationNo || !token) {
-      this.error.set('Invalid token.');
+      this.error.set(t('public.udyamiSignIn.invalidError', 'Invalid token.'));
       return;
     }
     try {

@@ -4,13 +4,15 @@ import { Router } from '@angular/router';
 import { Observable, catchError, firstValueFrom, from, switchMap, throwError } from 'rxjs';
 import { AuthService, CurrentUser } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
+import { TextPipe, t } from '../content/page-text';
 
 export type AdminPortal = 'main' | 'consultancy' | 'surveillance';
 
-export const ADMIN_PORTALS: readonly { key: AdminPortal; name: string }[] = [
-  { key: 'main', name: 'ZED Certification' },
-  { key: 'consultancy', name: 'Consultancy' },
-  { key: 'surveillance', name: 'Surveillance' },
+/** The portals and their names (the names are Admin-editable page wording, read when shown). */
+export const ADMIN_PORTALS: readonly { readonly key: AdminPortal; readonly name: string }[] = [
+  { key: 'main', get name() { return t('staff.portalSwitch.mainLabel', 'ZED Certification'); } },
+  { key: 'consultancy', get name() { return t('staff.portalSwitch.consultancyLabel', 'Consultancy'); } },
+  { key: 'surveillance', get name() { return t('staff.portalSwitch.surveillanceLabel', 'Surveillance'); } },
 ];
 
 /** The API of each portal as the main pages reach it (their IIS applications; the dev proxy maps them too). */
@@ -239,10 +241,11 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
  */
 @Component({
   selector: 'zed-portal-switch',
+  imports: [TextPipe],
   template: `
     @if (service.enabled && shown().length > 1) {
-      <div class="portal-switch" role="group" aria-label="Portal">
-        <span class="ps-label">{{ title() }}</span>
+      <div class="portal-switch" role="group" [attr.aria-label]="'Portal' | t: 'staff.portalSwitch.label'">
+        <span class="ps-label">{{ title() || ('Portal' | t: 'staff.portalSwitch.label') }}</span>
         @for (p of shown(); track p.key) {
           <button type="button" class="ps-tab" [class.on]="p.key === selected()" [attr.aria-pressed]="p.key === selected()"
                   (click)="choose(p.key)">{{ labels()?.[p.key] ?? p.name }}</button>
@@ -263,7 +266,8 @@ export class PortalSwitchComponent {
   readonly portals = input<readonly AdminPortal[]>(ALL_PORTALS);
   /** Other names for the portals' tabs (the NEFT Admin's: Financial Assistance, Technology Upgradation). */
   readonly labels = input<Partial<Record<AdminPortal, string>> | null>(null);
-  readonly title = input('Portal');
+  /** Unset: the standard "Portal" (Admin-editable). */
+  readonly title = input<string>();
   /** Recreate the page after a change (default); false: the page reloads its data itself on (changed). */
   readonly reload = input(true);
   /** After the switch changed. */

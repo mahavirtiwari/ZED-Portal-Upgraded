@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { StaffRole } from '../staff-menu';
 import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, reportPageHref, text, useLegacyPortal } from './assessment-shared';
 import { PagerComponent, ServerPager } from '../pager';
@@ -59,14 +60,14 @@ const EXPORT_LIMIT = 10_000;
  */
 @Component({
   selector: 'zed-staff-assessment-results',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, AllotDialog, LevelMedal, DashIcon],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, AllotDialog, LevelMedal, DashIcon, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="heading()" [subtitle]="subtitle()">
-      <button type="button" class="btn btn-ph rs-hb" (click)="search()"><zed-dash-icon name="refresh" [size]="16" />Refresh</button>
+      <button type="button" class="btn btn-ph rs-hb" (click)="search()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.assessmentResults.refreshButton' }}</button>
       @if (completed()) {
         <button type="button" class="btn btn-outline-primary rs-hb" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
-          <zed-dash-icon name="download" [size]="16" />{{ exporting() ? 'Exporting…' : 'Export' }}</button>
+          <zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.assessmentResults.exportingButton') : ('Export' | t: 'staff.assessmentResults.exportButton') }}</button>
       }
     </zed-page-head>
     <zed-list-counts [counts]="counts()" />
@@ -79,7 +80,7 @@ const EXPORT_LIMIT = 10_000;
       @if (surveillance && !completed()) {
         <!-- Rejected Surveillance (that portal's Rejected.cshtml): only the level, Bronze/Silver/Gold. -->
         <div class="filter">
-          <label class="form-label" for="resLevel">Certification level</label>
+          <label class="form-label" for="resLevel">{{ 'Certification level' | t: 'staff.assessmentResults.filter.levelLabel' }}</label>
           <select class="form-select" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
             @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
           </select>
@@ -88,74 +89,74 @@ const EXPORT_LIMIT = 10_000;
         <!-- 2026-11-18: staff-12's row: one search box (left icon), All states / All levels / All sizes, no labels. -->
         <div class="filter rs-find">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input type="search" id="resSearch" class="form-control" maxlength="50" placeholder="Search ZED ID, Udyam number or unit name"
-                 aria-label="Search ZED ID, Udyam number or unit name" [(ngModel)]="searchText" (ngModelChange)="typed()" (keyup.enter)="search()" />
+          <input type="search" id="resSearch" class="form-control" maxlength="50" [placeholder]="'Search ZED ID, Udyam number or unit name' | t: 'staff.assessmentResults.search.placeholder'"
+                 [attr.aria-label]="'Search ZED ID, Udyam number or unit name' | t: 'staff.assessmentResults.search.placeholder'" [(ngModel)]="searchText" (ngModelChange)="typed()" (keyup.enter)="search()" />
         </div>
         <div class="filter">
-          <select class="form-select" id="resState" aria-label="State" [(ngModel)]="state" (ngModelChange)="search()">
-            <option value="">All states</option>
+          <select class="form-select" id="resState" [attr.aria-label]="'State' | t: 'staff.assessmentResults.filter.stateLabel'" [(ngModel)]="state" (ngModelChange)="search()">
+            <option value="">{{ 'All states' | t: 'staff.assessmentResults.filter.allStates' }}</option>
             @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
           </select>
         </div>
         <div class="filter">
-          <select class="form-select" id="resLevel" aria-label="Certification level" [(ngModel)]="level" (ngModelChange)="search()">
-            <option value="">All levels</option>
+          <select class="form-select" id="resLevel" [attr.aria-label]="'Certification level' | t: 'staff.assessmentResults.filter.levelLabel'" [(ngModel)]="level" (ngModelChange)="search()">
+            <option value="">{{ 'All levels' | t: 'staff.assessmentResults.filter.allLevels' }}</option>
             @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
           </select>
         </div>
         <div class="filter">
-          <select class="form-select" id="resSize" aria-label="MSME size" [(ngModel)]="size" (ngModelChange)="search()">
-            <option value="">All sizes</option>
-            <option value="Micro">Micro</option>
-            <option value="Small">Small</option>
-            <option value="Medium">Medium</option>
+          <select class="form-select" id="resSize" [attr.aria-label]="'MSME size' | t: 'staff.assessmentResults.filter.sizeLabel'" [(ngModel)]="size" (ngModelChange)="search()">
+            <option value="">{{ 'All sizes' | t: 'staff.assessmentResults.filter.allSizes' }}</option>
+            <option value="Micro">{{ 'Micro' | t: 'staff.assessmentResults.filter.sizeMicro' }}</option>
+            <option value="Small">{{ 'Small' | t: 'staff.assessmentResults.filter.sizeSmall' }}</option>
+            <option value="Medium">{{ 'Medium' | t: 'staff.assessmentResults.filter.sizeMedium' }}</option>
           </select>
         </div>
       } @else {
         <div class="filter">
-          <label class="form-label" for="resState">State</label>
+          <label class="form-label" for="resState">{{ 'State' | t: 'staff.assessmentResults.filter.stateLabel' }}</label>
           <select class="form-select" id="resState" [(ngModel)]="state" (ngModelChange)="search()">
-            <option value="">Show all</option>
+            <option value="">{{ 'Show all' | t: 'staff.assessmentResults.filter.showAll' }}</option>
             @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
           </select>
         </div>
         <div class="filter">
-          <label class="form-label" for="resLevel">{{ consultancy ? 'Desired certification' : 'Certification level' }}</label>
+          <label class="form-label" for="resLevel">{{ consultancy ? ('Desired certification' | t: 'staff.assessmentResults.filter.desiredLabel') : ('Certification level' | t: 'staff.assessmentResults.filter.levelLabel') }}</label>
           <select class="form-select" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
-            <option value="">Show all</option>
+            <option value="">{{ 'Show all' | t: 'staff.assessmentResults.filter.showAll' }}</option>
             @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
           </select>
         </div>
         <div class="filter">
-          <label class="form-label" for="resSize">MSME size</label>
+          <label class="form-label" for="resSize">{{ 'MSME size' | t: 'staff.assessmentResults.filter.sizeLabel' }}</label>
           <select class="form-select" id="resSize" [(ngModel)]="size" (ngModelChange)="search()">
-            <option value="">Show all</option>
-            <option value="Micro">Micro</option>
-            <option value="Small">Small</option>
-            <option value="Medium">Medium</option>
+            <option value="">{{ 'Show all' | t: 'staff.assessmentResults.filter.showAll' }}</option>
+            <option value="Micro">{{ 'Micro' | t: 'staff.assessmentResults.filter.sizeMicro' }}</option>
+            <option value="Small">{{ 'Small' | t: 'staff.assessmentResults.filter.sizeSmall' }}</option>
+            <option value="Medium">{{ 'Medium' | t: 'staff.assessmentResults.filter.sizeMedium' }}</option>
           </select>
         </div>
         @if (surveillance) {
           <!-- Completed Surveillance's Gender filter (the procedure's @Gender), with the old option values. -->
           <div class="filter">
-            <label class="form-label" for="resGender">Gender</label>
+            <label class="form-label" for="resGender">{{ 'Gender' | t: 'staff.assessmentResults.filter.genderLabel' }}</label>
             <select class="form-select" id="resGender" [(ngModel)]="gender" (ngModelChange)="search()">
-              <option value="">Show all</option>
-              @for (g of genders; track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }
+              <option value="">{{ 'Show all' | t: 'staff.assessmentResults.filter.showAll' }}</option>
+              @for (g of genders(); track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }
             </select>
           </div>
           <!-- Completed Surveillance: one search box that filters as you type (the old SearchText). -->
           <div class="filter wide">
-            <label class="form-label" for="resSearch">Search</label>
-            <input type="text" id="resSearch" class="form-control" placeholder="Search" maxlength="50" [(ngModel)]="searchText" (ngModelChange)="search()" />
+            <label class="form-label" for="resSearch">{{ 'Search' | t: 'staff.assessmentResults.filter.searchLabel' }}</label>
+            <input type="text" id="resSearch" class="form-control" [placeholder]="'Search' | t: 'staff.assessmentResults.filter.searchPlaceholder'" maxlength="50" [(ngModel)]="searchText" (ngModelChange)="search()" />
           </div>
         } @else {
           <div class="filter">
-            <label class="form-label" for="resSearchBy">Search by</label>
+            <label class="form-label" for="resSearchBy">{{ 'Search by' | t: 'staff.assessmentResults.filter.searchByLabel' }}</label>
             <select class="form-select" id="resSearchBy" [(ngModel)]="searchBy">
-              <option value="Zed Id">ZED ID</option>
-              <option value="Udyam Number">Udyam number</option>
-              <option value="Unit Name">Unit name</option>
+              <option value="Zed Id">{{ 'ZED ID' | t: 'staff.assessmentResults.filter.byZedId' }}</option>
+              <option value="Udyam Number">{{ 'Udyam number' | t: 'staff.assessmentResults.filter.byUdyam' }}</option>
+              <option value="Unit Name">{{ 'Unit name' | t: 'staff.assessmentResults.filter.byUnitName' }}</option>
             </select>
           </div>
           <div class="filter wide">
@@ -163,7 +164,7 @@ const EXPORT_LIMIT = 10_000;
             <div class="rs-q">
               <input type="text" id="resSearch" class="form-control" maxlength="50" [placeholder]="searchHint()" [(ngModel)]="searchText" (keyup.enter)="search()" />
               <button type="button" class="btn btn-primary rs-hb" (click)="search()">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>Search</button>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>{{ 'Search' | t: 'staff.assessmentResults.searchButton' }}</button>
             </div>
           </div>
         }
@@ -176,89 +177,89 @@ const EXPORT_LIMIT = 10_000;
         <thead>
           @if (consultancy) {
             <tr>
-              <th>Unit</th>
-              <th>Level / Milestone</th>
-              @if (!isAgency()) { <th>CO</th> }
-              @if (!isAssessor()) { <th>Consultants</th> }
-              <th>Allotted / Completed</th>
-              <th class="text-end">Actions</th>
+              <th>{{ 'Unit' | t: 'staff.assessmentResults.column.unit' }}</th>
+              <th>{{ 'Level / Milestone' | t: 'staff.assessmentResults.column.levelMilestone' }}</th>
+              @if (!isAgency()) { <th>{{ 'CO' | t: 'staff.assessmentResults.column.co' }}</th> }
+              @if (!isAssessor()) { <th>{{ 'Consultants' | t: 'staff.assessmentResults.column.consultants' }}</th> }
+              <th>{{ 'Allotted / Completed' | t: 'staff.assessmentResults.column.allottedCompleted' }}</th>
+              <th class="text-end">{{ 'Actions' | t: 'staff.assessmentResults.column.actions' }}</th>
             </tr>
           } @else if (completed()) {
             <tr>
-              <th>Unit</th>
-              <th>{{ surveillance ? 'Level / Surveillance No' : 'Level' }}</th>
-              @if (!surveillance) { <th>Phase</th> }
-              <th>Mode</th>
-              @if (!isAgency()) { <th>Agency</th> }
-              @if (!isAssessor()) { <th>Assessor</th> }
+              <th>{{ 'Unit' | t: 'staff.assessmentResults.column.unit' }}</th>
+              <th>{{ surveillance ? ('Level / Surveillance No' | t: 'staff.assessmentResults.column.levelSurveillance') : ('Level' | t: 'staff.assessmentResults.column.level') }}</th>
+              @if (!surveillance) { <th>{{ 'Phase' | t: 'staff.assessmentResults.column.phase' }}</th> }
+              <th>{{ 'Mode' | t: 'staff.assessmentResults.column.mode' }}</th>
+              @if (!isAgency()) { <th>{{ 'Agency' | t: 'staff.assessmentResults.column.agency' }}</th> }
+              @if (!isAssessor()) { <th>{{ 'Assessor' | t: 'staff.assessmentResults.column.assessor' }}</th> }
               @if (isAssessor()) {
-                <th>Assessment allocated on</th>
-                <th>Assessment completed on</th>
+                <th>{{ 'Assessment allocated on' | t: 'staff.assessmentResults.column.allocatedOn' }}</th>
+                <th>{{ 'Assessment completed on' | t: 'staff.assessmentResults.column.assessmentCompletedOn' }}</th>
               } @else {
-                <th>Completed on</th>
-                @if (!surveillance) { <th>Surveillance due</th> }
+                <th>{{ 'Completed on' | t: 'staff.assessmentResults.column.completedOn' }}</th>
+                @if (!surveillance) { <th>{{ 'Surveillance due' | t: 'staff.assessmentResults.column.surveillanceDue' }}</th> }
               }
-              @if (!surveillance) { <th class="text-center" title="Duplicates">Dup.</th> }
-              @if (!isAssessor()) { <th class="text-end">Actions</th> }
+              @if (!surveillance) { <th class="text-center" [title]="'Duplicates' | t: 'staff.assessmentResults.column.dupTooltip'">{{ 'Dup.' | t: 'staff.assessmentResults.column.dup' }}</th> }
+              @if (!isAssessor()) { <th class="text-end">{{ 'Actions' | t: 'staff.assessmentResults.column.actions' }}</th> }
             </tr>
           } @else {
             <tr>
-              <th>Unit</th>
-              <th>Level</th>
-              @if (isMasterAdmin()) { <th>Agency</th> }
-              <th>Assessed on</th>
-              <th>Rejected on</th>
-              <th>Reason for rejection</th>
-              <th class="text-end">Action</th>
+              <th>{{ 'Unit' | t: 'staff.assessmentResults.column.unit' }}</th>
+              <th>{{ 'Level' | t: 'staff.assessmentResults.column.level' }}</th>
+              @if (isMasterAdmin()) { <th>{{ 'Agency' | t: 'staff.assessmentResults.column.agency' }}</th> }
+              <th>{{ 'Assessed on' | t: 'staff.assessmentResults.column.assessedOn' }}</th>
+              <th>{{ 'Rejected on' | t: 'staff.assessmentResults.column.rejectedOn' }}</th>
+              <th>{{ 'Reason for rejection' | t: 'staff.assessmentResults.column.reason' }}</th>
+              <th class="text-end">{{ 'Action' | t: 'staff.assessmentResults.column.action' }}</th>
             </tr>
           }
         </thead>
         <tbody>
           @for (s of rows(); track $index) {
             @if (consultancy) {
-              <tr [class.rs-rej]="!!t(s, 'ReasonForRejection')">
+              <tr [class.rs-rej]="!!col(s, 'ReasonForRejection')">
                 <td class="unit-cell">
-                  <b>{{ t(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ t(s, 'ZedId') }}</span><small>{{ place(s) }}</small>
-                  @if (t(s, 'ReasonForRejection')) { <span class="chip is-bad" [title]="t(s, 'ReasonForRejection')">Rejected</span> }
+                  <b>{{ col(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ col(s, 'ZedId') }}</span><small>{{ place(s) }}</small>
+                  @if (col(s, 'ReasonForRejection')) { <span class="chip is-bad" [title]="col(s, 'ReasonForRejection')">{{ 'Rejected' | t: 'staff.assessmentResults.row.rejectedChip' }}</span> }
                 </td>
-                <td><zed-level-medal [level]="t(s, 'Certification')" /><small class="sub">Milestone {{ t(s, 'NcCount') }}</small></td>
+                <td><zed-level-medal [level]="col(s, 'Certification')" /><small class="sub">{{ 'Milestone {milestone}' | t: 'staff.assessmentResults.row.milestoneText' : { milestone: col(s, 'NcCount') } }}</small></td>
                 @if (!isAgency()) {
-                  <td><b>{{ t(s, 'AgencyName') }}</b><small class="sub">{{ t(s, 'CertificationBodyUserId') }}</small></td>
+                  <td><b>{{ col(s, 'AgencyName') }}</b><small class="sub">{{ col(s, 'CertificationBodyUserId') }}</small></td>
                 }
                 @if (!isAssessor()) {
                   <td class="stack">
-                    <div><small class="sub">Lead consultant</small><b>{{ t(s, 'SiteAssessorName') }}</b><small class="sub">{{ t(s, 'SiteAssessorId') }}</small></div>
-                    @if (t(s, 'CoAssessorName') || t(s, 'CoAssessorId')) {
-                      <div><small class="sub">CO consultant</small><b>{{ t(s, 'CoAssessorName') }}</b><small class="sub">{{ t(s, 'CoAssessorId') }}</small></div>
+                    <div><small class="sub">{{ 'Lead consultant' | t: 'staff.assessmentResults.row.leadLabel' }}</small><b>{{ col(s, 'SiteAssessorName') }}</b><small class="sub">{{ col(s, 'SiteAssessorId') }}</small></div>
+                    @if (col(s, 'CoAssessorName') || col(s, 'CoAssessorId')) {
+                      <div><small class="sub">{{ 'CO consultant' | t: 'staff.assessmentResults.row.coLabel' }}</small><b>{{ col(s, 'CoAssessorName') }}</b><small class="sub">{{ col(s, 'CoAssessorId') }}</small></div>
                     }
                   </td>
                 }
-                <td class="stack text-nowrap"><div>{{ t(s, 'DocVerifiAllot') }}</div><div>{{ t(s, 'CertificationStatusDate') }}</div></td>
+                <td class="stack text-nowrap"><div>{{ col(s, 'DocVerifiAllot') }}</div><div>{{ col(s, 'CertificationStatusDate') }}</div></td>
                 <td class="text-end text-nowrap">
-                  @if (recTech(s); as label) {
-                    <a [routerLink]="['/staff/consultancy/technology', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-sm rs-act"
-                       [class.btn-primary]="label === 'Recommend Technologies'" [class.btn-outline-primary]="label !== 'Recommend Technologies'">{{ label }}</a>
+                  @if (recTech(s); as k) {
+                    <a [routerLink]="['/staff/consultancy/technology', col(s, 'ZedId'), col(s, 'Certification')]" class="btn btn-sm rs-act"
+                       [class.btn-primary]="k === 'recommend'" [class.btn-outline-primary]="k !== 'recommend'">{{ k === 'recommend' ? ('Recommend Technologies' | t: 'staff.assessmentResults.row.recommendLink') : ('View Recommended Technologies' | t: 'staff.assessmentResults.row.viewTechLink') }}</a>
                   }
-                  @if (menu(s); as items) { @if (items.length) { <zed-row-menu [items]="items" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" /> } }
+                  @if (menu(s); as items) { @if (items.length) { <zed-row-menu [items]="items" [label]="'More actions for {id}' | t: 'staff.assessmentResults.row.menuAria' : { id: col(s, 'ZedId') }" (picked)="act(s, $event)" /> } }
                 </td>
               </tr>
             } @else if (completed()) {
               <!-- As the old Completed list: a rejected unit's row marked (the reason on hover). -->
-              <tr [class.rs-rej]="!!t(s, 'ReasonForRejection')">
+              <tr [class.rs-rej]="!!col(s, 'ReasonForRejection')">
                 <td class="unit-cell">
-                  <b>{{ t(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ t(s, 'ZedId') }}</span><small>{{ place(s) }}</small>
-                  @if (t(s, 'ReasonForRejection')) { <span class="chip is-bad" [title]="t(s, 'ReasonForRejection')">Rejected</span> }
+                  <b>{{ col(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ col(s, 'ZedId') }}</span><small>{{ place(s) }}</small>
+                  @if (col(s, 'ReasonForRejection')) { <span class="chip is-bad" [title]="col(s, 'ReasonForRejection')">{{ 'Rejected' | t: 'staff.assessmentResults.row.rejectedChip' }}</span> }
                 </td>
                 <td>
-                  <zed-level-medal [level]="t(s, 'Certification')" />
-                  @if (surveillance) { <small class="sub">{{ t(s, 'SurveillanceNo') }}</small> }
+                  <zed-level-medal [level]="col(s, 'Certification')" />
+                  @if (surveillance) { <small class="sub">{{ col(s, 'SurveillanceNo') }}</small> }
                 </td>
                 @if (!surveillance) {
-                  <td>@if (t(s, 'CertificationPhase'); as ph) { <span class="chip" [class.is-good]="ph === 'ACTIVE'" [class.is-bad]="badPhase(ph)">{{ ph }}</span> }</td>
+                  <td>@if (col(s, 'CertificationPhase'); as ph) { <span class="chip" [class.is-good]="ph === 'ACTIVE'" [class.is-bad]="badPhase(ph)">{{ ph }}</span> }</td>
                 }
                 <td><span class="chip">{{ mode(s) }}</span></td>
                 @if (!isAgency()) {
-                  <td class="rs-name"><b>{{ t(s, 'AgencyName') }}</b><small class="sub">{{ t(s, 'CertificationBodyUserId') }}</small></td>
+                  <td class="rs-name"><b>{{ col(s, 'AgencyName') }}</b><small class="sub">{{ col(s, 'CertificationBodyUserId') }}</small></td>
                 }
                 @if (!isAssessor()) {
                   <td class="stack rs-name">
@@ -267,51 +268,51 @@ const EXPORT_LIMIT = 10_000;
                 }
                 @if (isAssessor()) {
                   <td class="stack">
-                    <div>@if (t(s, 'DeskAssessment') === 'D') { {{ t(s, 'DocVerifiAllot') }} }</div>
-                    <div>@if (t(s, 'SiteAssessment') === 'S') { {{ t(s, 'ScheduledOn') }} }</div>
+                    <div>@if (col(s, 'DeskAssessment') === 'D') { {{ col(s, 'DocVerifiAllot') }} }</div>
+                    <div>@if (col(s, 'SiteAssessment') === 'S') { {{ col(s, 'ScheduledOn') }} }</div>
                   </td>
                   <td class="stack">
-                    <div>@if (t(s, 'DeskAssessment') === 'D') { {{ t(s, 'DesktopVerificationCompleted') }} }</div>
-                    <div>@if (t(s, 'SiteAssessment') === 'S') { {{ t(s, 'CompletedOn') }} }</div>
+                    <div>@if (col(s, 'DeskAssessment') === 'D') { {{ col(s, 'DesktopVerificationCompleted') }} }</div>
+                    <div>@if (col(s, 'SiteAssessment') === 'S') { {{ col(s, 'CompletedOn') }} }</div>
                   </td>
                 } @else {
-                  <td class="text-nowrap">{{ shortDate(t(s, 'CertificationStatusDate')) || t(s, 'CertificationStatusDate') }}</td>
+                  <td class="text-nowrap">{{ shortDate(col(s, 'CertificationStatusDate')) || col(s, 'CertificationStatusDate') }}</td>
                   @if (!surveillance) {
                     <td class="text-nowrap">
-                      @if (t(s, 'FirstSurveDueDate')) {
-                        @if (t(s, 'Certification') !== 'Bronze') { <small class="sub">Surveillance 1</small> }
-                        {{ shortDate(t(s, 'FirstSurveDueDate')) || t(s, 'FirstSurveDueDate') }}
+                      @if (col(s, 'FirstSurveDueDate')) {
+                        @if (col(s, 'Certification') !== 'Bronze') { <small class="sub">{{ 'Surveillance 1' | t: 'staff.assessmentResults.row.surveillance1Label' }}</small> }
+                        {{ shortDate(col(s, 'FirstSurveDueDate')) || col(s, 'FirstSurveDueDate') }}
                         @if (dueFlag(s); as f) { <span class="chip" [class]="'chip ' + f.cls">{{ f.label }}</span> }
                       }
                     </td>
                   }
                 }
                 @if (!surveillance) {
-                  <td class="text-center"><b class="rs-dupn" [class.rs-dup]="n(s, 'SameUdyamAddress') > 0">{{ t(s, 'SameUdyamAddress') || '0' }}</b></td>
+                  <td class="text-center"><b class="rs-dupn" [class.rs-dup]="n(s, 'SameUdyamAddress') > 0">{{ col(s, 'SameUdyamAddress') || '0' }}</b></td>
                 }
                 @if (!isAssessor()) {
-                  <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" /></td>
+                  <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for {id}' | t: 'staff.assessmentResults.row.menuAria' : { id: col(s, 'ZedId') }" (picked)="act(s, $event)" /></td>
                 }
               </tr>
             } @else {
               <!-- As the old Rejected list: an open NC (NcStatus 2, status 4 or 14) marked. -->
               <tr [class.rs-nc]="n(s, 'NcStatus') === 2 && (n(s, 'CertificationStatus') === 4 || n(s, 'CertificationStatus') === 14)">
-                <td class="unit-cell"><b>{{ t(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ t(s, 'ZedId') }}</span><small>{{ place(s) }}</small></td>
-                <td><zed-level-medal [level]="t(s, 'Certification')" /></td>
-                @if (isMasterAdmin()) { <td class="rs-name"><b>{{ t(s, 'AgencyName') }}</b><small class="sub">{{ t(s, 'CertificationBodyUserId') }}</small></td> }
-                <td class="text-nowrap">{{ shortDate(t(s, 'SaAssessmentDate')) || t(s, 'SaAssessmentDate') }}</td>
-                <td class="text-nowrap">{{ shortDate(t(s, 'CertificationStatusDate')) || t(s, 'CertificationStatusDate') }}</td>
-                <td class="rs-reason">{{ t(s, 'ReasonForRejection') }}</td>
+                <td class="unit-cell"><b>{{ col(s, 'PUnitName') }}</b><span class="dash-text-clr rs-id">{{ col(s, 'ZedId') }}</span><small>{{ place(s) }}</small></td>
+                <td><zed-level-medal [level]="col(s, 'Certification')" /></td>
+                @if (isMasterAdmin()) { <td class="rs-name"><b>{{ col(s, 'AgencyName') }}</b><small class="sub">{{ col(s, 'CertificationBodyUserId') }}</small></td> }
+                <td class="text-nowrap">{{ shortDate(col(s, 'SaAssessmentDate')) || col(s, 'SaAssessmentDate') }}</td>
+                <td class="text-nowrap">{{ shortDate(col(s, 'CertificationStatusDate')) || col(s, 'CertificationStatusDate') }}</td>
+                <td class="rs-reason">{{ col(s, 'ReasonForRejection') }}</td>
                 <td class="text-end text-nowrap">
                   @if (reallotRow(s); as r) {
-                    <button type="button" class="btn btn-primary btn-sm rs-act" (click)="reallot.set([r])">Re-allot</button>
+                    <button type="button" class="btn btn-primary btn-sm rs-act" (click)="reallot.set([r])">{{ 'Re-allot' | t: 'staff.assessmentResults.row.reallotButton' }}</button>
                   }
-                  <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" />
+                  <zed-row-menu [items]="menu(s)" [label]="'More actions for {id}' | t: 'staff.assessmentResults.row.menuAria' : { id: col(s, 'ZedId') }" (picked)="act(s, $event)" />
                 </td>
               </tr>
             }
           } @empty {
-            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : completed() ? 'No completed assessment matches these filters.' : 'No rejected certification matches these filters.' }}</div></td></tr>
+            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.assessmentResults.loading') : completed() ? ('No completed assessment matches these filters.' | t: 'staff.assessmentResults.completed.empty') : ('No rejected certification matches these filters.' | t: 'staff.assessmentResults.rejected.empty') }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -361,7 +362,7 @@ export class AssessmentResultsPage {
   private readonly user = inject(AuthService).currentUser;
   protected readonly legacy = useLegacyPortal();
   protected readonly states = STATES;
-  protected readonly t = text;
+  protected readonly col = text;
   protected readonly n = num;
   protected readonly place = place;
   protected readonly shortDate = shortDate;
@@ -378,7 +379,8 @@ export class AssessmentResultsPage {
   protected level = '';
   protected size = '';
   /** Surveillance Completed only: value and label of the old Gender options, in their order. */
-  protected readonly genders = [['male', 'Male'], ['female', 'Female'], ['Others', 'Others']] as const;
+  protected readonly genders = computed(() => [['male', t('staff.assessmentResults.filter.genderMale', 'Male')], ['female', t('staff.assessmentResults.filter.genderFemale', 'Female')],
+    ['Others', t('staff.assessmentResults.filter.genderOthers', 'Others')]] as const);
   protected gender = '';
   protected searchBy = 'Zed Id';
   protected searchText = '';
@@ -403,36 +405,44 @@ export class AssessmentResultsPage {
 
   protected readonly completed = computed(() => this.kind() !== 'rejected');
   protected readonly heading = computed(() =>
-    this.consultancy ? 'Consultancy Completed'
-    : this.surveillance ? (this.completed() ? 'Completed Surveillance' : 'Rejected Surveillance')
-    : this.completed() ? 'Completed Assessment' : 'Rejected Certification');
+    this.consultancy ? t('staff.assessmentResults.consultancy.title', 'Consultancy Completed')
+    : this.surveillance ? (this.completed() ? t('staff.assessmentResults.surveillanceCompleted.title', 'Completed Surveillance')
+      : t('staff.assessmentResults.surveillanceRejected.title', 'Rejected Surveillance'))
+    : this.completed() ? t('staff.assessmentResults.completed.title', 'Completed Assessment') : t('staff.assessmentResults.rejected.title', 'Rejected Certification'));
+  /** The export's file name (the standard heading, whatever wording the Admin gave the page). */
+  private readonly fileName = computed(() =>
+    this.consultancy ? 'consultancy-completed' : this.surveillance ? (this.completed() ? 'completed-surveillance' : 'rejected-surveillance')
+    : this.completed() ? 'completed-assessment' : 'rejected-certification');
   protected readonly crumbs = computed(() => staffCrumbs({ label: this.heading() }));
   /** 2026-11-18: staff-11 / staff-12 have no subtitle (Consultancy keeps its line). */
   protected readonly subtitle = computed(() =>
-    this.consultancy ? 'Milestones the consultants completed, with their reports and recommended technologies.' : null);
+    this.consultancy ? t('staff.assessmentResults.consultancy.sub', 'Milestones the consultants completed, with their reports and recommended technologies.') : null);
   /** The ZED ID box's example, as staff-11 ("e.g. ZEDM000005"). */
   protected searchHint(): string {
-    return this.searchBy === 'Udyam Number' ? 'e.g. UDYAM-MH-01-0000001' : this.searchBy === 'Unit Name' ? 'Unit name' : 'e.g. ZEDM000005';
+    return this.searchBy === 'Udyam Number' ? t('staff.assessmentResults.search.udyamPlaceholder', 'e.g. UDYAM-MH-01-0000001')
+      : this.searchBy === 'Unit Name' ? t('staff.assessmentResults.search.unitNamePlaceholder', 'Unit name') : t('staff.assessmentResults.search.zedIdPlaceholder', 'e.g. ZEDM000005');
   }
   protected searchLabel(): string {
-    return this.searchBy === 'Udyam Number' ? 'Udyam number' : this.searchBy === 'Unit Name' ? 'Unit name' : 'ZED ID';
+    return this.searchBy === 'Udyam Number' ? t('staff.assessmentResults.search.udyamLabel', 'Udyam number')
+      : this.searchBy === 'Unit Name' ? t('staff.assessmentResults.search.unitNameLabel', 'Unit name') : t('staff.assessmentResults.search.zedIdLabel', 'ZED ID');
   }
   /** staff-11: completed, certified this month, surveillance due in 90 days, duplicates; staff-12: rejected, waiting, re-allotted. */
   protected readonly counts = computed<ListCount[]>(() => {
     const c = this.countsRes();
     const total = this.pager.total();
     if (this.completed()) {
-      const list: ListCount[] = [{ label: 'Completed', value: total, tone: 'good' }];
+      const list: ListCount[] = [{ label: t('staff.assessmentResults.count.completed', 'Completed'), value: total, tone: 'good' }];
       if (!this.consultancy && !this.surveillance) {
-        list.push({ label: 'Certified this month', value: c?.certifiedThisMonth ?? 0 },
-          { label: 'Surveillance due in 90 days', value: c?.surveillanceDue90 ?? 0, tone: 'warn' },
-          { label: 'Duplicates flagged', value: c?.duplicates ?? 0, tone: 'bad' });
+        list.push({ label: t('staff.assessmentResults.count.certifiedThisMonth', 'Certified this month'), value: c?.certifiedThisMonth ?? 0 },
+          { label: t('staff.assessmentResults.count.surveillanceDue', 'Surveillance due in 90 days'), value: c?.surveillanceDue90 ?? 0, tone: 'warn' },
+          { label: t('staff.assessmentResults.count.duplicates', 'Duplicates flagged'), value: c?.duplicates ?? 0, tone: 'bad' });
       }
       return list;
     }
-    const list: ListCount[] = [{ label: 'Rejected', value: total, tone: 'bad' }];
+    const list: ListCount[] = [{ label: t('staff.assessmentResults.count.rejected', 'Rejected'), value: total, tone: 'bad' }];
     if (c?.waitingReallot !== null && c?.waitingReallot !== undefined) {
-      list.push({ label: 'Waiting to be re-allotted', value: c.waitingReallot, tone: 'warn' }, { label: 'Re-allotted', value: c.reallotted ?? 0, tone: 'good' });
+      list.push({ label: t('staff.assessmentResults.count.waitingReallot', 'Waiting to be re-allotted'), value: c.waitingReallot, tone: 'warn' },
+        { label: t('staff.assessmentResults.count.reallotted', 'Re-allotted'), value: c.reallotted ?? 0, tone: 'good' });
     }
     return list;
   });
@@ -478,7 +488,8 @@ export class AssessmentResultsPage {
 
   /** Consultancy: the report of each milestone up to the row's (Milestone 1 Report, Progress Review 1, Progress Review 2). */
   protected milestones(s: Row): { n: number; label: string; href: string }[] {
-    const labels = ['MileStone 1 Report', 'Progress Review 1', 'Progress Review 2'];
+    const labels = [t('staff.assessmentResults.menu.milestone1', 'MileStone 1 Report'), t('staff.assessmentResults.menu.review1', 'Progress Review 1'),
+      t('staff.assessmentResults.menu.review2', 'Progress Review 2')];
     const upTo = Math.min(Math.max(num(s, 'NcCount'), 1), 3);
     return labels.slice(0, upTo).map((label, i) => ({ n: i + 1, label, href: milestoneReportUrl(text(s, 'ZedId'), text(s, 'Certification'), i + 1) }));
   }
@@ -488,11 +499,11 @@ export class AssessmentResultsPage {
    * once recommended (TuStatus 1); the lead consultant recommends them (TuStatus 0) or views them, once the MSME accepted
    * the milestone (status 100) and before the TU application closed them (TuStatus 98+).
    */
-  protected recTech(s: Row): string {
+  protected recTech(s: Row): 'recommend' | 'view' | '' {
     if (num(s, 'DisplayRecTech') !== 1 || num(s, 'NcCount') !== 3) return '';
     const tu = num(s, 'TuStatus');
-    if (this.isAssessor()) return num(s, 'CertificationStatus') === 100 && tu < 98 ? (tu === 0 ? 'Recommend Technologies' : 'View Recommended Technologies') : '';
-    return tu === 1 ? 'View Recommended Technologies' : '';
+    if (this.isAssessor()) return num(s, 'CertificationStatus') === 100 && tu < 98 ? (tu === 0 ? 'recommend' : 'view') : '';
+    return tu === 1 ? 'view' : '';
   }
 
   /** V4: every MSME has its pledge certificate (drawn when opened): the page of the unit's ZED ID (not a rejected copy's). */
@@ -514,7 +525,8 @@ export class AssessmentResultsPage {
   protected mode(s: Row): string {
     const m = text(s, 'ModeOfAssessment');
     if (this.surveillance) return m;
-    return m === 'Remote Assessment' ? 'Remote' : m === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
+    return m === 'Remote Assessment' ? t('staff.assessmentResults.mode.remoteLabel', 'Remote')
+      : m === 'Onsite Assessment' ? t('staff.assessmentResults.mode.onsiteLabel', 'Onsite') : t('staff.assessmentResults.mode.desktopLabel', 'Desktop');
   }
 
   protected badPhase(phase: string): boolean {
@@ -531,19 +543,21 @@ export class AssessmentResultsPage {
   protected dueFlag(s: Row): { label: string; cls: string } | null {
     const d = daysUntil(s['FirstSurveDueDate']);
     if (d === null || d > 90) return null;
-    if (d < 0) return { label: `Overdue ${-d} ${d === -1 ? 'day' : 'days'}`, cls: 'is-bad' };
-    return { label: d === 0 ? 'Due today' : `In ${d} ${d === 1 ? 'day' : 'days'}`, cls: 'is-warn' };
+    if (d < 0) return { label: d === -1 ? t('staff.assessmentResults.due.overdueDayLabel', 'Overdue {count} day', { count: -d })
+      : t('staff.assessmentResults.due.overdueDaysLabel', 'Overdue {count} days', { count: -d }), cls: 'is-bad' };
+    return { label: d === 0 ? t('staff.assessmentResults.due.todayLabel', 'Due today') : d === 1 ? t('staff.assessmentResults.due.inDayLabel', 'In {count} day', { count: d })
+      : t('staff.assessmentResults.due.inDaysLabel', 'In {count} days', { count: d }), cls: 'is-warn' };
   }
 
   /** The row's actions, as its old buttons per page and role. */
   menu(s: Row): RowMenuItem[] {
     const items: RowMenuItem[] = [];
-    const profile: RowMenuItem = { key: 'profile', label: 'View MSME profile', icon: 'people' };
-    const details: RowMenuItem = { key: 'details', label: 'Assessment details', icon: 'eye' };
+    const profile: RowMenuItem = { key: 'profile', label: t('staff.assessmentResults.menu.profile', 'View MSME profile'), icon: 'people' };
+    const details: RowMenuItem = { key: 'details', label: t('staff.assessmentResults.menu.details', 'Assessment details'), icon: 'eye' };
     if (this.consultancy) {
       if (this.isAssessor()) return [];
       if (this.legacy.profile(text(s, 'ZedId'))) items.push(profile);
-      items.push({ key: 'milestone', label: 'View details', icon: 'eye' });
+      items.push({ key: 'milestone', label: t('staff.assessmentResults.menu.milestoneDetails', 'View details'), icon: 'eye' });
       for (const m of this.milestones(s)) items.push({ key: 'report' + m.n, label: m.label, icon: 'download' });
       return items;
     }
@@ -554,8 +568,9 @@ export class AssessmentResultsPage {
     }
     if (this.isMasterAdmin()) {
       items.push(details, profile);
-      if (!this.surveillance) items.push({ key: 'pledge', label: 'Pledge certificate', icon: 'award' });
-      items.push({ key: 'certificate', label: 'Download certificate', icon: 'download' }, { key: 'report', label: 'View report', icon: 'file' });
+      if (!this.surveillance) items.push({ key: 'pledge', label: t('staff.assessmentResults.menu.pledge', 'Pledge certificate'), icon: 'award' });
+      items.push({ key: 'certificate', label: t('staff.assessmentResults.menu.certificate', 'Download certificate'), icon: 'download' },
+        { key: 'report', label: t('staff.assessmentResults.menu.report', 'View report'), icon: 'file' });
     } else if (this.isAgency()) {
       const cs = num(s, 'CertificationStatus');
       // Surveillance (that portal's Completed.cshtml): SaDetails from status 9; main from 15.
@@ -667,33 +682,40 @@ export class AssessmentResultsPage {
         all.push(...res.rows);
       }
       const rows = all.slice(0, EXPORT_LIMIT);
-      await this.exporter.xlsx(this.heading().toLowerCase().replace(/\s+/g, '-'), [this.sheet(rows)]);
-      this.toast.success('Export ready', total > rows.length ? `The first ${rows.length} of ${total} rows.` : `${rows.length} rows.`);
+      await this.exporter.xlsx(this.fileName(), [this.sheet(rows)]);
+      this.toast.success(t('staff.assessmentResults.toast.exportReady', 'Export ready'), total > rows.length
+        ? t('staff.assessmentResults.toast.exportFirst', 'The first {count} of {total} rows.', { count: rows.length, total })
+        : t('staff.assessmentResults.toast.exportRows', '{count} rows.', { count: rows.length }));
     } catch (err) {
-      this.toast.error('The export failed', apiErrorMessage(err));
+      this.toast.error(t('staff.assessmentResults.toast.exportFailed', 'The export failed'), apiErrorMessage(err));
     } finally {
       this.exporting.set(false);
     }
   }
 
   private sheet(rows: Row[]) {
-    const t = (s: Row, c: string) => text(s, c);
+    const col = text;
     if (this.consultancy) {
       return {
         name: 'Completed',
-        columns: ['ZED ID', 'Unit', 'District / State', 'Level', 'Milestone', 'CO', 'CO ID', 'Lead consultant', 'CO consultant', 'Allotted on', 'Completed on'],
-        rows: rows.map((s) => [t(s, 'ZedId'), t(s, 'PUnitName'), place(s), t(s, 'Certification'), t(s, 'NcCount'), t(s, 'AgencyName'), t(s, 'CertificationBodyUserId'),
-          t(s, 'SiteAssessorName'), t(s, 'CoAssessorName'), t(s, 'DocVerifiAllot'), t(s, 'CertificationStatusDate')]),
+        columns: [t('staff.assessmentResults.export.column.zedId', 'ZED ID'), t('staff.assessmentResults.export.column.unit', 'Unit'), t('staff.assessmentResults.export.column.place', 'District / State'), t('staff.assessmentResults.export.column.level', 'Level'),
+          t('staff.assessmentResults.export.column.milestone', 'Milestone'), t('staff.assessmentResults.export.column.co', 'CO'), t('staff.assessmentResults.export.column.coId', 'CO ID'), t('staff.assessmentResults.export.column.leadConsultant', 'Lead consultant'),
+          t('staff.assessmentResults.export.column.coConsultant', 'CO consultant'), t('staff.assessmentResults.export.column.allottedOn', 'Allotted on'), t('staff.assessmentResults.export.column.completedOn', 'Completed on')],
+        rows: rows.map((s) => [col(s, 'ZedId'), col(s, 'PUnitName'), place(s), col(s, 'Certification'), col(s, 'NcCount'), col(s, 'AgencyName'), col(s, 'CertificationBodyUserId'),
+          col(s, 'SiteAssessorName'), col(s, 'CoAssessorName'), col(s, 'DocVerifiAllot'), col(s, 'CertificationStatusDate')]),
       };
     }
     const main = !this.surveillance;
     return {
       name: 'Completed',
-      columns: ['ZED ID', 'Unit', 'District / State', 'Level', main ? 'Phase' : 'Surveillance No', 'Mode', 'Agency', 'Agency ID', 'Desktop assessor',
-        'Site assessor', 'Co-assessor', 'Allotted on', 'Assessment date', 'Completed on', ...(main ? ['Surveillance due', 'Duplicates'] : []), 'Reason for rejection'],
-      rows: rows.map((s) => [t(s, 'ZedId'), t(s, 'PUnitName'), place(s), t(s, 'Certification'), main ? t(s, 'CertificationPhase') : t(s, 'SurveillanceNo'), this.mode(s),
-        t(s, 'AgencyName'), t(s, 'CertificationBodyUserId'), t(s, 'DesktopAssessorName'), t(s, 'SiteAssessorName'), t(s, 'CoAssessorName'), t(s, 'DocVerifiAllot'),
-        t(s, 'SaAssessmentDate'), t(s, 'CertificationStatusDate'), ...(main ? [t(s, 'FirstSurveDueDate'), t(s, 'SameUdyamAddress')] : []), t(s, 'ReasonForRejection')]),
+      columns: [t('staff.assessmentResults.export.column.zedId', 'ZED ID'), t('staff.assessmentResults.export.column.unit', 'Unit'), t('staff.assessmentResults.export.column.place', 'District / State'), t('staff.assessmentResults.export.column.level', 'Level'),
+        main ? t('staff.assessmentResults.export.column.phase', 'Phase') : t('staff.assessmentResults.export.column.surveillanceNo', 'Surveillance No'), t('staff.assessmentResults.export.column.mode', 'Mode'), t('staff.assessmentResults.export.column.agency', 'Agency'),
+        t('staff.assessmentResults.export.column.agencyId', 'Agency ID'), t('staff.assessmentResults.export.column.desktopAssessor', 'Desktop assessor'), t('staff.assessmentResults.export.column.siteAssessor', 'Site assessor'), t('staff.assessmentResults.export.column.coAssessor', 'Co-assessor'),
+        t('staff.assessmentResults.export.column.allottedOn', 'Allotted on'), t('staff.assessmentResults.export.column.assessmentDate', 'Assessment date'), t('staff.assessmentResults.export.column.completedOn', 'Completed on'),
+        ...(main ? [t('staff.assessmentResults.export.column.surveillanceDue', 'Surveillance due'), t('staff.assessmentResults.export.column.duplicates', 'Duplicates')] : []), t('staff.assessmentResults.export.column.reason', 'Reason for rejection')],
+      rows: rows.map((s) => [col(s, 'ZedId'), col(s, 'PUnitName'), place(s), col(s, 'Certification'), main ? col(s, 'CertificationPhase') : col(s, 'SurveillanceNo'), this.mode(s),
+        col(s, 'AgencyName'), col(s, 'CertificationBodyUserId'), col(s, 'DesktopAssessorName'), col(s, 'SiteAssessorName'), col(s, 'CoAssessorName'), col(s, 'DocVerifiAllot'),
+        col(s, 'SaAssessmentDate'), col(s, 'CertificationStatusDate'), ...(main ? [col(s, 'FirstSurveDueDate'), col(s, 'SameUdyamAddress')] : []), col(s, 'ReasonForRejection')]),
     };
   }
 }

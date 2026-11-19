@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ToastService } from '../toast';
 import { MastersApi, TechnologyRequest } from './masters.api';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * Add / edit a technology (Admin). Port of Views/Technology/Create.cshtml. V4: one card, Back in the page head. V4 layout:
@@ -14,20 +15,20 @@ import { MastersApi, TechnologyRequest } from './masters.api';
  */
 @Component({
   selector: 'zed-staff-technology-form',
-  imports: [FormsModule, RouterLink, MultiSelect],
+  imports: [FormsModule, RouterLink, MultiSelect, TextPipe],
   template: `
     <div class="back-row">
-      <nav class="crumbs" aria-label="Breadcrumb">
-        <span>Technology Upgradation</span><span aria-hidden="true">›</span>
-        <a routerLink="/staff/masters/technologies">Technologies</a><span aria-hidden="true">›</span>
-        <span aria-current="page">{{ id ? 'Edit' : 'Add' }}</span>
+      <nav class="crumbs" [attr.aria-label]="'Breadcrumb' | t: 'staff.technologyForm.crumbs.aria'">
+        <span>{{ 'Technology Upgradation' | t: 'staff.technologyForm.crumb.upgradation' }}</span><span aria-hidden="true">›</span>
+        <a routerLink="/staff/masters/technologies">{{ 'Technologies' | t: 'staff.technologyForm.crumb.technologies' }}</a><span aria-hidden="true">›</span>
+        <span aria-current="page">{{ id ? ('Edit' | t: 'staff.technologyForm.crumb.edit') : ('Add' | t: 'staff.technologyForm.crumb.add') }}</span>
       </nav>
-      <a routerLink="/staff/masters/technologies" class="btn btn-outline-primary btn-sm back-btn">← Back</a>
+      <a routerLink="/staff/masters/technologies" class="btn btn-outline-primary btn-sm back-btn">{{ '← Back' | t: 'staff.technologyForm.back.button' }}</a>
     </div>
     <div class="page-head">
       <div>
-        <h3 class="registration-title">{{ id ? 'Edit Technology' : 'Add New Technology' }}</h3>
-        <p class="page-sub">A technology the MSMEs can choose under Technology Upgradation, with the NIC sectors and categories it applies to.</p>
+        <h3 class="registration-title">{{ id ? ('Edit Technology' | t: 'staff.technologyForm.edit.title') : ('Add New Technology' | t: 'staff.technologyForm.add.title') }}</h3>
+        <p class="page-sub">{{ 'A technology the MSMEs can choose under Technology Upgradation, with the NIC sectors and categories it applies to.' | t: 'staff.technologyForm.sub' }}</p>
       </div>
     </div>
     @if (error()) {
@@ -36,60 +37,60 @@ import { MastersApi, TechnologyRequest } from './masters.api';
     <form class="tf-layout" (ngSubmit)="save()" novalidate>
       <div class="tf-main">
         <section class="zed-card tf-section" aria-labelledby="tf-h-tech">
-          <h4 id="tf-h-tech"><span class="tf-no" aria-hidden="true">1</span>Technology</h4>
+          <h4 id="tf-h-tech"><span class="tf-no" aria-hidden="true">1</span>{{ 'Technology' | t: 'staff.technologyForm.section.technology.title' }}</h4>
           <div class="form-grid">
-            <label for="technologyCode">Code<span class="req">*</span></label>
+            <label for="technologyCode">{{ 'Code' | t: 'staff.technologyForm.code.label' }}<span class="req">*</span></label>
             <div>
               <input id="technologyCode" name="technologyCode" class="form-control" maxlength="200" [(ngModel)]="model.technologyCode" />
-              @if (submitted() && !model.technologyCode.trim()) { <span class="help-block">Technology Code required.</span> }
+              @if (submitted() && !model.technologyCode.trim()) { <span class="help-block">{{ 'Technology Code required.' | t: 'staff.technologyForm.code.error' }}</span> }
             </div>
-            <label for="technologyName">Technology<span class="req">*</span></label>
+            <label for="technologyName">{{ 'Technology' | t: 'staff.technologyForm.name.label' }}<span class="req">*</span></label>
             <div>
               <input id="technologyName" name="technologyName" class="form-control" maxlength="200" [(ngModel)]="model.technologyName" />
-              @if (submitted() && !model.technologyName.trim()) { <span class="help-block">Technology Name required.</span> }
+              @if (submitted() && !model.technologyName.trim()) { <span class="help-block">{{ 'Technology Name required.' | t: 'staff.technologyForm.name.error' }}</span> }
             </div>
           </div>
         </section>
 
         <section class="zed-card tf-section" aria-labelledby="tf-h-where">
-          <h4 id="tf-h-where"><span class="tf-no" aria-hidden="true">2</span>Where it applies</h4>
+          <h4 id="tf-h-where"><span class="tf-no" aria-hidden="true">2</span>{{ 'Where it applies' | t: 'staff.technologyForm.section.where.title' }}</h4>
           <div class="form-grid">
-            <label class="top" for="sectors">NIC Sector</label>
+            <label class="top" for="sectors">{{ 'NIC Sector' | t: 'staff.technologyForm.sectors.label' }}</label>
             <div>
-              <zed-multi-select inputId="sectors" label="NIC Sector" [options]="sectors()" [(value)]="model.sectors" />
-              <small class="muted d-block mt-1">{{ model.sectors.length }} of {{ sectors().length }} chosen</small>
+              <zed-multi-select inputId="sectors" [label]="'NIC Sector' | t: 'staff.technologyForm.sectors.label'" [options]="sectors()" [(value)]="model.sectors" />
+              <small class="muted d-block mt-1">{{ '{chosen} of {total} chosen' | t: 'staff.technologyForm.chosen.note' : { chosen: model.sectors.length, total: sectors().length } }}</small>
             </div>
-            <label class="top" for="categories">Category</label>
+            <label class="top" for="categories">{{ 'Category' | t: 'staff.technologyForm.categories.label' }}</label>
             <div>
-              <zed-multi-select inputId="categories" label="Category" [options]="categories()" [(value)]="model.categories" />
-              <small class="muted d-block mt-1">{{ model.categories.length }} of {{ categories().length }} chosen</small>
+              <zed-multi-select inputId="categories" [label]="'Category' | t: 'staff.technologyForm.categories.label'" [options]="categories()" [(value)]="model.categories" />
+              <small class="muted d-block mt-1">{{ '{chosen} of {total} chosen' | t: 'staff.technologyForm.chosen.note' : { chosen: model.categories.length, total: categories().length } }}</small>
             </div>
           </div>
         </section>
 
         <section class="zed-card tf-section" aria-labelledby="tf-h-desc">
-          <h4 id="tf-h-desc"><span class="tf-no" aria-hidden="true">3</span>Description</h4>
-          <label class="visually-hidden" for="description">Description</label>
+          <h4 id="tf-h-desc"><span class="tf-no" aria-hidden="true">3</span>{{ 'Description' | t: 'staff.technologyForm.section.description.title' }}</h4>
+          <label class="visually-hidden" for="description">{{ 'Description' | t: 'staff.technologyForm.description.label' }}</label>
           <textarea id="description" name="description" rows="5" class="form-control" maxlength="2000" [(ngModel)]="model.description"
-                    placeholder="What the technology is and which units it suits"></textarea>
+                    [placeholder]="'What the technology is and which units it suits' | t: 'staff.technologyForm.description.placeholder'"></textarea>
           <small class="muted d-block mt-1 text-end tf-count">{{ model.description.length }} / 2000</small>
         </section>
         <!-- 2026-11-19 (admin audit): Save under the fields, not under the preview. -->
         <div class="form-actions tf-actions">
-          <a routerLink="/staff/masters/technologies" class="btn btn-default">Cancel</a>
-          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">Save</button>
+          <a routerLink="/staff/masters/technologies" class="btn btn-default">{{ 'Cancel' | t: 'staff.technologyForm.cancel.button' }}</a>
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ 'Save' | t: 'staff.technologyForm.save.button' }}</button>
         </div>
       </div>
 
       <aside class="tf-side">
-        <div class="zed-card tf-preview" aria-label="Preview">
-          <span class="tf-preview-h">Preview in the list</span>
-          <div class="tf-row"><span class="code-badge">{{ model.technologyCode.trim() || 'Code' }}</span></div>
-          <div class="tf-name" [class.muted]="!model.technologyName.trim()">{{ model.technologyName.trim() || 'Technology name' }}</div>
+        <div class="zed-card tf-preview" [attr.aria-label]="'Preview' | t: 'staff.technologyForm.preview.aria'">
+          <span class="tf-preview-h">{{ 'Preview in the list' | t: 'staff.technologyForm.preview.title' }}</span>
+          <div class="tf-row"><span class="code-badge">{{ model.technologyCode.trim() || ('Code' | t: 'staff.technologyForm.preview.code.label') }}</span></div>
+          <div class="tf-name" [class.muted]="!model.technologyName.trim()">{{ model.technologyName.trim() || ('Technology name' | t: 'staff.technologyForm.preview.name.label') }}</div>
           @if (model.description.trim()) { <div class="tf-desc clamp-3">{{ model.description }}</div> }
-          <div class="tf-label">NIC Sectors</div>
+          <div class="tf-label">{{ 'NIC Sectors' | t: 'staff.technologyForm.preview.sectors.label' }}</div>
           <div>@for (s of model.sectors; track s) { <span class="zed-chip">{{ s }}</span> } @empty { <span class="muted">—</span> }</div>
-          <div class="tf-label">Categories</div>
+          <div class="tf-label">{{ 'Categories' | t: 'staff.technologyForm.preview.categories.label' }}</div>
           <div>@for (c of model.categories; track c) { <span class="zed-chip cat">{{ c }}</span> } @empty { <span class="muted">—</span> }</div>
         </div>
       </aside>
@@ -161,14 +162,14 @@ export class TechnologyFormPage {
       this.sectors.set(options.sectors.map((s) => ({ value: s, label: s })));
       this.categories.set(options.categories.map((c) => ({ value: c, label: c })));
       if (this.id) {
-        const t = (await firstValueFrom(this.api.technologies())).find((x) => x.id === this.id);
-        if (!t) {
-          this.error.set('Technology not found.');
+        const tech = (await firstValueFrom(this.api.technologies())).find((x) => x.id === this.id);
+        if (!tech) {
+          this.error.set(t('staff.technologyForm.notFound.error', 'Technology not found.'));
           return;
         }
         this.model = {
-          technologyCode: t.technologyCode, technologyName: t.technologyName, description: t.description ?? '',
-          sectors: t.sectors, categories: t.categories,
+          technologyCode: tech.technologyCode, technologyName: tech.technologyName, description: tech.description ?? '',
+          sectors: tech.sectors, categories: tech.categories,
         };
       }
     } catch (err) {
@@ -182,7 +183,7 @@ export class TechnologyFormPage {
     this.submitted.set(true);
     this.error.set('');
     if (!this.model.technologyCode.trim() || !this.model.technologyName.trim()) {
-      this.error.set('Please enter valid data.');
+      this.error.set(t('staff.technologyForm.invalid.error', 'Please enter valid data.'));
       return;
     }
     this.saving.set(true);
@@ -190,12 +191,12 @@ export class TechnologyFormPage {
       // The old page stayed on the form: an added technology cleared it ("Sector saved.", its wording), an edit kept it.
       if (this.id) {
         await firstValueFrom(this.api.updateTechnology(this.id, this.model));
-        this.toast.success('Technology data updated.');
+        this.toast.success(t('staff.technologyForm.updated.toast', 'Technology data updated.'));
       } else {
         await firstValueFrom(this.api.addTechnology(this.model));
         this.model = emptyTechnology();
         this.submitted.set(false);
-        this.toast.success('Sector saved.');
+        this.toast.success(t('staff.technologyForm.added.toast', 'Sector saved.'));
       }
     } catch (err) {
       this.error.set(apiErrorMessage(err));

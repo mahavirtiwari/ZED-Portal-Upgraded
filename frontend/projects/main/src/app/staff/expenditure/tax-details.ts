@@ -6,6 +6,7 @@ import { AdminPortal } from '../admin-portal';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { ExpenditureApi, TaxDetails, TaxFile, gstinProblem, openBlob, panProblem, shownDate } from './expenditure.api';
+import { TextPipe, t } from '../../content/page-text';
 
 export const MAX_TAX_FILE_BYTES = 5 * 1024 * 1024;
 const TYPES = /\.(pdf|jpe?g|png)$/i;
@@ -24,7 +25,7 @@ const TYPES = /\.(pdf|jpe?g|png)$/i;
  */
 @Component({
   selector: 'zed-tax-details',
-  imports: [FormsModule, ConfirmDialog],
+  imports: [FormsModule, ConfirmDialog, TextPipe],
   host: { '[class.compact]': 'compact()' },
   styles: `
     :host { display: block; }
@@ -44,53 +45,52 @@ const TYPES = /\.(pdf|jpe?g|png)$/i;
     .tx-acts { display: flex; flex-wrap: wrap; gap: 8px; }
   `,
   template: `
-    @if (tax(); as t) {
-      @if (t.submitted) {
+    @if (tax(); as tx) {
+      @if (tx.submitted) {
         <section class="zed-card tx" aria-labelledby="tx-title">
-          <h2 id="tx-title">GSTIN and PAN <span class="status-badge is-active">Locked</span></h2>
+          <h2 id="tx-title">{{ 'GSTIN and PAN' | t: 'staff.expenditure.tax.title' }} <span class="status-badge is-active">{{ 'Locked' | t: 'staff.expenditure.tax.lockedLabel' }}</span></h2>
           <div class="tx-grid">
-            <div><small>GSTIN</small><b>{{ t.gstin }}</b></div>
-            <div><small>PAN</small><b>{{ t.pan }}</b></div>
-            <div><small>Submitted on</small>{{ date(t.submittedOn) }}@if (t.submittedBy) { · {{ t.submittedBy }} }</div>
+            <div><small>{{ 'GSTIN' | t: 'staff.expenditure.tax.gstinLabel' }}</small><b>{{ tx.gstin }}</b></div>
+            <div><small>{{ 'PAN' | t: 'staff.expenditure.tax.panLabel' }}</small><b>{{ tx.pan }}</b></div>
+            <div><small>{{ 'Submitted on' | t: 'staff.expenditure.tax.submittedOnLabel' }}</small>{{ date(tx.submittedOn) }}@if (tx.submittedBy) { · {{ tx.submittedBy }} }</div>
           </div>
           <div class="tx-acts">
-            <button type="button" class="btn btn-default btn-sm" [disabled]="!t.hasGstFile" (click)="view('gst')">View GST Certificate</button>
-            <button type="button" class="btn btn-default btn-sm" [disabled]="!t.hasPanFile" (click)="view('pan')">View PAN Card</button>
+            <button type="button" class="btn btn-default btn-sm" [disabled]="!tx.hasGstFile" (click)="view('gst')">{{ 'View GST Certificate' | t: 'staff.expenditure.tax.viewGstButton' }}</button>
+            <button type="button" class="btn btn-default btn-sm" [disabled]="!tx.hasPanFile" (click)="view('pan')">{{ 'View PAN Card' | t: 'staff.expenditure.tax.viewPanButton' }}</button>
           </div>
-          @if (editable()) { <p class="mt-2 mb-0">Submitted once; they cannot be changed. Write to the master admin if they are wrong.</p> }
+          @if (editable()) { <p class="mt-2 mb-0">{{ 'Submitted once; they cannot be changed. Write to the master admin if they are wrong.' | t: 'staff.expenditure.tax.lockedNote' }}</p> }
         </section>
       } @else if (editable()) {
         <section class="zed-card tx" aria-labelledby="tx-title">
-          <h2 id="tx-title">GSTIN and PAN <span class="status-badge is-pending">Needed before your first invoice</span></h2>
-          @if (!t.available) {
-            <p>The tax details cannot be given yet. Please try again later.</p>
+          <h2 id="tx-title">{{ 'GSTIN and PAN' | t: 'staff.expenditure.tax.title' }} <span class="status-badge is-pending">{{ 'Needed before your first invoice' | t: 'staff.expenditure.tax.neededLabel' }}</span></h2>
+          @if (!tx.available) {
+            <p>{{ 'The tax details cannot be given yet. Please try again later.' | t: 'staff.expenditure.tax.unavailableText' }}</p>
           } @else {
-            <p>Given once: after you submit, they cannot be changed. The master admin sees them with every invoice.</p>
+            <p>{{ 'Given once: after you submit, they cannot be changed. The master admin sees them with every invoice.' | t: 'staff.expenditure.tax.formNote' }}</p>
             <form class="tx-form" (ngSubmit)="check()">
               @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
               <div class="row g-3">
-                <label class="col-md-6"><span>GSTIN</span>
+                <label class="col-md-6"><span>{{ 'GSTIN' | t: 'staff.expenditure.tax.gstinLabel' }}</span>
                   <input class="form-control up" name="gstin" maxlength="15" autocomplete="off" [ngModel]="gstin()" (ngModelChange)="gstin.set($event)" />
-                  @if (t.suggestedGstin) { <span class="hint">From your agency's record; check it before submitting.</span> }</label>
-                <label class="col-md-6"><span>PAN</span>
+                  @if (tx.suggestedGstin) { <span class="hint">{{ "From your agency's record; check it before submitting." | t: 'staff.expenditure.tax.gstinHint' }}</span> }</label>
+                <label class="col-md-6"><span>{{ 'PAN' | t: 'staff.expenditure.tax.panLabel' }}</span>
                   <input class="form-control up" name="pan" maxlength="10" autocomplete="off" [ngModel]="pan()" (ngModelChange)="pan.set($event)" />
-                  @if (panOfGstin()) { <span class="hint">Characters 3 to 12 of the GSTIN: {{ panOfGstin() }}</span> }</label>
-                <label class="col-md-6"><span>GST registration certificate</span>
+                  @if (panOfGstin()) { <span class="hint">{{ 'Characters 3 to 12 of the GSTIN: {pan}' | t: 'staff.expenditure.tax.panHint' : { pan: panOfGstin() } }}</span> }</label>
+                <label class="col-md-6"><span>{{ 'GST registration certificate' | t: 'staff.expenditure.tax.gstFileLabel' }}</span>
                   <input type="file" class="form-control" name="gstFile" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" (change)="pick('gst', $event)" />
-                  <span class="hint">PDF, JPG or PNG, up to 5 MB</span></label>
-                <label class="col-md-6"><span>PAN card</span>
+                  <span class="hint">{{ 'PDF, JPG or PNG, up to 5 MB' | t: 'staff.expenditure.tax.fileHint' }}</span></label>
+                <label class="col-md-6"><span>{{ 'PAN card' | t: 'staff.expenditure.tax.panFileLabel' }}</span>
                   <input type="file" class="form-control" name="panFile" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" (change)="pick('pan', $event)" />
-                  <span class="hint">PDF, JPG or PNG, up to 5 MB</span></label>
+                  <span class="hint">{{ 'PDF, JPG or PNG, up to 5 MB' | t: 'staff.expenditure.tax.fileHint' }}</span></label>
               </div>
               <label class="tx-tick"><input type="checkbox" name="declaration" [ngModel]="declared()" (ngModelChange)="declared.set($event)" />
-                <span>I declare that this GSTIN and PAN are ours and correct, and that the documents are true copies. I understand they cannot be
-                  changed after submitting.</span></label>
-              <button type="submit" class="btn btn-primary">Submit Tax Details</button>
+                <span>{{ 'I declare that this GSTIN and PAN are ours and correct, and that the documents are true copies. I understand they cannot be changed after submitting.' | t: 'staff.expenditure.tax.declarationLabel' }}</span></label>
+              <button type="submit" class="btn btn-primary">{{ 'Submit Tax Details' | t: 'staff.expenditure.tax.submitButton' }}</button>
             </form>
           }
         </section>
-      } @else if (t.available) {
-        <section class="zed-card tx"><h2>GSTIN and PAN <span class="status-badge is-inactive">Not submitted yet</span></h2></section>
+      } @else if (tx.available) {
+        <section class="zed-card tx"><h2>{{ 'GSTIN and PAN' | t: 'staff.expenditure.tax.title' }} <span class="status-badge is-inactive">{{ 'Not submitted yet' | t: 'staff.expenditure.tax.notSubmittedLabel' }}</span></h2></section>
       }
     }
     @if (confirming()) {
@@ -129,13 +129,16 @@ export class TaxDetailsCard {
   });
 
   protected readonly ask = computed<ConfirmAsk>(() => ({
-    title: 'Submit GSTIN and PAN?',
-    subtitle: `${this.gstin().trim().toUpperCase()} · ${this.pan().trim().toUpperCase()}`,
+    title: t('staff.expenditure.tax.confirm.title', 'Submit GSTIN and PAN?'),
+    subtitle: t('staff.expenditure.tax.confirm.sub', '{gstin} · {pan}', { gstin: this.gstin().trim().toUpperCase(), pan: this.pan().trim().toUpperCase() }),
     icon: 'lock',
     tone: 'warn',
-    points: ['They are saved once and cannot be changed afterwards.', 'The master admin sees them, with both documents, on every invoice.',
-      'After this you can upload your monthly invoices.'],
-    confirmLabel: 'Submit',
+    points: [
+      t('staff.expenditure.tax.confirm.point1', 'They are saved once and cannot be changed afterwards.'),
+      t('staff.expenditure.tax.confirm.point2', 'The master admin sees them, with both documents, on every invoice.'),
+      t('staff.expenditure.tax.confirm.point3', 'After this you can upload your monthly invoices.'),
+    ],
+    confirmLabel: t('staff.expenditure.tax.confirm.submitButton', 'Submit'),
   }));
 
   constructor() {
@@ -167,13 +170,15 @@ export class TaxDetailsCard {
     if (g) return g;
     const p = panProblem(this.pan(), this.gstin());
     if (p) return p;
-    for (const [which, what] of [['gst', 'GST registration certificate'], ['pan', 'PAN card']] as const) {
-      const f = this.files[which];
-      if (!f) return `Please upload the ${what} (PDF, JPG or PNG, up to 5 MB).`;
-      if (!TYPES.test(f.name)) return `The ${what} must be a PDF, JPG or PNG file.`;
-      if (f.size > MAX_TAX_FILE_BYTES) return `The ${what} is larger than 5 MB.`;
-    }
-    return this.declared() ? null : 'Please tick the declaration: the details are correct and cannot be changed later.';
+    const gst = this.files.gst;
+    if (!gst) return t('staff.expenditure.tax.gstFileMissingError', 'Please upload the GST registration certificate (PDF, JPG or PNG, up to 5 MB).');
+    if (!TYPES.test(gst.name)) return t('staff.expenditure.tax.gstFileTypeError', 'The GST registration certificate must be a PDF, JPG or PNG file.');
+    if (gst.size > MAX_TAX_FILE_BYTES) return t('staff.expenditure.tax.gstFileSizeError', 'The GST registration certificate is larger than 5 MB.');
+    const panFile = this.files.pan;
+    if (!panFile) return t('staff.expenditure.tax.panFileMissingError', 'Please upload the PAN card (PDF, JPG or PNG, up to 5 MB).');
+    if (!TYPES.test(panFile.name)) return t('staff.expenditure.tax.panFileTypeError', 'The PAN card must be a PDF, JPG or PNG file.');
+    if (panFile.size > MAX_TAX_FILE_BYTES) return t('staff.expenditure.tax.panFileSizeError', 'The PAN card is larger than 5 MB.');
+    return this.declared() ? null : t('staff.expenditure.tax.declarationError', 'Please tick the declaration: the details are correct and cannot be changed later.');
   }
 
   protected async send(): Promise<void> {
@@ -201,7 +206,7 @@ export class TaxDetailsCard {
     try {
       openBlob(await firstValueFrom(this.api.taxFile(which, this.partyId(), this.portal())));
     } catch (e) {
-      this.toast.error('The document could not be opened', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditure.tax.toast.openFailed', 'The document could not be opened'), apiErrorMessage(e));
     }
   }
 }

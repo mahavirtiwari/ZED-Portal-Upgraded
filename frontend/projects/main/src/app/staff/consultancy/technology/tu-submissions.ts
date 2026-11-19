@@ -12,6 +12,7 @@ import { staffCrumbs } from '../../staff-crumbs';
 import { RowMenu, RowMenuItem } from '../../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../../confirm-dialog';
 import { ToastService } from '../../toast';
+import { TextPipe, t } from '../../../content/page-text';
 
 type Dialog =
   | { kind: 'allot'; row: TuSubmission; options: UserOption[]; choice: string }
@@ -30,10 +31,12 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the status tabs as clickable tiles with their counts,
  * one search box, the unit first, Allot / Re-allot / Accept and View details on the row and View profile and Reject in its
  * menu, the reason for a rejection in the confirmation pop-up, the server's message in a toast.</p>
+ * <p>2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.tuSubmissions.*) or the standard
+ * one here and in tu-submissions.html.</p>
  */
 @Component({
   selector: 'zed-staff-tu-submissions',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog, TextPipe],
   host: { class: 'list-v2 d-block' },
   templateUrl: './tu-submissions.html',
   styles: `
@@ -62,27 +65,28 @@ export class TuSubmissionsPage {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly user = inject(AuthService).currentUser;
-  protected readonly crumbs = staffCrumbs({ label: 'Technology upgradation' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.tuSubmissions.crumb', 'Technology upgradation') }));
   protected readonly landing = TU_LANDING;
 
   protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
   protected readonly isDfo = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
 
+  /** The status lists (their wording is read in tiles()). */
   protected readonly tabs = [
-    { status: TuTab.Allotment, label: 'TU allotment', count: 'New', tone: 'warn' },
-    { status: TuTab.InProgress, label: 'In progress', count: 'InProgress', tone: 'info' },
-    { status: TuTab.Qc, label: 'QC', count: 'Qc', tone: undefined },
-    { status: TuTab.Approved, label: 'Approved', count: 'Approved', tone: 'good' },
-    { status: TuTab.Rejected, label: 'Rejected', count: 'Rejected', tone: 'bad' },
+    { status: TuTab.Allotment, count: 'New', tone: 'warn' },
+    { status: TuTab.InProgress, count: 'InProgress', tone: 'info' },
+    { status: TuTab.Qc, count: 'Qc', tone: undefined },
+    { status: TuTab.Approved, count: 'Approved', tone: 'good' },
+    { status: TuTab.Rejected, count: 'Rejected', tone: 'bad' },
   ] as const;
   /** The status lists as tiles with their counts (a click opens the list). */
   protected readonly tiles = computed<ListCount[]>(() =>
-    this.tabs.map((t) => ({ key: String(t.status), label: t.label, value: this.counts()[t.count] ?? 0, tone: t.tone })));
+    this.tabs.map((tab) => ({ key: String(tab.status), label: this.tabLabel(tab.status), value: this.counts()[tab.count] ?? 0, tone: tab.tone })));
   protected readonly subtitle = computed(() =>
-    this.isAdmin() ? 'Allot the technology upgradation applications to Consultant Organisations and follow them up to approval.'
-    : this.isAgency() ? 'Accept the applications allotted to your organisation with one of your consultants, or reject them.'
-    : 'The technology upgradation applications allotted to you.');
+    this.isAdmin() ? t('staff.tuSubmissions.adminSub', 'Allot the technology upgradation applications to Consultant Organisations and follow them up to approval.')
+    : this.isAgency() ? t('staff.tuSubmissions.coSub', 'Accept the applications allotted to your organisation with one of your consultants, or reject them.')
+    : t('staff.tuSubmissions.consultantSub', 'The technology upgradation applications allotted to you.'));
 
   protected readonly status = signal<number>(this.isDfo() ? TuTab.Allotment : TU_LANDING);
   protected readonly rows = signal<TuSubmission[]>([]);
@@ -109,6 +113,16 @@ export class TuSubmissionsPage {
       if (!next.delete(id)) next.add(id);
       return next;
     });
+  }
+
+  private tabLabel(status: number): string {
+    switch (status) {
+      case TuTab.Allotment: return t('staff.tuSubmissions.tab.allotment', 'TU allotment');
+      case TuTab.InProgress: return t('staff.tuSubmissions.tab.inProgress', 'In progress');
+      case TuTab.Qc: return t('staff.tuSubmissions.tab.qc', 'QC');
+      case TuTab.Approved: return t('staff.tuSubmissions.tab.approved', 'Approved');
+      default: return t('staff.tuSubmissions.tab.rejected', 'Rejected');
+    }
   }
 
   protected count(key: keyof TuCounts): number {
@@ -183,8 +197,8 @@ export class TuSubmissionsPage {
   /** The row menu: the unit's profile (master admin, CO) and Reject (the CO, before it answers). */
   protected menu(r: TuSubmission): RowMenuItem[] {
     const items: RowMenuItem[] = [];
-    if (this.canViewProfile()) items.push({ key: 'profile', label: 'View MSME profile', icon: 'people' });
-    if (this.canRespond(r)) items.push({ key: 'reject', label: 'Reject', danger: true });
+    if (this.canViewProfile()) items.push({ key: 'profile', label: t('staff.tuSubmissions.menu.profile', 'View MSME profile'), icon: 'people' });
+    if (this.canRespond(r)) items.push({ key: 'reject', label: t('staff.tuSubmissions.menu.reject', 'Reject'), danger: true });
     return items;
   }
 
@@ -195,11 +209,13 @@ export class TuSubmissionsPage {
 
   protected rejectAsk(r: TuSubmission): ConfirmAsk {
     return {
-      title: 'Reject unit?',
-      message: `${r.ZedId} · ${r.PUnitName ?? ''} · ${r.CertificationType}: the application goes back to the ZED team with your reason.`,
-      confirmLabel: 'Reject',
+      title: t('staff.tuSubmissions.reject.title', 'Reject unit?'),
+      message: t('staff.tuSubmissions.reject.message', '{zedId} · {unit} · {level}: the application goes back to the ZED team with your reason.',
+        { zedId: r.ZedId, unit: r.PUnitName ?? '', level: r.CertificationType }),
+      confirmLabel: t('staff.tuSubmissions.reject.confirmButton', 'Reject'),
       danger: true,
-      reason: { label: 'Reason for rejection', maxLength: 2000, requiredMessage: 'Please enter the reason for rejection.' },
+      reason: { label: t('staff.tuSubmissions.reject.reasonLabel', 'Reason for rejection'), maxLength: 2000,
+        requiredMessage: t('staff.tuSubmissions.reject.reasonError', 'Please enter the reason for rejection.') },
     };
   }
 
@@ -236,11 +252,11 @@ export class TuSubmissionsPage {
     const d = this.dialog();
     if (!d) return;
     if (d.kind !== 'reject' && !d.choice) {
-      this.dialogError.set(d.kind === 'allot' ? 'Please select assessment agency.' : 'Please select valid data.');
+      this.dialogError.set(d.kind === 'allot' ? t('staff.tuSubmissions.dialog.coError', 'Please select assessment agency.') : t('staff.tuSubmissions.dialog.consultantError', 'Please select valid data.'));
       return;
     }
     if (d.kind === 'reject' && !d.reason.trim()) {
-      this.dialogError.set('Please enter the reason for rejection.');
+      this.dialogError.set(t('staff.tuSubmissions.reject.reasonError', 'Please enter the reason for rejection.'));
       return;
     }
     this.saving.set(true);

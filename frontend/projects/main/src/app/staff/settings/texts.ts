@@ -9,6 +9,7 @@ import { ConfirmService } from '../confirm-dialog';
 import { IndianTimePipe } from '../utc-time';
 import { fillSampleFields, insertAtCursor, portalBaseUrl } from './email-templates';
 import { PageTextsPanel } from './page-texts';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface TextItem {
   key: string;
@@ -49,12 +50,12 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
  */
 @Component({
   selector: 'zed-staff-texts',
-  imports: [IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent, PageTextsPanel],
+  imports: [IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent, PageTextsPanel, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Texts</h3>
-        <p class="page-sub">Disclaimers, instructions, undertakings and pledges of the website and the apps. A change shows on the website within a minute (on a page opened or reloaded after it) and in the apps when they are next opened or brought back to the front.</p>
+        <h3 class="registration-title">{{ 'Texts' | t: 'staff.texts.title' }}</h3>
+        <p class="page-sub">{{ 'Disclaimers, instructions, undertakings and pledges of the website and the apps. A change shows on the website within a minute (on a page opened or reloaded after it) and in the apps when they are next opened or brought back to the front.' | t: 'staff.texts.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the texts of the portal chosen here (each portal keeps its own). -->
@@ -68,31 +69,31 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
 
     <!-- 2026-11-19 (the user: "all the text are configurable"): the pages' wording (headings, labels, buttons, notes) beside
          the HTML texts. -->
-    <div class="tx-kinds" role="tablist" aria-label="Kind of text">
-      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'texts'" [attr.aria-selected]="kind() === 'texts'" (click)="kind.set('texts')">Messages and documents</button>
-      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'wording'" [attr.aria-selected]="kind() === 'wording'" (click)="kind.set('wording')">Page wording</button>
+    <div class="tx-kinds" role="tablist" [attr.aria-label]="'Kind of text' | t: 'staff.texts.kinds.aria'">
+      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'texts'" [attr.aria-selected]="kind() === 'texts'" (click)="kind.set('texts')">{{ 'Messages and documents' | t: 'staff.texts.kinds.textsButton' }}</button>
+      <button type="button" role="tab" class="tx-kind" [class.active]="kind() === 'wording'" [attr.aria-selected]="kind() === 'wording'" (click)="kind.set('wording')">{{ 'Page wording' | t: 'staff.texts.kinds.wordingButton' }}</button>
     </div>
     @if (kind() === 'wording') {
       <zed-page-texts />
     } @else {
     <div class="tx-stats">
-      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Texts</span></div>
-      <div class="stat"><span class="stat-value is-shown">{{ stats().shown }}</span><span class="stat-label">Shown</span></div>
-      <div class="stat"><span class="stat-value is-off">{{ stats().hidden }}</span><span class="stat-label">Hidden</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">Changed by Admin</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Texts' | t: 'staff.texts.count.total' }}</span></div>
+      <div class="stat"><span class="stat-value is-shown">{{ stats().shown }}</span><span class="stat-label">{{ 'Shown' | t: 'staff.texts.count.shown' }}</span></div>
+      <div class="stat"><span class="stat-value is-off">{{ stats().hidden }}</span><span class="stat-label">{{ 'Hidden' | t: 'staff.texts.count.hidden' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">{{ 'Changed by Admin' | t: 'staff.texts.count.changed' }}</span></div>
     </div>
 
     <div class="zed-card list-card">
       <div class="tx-tabs" role="tablist">
         @for (c of channels; track c) {
           <button type="button" role="tab" class="tx-tab" [class.active]="channel() === c" [attr.aria-selected]="channel() === c"
-                  (click)="channel.set(c)">{{ c }} ({{ count(c) }})</button>
+                  (click)="channel.set(c)">{{ c === 'Website' ? ('Website ({count})' | t: 'staff.texts.tab.website' : { count: count(c) }) : ('Mobile app ({count})' | t: 'staff.texts.tab.app' : { count: count(c) }) }}</button>
         }
       </div>
       <div class="list-toolbar">
-        <input type="search" class="form-control search" placeholder="Search text or page" aria-label="Search texts" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-        <div class="seg" role="group" aria-label="Show">
-          @for (f of filters; track f.key) {
+        <input type="search" class="form-control search" [placeholder]="'Search text or page' | t: 'staff.texts.search.placeholder'" [attr.aria-label]="'Search texts' | t: 'staff.texts.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <div class="seg" role="group" [attr.aria-label]="'Show' | t: 'staff.texts.filter.aria'">
+          @for (f of filters(); track f.key) {
             <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="filter.set(f.key)">{{ f.label }}</button>
           }
         </div>
@@ -101,48 +102,48 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
         <table class="table table-zed tx-table">
           <thead>
             <tr>
-              <th class="text-center col-sno">S.No</th>
-              <th>Text</th>
-              <th class="col-status">Status</th>
-              <th class="col-change">Last change</th>
-              <th class="text-end col-action">Action</th>
+              <th class="text-center col-sno">{{ 'S.No' | t: 'staff.texts.column.sno' }}</th>
+              <th>{{ 'Text' | t: 'staff.texts.column.text' }}</th>
+              <th class="col-status">{{ 'Status' | t: 'staff.texts.column.status' }}</th>
+              <th class="col-change">{{ 'Last change' | t: 'staff.texts.column.lastChange' }}</th>
+              <th class="text-end col-action">{{ 'Action' | t: 'staff.texts.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
-            @for (t of view.page(); track t.key) {
-              <tr [class.is-off]="!t.enabled">
+            @for (tx of view.page(); track tx.key) {
+              <tr [class.is-off]="!tx.enabled">
                 <td class="text-center">{{ view.serial($index) }}</td>
                 <td>
                   <div class="tx">
-                    <span class="tx-icon" [class.app]="t.channel !== 'Website'" aria-hidden="true">{{ t.channel === 'Website' ? 'WWW' : 'APP' }}</span>
+                    <span class="tx-icon" [class.app]="tx.channel !== 'Website'" aria-hidden="true">{{ tx.channel === 'Website' ? 'WWW' : 'APP' }}</span>
                     <div class="tx-text">
-                      <strong>{{ t.name }}</strong>
-                      <small class="muted d-block">{{ t.group }}@if (t.placeholders.length) { · fields: {{ t.placeholders.join(', ') }} }</small>
+                      <strong>{{ tx.name }}</strong>
+                      <small class="muted d-block">{{ tx.group }}@if (tx.placeholders.length) { · {{ 'fields: {fields}' | t: 'staff.texts.row.fields' : { fields: tx.placeholders.join(', ') } }} }</small>
                     </div>
                   </div>
                 </td>
                 <td>
                   <div class="status-stack">
-                    <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
-                    @if (t.customised && t.enabled) { <span class="status-badge is-info">Changed by Admin</span> }
+                    <span class="status-badge" [class.is-active]="tx.enabled" [class.is-inactive]="!tx.enabled">{{ tx.enabled ? ('Shown' | t: 'staff.texts.row.shown') : ('Hidden' | t: 'staff.texts.row.hidden') }}</span>
+                    @if (tx.customised && tx.enabled) { <span class="status-badge is-info">{{ 'Changed by Admin' | t: 'staff.texts.row.changed' }}</span> }
                   </div>
                 </td>
                 <td class="text-nowrap">
-                  @if (t.updatedOn) {
-                    <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
+                  @if (tx.updatedOn) {
+                    <span class="text-nowrap">{{ tx.updatedOn | indianTime }}</span><small class="muted d-block">{{ tx.updatedBy }}</small>
                   } @else {
-                    <span class="muted" title="Not changed">—</span>
+                    <span class="muted" [title]="'Not changed' | t: 'staff.texts.row.notChangedTooltip'">—</span>
                   }
                 </td>
                 <td class="text-end">
                   <div class="tx-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(t)">Edit</button>
-                    @if (t.customised) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(t)">Reset</button> }
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(tx)">{{ 'Edit' | t: 'staff.texts.row.editButton' }}</button>
+                    @if (tx.customised) { <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(tx)">{{ 'Reset' | t: 'staff.texts.row.resetButton' }}</button> }
                   </div>
                 </td>
               </tr>
             } @empty {
-              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">No texts found</div></td></tr> }
+              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ 'No texts found' | t: 'staff.texts.empty' }}</div></td></tr> }
             }
           </tbody>
         </table>
@@ -161,33 +162,33 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                 <small class="muted">{{ e.item.channel }} · {{ e.item.group }}</small>
               </div>
               <!-- 2026-11-19 (admin audit: status shown twice): the switch below is the one indicator, no badge here. -->
-              <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+              <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.texts.editor.closeAria'" (click)="editing.set(null)"></button>
             </div>
             <div class="modal-body editor-body">
               <div class="switch-row" [class.off]="!e.enabled">
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" role="switch" id="textEnabled" [(ngModel)]="e.enabled" />
-                  <label class="form-check-label" for="textEnabled">{{ e.enabled ? 'This text is shown' : 'This text is hidden' }}</label>
+                  <label class="form-check-label" for="textEnabled">{{ e.enabled ? ('This text is shown' | t: 'staff.texts.editor.shown') : ('This text is hidden' | t: 'staff.texts.editor.hidden') }}</label>
                 </div>
               </div>
               @if (e.item.placeholders.length) {
                 <div class="fields" role="group" aria-labelledby="textFields">
-                  <div class="ed-label" id="textFields">Fields <small class="muted fw-normal">— click one to put it at the cursor in the text</small></div>
+                  <div class="ed-label" id="textFields">{{ 'Fields' | t: 'staff.texts.editor.fields.label' }} <small class="muted fw-normal">{{ '— click one to put it at the cursor in the text' | t: 'staff.texts.editor.fields.note' }}</small></div>
                   <div class="chips">
                     @for (p of e.item.placeholders; track p) {
-                      <button type="button" class="chip" [title]="'Filled in with ' + p" (mousedown)="$event.preventDefault()" (click)="insert(e, p)">{{ braces(p) }}</button>
+                      <button type="button" class="chip" [title]="'Filled in with {field}' | t: 'staff.texts.editor.fields.chipTooltip' : { field: p }" (mousedown)="$event.preventDefault()" (click)="insert(e, p)">{{ braces(p) }}</button>
                     }
                   </div>
-                  <small class="muted d-block">A field is filled in where the text is shown.</small>
+                  <small class="muted d-block">{{ 'A field is filled in where the text is shown.' | t: 'staff.texts.editor.fields.text' }}</small>
                 </div>
               }
               <div class="editor">
                 <div class="pane">
                   <div class="pane-head">
-                    <label class="ed-label" for="textBody">Text (HTML)</label>
+                    <label class="ed-label" for="textBody">{{ 'Text (HTML)' | t: 'staff.texts.editor.body.label' }}</label>
                     <div class="pane-tools">
-                      <span class="std-badge" [class.differs]="!isStandard(e)">{{ isStandard(e) ? 'Standard text' : 'Differs from the standard' }}</span>
-                      <button type="button" class="btn btn-link btn-sm p-0" (click)="useStandard(e)">Use the standard text</button>
+                      <span class="std-badge" [class.differs]="!isStandard(e)">{{ isStandard(e) ? ('Standard text' | t: 'staff.texts.editor.standard.chip.same') : ('Differs from the standard' | t: 'staff.texts.editor.standard.chip.differs') }}</span>
+                      <button type="button" class="btn btn-link btn-sm p-0" (click)="useStandard(e)">{{ 'Use the standard text' | t: 'staff.texts.editor.useStandardButton' }}</button>
                     </div>
                   </div>
                   <textarea #bodyBox class="form-control font-monospace code" id="textBody" spellcheck="false" autocomplete="off"
@@ -195,24 +196,24 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
                 </div>
                 <div class="pane">
                   <div class="pane-head">
-                    <span class="ed-label">Preview</span>
-                    <div class="seg" role="group" aria-label="Preview width">
-                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
-                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
+                    <span class="ed-label">{{ 'Preview' | t: 'staff.texts.editor.preview.label' }}</span>
+                    <div class="seg" role="group" [attr.aria-label]="'Preview width' | t: 'staff.texts.editor.preview.widthAria'">
+                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">{{ 'Desktop' | t: 'staff.texts.editor.preview.desktopButton' }}</button>
+                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">{{ 'Phone' | t: 'staff.texts.editor.preview.phoneButton' }}</button>
                     </div>
                   </div>
                   <div class="page-frame" [class.phone]="phone()">
-                    <div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><span>{{ e.item.channel === 'Website' ? 'Website page' : 'App screen' }}</span></div>
+                    <div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><span>{{ e.item.channel === 'Website' ? ('Website page' | t: 'staff.texts.editor.preview.websiteFrame') : ('App screen' | t: 'staff.texts.editor.preview.appFrame') }}</span></div>
                     <div class="preview" [innerHTML]="previewHtml()"></div>
                   </div>
-                  @if (e.item.placeholders.length) {<small class="muted d-block mt-1">Fields shown with sample values.</small>}
+                  @if (e.item.placeholders.length) {<small class="muted d-block mt-1">{{ 'Fields shown with sample values.' | t: 'staff.texts.editor.preview.note' }}</small>}
                 </div>
               </div>
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.texts.editor.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.texts.editor.saveButton' }}</button>
             </div>
           </div>
         </div>
@@ -328,24 +329,24 @@ export class TextsPage {
   protected readonly items = signal<TextItem[]>([]);
   protected readonly channel = signal('Website');
   protected readonly search = signal('');
-  protected readonly filters: readonly { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'shown', label: 'Shown' },
-    { key: 'hidden', label: 'Hidden' },
-    { key: 'changed', label: 'Changed' },
-  ];
+  protected readonly filters = computed<readonly { key: StatusFilter; label: string }[]>(() => [
+    { key: 'all', label: t('staff.texts.filter.all', 'All') },
+    { key: 'shown', label: t('staff.texts.filter.shown', 'Shown') },
+    { key: 'hidden', label: t('staff.texts.filter.hidden', 'Hidden') },
+    { key: 'changed', label: t('staff.texts.filter.changed', 'Changed') },
+  ]);
   protected readonly filter = signal<StatusFilter>('all');
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
     const f = this.filter();
-    return this.items().filter((t) => t.channel === this.channel()
-      && (f === 'all' || (f === 'shown' && t.enabled) || (f === 'hidden' && !t.enabled) || (f === 'changed' && t.customised))
-      && (!q || `${t.name} ${t.group}`.toLowerCase().includes(q)));
+    return this.items().filter((x) => x.channel === this.channel()
+      && (f === 'all' || (f === 'shown' && x.enabled) || (f === 'hidden' && !x.enabled) || (f === 'changed' && x.customised))
+      && (!q || `${x.name} ${x.group}`.toLowerCase().includes(q)));
   });
   /** The counts of the tab shown. */
   protected readonly stats = computed(() => {
-    const rows = this.items().filter((t) => t.channel === this.channel());
-    return { total: rows.length, shown: rows.filter((t) => t.enabled).length, hidden: rows.filter((t) => !t.enabled).length, changed: rows.filter((t) => t.customised).length };
+    const rows = this.items().filter((x) => x.channel === this.channel());
+    return { total: rows.length, shown: rows.filter((x) => x.enabled).length, hidden: rows.filter((x) => !x.enabled).length, changed: rows.filter((x) => x.customised).length };
   });
   /** The preview at a phone's width (first for the apps' texts). */
   protected readonly phone = signal(false);
@@ -366,7 +367,7 @@ export class TextsPage {
   }
 
   protected count(channel: string): number {
-    return this.items().filter((t) => t.channel === channel).length;
+    return this.items().filter((x) => x.channel === channel).length;
   }
 
   protected braces(name: string): string {
@@ -434,8 +435,9 @@ export class TextsPage {
 
   protected async reset(item: TextItem): Promise<void> {
     const ok = await this.confirms.ask({
-      title: 'Reset to the Standard Text?', message: `"${item.name}" shows the standard text again. The saved text is removed.`,
-      confirmLabel: 'Reset', danger: true,
+      title: t('staff.texts.resetDialog.title', 'Reset to the Standard Text?'),
+      message: t('staff.texts.resetDialog.message', '"{name}" shows the standard text again. The saved text is removed.', { name: item.name }),
+      confirmLabel: t('staff.texts.resetDialog.confirmButton', 'Reset'), danger: true,
     });
     if (!ok) return;
     this.busy.set(true);

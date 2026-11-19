@@ -9,6 +9,7 @@ import { levelName } from '../../msme/shared/levels';
 import { ListSearchComponent, searchRows } from '../pager';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 export const PURPOSE_MAX = 500;
 /** The requirement's text (Requirements.RequirementName), as the server allows (2026-11-13). */
@@ -64,37 +65,37 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
  */
 @Component({
   selector: 'zed-staff-requirements',
-  imports: [FormsModule, RouterLink, ListSearchComponent, ExcelToolsComponent, PortalSwitchComponent],
+  imports: [FormsModule, RouterLink, ListSearchComponent, ExcelToolsComponent, PortalSwitchComponent, TextPipe],
   template: `
-    <zed-portal-switch [portals]="questionnairePortals" title="Questionnaire of" />
+    <zed-portal-switch [portals]="questionnairePortals" [title]="'Questionnaire of' | t: 'staff.requirements.portalSwitch.label'" />
     <div class="back-row">
-      <nav class="crumbs" aria-label="Breadcrumb">
-        <a [routerLink]="['/staff/masters/parameters', sectionType]">Questionnaire</a>
+      <nav class="crumbs" [attr.aria-label]="'Breadcrumb' | t: 'staff.requirements.crumbs.aria'">
+        <a [routerLink]="['/staff/masters/parameters', sectionType]">{{ 'Questionnaire' | t: 'staff.requirements.crumb.questionnaire' }}</a>
         <span aria-hidden="true">›</span>
         <a [routerLink]="['/staff/masters/parameters', sectionType]">{{ levelLabel() }}</a>
         <span aria-hidden="true">›</span>
-        <span aria-current="page">Parameter {{ sectionCode }}</span>
+        <span aria-current="page">{{ 'Parameter {code}' | t: 'staff.requirements.crumb.parameter' : { code: sectionCode } }}</span>
       </nav>
-      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/masters/parameters', sectionType]">← Back</a>
+      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/masters/parameters', sectionType]">{{ '← Back' | t: 'staff.requirements.back.button' }}</a>
     </div>
     <div class="page-head">
       <div>
         @if (data(); as d) {
           <h3 class="registration-title">{{ d.sectionCode }}. {{ d.sectionName }} <span class="lvl">· {{ levelLabel() }}</span></h3>
-          <p class="page-sub summary">{{ plural(stats().requirements, 'requirement') }} · {{ plural(stats().checkpoints, 'checkpoint') }} ·
-            {{ plural(stats().evidences, 'evidence') }} ({{ stats().mandatory }} mandatory) · {{ plural(stats().actions, 'action') }}</p>
+          <p class="page-sub summary">{{ count(stats().requirements, 'requirement') }} · {{ count(stats().checkpoints, 'checkpoint') }} ·
+            {{ count(stats().evidences, 'evidence') }} {{ '({count} mandatory)' | t: 'staff.requirements.summary.mandatory' : { count: stats().mandatory } }} · {{ count(stats().actions, 'action') }}</p>
         } @else {
-          <h3 class="registration-title">Requirements</h3>
+          <h3 class="registration-title">{{ 'Requirements' | t: 'staff.requirements.title' }}</h3>
         }
       </div>
       <div class="page-actions">
         @if (data()?.checklistReady !== false) {
-          <span class="xl-group"><span class="xl-group-label">This parameter</span>
-            <zed-excel-tools [api]="api.requirementsUrl(sectionType, sectionCode)" [title]="'Requirements of ' + sectionCode"
+          <span class="xl-group"><span class="xl-group-label">{{ 'This parameter' | t: 'staff.requirements.excel.thisParameter.label' }}</span>
+            <zed-excel-tools [api]="api.requirementsUrl(sectionType, sectionCode)" [title]="'Requirements of {code}' | t: 'staff.requirements.excel.thisParameter.title' : { code: sectionCode }"
                              [fileName]="'requirements-' + sectionType.toLowerCase() + '-' + sectionCode.toLowerCase()" (applied)="load()" /></span>
           <!-- 2026-11-13: every parameter of the level in one sheet (a Parameter column first). -->
-          <span class="xl-group xl-group-all"><span class="xl-group-label">All {{ levelLabel() }} parameters</span>
-            <zed-excel-tools [api]="api.levelRequirementsUrl(sectionType)" [title]="'Requirements of all ' + levelLabel() + ' parameters'"
+          <span class="xl-group xl-group-all"><span class="xl-group-label">{{ 'All {level} parameters' | t: 'staff.requirements.excel.allParameters.label' : { level: levelLabel() } }}</span>
+            <zed-excel-tools [api]="api.levelRequirementsUrl(sectionType)" [title]="'Requirements of all {level} parameters' | t: 'staff.requirements.excel.allParameters.title' : { level: levelLabel() }"
                              [fileName]="'requirements-' + sectionType.toLowerCase() + '-all-parameters'" (applied)="load()" /></span>
         }
       </div>
@@ -109,12 +110,12 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
 
     @if (data(); as d) {
       @if (d.checklistReady === false) {
-        <div class="alert alert-warning" role="status">Purpose, benefits and checkpoints cannot be saved yet: please ask the administrator to apply database migration 0034.</div>
+        <div class="alert alert-warning" role="status">{{ 'Purpose, benefits and checkpoints cannot be saved yet: please ask the administrator to apply database migration 0034.' | t: 'staff.requirements.migration.warning' }}</div>
       }
       <div class="rq-layout">
         <!-- Left: the requirements, each with what it still lacks. -->
-        <aside class="rq-list" aria-label="Requirements">
-          <zed-list-search [(value)]="search" placeholder="Search requirements" inputId="req-search" [found]="shown().length" />
+        <aside class="rq-list" [attr.aria-label]="'Requirements' | t: 'staff.requirements.list.aria'">
+          <zed-list-search [(value)]="search" [placeholder]="'Search requirements' | t: 'staff.requirements.search.placeholder'" inputId="req-search" [found]="shown().length" />
           <ul class="rq-items">
             @for (q of shown(); track q.id) {
               <li>
@@ -124,18 +125,18 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
                   <span class="rq-name">{{ titleOf(q) }}</span>
                   @if (missing(q); as m) {
                     @if (m.length) {
-                      <span class="rq-missing">Missing: {{ m.join(', ') }}</span>
+                      <span class="rq-missing">{{ 'Missing: {items}' | t: 'staff.requirements.list.missing.label' : { items: m.join(', ') } }}</span>
                     } @else {
-                      <span class="rq-ok">✓ Complete</span>
+                      <span class="rq-ok">{{ '✓ Complete' | t: 'staff.requirements.list.complete.label' }}</span>
                     }
                   }
                 </button>
               </li>
             } @empty {
-              <li class="no-data">{{ requirements().length ? 'No requirement matches the search.' : 'No requirement yet.' }}</li>
+              <li class="no-data">{{ requirements().length ? ('No requirement matches the search.' | t: 'staff.requirements.list.noMatch.empty') : ('No requirement yet.' | t: 'staff.requirements.list.empty') }}</li>
             }
           </ul>
-          <button type="button" class="btn btn-outline-primary w-100 mt-2 add-requirement" [disabled]="d.checklistReady === false" (click)="startNew()">+ Add requirement</button>
+          <button type="button" class="btn btn-outline-primary w-100 mt-2 add-requirement" [disabled]="d.checklistReady === false" (click)="startNew()">{{ '+ Add requirement' | t: 'staff.requirements.add.button' }}</button>
         </aside>
 
         <!-- Right: the chosen requirement, or the editor in its place. -->
@@ -143,100 +144,100 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
           @if (form(); as f) {
             <form class="req-form" (ngSubmit)="save()" novalidate>
               <div class="det-head">
-                <h4>{{ f.id ? 'Edit requirement ' + f.label : 'New requirement ' + f.label }}</h4>
+                <h4>{{ f.id ? ('Edit requirement {code}' | t: 'staff.requirements.form.edit.title' : { code: f.label }) : ('New requirement {code}' | t: 'staff.requirements.form.new.title' : { code: f.label }) }}</h4>
               </div>
               <div class="field">
-                <label for="requirementName"><span>Requirement<span class="req">*</span></span> <small class="count">{{ f.requirementName.length }} / {{ requirementNameMax }}</small></label>
+                <label for="requirementName"><span>{{ 'Requirement' | t: 'staff.requirements.form.requirement.label' }}<span class="req">*</span></span> <small class="count">{{ f.requirementName.length }} / {{ requirementNameMax }}</small></label>
                 <textarea id="requirementName" name="requirementName" class="form-control" rows="2" [maxlength]="requirementNameMax" [(ngModel)]="f.requirementName"
-                          placeholder="What the unit must have or do, e.g. The organisation has a documented quality policy communicated to all staff"></textarea>
+                          [placeholder]="'What the unit must have or do, e.g. The organisation has a documented quality policy communicated to all staff' | t: 'staff.requirements.form.requirement.placeholder'"></textarea>
               </div>
               <div class="two">
                 <div class="field">
-                  <label for="purpose">Purpose <small class="count">{{ f.purpose.length }} / {{ purposeMax }}</small></label>
+                  <label for="purpose">{{ 'Purpose' | t: 'staff.requirements.form.purpose.label' }} <small class="count">{{ f.purpose.length }} / {{ purposeMax }}</small></label>
                   <textarea id="purpose" name="purpose" class="form-control" rows="3" [maxlength]="purposeMax" [(ngModel)]="f.purpose"
-                            placeholder="Why the requirement matters"></textarea>
+                            [placeholder]="'Why the requirement matters' | t: 'staff.requirements.form.purpose.placeholder'"></textarea>
                 </div>
                 <div class="field">
-                  <label for="benefits">Benefits <small class="count">{{ f.benefits.length }} / {{ purposeMax }}</small></label>
+                  <label for="benefits">{{ 'Benefits' | t: 'staff.requirements.form.benefits.label' }} <small class="count">{{ f.benefits.length }} / {{ purposeMax }}</small></label>
                   <textarea id="benefits" name="benefits" class="form-control" rows="3" [maxlength]="purposeMax" [(ngModel)]="f.benefits"
-                            placeholder="What the unit gains"></textarea>
+                            [placeholder]="'What the unit gains' | t: 'staff.requirements.form.benefits.placeholder'"></textarea>
                 </div>
               </div>
               <div class="field video-field">
-                <label for="video">Video tutorial <small class="count">optional</small></label>
+                <label for="video">{{ 'Video tutorial' | t: 'staff.requirements.form.video.label' }} <small class="count">{{ 'optional' | t: 'staff.requirements.form.video.optional.label' }}</small></label>
                 <input id="video" name="video" type="url" class="form-control" [maxlength]="videoMax" [(ngModel)]="f.videoUrl"
-                       placeholder="https://www.youtube.com/watch?v=…" />
-                <small class="hint">A link to a video that explains this requirement (YouTube or any https:// address).</small>
+                       [placeholder]="'https://www.youtube.com/watch?v=…' | t: 'staff.requirements.form.video.placeholder'" />
+                <small class="hint">{{ 'A link to a video that explains this requirement (YouTube or any https:// address).' | t: 'staff.requirements.form.video.note' }}</small>
               </div>
 
               @for (c of f.checkpoints; track c; let i = $index) {
-                <section class="cp" [attr.aria-label]="'Checkpoint ' + (i + 1)">
+                <section class="cp" [attr.aria-label]="'Checkpoint {n}' | t: 'staff.requirements.form.checkpoint.label' : { n: i + 1 }">
                   <div class="cp-head">
                     <span class="no" aria-hidden="true">{{ i + 1 }}</span>
                     <div class="cp-text">
-                      <label class="visually-hidden" [for]="'cp-' + i">Checkpoint {{ i + 1 }}</label>
+                      <label class="visually-hidden" [for]="'cp-' + i">{{ 'Checkpoint {n}' | t: 'staff.requirements.form.checkpoint.label' : { n: i + 1 } }}</label>
                       <textarea [id]="'cp-' + i" [name]="'cp-' + i" class="form-control" rows="1" [maxlength]="checkpointMax" [(ngModel)]="c.text"
-                                placeholder="The Yes / No question, e.g. Are the roles defined and documented?"></textarea>
+                                [placeholder]="'The Yes / No question, e.g. Are the roles defined and documented?' | t: 'staff.requirements.form.checkpoint.placeholder'"></textarea>
                       @if (c.bullets.length) {
-                        <ul class="bullets" aria-label="Earlier sub-points">@for (b of c.bullets; track $index) { <li>{{ b }}</li> }</ul>
+                        <ul class="bullets" [attr.aria-label]="'Earlier sub-points' | t: 'staff.requirements.form.bullets.aria'">@for (b of c.bullets; track $index) { <li>{{ b }}</li> }</ul>
                       }
                     </div>
                     @if (f.checkpoints.length > 1) {
-                      <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove checkpoint ' + (i + 1)" (click)="removeCheckpoint(i)">✕</button>
+                      <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove checkpoint {n}' | t: 'staff.requirements.form.removeCheckpoint.aria' : { n: i + 1 }" (click)="removeCheckpoint(i)">✕</button>
                     }
                   </div>
                   <div class="cp-body">
                     <div class="side side-yes">
-                      <h5><span class="chip c-yes">If Yes</span> Evidence to upload</h5>
+                      <h5><span class="chip c-yes">{{ 'If Yes' | t: 'staff.requirements.form.ifYes.chip' }}</span> {{ 'Evidence to upload' | t: 'staff.requirements.form.evidence.heading' }}</h5>
                       @for (e of c.evidences; track e; let j = $index) {
                         <div class="ev">
                           <div class="item">
-                            <input class="form-control" [name]="'ev-' + i + '-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" placeholder="Evidence"
-                                   [attr.aria-label]="'Evidence ' + (j + 1) + ' of checkpoint ' + (i + 1)" />
-                            <label class="tick"><input type="checkbox" class="form-check-input" [name]="'evm-' + i + '-' + j" [(ngModel)]="e.mandatory" /> Mandatory</label>
-                            <button type="button" class="btn btn-link x" aria-label="Remove evidence" (click)="removeEvidence(c.evidences, j)">✕</button>
+                            <input class="form-control" [name]="'ev-' + i + '-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" [placeholder]="'Evidence' | t: 'staff.requirements.form.evidence.placeholder'"
+                                   [attr.aria-label]="'Evidence {n} of checkpoint {checkpoint}' | t: 'staff.requirements.form.evidence.aria' : { n: j + 1, checkpoint: i + 1 }" />
+                            <label class="tick"><input type="checkbox" class="form-check-input" [name]="'evm-' + i + '-' + j" [(ngModel)]="e.mandatory" /> {{ 'Mandatory' | t: 'staff.requirements.form.mandatory.label' }}</label>
+                            <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove evidence' | t: 'staff.requirements.form.removeEvidence.aria'" (click)="removeEvidence(c.evidences, j)">✕</button>
                           </div>
                           <div class="sample">
-                            <span>Sample copy (optional):</span>
+                            <span>{{ 'Sample copy (optional):' | t: 'staff.requirements.form.sample.label' }}</span>
                             @if (e.sampleFile) {
                               <a class="file" [href]="api.sampleUrl(sectionType, sectionCode, e.sampleFile)" target="_blank" rel="noopener">{{ e.sampleFile }}</a>
-                              <button type="button" class="btn btn-link x" aria-label="Remove sample copy" (click)="e.sampleFile = null">✕</button>
+                              <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove sample copy' | t: 'staff.requirements.form.removeSample.aria'" (click)="e.sampleFile = null">✕</button>
                             } @else {
-                              <label class="up">{{ e.uploading ? 'Uploading…' : '⬆ Upload sample' }}
+                              <label class="up">{{ e.uploading ? ('Uploading…' | t: 'staff.requirements.form.sample.uploading.label') : ('⬆ Upload sample' | t: 'staff.requirements.form.sample.upload.button') }}
                                 <input type="file" class="visually-hidden" accept=".pdf,.jpg,.jpeg,.png,.docx,.xlsx" [disabled]="e.uploading" (change)="uploadSample(e, $event)" /></label>
-                              <span class="hint">PDF, image, Word or Excel, up to 2 MB</span>
+                              <span class="hint">{{ 'PDF, image, Word or Excel, up to 2 MB' | t: 'staff.requirements.form.sample.note' }}</span>
                             }
                           </div>
                         </div>
                       }
-                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-evidence" (click)="c.evidences.push(newEvidence()); touch()">+ Add evidence</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-evidence" (click)="c.evidences.push(newEvidence()); touch()">{{ '+ Add evidence' | t: 'staff.requirements.form.addEvidence.button' }}</button>
                     </div>
                     <div class="side side-no">
-                      <h5><span class="chip c-no">If No</span><span class="chip c-part">or Partial</span> Action needed</h5>
+                      <h5><span class="chip c-no">{{ 'If No' | t: 'staff.requirements.form.ifNo.chip' }}</span><span class="chip c-part">{{ 'or Partial' | t: 'staff.requirements.form.orPartial.chip' }}</span> {{ 'Action needed' | t: 'staff.requirements.form.action.heading' }}</h5>
                       @for (a of c.actions; track $index; let j = $index) {
                         <div class="item">
                           <input class="form-control" [name]="'ac-' + i + '-' + j" [maxlength]="actionMax" [ngModel]="a" (ngModelChange)="c.actions[j] = $event"
-                                 [title]="a" placeholder="Action needed" [attr.aria-label]="'Action ' + (j + 1) + ' of checkpoint ' + (i + 1)" />
+                                 [title]="a" [placeholder]="'Action needed' | t: 'staff.requirements.form.action.placeholder'" [attr.aria-label]="'Action {n} of checkpoint {checkpoint}' | t: 'staff.requirements.form.action.aria' : { n: j + 1, checkpoint: i + 1 }" />
                           <small class="count">{{ a.length }} / {{ actionMax }}</small>
-                          <button type="button" class="btn btn-link x" aria-label="Remove action" (click)="c.actions.splice(j, 1); touch()">✕</button>
+                          <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove action' | t: 'staff.requirements.form.removeAction.aria'" (click)="c.actions.splice(j, 1); touch()">✕</button>
                         </div>
                       }
-                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-action" (click)="c.actions.push(''); touch()">+ Add action</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-add-action" (click)="c.actions.push(''); touch()">{{ '+ Add action' | t: 'staff.requirements.form.addAction.button' }}</button>
                     </div>
                   </div>
                 </section>
               }
 
               @if (f.general.length) {
-                <section class="cp general" aria-label="Evidence of the whole requirement">
-                  <div class="cp-head"><div class="cp-text"><strong>Evidence of the whole requirement</strong>
-                    <small class="d-block muted">Added before checkpoints. Keep them here, or remove them and add them under a checkpoint.</small></div></div>
+                <section class="cp general" [attr.aria-label]="'Evidence of the whole requirement' | t: 'staff.requirements.general.heading'">
+                  <div class="cp-head"><div class="cp-text"><strong>{{ 'Evidence of the whole requirement' | t: 'staff.requirements.general.heading' }}</strong>
+                    <small class="d-block muted">{{ 'Added before checkpoints. Keep them here, or remove them and add them under a checkpoint.' | t: 'staff.requirements.form.general.note' }}</small></div></div>
                   <div class="side">
                     @for (e of f.general; track e; let j = $index) {
                       <div class="item">
-                        <input class="form-control" [name]="'gev-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" [attr.aria-label]="'Evidence ' + (j + 1) + ' of the whole requirement'" />
-                        <label class="tick"><input type="checkbox" class="form-check-input" [name]="'gevm-' + j" [(ngModel)]="e.mandatory" /> Mandatory</label>
-                        <button type="button" class="btn btn-link x" aria-label="Remove evidence" (click)="removeEvidence(f.general, j)">✕</button>
+                        <input class="form-control" [name]="'gev-' + j" maxlength="2000" [(ngModel)]="e.evidenceName" [title]="e.evidenceName" [attr.aria-label]="'Evidence {n} of the whole requirement' | t: 'staff.requirements.form.general.evidence.aria' : { n: j + 1 }" />
+                        <label class="tick"><input type="checkbox" class="form-check-input" [name]="'gevm-' + j" [(ngModel)]="e.mandatory" /> {{ 'Mandatory' | t: 'staff.requirements.form.mandatory.label' }}</label>
+                        <button type="button" class="btn btn-link x" [attr.aria-label]="'Remove evidence' | t: 'staff.requirements.form.removeEvidence.aria'" (click)="removeEvidence(f.general, j)">✕</button>
                       </div>
                     }
                   </div>
@@ -245,36 +246,36 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
 
               @if (formError()) { <span class="help-block d-block mt-2" role="alert">{{ formError() }}</span> }
               <div class="foot">
-                <button type="button" class="btn btn-primary btn-add-checkpoint" (click)="f.checkpoints.push(newCheckpoint()); touch()">+ Add checkpoint</button>
+                <button type="button" class="btn btn-primary btn-add-checkpoint" (click)="f.checkpoints.push(newCheckpoint()); touch()">{{ '+ Add checkpoint' | t: 'staff.requirements.form.addCheckpoint.button' }}</button>
                 <span>
-                  <button type="button" class="btn btn-default" (click)="closeForm()">Cancel</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="saving() || d.checklistReady === false">{{ f.id ? 'Update requirement' : 'Save requirement' }}</button>
+                  <button type="button" class="btn btn-default" (click)="closeForm()">{{ 'Cancel' | t: 'staff.requirements.form.cancel.button' }}</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="saving() || d.checklistReady === false">{{ f.id ? ('Update requirement' | t: 'staff.requirements.form.update.button') : ('Save requirement' | t: 'staff.requirements.form.save.button') }}</button>
                 </span>
               </div>
             </form>
           } @else if (selected(); as q) {
             <article class="req-card">
               <div class="det-head">
-                <h4><span class="req-code">{{ d.sectionCode }}.{{ q.requirementCode }}</span> {{ q.requirementName?.trim() || 'Requirement ' + d.sectionCode + '.' + q.requirementCode }}</h4>
+                <h4><span class="req-code">{{ d.sectionCode }}.{{ q.requirementCode }}</span> {{ q.requirementName?.trim() || ('Requirement {code}' | t: 'staff.requirements.card.untitled.title' : { code: d.sectionCode + '.' + q.requirementCode }) }}</h4>
                 <span class="det-actions">
-                  <button type="button" class="btn btn-outline-primary btn-sm edit-requirement" [disabled]="d.checklistReady === false" (click)="edit(q)">Edit</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm edit-requirement" [disabled]="d.checklistReady === false" (click)="edit(q)">{{ 'Edit' | t: 'staff.requirements.card.edit.button' }}</button>
                   @if (q.canRemove) {
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-requirement" (click)="removeRequirement(q)">Delete</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-requirement" (click)="removeRequirement(q)">{{ 'Delete' | t: 'staff.requirements.card.delete.button' }}</button>
                   }
                 </span>
               </div>
-              <p class="req-meta">{{ plural(q.points.length, 'checkpoint') }} ·
-                {{ plural(q.mandatoryEvidences.length + q.optionalEvidences.length, 'evidence') }} · {{ plural(actionsOf(q), 'action') }}</p>
+              <p class="req-meta">{{ count(q.points.length, 'checkpoint') }} ·
+                {{ count(q.mandatoryEvidences.length + q.optionalEvidences.length, 'evidence') }} · {{ count(actionsOf(q), 'action') }}</p>
               <div class="video-row">
                 @if (q.videoUrl) {
-                  <a class="video-link" [href]="q.videoUrl" target="_blank" rel="noopener noreferrer">▶ Watch the video tutorial</a>
+                  <a class="video-link" [href]="q.videoUrl" target="_blank" rel="noopener noreferrer">{{ '▶ Watch the video tutorial' | t: 'staff.requirements.card.video.link' }}</a>
                 } @else {
-                  <span class="muted">No video tutorial yet</span>
+                  <span class="muted">{{ 'No video tutorial yet' | t: 'staff.requirements.card.video.empty' }}</span>
                 }
               </div>
               <div class="pb">
-                <div><b>Purpose</b><span [class.empty]="!q.purpose">{{ q.purpose || 'Not written yet' }}</span></div>
-                <div><b>Benefits</b><span [class.empty]="!q.benefits">{{ q.benefits || 'Not written yet' }}</span></div>
+                <div><b>{{ 'Purpose' | t: 'staff.requirements.card.purpose.label' }}</b><span [class.empty]="!q.purpose">{{ q.purpose || ('Not written yet' | t: 'staff.requirements.card.notWritten.empty') }}</span></div>
+                <div><b>{{ 'Benefits' | t: 'staff.requirements.card.benefits.label' }}</b><span [class.empty]="!q.benefits">{{ q.benefits || ('Not written yet' | t: 'staff.requirements.card.notWritten.empty') }}</span></div>
               </div>
               @for (o of q.points; track o.id; let i = $index) {
                 <section class="cpv">
@@ -283,23 +284,23 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
                   @if (optionImage(o); as src) { <img class="option-image" [src]="src" alt="" /> }
                   <div class="cpv-body">
                     <div class="cpv-col">
-                      <p class="cpv-title t-yes">If Yes — evidence to upload</p>
+                      <p class="cpv-title t-yes">{{ 'If Yes — evidence to upload' | t: 'staff.requirements.card.ifYes.heading' }}</p>
                       @if (evidencesFor(q, o.optionCode); as list) {
                         @if (list.length) {
                           @for (e of list; track $index) {
                             <span class="tag tag-ev">{{ e.evidenceName }}
-                              @if (isMandatory(q, e)) { <span class="m">MANDATORY</span> }
-                              @if (e.sampleFile) { <a class="samp" [href]="api.sampleUrl(sectionType, sectionCode, e.sampleFile)" target="_blank" rel="noopener">Sample copy</a> }
+                              @if (isMandatory(q, e)) { <span class="m">{{ 'MANDATORY' | t: 'staff.requirements.card.mandatory.chip' }}</span> }
+                              @if (e.sampleFile) { <a class="samp" [href]="api.sampleUrl(sectionType, sectionCode, e.sampleFile)" target="_blank" rel="noopener">{{ 'Sample copy' | t: 'staff.requirements.card.sample.link' }}</a> }
                             </span>
                           }
-                        } @else { <span class="muted">No evidence yet</span> }
+                        } @else { <span class="muted">{{ 'No evidence yet' | t: 'staff.requirements.card.evidence.empty' }}</span> }
                       }
                     </div>
                     <div class="cpv-col">
-                      <p class="cpv-title t-no">If No / Partial — action needed</p>
+                      <p class="cpv-title t-no">{{ 'If No / Partial — action needed' | t: 'staff.requirements.card.ifNo.heading' }}</p>
                       @if (o.actions?.length) {
                         @for (a of o.actions; track $index) { <span class="tag tag-ac">{{ a }}</span> }
-                      } @else { <span class="muted">No action yet</span> }
+                      } @else { <span class="muted">{{ 'No action yet' | t: 'staff.requirements.card.action.empty' }}</span> }
                     </div>
                   </div>
                 </section>
@@ -307,11 +308,11 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
               @if (evidencesFor(q, null); as general) {
                 @if (general.length) {
                   <section class="cpv general-row">
-                    <p class="cpv-title">Evidence of the whole requirement</p>
+                    <p class="cpv-title">{{ 'Evidence of the whole requirement' | t: 'staff.requirements.general.heading' }}</p>
                     @for (e of general; track $index) {
                       <span class="tag tag-ev">{{ e.evidenceName }}
-                        @if (isMandatory(q, e)) { <span class="m">MANDATORY</span> }
-                        @if (e.validationRequired) { <span class="m">VALIDATION REQUIRED</span> }
+                        @if (isMandatory(q, e)) { <span class="m">{{ 'MANDATORY' | t: 'staff.requirements.card.mandatory.chip' }}</span> }
+                        @if (e.validationRequired) { <span class="m">{{ 'VALIDATION REQUIRED' | t: 'staff.requirements.card.validation.chip' }}</span> }
                       </span>
                     }
                   </section>
@@ -319,7 +320,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
               }
             </article>
           } @else {
-            <div class="no-data">Choose a requirement on the left, or add one.</div>
+            <div class="no-data">{{ 'Choose a requirement on the left, or add one.' | t: 'staff.requirements.detail.empty' }}</div>
           }
         </section>
       </div>
@@ -502,31 +503,43 @@ export class RequirementsPage {
     this.form.update((f) => (f ? { ...f } : f));
   }
 
-  protected plural(n: number, word: string): string {
-    return `${n} ${word}${n === 1 ? '' : 's'}`;
+  /** "1 checkpoint" / "3 checkpoints" (two wordings each). */
+  protected count(n: number, word: 'requirement' | 'checkpoint' | 'evidence' | 'action'): string {
+    const one = n === 1;
+    switch (word) {
+      case 'requirement':
+        return one ? t('staff.requirements.count.requirement', '{count} requirement', { count: n }) : t('staff.requirements.count.requirements', '{count} requirements', { count: n });
+      case 'checkpoint':
+        return one ? t('staff.requirements.count.checkpoint', '{count} checkpoint', { count: n }) : t('staff.requirements.count.checkpoints', '{count} checkpoints', { count: n });
+      case 'evidence':
+        return one ? t('staff.requirements.count.evidence', '{count} evidence', { count: n }) : t('staff.requirements.count.evidences', '{count} evidences', { count: n });
+      default:
+        return one ? t('staff.requirements.count.action', '{count} action', { count: n }) : t('staff.requirements.count.actions', '{count} actions', { count: n });
+    }
   }
 
   /** The requirement's name in the list: its first checkpoint (requirements have no title of their own). */
   /** The requirement's text; older requirements without one show their first checkpoint. */
   protected titleOf(q: Requirement): string {
-    return q.requirementName?.trim() || q.points[0]?.name?.trim() || `Requirement ${q.requirementCode}`;
+    return q.requirementName?.trim() || q.points[0]?.name?.trim() || t('staff.requirements.list.untitled.label', 'Requirement {code}', { code: q.requirementCode });
   }
 
   /** What the requirement still lacks, shown under it in the list. */
   protected missing(q: Requirement): string[] {
     const m: string[] = [];
-    if (!q.requirementName?.trim()) m.push('requirement text');
-    if (!q.purpose) m.push('purpose');
-    if (!q.benefits) m.push('benefits');
-    if (!q.mandatoryEvidences.length && !q.optionalEvidences.length) m.push('evidence');
-    if (!this.actionsOf(q)) m.push('action');
+    if (!q.requirementName?.trim()) m.push(t('staff.requirements.missing.requirementText.label', 'requirement text'));
+    if (!q.purpose) m.push(t('staff.requirements.missing.purpose.label', 'purpose'));
+    if (!q.benefits) m.push(t('staff.requirements.missing.benefits.label', 'benefits'));
+    if (!q.mandatoryEvidences.length && !q.optionalEvidences.length) m.push(t('staff.requirements.missing.evidence.label', 'evidence'));
+    if (!this.actionsOf(q)) m.push(t('staff.requirements.missing.action.label', 'action'));
     return m;
   }
 
   /** Shows a requirement on the right (an open editor is closed after asking). */
   protected async select(q: Requirement): Promise<void> {
     if (this.form() && !(await this.confirms.ask({
-      title: 'Leave Without Saving?', message: 'The requirement you are editing is not saved.', confirmLabel: 'Leave', danger: true,
+      title: t('staff.requirements.leave.title', 'Leave Without Saving?'), message: t('staff.requirements.leave.message', 'The requirement you are editing is not saved.'),
+      confirmLabel: t('staff.requirements.leave.button', 'Leave'), danger: true,
     }))) return;
     this.form.set(null);
     this.formError.set('');
@@ -610,7 +623,8 @@ export class RequirementsPage {
     if (!f) return;
     const c = f.checkpoints[i];
     if (c.optionCode && !(await this.confirms.ask({
-      title: `Remove Checkpoint ${i + 1}?`, message: 'It is removed with its evidence and actions.', confirmLabel: 'Remove', danger: true,
+      title: t('staff.requirements.removeCheckpoint.title', 'Remove Checkpoint {n}?', { n: i + 1 }), message: t('staff.requirements.removeCheckpoint.message', 'It is removed with its evidence and actions.'),
+      confirmLabel: t('staff.requirements.removeCheckpoint.button', 'Remove'), danger: true,
     }))) return;
     f.checkpoints.splice(i, 1);
     this.touch();
@@ -628,7 +642,7 @@ export class RequirementsPage {
     if (!file) return;
     this.formError.set('');
     if (file.size > MAX_SAMPLE_BYTES) {
-      this.formError.set('The sample copy is larger than 2 MB.');
+      this.formError.set(t('staff.requirements.sample.tooLarge.error', 'The sample copy is larger than 2 MB.'));
       return;
     }
     e.uploading = true;
@@ -670,19 +684,20 @@ export class RequirementsPage {
     const body = this.request(f);
     const blank = body.checkpoints.findIndex((c) => !c.text);
     if (!body.requirementName) {
-      this.formError.set('Please enter the requirement.');
+      this.formError.set(t('staff.requirements.form.requirement.error', 'Please enter the requirement.'));
       return;
     }
     if (body.videoUrl && !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(body.videoUrl)) {
-      this.formError.set('The video link must be a web address starting with https://, e.g. a YouTube link.');
+      this.formError.set(t('staff.requirements.form.video.error', 'The video link must be a web address starting with https://, e.g. a YouTube link.'));
       return;
     }
     if (!body.checkpoints.length || blank >= 0) {
-      this.formError.set(body.checkpoints.length ? `Please write checkpoint ${blank + 1}, or remove it.` : 'Please add at least one checkpoint.');
+      this.formError.set(body.checkpoints.length ? t('staff.requirements.form.checkpoint.blank.error', 'Please write checkpoint {n}, or remove it.', { n: blank + 1 })
+        : t('staff.requirements.form.checkpoint.none.error', 'Please add at least one checkpoint.'));
       return;
     }
     if (f.checkpoints.some((c) => c.evidences.some((e) => e.uploading))) {
-      this.formError.set('Please wait until the sample copy is uploaded.');
+      this.formError.set(t('staff.requirements.form.uploading.error', 'Please wait until the sample copy is uploaded.'));
       return;
     }
     this.saving.set(true);
@@ -702,7 +717,9 @@ export class RequirementsPage {
 
   protected async removeRequirement(q: Requirement): Promise<void> {
     if (!(await this.confirms.ask({
-      title: `Remove Requirement ${this.data()?.sectionCode}.${q.requirementCode}?`, message: 'It is removed with its checkpoints and evidences.', confirmLabel: 'Remove', danger: true,
+      title: t('staff.requirements.removeRequirement.title', 'Remove Requirement {code}?', { code: `${this.data()?.sectionCode}.${q.requirementCode}` }),
+      message: t('staff.requirements.removeRequirement.message', 'It is removed with its checkpoints and evidences.'),
+      confirmLabel: t('staff.requirements.removeRequirement.button', 'Remove'), danger: true,
     }))) return;
     this.clearMessages();
     this.saving.set(true);

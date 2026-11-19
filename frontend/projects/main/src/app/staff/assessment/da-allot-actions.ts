@@ -4,6 +4,7 @@ import { text } from './assessment-shared';
 import { Person, Row, serves } from './assessment.api';
 import { mayAssess } from '../users/assessor-scope';
 import { ConfirmAsk } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-18: the agency's Accept / Re-allot and Reject of a unit allotted to it, shared by the DA allotment list and the
@@ -24,11 +25,13 @@ export function assessorsForUnit(unit: Row, assessors: Person[], bronzeAssessors
 /** The Reject confirmation (reason required, as the server). */
 export function agencyRejectAsk(unit: Row): ConfirmAsk {
   return {
-    title: 'Reject assessment?',
-    message: `${text(unit, 'ZedId')} (${text(unit, 'Certification')}) goes back to the ZED team with your reason.`,
-    confirmLabel: 'Reject',
+    title: t('staff.daAllotment.actions.reject.title', 'Reject assessment?'),
+    message: t('staff.daAllotment.actions.reject.message', '{zedId} ({level}) goes back to the ZED team with your reason.',
+      { zedId: text(unit, 'ZedId'), level: text(unit, 'Certification') }),
+    confirmLabel: t('staff.daAllotment.actions.reject.confirmButton', 'Reject'),
     danger: true,
-    reason: { label: 'Reason for rejection', maxLength: 2000, requiredMessage: 'Please enter reason for rejection.' },
+    reason: { label: t('staff.daAllotment.actions.reject.reasonLabel', 'Reason for rejection'), maxLength: 2000,
+      requiredMessage: t('staff.daAllotment.actions.reject.reasonRequired.message', 'Please enter reason for rejection.') },
   };
 }
 
@@ -41,7 +44,7 @@ export interface AllotChoice {
 /** Accept / Re-allot: choose one of the agency's desktop assessors (Re-allot opens with the current one selected). */
 @Component({
   selector: 'zed-allot-assessor-dialog',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @let c = unit();
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daAllotTitle" (click)="cancel.emit()">
@@ -49,22 +52,22 @@ export interface AllotChoice {
         <div class="modal-content da-pop">
           <div class="modal-header justify-content-between">
             <div>
-              <h3 class="da-pop-title" id="daAllotTitle">{{ t(c, 'DesktopAssessorId') ? 'Re-allot assessment' : 'Accept assessment' }}</h3>
-              <p class="da-pop-sub">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}@if (t(c, 'PUnitName')) { · {{ t(c, 'PUnitName') }} }</p>
+              <h3 class="da-pop-title" id="daAllotTitle">{{ col(c, 'DesktopAssessorId') ? ('Re-allot assessment' | t: 'staff.daAllotment.actions.reallotTitle') : ('Accept assessment' | t: 'staff.daAllotment.actions.acceptTitle') }}</h3>
+              <p class="da-pop-sub">{{ col(c, 'ZedId') }} · {{ col(c, 'Certification') }}@if (col(c, 'PUnitName')) { · {{ col(c, 'PUnitName') }} }</p>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="cancel.emit()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.daAllotment.actions.closeAria'" (click)="cancel.emit()"></button>
           </div>
           <div class="modal-body">
-            <label class="form-label" for="daAssessor">Assessor<span class="req">*</span></label>
+            <label class="form-label" for="daAssessor">{{ 'Assessor' | t: 'staff.daAllotment.actions.assessorLabel' }}<span class="req">*</span></label>
             <select id="daAssessor" class="form-select" [(ngModel)]="assessorId">
-              <option value="">--Select--</option>
+              <option value="">{{ '--Select--' | t: 'staff.daAllotment.actions.selectLabel' }}</option>
               @for (a of assessors(); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
             </select>
             @if (missing() || failed()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ missing() || failed() }}</div> }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-light" (click)="cancel.emit()">Cancel</button>
-            <button type="button" class="btn btn-primary da-ok" [disabled]="busy()" (click)="submit()">Allot to assessor</button>
+            <button type="button" class="btn btn-light" (click)="cancel.emit()">{{ 'Cancel' | t: 'staff.daAllotment.actions.cancelButton' }}</button>
+            <button type="button" class="btn btn-primary da-ok" [disabled]="busy()" (click)="submit()">{{ 'Allot to assessor' | t: 'staff.daAllotment.actions.allotButton' }}</button>
           </div>
         </div>
       </div>
@@ -86,7 +89,7 @@ export class AllotAssessorDialog implements OnInit {
   readonly failed = input('');
   readonly allot = output<AllotChoice>();
   readonly cancel = output<void>();
-  protected readonly t = text;
+  protected readonly col = text;
   protected readonly missing = signal('');
   protected assessorId = '';
 
@@ -96,7 +99,7 @@ export class AllotAssessorDialog implements OnInit {
 
   protected submit(): void {
     if (!this.assessorId) {
-      this.missing.set('Please select valid data.');
+      this.missing.set(t('staff.daAllotment.actions.selectError', 'Please select valid data.'));
       return;
     }
     this.missing.set('');

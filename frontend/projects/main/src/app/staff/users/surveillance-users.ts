@@ -10,6 +10,7 @@ import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { CodeName, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
 import { PagedView, PagerComponent } from '../pager';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ListCount, ListCounts } from '../list-counts';
@@ -52,30 +53,32 @@ interface Target {
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts, TextPipe],
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="title" subtitle="Accounts are created and edited on the ZED portal (main); changes here apply to surveillance only." />
+    <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="'Accounts are created and edited on the ZED portal (main); changes here apply to surveillance only.' | t: 'staff.surveillanceUsers.subtitle'" />
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
     @if (totalTiles().length) {
       <!-- 2026-11-18 (the user: "same logic in the assessment agency login"): the agency's own units per level in surveillance. -->
-      <h3 class="sv-cap">Units Allocated to Your Agency</h3>
-      <zed-list-counts [counts]="totalTiles()" label="Units allocated to your agency per level" />
+      <h3 class="sv-cap">{{ 'Units Allocated to Your Agency' | t: 'staff.surveillanceUsers.totals.title' }}</h3>
+      <zed-list-counts [counts]="totalTiles()" [label]="'Units allocated to your agency per level' | t: 'staff.surveillanceUsers.totals.aria'" />
     }
-    <zed-list-counts [counts]="tiles()" [selected]="filter()" [label]="noun() + ' by status'" (pick)="filter.set($any($event.key))" />
+    <zed-list-counts [counts]="tiles()" [selected]="filter()" [label]="'{noun} by status' | t: 'staff.surveillanceUsers.countsLabel' : { noun: noun() }" (pick)="filter.set($any($event.key))" />
 
     <div class="zed-card sv-bar">
       <label class="sv-search-box">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-        <input type="search" class="form-control sv-search" placeholder="Search ID, name or e-mail" aria-label="Search" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <input type="search" class="form-control sv-search" [placeholder]="'Search ID, name or e-mail' | t: 'staff.surveillanceUsers.search.placeholder'" [attr.aria-label]="'Search' | t: 'staff.surveillanceUsers.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
       </label>
       @if (kind === 'assessors' && showsAgency && agencyOptions().length > 1) {
-        <select id="sv-agency" class="form-select sv-agency" aria-label="Agency" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
-          <option value="">All agencies</option>
+        <select id="sv-agency" class="form-select sv-agency" [attr.aria-label]="'Agency' | t: 'staff.surveillanceUsers.filter.agency'" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
+          <option value="">{{ 'All agencies' | t: 'staff.surveillanceUsers.filter.allAgencies' }}</option>
           @for (o of agencyOptions(); track o.id) { <option [value]="o.id">{{ o.name }} ({{ o.count }})</option> }
         </select>
       }
-      <span class="sv-showing">{{ shownCount() }} of {{ totalCount() }} {{ noun().toLowerCase() }}{{ filter() === 'all' ? '' : ' · ' + filterLabel() }}</span>
+      <span class="sv-showing">{{ filter() === 'all'
+        ? ('{shown} of {total} {noun}' | t: 'staff.surveillanceUsers.showing' : { shown: shownCount(), total: totalCount(), noun: noun().toLowerCase() })
+        : ('{shown} of {total} {noun} · {filter}' | t: 'staff.surveillanceUsers.showingFiltered' : { shown: shownCount(), total: totalCount(), noun: noun().toLowerCase(), filter: filterLabel() }) }}</span>
     </div>
 
     <div class="zed-card sv-list">
@@ -83,7 +86,7 @@ interface Target {
         @if (kind === 'agencies') {
           <table class="table table-zed sv-table">
             <thead>
-              <tr><th>Agency</th><th>SPOC</th><th>Verification</th><th class="text-center">Assessors</th><th class="sv-alloc">Allocated</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
+              <tr><th>{{ 'Agency' | t: 'staff.surveillanceUsers.column.agency' }}</th><th>{{ 'SPOC' | t: 'staff.surveillanceUsers.column.spoc' }}</th><th>{{ 'Verification' | t: 'staff.surveillanceUsers.column.verification' }}</th><th class="text-center">{{ 'Assessors' | t: 'staff.surveillanceUsers.column.assessors' }}</th><th class="sv-alloc">{{ 'Allocated' | t: 'staff.surveillanceUsers.column.allocated' }}</th><th>{{ 'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze' }}</th><th class="text-center">{{ 'Status' | t: 'staff.surveillanceUsers.column.status' }}</th><th class="text-end">{{ 'Actions' | t: 'staff.surveillanceUsers.column.actions' }}</th></tr>
             </thead>
             <tbody>
               @for (a of agenciesView.page(); track a.userId) {
@@ -98,27 +101,27 @@ interface Target {
                       </span>
                     </div>
                   </td>
-                  <td class="sv-contact" data-label="SPOC">
+                  <td class="sv-contact" [attr.data-label]="'SPOC' | t: 'staff.surveillanceUsers.column.spoc'">
                     <strong>{{ a.spocName }}</strong>
-                    <span [class.no-mobile]="!a.mobileNo">{{ a.mobileNo ? mobile(a.mobileNo) : 'Mobile not saved' }}</span>
+                    <span [class.no-mobile]="!a.mobileNo">{{ a.mobileNo ? mobile(a.mobileNo) : ('Mobile not saved' | t: 'staff.surveillanceUsers.row.noMobile') }}</span>
                     @if (a.email) { <span class="sv-sub" [title]="a.email">{{ email(a.email) }}</span> }
                   </td>
-                  <td data-label="Verification">
-                    @if (a.desktopVerification) { <span class="sv-pill">Desktop verification</span> }
-                    @if (a.siteVerification) { <span class="sv-pill">Site verification</span> }
+                  <td [attr.data-label]="'Verification' | t: 'staff.surveillanceUsers.column.verification'">
+                    @if (a.desktopVerification) { <span class="sv-pill">{{ 'Desktop verification' | t: 'staff.surveillanceUsers.row.desktopVerification' }}</span> }
+                    @if (a.siteVerification) { <span class="sv-pill">{{ 'Site verification' | t: 'staff.surveillanceUsers.row.siteVerification' }}</span> }
                   </td>
-                  <td class="text-center sv-count-cell" data-label="Assessors"><strong>{{ a.noOfUsers }}</strong></td>
-                  <td class="sv-alloc" data-label="Allocated"><zed-level-counts [counts]="a.levelCounts" [label]="'Units allocated to ' + (a.userName || a.userId)" /></td>
-                  <td class="bronze-status" data-label="Bronze surveillance">
-                    <span class="status-badge" [class.is-success]="a.allowBronzeSurveillance" [class.is-inactive]="!a.allowBronzeSurveillance">{{ a.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}</span>
+                  <td class="text-center sv-count-cell" [attr.data-label]="'Assessors' | t: 'staff.surveillanceUsers.column.assessors'"><strong>{{ a.noOfUsers }}</strong></td>
+                  <td class="sv-alloc" [attr.data-label]="'Allocated' | t: 'staff.surveillanceUsers.column.allocated'"><zed-level-counts [counts]="a.levelCounts" [label]="'Units allocated to {name}' | t: 'staff.surveillanceUsers.row.unitsAria' : { name: a.userName || a.userId }" /></td>
+                  <td class="bronze-status" [attr.data-label]="'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze'">
+                    <span class="status-badge" [class.is-success]="a.allowBronzeSurveillance" [class.is-inactive]="!a.allowBronzeSurveillance">{{ a.allowBronzeSurveillance ? ('Allowed' | t: 'staff.surveillanceUsers.row.allowed') : ('Not allowed' | t: 'staff.surveillanceUsers.row.notAllowed') }}</span>
                     @if (!a.allowBronzeSurveillance && a.reasonForRejectionForBS) { <small class="sv-sub">{{ a.reasonForRejectionForBS }}</small> }
-                    @if (a.tuPreferredState) { <small class="sv-sub">Preferred State: <strong>{{ stateName(a.tuPreferredState) }}</strong></small> }
+                    @if (a.tuPreferredState) { <small class="sv-sub">{{ 'Preferred State:' | t: 'staff.surveillanceUsers.row.preferredState' }} <strong>{{ stateName(a.tuPreferredState) }}</strong></small> }
                   </td>
-                  <td class="text-center sv-status-cell" data-label="Status"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ status(a) }}</span></td>
+                  <td class="text-center sv-status-cell" [attr.data-label]="'Status' | t: 'staff.surveillanceUsers.column.status'"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ status(a) }}</span></td>
                   <td class="sv-actions">
                     <div class="sv-btns">
-                      <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="openBronze(a)">Bronze surveillance</button>
-                      <zed-row-menu [items]="a.isActive ? agencyMenuActive : agencyMenuBlocked" [label]="'More actions for ' + (a.userName || a.userId)"
+                      <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="openBronze(a)">{{ 'Bronze surveillance' | t: 'staff.surveillanceUsers.row.bronzeButton' }}</button>
+                      <zed-row-menu [items]="a.isActive ? agencyMenuActive() : agencyMenuBlocked()" [label]="'More actions for {name}' | t: 'staff.surveillanceUsers.row.menuAria' : { name: a.userName || a.userId }"
                                     (picked)="pick($event, { kind: 'agencies', userId: a.userId, name: a.userName, email: a.email })" />
                     </div>
                   </td>
@@ -126,10 +129,10 @@ interface Target {
               } @empty {
                 <tr class="empty-row"><td colspan="8" style="padding: 0"><div class="no-data sv-empty">
                   @if (agencies().length) {
-                    No agency matches the filters.
-                    <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all agencies</button>
+                    {{ 'No agency matches the filters.' | t: 'staff.surveillanceUsers.agencies.noMatch' }}
+                    <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all agencies' | t: 'staff.surveillanceUsers.agencies.showAllButton' }}</button>
                   } @else {
-                    No agencies yet. They are added on the ZED portal (main).
+                    {{ 'No agencies yet. They are added on the ZED portal (main).' | t: 'staff.surveillanceUsers.agencies.empty' }}
                   }
                 </div></td></tr>
               }
@@ -138,7 +141,7 @@ interface Target {
         } @else {
           <table class="table table-zed sv-table">
             <thead>
-              <tr><th>Assessor</th><th>Contact</th><th class="sv-alloc">Allocated</th><th>Bronze surveillance</th><th class="text-center">Status</th><th class="text-end">Actions</th></tr>
+              <tr><th>{{ 'Assessor' | t: 'staff.surveillanceUsers.column.assessor' }}</th><th>{{ 'Contact' | t: 'staff.surveillanceUsers.column.contact' }}</th><th class="sv-alloc">{{ 'Allocated' | t: 'staff.surveillanceUsers.column.allocated' }}</th><th>{{ 'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze' }}</th><th class="text-center">{{ 'Status' | t: 'staff.surveillanceUsers.column.status' }}</th><th class="text-end">{{ 'Actions' | t: 'staff.surveillanceUsers.column.actions' }}</th></tr>
             </thead>
             <tbody>
               @for (s of assessorsView.page(); track s.userId) {
@@ -150,33 +153,33 @@ interface Target {
                         <span class="sv-name">{{ s.userName }}</span>
                         <span class="sv-id">{{ s.userId }}</span>
                         @if (field(s, 'address')) { <span class="sv-sub">{{ field(s, 'address') }}</span> }
-                        @if (field(s, 'idProofNumber')) { <span class="sv-sub">ID proof {{ field(s, 'idProofNumber') }}</span> }
+                        @if (field(s, 'idProofNumber')) { <span class="sv-sub">{{ 'ID proof {number}' | t: 'staff.surveillanceUsers.row.idProof' : { number: field(s, 'idProofNumber') } }}</span> }
                         @if (showsAgency && s.agencyUserId) {
                           <span class="sv-agency-line"><span class="sv-pill" [title]="s.agencyUserId">{{ s.agencyUserName || s.agencyUserId }}</span></span>
                         }
                       </span>
                     </div>
                   </td>
-                  <td class="sv-contact" data-label="Contact">
-                    <span [class.no-mobile]="!s.mobileNo">{{ s.mobileNo ? mobile(s.mobileNo) : 'Mobile not saved' }}</span>
+                  <td class="sv-contact" [attr.data-label]="'Contact' | t: 'staff.surveillanceUsers.column.contact'">
+                    <span [class.no-mobile]="!s.mobileNo">{{ s.mobileNo ? mobile(s.mobileNo) : ('Mobile not saved' | t: 'staff.surveillanceUsers.row.noMobile') }}</span>
                     @if (s.email) { <span class="sv-sub" [title]="s.email">{{ email(s.email) }}</span> }
                   </td>
-                  <td class="sv-alloc" data-label="Allocated"><zed-level-counts [counts]="s.levelCounts" [label]="'Assessments allocated to ' + (s.userName || s.userId)" /></td>
-                  <td data-label="Bronze surveillance">
+                  <td class="sv-alloc" [attr.data-label]="'Allocated' | t: 'staff.surveillanceUsers.column.allocated'"><zed-level-counts [counts]="s.levelCounts" [label]="'Assessments allocated to {name}' | t: 'staff.surveillanceUsers.row.assessmentsAria' : { name: s.userName || s.userId }" /></td>
+                  <td [attr.data-label]="'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze'">
                     <label class="bronze-switch form-switch" [class.is-on]="s.allowBronzeSurveillance">
                       <input type="checkbox" role="switch" class="form-check-input" [checked]="!!s.allowBronzeSurveillance" [disabled]="busy()" (change)="setAssessorBronze(s, $any($event.target).checked)" />
-                      {{ s.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}
+                      {{ s.allowBronzeSurveillance ? ('Allowed' | t: 'staff.surveillanceUsers.row.allowed') : ('Not allowed' | t: 'staff.surveillanceUsers.row.notAllowed') }}
                     </label>
                   </td>
-                  <td class="text-center sv-status-cell" data-label="Status"><span class="status-badge" [class.is-active]="s.isActive" [class.is-rejected]="!s.isActive">{{ status(s) }}</span>
+                  <td class="text-center sv-status-cell" [attr.data-label]="'Status' | t: 'staff.surveillanceUsers.column.status'"><span class="status-badge" [class.is-active]="s.isActive" [class.is-rejected]="!s.isActive">{{ status(s) }}</span>
                     <!-- 2026-11-18: the registered phone (site assessor app or Bronze surveillance app), Admin and Master Admin only. -->
                     @if (showsMobile) { <zed-phone-chip class="sv-phone" [phone]="phoneOf(s.userId)" /> }</td>
                   <td class="sv-actions">
                     <div class="sv-btns">
                       @if (showsMobile) {
-                        <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Registered mobile of ' + s.userId" (click)="mobileOf.set(s.userId)">Mobile</button>
+                        <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Registered mobile of {id}' | t: 'staff.surveillanceUsers.row.mobileAria' : { id: s.userId }" (click)="mobileOf.set(s.userId)">{{ 'Mobile' | t: 'staff.surveillanceUsers.row.mobileButton' }}</button>
                       }
-                      <zed-row-menu [items]="assessorMenu(s.userId, !!s.isActive)" [label]="'More actions for ' + (s.userName || s.userId)"
+                      <zed-row-menu [items]="assessorMenu(s.userId, !!s.isActive)" [label]="'More actions for {name}' | t: 'staff.surveillanceUsers.row.menuAria' : { name: s.userName || s.userId }"
                                     (picked)="pick($event, { kind: 'assessors', userId: s.userId, name: s.userName, email: s.email })" />
                     </div>
                   </td>
@@ -184,10 +187,10 @@ interface Target {
               } @empty {
                 <tr class="empty-row"><td colspan="6" style="padding: 0"><div class="no-data sv-empty">
                   @if (assessors().length) {
-                    No assessor matches the filters.
-                    <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all assessors</button>
+                    {{ 'No assessor matches the filters.' | t: 'staff.surveillanceUsers.assessors.noMatch' }}
+                    <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all assessors' | t: 'staff.surveillanceUsers.assessors.showAllButton' }}</button>
                   } @else {
-                    No assessors yet. They are added on the ZED portal (main).
+                    {{ 'No assessors yet. They are added on the ZED portal (main).' | t: 'staff.surveillanceUsers.assessors.empty' }}
                   }
                 </div></td></tr>
               }
@@ -202,34 +205,34 @@ interface Target {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="bronze-title">
         <div class="modal-dialog modal-popup sv-dialog"><div class="modal-content">
           <div class="modal-header">
-            <h3 class="registration-title m-0" id="bronze-title">Bronze Surveillance – {{ d.agency.userId }}</h3>
-            <button type="button" class="btn-close" aria-label="Close" (click)="bronze.set(null)"></button>
+            <h3 class="registration-title m-0" id="bronze-title">{{ 'Bronze Surveillance – {id}' | t: 'staff.surveillanceUsers.bronze.title' : { id: d.agency.userId } }}</h3>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.surveillanceUsers.bronze.closeAria'" (click)="bronze.set(null)"></button>
           </div>
           <div class="modal-body">
-            <p class="sv-dialog-who"><strong>{{ d.agency.userName }}</strong>@if (d.agency.spocName) {<span class="muted"> · SPOC {{ d.agency.spocName }}</span>}</p>
+            <p class="sv-dialog-who"><strong>{{ d.agency.userName }}</strong>@if (d.agency.spocName) {<span class="muted"> · {{ 'SPOC {name}' | t: 'staff.surveillanceUsers.bronze.spoc' : { name: d.agency.spocName } }}</span>}</p>
             <label class="toggle-card form-switch mb-3" [class.active]="d.allow">
               <input type="checkbox" role="switch" class="form-check-input" name="allow" [(ngModel)]="d.allow" />
-              <span><strong>Allow Bronze surveillance</strong>
-                <small class="muted d-block">On: choose the preferred state and districts. Off: give the reason.</small></span>
+              <span><strong>{{ 'Allow Bronze surveillance' | t: 'staff.surveillanceUsers.bronze.allowLabel' }}</strong>
+                <small class="muted d-block">{{ 'On: choose the preferred state and districts. Off: give the reason.' | t: 'staff.surveillanceUsers.bronze.allowNote' }}</small></span>
             </label>
             <div class="form-grid">
               @if (d.allow) {
-                <label for="bs-state">Preferred State</label>
+                <label for="bs-state">{{ 'Preferred State' | t: 'staff.surveillanceUsers.bronze.stateLabel' }}</label>
                 <select id="bs-state" class="form-select" [ngModel]="d.state" (ngModelChange)="stateChanged(d, $event)">
-                  <option value="">Select State</option>
+                  <option value="">{{ 'Select State' | t: 'staff.surveillanceUsers.bronze.statePlaceholder' }}</option>
                   @for (st of states(); track st.code) { <option [value]="st.code">{{ st.name }}</option> }
                 </select>
-                <label class="top" for="bs-districts">Preferred Districts</label>
-                <zed-multi-select inputId="bs-districts" label="Preferred Districts" [options]="districts()" [(value)]="d.districts" />
+                <label class="top" for="bs-districts">{{ 'Preferred Districts' | t: 'staff.surveillanceUsers.bronze.districtsLabel' }}</label>
+                <zed-multi-select inputId="bs-districts" [label]="'Preferred Districts' | t: 'staff.surveillanceUsers.bronze.districtsLabel'" [options]="districts()" [(value)]="d.districts" />
               } @else {
-                <label class="top" for="bs-reason">Reason</label>
+                <label class="top" for="bs-reason">{{ 'Reason' | t: 'staff.surveillanceUsers.bronze.reasonLabel' }}</label>
                 <textarea id="bs-reason" class="form-control" maxlength="2000" rows="3" [(ngModel)]="d.reason"></textarea>
               }
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="bronze.set(null)">Close</button>
-            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="saveBronze(d)">Save</button>
+            <button type="button" class="btn btn-default" (click)="bronze.set(null)">{{ 'Close' | t: 'staff.surveillanceUsers.bronze.closeButton' }}</button>
+            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="saveBronze(d)">{{ 'Save' | t: 'staff.surveillanceUsers.bronze.saveButton' }}</button>
           </div>
         </div></div>
       </div>
@@ -240,14 +243,14 @@ interface Target {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="mobile-title">
         <div class="modal-dialog modal-popup sv-dialog"><div class="modal-content">
           <div class="modal-header">
-            <h3 class="registration-title m-0" id="mobile-title">Registered Mobile – {{ id }}</h3>
-            <button type="button" class="btn-close" aria-label="Close" (click)="mobileOf.set(null)"></button>
+            <h3 class="registration-title m-0" id="mobile-title">{{ 'Registered Mobile – {id}' | t: 'staff.surveillanceUsers.mobile.title' : { id: id } }}</h3>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.surveillanceUsers.mobile.closeAria'" (click)="mobileOf.set(null)"></button>
           </div>
           <div class="modal-body">
             <zed-assessor-mobile [userId]="id" system="surveillance" [plain]="true" [name]="nameOf(id)" (released)="loadPhones()" />
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="mobileOf.set(null)">Close</button>
+            <button type="button" class="btn btn-default" (click)="mobileOf.set(null)">{{ 'Close' | t: 'staff.surveillanceUsers.mobile.closeButton' }}</button>
           </div>
         </div></div>
       </div>
@@ -345,8 +348,9 @@ export class SurveillanceUsersPage {
   private readonly isMaster = this.roleId === StaffRole.MasterAdmin;
   /** V4: the assessor's registered mobile of the surveillance site assessor app, for the Admin and the MasterAdmin (not agencies). */
   protected readonly showsMobile = this.kind === 'assessors' && canSeeAssessorMobile(this.roleId);
-  protected readonly title = this.kind === 'agencies' ? 'Bronze Surveillance Agencies' : 'Assessors';
-  protected readonly crumbs = staffCrumbs({ label: this.title });
+  protected readonly title = computed(() => (this.kind === 'agencies' ? t('staff.surveillanceUsers.agencies.title', 'Bronze Surveillance Agencies')
+    : t('staff.surveillanceUsers.assessors.title', 'Assessors')));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
 
   protected readonly agencies = signal<SurveillanceAgency[]>([]);
   protected readonly assessors = signal<SurveillanceAssessor[]>([]);
@@ -373,24 +377,26 @@ export class SurveillanceUsersPage {
   private menus(word: string): [RowMenuItem[], RowMenuItem[]] {
     return [
       [
-        { key: 'reset', label: 'Send reset link', icon: 'mail' },
-        { key: 'history', label: 'View history', icon: 'history' },
-        { key: 'block', label: 'Block ' + word, icon: 'lock', danger: true },
+        { key: 'reset', label: t('staff.surveillanceUsers.menu.reset', 'Send reset link'), icon: 'mail' },
+        { key: 'history', label: t('staff.surveillanceUsers.menu.history', 'View history'), icon: 'history' },
+        { key: 'block', label: t('staff.surveillanceUsers.menu.block', 'Block {word}', { word }), icon: 'lock', danger: true },
       ],
       [
-        { key: 'history', label: 'View history', icon: 'history' },
-        { key: 'unblock', label: 'Unblock ' + word, icon: 'unlock' },
+        { key: 'history', label: t('staff.surveillanceUsers.menu.history', 'View history'), icon: 'history' },
+        { key: 'unblock', label: t('staff.surveillanceUsers.menu.unblock', 'Unblock {word}', { word }), icon: 'unlock' },
       ],
     ];
   }
-  protected readonly agencyMenuActive = this.menus('agency')[0];
-  protected readonly agencyMenuBlocked = this.menus('agency')[1];
-  protected readonly assessorMenuActive = this.menus('assessor')[0];
-  protected readonly assessorMenuBlocked = this.menus('assessor')[1];
+  private readonly agencyMenus = computed(() => this.menus(t('staff.surveillanceUsers.word.agency', 'agency')));
+  private readonly assessorMenus = computed(() => this.menus(t('staff.surveillanceUsers.word.assessor', 'assessor')));
+  protected readonly agencyMenuActive = computed(() => this.agencyMenus()[0]);
+  protected readonly agencyMenuBlocked = computed(() => this.agencyMenus()[1]);
+  protected readonly assessorMenuActive = computed(() => this.assessorMenus()[0]);
+  protected readonly assessorMenuBlocked = computed(() => this.assessorMenus()[1]);
   /** 2026-11-18: "Release mobile" for an assessor with a registered phone (Admin and Master Admin; the API refuses others). */
-  private readonly releaseItem: RowMenuItem = { key: 'release', label: 'Release mobile', icon: 'refresh' };
-  private readonly assessorMenuActivePhone = [...this.assessorMenuActive.slice(0, 2), this.releaseItem, ...this.assessorMenuActive.slice(2)];
-  private readonly assessorMenuBlockedPhone = [...this.assessorMenuBlocked, this.releaseItem];
+  private readonly releaseItem = computed<RowMenuItem>(() => ({ key: 'release', label: t('staff.surveillanceUsers.menu.release', 'Release mobile'), icon: 'refresh' }));
+  private readonly assessorMenuActivePhone = computed(() => [...this.assessorMenuActive().slice(0, 2), this.releaseItem(), ...this.assessorMenuActive().slice(2)]);
+  private readonly assessorMenuBlockedPhone = computed(() => [...this.assessorMenuBlocked(), this.releaseItem()]);
   private readonly http = inject(HttpClient);
   /** The registered phones of this portal's apps, by user id (upper case). */
   protected readonly phones = signal<Map<string, PhoneSummary>>(new Map());
@@ -406,7 +412,7 @@ export class SurveillanceUsersPage {
 
   protected assessorMenu(userId: string, active: boolean): RowMenuItem[] {
     const phone = this.showsMobile && hasPhone(this.phoneOf(userId));
-    return active ? (phone ? this.assessorMenuActivePhone : this.assessorMenuActive) : phone ? this.assessorMenuBlockedPhone : this.assessorMenuBlocked;
+    return active ? (phone ? this.assessorMenuActivePhone() : this.assessorMenuActive()) : phone ? this.assessorMenuBlockedPhone() : this.assessorMenuBlocked();
   }
 
   /** The Phone chips (a failure leaves them "Not registered" rather than failing the list). */
@@ -420,9 +426,9 @@ export class SurveillanceUsersPage {
   }
 
   /** Releases the assessor's registered phone(s) with the reason; the next sign-in registers the new phone. */
-  protected async releaseMobile(t: Target, reason: string): Promise<void> {
-    await this.confirmed(releasePhone(this.http, t.userId, reason), (m) => {
-      this.toast.success('Mobile released', m);
+  protected async releaseMobile(x: Target, reason: string): Promise<void> {
+    await this.confirmed(releasePhone(this.http, x.userId, reason), (m) => {
+      this.toast.success(t('staff.surveillanceUsers.toast.released', 'Mobile released'), m);
       void this.loadPhones();
       return false;
     });
@@ -450,10 +456,10 @@ export class SurveillanceUsersPage {
       this.kind === 'agencies' ? this.agencies() : this.assessorsOfAgency();
     const active = rows.filter((r) => r.isActive).length;
     return [
-      { key: 'all', label: 'All ' + this.noun().toLowerCase(), value: rows.length },
-      { key: 'active', label: 'Active', value: active, tone: 'good' },
-      { key: 'blocked', label: 'Blocked', value: rows.length - active, tone: 'bad' },
-      { key: 'bronze', label: 'Bronze allowed', value: rows.filter((r) => r.allowBronzeSurveillance).length, tone: 'info' },
+      { key: 'all', label: t('staff.surveillanceUsers.count.all', 'All {noun}', { noun: this.noun().toLowerCase() }), value: rows.length },
+      { key: 'active', label: t('staff.surveillanceUsers.count.active', 'Active'), value: active, tone: 'good' },
+      { key: 'blocked', label: t('staff.surveillanceUsers.count.blocked', 'Blocked'), value: rows.length - active, tone: 'bad' },
+      { key: 'bronze', label: t('staff.surveillanceUsers.count.bronze', 'Bronze allowed'), value: rows.filter((r) => r.allowBronzeSurveillance).length, tone: 'info' },
     ];
   });
 
@@ -540,40 +546,52 @@ export class SurveillanceUsersPage {
 
   protected async saveBronze(d: BronzeDialog): Promise<void> {
     const req = d.allow ? { allow: true, preferredState: d.state, districts: d.districts } : { allow: false, reason: d.reason };
-    if (await this.run(this.api.setAgencyBronze(d.agency.userId, req), 'Bronze surveillance saved')) this.bronze.set(null);
+    if (await this.run(this.api.setAgencyBronze(d.agency.userId, req), t('staff.surveillanceUsers.toast.bronzeSaved', 'Bronze surveillance saved'))) this.bronze.set(null);
   }
 
   protected async setAssessorBronze(s: SurveillanceAssessor, allow: boolean): Promise<void> {
-    await this.run(this.api.setAssessorBronze(s.userId, allow), allow ? 'Bronze surveillance allowed' : 'Bronze surveillance not allowed');
+    await this.run(this.api.setAssessorBronze(s.userId, allow), allow
+      ? t('staff.surveillanceUsers.toast.bronzeAllowed', 'Bronze surveillance allowed') : t('staff.surveillanceUsers.toast.bronzeNotAllowed', 'Bronze surveillance not allowed'));
   }
 
   /** A row menu choice: each one confirms first (reset link, block, unblock) or opens the history panel. */
-  protected pick(key: string, t: Target): void {
+  protected pick(key: string, x: Target): void {
     if (this.busy()) return;
     this.dialogError.set('');
     switch (key) {
-      case 'reset': this.resetFor.set({ target: t, ask: resetLinkAsk(t.name, t.userId, t.email, t.kind === 'agencies' ? 'Surveillance agency' : 'Assessor') }); break;
-      case 'block': this.blockFor.set({ target: t, ask: this.blockAsk(t) }); break;
+      case 'reset': this.resetFor.set({ target: x, ask: resetLinkAsk(x.name, x.userId, x.email, x.kind === 'agencies'
+        ? t('staff.surveillanceUsers.reset.agency', 'Surveillance agency') : t('staff.surveillanceUsers.reset.assessor', 'Assessor')) }); break;
+      case 'block': this.blockFor.set({ target: x, ask: this.blockAsk(x) }); break;
       case 'unblock':
-        this.unblockKind = t.kind;
-        this.reasonAsk.set({ action: 'unblock', userId: t.userId, userName: t.name });
+        this.unblockKind = x.kind;
+        this.reasonAsk.set({ action: 'unblock', userId: x.userId, userName: x.name });
         break;
-      case 'history': void this.openHistory(t); break;
-      case 'release': this.releaseFor.set({ target: t, ask: releaseMobileAsk(t.name, t.userId, this.phoneOf(t.userId)?.model, 'assessor') }); break;
+      case 'history': void this.openHistory(x); break;
+      case 'release': this.releaseFor.set({ target: x, ask: releaseMobileAsk(x.name, x.userId, this.phoneOf(x.userId)?.model, t('staff.surveillanceUsers.word.assessor', 'assessor')) }); break;
     }
   }
 
   /** "Block …?" (popup-03): what it does, a required reason; the server always e-mails the user. */
-  private blockAsk(t: Target): ConfirmAsk {
-    const word = t.kind === 'agencies' ? 'agency' : 'assessor';
-    const users = t.kind === 'agencies' ? this.agencies().find((a) => a.userId === t.userId)?.noOfUsers : undefined;
+  private blockAsk(x: Target): ConfirmAsk {
+    const name = x.name || x.userId;
+    const users = x.kind === 'agencies' ? this.agencies().find((a) => a.userId === x.userId)?.noOfUsers : undefined;
+    // Two whole sentences: who (with the agency's assessors, one / many) and what blocking does.
+    const who = users === undefined ? t('staff.surveillanceUsers.block.who', '{name} ({id}).', { name, id: x.userId })
+      : users === 1 ? t('staff.surveillanceUsers.block.whoAssessor', '{name} ({id} · {count} assessor).', { name, id: x.userId, count: users })
+      : t('staff.surveillanceUsers.block.whoAssessors', '{name} ({id} · {count} assessors).', { name, id: x.userId, count: users });
+    const agency = x.kind === 'agencies';
     return {
-      title: `Block ${t.name || t.userId}?`,
-      message: `${t.name || t.userId} (${t.userId}${users === undefined ? '' : ` · ${users} assessor${users === 1 ? '' : 's'}`}). ` +
-        `The ${word} can no longer sign in to surveillance until unblocked. Nothing is deleted; the reason is kept in the history and e-mailed to the ${word}.`,
-      confirmLabel: 'Block ' + word,
+      title: t('staff.surveillanceUsers.block.title', 'Block {name}?', { name }),
+      message: who + ' ' + (agency
+        ? t('staff.surveillanceUsers.block.agencyMessage', 'The agency can no longer sign in to surveillance until unblocked. Nothing is deleted; the reason is kept in the history and e-mailed to the agency.')
+        : t('staff.surveillanceUsers.block.assessorMessage', 'The assessor can no longer sign in to surveillance until unblocked. Nothing is deleted; the reason is kept in the history and e-mailed to the assessor.')),
+      confirmLabel: agency ? t('staff.surveillanceUsers.block.agencyButton', 'Block agency') : t('staff.surveillanceUsers.block.assessorButton', 'Block assessor'),
       danger: true,
-      reason: { label: 'Reason for blocking', placeholder: 'Shown in the history and e-mailed', maxLength: 2000, requiredMessage: 'Please enter the reason for blocking.' },
+      reason: {
+        label: t('staff.surveillanceUsers.block.reasonLabel', 'Reason for blocking'),
+        placeholder: t('staff.surveillanceUsers.block.reasonPlaceholder', 'Shown in the history and e-mailed'), maxLength: 2000,
+        requiredMessage: t('staff.surveillanceUsers.block.reasonRequired', 'Please enter the reason for blocking.'),
+      },
     };
   }
 
@@ -586,17 +604,17 @@ export class SurveillanceUsersPage {
     this.dialogError.set('');
   }
 
-  protected async block(t: Target, reason: string): Promise<void> {
-    await this.confirmed(this.api.block(t.kind, t.userId, reason.trim()), (m) => {
-      this.toast.success(t.kind === 'agencies' ? 'Agency blocked' : 'Assessor blocked', m);
+  protected async block(x: Target, reason: string): Promise<void> {
+    await this.confirmed(this.api.block(x.kind, x.userId, reason.trim()), (m) => {
+      this.toast.success(x.kind === 'agencies' ? t('staff.surveillanceUsers.toast.agencyBlocked', 'Agency blocked') : t('staff.surveillanceUsers.toast.assessorBlocked', 'Assessor blocked'), m);
       return true;
     });
   }
 
   /** E-mails the user a link to set a new password (refused for accounts whose password the main portal holds). */
-  protected async sendReset(t: Target): Promise<void> {
-    await this.confirmed(this.api.passwordReset(t.kind, t.userId), (m) => {
-      this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(m, t.email));
+  protected async sendReset(x: Target): Promise<void> {
+    await this.confirmed(this.api.passwordReset(x.kind, x.userId), (m) => {
+      this.toast.success(t('staff.surveillanceUsers.toast.resetSent', 'Reset link sent'), t('staff.surveillanceUsers.toast.resetTo', 'E-mailed to {to}', { to: sentTo(m, x.email) }));
       return false;
     });
   }
@@ -604,18 +622,18 @@ export class SurveillanceUsersPage {
   protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
     const kind = this.unblockKind;
     await this.confirmed(this.api.unblock(kind, r.userId, reason), (m) => {
-      this.toast.success(kind === 'agencies' ? 'Agency unblocked' : 'Assessor unblocked', m);
+      this.toast.success(kind === 'agencies' ? t('staff.surveillanceUsers.toast.agencyUnblocked', 'Agency unblocked') : t('staff.surveillanceUsers.toast.assessorUnblocked', 'Assessor unblocked'), m);
       return true;
     });
   }
 
-  private async openHistory(t: Target): Promise<void> {
-    this.historyFor.set({ target: t, items: null, error: '' });
+  private async openHistory(x: Target): Promise<void> {
+    this.historyFor.set({ target: x, items: null, error: '' });
     try {
-      const entries = await firstValueFrom(this.api.history(t.kind, t.userId));
-      if (this.historyFor()?.target === t) this.historyFor.set({ target: t, items: blockHistoryItems(entries), error: '' });
+      const entries = await firstValueFrom(this.api.history(x.kind, x.userId));
+      if (this.historyFor()?.target === x) this.historyFor.set({ target: x, items: blockHistoryItems(entries), error: '' });
     } catch (err) {
-      if (this.historyFor()?.target === t) this.historyFor.set({ target: t, items: [], error: apiErrorMessage(err) });
+      if (this.historyFor()?.target === x) this.historyFor.set({ target: x, items: [], error: apiErrorMessage(err) });
     }
   }
 
@@ -644,7 +662,7 @@ export class SurveillanceUsersPage {
       await this.load();
       return true;
     } catch (err) {
-      this.toast.error('Not saved', apiErrorMessage(err));
+      this.toast.error(t('staff.surveillanceUsers.toast.notSaved', 'Not saved'), apiErrorMessage(err));
       return false;
     } finally {
       this.busy.set(false);
@@ -652,11 +670,16 @@ export class SurveillanceUsersPage {
   }
 
   protected noun(): string {
-    return this.kind === 'agencies' ? 'Agencies' : 'Assessors';
+    return this.kind === 'agencies' ? t('staff.surveillanceUsers.noun.agencies', 'Agencies') : t('staff.surveillanceUsers.noun.assessors', 'Assessors');
   }
 
   protected filterLabel(): string {
-    return this.filter() === 'bronze' ? 'Bronze allowed only' : this.filter() + ' only';
+    switch (this.filter()) {
+      case 'bronze': return t('staff.surveillanceUsers.filter.bronzeOnly', 'Bronze allowed only');
+      case 'active': return t('staff.surveillanceUsers.filter.activeOnly', 'active only');
+      case 'blocked': return t('staff.surveillanceUsers.filter.blockedOnly', 'blocked only');
+      default: return '';
+    }
   }
 
   private passes(u: { isActive: boolean | null; allowBronzeSurveillance: boolean | null }): boolean {
@@ -688,7 +711,7 @@ export class SurveillanceUsersPage {
 
   /** The old IdStatus column: Active / In-Active from IsActive. */
   protected status(u: { isActive: boolean | null }): string {
-    return u.isActive ? 'Active' : 'In-Active';
+    return u.isActive ? t('staff.surveillanceUsers.status.active', 'Active') : t('staff.surveillanceUsers.status.inactive', 'In-Active');
   }
 
   /**

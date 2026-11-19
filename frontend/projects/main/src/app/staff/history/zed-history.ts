@@ -13,6 +13,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import type { StaffMsmeProfile } from '../msme-profile/msme-profile';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface HistoryRow {
   Source_DB: string | null;
@@ -28,6 +29,8 @@ export interface HistoryRow {
 export type HistoryActor = 'MSME' | 'Agency' | 'Assessor' | 'ZED';
 
 export interface TimelineEvent extends HistoryRow {
+  /** What happened, as the code knows it (the STATUS_META key, or Registered / Payment / Accepted); label is the wording shown. */
+  kind: string;
   label: string;
   icon: string;
   alert: boolean;
@@ -49,26 +52,46 @@ export interface TimelineGroup {
  * its documents; the ZED team allots the agency and certifies; the agency allots its desktop assessor; the assessor raises
  * NCs and completes the desktop assessment. "Assessment Completed" and "Sent to Agency for QC" name no actor: untagged.
  */
-const STATUS_META: Record<string, { label: string; icon: string; alert?: boolean; actor?: HistoryActor }> = {
-  ApplicationReceived: { label: 'Application Received', icon: '\u{1F4C4}', actor: 'MSME' },
-  BasicInfoStatus: { label: 'Basic Info & Documents Submitted', icon: '✎', actor: 'MSME' },
-  AgencyAlloted: { label: 'Assessment Agency Allotted', icon: '☷', actor: 'ZED' },
-  DocVerifiAllot: { label: 'Desktop Assessor Allotted', icon: '+', actor: 'Agency' },
-  NcRaised: { label: 'Non-Conformance Raised', icon: '!', alert: true, actor: 'Assessor' },
-  NcClosed: { label: 'Desktop Assessment Completed By Assessor', icon: '✓', actor: 'Assessor' },
-  Completed: { label: 'Assessment Completed', icon: '⚑' },
-  GetCertified: { label: 'Certified', icon: '★', actor: 'ZED' },
-  DirectQC: { label: 'Sent to Agency for QC', icon: '?' },
+// 2026-11-19 ("All page wording"): label() gives the wording the Admin can change (Texts → Page wording, staff.history.event.*).
+interface Meta { kind: string; label: () => string; icon: string; alert?: boolean; actor?: HistoryActor }
+
+const STATUS_META: Record<string, Meta> = {
+  ApplicationReceived: { kind: 'ApplicationReceived', label: () => t('staff.history.event.applicationReceived', 'Application Received'), icon: '\u{1F4C4}', actor: 'MSME' },
+  BasicInfoStatus: { kind: 'BasicInfoStatus', label: () => t('staff.history.event.basicInfo', 'Basic Info & Documents Submitted'), icon: '✎', actor: 'MSME' },
+  AgencyAlloted: { kind: 'AgencyAlloted', label: () => t('staff.history.event.agencyAllotted', 'Assessment Agency Allotted'), icon: '☷', actor: 'ZED' },
+  DocVerifiAllot: { kind: 'DocVerifiAllot', label: () => t('staff.history.event.assessorAllotted', 'Desktop Assessor Allotted'), icon: '+', actor: 'Agency' },
+  NcRaised: { kind: 'NcRaised', label: () => t('staff.history.event.ncRaised', 'Non-Conformance Raised'), icon: '!', alert: true, actor: 'Assessor' },
+  NcClosed: { kind: 'NcClosed', label: () => t('staff.history.event.ncClosed', 'Desktop Assessment Completed By Assessor'), icon: '✓', actor: 'Assessor' },
+  Completed: { kind: 'Completed', label: () => t('staff.history.event.completed', 'Assessment Completed'), icon: '⚑' },
+  GetCertified: { kind: 'GetCertified', label: () => t('staff.history.event.certified', 'Certified'), icon: '★', actor: 'ZED' },
+  DirectQC: { kind: 'DirectQC', label: () => t('staff.history.event.directQc', 'Sent to Agency for QC'), icon: '?' },
 };
 
-function meta(row: HistoryRow): { label: string; icon: string; alert?: boolean; actor?: HistoryActor } {
+const REGISTERED: Meta = { kind: 'Registered', label: () => t('staff.history.event.registered', 'Registered on ZED Portal'), icon: '↑', actor: 'MSME' };
+const PAYMENT: Meta = { kind: 'Payment', label: () => t('staff.history.event.payment', 'Payment'), icon: '₹', actor: 'MSME' };
+const ACCEPTED: Meta = { kind: 'Accepted', label: () => t('staff.history.event.accepted', 'Accepted by Assessor'), icon: '✓', actor: 'Assessor' };
+const UNKNOWN: Meta = { kind: '', label: () => '', icon: '•' };
+
+function meta(row: HistoryRow): Meta {
   const m = row.StatusType ? STATUS_META[row.StatusType] : undefined;
   if (m) return m;
   const d = (row.Description ?? '').toLowerCase();
-  if (d.startsWith('registered') || (d.includes('registered') && d.includes('udyam'))) return { label: 'Registered on ZED Portal', icon: '↑', actor: 'MSME' };
-  if (d.includes('payment')) return { label: 'Payment', icon: '₹', actor: 'MSME' };
-  if (d.includes('accepted by assessor')) return { label: 'Accepted by Assessor', icon: '✓', actor: 'Assessor' };
-  return { label: '', icon: '•' };
+  if (d.startsWith('registered') || (d.includes('registered') && d.includes('udyam'))) return REGISTERED;
+  if (d.includes('payment')) return PAYMENT;
+  if (d.includes('accepted by assessor')) return ACCEPTED;
+  return UNKNOWN;
+}
+
+/** An actor (MSME, Agency, Assessor, ZED, Other) as shown; the code value stays for the filter and data-actor. */
+export function actorText(actor: string | null | undefined): string {
+  switch (actor) {
+    case 'MSME': return t('staff.history.actor.msme', 'MSME');
+    case 'Agency': return t('staff.history.actor.agency', 'Agency');
+    case 'Assessor': return t('staff.history.actor.assessor', 'Assessor');
+    case 'ZED': return t('staff.history.actor.zed', 'ZED');
+    case 'Other': return t('staff.history.actor.other', 'Other');
+    default: return actor ?? '';
+  }
 }
 
 export const HISTORY_ACTORS: HistoryActor[] = ['MSME', 'Agency', 'Assessor', 'ZED'];
@@ -108,12 +131,15 @@ export function buildTimeline(rows: HistoryRow[]): TimelineGroup[] {
     const key = `${cert}|${phase}`;
     let g = byKey.get(key);
     if (!g) {
-      g = { cert, title: cert ? `${cert} ${phase}` : 'Registration', start: r.CreatedDate, end: r.CreatedDate, events: [] };
+      const title = !cert ? t('staff.history.group.registration', 'Registration')
+        : phase === 'Surveillance' ? t('staff.history.group.surveillance', '{level} Surveillance', { level: cert })
+        : t('staff.history.group.certification', '{level} Certification', { level: cert });
+      g = { cert, title, start: r.CreatedDate, end: r.CreatedDate, events: [] };
       byKey.set(key, g);
       groups.push(g);
     }
     g.end = r.CreatedDate;
-    g.events.push({ ...r, label: m.label, icon: m.icon, alert: !!m.alert, done: r.StatusType === 'GetCertified' || r.StatusType === 'Completed', actor: m.actor ?? null });
+    g.events.push({ ...r, kind: m.kind, label: m.label(), icon: m.icon, alert: !!m.alert, done: r.StatusType === 'GetCertified' || r.StatusType === 'Completed', actor: m.actor ?? null });
   }
   return groups;
 }
@@ -128,14 +154,14 @@ export interface KeyDate {
 export function keyDates(events: TimelineEvent[]): KeyDate[] {
   const first = (test: (e: TimelineEvent) => boolean) => events.find(test)?.CreatedDate ?? null;
   const out: KeyDate[] = [];
-  const registered = first((e) => e.label === 'Registered on ZED Portal');
-  if (registered) out.push({ label: 'Registered', date: registered });
+  const registered = first((e) => e.kind === 'Registered');
+  if (registered) out.push({ label: t('staff.history.keyDate.registered', 'Registered'), date: registered });
   const levels = [...new Set(events.map((e) => e.CertificationType).filter((c): c is string => !!c))];
   for (const level of levels) {
     const applied = first((e) => e.CertificationType === level && e.StatusType === 'ApplicationReceived');
-    if (applied) out.push({ label: `${level} applied`, date: applied });
+    if (applied) out.push({ label: t('staff.history.keyDate.applied', '{level} applied', { level }), date: applied });
     const certified = first((e) => e.CertificationType === level && e.StatusType === 'GetCertified');
-    if (certified) out.push({ label: `${level} certified`, date: certified });
+    if (certified) out.push({ label: t('staff.history.keyDate.certified', '{level} certified', { level }), date: certified });
   }
   return out;
 }
@@ -154,7 +180,7 @@ export function keyDates(events: TimelineEvent[]): KeyDate[] {
  */
 @Component({
   selector: 'zed-staff-zed-history',
-  imports: [FormsModule, DatePipe, RouterLink, DashboardPortalSwitchComponent, PageHead, ChipFilter],
+  imports: [FormsModule, DatePipe, RouterLink, DashboardPortalSwitchComponent, PageHead, ChipFilter, TextPipe],
   templateUrl: './zed-history.html',
   styleUrl: './zed-history.css',
 })
@@ -165,8 +191,10 @@ export class ZedHistoryPage {
   private readonly toast = inject(ToastService);
   private readonly roleId = inject(AuthService).currentUser()?.roleId ?? 0;
   /** The dashboard logins (SuperAdmin, CitizenFeedback, QC) know it as Customer History. */
-  protected readonly heading = [10, 11, 17].includes(this.roleId) ? 'Customer History' : 'ZED ID History';
-  protected readonly crumbs = staffCrumbs({ label: this.heading });
+  private readonly customer = [10, 11, 17].includes(this.roleId);
+  protected readonly heading = computed(() => (this.customer ? t('staff.history.customerTitle', 'Customer History') : t('staff.history.title', 'ZED ID History')));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.heading() }));
+  protected readonly actorText = actorText;
   protected readonly actors = HISTORY_ACTORS;
 
   protected zedId = '';
@@ -196,9 +224,9 @@ export class ZedHistoryPage {
   protected readonly others = computed(() => this.events().filter((e) => !e.actor).length);
   protected readonly maxCount = computed(() => Math.max(1, this.others(), ...HISTORY_ACTORS.map((a) => this.counts()[a])));
   protected readonly chips = computed<FilterChip[]>(() => [
-    { key: '', label: 'All', count: this.events().length },
-    ...HISTORY_ACTORS.map((a) => ({ key: a, label: a, count: this.counts()[a] })),
-    ...(this.others() ? [{ key: OTHER, label: OTHER, count: this.others() }] : []),
+    { key: '', label: t('staff.history.chip.all', 'All'), count: this.events().length },
+    ...HISTORY_ACTORS.map((a) => ({ key: a, label: actorText(a), count: this.counts()[a] })),
+    ...(this.others() ? [{ key: OTHER, label: actorText(OTHER), count: this.others() }] : []),
   ]);
   /** The recent ZED IDs other than the one shown ("Recent:" is hidden when there is none). */
   protected readonly recentShown = computed(() => this.recent().filter((r) => r !== this.searched()));
@@ -240,6 +268,17 @@ export class ZedHistoryPage {
     }
   }
 
+  /** "4 events" beside a group. */
+  protected eventsText(n: number): string {
+    return n === 1 ? t('staff.history.group.event', '{count} event(s)', { count: n }) : t('staff.history.group.events', '{count} event(s)', { count: n });
+  }
+
+  /** The empty timeline of an actor chip. */
+  protected noneText(): string {
+    const a = this.actor();
+    return t('staff.history.filteredEmpty', 'No {actor} events in this history.', { actor: a === OTHER ? t('staff.history.actor.otherLower', 'other') : actorText(a) });
+  }
+
   protected pick(id: string): void {
     this.zedId = id;
     void this.search();
@@ -249,7 +288,7 @@ export class ZedHistoryPage {
     const id = this.zedId.trim().toUpperCase();
     this.error.set('');
     if (!/^[A-Za-z0-9]{3,30}$/.test(id)) {
-      this.error.set('Please enter a valid ZED ID.');
+      this.error.set(t('staff.history.zedIdError', 'Please enter a valid ZED ID.'));
       return;
     }
     this.loading.set(true);
@@ -291,12 +330,18 @@ export class ZedHistoryPage {
     try {
       await this.exporter.xlsx(`zed-id-history-${this.searched()}`, [{
         name: 'History',
-        columns: ['Date', 'By', 'Event', 'Description', 'Level', 'Phase', 'Portal'],
-        rows: this.events().map((e) => [e.CreatedDate, e.actor ?? '', e.label, e.Description, e.CertificationType,
-          e.Source_DB === 'SURVEILLANCE' ? 'Surveillance' : e.CertificationType ? 'Certification' : 'Registration', e.Source_DB]),
+        columns: [
+          t('staff.history.export.column.date', 'Date'), t('staff.history.export.column.by', 'By'), t('staff.history.export.column.event', 'Event'),
+          t('staff.history.export.column.description', 'Description'), t('staff.history.export.column.level', 'Level'),
+          t('staff.history.export.column.phase', 'Phase'), t('staff.history.export.column.portal', 'Portal'),
+        ],
+        rows: this.events().map((e) => [e.CreatedDate, e.actor ? actorText(e.actor) : '', e.label, e.Description, e.CertificationType,
+          e.Source_DB === 'SURVEILLANCE' ? t('staff.history.export.phase.surveillance', 'Surveillance')
+            : e.CertificationType ? t('staff.history.export.phase.certification', 'Certification') : t('staff.history.export.phase.registration', 'Registration'),
+          e.Source_DB]),
       }]);
     } catch (err) {
-      this.toast.error('Export failed', apiErrorMessage(err));
+      this.toast.error(t('staff.history.toast.exportFailed', 'Export failed'), apiErrorMessage(err));
     } finally {
       this.exporting.set(false);
     }

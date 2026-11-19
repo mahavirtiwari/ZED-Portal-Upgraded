@@ -5,6 +5,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ALL_PORTALS, PortalSwitchComponent } from '../admin-portal';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /** An item ticked before a submission (Zed.Core.Assessment.ChecklistItem). Empty stages: always asked. */
 export interface ChecklistItemDef {
@@ -29,14 +30,22 @@ export interface ChecklistView {
 /** The server's limits (Zed.Core.Assessment.SubmissionChecklists). */
 export const CHECKLIST_LIMITS = { items: 15, text: 250 } as const;
 
-/** How a stage reads on the page. */
-export const STAGE_LABELS: Record<string, string> = { Desktop: 'Desktop', Site: 'Site', Remote: 'Remote', Onsite: 'Onsite (app)' };
+/** How a stage reads on the page (the code value stays in the data). */
+export function stageLabel(s: string): string {
+  switch (s) {
+    case 'Desktop': return t('staff.submissionChecklists.stage.desktop', 'Desktop');
+    case 'Site': return t('staff.submissionChecklists.stage.site', 'Site');
+    case 'Remote': return t('staff.submissionChecklists.stage.remote', 'Remote');
+    case 'Onsite': return t('staff.submissionChecklists.stage.onsite', 'Onsite (app)');
+    default: return s;
+  }
+}
 
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 
 /** A key for a new item from its text: "All photos seen" → "all-photos-seen" (with -2, -3… when taken). */
 export function itemId(text: string, taken: readonly string[]): string {
-  const used = new Set(taken.map((t) => t.toLowerCase()));
+  const used = new Set(taken.map((x) => x.toLowerCase()));
   const base = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^[-_]+|[-_]+$/g, '').slice(0, 30).replace(/[-_]+$/, '') || 'item';
   if (!used.has(base) && ID_PATTERN.test(base)) return base;
   for (let n = 2; ; n++) {
@@ -62,18 +71,18 @@ interface Editing {
  */
 @Component({
   selector: 'zed-staff-submission-checklists',
-  imports: [FormsModule, PortalSwitchComponent],
+  imports: [FormsModule, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Submission checklists</h3>
-        <p class="page-sub">What must be ticked before a final submit or a quality-check approval. The ticks are recorded with each submission.</p>
+        <h3 class="registration-title">{{ 'Submission checklists' | t: 'staff.submissionChecklists.title' }}</h3>
+        <p class="page-sub">{{ 'What must be ticked before a final submit or a quality-check approval. The ticks are recorded with each submission.' | t: 'staff.submissionChecklists.sub' }}</p>
       </div>
       @if (current(); as c) {
         <div class="page-actions">
-          <button type="button" class="btn btn-default" [disabled]="!c.customised || busy()" (click)="resetAll(c)">Reset to standard items</button>
+          <button type="button" class="btn btn-default" [disabled]="!c.customised || busy()" (click)="resetAll(c)">{{ 'Reset to standard items' | t: 'staff.submissionChecklists.resetButton' }}</button>
           <button type="button" class="btn btn-primary" [disabled]="c.items.length >= limits.items || busy()"
-            [title]="c.items.length >= limits.items ? 'At most ' + limits.items + ' items' : ''" (click)="add()">Add item</button>
+            [title]="c.items.length >= limits.items ? ('At most {count} items' | t: 'staff.submissionChecklists.addLimitTooltip' : { count: limits.items }) : ''" (click)="add()">{{ 'Add item' | t: 'staff.submissionChecklists.addButton' }}</button>
         </div>
       }
     </div>
@@ -82,8 +91,8 @@ interface Editing {
     @if (success()) { <div class="alert alert-success" role="status">{{ success() }}</div> }
 
     @if (data(); as list) {
-      <div class="cl-pick" role="group" aria-label="Checklist">
-        <span class="cl-pick-label">Checklist</span>
+      <div class="cl-pick" role="group" [attr.aria-label]="'Checklist' | t: 'staff.submissionChecklists.picker.label'">
+        <span class="cl-pick-label">{{ 'Checklist' | t: 'staff.submissionChecklists.picker.label' }}</span>
         <div class="seg">
           @for (c of list; track c.code) {
             <button type="button" [class.active]="c.code === current()?.code" [attr.aria-pressed]="c.code === current()?.code" [attr.data-checklist]="c.code"
@@ -95,13 +104,13 @@ interface Editing {
 
     @if (current(); as c) {
       <div class="st-tiles">
-        <div class="st-tile"><b>{{ c.items.length }}</b><small>Items ({{ activeCount() }} on)</small></div>
-        <div class="st-tile"><b>{{ stageCounts() }}</b><small>{{ c.stages.length ? 'Asked at ' + stageNames(c) : 'Asked at every final submit' }}</small></div>
-        <div class="st-tile"><b class="st-word">{{ c.customised ? 'Changed' : 'Standard' }}</b><small>{{ c.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
+        <div class="st-tile"><b>{{ c.items.length }}</b><small>{{ 'Items ({count} on)' | t: 'staff.submissionChecklists.tile.items' : { count: activeCount() } }}</small></div>
+        <div class="st-tile"><b>{{ stageCounts() }}</b><small>{{ c.stages.length ? ('Asked at {stages}' | t: 'staff.submissionChecklists.tile.askedAt' : { stages: stageNames(c) }) : ('Asked at every final submit' | t: 'staff.submissionChecklists.tile.askedAlways') }}</small></div>
+        <div class="st-tile"><b class="st-word">{{ c.customised ? ('Changed' | t: 'staff.submissionChecklists.tile.changed') : ('Standard' | t: 'staff.submissionChecklists.tile.standard') }}</b><small>{{ c.customised ? ('Changed by the Admin' | t: 'staff.submissionChecklists.tile.changedNote') : ('Not changed yet' | t: 'staff.submissionChecklists.tile.standardNote') }}</small></div>
       </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
-        Ticked by the {{ c.who }}. Every item in use must be ticked; a change applies to the next submission.
+        {{ 'Ticked by the {who}. Every item in use must be ticked; a change applies to the next submission.' | t: 'staff.submissionChecklists.note' : { who: c.who } }}
       </p>
       <div class="table-responsive">
         <table class="table table-zed items-table">
@@ -114,9 +123,9 @@ interface Editing {
           <thead>
             <tr>
               <th class="text-center">#</th>
-              <th>Item (what the user confirms)</th>
-              @if (c.stages.length) { <th>Asked at</th> }
-              <th class="text-end">Action</th>
+              <th>{{ 'Item (what the user confirms)' | t: 'staff.submissionChecklists.column.item' }}</th>
+              @if (c.stages.length) { <th>{{ 'Asked at' | t: 'staff.submissionChecklists.column.askedAt' }}</th> }
+              <th class="text-end">{{ 'Action' | t: 'staff.submissionChecklists.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -131,25 +140,25 @@ interface Editing {
                 }
                 <td>
                   <div class="st-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="n === 0 || busy()" (click)="move(c, n, -1)">↑</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(c, n, 1)">↓</button>
-                    <label class="st-switch" [class.off]="!i.active" [title]="i.active ? 'Switch this item off' : 'Switch this item on'">
-                      <input type="checkbox" role="switch" [checked]="i.active" [disabled]="busy()" [attr.aria-label]="(i.active ? 'Switch off ' : 'Switch on ') + i.text"
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move up' | t: 'staff.submissionChecklists.row.moveUpTooltip'" [attr.aria-label]="'Move up' | t: 'staff.submissionChecklists.row.moveUpTooltip'" [disabled]="n === 0 || busy()" (click)="move(c, n, -1)">↑</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move down' | t: 'staff.submissionChecklists.row.moveDownTooltip'" [attr.aria-label]="'Move down' | t: 'staff.submissionChecklists.row.moveDownTooltip'" [disabled]="last || busy()" (click)="move(c, n, 1)">↓</button>
+                    <label class="st-switch" [class.off]="!i.active" [title]="i.active ? ('Switch this item off' | t: 'staff.submissionChecklists.row.offTooltip') : ('Switch this item on' | t: 'staff.submissionChecklists.row.onTooltip')">
+                      <input type="checkbox" role="switch" [checked]="i.active" [disabled]="busy()" [attr.aria-label]="i.active ? ('Switch off {item}' | t: 'staff.submissionChecklists.row.offAria' : { item: i.text }) : ('Switch on {item}' | t: 'staff.submissionChecklists.row.onAria' : { item: i.text })"
                         (click)="$event.preventDefault(); toggle(c, n)" />
-                      <span class="st-track" aria-hidden="true"></span>{{ i.active ? 'On' : 'Off' }}
+                      <span class="st-track" aria-hidden="true"></span>{{ i.active ? ('On' | t: 'staff.submissionChecklists.row.on') : ('Off' | t: 'staff.submissionChecklists.row.off') }}
                     </label>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(i)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(i)">{{ 'Edit' | t: 'staff.submissionChecklists.row.editButton' }}</button>
                   </div>
                 </td>
               </tr>
             } @empty {
-              <tr><td [attr.colspan]="c.stages.length ? 4 : 3" style="padding: 0"><div class="no-data">No items: nothing is asked before the submission</div></td></tr>
+              <tr><td [attr.colspan]="c.stages.length ? 4 : 3" style="padding: 0"><div class="no-data">{{ 'No items: nothing is asked before the submission' | t: 'staff.submissionChecklists.empty' }}</div></td></tr>
             }
           </tbody>
         </table>
       </div>
     } @else if (!busy()) {
-      <div class="no-data">The checklists could not be loaded</div>
+      <div class="no-data">{{ 'The checklists could not be loaded' | t: 'staff.submissionChecklists.loadError' }}</div>
     }
 
     @if (editing(); as e) {
@@ -158,18 +167,18 @@ interface Editing {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-start gap-3">
-                <h3 class="registration-title m-0" id="itemTitle">{{ e.item ? 'Edit item' : 'Add item' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="itemTitle">{{ e.item ? ('Edit item' | t: 'staff.submissionChecklists.dialog.editTitle') : ('Add item' | t: 'staff.submissionChecklists.dialog.addTitle') }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.submissionChecklists.dialog.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               @let p = check(e);
-              <label class="form-label" for="itemText">Item (up to {{ limits.text }} characters)<span class="req">*</span></label>
-              <textarea class="form-control" id="itemText" rows="3" [maxlength]="limits.text" placeholder="e.g. Every requirement's evidence was verified."
+              <label class="form-label" for="itemText">{{ 'Item (up to {count} characters)' | t: 'staff.submissionChecklists.dialog.item.label' : { count: limits.text } }}<span class="req">*</span></label>
+              <textarea class="form-control" id="itemText" rows="3" [maxlength]="limits.text" [placeholder]="itemPlaceholder()"
                 [class.is-invalid]="p.text" [(ngModel)]="e.text"></textarea>
               @if (p.text) { <small class="invalid">{{ p.text }}</small> }
               @if (current()?.stages?.length) {
-                <span class="form-label d-block mt-3">Asked at<span class="req">*</span></span>
+                <span class="form-label d-block mt-3">{{ 'Asked at' | t: 'staff.submissionChecklists.dialog.askedAt.label' }}<span class="req">*</span></span>
                 <div class="stage-ticks">
                   @for (s of current()!.stages; track s) {
                     <label class="form-check m-0">
@@ -182,13 +191,13 @@ interface Editing {
               }
               <label class="check-line mt-3" for="itemActive">
                 <input class="form-check-input" type="checkbox" id="itemActive" [(ngModel)]="e.active" />
-                <span>On (asked)</span>
+                <span>{{ 'On (asked)' | t: 'staff.submissionChecklists.dialog.active.label' }}</span>
               </label>
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.submissionChecklists.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.submissionChecklists.dialog.saveButton' }}</button>
             </div>
           </div>
         </div>
@@ -274,6 +283,8 @@ export class SubmissionChecklistsPage {
   protected readonly modalError = signal('');
   private readonly tried = signal(false);
 
+  /** In code: an apostrophe cannot go in a pipe literal of an inline template. */
+  protected readonly itemPlaceholder = computed(() => t('staff.submissionChecklists.dialog.item.placeholder', "e.g. Every requirement's evidence was verified."));
   protected readonly activeCount = computed(() => (this.current()?.items ?? []).filter((i) => i.active).length);
 
   /** "4 · 5": the items in use asked at each stage (the handholding lists: the items in use). */
@@ -289,7 +300,7 @@ export class SubmissionChecklistsPage {
   }
 
   protected stageLabel(s: string): string {
-    return STAGE_LABELS[s] ?? s;
+    return stageLabel(s);
   }
 
   protected stageNames(c: ChecklistView): string {
@@ -329,13 +340,13 @@ export class SubmissionChecklistsPage {
     const text = e.text.trim();
     const others = (this.current()?.items ?? []).filter((i) => i.id !== e.item?.id);
     if (!text) {
-      if (this.tried()) p.text = 'Enter the item.';
+      if (this.tried()) p.text = t('staff.submissionChecklists.dialog.error.empty', 'Enter the item.');
     } else if (text.length > CHECKLIST_LIMITS.text) {
-      p.text = `At most ${CHECKLIST_LIMITS.text} characters.`;
+      p.text = t('staff.submissionChecklists.dialog.error.long', 'At most {count} characters.', { count: CHECKLIST_LIMITS.text });
     } else if (others.some((i) => i.text.trim().toLowerCase() === text.toLowerCase())) {
-      p.text = 'Another item has this text.';
+      p.text = t('staff.submissionChecklists.dialog.error.duplicate', 'Another item has this text.');
     }
-    if ((this.current()?.stages.length ?? 0) > 0 && !e.stages.length) p.stages = 'Choose where it is asked.';
+    if ((this.current()?.stages.length ?? 0) > 0 && !e.stages.length) p.stages = t('staff.submissionChecklists.dialog.error.stages', 'Choose where it is asked.');
     return p;
   }
 
@@ -371,7 +382,11 @@ export class SubmissionChecklistsPage {
     const items = c.items.map((x) => ({ ...x }));
     const i = items[index];
     if (!i) return Promise.resolve();
-    if (i.active && !(await this.confirms.ask({ title: 'Switch the Item Off?', subtitle: i.text, message: 'It is no longer asked.', confirmLabel: 'Switch Off', danger: true }))) return;
+    if (i.active && !(await this.confirms.ask({
+      title: t('staff.submissionChecklists.offDialog.title', 'Switch the Item Off?'), subtitle: i.text,
+      message: t('staff.submissionChecklists.offDialog.message', 'It is no longer asked.'),
+      confirmLabel: t('staff.submissionChecklists.offDialog.confirmButton', 'Switch Off'), danger: true,
+    }))) return;
     i.active = !i.active;
     return this.change(() => this.http.put<MessageResponse>(`${SubmissionChecklistsPage.url}/${c.code}`, { items }));
   }
@@ -386,8 +401,9 @@ export class SubmissionChecklistsPage {
 
   protected async resetAll(c: ChecklistView): Promise<void> {
     if (!(await this.confirms.ask({
-      title: 'Reset to the Standard Items?', message: `The ${c.title} checklist uses its standard items again. The items added or changed here are removed.`,
-      confirmLabel: 'Reset', danger: true,
+      title: t('staff.submissionChecklists.resetDialog.title', 'Reset to the Standard Items?'),
+      message: t('staff.submissionChecklists.resetDialog.message', 'The {checklist} checklist uses its standard items again. The items added or changed here are removed.', { checklist: c.title }),
+      confirmLabel: t('staff.submissionChecklists.resetDialog.confirmButton', 'Reset'), danger: true,
     }))) return;
     return this.change(() => this.http.delete<MessageResponse>(`${SubmissionChecklistsPage.url}/${c.code}`));
   }

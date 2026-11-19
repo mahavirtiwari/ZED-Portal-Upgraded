@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { MessageResponse } from '@zed/shared';
 import { onStates } from '../../msme/shared/states';
+import { t } from '../../content/page-text';
 
 export type Row = Record<string, string | number | boolean | null>;
 
@@ -160,43 +161,86 @@ export type IncentiveGroupKey = 'ministry' | 'state' | 'financial' | 'others';
 
 export interface IncentiveGroup {
   key: IncentiveGroupKey;
+  /** The group's name as the code knows it (the Incentives menu's entry); the wording shown is groupText(key).label. */
   label: string;
   /** IncentiveType of the group; null for State Government (the state's name). */
   type: string | null;
+}
+
+export const INCENTIVE_GROUPS: IncentiveGroup[] = [
+  { key: 'ministry', label: 'Ministry of MSME', type: 'Common' },
+  { key: 'state', label: 'State Government', type: null },
+  { key: 'financial', label: 'Financial Institution', type: 'Financial' },
+  { key: 'others', label: 'Others', type: 'Other' },
+];
+
+/** The wording of a group on the incentive pages. */
+export interface IncentiveGroupText {
+  label: string;
   title: string;
   subtitle: string;
   createSubtitle: string;
   /** Label of MinistryOrDepartment in this group. */
   department: string;
   departmentHint: string;
+  /** The MSME dashboard card that lists the group's incentives (the MSME dashboard's own wording, msme.dashboard.stakeholder.*). */
+  card: string;
 }
 
-export const INCENTIVE_GROUPS: IncentiveGroup[] = [
-  {
-    key: 'ministry', label: 'Ministry of MSME', type: 'Common', title: 'Ministry of MSME Incentives',
-    subtitle: 'Central schemes administered by the Ministry of MSME and the Office of DC (MSME)',
-    createSubtitle: 'Add a central scheme administered by the Ministry of MSME or the Office of DC (MSME)',
-    department: 'Administering Department', departmentHint: 'e.g. Office of DC (MSME)',
-  },
-  {
-    key: 'state', label: 'State Government', type: null, title: 'State Government Incentives',
-    subtitle: 'Benefits notified by State Governments and Union Territory administrations',
-    createSubtitle: 'Add a benefit notified by a State Government or Union Territory',
-    department: 'State Department', departmentHint: 'e.g. Department of Industries',
-  },
-  {
-    key: 'financial', label: 'Financial Institution', type: 'Financial', title: 'Financial Institution Incentives',
-    subtitle: 'Credit and fee benefits offered by banks and financial institutions',
-    createSubtitle: 'Add a credit or fee benefit offered by a bank or financial institution',
-    department: 'Financial Institution', departmentHint: 'e.g. SIDBI',
-  },
-  {
-    key: 'others', label: 'Others', type: 'Other', title: 'Other Incentives',
-    subtitle: 'Support offered by agencies outside the categories above',
-    createSubtitle: 'Add support offered by an agency outside the categories above',
-    department: 'Issuing Agency', departmentHint: 'e.g. National Small Industries Corporation',
-  },
-];
+/**
+ * 2026-11-19 ("All page wording"): the wording of a group is the Admin's (Texts → Page wording, staff.incentives.group.*)
+ * or the standard one written here; read it where it is shown (a computed or template), the group's key stays the code value.
+ */
+export function groupText(key: IncentiveGroupKey): IncentiveGroupText {
+  switch (key) {
+    case 'ministry':
+      return {
+        label: t('staff.incentives.group.ministry.label', 'Ministry of MSME'),
+        title: t('staff.incentives.group.ministry.title', 'Ministry of MSME Incentives'),
+        subtitle: t('staff.incentives.group.ministry.sub', 'Central schemes administered by the Ministry of MSME and the Office of DC (MSME)'),
+        createSubtitle: t('staff.incentives.group.ministry.createSub', 'Add a central scheme administered by the Ministry of MSME or the Office of DC (MSME)'),
+        department: t('staff.incentives.group.ministry.departmentLabel', 'Administering Department'),
+        departmentHint: t('staff.incentives.group.ministry.departmentPlaceholder', 'e.g. Office of DC (MSME)'),
+        card: t('msme.dashboard.stakeholder.msme.title', 'Ministry of MSME'),
+      };
+    case 'state':
+      return {
+        label: t('staff.incentives.group.state.label', 'State Government'),
+        title: t('staff.incentives.group.state.title', 'State Government Incentives'),
+        subtitle: t('staff.incentives.group.state.sub', 'Benefits notified by State Governments and Union Territory administrations'),
+        createSubtitle: t('staff.incentives.group.state.createSub', 'Add a benefit notified by a State Government or Union Territory'),
+        department: t('staff.incentives.group.state.departmentLabel', 'State Department'),
+        departmentHint: t('staff.incentives.group.state.departmentPlaceholder', 'e.g. Department of Industries'),
+        card: t('msme.dashboard.stakeholder.states.title', 'States/UTs'),
+      };
+    case 'financial':
+      return {
+        label: t('staff.incentives.group.financial.label', 'Financial Institution'),
+        title: t('staff.incentives.group.financial.title', 'Financial Institution Incentives'),
+        subtitle: t('staff.incentives.group.financial.sub', 'Credit and fee benefits offered by banks and financial institutions'),
+        createSubtitle: t('staff.incentives.group.financial.createSub', 'Add a credit or fee benefit offered by a bank or financial institution'),
+        department: t('staff.incentives.group.financial.departmentLabel', 'Financial Institution'),
+        departmentHint: t('staff.incentives.group.financial.departmentPlaceholder', 'e.g. SIDBI'),
+        card: t('msme.dashboard.stakeholder.financial.title', 'Financial Institutions'),
+      };
+    default:
+      return {
+        label: t('staff.incentives.group.others.label', 'Others'),
+        title: t('staff.incentives.group.others.title', 'Other Incentives'),
+        subtitle: t('staff.incentives.group.others.sub', 'Support offered by agencies outside the categories above'),
+        createSubtitle: t('staff.incentives.group.others.createSub', 'Add support offered by an agency outside the categories above'),
+        department: t('staff.incentives.group.others.departmentLabel', 'Issuing Agency'),
+        departmentHint: t('staff.incentives.group.others.departmentPlaceholder', 'e.g. National Small Industries Corporation'),
+        card: t('msme.dashboard.stakeholder.other.title', 'Other Incentives'),
+      };
+  }
+}
+
+/** Manufacturing, Services or Both as shown (the value stays the code). */
+export function activityText(value: IncentiveActivity): string {
+  return value === 'Manufacturing' ? t('staff.incentives.activity.manufacturing', 'Manufacturing')
+    : value === 'Services' ? t('staff.incentives.activity.services', 'Services') : t('staff.incentives.activity.both', 'Both');
+}
 
 /** The group of an IncentiveType (a state's name: State Government). */
 export function groupOfType(type: string): IncentiveGroup {

@@ -4,7 +4,8 @@ import { ReviewActionsBar } from '../monitoring/review-actions';
 import { RemarksKind, ReviewActions } from '../monitoring/review.api';
 import { Row, SaDetails, SaMeeting, SaOriginal, SaPhoto } from './site-review.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
-import { ParameterNav } from '../../msme/shared/parameter-status';
+import { ParameterChip, ParameterNav } from '../../msme/shared/parameter-status';
+import { TextPipe, t } from '../../content/page-text';
 
 /** An "Edit Remarks" request for the parent's remarks pop-up. */
 export interface SurveillanceRemarks {
@@ -31,7 +32,7 @@ interface Block<T> {
  */
 @Component({
   selector: 'zed-sa-surveillance-tab',
-  imports: [ReviewActionsBar, RequirementVideo],
+  imports: [ReviewActionsBar, RequirementVideo, TextPipe],
   templateUrl: './sa-surveillance.html',
   styles: [DETAILS_STYLES, `
     .surveillance-assessment { width: 200px; overflow: auto; vertical-align: middle !important; text-align: center; background-color: #f9cc53; }
@@ -59,6 +60,8 @@ export class SaSurveillanceTab {
   readonly done = output<string>();
 
   protected readonly t = text;
+  /** A parameter / requirement chip as shown (the code value stays in data-v). */
+  protected readonly chipText = surveillanceChipText;
   /** Accordion panels the user closed (they open expanded, as before). */
   private readonly closed = signal<ReadonlySet<string>>(new Set());
 
@@ -70,20 +73,22 @@ export class SaSurveillanceTab {
   protected readonly planBlocks = computed<Block<Row[]>[]>(() => {
     const d = this.details();
     const blocks: Block<Row[]>[] = [
-      { key: 'plan-surveillance', title: 'SURVEILLANCE ASSESSMENT PLAN', value: d.surveillance?.planSections ?? d.sections, surveillance: true },
+      { key: 'plan-surveillance', title: t('staff.saDetails.surveillance.plan.heading', 'SURVEILLANCE ASSESSMENT PLAN'), value: d.surveillance?.planSections ?? d.sections, surveillance: true },
     ];
     const o = this.original();
-    if (this.admin() && o) blocks.push({ key: 'plan-onsite', title: 'ONSITE ASSESSMENT PLAN', value: o.sections, surveillance: false });
+    if (this.admin() && o) blocks.push({ key: 'plan-onsite', title: t('staff.saDetails.surveillance.plan.onsite.heading', 'ONSITE ASSESSMENT PLAN'), value: o.sections, surveillance: false });
     return blocks;
   });
 
-  protected readonly openMeetings = computed(() => this.meetings('open', 'SURVEILLANCE OPEN MEETING', 'ONSITE OPEN MEETING'));
-  protected readonly closeMeetings = computed(() => this.meetings('close', 'SURVEILLANCE CLOSE MEETING', 'CLOSE MEETING'));
+  protected readonly openMeetings = computed(() => this.meetings('open', t('staff.saDetails.surveillance.openMeeting.heading', 'SURVEILLANCE OPEN MEETING'),
+    t('staff.saDetails.surveillance.openMeeting.onsite.heading', 'ONSITE OPEN MEETING')));
+  protected readonly closeMeetings = computed(() => this.meetings('close', t('staff.saDetails.surveillance.closeMeeting.heading', 'SURVEILLANCE CLOSE MEETING'),
+    t('staff.saDetails.surveillance.closeMeeting.onsite.heading', 'CLOSE MEETING')));
 
   protected readonly tourBlocks = computed<Block<SaPhoto[]>[]>(() => {
-    const blocks: Block<SaPhoto[]>[] = [{ key: 'tour-surveillance', title: 'SURVEILLANCE SITE TOUR', value: this.details().siteTour, surveillance: true }];
+    const blocks: Block<SaPhoto[]>[] = [{ key: 'tour-surveillance', title: t('staff.saDetails.surveillance.tour.heading', 'SURVEILLANCE SITE TOUR'), value: this.details().siteTour, surveillance: true }];
     const o = this.original();
-    if (this.admin() && o) blocks.push({ key: 'tour-onsite', title: 'ONSITE SITE TOUR', value: o.siteTour, surveillance: false });
+    if (this.admin() && o) blocks.push({ key: 'tour-onsite', title: t('staff.saDetails.surveillance.tour.onsite.heading', 'ONSITE SITE TOUR'), value: o.siteTour, surveillance: false });
     return blocks;
   });
 
@@ -163,6 +168,17 @@ export class SaSurveillanceTab {
     const o = this.original();
     if (this.admin() && o) blocks.push({ key: kind + '-onsite', title: onsiteTitle, value: kind === 'open' ? o.openMeeting : o.closeMeeting, surveillance: false });
     return blocks;
+  }
+}
+
+function surveillanceChipText(value: ParameterChip): string {
+  switch (value) {
+    case 'Yes': return t('staff.saDetails.status.yes.chip', 'Yes');
+    case 'No': return t('staff.saDetails.status.no.chip', 'No');
+    case 'Partial': return t('staff.saDetails.status.partial.chip', 'Partial');
+    case 'Pending': return t('staff.saDetails.status.pending.chip', 'Pending');
+    case 'Exempt': return t('staff.saDetails.status.exempt.chip', 'Exempt');
+    default: return value;
   }
 }
 

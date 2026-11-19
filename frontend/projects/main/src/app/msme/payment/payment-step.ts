@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, PaymentApi, PaymentOptions, postToGateway } from './payment.api';
@@ -29,7 +30,7 @@ const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
  */
 @Component({
   selector: 'zed-payment-step',
-  imports: [FormsModule, DecimalPipe, RouterLink, AlertDialog, ContentTextComponent],
+  imports: [FormsModule, DecimalPipe, RouterLink, AlertDialog, ContentTextComponent, TextPipe],
   templateUrl: './payment-step.html',
   styleUrl: './payment-step.scss',
 })
@@ -81,6 +82,11 @@ export class PaymentStep implements OnInit {
     return Number(this.fee()[field] ?? 0) || 0;
   }
 
+  /** "GST @ 18%" (written here: an @ in the template would start a block). */
+  protected gstLabel(): string {
+    return t('msme.payment.summary.gstLabel', 'GST @ 18%');
+  }
+
   protected text(field: string): string {
     return String(this.fee()[field] ?? '');
   }
@@ -120,7 +126,7 @@ export class PaymentStep implements OnInit {
   protected async proceed(): Promise<void> {
     this.submitted.set(true);
     if (!this.formValid()) {
-      this.alert.set(errorAlert('Please enter required data.'));
+      this.alert.set(errorAlert(t('msme.payment.error.required', 'Please enter required data.')));
       return;
     }
     if (this.gstinApplicable === 'Yes') {
@@ -139,17 +145,17 @@ export class PaymentStep implements OnInit {
   protected async savePan(): Promise<void> {
     const pan = this.correctedPan.trim().toUpperCase();
     if (pan.length !== 10) {
-      this.alert.set(errorAlert('Please enter a valid 10-character PAN.'));
+      this.alert.set(errorAlert(t('msme.payment.error.panLength', 'Please enter a valid 10-character PAN.')));
       return;
     }
     if (pan !== this.gstinPan) {
-      this.alert.set(errorAlert('Please enter the correct PAN associated with that GSTIN.'));
+      this.alert.set(errorAlert(t('msme.payment.error.panMismatch', 'Please enter the correct PAN associated with that GSTIN.')));
       return;
     }
     this.panModal.set(false);
     const ok = await this.call(this.api.correctPan(this.certification(), this.gstin.trim().toUpperCase(), pan));
     if (!ok) return;
-    this.alert.set(successAlert('PAN updated successfully. Proceeding...'));
+    this.alert.set(successAlert(t('msme.payment.toast.panUpdated', 'PAN updated successfully. Proceeding...')));
     await this.checkout();
   }
 

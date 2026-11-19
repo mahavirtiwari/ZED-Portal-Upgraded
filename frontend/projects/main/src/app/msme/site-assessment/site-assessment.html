@@ -4,19 +4,19 @@
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
         @if (type()) {
-          <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+          <button type="button" class="btn btn-link" (click)="refresh()">{{ 'Try again' | t: 'msme.siteAssessment.retryButton' }}</button>
         }
-        <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
+        <a class="btn btn-link" routerLink="/msme/dashboard">{{ 'Back to dashboard' | t: 'msme.siteAssessment.dashboardButton' }}</a>
       </div>
     }
 
     @if (data(); as d) {
       <!-- 2026-11-14 (approved): the shared header and the key facts strip in place of the unit side bar. -->
-      <zed-page-head [crumbs]="crumbs()" [title]="isMilestone() ? 'Handholding support' : 'Site assessment information'">
-        <a class="btn btn-outline-secondary btn-sm" [routerLink]="isMilestone() ? '/msme/handholding' : ['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+      <zed-page-head [crumbs]="crumbs()" [title]="isMilestone() ? ('Handholding support' | t: 'msme.siteAssessment.milestoneTitle') : ('Site assessment information' | t: 'msme.siteAssessment.title')">
+        <a class="btn btn-outline-secondary btn-sm" [routerLink]="isMilestone() ? '/msme/handholding' : ['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back' | t: 'msme.siteAssessment.backButton' }}</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.siteAssessment.refreshButton' }}</button>
       </zed-page-head>
-      <zed-unit-facts [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [extra]="[{ label: 'Level', value: levelTitle() }]" />
+      <zed-unit-facts [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [extra]="[{ label: ('Level' | t: 'msme.siteAssessment.levelLabel'), value: levelTitle() }]" />
 
       <div>
         <div class="dash-main">
@@ -24,14 +24,14 @@
             <ul class="nav nav-tabs" role="tablist">
               <li class="nav-item" role="presentation">
                 <button class="nav-link" [class.active]="tab() === 'basic'" type="button" role="tab" [attr.aria-selected]="tab() === 'basic'" (click)="select('basic')">
-                  {{ isMilestone() ? 'Basic Information' : 'Basic Info' }}
+                  {{ isMilestone() ? ('Basic Information' | t: 'msme.siteAssessment.tab.milestoneBasic') : ('Basic Info' | t: 'msme.siteAssessment.tab.basic') }}
                 </button>
               </li>
               <li class="nav-item" role="presentation">
-                <button class="nav-link" [class.active]="tab() === 'tour'" type="button" role="tab" [attr.aria-selected]="tab() === 'tour'" (click)="select('tour')">Site Tour</button>
+                <button class="nav-link" [class.active]="tab() === 'tour'" type="button" role="tab" [attr.aria-selected]="tab() === 'tour'" (click)="select('tour')">{{ 'Site Tour' | t: 'msme.siteAssessment.tab.tour' }}</button>
               </li>
               <li class="nav-item" role="presentation">
-                <button class="nav-link" [class.active]="tab() === 'parameters'" type="button" role="tab" [attr.aria-selected]="tab() === 'parameters'" (click)="select('parameters')">Parameters</button>
+                <button class="nav-link" [class.active]="tab() === 'parameters'" type="button" role="tab" [attr.aria-selected]="tab() === 'parameters'" (click)="select('parameters')">{{ 'Parameters' | t: 'msme.siteAssessment.tab.parameters' }}</button>
               </li>
             </ul>
 
@@ -64,34 +64,34 @@
             <hr class="row sa-rule" />
             <table class="table table-bordered">
               <thead>
-                <tr><th class="text-center" style="width: 70px">S.No</th><th>Description</th><th>Responses</th></tr>
+                <tr><th class="text-center" style="width: 70px">{{ 'S.No' | t: 'msme.siteAssessment.basic.column.number' }}</th><th>{{ 'Description' | t: 'msme.siteAssessment.basic.column.description' }}</th><th>{{ 'Responses' | t: 'msme.siteAssessment.basic.column.responses' }}</th></tr>
               </thead>
               <tbody>
                 <tr>
                   <td class="text-center">1</td>
-                  <td>Whether 3rd Party Financial Audits are conducted?</td>
+                  <td>{{ 'Whether 3rd Party Financial Audits are conducted?' | t: 'msme.siteAssessment.basic.auditsLabel' }}</td>
                   <td>{{ assessment()['AuditsConducted'] }}</td>
                 </tr>
                 <tr>
                   <td class="text-center">2</td>
-                  <td>Product manufactured</td>
+                  <td>{{ 'Product manufactured' | t: 'msme.siteAssessment.basic.productLabel' }}</td>
                   <td>
                     <table class="table table-default table-zed">
                       <tbody>
                         @for (p of d.products; track $index; let i = $index) {
                           <tr>
-                            <th colspan="3">{{ i + 1 }}. {{ p.productName }} <span class="pull-right">Exported: {{ p.exported }}</span></th>
+                            <th colspan="3">{{ i + 1 }}. {{ p.productName }} <span class="pull-right">{{ 'Exported: {value}' | t: 'msme.siteAssessment.basic.exportedText' : { value: p.exported } }}</span></th>
                           </tr>
                           <tr>
                             <td colspan="2">
-                              <div><strong>DA</strong></div>
+                              <div><strong>{{ 'DA' | t: 'msme.siteAssessment.source.da' }}</strong></div>
                               @if (p.productPhoto) {
                                 <div class="row-data">
                                   <div>
                                     <img [src]="p.productPhoto" alt="" />
-                                    <span>Product Photo</span>
+                                    <span>{{ 'Product Photo' | t: 'msme.siteAssessment.basic.productPhotoLabel' }}</span>
                                   </div>
-                                  <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productPhoto)">VIEW</button>
+                                  <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productPhoto)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
                                 </div>
                               }
                               @if (p.productDescriptionPhoto) {
@@ -99,17 +99,17 @@
                                   <div class="row-data">
                                     <div>
                                       <img class="sa-pdf-icon" [class.opened]="p.productDescriptionOpened" src="/Images/svgicons/pdf-icon.svg" alt="" />
-                                      <span>Product Description Photo</span>
+                                      <span>{{ 'Product Description Photo' | t: 'msme.siteAssessment.basic.descriptionPhotoLabel' }}</span>
                                     </div>
-                                    <a class="btn btn-outline-primary btn-sm pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">VIEW</a>
+                                    <a class="btn btn-outline-primary btn-sm pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</a>
                                   </div>
                                 } @else {
                                   <div class="row-data">
                                     <div>
                                       <img [src]="p.productDescriptionPhoto" alt="" />
-                                      <span>Product Description Photo</span>
+                                      <span>{{ 'Product Description Photo' | t: 'msme.siteAssessment.basic.descriptionPhotoLabel' }}</span>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productDescriptionPhoto)">VIEW</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productDescriptionPhoto)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
                                   </div>
                                 }
                               }
@@ -117,7 +117,7 @@
                           </tr>
                           <tr>
                             <td colspan="2">
-                              <div><strong>Site Assessment</strong></div>
+                              <div><strong>{{ 'Site Assessment' | t: 'msme.siteAssessment.source.site' }}</strong></div>
                               @for (pp of p.photos; track $index) {
                                 <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp }" />
                               }
@@ -129,17 +129,17 @@
                     </table>
                   </td>
                 </tr>
-                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 3, label: 'Key Domestic Customers', da: 'DomesticCustomers', sa: 'SaDomesticCustomers' }" />
-                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 4, label: 'Key International Customers', da: 'InternationalCustomers', sa: 'SaInternationalCustomers' }" />
-                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 5, label: 'Whether Raw Material is Imported?', da: 'RawMaterialImported', sa: 'SaRawMaterialImported' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 3, label: ('Key Domestic Customers' | t: 'msme.siteAssessment.basic.domesticLabel'), da: 'DomesticCustomers', sa: 'SaDomesticCustomers' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 4, label: ('Key International Customers' | t: 'msme.siteAssessment.basic.internationalLabel'), da: 'InternationalCustomers', sa: 'SaInternationalCustomers' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 5, label: ('Whether Raw Material is Imported?' | t: 'msme.siteAssessment.basic.rawImportedLabel'), da: 'RawMaterialImported', sa: 'SaRawMaterialImported' }" />
                 @if (assessment()['RawMaterialImported'] === 'Yes') {
                   <tr>
                     <td></td>
-                    <td>Raw Materials</td>
+                    <td>{{ 'Raw Materials' | t: 'msme.siteAssessment.basic.rawMaterialsLabel' }}</td>
                     <td>
                       <table class="table table-striped">
                         <thead>
-                          <tr><th>Raw Material Name</th><th class="text-center">% of Raw Material Imported</th><th>Name of Country</th></tr>
+                          <tr><th>{{ 'Raw Material Name' | t: 'msme.siteAssessment.raw.column.name' }}</th><th class="text-center">{{ '% of Raw Material Imported' | t: 'msme.siteAssessment.raw.column.percentage' }}</th><th>{{ 'Name of Country' | t: 'msme.siteAssessment.raw.column.country' }}</th></tr>
                         </thead>
                         <tbody>
                           @for (r of d.rawMaterials; track $index) {
@@ -150,8 +150,8 @@
                     </td>
                   </tr>
                 }
-                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 6, label: 'Processed Outsourced, if any?', da: 'OutsourcedProcesses', sa: 'SaOutsourcedProcesses' }" />
-                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 7, label: 'Energy Source(s) Used', da: 'EnergySources', sa: 'SaEnergySources' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 6, label: ('Processed Outsourced, if any?' | t: 'msme.siteAssessment.basic.outsourcedLabel'), da: 'OutsourcedProcesses', sa: 'SaOutsourcedProcesses' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 7, label: ('Energy Source(s) Used' | t: 'msme.siteAssessment.basic.energyLabel'), da: 'EnergySources', sa: 'SaEnergySources' }" />
               </tbody>
             </table>
           </div>
@@ -165,8 +165,8 @@
           <td>
             <table class="table table-bordered table-striped">
               <tbody>
-                <tr><td class="sa-source">DA</td><td>{{ text(assessment(), da) }}</td></tr>
-                <tr><td class="sa-source">Site Assessment</td><td>{{ text(assessment(), sa) }}</td></tr>
+                <tr><td class="sa-source">{{ 'DA' | t: 'msme.siteAssessment.source.da' }}</td><td>{{ text(assessment(), da) }}</td></tr>
+                <tr><td class="sa-source">{{ 'Site Assessment' | t: 'msme.siteAssessment.source.site' }}</td><td>{{ text(assessment(), sa) }}</td></tr>
               </tbody>
             </table>
           </td>
@@ -177,7 +177,7 @@
         @if (d.surveillancePhotos.length > 0) {
           <div class="row">
             <div class="col-sm-12 mt-4">
-              <div class="panel panel-default panel-black"><div class="panel-body">SURVEILLANCE SITE TOUR PHOTOS</div></div>
+              <div class="panel panel-default panel-black"><div class="panel-body">{{ 'SURVEILLANCE SITE TOUR PHOTOS' | t: 'msme.siteAssessment.tour.surveillanceHeading' }}</div></div>
             </div>
             <div class="row m-0">
               @for (pp of d.surveillancePhotos; track $index) {
@@ -188,7 +188,7 @@
         }
         <div class="row">
           <div class="col-sm-12 mt-4">
-            <div class="panel panel-default panel-black"><div class="panel-body">SITE TOUR PHOTOS</div></div>
+            <div class="panel panel-default panel-black"><div class="panel-body">{{ 'SITE TOUR PHOTOS' | t: 'msme.siteAssessment.tour.heading' }}</div></div>
           </div>
           <div class="row m-0">
             @for (pp of d.siteTourPhotos; track $index) {
@@ -215,16 +215,16 @@
                   <span class="zp-nav-body">
                     <span class="zp-nav-name">{{ s.sectionName }}</span>
                     @if (withStatus) {
-                      <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-nav-meta">{{ exempted(s) ? ('Exempted' | t: 'msme.siteAssessment.parameters.exemptedNote') : ('{done} of {total} requirements' | t: 'msme.siteAssessment.parameters.progressText' : { done: pg.done, total: pg.total }) }}</span>
                       <span class="zp-bar" aria-hidden="true"><span [style.width.%]="exempted(s) ? 100 : pg.percent"></span></span>
                     } @else {
-                      <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.total + ' requirements' }}</span>
+                      <span class="zp-nav-meta">{{ exempted(s) ? ('Exempted' | t: 'msme.siteAssessment.parameters.exemptedNote') : ('{count} requirements' | t: 'msme.siteAssessment.parameters.countText' : { count: pg.total }) }}</span>
                     }
                   </span>
                   @if (withStatus) {
                     <span class="zp-chip" [attr.data-v]="pn.chip(s)">{{ pn.chip(s) }}</span>
                   } @else if (exempted(s)) {
-                    <span class="zp-chip" data-v="Exempt">Exempt</span>
+                    <span class="zp-chip" data-v="Exempt">{{ 'Exempt' | t: 'msme.siteAssessment.parameters.exemptChip' }}</span>
                   }
                 </button>
               }
@@ -240,30 +240,30 @@
                     <h5>{{ s.sectionName }}</h5>
                     @if (s.iButton) {
                       <span class="zp-info" tabindex="0">
-                        <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                        <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'msme.siteAssessment.infoAria'">i</span>
                         <span class="tooltiptext left">{{ s.iButton }}</span>
                       </span>
                     }
-                    @if (exempted(s)) { <span class="zp-tag">Exempted</span> }
+                    @if (exempted(s)) { <span class="zp-tag">{{ 'Exempted' | t: 'msme.siteAssessment.parameters.exemptedTag' }}</span> }
                   </div>
                   @if (withStatus) {
                     <div class="zp-head-status">
-                      <span class="zp-label">Conformance</span>
+                      <span class="zp-label">{{ 'Conformance' | t: 'msme.siteAssessment.conformanceLabel' }}</span>
                       <span class="zp-chip" [attr.data-v]="pn.status(s)">{{ pn.status(s) }}</span>
                     </div>
                   }
                 </div>
                 @if (s.isAssessmentExcempted && !withStatus) {
-                  <div class="zp-section-note">Exempted from assessment: {{ s.isAssessmentExcempted }}</div>
+                  <div class="zp-section-note">{{ 'Exempted from assessment: {value}' | t: 'msme.siteAssessment.parameters.exemptedText' : { value: s.isAssessmentExcempted } }}</div>
                 }
                 @for (r of s.requirements; track $index) {
                   <ng-container *ngTemplateOutlet="cards; context: { $implicit: r, section: s }" />
                 } @empty {
-                  <p class="zp-muted">No requirements in this parameter.</p>
+                  <p class="zp-muted">{{ 'No requirements in this parameter.' | t: 'msme.siteAssessment.parameters.noRequirements' }}</p>
                 }
               </div>
             } @else {
-              <p class="zp-muted">No parameters.</p>
+              <p class="zp-muted">{{ 'No parameters.' | t: 'msme.siteAssessment.parameters.empty' }}</p>
             }
           </div>
         </div>
@@ -273,7 +273,7 @@
       <ng-template #requirementTop let-r let-s="section" let-status="status">
         <div class="zp-req-title">
           <span class="zp-code">{{ s.sectionCode }}.{{ r.requirementCode }}</span>
-          <span class="zp-req-text">{{ r.requirementName || 'Requirement' }}</span>
+          <span class="zp-req-text">{{ r.requirementName || ('Requirement' | t: 'msme.siteAssessment.requirementFallback') }}</span>
           <zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" [compact]="true" />
           @if (status) { <span class="zp-chip zp-req-status" [attr.data-v]="status">{{ status }}</span> }
         </div>
@@ -281,7 +281,7 @@
 
       <ng-template #checkpointsBlock let-r>
         <div class="zp-block zp-checkpoints">
-          <div class="zp-block-head">Checkpoints</div>
+          <div class="zp-block-head">{{ 'Checkpoints' | t: 'msme.siteAssessment.checkpoints.heading' }}</div>
           @for (o of r.options; track $index) {
             <div class="zp-cp">
               <div class="zp-cp-text">
@@ -293,7 +293,7 @@
               <div class="zp-cp-answer"></div>
             </div>
           } @empty {
-            <div class="zp-block-empty">No checkpoints.</div>
+            <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'msme.siteAssessment.checkpoints.empty' }}</div>
           }
         </div>
       </ng-template>
@@ -307,15 +307,15 @@
               @for (pp of photos; track $index) {
                 <div class="zp-photo">
                   @if (pp.src) {
-                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')"><img [src]="pp.src" alt="" /></button>
+                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="pp.name ? ('View {name}' | t: 'msme.siteAssessment.viewPhotoAria' : { name: pp.name }) : ('View photo' | t: 'msme.siteAssessment.viewPhotoNoNameAria')"><img [src]="pp.src" alt="" /></button>
                   }
                   <span>{{ pp.name }}</span>
-                  @if (time) { <span class="zp-muted">Generated at {{ pp.createdDate }}</span> }
+                  @if (time) { <span class="zp-muted">{{ 'Generated at {time}' | t: 'msme.siteAssessment.photo.generatedText' : { time: pp.createdDate } }}</span> }
                 </div>
               }
             </div>
           } @else {
-            <div class="zp-block-empty">No Documents Uploaded</div>
+            <div class="zp-block-empty">{{ 'No Documents Uploaded' | t: 'msme.siteAssessment.documents.empty' }}</div>
           }
         </div>
       </ng-template>
@@ -335,16 +335,16 @@
           <div class="zp-req-body">
             <ng-container *ngTemplateOutlet="checkpointsBlock; context: { $implicit: r }" />
             <div class="zp-block zp-evidences">
-              <div class="zp-block-head">Evidences (desktop assessment)</div>
+              <div class="zp-block-head">{{ 'Evidences (desktop assessment)' | t: 'msme.siteAssessment.evidence.heading' }}</div>
               @if (r.evidences.length) {
                 <table class="zp-ev-table">
-                  <thead><tr><th>Document</th></tr></thead>
+                  <thead><tr><th>{{ 'Document' | t: 'msme.siteAssessment.evidence.column.document' }}</th></tr></thead>
                   <tbody>
                     @for (e of r.evidences; track $index) {
                       <tr class="zp-ev-row">
-                        <td class="zp-ev-doc" data-label="Document">
+                        <td class="zp-ev-doc" [attr.data-label]="'Document' | t: 'msme.siteAssessment.evidence.column.document'">
                           @if (e.url) {
-                            <a class="pdf-link" [href]="e.url" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e.evidenceName || 'View PDF' }}</span></a>
+                            <a class="pdf-link" [href]="e.url" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e.evidenceName || ('View PDF' | t: 'msme.siteAssessment.viewPdfLink') }}</span></a>
                           } @else {
                             <span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e.evidenceName }}</span>
                           }
@@ -354,13 +354,13 @@
                   </tbody>
                 </table>
               } @else {
-                <div class="zp-block-empty">No Documents Uploaded</div>
+                <div class="zp-block-empty">{{ 'No Documents Uploaded' | t: 'msme.siteAssessment.documents.empty' }}</div>
               }
             </div>
             @if (!exempted(s)) {
-              <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.photos, title: 'Photos (site assessment)', css: 'zp-site-photos', time: false }" />
+              <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.photos, title: ('Photos (site assessment)' | t: 'msme.siteAssessment.requirement.sitePhotosHeading'), css: 'zp-site-photos', time: false }" />
               @if (r.surveillancePhotos.length > 0) {
-                <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.surveillancePhotos, title: 'Photos (surveillance)', css: 'zp-sv-photos', time: false }" />
+                <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.surveillancePhotos, title: ('Photos (surveillance)' | t: 'msme.siteAssessment.requirement.surveillancePhotosHeading'), css: 'zp-sv-photos', time: false }" />
               }
             }
           </div>
@@ -372,12 +372,12 @@
       <ng-template #milestoneBasicTab>
         <div class="row">
           <div class="col-sm-12">
-            <div class="panel panel-default panel-black mt-4"><div class="panel-body">Site Exterior Photos</div></div>
+            <div class="panel panel-default panel-black mt-4"><div class="panel-body">{{ 'Site Exterior Photos' | t: 'msme.siteAssessment.milestone.exteriorHeading' }}</div></div>
             <div class="sa-milestone-border">
               @for (m of d.siteExteriorPhotos; track $index) {
                 <table class="table table-bordered table-zed sa-milestone-table">
                   <tr>
-                    <td rowspan="3" [class]="'milestone-' + m.ncCount"><p>Milestone {{ m.ncCount }}</p></td>
+                    <td rowspan="3" [class]="'milestone-' + m.ncCount"><p>{{ 'Milestone {milestone}' | t: 'msme.siteAssessment.milestone.text' : { milestone: m.ncCount } }}</p></td>
                     <td class="p-0"></td>
                   </tr>
                   <tr>
@@ -391,10 +391,10 @@
                                 @if (pp.src) {
                                   <img [src]="pp.src" alt="" height="60" />
                                 }
-                                <span>Captured at {{ pp.createdDate }}</span>
+                                <span>{{ 'Captured at {time}' | t: 'msme.siteAssessment.photo.capturedText' : { time: pp.createdDate } }}</span>
                               </div>
                               @if (pp.src) {
-                                <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
                               }
                             </div>
                           </div>
@@ -406,13 +406,13 @@
               }
             </div>
 
-            @for (section of milestoneInfo; track section.title) {
+            @for (section of milestoneInfo(); track section.title) {
               <div class="panel panel-default panel-black"><div class="panel-body">{{ section.title }}</div></div>
               <div class="sa-milestone-border">
                 @for (info of d.consultancyBasicInfo; track $index) {
                   <table class="table table-bordered table-zed sa-milestone-table">
                     <tr>
-                      <td rowspan="3" [class]="'milestone-' + text(info, 'NcCount')"><p>Milestone {{ info['NcCount'] }}</p></td>
+                      <td rowspan="3" [class]="'milestone-' + text(info, 'NcCount')"><p>{{ 'Milestone {milestone}' | t: 'msme.siteAssessment.milestone.text' : { milestone: info['NcCount'] } }}</p></td>
                       <td class="p-0"></td>
                     </tr>
                     <tr>
@@ -451,7 +451,7 @@
       <ng-template #milestoneTourTab>
         <div class="row">
           <div class="col-sm-12 mt-4">
-            <div class="panel panel-default panel-black"><div class="panel-body">SITE TOUR PICTURES</div></div>
+            <div class="panel panel-default panel-black"><div class="panel-body">{{ 'SITE TOUR PICTURES' | t: 'msme.siteAssessment.milestone.tourHeading' }}</div></div>
           </div>
         </div>
         <div class="row">
@@ -474,61 +474,61 @@
 
             <!-- Milestone 1 : Basic Diagnostic Study -->
             <div class="zp-block zp-milestone milestone-1">
-              <div class="zp-block-head">Milestone 1 : Basic Diagnostic Study</div>
+              <div class="zp-block-head">{{ 'Milestone 1 : Basic Diagnostic Study' | t: 'msme.siteAssessment.milestone.baselineHeading' }}</div>
               <div class="zp-block-body">
                 <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: r.photos, section: s }" />
                 @if (!exempted(s)) {
                   <div class="zp-row my-2">
-                    <span class="zp-label m-0">Conformance</span>
-                    @if (r.milestone['SaConformance']) { <span class="zp-chip sa-answer" [attr.data-v]="pn.requirementStatus(r)">{{ r.milestone['SaConformance'] }}</span> } @else { <span class="zp-chip">Not given</span> }
+                    <span class="zp-label m-0">{{ 'Conformance' | t: 'msme.siteAssessment.conformanceLabel' }}</span>
+                    @if (r.milestone['SaConformance']) { <span class="zp-chip sa-answer" [attr.data-v]="pn.requirementStatus(r)">{{ r.milestone['SaConformance'] }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'msme.siteAssessment.milestone.notGivenChip' }}</span> }
                   </div>
-                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'GAPS IDENTIFIED', items: r.bullets?.baselineDiagnostic }" />
-                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['BaselineRemarks'] }" />
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: ('GAPS IDENTIFIED' | t: 'msme.siteAssessment.milestone.gapsLabel'), items: r.bullets?.baselineDiagnostic }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: ('REMARKS, IF ANY' | t: 'msme.siteAssessment.milestone.remarksLabel'), value: r.milestone['BaselineRemarks'] }" />
                 }
               </div>
             </div>
 
             <!-- Milestone 1 : Handholding Action Plan -->
             <div class="zp-block zp-milestone milestone-1">
-              <div class="zp-block-head">Milestone 1 : Handholding Action Plan</div>
+              <div class="zp-block-head">{{ 'Milestone 1 : Handholding Action Plan' | t: 'msme.siteAssessment.milestone.planHeading' }}</div>
               <div class="zp-block-body">
                 @if (!exempted(s)) {
-                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'PLANNED ACTIVIES', items: r.bullets?.handholdingActionPlan }" />
-                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'ESTIMATED TIME (IN DAYS)', value: r.milestone['EstimatedTimeInDays'] }" />
-                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['HActionPlanRemarks'] }" />
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: ('PLANNED ACTIVIES' | t: 'msme.siteAssessment.milestone.plannedLabel'), items: r.bullets?.handholdingActionPlan }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: ('ESTIMATED TIME (IN DAYS)' | t: 'msme.siteAssessment.milestone.estimatedLabel'), value: r.milestone['EstimatedTimeInDays'] }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: ('REMARKS, IF ANY' | t: 'msme.siteAssessment.milestone.remarksLabel'), value: r.milestone['HActionPlanRemarks'] }" />
                 } @else {
-                  <span class="zp-muted">Exempted from assessment</span>
+                  <span class="zp-muted">{{ 'Exempted from assessment' | t: 'msme.siteAssessment.milestone.exemptedNote' }}</span>
                 }
               </div>
             </div>
 
             <!-- Milestone 1 : Technology Intervention -->
             <div class="zp-block zp-milestone milestone-1">
-              <div class="zp-block-head">Milestone 1 : Technology Intervention</div>
+              <div class="zp-block-head">{{ 'Milestone 1 : Technology Intervention' | t: 'msme.siteAssessment.milestone.interventionHeading' }}</div>
               <div class="zp-block-body">
                 @if (!exempted(s)) {
-                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'SUGGESTED TENCHNOLOGY INTERVENTION', items: r.bullets?.technologyIntervention }" />
-                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'RATIONALE FOR TENCHNOLOGY INTERVENTION', value: r.milestone['Intervention'], plain: true }" />
-                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['InterventionRemarks'] }" />
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: ('SUGGESTED TENCHNOLOGY INTERVENTION' | t: 'msme.siteAssessment.milestone.suggestedLabel'), items: r.bullets?.technologyIntervention }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: ('RATIONALE FOR TENCHNOLOGY INTERVENTION' | t: 'msme.siteAssessment.milestone.rationaleLabel'), value: r.milestone['Intervention'], plain: true }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: ('REMARKS, IF ANY' | t: 'msme.siteAssessment.milestone.remarksLabel'), value: r.milestone['InterventionRemarks'] }" />
                 } @else {
-                  <span class="zp-muted">Exempted from assessment</span>
+                  <span class="zp-muted">{{ 'Exempted from assessment' | t: 'msme.siteAssessment.milestone.exemptedNote' }}</span>
                 }
               </div>
             </div>
 
             @if ((s.ncCount ?? 0) > 1) {
-              <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 2 : Progress Review 1', css: 'milestone-2', photos: photosOf(r, 2), section: s, completed: r.milestone['IsProposedActivityCompleted'], remarks: r.milestone['ProgressReviewRemarks'] }" />
+              <ng-container *ngTemplateOutlet="progressReview; context: { title: ('Milestone 2 : Progress Review 1' | t: 'msme.siteAssessment.milestone.review1Heading'), css: 'milestone-2', photos: photosOf(r, 2), section: s, completed: r.milestone['IsProposedActivityCompleted'], remarks: r.milestone['ProgressReviewRemarks'] }" />
             }
             @if (s.ncCount === 3) {
-              <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 3 : Progress Review 2', css: 'milestone-3', photos: photosOf(r, 3), section: s, completed: r.milestone['IsProposedActivityCompleted2'], remarks: r.milestone['ProgressReviewRemarks2'] }" />
+              <ng-container *ngTemplateOutlet="progressReview; context: { title: ('Milestone 3 : Progress Review 2' | t: 'msme.siteAssessment.milestone.review2Heading'), css: 'milestone-3', photos: photosOf(r, 3), section: s, completed: r.milestone['IsProposedActivityCompleted2'], remarks: r.milestone['ProgressReviewRemarks2'] }" />
             }
           </div>
           <div class="zp-foot">
             <div class="zp-conf">
-              <div class="zp-label">Conformance (basic diagnostic study)</div>
+              <div class="zp-label">{{ 'Conformance (basic diagnostic study)' | t: 'msme.siteAssessment.milestone.conformanceLabel' }}</div>
               <div class="zp-row">
                 @if (exempted(s)) {
-                  <span class="zp-chip" data-v="Exempt">Exempt</span>
+                  <span class="zp-chip" data-v="Exempt">{{ 'Exempt' | t: 'msme.siteAssessment.parameters.exemptChip' }}</span>
                 } @else {
                   <span class="zp-chip" [attr.data-v]="status">{{ status }}</span>
                 }
@@ -545,10 +545,10 @@
             <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: photos, section: s }" />
             @if (!exempted(s)) {
               <div class="zp-row my-2">
-                <span class="zp-label m-0">Is Proposed Activity Completed</span>
-                @if (completed) { <span class="zp-chip sa-answer" [attr.data-v]="completed">{{ completed }}</span> } @else { <span class="zp-chip">Not given</span> }
+                <span class="zp-label m-0">{{ 'Is Proposed Activity Completed' | t: 'msme.siteAssessment.milestone.completedLabel' }}</span>
+                @if (completed) { <span class="zp-chip sa-answer" [attr.data-v]="completed">{{ completed }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'msme.siteAssessment.milestone.notGivenChip' }}</span> }
               </div>
-              <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: remarks }" />
+              <ng-container *ngTemplateOutlet="textBlock; context: { title: ('REMARKS, IF ANY' | t: 'msme.siteAssessment.milestone.remarksLabel'), value: remarks }" />
             }
           </div>
         </div>
@@ -561,16 +561,16 @@
               @for (pp of photos; track $index) {
                 <div class="zp-photo">
                   @if (pp.src) {
-                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')"><img [src]="pp.src" alt="" /></button>
+                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="pp.name ? ('View {name}' | t: 'msme.siteAssessment.viewPhotoAria' : { name: pp.name }) : ('View photo' | t: 'msme.siteAssessment.viewPhotoNoNameAria')"><img [src]="pp.src" alt="" /></button>
                   }
                   <span>{{ pp.name }}</span>
-                  <span class="zp-muted">Generated at {{ pp.createdDate }}</span>
+                  <span class="zp-muted">{{ 'Generated at {time}' | t: 'msme.siteAssessment.photo.generatedText' : { time: pp.createdDate } }}</span>
                 </div>
               }
             </div>
           }
         } @else {
-          <span class="zp-muted">Exempted from assessment</span>
+          <span class="zp-muted">{{ 'Exempted from assessment' | t: 'msme.siteAssessment.milestone.exemptedNote' }}</span>
         }
       </ng-template>
 
@@ -607,7 +607,7 @@
             <span>{{ pp.name }}</span>
           </div>
           @if (pp.src) {
-            <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">{{ 'VIEW' | t: 'msme.siteAssessment.viewButton' }}</button>
           }
         </div>
       </ng-template>
@@ -615,7 +615,7 @@
       <ng-template #evidenceTile let-pp>
         <div class="col-sm-6 evidence-img bg-grey m-0 mb-2">
           @if (pp.src) {
-            <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')">
+            <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="pp.name ? ('View {name}' | t: 'msme.siteAssessment.viewPhotoAria' : { name: pp.name }) : ('View photo' | t: 'msme.siteAssessment.viewPhotoNoNameAria')">
               <img [src]="pp.src" alt="" />
             </button>
           }
@@ -634,14 +634,14 @@
         <div class="modal-header">
           <div class="modal-title w-100">
             <div class="d-flex justify-content-between align-items-center">
-              <h3 class="registration-title" id="saPreviewTitle">Image</h3>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closePreview()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <h3 class="registration-title" id="saPreviewTitle">{{ 'Image' | t: 'msme.siteAssessment.preview.title' }}</h3>
+              <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.siteAssessment.closeAria'" (click)="closePreview()"><img src="/Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
         </div>
         <div class="modal-body">
           <div class="text-center img-responsive sa-preview">
-            <img [src]="src" alt="Selected photo" />
+            <img [src]="src" [alt]="'Selected photo' | t: 'msme.siteAssessment.preview.alt'" />
           </div>
         </div>
         <div class="modal-footer">
@@ -658,8 +658,8 @@
     <div class="loadingimage">
       <div class="loader"></div>
       <div class="text-center">
-        <small>Please wait ...</small><br />
-        <small>It may take upto 60 seconds</small>
+        <small>{{ 'Please wait ...' | t: 'msme.siteAssessment.waitText' }}</small><br />
+        <small>{{ 'It may take upto 60 seconds' | t: 'msme.siteAssessment.waitNote' }}</small>
       </div>
     </div>
   </div>

@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ADMIN_PORTALS, AdminPortal, PortalSwitchComponent } from '../admin-portal';
+import { TextPipe, t } from '../../content/page-text';
 
 export type VerificationMode = 'Off' | 'TrainingPortal' | 'Api';
 
@@ -58,12 +59,12 @@ interface ApiForm {
  */
 @Component({
   selector: 'zed-staff-professional-verification',
-  imports: [FormsModule, PortalSwitchComponent],
+  imports: [FormsModule, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Professional Verification</h3>
-        <p class="page-sub">How an agency proves the certified professional it adds as an assessor (consultant) on this portal.</p>
+        <h3 class="registration-title">{{ 'Professional Verification' | t: 'staff.professionalVerification.title' }}</h3>
+        <p class="page-sub">{{ 'How an agency proves the certified professional it adds as an assessor (consultant) on this portal.' | t: 'staff.professionalVerification.sub' }}</p>
       </div>
     </div>
     <zed-portal-switch />
@@ -71,16 +72,16 @@ interface ApiForm {
     @if (success()) { <div class="alert alert-success" role="status">{{ success() }}</div> }
     @if (loaded()) {
       <form class="zed-card" (ngSubmit)="save()" novalidate>
-        <h5 class="card-title">Add professional on {{ portalName() }}</h5>
+        <h5 class="card-title">{{ 'Add professional on {portal}' | t: 'staff.professionalVerification.card.title' : { portal: portalName() } }}</h5>
         @if (portal() === 'surveillance') {
-          <p class="pv-note">Surveillance assessors are added on the ZED Certification portal; this setting is kept for this portal's own data.</p>
+          <p class="pv-note">{{ "Surveillance assessors are added on the ZED Certification portal; this setting is kept for this portal's own data." | t: 'staff.professionalVerification.surveillanceNote' }}</p>
         }
-        <div class="pv-options" role="radiogroup" aria-label="Verification">
-          @for (o of options; track o.mode) {
+        <div class="pv-options" role="radiogroup" [attr.aria-label]="'Verification' | t: 'staff.professionalVerification.options.aria'">
+          @for (o of options(); track o.mode) {
             <label class="pv-option" [class.is-on]="mode() === o.mode" [for]="'pv-' + o.mode">
               <span class="pv-head">
                 <input class="form-check-input" type="radio" name="mode" [id]="'pv-' + o.mode" [value]="o.mode" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
-                <span class="pv-title">{{ o.title }} @if (saved() === o.mode) { <span class="status-badge is-active">Current</span> }</span>
+                <span class="pv-title">{{ o.title }} @if (saved() === o.mode) { <span class="status-badge is-active">{{ 'Current' | t: 'staff.professionalVerification.option.current' }}</span> }</span>
               </span>
               <span class="pv-help">{{ o.help }}</span>
             </label>
@@ -90,53 +91,53 @@ interface ApiForm {
         @if (mode() === 'Api') {
           <div class="pv-api">
             <div class="form-grid">
-              <label for="pv-url">API address<span class="req">*</span></label>
+              <label for="pv-url">{{ 'API address' | t: 'staff.professionalVerification.api.urlLabel' }}<span class="req">*</span></label>
               <input id="pv-url" name="url" class="form-control" maxlength="500" placeholder="https://" [(ngModel)]="api.url" />
-              <span class="af-label">Method</span>
-              <div class="pv-methods" role="radiogroup" aria-label="Method">
-                <label class="pv-rc" [class.on]="api.method === 'POST'"><input type="radio" name="method" value="POST" [(ngModel)]="api.method" /> POST (JSON body)</label>
-                <label class="pv-rc" [class.on]="api.method === 'GET'"><input type="radio" name="method" value="GET" [(ngModel)]="api.method" /> GET (query string)</label>
+              <span class="af-label">{{ 'Method' | t: 'staff.professionalVerification.api.methodLabel' }}</span>
+              <div class="pv-methods" role="radiogroup" [attr.aria-label]="'Method' | t: 'staff.professionalVerification.api.methodLabel'">
+                <label class="pv-rc" [class.on]="api.method === 'POST'"><input type="radio" name="method" value="POST" [(ngModel)]="api.method" /> {{ 'POST (JSON body)' | t: 'staff.professionalVerification.api.postOption' }}</label>
+                <label class="pv-rc" [class.on]="api.method === 'GET'"><input type="radio" name="method" value="GET" [(ngModel)]="api.method" /> {{ 'GET (query string)' | t: 'staff.professionalVerification.api.getOption' }}</label>
               </div>
-              <label for="pv-header">Key header</label>
+              <label for="pv-header">{{ 'Key header' | t: 'staff.professionalVerification.api.keyHeaderLabel' }}</label>
               <input id="pv-header" name="keyHeader" class="form-control pv-short" maxlength="100" placeholder="x-api-key" [(ngModel)]="api.keyHeader" />
-              <label for="pv-key">Key</label>
+              <label for="pv-key">{{ 'Key' | t: 'staff.professionalVerification.api.keyLabel' }}</label>
               <div>
                 <input id="pv-key" name="key" type="password" class="form-control pv-short" maxlength="500" autocomplete="new-password"
-                       [placeholder]="keySet() ? 'Key is set — leave blank to keep' : ''" [(ngModel)]="api.key" />
-                @if (keySet() && !keyReadable()) { <small class="text-danger d-block">The saved key cannot be read on this server: enter it again.</small> }
+                       [placeholder]="keySet() ? ('Key is set — leave blank to keep' | t: 'staff.professionalVerification.api.keySetPlaceholder') : ''" [(ngModel)]="api.key" />
+                @if (keySet() && !keyReadable()) { <small class="text-danger d-block">{{ 'The saved key cannot be read on this server: enter it again.' | t: 'staff.professionalVerification.api.keyUnreadable' }}</small> }
                 @if (keySet()) {
-                  <label class="pv-remove"><input type="checkbox" name="removeKey" [(ngModel)]="removeKey" /> Remove the saved key</label>
+                  <label class="pv-remove"><input type="checkbox" name="removeKey" [(ngModel)]="removeKey" /> {{ 'Remove the saved key' | t: 'staff.professionalVerification.api.removeKeyLabel' }}</label>
                 }
               </div>
-              <span class="af-label">Request fields</span>
+              <span class="af-label">{{ 'Request fields' | t: 'staff.professionalVerification.api.requestFieldsLabel' }}</span>
               <div class="pv-fields">
-                <label>Certificate number <input name="certificateField" class="form-control" maxlength="100" [(ngModel)]="api.certificateField" /></label>
-                <label>PAN <input name="panField" class="form-control" maxlength="100" [(ngModel)]="api.panField" /></label>
+                <label>{{ 'Certificate number' | t: 'staff.professionalVerification.api.certificateFieldLabel' }} <input name="certificateField" class="form-control" maxlength="100" [(ngModel)]="api.certificateField" /></label>
+                <label>{{ 'PAN' | t: 'staff.professionalVerification.api.panFieldLabel' }} <input name="panField" class="form-control" maxlength="100" [(ngModel)]="api.panField" /></label>
               </div>
-              <span class="af-label">Response fields</span>
+              <span class="af-label">{{ 'Response fields' | t: 'staff.professionalVerification.api.responseFieldsLabel' }}</span>
               <div class="pv-fields">
-                <label>Name <input name="nameField" class="form-control" maxlength="100" [(ngModel)]="api.nameField" /></label>
-                <label>E-mail <input name="emailField" class="form-control" maxlength="100" [(ngModel)]="api.emailField" /></label>
-                <label>Mobile <input name="mobileField" class="form-control" maxlength="100" [(ngModel)]="api.mobileField" /></label>
-                <label>Success field (optional) <input name="successField" class="form-control" maxlength="100" placeholder="e.g. status" [(ngModel)]="api.successField" /></label>
+                <label>{{ 'Name' | t: 'staff.professionalVerification.api.nameFieldLabel' }} <input name="nameField" class="form-control" maxlength="100" [(ngModel)]="api.nameField" /></label>
+                <label>{{ 'E-mail' | t: 'staff.professionalVerification.api.emailFieldLabel' }} <input name="emailField" class="form-control" maxlength="100" [(ngModel)]="api.emailField" /></label>
+                <label>{{ 'Mobile' | t: 'staff.professionalVerification.api.mobileFieldLabel' }} <input name="mobileField" class="form-control" maxlength="100" [(ngModel)]="api.mobileField" /></label>
+                <label>{{ 'Success field (optional)' | t: 'staff.professionalVerification.api.successFieldLabel' }} <input name="successField" class="form-control" maxlength="100" [placeholder]="'e.g. status' | t: 'staff.professionalVerification.api.successFieldPlaceholder'" [(ngModel)]="api.successField" /></label>
               </div>
             </div>
-            <small class="text-muted d-block mt-2">Nested fields with dots (data.name). The answer must give a name, a valid e-mail and a 10 digit mobile number.</small>
+            <small class="text-muted d-block mt-2">{{ 'Nested fields with dots (data.name). The answer must give a name, a valid e-mail and a 10 digit mobile number.' | t: 'staff.professionalVerification.api.fieldsNote' }}</small>
 
             <div class="pv-test">
-              <strong class="d-block mb-2">Test with a certificate and PAN</strong>
+              <strong class="d-block mb-2">{{ 'Test with a certificate and PAN' | t: 'staff.professionalVerification.test.title' }}</strong>
               <div class="filter-bar">
-                <div class="filter"><label class="form-label" for="pv-test-cert">Certificate number</label>
+                <div class="filter"><label class="form-label" for="pv-test-cert">{{ 'Certificate number' | t: 'staff.professionalVerification.test.certificateLabel' }}</label>
                   <input id="pv-test-cert" name="testCert" class="form-control" maxlength="20" [(ngModel)]="testCert" /></div>
-                <div class="filter"><label class="form-label" for="pv-test-pan">PAN</label>
+                <div class="filter"><label class="form-label" for="pv-test-pan">{{ 'PAN' | t: 'staff.professionalVerification.test.panLabel' }}</label>
                   <input id="pv-test-pan" name="testPan" class="form-control" maxlength="10" [ngModel]="testPan" (ngModelChange)="testPan = ($event ?? '').toUpperCase()" /></div>
-                <button type="button" class="btn btn-default" [disabled]="busy()" (click)="test()">Test</button>
+                <button type="button" class="btn btn-default" [disabled]="busy()" (click)="test()">{{ 'Test' | t: 'staff.professionalVerification.test.button' }}</button>
               </div>
-              @if (tested(); as t) {
-                @if (t.ok) {
-                  <div class="alert alert-success mt-2 mb-0" role="status">The API answered: <strong>{{ t.name }}</strong> · {{ t.email }} · {{ t.mobileNo }}</div>
+              @if (tested(); as r) {
+                @if (r.ok) {
+                  <div class="alert alert-success mt-2 mb-0" role="status">{{ 'The API answered:' | t: 'staff.professionalVerification.test.answered' }} <strong>{{ r.name }}</strong> · {{ r.email }} · {{ r.mobileNo }}</div>
                 } @else {
-                  <div class="alert alert-warning mt-2 mb-0" role="status">{{ t.error }}</div>
+                  <div class="alert alert-warning mt-2 mb-0" role="status">{{ r.error }}</div>
                 }
               }
             </div>
@@ -144,7 +145,7 @@ interface ApiForm {
         }
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save' | t: 'staff.professionalVerification.saveButton' }}</button>
         </div>
       </form>
     }
@@ -182,11 +183,14 @@ export class ProfessionalVerificationPage {
   private readonly http = inject(HttpClient);
   private static readonly url = '/api/staff/settings/professional-verification';
 
-  protected readonly options: { mode: VerificationMode; title: string; help: string }[] = [
-    { mode: 'Off', title: 'Off: the agency enters the details', help: 'Certificate number, PAN, name, e-mail and mobile are typed on the Add form.' },
-    { mode: 'TrainingPortal', title: 'Training portal: certificate number and e-mail', help: "The current check against the training portal's candidates." },
-    { mode: 'Api', title: 'Other portal API: certificate number and PAN', help: "Another portal's API answers the name, e-mail and mobile for a certificate number and PAN." },
-  ];
+  protected readonly options = computed<{ mode: VerificationMode; title: string; help: string }[]>(() => [
+    { mode: 'Off', title: t('staff.professionalVerification.option.off.title', 'Off: the agency enters the details'),
+      help: t('staff.professionalVerification.option.off.help', 'Certificate number, PAN, name, e-mail and mobile are typed on the Add form.') },
+    { mode: 'TrainingPortal', title: t('staff.professionalVerification.option.training.title', 'Training portal: certificate number and e-mail'),
+      help: t('staff.professionalVerification.option.training.help', "The current check against the training portal's candidates.") },
+    { mode: 'Api', title: t('staff.professionalVerification.option.api.title', 'Other portal API: certificate number and PAN'),
+      help: t('staff.professionalVerification.option.api.help', "Another portal's API answers the name, e-mail and mobile for a certificate number and PAN.") },
+  ]);
 
   protected readonly mode = signal<VerificationMode>('Off');
   /** The mode on the server (the "Current" badge). */

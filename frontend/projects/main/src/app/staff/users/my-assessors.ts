@@ -16,6 +16,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { ContentService } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { plain, resetLinkAsk, sentTo } from './user-display';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
 import { LevelCount, LevelCounts, levelCountTiles } from './level-counts';
@@ -34,10 +35,10 @@ type StatusFilter = 'all' | 'active' | 'blocked';
  */
 @Component({
   selector: 'zed-staff-my-assessors',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, LevelCounts],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ReasonDialog, ListCounts, RowMenu, ConfirmDialog, UserHistoryPanel, LevelCounts, TextPipe],
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="labels.assessors">
-      <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add {{ consultancy ? labels.assessor : labels.assessor.toLowerCase() }}</a>
+    <zed-page-head [crumbs]="crumbs()" [title]="labels.assessors">
+      <a routerLink="/staff/users/assessors/new" class="btn btn-primary">{{ '+ Add {assessor}' | t: 'staff.myAssessors.addButton' : { assessor: consultancy ? labels.assessor : labels.assessor.toLowerCase() } }}</a>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -45,8 +46,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
 
     @if (totalTiles().length) {
       <!-- 2026-11-18 (the user: "same logic in the assessment agency login"): the agency's own units per certification level. -->
-      <h3 class="ma-cap">Units Allocated to Your Agency</h3>
-      <zed-list-counts class="ma-totals" [counts]="totalTiles()" label="Units allocated to your agency per level" />
+      <h3 class="ma-cap">{{ 'Units Allocated to Your Agency' | t: 'staff.myAssessors.totals.title' }}</h3>
+      <zed-list-counts class="ma-totals" [counts]="totalTiles()" [label]="'Units allocated to your agency per level' | t: 'staff.myAssessors.totals.aria'" />
     }
 
     @if (loaded() && !assessors().length) {
@@ -56,27 +57,26 @@ type StatusFilter = 'all' | 'active' | 'blocked';
             <circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M19 8v6M16 11h6" />
           </svg>
         </span>
-        <h4 class="ma-empty-title">No {{ labels.assessors.toLowerCase() }} yet</h4>
+        <h4 class="ma-empty-title">{{ 'No {assessors} yet' | t: 'staff.myAssessors.empty.title' : { assessors: labels.assessors.toLowerCase() } }}</h4>
         <p class="muted ma-empty-text">
           @if (consultancy) {
-            Add a consultant/expert: search the certified professional by certificate number and registered e-mail, then fill in the address and ID proof.
+            {{ 'Add a consultant/expert: search the certified professional by certificate number and registered e-mail, then fill in the address and ID proof.' | t: 'staff.myAssessors.empty.consultancyText' }}
           } @else {
-            Add your first assessor: search the certified professional by certificate number and registered e-mail, then fill in the address,
-            ID proof, states, NIC sectors and sector type.
+            {{ 'Add your first assessor: search the certified professional by certificate number and registered e-mail, then fill in the address, ID proof, states, NIC sectors and sector type.' | t: 'staff.myAssessors.empty.text' }}
           }
         </p>
-        <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add {{ labels.assessor }}</a>
+        <a routerLink="/staff/users/assessors/new" class="btn btn-primary">{{ '+ Add {assessor}' | t: 'staff.myAssessors.empty.addButton' : { assessor: labels.assessor } }}</a>
       </div>
     } @else {
-      <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="labels.assessors + ' by status'" (pick)="status.set($any($event.key))" />
+      <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="'{assessors} by status' | t: 'staff.myAssessors.countsLabel' : { assessors: labels.assessors }" (pick)="status.set($any($event.key))" />
 
       <div class="zed-card ma-bar">
         <label class="ma-search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-          <input type="search" class="form-control" placeholder="Search ID, name, type, mobile, e-mail or status" aria-label="Search assessors"
+          <input type="search" class="form-control" [placeholder]="'Search ID, name, type, mobile, e-mail or status' | t: 'staff.myAssessors.search.placeholder'" [attr.aria-label]="'Search assessors' | t: 'staff.myAssessors.search.aria'"
                  [ngModel]="search()" (ngModelChange)="search.set($event)" />
         </label>
-        <span class="ma-showing">{{ filtered().length }} of {{ assessors().length }} {{ labels.assessors.toLowerCase() }}</span>
+        <span class="ma-showing">{{ '{shown} of {total} {assessors}' | t: 'staff.myAssessors.showing' : { shown: filtered().length, total: assessors().length, assessors: labels.assessors.toLowerCase() } }}</span>
       </div>
 
       <div class="zed-card ma-list">
@@ -86,19 +86,19 @@ type StatusFilter = 'all' | 'active' | 'blocked';
               <tr>
                 @if (consultancy) {
                   <!-- ZEDCS_CONSULTANCY Frontend/User/Assessors.cshtml (its empty No. Of Assignments and Reason for Block columns are left out). -->
-                  <th>{{ labels.assessor }} Details</th>
-                  <th>User Type</th>
-                  <th>Contact Details</th>
-                  <th class="text-center">Status</th>
-                  <th class="text-end">Action(s)</th>
+                  <th>{{ '{assessor} Details' | t: 'staff.myAssessors.column.consultant' : { assessor: labels.assessor } }}</th>
+                  <th>{{ 'User Type' | t: 'staff.myAssessors.column.userType' }}</th>
+                  <th>{{ 'Contact Details' | t: 'staff.myAssessors.column.contactDetails' }}</th>
+                  <th class="text-center">{{ 'Status' | t: 'staff.myAssessors.column.status' }}</th>
+                  <th class="text-end">{{ 'Action(s)' | t: 'staff.myAssessors.column.consultancyActions' }}</th>
                 } @else {
-                  <th>Assessor</th>
-                  <th>Levels and modes</th>
-                  <th>Allocated</th>
-                  <th>Sector</th>
-                  <th>Contact</th>
-                  <th class="text-center">Status</th>
-                  <th class="text-end">Actions</th>
+                  <th>{{ 'Assessor' | t: 'staff.myAssessors.column.assessor' }}</th>
+                  <th>{{ 'Levels and modes' | t: 'staff.myAssessors.column.levels' }}</th>
+                  <th>{{ 'Allocated' | t: 'staff.myAssessors.column.allocated' }}</th>
+                  <th>{{ 'Sector' | t: 'staff.myAssessors.column.sector' }}</th>
+                  <th>{{ 'Contact' | t: 'staff.myAssessors.column.contact' }}</th>
+                  <th class="text-center">{{ 'Status' | t: 'staff.myAssessors.column.status' }}</th>
+                  <th class="text-end">{{ 'Actions' | t: 'staff.myAssessors.column.actions' }}</th>
                 }
               </tr>
             </thead>
@@ -108,7 +108,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   <td>
                     <div class="ma-user">
                       @if (!consultancy && u.PhotoPath) {
-                        <a class="ma-photo" [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" /></a>
+                        <a class="ma-photo" [href]="u.PhotoPath" target="_blank" rel="noopener"><img [alt]="'Selfie of {name}' | t: 'staff.myAssessors.row.selfieAlt' : { name: u.UserName }" [src]="u.PhotoPath" /></a>
                       } @else {
                         <span class="ma-avatar" aria-hidden="true">{{ initials(u.UserName) }}</span>
                       }
@@ -116,9 +116,9 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                     </div>
                   </td>
                   @if (consultancy) {
-                    <td data-label="User Type"><span class="ma-type">{{ typeLabel(u.UserType) }}</span></td>
+                    <td [attr.data-label]="'User Type' | t: 'staff.myAssessors.column.userType'"><span class="ma-type">{{ typeLabel(u.UserType) }}</span></td>
                   } @else {
-                    <td class="ma-levels" data-label="Levels and modes">
+                    <td class="ma-levels" [attr.data-label]="'Levels and modes' | t: 'staff.myAssessors.column.levels'">
                       @let m = medals(u.Assessments);
                       @if (m.items.length) {
                         <span class="lv-row" role="img" [attr.aria-label]="m.aria">
@@ -130,24 +130,24 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                       }
                     </td>
                     <!-- 2026-11-18 (the user): assessments allocated per certification level (desktop, lead or co-assessor). -->
-                    <td class="ma-alloc" data-label="Allocated"><zed-level-counts [counts]="u.LevelCounts" [label]="'Assessments allocated to ' + (u.UserName || u.UserId)" /></td>
-                    <td data-label="Sector"><span class="ma-pill" [class.is-none]="!u.SectorActivity">{{ u.SectorActivity || 'Not set' }}</span></td>
+                    <td class="ma-alloc" [attr.data-label]="'Allocated' | t: 'staff.myAssessors.column.allocated'"><zed-level-counts [counts]="u.LevelCounts" [label]="'Assessments allocated to {name}' | t: 'staff.myAssessors.row.allocatedAria' : { name: u.UserName || u.UserId }" /></td>
+                    <td [attr.data-label]="'Sector' | t: 'staff.myAssessors.column.sector'"><span class="ma-pill" [class.is-none]="!u.SectorActivity">{{ u.SectorActivity || ('Not set' | t: 'staff.myAssessors.row.sectorNotSet') }}</span></td>
                   }
-                  <td class="ma-contact" [attr.data-label]="consultancy ? 'Contact Details' : 'Contact'">
-                    <span [class.no-mobile]="!u.MobileNo">{{ u.MobileNo ? mobile(u.MobileNo) : 'Mobile not saved' }}</span>
+                  <td class="ma-contact" [attr.data-label]="consultancy ? ('Contact Details' | t: 'staff.myAssessors.column.contactDetails') : ('Contact' | t: 'staff.myAssessors.column.contact')">
+                    <span [class.no-mobile]="!u.MobileNo">{{ u.MobileNo ? mobile(u.MobileNo) : ('Mobile not saved' | t: 'staff.myAssessors.row.noMobile') }}</span>
                     @if (u.Email) { <span class="ma-sub" [title]="u.Email">{{ email(u.Email) }}</span> }
                   </td>
-                  <td class="text-center ma-status" data-label="Status">
+                  <td class="text-center ma-status" [attr.data-label]="'Status' | t: 'staff.myAssessors.column.status'">
                     <span class="status-badge" [class.is-active]="u.IsActive" [class.is-rejected]="!u.IsActive">{{ u.IdStatus }}</span>
                     @if (!u.IsActive && !canUnblock(u)) {
-                      <small class="ma-note">The certificate is attached to another active Bronze Assessor.</small>
+                      <small class="ma-note">{{ 'The certificate is attached to another active Bronze Assessor.' | t: 'staff.myAssessors.row.certAttachedNote' }}</small>
                     }
                   </td>
                   <td class="ma-actions">
                     <div class="ma-btns">
-                      <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-outline-primary">Edit</a>
-                      <zed-row-menu [items]="u.IsActive ? menuActive : canUnblock(u) ? menuBlocked : menuHistory"
-                                    [label]="'More actions for ' + (u.UserName || u.UserId)" (picked)="pick($event, u)" />
+                      <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-outline-primary">{{ 'Edit' | t: 'staff.myAssessors.row.editButton' }}</a>
+                      <zed-row-menu [items]="u.IsActive ? menuActive() : canUnblock(u) ? menuBlocked() : menuHistory()"
+                                    [label]="'More actions for {name}' | t: 'staff.myAssessors.row.menuAria' : { name: u.UserName || u.UserId }" (picked)="pick($event, u)" />
                     </div>
                   </td>
                 </tr>
@@ -155,8 +155,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                 <tr class="empty-row">
                   <td [attr.colspan]="consultancy ? 5 : 7" style="padding: 0">
                     <div class="no-data">
-                      No {{ labels.assessor.toLowerCase() }} matches the search.
-                      <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all</button>
+                      {{ 'No {assessor} matches the search.' | t: 'staff.myAssessors.noMatch' : { assessor: labels.assessor.toLowerCase() } }}
+                      <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all' | t: 'staff.myAssessors.showAllButton' }}</button>
                     </div>
                   </td>
                 </tr>
@@ -182,7 +182,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                         [fileName]="'history-' + h.row.UserId" (closed)="historyFor.set(null)" />
     }
     @if (loading()) {
-      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.myAssessors.loading' }}</span></div>
     }
   `,
   styles: `
@@ -252,7 +252,7 @@ export class MyAssessorsPage {
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly labels = LABELS[this.system];
-  protected readonly crumbs = staffCrumbs({ label: this.labels.assessors });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.labels.assessors }));
   private readonly api = inject(UsersApi);
   private readonly toast = inject(ToastService);
   private readonly content = inject(ContentService);
@@ -281,26 +281,26 @@ export class MyAssessorsPage {
   protected readonly mobile = plain;
   protected readonly email = plain;
 
-  private readonly word = this.consultancy ? 'consultant' : 'assessor';
-  protected readonly menuActive: RowMenuItem[] = [
-    { key: 'reset', label: 'Send reset link', icon: 'mail' },
-    { key: 'history', label: 'View history', icon: 'history' },
-    { key: 'block', label: 'Block ' + this.word, icon: 'lock', danger: true },
-  ];
-  protected readonly menuBlocked: RowMenuItem[] = [
-    { key: 'history', label: 'View history', icon: 'history' },
-    { key: 'unblock', label: 'Unblock ' + this.word, icon: 'unlock' },
-  ];
+  private readonly word = computed(() => (this.consultancy ? t('staff.myAssessors.word.consultant', 'consultant') : t('staff.myAssessors.word.assessor', 'assessor')));
+  protected readonly menuActive = computed<RowMenuItem[]>(() => [
+    { key: 'reset', label: t('staff.myAssessors.menu.reset', 'Send reset link'), icon: 'mail' },
+    { key: 'history', label: t('staff.myAssessors.menu.history', 'View history'), icon: 'history' },
+    { key: 'block', label: t('staff.myAssessors.menu.block', 'Block {word}', { word: this.word() }), icon: 'lock', danger: true },
+  ]);
+  protected readonly menuBlocked = computed<RowMenuItem[]>(() => [
+    { key: 'history', label: t('staff.myAssessors.menu.history', 'View history'), icon: 'history' },
+    { key: 'unblock', label: t('staff.myAssessors.menu.unblock', 'Unblock {word}', { word: this.word() }), icon: 'unlock' },
+  ]);
   /** Blocked while the certificate is attached to another active Bronze Assessor: no Unblock. */
-  protected readonly menuHistory: RowMenuItem[] = [{ key: 'history', label: 'View history', icon: 'history' }];
+  protected readonly menuHistory = computed<RowMenuItem[]>(() => [{ key: 'history', label: t('staff.myAssessors.menu.history', 'View history'), icon: 'history' }]);
 
   protected readonly tiles = computed<ListCount[]>(() => {
     const rows = this.assessors();
     const active = rows.filter((r) => r.IsActive).length;
     return [
-      { key: 'all', label: 'All ' + this.labels.assessors.toLowerCase(), value: rows.length },
-      { key: 'active', label: 'Active', value: active, tone: 'good' },
-      { key: 'blocked', label: 'Blocked', value: rows.length - active, tone: 'bad' },
+      { key: 'all', label: t('staff.myAssessors.count.all', 'All {assessors}', { assessors: this.labels.assessors.toLowerCase() }), value: rows.length },
+      { key: 'active', label: t('staff.myAssessors.count.active', 'Active'), value: active, tone: 'good' },
+      { key: 'blocked', label: t('staff.myAssessors.count.blocked', 'Blocked'), value: rows.length - active, tone: 'bad' },
     ];
   });
 
@@ -319,7 +319,7 @@ export class MyAssessorsPage {
   constructor() {
     // The Add form's answer (e.g. "Assessor added …") arrives in the navigation state.
     const message = (globalThis.history?.state as { message?: unknown } | null)?.message;
-    if (typeof message === 'string' && message) this.toast.success(`${this.labels.assessor} added`, message);
+    if (typeof message === 'string' && message) this.toast.success(t('staff.myAssessors.toast.added', '{assessor} added', { assessor: this.labels.assessor }), message);
     void this.load();
     if (!this.consultancy) void this.loadTotals();
   }
@@ -387,12 +387,12 @@ export class MyAssessorsPage {
     } finally {
       this.saving.set(false);
     }
-    this.blockFor.set({ row: u, ask: assessorBlockAsk(u.UserName, u.UserId, open, assessorBlockNote(this.content, this.consultancy), this.consultancy, 'you') });
+    this.blockFor.set({ row: u, ask: assessorBlockAsk(u.UserName, u.UserId, open, assessorBlockNote(this.content, this.consultancy), this.consultancy, null) });
   }
 
   protected async block(u: OwnAssessorRow, reason: string): Promise<void> {
     await this.run(this.api.block('assessors', u.UserId, reason), (m) => {
-      this.toast.success(`${this.labels.assessor} blocked`, m);
+      this.toast.success(t('staff.myAssessors.toast.blocked', '{assessor} blocked', { assessor: this.labels.assessor }), m);
       return true;
     });
   }
@@ -400,14 +400,14 @@ export class MyAssessorsPage {
   /** E-mails the assessor a link to set a new password. */
   protected async sendReset(u: OwnAssessorRow): Promise<void> {
     await this.run(this.api.passwordReset('assessors', u.UserId), (m) => {
-      this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(m, u.Email));
+      this.toast.success(t('staff.myAssessors.toast.resetSent', 'Reset link sent'), t('staff.myAssessors.toast.resetTo', 'E-mailed to {to}', { to: sentTo(m, u.Email) }));
       return false;
     });
   }
 
   protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
     await this.run(this.api.unblock('assessors', r.userId, reason), (m) => {
-      this.toast.success(`${this.labels.assessor} unblocked`, m);
+      this.toast.success(t('staff.myAssessors.toast.unblocked', '{assessor} unblocked', { assessor: this.labels.assessor }), m);
       return true;
     });
   }
@@ -416,7 +416,7 @@ export class MyAssessorsPage {
     this.historyFor.set({ row: u, items: null, error: '' });
     try {
       const entries = await firstValueFrom(this.api.assessorHistory(u.UserId));
-      if (this.historyFor()?.row === u) this.historyFor.set({ row: u, items: blockHistoryItems(entries, this.consultancy ? 'organisation' : 'agency'), error: '' });
+      if (this.historyFor()?.row === u) this.historyFor.set({ row: u, items: blockHistoryItems(entries, this.consultancy ? t('staff.myAssessors.history.organisationWord', 'organisation') : t('staff.myAssessors.history.agencyWord', 'agency')), error: '' });
     } catch (err) {
       if (this.historyFor()?.row === u) this.historyFor.set({ row: u, items: [], error: apiErrorMessage(err) });
     }

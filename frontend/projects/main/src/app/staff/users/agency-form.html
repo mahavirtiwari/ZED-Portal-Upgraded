@@ -1,9 +1,10 @@
-<!-- 2026-11-17 (approved staff redesign, staff-02): sections on the left with ticks, the form, "On submit" on the right.
+<!-- 2026-11-19 (the user: "All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.agencyForm.*).
+     2026-11-17 (approved staff redesign, staff-02): sections on the left with ticks, the form, "On submit" on the right.
      2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-02's 260 / 716 / 280 columns, the current section
      tinted, icon tiles in the section heads, sentence-case labels, PIN 200 / GSTIN 300, the states and NIC sectors as chip
      fields, 20px category boxes, icons in "On submit", a grey Cancel. -->
-<zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  <a routerLink="/staff/users/agencies" class="btn btn-default"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M12 19l-7-7 7-7" /></svg>Back</a>
+<zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+  <a routerLink="/staff/users/agencies" class="btn btn-default"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M12 19l-7-7 7-7" /></svg>{{ 'Back' | t: 'staff.agencyForm.backButton' }}</a>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
@@ -12,41 +13,41 @@
 <form class="agency-form" (ngSubmit)="submit()" novalidate (input)="changed($event)" (change)="changed($event)">
   <div class="af">
     <div class="af-left">
-      <nav class="zed-card af-nav" aria-label="Sections">
+      <nav class="zed-card af-nav" [attr.aria-label]="'Sections' | t: 'staff.agencyForm.nav.aria'">
         @for (s of sections(); track s.id; let i = $index) {
           <button type="button" class="af-step" [class.done]="s.done" [class.current]="s.id === currentId()" (click)="goTo(s.id)">
             <span class="af-dot" aria-hidden="true">@if (s.done) {<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>} @else { {{ i + 1 }} }</span>
             <span class="af-step-text"><strong>{{ s.label }}</strong><small>{{ s.hint }}</small></span>
-            <span class="visually-hidden">{{ s.done ? '(complete)' : '(not complete)' }}</span>
+            <span class="visually-hidden">{{ s.done ? ('(complete)' | t: 'staff.agencyForm.nav.complete') : ('(not complete)' | t: 'staff.agencyForm.nav.notComplete') }}</span>
           </button>
         }
       </nav>
-      <p class="req-note"><span class="req">*</span> Required</p>
+      <p class="req-note"><span class="req">*</span> {{ 'Required' | t: 'staff.agencyForm.requiredNote' }}</p>
     </div>
 
     <div class="af-main">
       <section class="zed-card form-section" id="sec-org" aria-labelledby="sec-org-h">
-        <h4 class="section-head" id="sec-org-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.building" /></svg></span>1&nbsp; {{ consultancy ? 'Organisation' : 'Agency' }}</h4>
+        <h4 class="section-head" id="sec-org-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.building" /></svg></span>1&nbsp; {{ consultancy ? ('Organisation' | t: 'staff.agencyForm.org.organisationTitle') : ('Agency' | t: 'staff.agencyForm.org.agencyTitle') }}</h4>
         <div class="fs-body">
           <div class="fld">
-            <label for="userName">{{ consultancy ? 'Consultant organisation name' : 'Agency name' }}<span class="req">*</span></label>
+            <label for="userName">{{ consultancy ? ('Consultant organisation name' | t: 'staff.agencyForm.org.organisationNameLabel') : ('Agency name' | t: 'staff.agencyForm.org.agencyNameLabel') }}<span class="req">*</span></label>
             <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
-            @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
+            @if (missing(model.userName)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
           </div>
           <div class="fld">
-            <label for="address">Registered address<span class="req">*</span></label>
-            <textarea id="address" name="address" class="form-control" maxlength="2000" rows="2" placeholder="Building, street, city, state" [(ngModel)]="model.address" required></textarea>
-            @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+            <label for="address">{{ 'Registered address' | t: 'staff.agencyForm.org.addressLabel' }}<span class="req">*</span></label>
+            <textarea id="address" name="address" class="form-control" maxlength="2000" rows="2" [placeholder]="'Building, street, city, state' | t: 'staff.agencyForm.org.addressPlaceholder'" [(ngModel)]="model.address" required></textarea>
+            @if (missing(model.address)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
           </div>
           <div class="fld-row pin-row">
             <div class="fld">
-              <label for="pinCode">PIN code<span class="req">*</span></label>
+              <label for="pinCode">{{ 'PIN code' | t: 'staff.agencyForm.org.pinLabel' }}<span class="req">*</span></label>
               <input id="pinCode" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required [attr.aria-invalid]="!!fieldError('pinCode')" />
               @if (fieldError('pinCode'); as e) { <span class="help-block">{{ e }}</span> }
             </div>
             <div class="fld">
-              <label for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
-              <input id="gstNumber" name="gstNumber" class="form-control" maxlength="20" placeholder="15 characters (optional)" [(ngModel)]="model.gstNumber" [attr.aria-invalid]="!!fieldError('gstNumber')" />
+              <label for="gstNumber">{{ consultancy ? ('GST Number' | t: 'staff.agencyForm.org.gstNumberLabel') : ('GSTIN' | t: 'staff.agencyForm.org.gstinLabel') }}</label>
+              <input id="gstNumber" name="gstNumber" class="form-control" maxlength="20" [placeholder]="'15 characters (optional)' | t: 'staff.agencyForm.org.gstPlaceholder'" [(ngModel)]="model.gstNumber" [attr.aria-invalid]="!!fieldError('gstNumber')" />
               @if (fieldError('gstNumber'); as e) { <span class="help-block">{{ e }}</span> }
             </div>
           </div>
@@ -54,106 +55,108 @@
       </section>
 
       <section class="zed-card form-section" id="sec-spoc" aria-labelledby="sec-spoc-h">
-        <h4 class="section-head" id="sec-spoc-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>2&nbsp; SPOC contact</h4>
+        <h4 class="section-head" id="sec-spoc-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>2&nbsp; {{ 'SPOC contact' | t: 'staff.agencyForm.spoc.title' }}</h4>
         <div class="fs-body">
           <div class="fld-row">
             <div class="fld">
-              <label for="spocName">SPOC name<span class="req">*</span></label>
+              <label for="spocName">{{ 'SPOC name' | t: 'staff.agencyForm.spoc.nameLabel' }}<span class="req">*</span></label>
               <input id="spocName" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
-              @if (missing(model.spocName)) { <span class="help-block">This is required.</span> }
+              @if (missing(model.spocName)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
             </div>
             <div class="fld">
-              <label for="emailId">SPOC e-mail ID<span class="req">*</span></label>
+              <label for="emailId">{{ 'SPOC e-mail ID' | t: 'staff.agencyForm.spoc.emailLabel' }}<span class="req">*</span></label>
               <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required [attr.aria-invalid]="!!fieldError('emailId')" />
               @if (fieldError('emailId'); as e) { <span class="help-block">{{ e }}</span> }
             </div>
           </div>
           <div class="fld-row">
             <div class="fld">
-              <label for="mobileNo">SPOC mobile number<span class="req">*</span></label>
+              <label for="mobileNo">{{ 'SPOC mobile number' | t: 'staff.agencyForm.spoc.mobileLabel' }}<span class="req">*</span></label>
               <input id="mobileNo" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required [attr.aria-invalid]="!!fieldError('mobileNo')" />
               @if (fieldError('mobileNo'); as e) { <span class="help-block">{{ e }}</span> }
             </div>
-            <p class="fs-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.info" /></svg>Login details and messages go to this e-mail address.</p>
+            <p class="fs-note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.info" /></svg>{{ 'Login details and messages go to this e-mail address.' | t: 'staff.agencyForm.spoc.note' }}</p>
           </div>
         </div>
       </section>
 
       <section class="zed-card form-section" id="sec-cover" aria-labelledby="sec-cover-h">
-        <h4 class="section-head" id="sec-cover-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.pin" /></svg></span>3&nbsp; Coverage</h4>
+        <h4 class="section-head" id="sec-cover-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.pin" /></svg></span>3&nbsp; {{ 'Coverage' | t: 'staff.agencyForm.cover.title' }}</h4>
         <div class="fs-body">
-          <zed-multi-select variant="chips" inputId="states" label="Applicable States" heading="Applicable states" placeholder="Type to add a state"
+          <zed-multi-select variant="chips" inputId="states" [label]="'Applicable States' | t: 'staff.agencyForm.cover.statesAria'" [heading]="'Applicable states' | t: 'staff.agencyForm.cover.statesLabel'"
+                            [placeholder]="'Type to add a state' | t: 'staff.agencyForm.cover.statesPlaceholder'"
                             [options]="states()" [(value)]="model.states" />
-          <zed-multi-select variant="chips" inputId="nicSectors" label="NIC Sector" heading="NIC sector (2-digit)" placeholder="Type to add a sector"
+          <zed-multi-select variant="chips" inputId="nicSectors" [label]="'NIC Sector' | t: 'staff.agencyForm.cover.sectorsAria'" [heading]="'NIC sector (2-digit)' | t: 'staff.agencyForm.cover.sectorsLabel'"
+                            [placeholder]="'Type to add a sector' | t: 'staff.agencyForm.cover.sectorsPlaceholder'"
                             [options]="sectors()" [(value)]="model.nicSectors" />
           @if (!consultancy) {
             <div class="fld-row">
               <div class="fld">
-                <span class="lbl" id="sectorActivity-label">Sector type<span class="req">*</span></span>
+                <span class="lbl" id="sectorActivity-label">{{ 'Sector type' | t: 'staff.agencyForm.cover.sectorTypeLabel' }}<span class="req">*</span></span>
                 <div class="seg" role="radiogroup" aria-labelledby="sectorActivity-label">
                   @for (a of activities; track a.value) {
-                    <label [class.active]="model.sectorActivity === a.value" [title]="activityHelp[a.value]">
+                    <label [class.active]="model.sectorActivity === a.value" [title]="activityHelp()[a.value]">
                       <input type="radio" name="sectorActivity" [value]="a.value" [(ngModel)]="model.sectorActivity" />
                       <span class="choice-name">{{ a.label }}</span>
                     </label>
                   }
                 </div>
-                <small class="fs-hint">Which MSMEs the agency assesses. Its assessors cannot cover more.</small>
-                @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+                <small class="fs-hint">{{ 'Which MSMEs the agency assesses. Its assessors cannot cover more.' | t: 'staff.agencyForm.cover.sectorTypeNote' }}</small>
+                @if (submitted() && !model.sectorActivity) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
               </div>
               <div class="fld">
-                <label for="orgPartnerId">Organising partner</label>
+                <label for="orgPartnerId">{{ 'Organising partner' | t: 'staff.agencyForm.cover.partnerLabel' }}</label>
                 <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
-                  <option value="">-- Select Organising Partner --</option>
+                  <option value="">{{ '-- Select Organising Partner --' | t: 'staff.agencyForm.cover.partnerPlaceholder' }}</option>
                   @for (p of sortedPartners(); track p.userId) {
                     <option [value]="p.userId">{{ partnerLabel(p) }}</option>
                   }
                 </select>
-                @if (isEdit) { <small class="fs-hint">An existing agency keeps its organising partner.</small> }
+                @if (isEdit) { <small class="fs-hint">{{ 'An existing agency keeps its organising partner.' | t: 'staff.agencyForm.cover.partnerNote' }}</small> }
               </div>
             </div>
           }
           <!-- Consultancy: the old form had Desktop Verification commented out, and Handholding Support and Technology
                Intervention exclude each other (ticking one unticks and disables the other). -->
           <div class="fld">
-            <span class="lbl">{{ consultancy ? 'Category' : 'Assessment category' }}<span class="req">*</span></span>
+            <span class="lbl">{{ consultancy ? ('Category' | t: 'staff.agencyForm.cover.categoryLabel') : ('Assessment category' | t: 'staff.agencyForm.cover.assessmentCategoryLabel') }}<span class="req">*</span></span>
             <div class="checks">
               @if (!consultancy) {
-                <label class="chk" [class.active]="model.desktopVerification" title="Desktop assessment of the documents an MSME uploads.">
+                <label class="chk" [class.active]="model.desktopVerification" [title]="'Desktop assessment of the documents an MSME uploads.' | t: 'staff.agencyForm.cover.desktopTooltip'">
                   <input type="checkbox" class="form-check-input" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
-                  <span class="choice-name">Desktop</span>
+                  <span class="choice-name">{{ 'Desktop' | t: 'staff.agencyForm.cover.desktopLabel' }}</span>
                 </label>
               }
               <label class="chk" [class.active]="model.siteVerification" [class.locked]="siteLocked()">
                 <input type="checkbox" class="form-check-input" id="siteVerification" name="siteVerification" [disabled]="siteLocked()"
                        [ngModel]="model.siteVerification" (ngModelChange)="setSiteVerification($event)" />
-                <span><span class="choice-name">{{ consultancy ? 'Handholding Support' : 'Remote / Onsite' }}</span>
-                  @if (consultancy && siteLocked()) { <small>Not with Technology Intervention.</small> }</span>
+                <span><span class="choice-name">{{ consultancy ? ('Handholding Support' | t: 'staff.agencyForm.cover.handholdingLabel') : ('Remote / Onsite' | t: 'staff.agencyForm.cover.siteLabel') }}</span>
+                  @if (consultancy && siteLocked()) { <small>{{ 'Not with Technology Intervention.' | t: 'staff.agencyForm.cover.notWithTechnology' }}</small> }</span>
               </label>
               <label class="chk" [class.active]="model.financialVerification" [class.locked]="financialLocked()">
                 <input type="checkbox" class="form-check-input" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
                        [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
-                <span><span class="choice-name">{{ consultancy ? 'Technology Intervention' : 'Financial assistance' }}</span>
-                  @if (consultancy && financialLocked()) { <small>Not with Handholding Support.</small> }</span>
+                <span><span class="choice-name">{{ consultancy ? ('Technology Intervention' | t: 'staff.agencyForm.cover.technologyLabel') : ('Financial assistance' | t: 'staff.agencyForm.cover.financialLabel') }}</span>
+                  @if (consultancy && financialLocked()) { <small>{{ 'Not with Handholding Support.' | t: 'staff.agencyForm.cover.notWithHandholding' }}</small> }</span>
               </label>
             </div>
-            <small class="fs-hint">{{ consultancy ? 'Handholding Support or Technology Intervention (not both).' : 'The work it may take up; choose at least one.' }}</small>
+            <small class="fs-hint">{{ consultancy ? ('Handholding Support or Technology Intervention (not both).' | t: 'staff.agencyForm.cover.consultancyCategoryNote') : ('The work it may take up; choose at least one.' | t: 'staff.agencyForm.cover.categoryNote') }}</small>
           </div>
           @if (consultancy && model.financialVerification) {
             <div class="fld-row">
               <div class="fld">
-                <label for="tuPreferredState">Applicable state</label>
+                <label for="tuPreferredState">{{ 'Applicable state' | t: 'staff.agencyForm.cover.tuStateLabel' }}</label>
                 <select id="tuPreferredState" name="tuPreferredState" class="form-select" [ngModel]="model.tuPreferredState ?? ''"
                         (ngModelChange)="stateChanged($event)">
-                  <option value="">Select State</option>
+                  <option value="">{{ 'Select State' | t: 'staff.agencyForm.cover.tuStatePlaceholder' }}</option>
                   @for (st of tuStates(); track st.code) {
                     <option [value]="st.code">{{ st.name }}</option>
                   }
                 </select>
               </div>
               <div class="fld">
-                <label for="tuDistricts">Applicable districts</label>
-                <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
+                <label for="tuDistricts">{{ 'Applicable districts' | t: 'staff.agencyForm.cover.tuDistrictsLabel' }}</label>
+                <zed-multi-select inputId="tuDistricts" [label]="'Applicable Districts' | t: 'staff.agencyForm.cover.tuDistrictsAria'" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
               </div>
             </div>
           }
@@ -162,17 +165,17 @@
 
       @if (isEdit) {
         <section class="zed-card form-section" id="sec-login" aria-labelledby="sec-login-h">
-          <h4 class="section-head" id="sec-login-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.lock" /></svg></span>4&nbsp; Login</h4>
+          <h4 class="section-head" id="sec-login-h"><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.lock" /></svg></span>4&nbsp; {{ 'Login' | t: 'staff.agencyForm.login.title' }}</h4>
           <div class="fs-body">
             <div class="login-id">
-              <span class="lbl">User ID</span>
+              <span class="lbl">{{ 'User ID' | t: 'staff.agencyForm.login.userIdLabel' }}</span>
               <strong class="user-id">{{ userId }}</strong>
               @if (isActive() !== null) {
-                <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">{{ isActive() ? 'Active' : 'In-Active' }}</span>
+                <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">{{ isActive() ? ('Active' | t: 'staff.agencyForm.login.active') : ('In-Active' | t: 'staff.agencyForm.login.inactive') }}</span>
               }
             </div>
             <div class="fld">
-              <label for="reasonForRejection">Reason for block</label>
+              <label for="reasonForRejection">{{ 'Reason for block' | t: 'staff.agencyForm.login.reasonLabel' }}</label>
               <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="2"
                         [(ngModel)]="model.reasonForRejection"></textarea>
             </div>
@@ -182,9 +185,9 @@
     </div>
 
     <aside class="zed-card af-rail" aria-labelledby="af-rail-h">
-      <h4 id="af-rail-h">{{ isEdit ? 'On update' : 'On submit' }}</h4>
+      <h4 id="af-rail-h">{{ isEdit ? ('On update' | t: 'staff.agencyForm.rail.updateTitle') : ('On submit' | t: 'staff.agencyForm.rail.submitTitle') }}</h4>
       <ul>
-        @for (p of railPoints; track p; let i = $index) {
+        @for (p of railPoints(); track p; let i = $index) {
           <li><span class="step" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="railIcons[i]" /></svg></span>{{ p }}</li>
         }
       </ul>
@@ -195,17 +198,17 @@
     @if (error()) {
       <span class="save-error me-auto">{{ error() }}</span>
     } @else if (isEdit && dirty()) {
-      <span class="unsaved me-auto">Not saved yet.</span>
+      <span class="unsaved me-auto">{{ 'Not saved yet.' | t: 'staff.agencyForm.save.unsaved' }}</span>
     } @else if (isEdit) {
-      <span class="muted me-auto">No changes.</span>
+      <span class="muted me-auto">{{ 'No changes.' | t: 'staff.agencyForm.save.noChanges' }}</span>
     } @else {
       <span class="me-auto save-progress" [class.all]="doneCount() === sections().length">@if (doneCount()) {<svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M7.5 12.5l3 3 6-6.5" /></svg>}{{ progressText() }}</span>
     }
-    <a routerLink="/staff/users/agencies" class="btn btn-default">Cancel</a>
-    <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? 'Update' : 'Create ' + word }}</button>
+    <a routerLink="/staff/users/agencies" class="btn btn-default">{{ 'Cancel' | t: 'staff.agencyForm.save.cancelButton' }}</a>
+    <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? ('Update' | t: 'staff.agencyForm.save.updateButton') : ('Create {word}' | t: 'staff.agencyForm.save.createButton' : { word: word() }) }}</button>
   </div>
 </form>
 
 @if (loading() || saving()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.agencyForm.loading' }}</span></div>
 }

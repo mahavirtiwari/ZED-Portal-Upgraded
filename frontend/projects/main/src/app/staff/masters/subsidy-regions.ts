@@ -7,6 +7,7 @@ import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { ConfirmService } from '../confirm-dialog';
 import { IndianTimePipe } from '../utc-time';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface RegionCategory {
   key: string;
@@ -53,31 +54,32 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
  */
 @Component({
   selector: 'zed-staff-subsidy-regions',
-  imports: [FormsModule, PagerComponent, IndianTimePipe, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, IndianTimePipe, ExcelToolsComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Subsidy Regions</h3>
-        <p class="page-sub">The regions whose MSMEs get the additional subsidy. Only enabled states and districts count.</p>
+        <h3 class="registration-title">{{ 'Subsidy Regions' | t: 'staff.subsidyRegions.title' }}</h3>
+        <p class="page-sub">{{ 'The regions whose MSMEs get the additional subsidy. Only enabled states and districts count.' | t: 'staff.subsidyRegions.sub' }}</p>
       </div>
       <div class="page-actions">
-        <zed-excel-tools api="/api/staff/masters/regions" title="Subsidy Regions" fileName="subsidy-regions" (applied)="load()" />
+        <zed-excel-tools api="/api/staff/masters/regions" [title]="'Subsidy Regions' | t: 'staff.subsidyRegions.excel.title'" fileName="subsidy-regions" (applied)="load()" />
       </div>
     </div>
 
     @if (otherPortals().length) {
       <div class="alert alert-warning copy-bar" role="status">
-        <span>The handholding and surveillance payments take the subsidy regions from this page, but keep their own copy of the districts (for the state fee).
-          @for (o of otherPortals(); track o.portal) { <strong>{{ o.portal }}</strong>: {{ o.districts }} district{{ o.districts === 1 ? '' : 's' }} differ{{ o.districts === 1 ? 's' : '' }}. }</span>
-        <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="copyToOthers()">Update them now</button>
+        <span>{{ 'The handholding and surveillance payments take the subsidy regions from this page, but keep their own copy of the districts (for the state fee).' | t: 'staff.subsidyRegions.copy.note' }}
+          @for (o of otherPortals(); track o.portal) { {{ o.districts === 1 ? ('{portal}: {count} district differs.' | t: 'staff.subsidyRegions.copy.differs.one.label' : { portal: o.portal, count: o.districts })
+            : ('{portal}: {count} districts differ.' | t: 'staff.subsidyRegions.copy.differs.many.label' : { portal: o.portal, count: o.districts }) }} }</span>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="copyToOthers()">{{ 'Update them now' | t: 'staff.subsidyRegions.copy.button' }}</button>
       </div>
     }
 
     <div class="sr-stats">
-      <div class="stat stat-main"><span class="stat-value">{{ subsidyDistricts() }}</span><span class="stat-label">Districts get the additional subsidy</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().enabled }}<small>/{{ stats().entries }}</small></span><span class="stat-label">Entries enabled</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().states }}</span><span class="stat-label">States / UTs with an enabled entry</span></div>
-      <div class="stat"><span class="stat-value">{{ categories().length }}</span><span class="stat-label">Region lists</span></div>
+      <div class="stat stat-main"><span class="stat-value">{{ subsidyDistricts() }}</span><span class="stat-label">{{ 'Districts get the additional subsidy' | t: 'staff.subsidyRegions.count.districts' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().enabled }}<small>/{{ stats().entries }}</small></span><span class="stat-label">{{ 'Entries enabled' | t: 'staff.subsidyRegions.count.enabled' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().states }}</span><span class="stat-label">{{ 'States / UTs with an enabled entry' | t: 'staff.subsidyRegions.count.states' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ categories().length }}</span><span class="stat-label">{{ 'Region lists' | t: 'staff.subsidyRegions.count.lists' }}</span></div>
     </div>
 
     @if (error()) {
@@ -87,12 +89,12 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
-    <div class="sr-cats" role="tablist" aria-label="Region categories">
+    <div class="sr-cats" role="tablist" [attr.aria-label]="'Region categories' | t: 'staff.subsidyRegions.categories.aria'">
       @for (c of categories(); track c.key) {
         <button type="button" role="tab" class="sr-cat" [class.is-on]="active() === c.key" [attr.aria-selected]="active() === c.key" (click)="pick(c.key)">
           <span class="sr-cat-name">{{ c.name }}</span>
-          <span class="sr-level" [class.is-state]="c.level === 'state'">{{ c.level === 'state' ? 'By state' : 'By district' }}</span>
-          <span class="sr-cat-count"><strong>{{ enabledIn(c.key) }}</strong>/{{ countIn(c.key) }} enabled</span>
+          <span class="sr-level" [class.is-state]="c.level === 'state'">{{ c.level === 'state' ? ('By state' | t: 'staff.subsidyRegions.categories.byState.label') : ('By district' | t: 'staff.subsidyRegions.categories.byDistrict.label') }}</span>
+          <span class="sr-cat-count">{{ '{enabled}/{total} enabled' | t: 'staff.subsidyRegions.categories.count.label' : { enabled: enabledIn(c.key), total: countIn(c.key) } }}</span>
         </button>
       }
     </div>
@@ -104,37 +106,37 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
             <h5 class="sr-title">{{ c.name }}</h5>
             <p class="muted sr-desc">{{ c.description }}</p>
           </div>
-          <span class="sr-level" [class.is-state]="c.level === 'state'">{{ c.level === 'state' ? 'Whole states (a district may be added too)' : 'Districts' }}</span>
+          <span class="sr-level" [class.is-state]="c.level === 'state'">{{ c.level === 'state' ? ('Whole states (a district may be added too)' | t: 'staff.subsidyRegions.list.wholeStates.label') : ('Districts' | t: 'staff.subsidyRegions.list.districts.label') }}</span>
         </div>
 
         <div class="sr-add">
-          <span class="sr-add-title">{{ c.level === 'state' ? 'Add a state or district' : 'Add a district' }}</span>
+          <span class="sr-add-title">{{ c.level === 'state' ? ('Add a state or district' | t: 'staff.subsidyRegions.add.state.title') : ('Add a district' | t: 'staff.subsidyRegions.add.district.title') }}</span>
           <div class="sr-add-fields">
             <div>
-              <label class="form-label" for="sr-state">State / UT</label>
+              <label class="form-label" for="sr-state">{{ 'State / UT' | t: 'staff.subsidyRegions.add.state.label' }}</label>
               <select id="sr-state" class="form-select" [ngModel]="addState()" (ngModelChange)="pickState($event)">
-                <option value="">Select state</option>
+                <option value="">{{ 'Select state' | t: 'staff.subsidyRegions.add.state.option' }}</option>
                 @for (s of states(); track s.code) { <option [value]="s.code">{{ s.name }}</option> }
               </select>
             </div>
             <div>
-              <label class="form-label" for="sr-district">District</label>
+              <label class="form-label" for="sr-district">{{ 'District' | t: 'staff.subsidyRegions.add.district.label' }}</label>
               <select id="sr-district" class="form-select" [disabled]="!addState()" [ngModel]="addDistrict()" (ngModelChange)="addDistrict.set($event)">
-                <option value="">{{ c.level === 'state' ? 'Whole state' : 'Select district' }}</option>
+                <option value="">{{ c.level === 'state' ? ('Whole state' | t: 'staff.subsidyRegions.add.wholeState.option') : ('Select district' | t: 'staff.subsidyRegions.add.district.option') }}</option>
                 @for (d of districts(); track d.code) { <option [value]="d.code">{{ d.name }}</option> }
               </select>
             </div>
-            <label class="sr-check form-switch"><input type="checkbox" class="form-check-input" role="switch" [ngModel]="addEnabled()" (ngModelChange)="addEnabled.set($event)" /> Enabled</label>
-            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="add(c)">Add</button>
+            <label class="sr-check form-switch"><input type="checkbox" class="form-check-input" role="switch" [ngModel]="addEnabled()" (ngModelChange)="addEnabled.set($event)" /> {{ 'Enabled' | t: 'staff.subsidyRegions.add.enabled.label' }}</label>
+            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="add(c)">{{ 'Add' | t: 'staff.subsidyRegions.add.button' }}</button>
           </div>
         </div>
 
         @if (stateChips().length) {
-          <div class="sr-chips" role="group" aria-label="States in this list">
-            <span class="sr-chips-label">States in this list</span>
+          <div class="sr-chips" role="group" [attr.aria-label]="'States in this list' | t: 'staff.subsidyRegions.chips.label'">
+            <span class="sr-chips-label">{{ 'States in this list' | t: 'staff.subsidyRegions.chips.label' }}</span>
             @for (s of stateChips(); track s.name) {
               <button type="button" class="sr-chip" [class.is-on]="pager.search() === s.name" [class.is-off]="!s.enabled" [attr.aria-pressed]="pager.search() === s.name"
-                      [title]="s.enabled + ' of ' + s.total + ' enabled'" (click)="searchState(s.name)">
+                      [title]="'{enabled} of {total} enabled' | t: 'staff.subsidyRegions.chips.tooltip' : { enabled: s.enabled, total: s.total }" (click)="searchState(s.name)">
                 {{ nice(s.name) }} <span class="sr-chip-count">{{ s.enabled }}/{{ s.total }}</span>
               </button>
             }
@@ -142,10 +144,11 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
         }
 
         <div class="sr-toolbar">
-          <input type="search" class="form-control sr-search" placeholder="Search state or district" [attr.aria-label]="'Search ' + c.name.toLowerCase()"
+          <input type="search" class="form-control sr-search" [placeholder]="'Search state or district' | t: 'staff.subsidyRegions.search.placeholder'"
+                 [attr.aria-label]="'Search {list}' | t: 'staff.subsidyRegions.search.aria' : { list: c.name.toLowerCase() }"
                  [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
-          <div class="seg" role="group" aria-label="Show">
-            @for (f of filters; track f.key) {
+          <div class="seg" role="group" [attr.aria-label]="'Show' | t: 'staff.subsidyRegions.filter.aria'">
+            @for (f of filters(); track f.key) {
               <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="setFilter(f.key)">
                 {{ f.label }} <span class="seg-count">{{ filterCount(f.key) }}</span>
               </button>
@@ -154,24 +157,29 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
         </div>
         <div class="table-responsive">
           <table class="table table-zed sr-table">
-            <thead><tr><th>State / UT</th><th>District</th><th>Last changed</th><th class="text-center">Status</th><th class="text-center">Action</th></tr></thead>
+            <thead><tr><th>{{ 'State / UT' | t: 'staff.subsidyRegions.column.state' }}</th><th>{{ 'District' | t: 'staff.subsidyRegions.column.district' }}</th>
+              <th>{{ 'Last changed' | t: 'staff.subsidyRegions.column.changed' }}</th><th class="text-center">{{ 'Status' | t: 'staff.subsidyRegions.column.status' }}</th>
+              <th class="text-center">{{ 'Action' | t: 'staff.subsidyRegions.column.action' }}</th></tr></thead>
             <tbody>
               @for (r of pager.page(); track r.stateCode + '-' + r.districtCode) {
                 <tr [class.sr-off]="!r.enabled">
-                  <td data-label="State / UT"><span class="sr-place"><span class="sr-pin" aria-hidden="true">{{ initials(r.stateName || r.stateCode) }}</span>{{ nice(r.stateName) || 'State ' + r.stateCode }}</span></td>
-                  <td data-label="District">@if (r.districtCode) { {{ nice(r.districtName) || 'District ' + r.districtCode }} } @else { <span class="zed-chip sr-whole">Whole state</span> }</td>
-                  <td class="muted sr-when" data-label="Last changed">@if (r.updatedOn) { {{ who(r.updatedBy) }} · {{ r.updatedOn | indianTime: 'dd-MM-yyyy' }} } @else { {{ who(r.updatedBy) || '—' }} }</td>
-                  <td class="text-center" data-label="Status">
+                  <td [attr.data-label]="'State / UT' | t: 'staff.subsidyRegions.column.state'"><span class="sr-place"><span class="sr-pin" aria-hidden="true">{{ initials(r.stateName || r.stateCode) }}</span>{{ nice(r.stateName) || stateFallback(r.stateCode) }}</span></td>
+                  <td [attr.data-label]="'District' | t: 'staff.subsidyRegions.column.district'">@if (r.districtCode) { {{ nice(r.districtName) || ('District {code}' | t: 'staff.subsidyRegions.row.district.label' : { code: r.districtCode }) }} } @else { <span class="zed-chip sr-whole">{{ 'Whole state' | t: 'staff.subsidyRegions.row.wholeState.label' }}</span> }</td>
+                  <td class="muted sr-when" [attr.data-label]="'Last changed' | t: 'staff.subsidyRegions.column.changed'">@if (r.updatedOn) { {{ who(r.updatedBy) }} · {{ r.updatedOn | indianTime: 'dd-MM-yyyy' }} } @else { {{ who(r.updatedBy) || '—' }} }</td>
+                  <td class="text-center" [attr.data-label]="'Status' | t: 'staff.subsidyRegions.column.status'">
                     <label class="sr-switch form-switch">
-                      <input type="checkbox" class="form-check-input" role="switch" [checked]="r.enabled" [disabled]="busy()" [attr.aria-label]="(r.enabled ? 'Disable ' : 'Enable ') + label(r)" (change)="set(r, $any($event.target))" />
-                      <span class="sr-switch-text" [class.is-on]="r.enabled">{{ r.enabled ? 'Enabled' : 'Disabled' }}</span>
+                      <input type="checkbox" class="form-check-input" role="switch" [checked]="r.enabled" [disabled]="busy()"
+                             [attr.aria-label]="r.enabled ? ('Disable {name}' | t: 'staff.subsidyRegions.row.disable.aria' : { name: label(r) }) : ('Enable {name}' | t: 'staff.subsidyRegions.row.enable.aria' : { name: label(r) })" (change)="set(r, $any($event.target))" />
+                      <span class="sr-switch-text" [class.is-on]="r.enabled">{{ r.enabled ? ('Enabled' | t: 'staff.subsidyRegions.row.enabled.label') : ('Disabled' | t: 'staff.subsidyRegions.row.disabled.label') }}</span>
                     </label>
                   </td>
-                  <td class="text-center" data-label="Action"><button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" [attr.aria-label]="'Remove ' + label(r)" (click)="remove(r)">Remove</button></td>
+                  <td class="text-center" [attr.data-label]="'Action' | t: 'staff.subsidyRegions.column.action'"><button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" [attr.aria-label]="'Remove {name}' | t: 'staff.subsidyRegions.row.remove.aria' : { name: label(r) }" (click)="remove(r)">{{ 'Remove' | t: 'staff.subsidyRegions.row.remove.button' }}</button></td>
                 </tr>
               } @empty {
                 <tr class="empty-row"><td colspan="5" style="padding: 0"><div class="no-data">
-                  @if (pager.search() || filter() !== 'all') { Nothing in {{ c.name }} matches the search. } @else { No {{ c.name.toLowerCase() }} yet. Add a {{ c.level === 'state' ? 'state or district' : 'district' }} above. }
+                  @if (pager.search() || filter() !== 'all') { {{ 'Nothing in {list} matches the search.' | t: 'staff.subsidyRegions.noMatch.empty' : { list: c.name } }} }
+                  @else if (c.level === 'state') { {{ 'No {list} yet. Add a state or district above.' | t: 'staff.subsidyRegions.state.empty' : { list: c.name.toLowerCase() } }} }
+                  @else { {{ 'No {list} yet. Add a district above.' | t: 'staff.subsidyRegions.district.empty' : { list: c.name.toLowerCase() } }} }
                 </div></td></tr>
               }
             </tbody>
@@ -277,11 +285,11 @@ export class SubsidyRegionsPage {
   protected readonly active = signal('ASPIRATIONAL');
   protected readonly category = computed(() => this.categories().find((c) => c.key === this.active()) ?? null);
   protected readonly rows = computed(() => this.regions().filter((r) => r.category === this.active()));
-  protected readonly filters: readonly { key: RegionFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'enabled', label: 'Enabled' },
-    { key: 'disabled', label: 'Disabled' },
-  ];
+  protected readonly filters = computed((): readonly { key: RegionFilter; label: string }[] => [
+    { key: 'all', label: t('staff.subsidyRegions.filter.all', 'All') },
+    { key: 'enabled', label: t('staff.subsidyRegions.filter.enabled', 'Enabled') },
+    { key: 'disabled', label: t('staff.subsidyRegions.filter.disabled', 'Disabled') },
+  ]);
   protected readonly filter = signal<RegionFilter>('all');
   protected readonly stats = computed(() => {
     const rows = this.regions();
@@ -292,7 +300,7 @@ export class SubsidyRegionsPage {
   protected readonly stateChips = computed(() => {
     const byState = new Map<string, { name: string; total: number; enabled: number }>();
     for (const r of this.rows()) {
-      const name = r.stateName || `State ${r.stateCode}`;
+      const name = r.stateName || this.stateFallback(r.stateCode);
       const s = byState.get(name) ?? { name, total: 0, enabled: 0 };
       s.total++;
       if (r.enabled) s.enabled++;
@@ -326,6 +334,11 @@ export class SubsidyRegionsPage {
     return this.filtered(f).length;
   }
 
+  /** A state without a name in the master. */
+  protected stateFallback(code: string): string {
+    return t('staff.subsidyRegions.row.state.label', 'State {code}', { code });
+  }
+
   protected label(r: RegionRow): string {
     return r.districtCode ? (r.districtName ?? r.districtCode) : (r.stateName ?? r.stateCode);
   }
@@ -339,7 +352,7 @@ export class SubsidyRegionsPage {
 
   /** Who changed the entry; a database script ("migration-0024") shows as System. */
   protected who(by: string | null | undefined): string {
-    return by && /^migration/i.test(by) ? 'System' : (by ?? '');
+    return by && /^migration/i.test(by) ? t('staff.subsidyRegions.row.system.label', 'System') : (by ?? '');
   }
 
   /** Two letters for the state's round badge (UTTAR PRADESH → UP). */
@@ -386,7 +399,8 @@ export class SubsidyRegionsPage {
 
   protected async add(c: RegionCategory): Promise<void> {
     if (!this.addState() || (c.level === 'district' && !this.addDistrict())) {
-      this.error.set(c.level === 'district' ? 'Please choose the state and the district.' : 'Please choose the state.');
+      this.error.set(c.level === 'district' ? t('staff.subsidyRegions.add.district.error', 'Please choose the state and the district.')
+        : t('staff.subsidyRegions.add.state.error', 'Please choose the state.'));
       return;
     }
     const body = { category: c.key, stateCode: this.addState(), districtCode: this.addDistrict(), enabled: this.addEnabled() };
@@ -404,7 +418,11 @@ export class SubsidyRegionsPage {
   }
 
   protected async remove(r: RegionRow): Promise<void> {
-    if (!(await this.confirms.ask({ title: 'Remove from the List?', message: `${this.label(r)} is removed from this list.`, confirmLabel: 'Remove', danger: true }))) return;
+    if (!(await this.confirms.ask({
+      title: t('staff.subsidyRegions.remove.title', 'Remove from the List?'),
+      message: t('staff.subsidyRegions.remove.message', '{name} is removed from this list.', { name: this.label(r) }),
+      confirmLabel: t('staff.subsidyRegions.remove.button', 'Remove'), danger: true,
+    }))) return;
     await this.run(() => this.http.delete<MessageResponse>(SubsidyRegionsPage.url, { params: { category: r.category, stateCode: r.stateCode, districtCode: r.districtCode } }));
   }
 

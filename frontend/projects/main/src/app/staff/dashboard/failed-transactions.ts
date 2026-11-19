@@ -9,12 +9,13 @@ import { ListFiltersBar } from './list-controls';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 import { AdminPortal, AdminPortalService, dashboardPortals, dashboardSetting, isDashboardAdmin } from '../admin-portal';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { TextPipe, t } from '../../content/page-text';
 
-export const PG_TYPES = [
-  { value: 'Unified Payments', label: 'UPI' },
-  { value: 'Debit Card', label: 'Debit Card' },
-  { value: 'Credit Card', label: 'Credit Card' },
-  { value: 'Net Banking', label: 'Internet Banking' },
+export const PG_TYPES: readonly { readonly value: string; readonly label: string }[] = [
+  { value: 'Unified Payments', get label() { return t('staff.failedTransactions.pgType.upi', 'UPI'); } },
+  { value: 'Debit Card', get label() { return t('staff.failedTransactions.pgType.debitCard', 'Debit Card'); } },
+  { value: 'Credit Card', get label() { return t('staff.failedTransactions.pgType.creditCard', 'Credit Card'); } },
+  { value: 'Net Banking', get label() { return t('staff.failedTransactions.pgType.netBanking', 'Internet Banking'); } },
 ];
 
 const GSTIN = /^[0-9]{2}[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}[1-9A-Za-z]{1}[Zz][0-9A-Za-z]{1}$/;
@@ -30,7 +31,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-failed-transactions',
-  imports: [FormsModule, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
+  imports: [FormsModule, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
   templateUrl: './failed-transactions.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

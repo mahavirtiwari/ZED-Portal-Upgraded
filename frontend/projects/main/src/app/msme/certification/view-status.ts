@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { CertificationTimeline } from './certification-timeline';
 import { progressOptions, progressSteps, timelineItems } from './certification-progress';
 import { CertificationApi, CertificationData, canonicalCertification, certificationKind, certificationLevel, incentiveUrl } from './certification.api';
@@ -19,23 +20,23 @@ import { PublicLevels, levelName } from '../shared/levels';
  */
 @Component({
   selector: 'zed-msme-view-status',
-  imports: [RouterLink, PageHead, StepTracker, CertificationTimeline],
+  imports: [RouterLink, PageHead, StepTracker, CertificationTimeline, TextPipe],
   template: `
     <div class="container status-page">
-      <zed-page-head [crumbs]="crumbs()" title="Status">
-        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back to dashboard</a>
+      <zed-page-head [crumbs]="crumbs()" [title]="'Status' | t: 'msme.viewStatus.title'">
+        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back to dashboard' | t: 'msme.viewStatus.dashboardButton' }}</a>
       </zed-page-head>
       @if (error()) {
         <div class="alert alert-danger" role="alert">
           {{ error() }}
-          <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
+          <a class="btn btn-link" routerLink="/msme/dashboard">{{ 'Back to dashboard' | t: 'msme.viewStatus.dashboardButton' }}</a>
         </div>
       }
       @if (data()) {
-        <zed-step-tracker class="vs-track" [steps]="progress().steps" [current]="progress().current" label="Certification progress" />
+        <zed-step-tracker class="vs-track" [steps]="progress().steps" [current]="progress().current" [label]="'Certification progress' | t: 'msme.viewStatus.trackerAria'" />
         <zed-certification-timeline [items]="timeline()" />
         @if (certified()) {
-          <p class="vs-incentives"><a [href]="incentiveUrl()">Click here to view your Incentives</a></p>
+          <p class="vs-incentives"><a [href]="incentiveUrl()">{{ 'Click here to view your Incentives' | t: 'msme.viewStatus.incentivesLink' }}</a></p>
         }
       }
     </div>
@@ -45,8 +46,8 @@ import { PublicLevels, levelName } from '../shared/levels';
         <div class="loadingimage">
           <div class="loader"></div>
           <div class="text-center">
-            <small>Please wait ...</small><br />
-            <small>It may take upto 60 seconds</small>
+            <small>{{ 'Please wait ...' | t: 'msme.viewStatus.waitText' }}</small><br />
+            <small>{{ 'It may take upto 60 seconds' | t: 'msme.viewStatus.waitNote' }}</small>
           </div>
         </div>
       </div>
@@ -75,23 +76,23 @@ export class ViewStatusPage {
   protected readonly type = computed(() => {
     // The old status page had the Bronze and Silver/Gold timelines: a level's own (ZED-X and the Admin's levels as
     // Silver / Gold), not its surveillance or a milestone.
-    const t = canonicalCertification(this.certification());
-    return t && ['bronze', 'silverGold'].includes(certificationKind(t)) ? t : null;
+    const c = canonicalCertification(this.certification());
+    return c && ['bronze', 'silverGold'].includes(certificationKind(c)) ? c : null;
   });
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
 
   private readonly levels = inject(PublicLevels);
   protected readonly crumbs = computed(() => [
-    { label: 'Home', link: '/msme/dashboard' },
-    { label: 'Certifications', link: '/msme/dashboard' },
+    { label: t('msme.viewStatus.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.viewStatus.crumb.certifications', 'Certifications'), link: '/msme/dashboard' },
     ...(this.type() ? [{ label: levelName(certificationLevel(this.type()!)), link: ['/msme/certification', this.type()!] }] : []),
-    { label: 'Status' },
+    { label: t('msme.viewStatus.crumb.status', 'Status') },
   ]);
   private readonly options = computed(() => {
-    const t = this.type() ?? 'Bronze';
-    const code = certificationLevel(t).toLowerCase();
-    return progressOptions(t, this.levels.levels()?.find((l) => l.code.toLowerCase() === code)?.assessmentFlow);
+    const c = this.type() ?? 'Bronze';
+    const code = certificationLevel(c).toLowerCase();
+    return progressOptions(c, this.levels.levels()?.find((l) => l.code.toLowerCase() === code)?.assessmentFlow);
   });
   protected readonly progress = computed(() => progressSteps(this.data()?.status ?? {}, this.options()));
   protected readonly timeline = computed(() => timelineItems(this.data()?.status ?? {}, this.options()));
@@ -109,7 +110,7 @@ export class ViewStatusPage {
     this.error.set('');
     if (!type) {
       this.data.set(null);
-      this.error.set('Invalid certification.');
+      this.error.set(t('msme.viewStatus.error.invalidLevel', 'Invalid certification.'));
       return;
     }
     this.loading.set(true);

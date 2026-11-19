@@ -9,6 +9,7 @@ import { PageHead } from '../../msme/shared/page-head';
 import { ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface ReportItem {
   id: string;
@@ -37,17 +38,17 @@ async function blobError(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-staff-reports',
-  imports: [FormsModule, DashboardPortalSwitchComponent, PageHead, ListCounts],
+  imports: [FormsModule, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['reports']" />
-    <zed-page-head [crumbs]="crumbs" title="Reports" subtitle="The reports of your role, each downloaded as an Excel file." />
-    <zed-list-counts class="rp-counts" [counts]="[{ label: 'Reports', value: reports().length }]" />
+    <zed-page-head [crumbs]="crumbs()" [title]="'Reports' | t: 'staff.reports.title'" [subtitle]="'The reports of your role, each downloaded as an Excel file.' | t: 'staff.reports.sub'" />
+    <zed-list-counts class="rp-counts" [counts]="counts()" />
     <div class="zed-card rp-filters">
-      <input type="search" id="reports-search" class="form-control rp-q" maxlength="50" placeholder="Search reports" aria-label="Search reports"
+      <input type="search" id="reports-search" class="form-control rp-q" maxlength="50" [placeholder]="'Search reports' | t: 'staff.reports.search.placeholder'" [attr.aria-label]="'Search reports' | t: 'staff.reports.search.placeholder'"
              [ngModel]="search()" (ngModelChange)="search.set($event)" />
-      @if (search().trim()) { <span class="rp-found">{{ shown().length }} found</span> }
+      @if (search().trim()) { <span class="rp-found">{{ '{count} found' | t: 'staff.reports.foundText' : { count: shown().length } }}</span> }
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
     <div class="list-card reports">
@@ -55,9 +56,9 @@ async function blobError(err: unknown): Promise<string> {
       <table class="table table-zed">
         <thead>
           <tr>
-            <th style="width: 70px">S.No</th>
-            <th>Report name</th>
-            <th class="text-end" style="width: 160px">Download</th>
+            <th style="width: 70px">{{ 'S.No' | t: 'staff.reports.column.serial' }}</th>
+            <th>{{ 'Report name' | t: 'staff.reports.column.name' }}</th>
+            <th class="text-end" style="width: 160px">{{ 'Download' | t: 'staff.reports.column.download' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -67,18 +68,18 @@ async function blobError(err: unknown): Promise<string> {
               <td><strong>{{ r.name }}</strong></td>
               <td class="text-end">
                 <button type="button" class="btn btn-primary rp-act" [disabled]="downloading() !== null"
-                        (click)="download(r)">{{ downloading() === r.id ? 'Please wait' : 'Download' }}</button>
+                        (click)="download(r)">{{ downloading() === r.id ? ('Please wait' | t: 'staff.reports.downloadingButton') : ('Download' | t: 'staff.reports.downloadButton') }}</button>
               </td>
             </tr>
           } @empty {
-            @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">{{ reports().length ? 'No report matches the search.' : 'No reports' }}</div></td></tr> }
+            @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">{{ reports().length ? ('No report matches the search.' | t: 'staff.reports.filteredEmpty') : ('No reports' | t: 'staff.reports.empty') }}</div></td></tr> }
           }
         </tbody>
       </table>
     </div>
     </div>
     @if (downloading()) {
-      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... large reports may take a few minutes.</small></div></div></div>
+      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ... large reports may take a few minutes.' | t: 'staff.reports.loadingText' }}</small></div></div></div>
     }
   `,
   styles: `
@@ -94,7 +95,8 @@ async function blobError(err: unknown): Promise<string> {
 export class ReportsPage {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
-  protected readonly crumbs = staffCrumbs({ label: 'Reports' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.reports.crumb', 'Reports') }));
+  protected readonly counts = computed(() => [{ label: t('staff.reports.count.reports', 'Reports'), value: this.reports().length }]);
 
   protected readonly reports = signal<ReportItem[]>([]);
   /** The search box above the list. */
@@ -133,7 +135,7 @@ export class ReportsPage {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      this.toast.success('Report downloaded', report.name);
+      this.toast.success(t('staff.reports.toast.downloaded', 'Report downloaded'), report.name);
     } catch (err) {
       this.error.set(await blobError(err));
     } finally {

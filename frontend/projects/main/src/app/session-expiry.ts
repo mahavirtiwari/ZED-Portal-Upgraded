@@ -4,11 +4,13 @@ import { Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { catchError, throwError } from 'rxjs';
 import { apiBasePath } from './api-base';
+import { t } from './content/page-text';
 
-/** Query parameter of the login pages after a session ended: they show {@link SESSION_EXPIRED_MESSAGE}. */
+/** Query parameter of the login pages after a session ended: they show {@link sessionExpiredMessage}. */
 export const EXPIRED_PARAM = 'expired';
 export const RETURN_PARAM = 'returnUrl';
-export const SESSION_EXPIRED_MESSAGE = 'Your session has expired. Please sign in again.';
+/** The note of the login pages after a session ended (the Admin's wording when changed). */
+export const sessionExpiredMessage = (): string => t('common.session.expiredMessage', 'Your session has expired. Please sign in again.');
 
 /**
  * A 401 from this portal's own API while signed in: the session ended on the server (timed out, password changed,

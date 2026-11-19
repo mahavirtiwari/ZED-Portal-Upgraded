@@ -2,13 +2,14 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
-import { StaffMenuEntry, StaffMenuItem, StaffRole, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
 import { ToastHost } from './toast';
 import { ConfirmHost } from './confirm-dialog';
 import { PORTAL_SYSTEM } from '../portal-system';
+import { TextPipe } from '../content/page-text';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
@@ -25,7 +26,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
  */
 @Component({
   selector: 'zed-staff-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost, ConfirmHost],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost, ConfirmHost, TextPipe],
   // 2026-11-19 (the user, Admin login: 'make the buttons in dark color'): .zed-admin while the signed-in role is Admin
   // (RoleId 1), the scope of the dark buttons (styles/_admin-skin.scss); the other staff roles keep the designs' buttons.
   host: { class: 'zed-legacy zed-v4 d-block', '[class.zed-admin]': 'isAdmin()' },
@@ -34,41 +35,41 @@ import { PORTAL_SYSTEM } from '../portal-system';
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container">
           <div class="header-top">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', 'Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', 'Images/header/ministry.png')" alt="Ministry of MSME" />}
-            <a routerLink="/staff"><img class="zedv2-logo" [src]="brand.logo('header-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', 'Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'staff.layout.ministryLogoAlt'" /></a>} @else {<img [src]="brand.logo('header-left', 'Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'staff.layout.ministryLogoAlt'" />}
+            <a routerLink="/staff"><img class="zedv2-logo" [src]="brand.logo('header-right', 'Images/header/zed-logo.png?ui=1')" [alt]="'ZED' | t: 'staff.layout.zedLogoAlt'" /></a>
           </div>
         </div>
       </header>
 
-      <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
+      <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" [attr.aria-label]="'Staff menu' | t: 'staff.layout.menu.aria'">
         <div class="container nav-bar-sec">
           <!-- 2026-11-14 (approved frame A): the role and portal are shown with the user on wide screens; the bar's name on phones only. -->
           <a class="navbar-brand" routerLink="/staff">{{ roleName() }}</a>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
-                  aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
+                  [attr.aria-label]="'Toggle navigation' | t: 'staff.layout.menu.toggleAria'" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="staff-menu" [class.show]="menuOpen()">
             <ul class="navbar-nav nav mb-2 mb-lg-0" #bar>
               <li class="nav-item tag">
-                <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" aria-label="Home">Home</a>
+                <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" [attr.aria-label]="'Home' | t: 'staff.layout.menu.homeLink'">{{ 'Home' | t: 'staff.layout.menu.homeLink' }}</a>
               </li>
               @for (entry of entries(); track $index) {
                 @if ('group' in entry) {
                   <li class="nav-item dropdown tag" [class.d-lg-none]="$index >= fit()">
                     <button type="button" class="nav-link dropdown-toggle btn btn-link" [class.active]="groupActive(entry.items)"
                             [attr.aria-expanded]="openGroup() === entry.group" (click)="toggleGroup(entry.group, $event)">
-                      {{ entry.group }}
+                      {{ menuGroupText(entry.group) }}
                     </button>
                     <ul class="dropdown-menu" [class.show]="openGroup() === entry.group">
                       @for (section of entry.sections; track $index) {
-                        @if (section.heading) { <li><span class="dropdown-header">{{ section.heading }}</span></li> }
+                        @if (section.heading) { <li><span class="dropdown-header">{{ menuGroupText(section.heading) }}</span></li> }
                         @for (item of section.items; track item.label + (item.route ?? item.legacyPath)) {
                           <li>
                             @if (item.route) {
-                              <a class="dropdown-item" [class.ps-4]="section.heading" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
+                              <a class="dropdown-item" [class.ps-4]="section.heading" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ menuText(item.label) }}</a>
                             } @else {
-                              <a class="dropdown-item" [class.ps-4]="section.heading" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
+                              <a class="dropdown-item" [class.ps-4]="section.heading" [href]="legacy(item)" [title]="'Opens the current portal' | t: 'staff.layout.menu.legacyTooltip'">{{ menuText(item.label) }}</a>
                             }
                           </li>
                         }
@@ -78,9 +79,9 @@ import { PORTAL_SYSTEM } from '../portal-system';
                 } @else {
                   <li class="nav-item tag" [class.d-lg-none]="$index >= fit()">
                     @if (entry.item.route) {
-                      <a class="nav-link" [routerLink]="entry.item.route" [queryParams]="entry.item.queryParams" routerLinkActive="active">{{ entry.item.label }}</a>
+                      <a class="nav-link" [routerLink]="entry.item.route" [queryParams]="entry.item.queryParams" routerLinkActive="active">{{ menuText(entry.item.label) }}</a>
                     } @else {
-                      <a class="nav-link" [href]="legacy(entry.item)" title="Opens the current portal">{{ entry.item.label }}</a>
+                      <a class="nav-link" [href]="legacy(entry.item)" [title]="'Opens the current portal' | t: 'staff.layout.menu.legacyTooltip'">{{ menuText(entry.item.label) }}</a>
                     }
                   </li>
                 }
@@ -89,27 +90,27 @@ import { PORTAL_SYSTEM } from '../portal-system';
                 <!-- Wide screens: the entries that do not fit on the row (the phone menu lists them all above). -->
                 <li class="nav-item dropdown tag d-none d-lg-block more">
                   <button type="button" class="nav-link dropdown-toggle btn btn-link" [class.active]="moreActive()"
-                          [attr.aria-expanded]="openGroup() === moreGroup" (click)="toggleGroup(moreGroup, $event)">More</button>
+                          [attr.aria-expanded]="openGroup() === moreGroup" (click)="toggleGroup(moreGroup, $event)">{{ 'More' | t: 'staff.layout.menu.moreButton' }}</button>
                   <ul class="dropdown-menu dropdown-menu-end more-menu" [class.show]="openGroup() === moreGroup">
                     @for (entry of entries(); track $index) {
                       @if ($index >= fit()) {
                         @if ('group' in entry) {
-                          <li><span class="dropdown-header">{{ entry.group }}</span></li>
+                          <li><span class="dropdown-header">{{ menuGroupText(entry.group) }}</span></li>
                           @for (item of entry.items; track item.label + (item.route ?? item.legacyPath) + item.group) {
                             <li>
                               @if (item.route) {
-                                <a class="dropdown-item ps-4" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
+                                <a class="dropdown-item ps-4" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ menuText(item.label) }}</a>
                               } @else {
-                                <a class="dropdown-item ps-4" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
+                                <a class="dropdown-item ps-4" [href]="legacy(item)" [title]="'Opens the current portal' | t: 'staff.layout.menu.legacyTooltip'">{{ menuText(item.label) }}</a>
                               }
                             </li>
                           }
                         } @else {
                           <li>
                             @if (entry.item.route) {
-                              <a class="dropdown-item" [routerLink]="entry.item.route" [queryParams]="entry.item.queryParams" routerLinkActive="active">{{ entry.item.label }}</a>
+                              <a class="dropdown-item" [routerLink]="entry.item.route" [queryParams]="entry.item.queryParams" routerLinkActive="active">{{ menuText(entry.item.label) }}</a>
                             } @else {
-                              <a class="dropdown-item" [href]="legacy(entry.item)" title="Opens the current portal">{{ entry.item.label }}</a>
+                              <a class="dropdown-item" [href]="legacy(entry.item)" [title]="'Opens the current portal' | t: 'staff.layout.menu.legacyTooltip'">{{ menuText(entry.item.label) }}</a>
                             }
                           </li>
                         }
@@ -126,13 +127,13 @@ import { PORTAL_SYSTEM } from '../portal-system';
               }
               <li class="nav-item dropdown tag user-menu">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
-                        [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
+                        [title]="user()?.actingUserId ? ('Working for {name} ({id})' | t: 'staff.layout.user.workingForTooltip' : { name: user()?.userName, id: user()?.userId }) : ''">
                   <span class="avatar" aria-hidden="true">{{ (user()?.actingUserName || user()?.userName || '?').charAt(0) }}</span>
                   <span class="who"><b>{{ user()?.actingUserName || user()?.userName }}</b><small>{{ roleName() }}</small></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
-                  <li><a class="dropdown-item" routerLink="/staff/change-password">Change Password</a></li>
-                  <li><button type="button" class="dropdown-item" (click)="logout()">Logout</button></li>
+                  <li><a class="dropdown-item" routerLink="/staff/change-password">{{ 'Change Password' | t: 'staff.layout.user.changePasswordLink' }}</a></li>
+                  <li><button type="button" class="dropdown-item" (click)="logout()">{{ 'Logout' | t: 'staff.layout.user.logoutButton' }}</button></li>
                 </ul>
               </li>
             </ul>
@@ -145,18 +146,18 @@ import { PORTAL_SYSTEM } from '../portal-system';
       <footer class="sfoot">
         <div class="footer">
           <div class="container sf">
-            <small>ZED © {{ year }} All Rights Reserved</small>
+            <small>{{ 'ZED © {year} All Rights Reserved' | t: 'staff.layout.footer.copyrightText' : { year } }}</small>
             <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' four links, as the applicant's footer
                  (Admin → Links); the account's documents and the portal's privacy page when the Admin cleared a link. -->
-            <nav class="sf-links" aria-label="Footer">
-              @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a> }
-              @else if (hasDocuments()) { <a routerLink="/staff/documents">Scheme guidelines</a> }
-              @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a> }
-              @else if (main) { <a routerLink="/privacy-policy">Privacy policy</a> }
-              @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a> }
-              @if (links.url('contact'); as u) { <a [href]="u" target="_blank" rel="noopener">Help desk</a> }
+            <nav class="sf-links" [attr.aria-label]="'Footer' | t: 'staff.layout.footer.aria'">
+              @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'staff.layout.footer.guidelinesLink' }}</a> }
+              @else if (hasDocuments()) { <a routerLink="/staff/documents">{{ 'Scheme guidelines' | t: 'staff.layout.footer.guidelinesLink' }}</a> }
+              @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'staff.layout.footer.privacyLink' }}</a> }
+              @else if (main) { <a routerLink="/privacy-policy">{{ 'Privacy policy' | t: 'staff.layout.footer.privacyLink' }}</a> }
+              @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'staff.layout.footer.termsLink' }}</a> }
+              @if (links.url('contact'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Help desk' | t: 'staff.layout.footer.helpDeskLink' }}</a> }
             </nav>
-            <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" alt="QCI" height="36" />
+            <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'staff.layout.footer.qciLogoAlt'" height="36" />
           </div>
         </div>
       </footer>
@@ -274,6 +275,9 @@ export class StaffLayout {
   protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.Admin);
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
+  /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */
+  protected readonly menuText = menuText;
+  protected readonly menuGroupText = menuGroupText;
 
   /** How many menu entries are on the row (wide screens); the rest are under "More". */
   protected readonly fit = signal(Number.MAX_SAFE_INTEGER);

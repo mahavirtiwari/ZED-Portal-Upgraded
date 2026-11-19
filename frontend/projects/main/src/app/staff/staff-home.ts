@@ -1,7 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
-import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
+import { TextPipe } from '../content/page-text';
 import { RemoteAllotments } from './remote-allotments';
 
 /** A heading with more screens than this is a chooser (e.g. the incentives of every state), not a list. */
@@ -39,23 +40,23 @@ export function iconFor(label: string): string {
  */
 @Component({
   selector: 'zed-staff-home',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   template: `
     <div class="home">
       <div class="welcome">
         <div>
-          <h3 class="mb-1">Welcome, {{ user()?.actingUserName || user()?.userName }}</h3>
-          <p class="mb-0 text-muted">Choose a screen to start. The same screens are in the menu above.</p>
+          <h3 class="mb-1">{{ 'Welcome, {name}' | t: 'staff.home.title' : { name: user()?.actingUserName || user()?.userName } }}</h3>
+          <p class="mb-0 text-muted">{{ 'Choose a screen to start. The same screens are in the menu above.' | t: 'staff.home.sub' }}</p>
         </div>
         <div class="welcome-side">
           <span class="role-badge">{{ roleName() }}{{ subRoleText() }}</span>
           <!-- 2026-11-14 (approved frame A): find a screen among the tiles. -->
-          <input type="search" class="form-control find" placeholder="Find a screen" aria-label="Find a screen" maxlength="60"
+          <input type="search" class="form-control find" [placeholder]="'Find a screen' | t: 'staff.home.find.placeholder'" [attr.aria-label]="'Find a screen' | t: 'staff.home.find.placeholder'" maxlength="60"
                  [value]="query()" (input)="query.set($any($event.target).value)" />
         </div>
       </div>
       @if (query().trim() && !singles().length && !groups().length) {
-        <p class="text-muted">No screen matches “{{ query() }}”.</p>
+        <p class="text-muted">{{ 'No screen matches “{query}”.' | t: 'staff.home.find.empty' : { query: query() } }}</p>
       }
 
       @if (singles().length) {
@@ -65,13 +66,13 @@ export function iconFor(label: string): string {
               @if (item.route) {
                 <a class="tile" [routerLink]="item.route" [queryParams]="item.queryParams">
                   <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(item.label)" /></svg></span>
-                  <span class="label">{{ item.label }}</span>
+                  <span class="label">{{ menuText(item.label) }}</span>
                   <span class="arrow" aria-hidden="true">›</span>
                 </a>
               } @else {
-                <a class="tile" [href]="legacyUrl() + item.legacyPath" title="Opens the current portal">
+                <a class="tile" [href]="legacyUrl() + item.legacyPath" [title]="'Opens the current portal' | t: 'staff.home.legacyTooltip'">
                   <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(item.label)" /></svg></span>
-                  <span class="label">{{ item.label }}</span>
+                  <span class="label">{{ menuText(item.label) }}</span>
                   <span class="arrow" aria-hidden="true">↗</span>
                 </a>
               }
@@ -83,27 +84,27 @@ export function iconFor(label: string): string {
       <div class="row g-3">
         @for (g of groups(); track g.group) {
           <div class="col-12">
-            <section class="group-card h-100" [attr.aria-label]="g.group">
+            <section class="group-card h-100" [attr.aria-label]="menuGroupText(g.group)">
               <h4>
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(g.group)" /></svg></span>
-                {{ g.group }}
+                {{ menuGroupText(g.group) }}
               </h4>
               @for (section of g.sections; track $index) {
-                @if (section.heading) { <h5>{{ section.heading }}</h5> }
+                @if (section.heading) { <h5>{{ menuGroupText(section.heading) }}</h5> }
                 @if (section.items.length > listLimit) {
-                  <label class="chooser-label" [for]="chooserId(g.group, $index)">Choose one of {{ section.items.length }}</label>
+                  <label class="chooser-label" [for]="chooserId(g.group, $index)">{{ 'Choose one of {count}' | t: 'staff.home.chooser.label' : { count: section.items.length } }}</label>
                   <select class="form-select" [id]="chooserId(g.group, $index)" (change)="open(section, $any($event.target).value)">
-                    <option value="">-- Select --</option>
-                    @for (item of section.items; track $index) { <option [value]="$index">{{ item.label }}</option> }
+                    <option value="">{{ '-- Select --' | t: 'staff.home.chooser.selectOption' }}</option>
+                    @for (item of section.items; track $index) { <option [value]="$index">{{ menuText(item.label) }}</option> }
                   </select>
                 } @else {
                   <ul class="list-unstyled mb-2">
                     @for (item of section.items; track item.label + (item.route ?? item.legacyPath)) {
                       <li>
                         @if (item.route) {
-                          <a [routerLink]="item.route" [queryParams]="item.queryParams">{{ item.label }}<span aria-hidden="true">›</span></a>
+                          <a [routerLink]="item.route" [queryParams]="item.queryParams">{{ menuText(item.label) }}<span aria-hidden="true">›</span></a>
                         } @else {
-                          <a [href]="legacyUrl() + item.legacyPath" title="Opens the current portal">{{ item.label }}<span aria-hidden="true">↗</span></a>
+                          <a [href]="legacyUrl() + item.legacyPath" [title]="'Opens the current portal' | t: 'staff.home.legacyTooltip'">{{ menuText(item.label) }}<span aria-hidden="true">↗</span></a>
                         }
                       </li>
                     }
@@ -167,6 +168,9 @@ export class StaffHomePage {
   protected readonly legacyUrl = signal('');
   protected readonly listLimit = LIST_LIMIT;
   protected readonly icon = iconFor;
+  /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */
+  protected readonly menuText = menuText;
+  protected readonly menuGroupText = menuGroupText;
   private readonly entries = computed(() => {
     const u = this.user();
     return menuEntries(u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : []);
@@ -178,11 +182,11 @@ export class StaffHomePage {
     return !q || (label + ' ' + also).toLowerCase().includes(q);
   }
   protected readonly singles = computed(() =>
-    this.entries().flatMap((e) => ('item' in e ? [e.item] : [])).filter((i) => i.route !== '/staff/administration' && this.matches(i.label)));
+    this.entries().flatMap((e) => ('item' in e ? [e.item] : [])).filter((i) => i.route !== '/staff/administration' && this.matches(menuText(i.label))));
   protected readonly groups = computed(() => this.entries().flatMap((e) => ('group' in e ? [e] : [])).map((g) => ({
     ...g,
     sections: g.sections
-      .map((sec) => ({ ...sec, items: sec.items.filter((i) => this.matches(i.label, g.group + ' ' + (sec.heading ?? ''))) }))
+      .map((sec) => ({ ...sec, items: sec.items.filter((i) => this.matches(menuText(i.label), menuGroupText(g.group) + ' ' + menuGroupText(sec.heading))) }))
       .filter((sec) => sec.items.length),
   })).filter((g) => g.sections.length));
   protected readonly roleName = computed(() => staffRoleName(this.user()));

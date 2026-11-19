@@ -6,6 +6,7 @@ import { AuthService } from '@zed/shared';
 import { catchError, filter, firstValueFrom, throwError } from 'rxjs';
 import { apiBasePath } from './api-base';
 import { PORTAL_SYSTEM } from './portal-system';
+import { TextPipe } from './content/page-text';
 
 /** Whether this portal is down (Admin → Settings → Maintenance mode), and its message. */
 export interface MaintenanceInfo {
@@ -51,23 +52,23 @@ export const maintenanceInterceptor: HttpInterceptorFn = (req, next) => {
 /** The maintenance page over the app, or the Admin's note; nothing while the portal is up. */
 @Component({
   selector: 'zed-maintenance',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, TextPipe],
   template: `
     @if (info(); as m) {
       @if (isAdmin()) {
         <div class="mt-admin" role="status">
-          Maintenance mode: this portal is down for its users. You can work as the Admin.
-          <a routerLink="/staff/settings/maintenance">Maintenance mode</a>
+          {{ 'Maintenance mode: this portal is down for its users. You can work as the Admin.' | t: 'common.maintenance.adminNote' }}
+          <a routerLink="/staff/settings/maintenance">{{ 'Maintenance mode' | t: 'common.maintenance.adminLink' }}</a>
         </div>
       } @else if (!onAdminLogin()) {
         <div class="mt-page" role="alert" aria-labelledby="mt-title">
           <div class="mt-card">
-            <img src="Images/header/zed-logo.png" alt="ZED" class="mt-logo" />
-            <h1 id="mt-title">Under maintenance</h1>
-            <p class="mt-msg">{{ m.message || 'This portal is under maintenance. Please try again later.' }}</p>
-            @if (until(); as u) { <p class="mt-until">Expected back by {{ u | date: 'dd-MM-yyyy, h:mm a' }}</p> }
-            <button type="button" class="btn btn-primary" (click)="retry()">Try again</button>
-            @if (mainPortal) { <p class="mt-staff"><a routerLink="/login">Admin sign-in</a></p> }
+            <img src="Images/header/zed-logo.png" [alt]="'ZED' | t: 'common.maintenance.logoAlt'" class="mt-logo" />
+            <h1 id="mt-title">{{ 'Under maintenance' | t: 'common.maintenance.title' }}</h1>
+            <p class="mt-msg">{{ m.message || ('This portal is under maintenance. Please try again later.' | t: 'common.maintenance.text') }}</p>
+            @if (until(); as u) { <p class="mt-until">{{ 'Expected back by {date}' | t: 'common.maintenance.untilNote' : { date: (u | date: 'dd-MM-yyyy, h:mm a') } }}</p> }
+            <button type="button" class="btn btn-primary" (click)="retry()">{{ 'Try again' | t: 'common.maintenance.retryButton' }}</button>
+            @if (mainPortal) { <p class="mt-staff"><a routerLink="/login">{{ 'Admin sign-in' | t: 'common.maintenance.adminLoginLink' }}</a></p> }
           </div>
         </div>
       }

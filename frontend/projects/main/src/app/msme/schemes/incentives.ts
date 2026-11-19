@@ -4,12 +4,13 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom, map } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
 
 /** Header and footer of the public scheme pages (the old _LayoutHome when signed out). */
 @Component({
   selector: 'zed-public-frame',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   // 2026-11-15 (the user): room for the fixed 100px header, as the public layout has; the filters were hidden under it.
   host: { class: 'zed-legacy d-block', '[style.padding-top.px]': 'bare() ? 0 : 100' },
   template: `
@@ -17,12 +18,12 @@ import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
       <header class="zed-header zed-smooth">
         <div class="container g-0">
           <div class="header-top d-flex justify-content-between align-items-center">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
-            <img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" />
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.publicFrame.ministryAlt'" /></a>} @else {<img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.publicFrame.ministryAlt'" />}
+            <img class="zedv2-logo" src="/Images/header/zed-logo.png" [alt]="'ZED' | t: 'public.publicFrame.logoAlt'" />
             @if (msmeSignedIn()) {
-              <a routerLink="/msme/dashboard" class="btn btn-sm btn-primary">Dashboard</a>
+              <a routerLink="/msme/dashboard" class="btn btn-sm btn-primary">{{ 'Dashboard' | t: 'public.publicFrame.dashboardButton' }}</a>
             } @else {
-              <a routerLink="/msme/login" class="btn btn-sm btn-primary">Login</a>
+              <a routerLink="/msme/login" class="btn btn-sm btn-primary">{{ 'Login' | t: 'public.publicFrame.loginButton' }}</a>
             }
           </div>
         </div>
@@ -30,7 +31,7 @@ import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
     }
     <ng-content />
     @if (!bare()) {
-      <footer class="text-center py-3"><small>ZED © {{ year }} All Rights Reserved</small></footer>
+      <footer class="text-center py-3"><small>{{ 'ZED © {year} All Rights Reserved' | t: 'public.publicFrame.copyrightText' : { year } }}</small></footer>
     }
   `,
 })
@@ -59,7 +60,7 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
  */
 @Component({
   selector: 'zed-public-incentives',
-  imports: [PublicFrame, NgTemplateOutlet],
+  imports: [PublicFrame, NgTemplateOutlet, TextPipe],
   template: `
     <zed-public-frame>
       <div class="container form-page" id="zed_user_form">
@@ -69,9 +70,9 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
               <div class="panel-body p-3">
                 <div class="row">
                   <div class="col-sm-3">
-                    <label for="incLevel"><p>Certification Level</p></label>
+                    <label for="incLevel"><p>{{ 'Certification Level' | t: 'public.incentives.levelLabel' }}</p></label>
                     <select id="incLevel" class="form-select" [value]="ct()" (change)="filter({ ct: value($event) })">
-                      <option value="">Select</option>
+                      <option value="">{{ 'Select' | t: 'public.incentives.selectOption' }}</option>
                       <option value="Bronze">Bronze</option>
                       <option value="Silver">Silver</option>
                       <option value="Gold">Gold</option>
@@ -80,9 +81,9 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
                   </div>
                   @if (!msmeSignedIn()) {
                     <div class="col-sm-3">
-                      <label for="incActivity"><p>Activity</p></label>
+                      <label for="incActivity"><p>{{ 'Activity' | t: 'public.incentives.activityLabel' }}</p></label>
                       <select id="incActivity" class="form-select" [value]="act()" (change)="filter({ act: value($event) })">
-                        <option value="">All</option>
+                        <option value="">{{ 'All' | t: 'public.incentives.allOption' }}</option>
                         <option value="Manufacturing">Manufacturing</option>
                         <option value="Services">Services</option>
                       </select>
@@ -90,9 +91,9 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
                   }
                   @if (show('States')) {
                     <div class="col-sm-4">
-                      <label for="incState"><p>State</p></label>
+                      <label for="incState"><p>{{ 'State' | t: 'public.incentives.stateLabel' }}</p></label>
                       <select id="incState" class="form-select" [value]="state()" (change)="filter({ id: value($event) })">
-                        <option value="">Select</option>
+                        <option value="">{{ 'Select' | t: 'public.incentives.selectOption' }}</option>
                         @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
                       </select>
                     </div>
@@ -106,18 +107,18 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
 
           @if (data(); as d) {
             @if (show('Common')) {
-              <ng-container *ngTemplateOutlet="incSection; context: { title: 'Incentives (Ministry Of MSME)', items: d.common, none: 'No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.', id: 'incCommon' }" />
+              <ng-container *ngTemplateOutlet="incSection; context: { title: texts().commonTitle, items: d.common, none: texts().commonEmpty, id: 'incCommon' }" />
             }
             @if (show('Financial')) {
               @for (dept of d.financialDepartments; track dept) {
-                <ng-container *ngTemplateOutlet="incSection; context: { title: dept, items: byDept(d.financial, dept), none: 'No Financial Incentives available currently, please check again as Government may introduce incentives soon.', id: 'incFinancial' }" />
+                <ng-container *ngTemplateOutlet="incSection; context: { title: dept, items: byDept(d.financial, dept), none: texts().financialEmpty, id: 'incFinancial' }" />
               }
             }
             @if (show('Other')) {
-              <ng-container *ngTemplateOutlet="incSection; context: { title: 'Other Incentives', items: d.other, none: 'No Other Incentives available currently, please check again as Government may introduce incentives soon.', id: 'incOther' }" />
+              <ng-container *ngTemplateOutlet="incSection; context: { title: texts().otherTitle, items: d.other, none: texts().otherEmpty, id: 'incOther' }" />
             }
             @if (show('States')) {
-              <ng-container *ngTemplateOutlet="incSection; context: { title: 'State Incentives', items: d.states, none: 'No State Incentives available currently, please check again as Government may introduce incentives soon.', id: 'incStates' }" />
+              <ng-container *ngTemplateOutlet="incSection; context: { title: texts().statesTitle, items: d.states, none: texts().statesEmpty, id: 'incStates' }" />
             }
           }
         </div>
@@ -139,13 +140,13 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
                         @if (row.contactPerson) { <p><img src="/Images/svgicons/user.svg" alt="" />{{ row.contactPerson }}</p> }
                         @if (row.email) { <p><img src="/Images/svgicons/mail.svg" alt="" /> {{ row.email }}</p> }
                         @if (row.mobileNo) { <p><img src="/Images/svgicons/call.svg" alt="" /> {{ row.mobileNo }}</p> }
-                        @if (row.videoLink) { <p><img src="/Images/svgicons/video.svg" alt="" /> <a [href]="row.videoLink" target="_blank" rel="noopener">Watch Video</a></p> }
-                        @if (row.document1) { <p><img src="/Images/svgicons/document.svg" alt="" /> <a [href]="row.document1" target="_blank" rel="noopener">Doc-1</a></p> }
-                        @if (row.document2) { <p><img src="/Images/svgicons/document.svg" alt="" /> <a [href]="row.document2" target="_blank" rel="noopener">Doc-2</a></p> }
+                        @if (row.videoLink) { <p><img src="/Images/svgicons/video.svg" alt="" /> <a [href]="row.videoLink" target="_blank" rel="noopener">{{ 'Watch Video' | t: 'public.incentives.videoLink' }}</a></p> }
+                        @if (row.document1) { <p><img src="/Images/svgicons/document.svg" alt="" /> <a [href]="row.document1" target="_blank" rel="noopener">{{ 'Doc-1' | t: 'public.incentives.document1Link' }}</a></p> }
+                        @if (row.document2) { <p><img src="/Images/svgicons/document.svg" alt="" /> <a [href]="row.document2" target="_blank" rel="noopener">{{ 'Doc-2' | t: 'public.incentives.document2Link' }}</a></p> }
                         @if (row.webLink) {
                           <div>
                             <a [href]="row.webLink" target="_blank" rel="noopener" class="btn btn-primary">
-                              <span class="incentive-call"><span>Avail</span><img src="/Images/svgicons/nav-white.svg" alt="" /></span>
+                              <span class="incentive-call"><span>{{ 'Avail' | t: 'public.incentives.availButton' }}</span><img src="/Images/svgicons/nav-white.svg" alt="" /></span>
                             </a>
                           </div>
                         }
@@ -180,6 +181,16 @@ export class PublicIncentivesPage {
   private readonly auth = inject(AuthService);
   protected readonly section = computed(() => (this.query().get('it') ?? '') as Section | '');
   protected readonly data = signal<IncentiveDetails | null>(null);
+  /** The section titles and "none" lines (the financial sections are titled by their department, from the server). */
+  protected readonly texts = computed(() => ({
+    commonTitle: t('public.incentives.common.title', 'Incentives (Ministry Of MSME)'),
+    commonEmpty: t('public.incentives.common.empty', 'No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.'),
+    financialEmpty: t('public.incentives.financial.empty', 'No Financial Incentives available currently, please check again as Government may introduce incentives soon.'),
+    otherTitle: t('public.incentives.other.title', 'Other Incentives'),
+    otherEmpty: t('public.incentives.other.empty', 'No Other Incentives available currently, please check again as Government may introduce incentives soon.'),
+    statesTitle: t('public.incentives.states.title', 'State Incentives'),
+    statesEmpty: t('public.incentives.states.empty', 'No State Incentives available currently, please check again as Government may introduce incentives soon.'),
+  }));
   protected readonly error = signal('');
 
   constructor() {

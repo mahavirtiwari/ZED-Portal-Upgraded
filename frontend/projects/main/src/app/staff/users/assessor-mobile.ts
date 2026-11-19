@@ -3,6 +3,7 @@ import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http
 import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { ADMIN_PORTAL } from '../admin-portal';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
@@ -91,71 +92,74 @@ const SHOWN = 5;
  */
 @Component({
   selector: 'zed-assessor-mobile',
-  imports: [DatePipe, ConfirmDialog],
+  imports: [DatePipe, ConfirmDialog, TextPipe],
   template: `
     <section class="am" [class.zed-card]="!plain()" aria-labelledby="am-title" data-rail="mobile">
       <h4 class="am-head" id="am-title">
         <span class="am-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2" /></svg></span>
-        Registered mobile
+        {{ 'Registered mobile' | t: 'staff.assessorMobile.title' }}
         @if (devices().length) {
-          <button type="button" class="btn btn-outline-danger am-release" [disabled]="busy()" (click)="askRelease()">Release Mobile</button>
+          <button type="button" class="btn btn-outline-danger am-release" [disabled]="busy()" (click)="askRelease()">{{ 'Release Mobile' | t: 'staff.assessorMobile.releaseButton' }}</button>
         }
       </h4>
       <div class="am-body">
         @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
         @if (loading() && !data()) {
-          <p class="am-muted" role="status">Loading…</p>
+          <p class="am-muted" role="status">{{ 'Loading…' | t: 'staff.assessorMobile.loading' }}</p>
         } @else if (notAssessor()) {
-          <p class="am-note">{{ userId() }} does not use an app of this portal.</p>
+          <p class="am-note">{{ '{id} does not use an app of this portal.' | t: 'staff.assessorMobile.notAppUser' : { id: userId() } }}</p>
         } @else if (data(); as d) {
-          @if (d.refusedToday) { <p class="am-note is-warn" data-refused>A sign-in from another phone was refused today.</p> }
+          @if (d.refusedToday) { <p class="am-note is-warn" data-refused>{{ 'A sign-in from another phone was refused today.' | t: 'staff.assessorMobile.refusedNote' }}</p> }
           @for (dev of devices(); track dev.deviceId) {
             @if (devices().length > 1 || dev.appName) { <p class="am-app">{{ dev.appName || dev.app }}</p> }
             <dl class="am-facts">
-              <div class="am-wide"><dt>Make and model</dt><dd>{{ dev.model || dev.make || '—' }}</dd></div>
-              <div><dt>OS</dt><dd>{{ os(dev) }}</dd></div>
-              <div><dt>App version</dt><dd>{{ dev.appVersion || '—' }}</dd></div>
-              <div><dt>Registered on</dt><dd>@if (dev.firstSeenAt) { {{ dev.firstSeenAt | date: 'dd-MM-yyyy' }} } @else { — }</dd></div>
-              <div><dt>Last sign-in</dt><dd>@if (dev.lastLoginAt) { {{ dev.lastLoginAt | date: 'dd-MM-yyyy HH:mm' }} } @else { — }</dd></div>
-              <div class="am-wide"><dt>IP address</dt><dd>{{ dev.lastIp || '—' }}@if (dev.firstIp && dev.firstIp !== dev.lastIp) { <small> · first {{ dev.firstIp }}</small> }</dd></div>
+              <div class="am-wide"><dt>{{ 'Make and model' | t: 'staff.assessorMobile.fact.modelLabel' }}</dt><dd>{{ dev.model || dev.make || '—' }}</dd></div>
+              <div><dt>{{ 'OS' | t: 'staff.assessorMobile.fact.osLabel' }}</dt><dd>{{ os(dev) }}</dd></div>
+              <div><dt>{{ 'App version' | t: 'staff.assessorMobile.fact.appVersionLabel' }}</dt><dd>{{ dev.appVersion || '—' }}</dd></div>
+              <div><dt>{{ 'Registered on' | t: 'staff.assessorMobile.fact.registeredOnLabel' }}</dt><dd>@if (dev.firstSeenAt) { {{ dev.firstSeenAt | date: 'dd-MM-yyyy' }} } @else { — }</dd></div>
+              <div><dt>{{ 'Last sign-in' | t: 'staff.assessorMobile.fact.lastSignInLabel' }}</dt><dd>@if (dev.lastLoginAt) { {{ dev.lastLoginAt | date: 'dd-MM-yyyy HH:mm' }} } @else { — }</dd></div>
+              <div class="am-wide"><dt>{{ 'IP address' | t: 'staff.assessorMobile.fact.ipLabel' }}</dt><dd>{{ dev.lastIp || '—' }}@if (dev.firstIp && dev.firstIp !== dev.lastIp) { <small> · {{ 'first {ip}' | t: 'staff.assessorMobile.fact.firstIp' : { ip: dev.firstIp } }}</small> }</dd></div>
             </dl>
           } @empty {
-            <p class="am-note">Not registered: the next sign-in registers the phone it comes from.</p>
+            <p class="am-note">{{ 'Not registered: the next sign-in registers the phone it comes from.' | t: 'staff.assessorMobile.notRegistered' }}</p>
           }
-          <p class="am-hint">{{ userId() }} can sign in only on the registered phone. Release it when the phone is changed or lost.</p>
+          <p class="am-hint">{{ '{id} can sign in only on the registered phone. Release it when the phone is changed or lost.' | t: 'staff.assessorMobile.hint' : { id: userId() } }}</p>
 
-          <h5 class="am-sub">Recent sign-ins</h5>
+          <h5 class="am-sub">{{ 'Recent sign-ins' | t: 'staff.assessorMobile.signIns.title' }}</h5>
           @if (d.signIns.length) {
             <ul class="am-list">
               @for (s of shownSignIns(); track $index) {
                 <li [class.is-bad]="s.result !== 'Success'">
                   <span class="am-when">{{ utc(s.at) | date: 'dd-MM-yyyy HH:mm' }}</span>
-                  <span class="status-badge" [class.is-active]="s.result === 'Success'" [class.is-rejected]="s.result !== 'Success'">{{ s.result === 'Success' ? 'Signed in' : 'Refused' }}</span>
-                  <span class="am-line">{{ s.deviceModel || 'Phone not sent' }} · {{ s.ipAddress || 'IP not known' }}@if (s.appVersion) { · app {{ s.appVersion }} }</span>
+                  <span class="status-badge" [class.is-active]="s.result === 'Success'" [class.is-rejected]="s.result !== 'Success'">{{ s.result === 'Success' ? ('Signed in' | t: 'staff.assessorMobile.signIns.ok') : ('Refused' | t: 'staff.assessorMobile.signIns.refused') }}</span>
+                  @let sm = s.deviceModel || ('Phone not sent' | t: 'staff.assessorMobile.signIns.noModel');
+                  @let sip = s.ipAddress || ('IP not known' | t: 'staff.assessorMobile.signIns.noIp');
+                  <span class="am-line">{{ s.appVersion ? ('{model} · {ip} · app {version}' | t: 'staff.assessorMobile.signIns.lineApp' : { model: sm, ip: sip, version: s.appVersion })
+                    : ('{model} · {ip}' | t: 'staff.assessorMobile.signIns.line' : { model: sm, ip: sip }) }}</span>
                   @if (s.result !== 'Success' && s.reason) { <small class="am-reason">{{ s.reason }}</small> }
                 </li>
               }
             </ul>
             @if (d.signIns.length > shown) {
-              <button type="button" class="btn btn-link am-more" (click)="all.set(!all())">{{ all() ? 'Show less' : 'Show all ' + d.signIns.length }}</button>
+              <button type="button" class="btn btn-link am-more" (click)="all.set(!all())">{{ all() ? ('Show less' | t: 'staff.assessorMobile.signIns.lessButton') : ('Show all {count}' | t: 'staff.assessorMobile.signIns.allButton' : { count: d.signIns.length }) }}</button>
             }
           } @else {
-            <p class="am-muted">No sign-ins yet.</p>
+            <p class="am-muted">{{ 'No sign-ins yet.' | t: 'staff.assessorMobile.signIns.empty' }}</p>
           }
 
-          <h5 class="am-sub">Release history</h5>
+          <h5 class="am-sub">{{ 'Release history' | t: 'staff.assessorMobile.releases.title' }}</h5>
           @if (d.releases?.length) {
             <ul class="am-list" data-releases>
               @for (r of d.releases; track $index) {
                 <li>
                   <span class="am-when">{{ r.at | date: 'dd-MM-yyyy HH:mm' }}</span>
-                  <span class="am-line">{{ r.model || 'Phone' }} released by {{ r.releasedBy || '—' }}</span>
+                  <span class="am-line">{{ '{model} released by {by}' | t: 'staff.assessorMobile.releases.line' : { model: r.model || ('Phone' | t: 'staff.assessorMobile.releases.noModel'), by: r.releasedBy || '—' } }}</span>
                   @if (r.reason) { <small class="am-why">“{{ r.reason }}”</small> }
                 </li>
               }
             </ul>
           } @else {
-            <p class="am-muted">Never released.</p>
+            <p class="am-muted">{{ 'Never released.' | t: 'staff.assessorMobile.releases.empty' }}</p>
           }
         }
       </div>
@@ -206,8 +210,8 @@ export class AssessorMobilePanel {
   readonly plain = input(false);
   /** The user's name, for the release pop-up. */
   readonly name = input<string | null>(null);
-  /** "assessor" or "consultant", for the release pop-up. */
-  readonly word = input('assessor');
+  /** "assessor" or "consultant", for the release pop-up; empty: the standard "assessor". */
+  readonly word = input('');
   /** After a release (a list refreshes its Phone chip). */
   readonly released = output<string>();
 
@@ -271,7 +275,7 @@ export class AssessorMobilePanel {
   protected askRelease(): void {
     this.failed.set('');
     const model = this.devices().map((d) => d.model || d.make).find(Boolean);
-    this.ask.set(releaseMobileAsk(this.name(), this.userId(), model, this.word()));
+    this.ask.set(releaseMobileAsk(this.name(), this.userId(), model, this.word() || t('staff.assessorMobile.word', 'assessor')));
   }
 
   protected closeRelease(): void {
@@ -286,7 +290,7 @@ export class AssessorMobilePanel {
       const r = await firstValueFrom(releasePhone(this.http, this.userId(), reason, this.context));
       this.busy.set(false);
       this.ask.set(null);
-      this.toast.success('Mobile released', r.message);
+      this.toast.success(t('staff.assessorMobile.toast.released', 'Mobile released'), r.message);
       this.released.emit(this.userId());
       await this.load();
     } catch (err) {

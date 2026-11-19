@@ -7,6 +7,7 @@ import { DocumentRole, DocumentRow, MastersApi } from './masters.api';
 import { PagedView, PagerComponent } from '../pager';
 import { AdminPortalService, PORTAL_API_BASE } from '../admin-portal';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Same list as the API (MasterUploads.DocumentTypes); the API checks type, content and size again. */
 export const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.txt', '.jpg', '.jpeg', '.png'];
@@ -48,15 +49,15 @@ interface DocumentIcon {
  */
 @Component({
   selector: 'zed-staff-documents',
-  imports: [FormsModule, DatePipe, PagerComponent],
+  imports: [FormsModule, DatePipe, PagerComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Documents/Videos</h3>
-        <p class="page-sub">Publish documents and videos, and control which roles can access them.</p>
+        <h3 class="registration-title">{{ 'Documents/Videos' | t: 'staff.documentsVideos.title' }}</h3>
+        <p class="page-sub">{{ 'Publish documents and videos, and control which roles can access them.' | t: 'staff.documentsVideos.sub' }}</p>
       </div>
       <div class="page-actions">
-        <button type="button" class="btn btn-primary" (click)="openAdd()">+ Add document</button>
+        <button type="button" class="btn btn-primary" (click)="openAdd()">{{ '+ Add document' | t: 'staff.documentsVideos.add.button' }}</button>
       </div>
     </div>
     @if (error()) {
@@ -67,27 +68,29 @@ interface DocumentIcon {
     }
 
     <div class="doc-stats">
-      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Documents and videos</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().files }}</span><span class="stat-label">Files to download</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().videos }}</span><span class="stat-label">Video links</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().rolesUsed }}<small>/{{ roles().length }}</small></span><span class="stat-label">Roles given documents</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Documents and videos' | t: 'staff.documentsVideos.count.total' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().files }}</span><span class="stat-label">{{ 'Files to download' | t: 'staff.documentsVideos.count.files' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().videos }}</span><span class="stat-label">{{ 'Video links' | t: 'staff.documentsVideos.count.videos' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().rolesUsed }}<small>/{{ roles().length }}</small></span><span class="stat-label">{{ 'Roles given documents' | t: 'staff.documentsVideos.count.roles' }}</span></div>
     </div>
 
     <section class="zed-card" aria-labelledby="doc-library-h">
       <div class="doc-head">
-        <h5 class="doc-h m-0" id="doc-library-h">Document Library <span class="zed-chip">{{ shown().length }} document{{ shown().length === 1 ? '' : 's' }}</span></h5>
+        <h5 class="doc-h m-0" id="doc-library-h">{{ 'Document Library' | t: 'staff.documentsVideos.library.title' }} <span class="zed-chip">{{ shown().length === 1
+          ? ('{count} document' | t: 'staff.documentsVideos.library.count.one' : { count: shown().length }) : ('{count} documents' | t: 'staff.documentsVideos.library.count.many' : { count: shown().length }) }}</span></h5>
       </div>
       <div class="doc-toolbar">
-        <input class="form-control doc-search" type="search" placeholder="Search name or description" aria-label="Search documents" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-        <div class="seg" role="group" aria-label="Type">
-          @for (k of kinds; track k.key) {
+        <input class="form-control doc-search" type="search" [placeholder]="'Search name or description' | t: 'staff.documentsVideos.search.placeholder'"
+               [attr.aria-label]="'Search documents' | t: 'staff.documentsVideos.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <div class="seg" role="group" [attr.aria-label]="'Type' | t: 'staff.documentsVideos.kindFilter.aria'">
+          @for (k of kinds(); track k.key) {
             <button type="button" [class.active]="kindFilter() === k.key" [attr.aria-pressed]="kindFilter() === k.key" (click)="kindFilter.set(k.key)">{{ k.label }}</button>
           }
         </div>
       </div>
-      <div class="role-filter" role="group" aria-label="Role">
-        <span class="role-filter-label">Who can open:</span>
-        <button type="button" class="role-pill" [class.active]="!roleFilter()" [attr.aria-pressed]="!roleFilter()" (click)="roleFilter.set('')">All roles <span class="pill-count">{{ documents().length }}</span></button>
+      <div class="role-filter" role="group" [attr.aria-label]="'Role' | t: 'staff.documentsVideos.roleFilter.aria'">
+        <span class="role-filter-label">{{ 'Who can open:' | t: 'staff.documentsVideos.roleFilter.label' }}</span>
+        <button type="button" class="role-pill" [class.active]="!roleFilter()" [attr.aria-pressed]="!roleFilter()" (click)="roleFilter.set('')">{{ 'All roles' | t: 'staff.documentsVideos.roleFilter.all.button' }} <span class="pill-count">{{ documents().length }}</span></button>
         @for (r of roles(); track r.key) {
           <button type="button" class="role-pill" [class.active]="roleFilter() === r.key" [class.none]="!roleCount(r.key)" [attr.aria-pressed]="roleFilter() === r.key"
                   [attr.data-role]="r.key" (click)="roleFilter.set(r.key)">{{ r.label }} <span class="pill-count">{{ roleCount(r.key) }}</span></button>
@@ -107,45 +110,46 @@ interface DocumentIcon {
           <div class="doc-item-main">
             <div class="doc-title">
               <strong>{{ d.documentName }}</strong>
-              <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span>
+              <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? ('Video' | t: 'staff.documentsVideos.kind.video.label') : ('File' | t: 'staff.documentsVideos.kind.file.label') }}</span>
             </div>
             @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
             @if (cons() || surv()) {
-              <div class="shown-on" role="group" [attr.aria-label]="'Shown on, ' + d.documentName">
-                <span class="shown-label">Shown on</span>
-                <span class="portal-tick on" title="This list is the ZED Certification portal's">ZED Certification ✓</span>
+              <div class="shown-on" role="group" [attr.aria-label]="'Shown on, {name}' | t: 'staff.documentsVideos.shownOn.aria' : { name: d.documentName }">
+                <span class="shown-label">{{ 'Shown on' | t: 'staff.documentsVideos.shownOn.label' }}</span>
+                <span class="portal-tick on" [title]="mainTooltip()">{{ 'ZED Certification ✓' | t: 'staff.documentsVideos.shownOn.main.label' }}</span>
                 @if (cons()) {
                   <label class="portal-tick" [class.on]="!!twinOf(d)">
-                    <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show ' + d.documentName + ' on the Consultancy portal'" />
-                    Consultancy
+                    <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show {name} on the Consultancy portal' | t: 'staff.documentsVideos.shownOn.consultancy.aria' : { name: d.documentName }" />
+                    {{ 'Consultancy' | t: 'staff.documentsVideos.portal.consultancy.label' }}
                   </label>
                 }
                 @if (surv()) {
                   <label class="portal-tick" [class.on]="!!twinOf(d, 'surveillance')" data-surveillance-tick>
-                    <input type="checkbox" [checked]="!!twinOf(d, 'surveillance')" [disabled]="saving()" (change)="toggleOther(d, 'surveillance')" [attr.aria-label]="'Show ' + d.documentName + ' on the Surveillance portal'" />
-                    Surveillance
+                    <input type="checkbox" [checked]="!!twinOf(d, 'surveillance')" [disabled]="saving()" (change)="toggleOther(d, 'surveillance')" [attr.aria-label]="'Show {name} on the Surveillance portal' | t: 'staff.documentsVideos.shownOn.surveillance.aria' : { name: d.documentName }" />
+                    {{ 'Surveillance' | t: 'staff.documentsVideos.portal.surveillance.label' }}
                   </label>
                 }
               </div>
             }
             <div class="doc-chips">
               @for (k of d.roles; track k) { <span class="doc-chip">{{ roleLabel(k) }}</span> }
-              @if (!d.roles.length) { <span class="doc-chip legacy">MSMEs only (no roles set)</span> }
-              @if (d.createdDate) { <span class="doc-added">Added {{ d.createdDate | date: 'dd-MM-yyyy' }}</span> }
+              @if (!d.roles.length) { <span class="doc-chip legacy">{{ 'MSMEs only (no roles set)' | t: 'staff.documentsVideos.legacy.chip' }}</span> }
+              @if (d.createdDate) { <span class="doc-added">{{ 'Added {date}' | t: 'staff.documentsVideos.added.label' : { date: (d.createdDate | date: 'dd-MM-yyyy') } }}</span> }
             </div>
           </div>
           <div class="row-actions">
             @if (d.videoUrl) {
-              <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">Watch</a>
+              <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">{{ 'Watch' | t: 'staff.documentsVideos.watch.link' }}</a>
             } @else if (d.downloadUrl) {
-              <a class="btn btn-sm btn-outline-primary" [href]="d.downloadUrl" target="_blank" rel="noopener">Download</a>
+              <a class="btn btn-sm btn-outline-primary" [href]="d.downloadUrl" target="_blank" rel="noopener">{{ 'Download' | t: 'staff.documentsVideos.download.link' }}</a>
             }
-            <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit ' + d.documentName" (click)="edit(d)">Edit</button>
-            <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" [attr.aria-label]="'Delete ' + d.documentName" (click)="remove(d)">Delete</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit {name}' | t: 'staff.documentsVideos.edit.aria' : { name: d.documentName }" (click)="edit(d)">{{ 'Edit' | t: 'staff.documentsVideos.edit.button' }}</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" [attr.aria-label]="'Delete {name}' | t: 'staff.documentsVideos.delete.aria' : { name: d.documentName }" (click)="remove(d)">{{ 'Delete' | t: 'staff.documentsVideos.delete.button' }}</button>
           </div>
         </div>
       } @empty {
-        <div class="no-data">{{ documents().length ? 'Nothing matches the search and filters.' : 'No documents published yet. Use + Add document to upload the first one.' }}</div>
+        <div class="no-data">{{ documents().length ? ('Nothing matches the search and filters.' | t: 'staff.documentsVideos.noMatch.empty')
+          : ('No documents published yet. Use + Add document to upload the first one.' | t: 'staff.documentsVideos.empty') }}</div>
       }
       @if (shown().length) {
         <zed-pager [pager]="library" />
@@ -153,26 +157,26 @@ interface DocumentIcon {
     </section>
 
     @if (consError()) {
-      <div class="alert alert-warning mt-3" role="status">Consultancy portal: {{ consError() }} Its documents are not shown here.</div>
+      <div class="alert alert-warning mt-3" role="status">{{ 'Consultancy portal: {error} Its documents are not shown here.' | t: 'staff.documentsVideos.consultancy.error' : { error: consError() } }}</div>
     }
     @if (consOnly().length) {
       <section class="zed-card mt-3" aria-labelledby="doc-cons-h">
-        <h5 class="doc-h" id="doc-cons-h">Only on the Consultancy portal <span class="zed-chip">{{ consOnly().length }}</span></h5>
+        <h5 class="doc-h" id="doc-cons-h">{{ 'Only on the Consultancy portal' | t: 'staff.documentsVideos.consultancyOnly.title' }} <span class="zed-chip">{{ consOnly().length }}</span></h5>
         @for (d of consOnly(); track d.id) {
           <div class="doc-item">
             <div class="doc-item-main">
-              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span></div>
+              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? ('Video' | t: 'staff.documentsVideos.kind.video.label') : ('File' | t: 'staff.documentsVideos.kind.file.label') }}</span></div>
               @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
               <div class="doc-chips">@for (k of d.roles; track k) { <span class="doc-chip">{{ consRoleLabel(k) }}</span> }</div>
             </div>
             <div class="row-actions">
               @if (d.videoUrl) {
-                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">Watch</a>
+                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">{{ 'Watch' | t: 'staff.documentsVideos.watch.link' }}</a>
               } @else if (d.downloadUrl) {
-                <a class="btn btn-sm btn-outline-primary" [href]="consBase + d.downloadUrl" target="_blank" rel="noopener">Download</a>
+                <a class="btn btn-sm btn-outline-primary" [href]="consBase + d.downloadUrl" target="_blank" rel="noopener">{{ 'Download' | t: 'staff.documentsVideos.download.link' }}</a>
               }
-              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d)">Show on ZED Certification too</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFromConsultancy(d)">Remove</button>
+              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d)">{{ 'Show on ZED Certification too' | t: 'staff.documentsVideos.copyToMain.button' }}</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFromConsultancy(d)">{{ 'Remove' | t: 'staff.documentsVideos.removeOther.button' }}</button>
             </div>
           </div>
         }
@@ -180,26 +184,26 @@ interface DocumentIcon {
     }
 
     @if (survError()) {
-      <div class="alert alert-warning mt-3" role="status">Surveillance portal: {{ survError() }} Its documents are not shown here.</div>
+      <div class="alert alert-warning mt-3" role="status">{{ 'Surveillance portal: {error} Its documents are not shown here.' | t: 'staff.documentsVideos.surveillance.error' : { error: survError() } }}</div>
     }
     @if (survOnly().length) {
       <section class="zed-card mt-3" aria-labelledby="doc-surv-h" data-surveillance-only>
-        <h5 class="doc-h" id="doc-surv-h">Only on the Surveillance portal <span class="zed-chip">{{ survOnly().length }}</span></h5>
+        <h5 class="doc-h" id="doc-surv-h">{{ 'Only on the Surveillance portal' | t: 'staff.documentsVideos.surveillanceOnly.title' }} <span class="zed-chip">{{ survOnly().length }}</span></h5>
         @for (d of survOnly(); track d.id) {
           <div class="doc-item">
             <div class="doc-item-main">
-              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span></div>
+              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? ('Video' | t: 'staff.documentsVideos.kind.video.label') : ('File' | t: 'staff.documentsVideos.kind.file.label') }}</span></div>
               @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
               <div class="doc-chips">@for (k of d.roles; track k) { <span class="doc-chip">{{ otherRoleLabel(k, 'surveillance') }}</span> }</div>
             </div>
             <div class="row-actions">
               @if (d.videoUrl) {
-                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">Watch</a>
+                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">{{ 'Watch' | t: 'staff.documentsVideos.watch.link' }}</a>
               } @else if (d.downloadUrl) {
-                <a class="btn btn-sm btn-outline-primary" [href]="survBase + d.downloadUrl" target="_blank" rel="noopener">Download</a>
+                <a class="btn btn-sm btn-outline-primary" [href]="survBase + d.downloadUrl" target="_blank" rel="noopener">{{ 'Download' | t: 'staff.documentsVideos.download.link' }}</a>
               }
-              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d, 'surveillance')">Show on ZED Certification too</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFrom(d, 'surveillance')">Remove</button>
+              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d, 'surveillance')">{{ 'Show on ZED Certification too' | t: 'staff.documentsVideos.copyToMain.button' }}</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFrom(d, 'surveillance')">{{ 'Remove' | t: 'staff.documentsVideos.removeOther.button' }}</button>
             </div>
           </div>
         }
@@ -212,48 +216,49 @@ interface DocumentIcon {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="doc-add-title">Add a document or video</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="doc-add-title">{{ 'Add a document or video' | t: 'staff.documentsVideos.addDialog.title' }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.documentsVideos.dialog.close.aria'" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               <div class="doc-form">
                 <section class="doc-pane" aria-labelledby="doc-upload-h">
-                  <h5 class="doc-sec" id="doc-upload-h"><span class="sec-no">1</span> The document</h5>
-                  <span class="field-label">What are you adding?</span>
-                  <div class="kind-cards" role="group" aria-label="What are you adding?">
+                  <h5 class="doc-sec" id="doc-upload-h"><span class="sec-no">1</span> {{ 'The document' | t: 'staff.documentsVideos.form.document.heading' }}</h5>
+                  <span class="field-label">{{ 'What are you adding?' | t: 'staff.documentsVideos.form.kind.label' }}</span>
+                  <div class="kind-cards" role="group" [attr.aria-label]="'What are you adding?' | t: 'staff.documentsVideos.form.kind.label'">
                     <button type="button" class="kind-card" [class.active]="kind() === 'file'" [attr.aria-pressed]="kind() === 'file'" (click)="kind.set('file')">
-                      <strong>Upload a file</strong><small>PDF, Word, Excel, PowerPoint, CSV, text or an image</small>
+                      <strong>{{ 'Upload a file' | t: 'staff.documentsVideos.form.kind.file.button' }}</strong><small>{{ 'PDF, Word, Excel, PowerPoint, CSV, text or an image' | t: 'staff.documentsVideos.form.kind.file.note' }}</small>
                     </button>
                     <button type="button" class="kind-card" [class.active]="kind() === 'video'" [attr.aria-pressed]="kind() === 'video'" (click)="kind.set('video')">
-                      <strong>Video link</strong><small>A YouTube or hosted video, played from where it is</small>
+                      <strong>{{ 'Video link' | t: 'staff.documentsVideos.form.kind.video.button' }}</strong><small>{{ 'A YouTube or hosted video, played from where it is' | t: 'staff.documentsVideos.form.kind.video.note' }}</small>
                     </button>
                   </div>
-                  <label class="field-label" for="documentName">Document name<span class="req">*</span></label>
-                  <input #nameInput id="documentName" class="form-control" maxlength="200" placeholder="Enter document name" [(ngModel)]="documentName" />
-                  <label class="field-label doc-count-label" for="documentDescription">Description <span class="muted">{{ description.length }} / {{ max }}</span></label>
-                  <textarea id="documentDescription" class="form-control" rows="3" [attr.maxlength]="max" placeholder="Brief description of the document..." [(ngModel)]="description"></textarea>
+                  <label class="field-label" for="documentName">{{ 'Document name' | t: 'staff.documentsVideos.form.name.label' }}<span class="req">*</span></label>
+                  <input #nameInput id="documentName" class="form-control" maxlength="200" [placeholder]="'Enter document name' | t: 'staff.documentsVideos.form.name.placeholder'" [(ngModel)]="documentName" />
+                  <label class="field-label doc-count-label" for="documentDescription">{{ 'Description' | t: 'staff.documentsVideos.form.description.label' }} <span class="muted">{{ description.length }} / {{ max }}</span></label>
+                  <textarea id="documentDescription" class="form-control" rows="3" [attr.maxlength]="max" [placeholder]="'Brief description of the document...' | t: 'staff.documentsVideos.form.description.placeholder'" [(ngModel)]="description"></textarea>
                   @if (kind() === 'file') {
-                    <span class="field-label">File<span class="req">*</span></span>
+                    <span class="field-label">{{ 'File' | t: 'staff.documentsVideos.form.file.label' }}<span class="req">*</span></span>
                     <label class="doc-drop" [class.picked]="fileName()" for="fileControl">
                       <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                      <span class="doc-drop-title">{{ fileName() || 'Choose a file, or drop it here' }}</span>
-                      <span class="muted">{{ fileName() ? fileSize() + ' · click to choose another' : 'Supported: ' + accept + ' (max 5 MB)' }}</span>
+                      <span class="doc-drop-title">{{ fileName() || ('Choose a file, or drop it here' | t: 'staff.documentsVideos.form.file.drop.label') }}</span>
+                      <span class="muted">{{ fileName() ? ('{size} · click to choose another' | t: 'staff.documentsVideos.form.file.picked.note' : { size: fileSize() })
+                        : ('Supported: {types} (max 5 MB)' | t: 'staff.documentsVideos.form.file.supported.note' : { types: accept }) }}</span>
                       <input #fileInput type="file" id="fileControl" [accept]="accept" (change)="pick($event)" />
                     </label>
                   } @else {
-                    <label class="field-label" for="videoUrl">Video link<span class="req">*</span></label>
-                    <input id="videoUrl" class="form-control" placeholder="Paste the YouTube or hosted video address (https://)" [(ngModel)]="videoUrl" />
-                    <small class="muted d-block mt-1">The video is played from where it is hosted. Nothing is uploaded or stored here.</small>
+                    <label class="field-label" for="videoUrl">{{ 'Video link' | t: 'staff.documentsVideos.form.video.label' }}<span class="req">*</span></label>
+                    <input id="videoUrl" class="form-control" [placeholder]="'Paste the YouTube or hosted video address (https://)' | t: 'staff.documentsVideos.form.video.placeholder'" [(ngModel)]="videoUrl" />
+                    <small class="muted d-block mt-1">{{ 'The video is played from where it is hosted. Nothing is uploaded or stored here.' | t: 'staff.documentsVideos.form.video.note' }}</small>
                   }
                 </section>
                 <section class="doc-pane doc-roles" aria-labelledby="doc-roles-h">
-                  <h5 class="doc-sec" id="doc-roles-h"><span class="sec-no">2</span> Who can open it</h5>
-                  <p class="muted">Turn on a role to let every user of that account type open the document.</p>
+                  <h5 class="doc-sec" id="doc-roles-h"><span class="sec-no">2</span> {{ 'Who can open it' | t: 'staff.documentsVideos.form.roles.heading' }}</h5>
+                  <p class="muted">{{ 'Turn on a role to let every user of that account type open the document.' | t: 'staff.documentsVideos.form.roles.note' }}</p>
                   <div class="doc-roles-head">
-                    <span class="muted">{{ picked().size }} of {{ roles().length }} selected</span>
+                    <span class="muted">{{ '{picked} of {total} selected' | t: 'staff.documentsVideos.form.roles.selected.label' : { picked: picked().size, total: roles().length } }}</span>
                     <label class="doc-role doc-all" [class.on]="allPicked()">
-                      <input type="checkbox" [checked]="allPicked()" (change)="pickAll($any($event.target).checked)" /> Select all
+                      <input type="checkbox" [checked]="allPicked()" (change)="pickAll($any($event.target).checked)" /> {{ 'Select all' | t: 'staff.documentsVideos.form.roles.all.label' }}
                     </label>
                   </div>
                   <div class="doc-role-grid">
@@ -261,7 +266,7 @@ interface DocumentIcon {
                       <label class="doc-role" [class.on]="picked().has(r.key)"><input type="checkbox" [checked]="picked().has(r.key)" (change)="toggleRole(r.key)" /> {{ r.label }}</label>
                     }
                   </div>
-                  <small class="muted">Changes apply the next time each user opens the documents.</small>
+                  <small class="muted">{{ 'Changes apply the next time each user opens the documents.' | t: 'staff.documentsVideos.form.roles.applies.note' }}</small>
                 </section>
               </div>
               @if (formError()) {
@@ -271,14 +276,14 @@ interface DocumentIcon {
             <div class="modal-footer">
               <span class="me-auto d-flex flex-wrap gap-3 doc-also">
                 @if (cons()) {
-                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> Also show on the Consultancy portal</label>
+                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> {{ 'Also show on the Consultancy portal' | t: 'staff.documentsVideos.form.alsoConsultancy.label' }}</label>
                 }
                 @if (surv()) {
-                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoSurveillance" data-also-surveillance /> Also show on the Surveillance portal</label>
+                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoSurveillance" data-also-surveillance /> {{ 'Also show on the Surveillance portal' | t: 'staff.documentsVideos.form.alsoSurveillance.label' }}</label>
                 }
               </span>
-              <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Upload</button>
+              <button type="button" class="btn btn-default" (click)="adding.set(false)">{{ 'Cancel' | t: 'staff.documentsVideos.dialog.cancel.button' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">{{ 'Upload' | t: 'staff.documentsVideos.addDialog.upload.button' }}</button>
             </div>
           </div>
         </div>
@@ -292,30 +297,30 @@ interface DocumentIcon {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="doc-edit-title">Edit document</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="doc-edit-title">{{ 'Edit document' | t: 'staff.documentsVideos.editDialog.title' }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.documentsVideos.dialog.close.aria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               <div class="doc-form">
-                <section class="doc-pane" aria-label="The document">
-                  <h5 class="doc-sec"><span class="sec-no">1</span> The document</h5>
-                  <label class="field-label" for="editName">Document name<span class="req">*</span></label>
+                <section class="doc-pane" [attr.aria-label]="'The document' | t: 'staff.documentsVideos.form.document.heading'">
+                  <h5 class="doc-sec"><span class="sec-no">1</span> {{ 'The document' | t: 'staff.documentsVideos.form.document.heading' }}</h5>
+                  <label class="field-label" for="editName">{{ 'Document name' | t: 'staff.documentsVideos.form.name.label' }}<span class="req">*</span></label>
                   <input id="editName" class="form-control" maxlength="200" [(ngModel)]="e.documentName" />
-                  <label class="field-label doc-count-label" for="editDescription">Description <span class="muted">{{ e.description.length }} / {{ max }}</span></label>
+                  <label class="field-label doc-count-label" for="editDescription">{{ 'Description' | t: 'staff.documentsVideos.form.description.label' }} <span class="muted">{{ e.description.length }} / {{ max }}</span></label>
                   <textarea id="editDescription" class="form-control" rows="3" [attr.maxlength]="max" [(ngModel)]="e.description"></textarea>
                   @if (e.videoUrl !== null) {
-                    <label class="field-label" for="editVideo">Video link<span class="req">*</span></label>
+                    <label class="field-label" for="editVideo">{{ 'Video link' | t: 'staff.documentsVideos.form.video.label' }}<span class="req">*</span></label>
                     <input id="editVideo" class="form-control" [(ngModel)]="e.videoUrl" />
                   } @else {
-                    <span class="field-label">File</span>
-                    <div class="file-note">{{ e.fileName || 'Uploaded file' }} <small class="muted d-block">The file stays as it is. To change it, add the new file and delete this one.</small></div>
+                    <span class="field-label">{{ 'File' | t: 'staff.documentsVideos.form.file.label' }}</span>
+                    <div class="file-note">{{ e.fileName || ('Uploaded file' | t: 'staff.documentsVideos.editDialog.file.fallback.label') }} <small class="muted d-block">{{ 'The file stays as it is. To change it, add the new file and delete this one.' | t: 'staff.documentsVideos.editDialog.file.note' }}</small></div>
                   }
                 </section>
-                <section class="doc-pane doc-roles" aria-label="Who can open it">
-                  <h5 class="doc-sec"><span class="sec-no">2</span> Who can open it</h5>
+                <section class="doc-pane doc-roles" [attr.aria-label]="'Who can open it' | t: 'staff.documentsVideos.form.roles.heading'">
+                  <h5 class="doc-sec"><span class="sec-no">2</span> {{ 'Who can open it' | t: 'staff.documentsVideos.form.roles.heading' }}</h5>
                   <div class="doc-roles-head">
-                    <span class="muted">{{ e.roles.size }} of {{ roles().length }} selected</span>
+                    <span class="muted">{{ '{picked} of {total} selected' | t: 'staff.documentsVideos.form.roles.selected.label' : { picked: e.roles.size, total: roles().length } }}</span>
                   </div>
                   <div class="doc-role-grid">
                     @for (r of roles(); track r.key) {
@@ -329,8 +334,8 @@ interface DocumentIcon {
               }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.documentsVideos.dialog.cancel.button' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveEdit(e)">{{ 'Save' | t: 'staff.documentsVideos.editDialog.save.button' }}</button>
             </div>
           </div>
         </div>
@@ -338,7 +343,7 @@ interface DocumentIcon {
       <div class="modal-backdrop show"></div>
     }
     @if (saving()) {
-      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Saving…</span></div>
+      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Saving…' | t: 'staff.documentsVideos.saving.label' }}</span></div>
     }
   `,
   styles: `
@@ -460,12 +465,16 @@ export class DocumentsAdminPage {
 
   protected readonly accept = DOCUMENT_EXTENSIONS.join(',');
   protected readonly max = DESCRIPTION_MAX;
-  protected readonly kinds: readonly { key: DocumentKindFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'file', label: 'Files' },
-    { key: 'video', label: 'Videos' },
-  ];
+  protected readonly kinds = computed((): readonly { key: DocumentKindFilter; label: string }[] => [
+    { key: 'all', label: t('staff.documentsVideos.kindFilter.all', 'All') },
+    { key: 'file', label: t('staff.documentsVideos.kindFilter.files', 'Files') },
+    { key: 'video', label: t('staff.documentsVideos.kindFilter.videos', 'Videos') },
+  ]);
   protected readonly documents = signal<DocumentRow[]>([]);
+  /** The tooltip of the fixed "ZED Certification ✓" tick. */
+  protected mainTooltip(): string {
+    return t('staff.documentsVideos.shownOn.main.tooltip', "This list is the ZED Certification portal's");
+  }
   protected readonly roles = signal<DocumentRole[]>([]);
   protected readonly search = signal('');
   protected readonly roleFilter = signal('');
@@ -571,7 +580,7 @@ export class DocumentsAdminPage {
   /** The roles of a document that the target portal has (in its order). */
   private rolesFor(keys: string[], target: DocumentRole[], portalName: string): string[] {
     const mapped = target.map((r) => r.key).filter((k) => keys.includes(k));
-    if (!mapped.length) throw new Error(`None of its roles exist on the ${portalName} portal. Add it there with its own roles.`);
+    if (!mapped.length) throw new Error(t('staff.documentsVideos.noRoles.error', 'None of its roles exist on the {portal} portal. Add it there with its own roles.', { portal: portalName }));
     return mapped;
   }
 
@@ -579,7 +588,7 @@ export class DocumentsAdminPage {
   private async copy(d: DocumentRow, from: 'main' | OtherPortal, to: 'main' | OtherPortal, roles: string[]): Promise<void> {
     let file: File | null = null;
     if (!d.videoUrl) {
-      if (!d.downloadUrl) throw new Error('Its file is missing.');
+      if (!d.downloadUrl) throw new Error(t('staff.documentsVideos.fileMissing.error', 'Its file is missing.'));
       const blob = await firstValueFrom(this.api.documentFile(d.downloadUrl, from === 'main' ? undefined : from));
       file = new File([blob], d.fileName ?? d.documentName, { type: blob.type });
     }
@@ -594,31 +603,33 @@ export class DocumentsAdminPage {
 
   /** The "Consultancy" / "Surveillance" tick: copies the document there, or removes it there. */
   protected async toggleOther(d: DocumentRow, p: OtherPortal): Promise<void> {
-    const name = PORTAL_NAMES[p];
+    const name = portalLabel(p);
     const twin = this.twinOf(d, p);
     if (twin) {
       if (!(await this.confirms.ask({
-        title: `Remove from the ${name} Portal?`, message: `"${d.documentName}" is removed from the ${name} portal. It stays on ZED Certification.`, confirmLabel: 'Remove', danger: true,
+        title: t('staff.documentsVideos.untick.title', 'Remove from the {portal} Portal?', { portal: name }),
+        message: t('staff.documentsVideos.untick.message', '"{name}" is removed from the {portal} portal. It stays on ZED Certification.', { name: d.documentName, portal: name }),
+        confirmLabel: t('staff.documentsVideos.untick.button', 'Remove'), danger: true,
       }))) {
         this.store(p).set({ ...this.store(p)()! });
         return;
       }
       await this.run(async () => {
         await firstValueFrom(this.api.deleteDocument(twin.id, p));
-        return `"${d.documentName}" removed from the ${name} portal.`;
+        return t('staff.documentsVideos.untick.toast', '"{name}" removed from the {portal} portal.', { name: d.documentName, portal: name });
       });
       return;
     }
     await this.run(async () => {
       await this.copy(d, 'main', p, this.rolesFor(d.roles, this.store(p)()!.roles, name));
-      return `"${d.documentName}" is now shown on the ${name} portal too.`;
+      return t('staff.documentsVideos.tick.toast', '"{name}" is now shown on the {portal} portal too.', { name: d.documentName, portal: name });
     });
   }
 
   protected async copyToMain(d: DocumentRow, from: OtherPortal = 'consultancy'): Promise<void> {
     await this.run(async () => {
-      await this.copy(d, from, 'main', this.rolesFor(d.roles, this.roles(), 'ZED Certification'));
-      return `"${d.documentName}" is now shown on the ZED Certification portal too.`;
+      await this.copy(d, from, 'main', this.rolesFor(d.roles, this.roles(), t('staff.documentsVideos.portal.main.label', 'ZED Certification')));
+      return t('staff.documentsVideos.copyToMain.toast', '"{name}" is now shown on the ZED Certification portal too.', { name: d.documentName });
     });
   }
 
@@ -628,8 +639,9 @@ export class DocumentsAdminPage {
 
   protected async removeFrom(d: DocumentRow, p: OtherPortal): Promise<void> {
     if (!(await this.confirms.ask({
-      title: `Remove from the ${PORTAL_NAMES[p]} Portal?`, message: `"${d.documentName}" is removed from the ${PORTAL_NAMES[p]} portal. No one there will see it any more.`,
-      confirmLabel: 'Remove', danger: true,
+      title: t('staff.documentsVideos.removeOther.title', 'Remove from the {portal} Portal?', { portal: portalLabel(p) }),
+      message: t('staff.documentsVideos.removeOther.message', '"{name}" is removed from the {portal} portal. No one there will see it any more.', { name: d.documentName, portal: portalLabel(p) }),
+      confirmLabel: t('staff.documentsVideos.removeOther.confirm.button', 'Remove'), danger: true,
     }))) return;
     await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id, p))).message);
   }
@@ -687,7 +699,7 @@ export class DocumentsAdminPage {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
     const ext = file ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : '';
     if (file && (!DOCUMENT_EXTENSIONS.includes(ext) || file.size > DOCUMENT_MAX_BYTES)) {
-      this.formError.set('Please upload a valid document (up to 5 MB).');
+      this.formError.set(t('staff.documentsVideos.form.file.invalid.error', 'Please upload a valid document (up to 5 MB).'));
       this.clearFile();
       return;
     }
@@ -713,10 +725,10 @@ export class DocumentsAdminPage {
     this.formError.set('');
     this.success.set('');
     const video = this.kind() === 'video';
-    const missing = !this.documentName.trim() ? 'Please enter the document name.'
-      : video && !this.videoUrl.trim() ? 'Please enter the video link.'
-      : !video && !this.file ? 'Please select a file to upload.'
-      : this.picked().size === 0 ? 'Please tick at least one role that may open the document.' : '';
+    const missing = !this.documentName.trim() ? t('staff.documentsVideos.form.name.error', 'Please enter the document name.')
+      : video && !this.videoUrl.trim() ? t('staff.documentsVideos.form.video.error', 'Please enter the video link.')
+      : !video && !this.file ? t('staff.documentsVideos.form.file.error', 'Please select a file to upload.')
+      : this.picked().size === 0 ? t('staff.documentsVideos.form.roles.error', 'Please tick at least one role that may open the document.') : '';
     if (missing) {
       this.formError.set(missing);
       return;
@@ -732,12 +744,13 @@ export class DocumentsAdminPage {
         ...(this.alsoSurveillance && this.surv() ? (['surveillance'] as const) : []),
       ];
       for (const p of also) {
-        const name = PORTAL_NAMES[p];
+        const name = portalLabel(p);
         try {
           await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.store(p)()!.roles, name) }, p));
-          r.message += ` Also shown on the ${name} portal.`;
+          r.message += ' ' + t('staff.documentsVideos.alsoAdded.toast', 'Also shown on the {portal} portal.', { portal: name });
         } catch (err) {
-          r.message += ` Not added on the ${name} portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+          r.message += ' ' + t('staff.documentsVideos.notAdded.error', 'Not added on the {portal} portal: {error}',
+            { portal: name, error: err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err) });
         }
       }
       this.alsoConsultancy = false;
@@ -763,19 +776,20 @@ export class DocumentsAdminPage {
     const before = this.documents().find((d) => d.id === e.id);
     const twins = (['consultancy', 'surveillance'] as const)
       .map((p) => ({ p, twin: before ? this.twinOf(before, p) : undefined }))
-      .filter((t): t is { p: OtherPortal; twin: DocumentRow } => !!t.twin);
+      .filter((x): x is { p: OtherPortal; twin: DocumentRow } => !!x.twin);
     await this.run(async () => {
       const update = { documentName: e.documentName.trim(), description: e.description.trim(), videoUrl: e.videoUrl?.trim() ?? null, roles: this.ordered(e.roles) };
       const r = await firstValueFrom(this.api.updateDocument(e.id, update));
       this.editing.set(null);
       let message = r.message;
       for (const { p, twin } of twins) {
-        const name = PORTAL_NAMES[p];
+        const name = portalLabel(p);
         try {
           await firstValueFrom(this.api.updateDocument(twin.id, { ...update, roles: this.rolesFor(update.roles, this.store(p)()!.roles, name) }, p));
-          message += ` Updated on the ${name} portal too.`;
+          message += ' ' + t('staff.documentsVideos.alsoUpdated.toast', 'Updated on the {portal} portal too.', { portal: name });
         } catch (err) {
-          message += ` Not updated on the ${name} portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+          message += ' ' + t('staff.documentsVideos.notUpdated.error', 'Not updated on the {portal} portal: {error}',
+            { portal: name, error: err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err) });
         }
       }
       return message;
@@ -783,7 +797,11 @@ export class DocumentsAdminPage {
   }
 
   protected async remove(d: DocumentRow): Promise<void> {
-    if (!(await this.confirms.ask({ title: 'Remove the Document?', message: `"${d.documentName}" is removed. No one will see it any more.`, confirmLabel: 'Remove', danger: true }))) return;
+    if (!(await this.confirms.ask({
+      title: t('staff.documentsVideos.remove.title', 'Remove the Document?'),
+      message: t('staff.documentsVideos.remove.message', '"{name}" is removed. No one will see it any more.', { name: d.documentName }),
+      confirmLabel: t('staff.documentsVideos.remove.button', 'Remove'), danger: true,
+    }))) return;
     await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id))).message);
   }
 
@@ -807,7 +825,11 @@ export class DocumentsAdminPage {
 
 /** The portals whose documents the main Admin also manages here (Surveillance since 2026-11-08). */
 type OtherPortal = 'consultancy' | 'surveillance';
-const PORTAL_NAMES: Record<OtherPortal, string> = { consultancy: 'Consultancy', surveillance: 'Surveillance' };
+
+/** A portal's name as shown. */
+function portalLabel(p: OtherPortal): string {
+  return p === 'consultancy' ? t('staff.documentsVideos.portal.consultancy.label', 'Consultancy') : t('staff.documentsVideos.portal.surveillance.label', 'Surveillance');
+}
 
 /** The same document on two portals: same name (any case) and kind (file or video link). */
 function same(a: DocumentRow, b: DocumentRow): boolean {

@@ -6,6 +6,7 @@ import { MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { TextPipe, t } from '../../content/page-text';
 import { StaffLoginShell } from '../staff-login-shell';
 
 /**
@@ -14,28 +15,28 @@ import { StaffLoginShell } from '../staff-login-shell';
  */
 @Component({
   selector: 'zed-staff-forgot-password',
-  imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
+  imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell, TextPipe],
   template: `
     <zed-staff-login-shell>
-      <h1 class="text-center fw-bold" style="font-size: 28px">Forgot Password</h1>
+      <h1 class="text-center fw-bold" style="font-size: 28px">{{ 'Forgot Password' | t: 'staff.forgotPassword.title' }}</h1>
       @if (systemName) {
         <p class="text-center text-muted mb-3">{{ systemName }}</p>
       }
       @if (sent()) {
         <div class="alert alert-success" role="status">{{ sent() }}</div>
-        <a routerLink="/login" class="btn btn-primary w-100">Back to Login</a>
+        <a routerLink="/login" class="btn btn-primary w-100">{{ 'Back to Login' | t: 'staff.forgotPassword.backButton' }}</a>
       } @else {
         <form class="login-form zed-user-form" (ngSubmit)="submit()" novalidate>
-          <p class="text-muted small">Enter your User ID. A link to set a new password will be sent to the e-mail address registered for it.</p>
+          <p class="text-muted small">{{ 'Enter your User ID. A link to set a new password will be sent to the e-mail address registered for it.' | t: 'staff.forgotPassword.intro' }}</p>
           <div class="mb-3">
-            <label for="userId">User ID</label>
+            <label for="userId">{{ 'User ID' | t: 'staff.forgotPassword.userIdLabel' }}</label>
             <input id="userId" name="userId" class="form-control" autocomplete="username" [(ngModel)]="userId" required maxlength="50" />
           </div>
           <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
           <div class="d-grid col-12">
-            <button type="submit" class="btn btn-primary" [disabled]="busy()">Send Reset Link</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Send Reset Link' | t: 'staff.forgotPassword.sendButton' }}</button>
           </div>
-          <p class="text-center mt-3 mb-0"><a routerLink="/login">Back to Login</a></p>
+          <p class="text-center mt-3 mb-0"><a routerLink="/login">{{ 'Back to Login' | t: 'staff.forgotPassword.backLink' }}</a></p>
           @if (error()) {
             <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
           }
@@ -53,7 +54,10 @@ export class StaffForgotPasswordPage {
   private readonly http = inject(HttpClient);
   private readonly captcha = viewChild(Recaptcha);
 
-  protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
+  /** The portal's name (read each time: the Admin's wording may arrive after the page opened); '' on the main portal. */
+  protected get systemName(): string {
+    return PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
+  }
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly sent = signal('');
@@ -63,11 +67,11 @@ export class StaffForgotPasswordPage {
   protected async submit(): Promise<void> {
     this.error.set('');
     if (!this.userId.trim()) {
-      this.error.set('Please enter your User ID.');
+      this.error.set(t('staff.forgotPassword.error.noUserId', 'Please enter your User ID.'));
       return;
     }
     if (!this.captchaToken) {
-      this.error.set('Please complete the verification.');
+      this.error.set(t('staff.forgotPassword.error.captcha', 'Please complete the verification.'));
       return;
     }
     this.busy.set(true);

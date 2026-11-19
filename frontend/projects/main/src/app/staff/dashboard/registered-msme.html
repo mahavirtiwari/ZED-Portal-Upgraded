@@ -2,25 +2,25 @@
 <zed-dashboard-portal-switch [screens]="['registered-msme']" />
 <div class="page-head">
   <div>
-    <h3 class="registration-title">Registered MSME</h3>
-    <p class="page-sub">Units registered on the portal with their certification level and status.</p>
+    <h3 class="registration-title">{{ 'Registered MSME' | t: 'staff.registeredMsme.title' }}</h3>
+    <p class="page-sub">{{ 'Units registered on the portal with their certification level and status.' | t: 'staff.registeredMsme.sub' }}</p>
   </div>
 </div>
 
 <form class="zed-card" (ngSubmit)="doSearch()">
   <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
     <div class="filter">
-      <label class="form-label" for="searchBy">Search By</label>
+      <label class="form-label" for="searchBy">{{ 'Search By' | t: 'staff.registeredMsme.searchBy.label' }}</label>
       <select class="form-select" id="searchBy" name="searchBy" [(ngModel)]="searchBy">
-        @for (f of searchFields; track f) { <option [value]="f">{{ f }}</option> }
+        @for (f of searchFields; track f) { <option [value]="f">{{ searchText(f) }}</option> }
       </select>
     </div>
     <div class="filter">
-      <label class="form-label" for="search">{{ searchBy }}</label>
+      <label class="form-label" for="search">{{ searchText(searchBy) }}</label>
       <input type="text" class="form-control" id="search" name="search" maxlength="50" [(ngModel)]="search" />
     </div>
     <div class="filter">
-      <button type="submit" class="btn btn-primary">Search</button>
+      <button type="submit" class="btn btn-primary">{{ 'Search' | t: 'staff.registeredMsme.searchButton' }}</button>
     </div>
   </zed-list-filters>
 </form>
@@ -32,18 +32,18 @@
   <table class="table table-zed table-bordered">
     <thead>
       <tr>
-        <th class="text-center">S.No.</th>
-        <th class="text-center">Certification Level</th>
-        @if (main) { <th class="text-center">Certification Phase</th> }
-        @if (consultancy) { <th class="text-center">Milestone</th> }
-        @if (surveillance) { <th class="text-center">Surveillance No.</th> }
-        <th>Unit Name<br />ZedId<br />Registered Date</th>
-        <th class="text-center">Status</th>
-        @if (main) { <th class="text-center">First Surveillance Due Date</th> }
-        <th>Unit Address</th>
-        <th>State</th>
-        @if (showsAgency()) { <th>{{ agencyLabel }}<br />Udyam Number</th> }
-        <th class="text-center" style="width: 140px">Actions</th>
+        <th class="text-center">{{ 'S.No.' | t: 'staff.registeredMsme.column.serial' }}</th>
+        <th class="text-center">{{ 'Certification Level' | t: 'staff.registeredMsme.column.level' }}</th>
+        @if (main) { <th class="text-center">{{ 'Certification Phase' | t: 'staff.registeredMsme.column.phase' }}</th> }
+        @if (consultancy) { <th class="text-center">{{ 'Milestone' | t: 'staff.registeredMsme.column.milestone' }}</th> }
+        @if (surveillance) { <th class="text-center">{{ 'Surveillance No.' | t: 'staff.registeredMsme.column.surveillanceNo' }}</th> }
+        <th>{{ 'Unit Name' | t: 'staff.registeredMsme.column.unitName' }}<br />{{ 'ZedId' | t: 'staff.registeredMsme.column.zedId' }}<br />{{ 'Registered Date' | t: 'staff.registeredMsme.column.registeredDate' }}</th>
+        <th class="text-center">{{ 'Status' | t: 'staff.registeredMsme.column.status' }}</th>
+        @if (main) { <th class="text-center">{{ 'First Surveillance Due Date' | t: 'staff.registeredMsme.column.surveillanceDue' }}</th> }
+        <th>{{ 'Unit Address' | t: 'staff.registeredMsme.column.address' }}</th>
+        <th>{{ 'State' | t: 'staff.registeredMsme.column.state' }}</th>
+        @if (showsAgency()) { <th>{{ agencyLabel }}<br />{{ 'Udyam Number' | t: 'staff.registeredMsme.column.udyam' }}</th> }
+        <th class="text-center" style="width: 140px">{{ 'Actions' | t: 'staff.registeredMsme.column.actions' }}</th>
       </tr>
     </thead>
     <tbody>
@@ -57,7 +57,7 @@
           <td class="cell-lines">
             <strong>{{ s['PUnitName'] }}</strong>
             @if (seesHistory()) {
-              <a [routerLink]="['/staff/history']" [queryParams]="{ zedId: s['ZedId'] }" title="Customer history of this ZED ID">{{ s['ZedId'] }}</a>
+              <a [routerLink]="['/staff/history']" [queryParams]="{ zedId: s['ZedId'] }" [title]="'Customer history of this ZED ID' | t: 'staff.registeredMsme.historyTooltip'">{{ s['ZedId'] }}</a>
             } @else {
               <span>{{ s['ZedId'] }}</span>
             }
@@ -66,7 +66,7 @@
           <td class="text-center">@if (s['AssessmentStatus']) { <span class="status-badge is-info wrap">{{ s['AssessmentStatus'] }}</span> }</td>
           @if (main) {
             <td class="cell-lines text-center">
-              <span class="muted">{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}</span>
+              <span class="muted">{{ s['Certification'] === 'Bronze' ? ('Surveillance date:' | t: 'staff.registeredMsme.surveillanceDateLabel') : ('Surveillance 1 date:' | t: 'staff.registeredMsme.surveillance1DateLabel') }}</span>
               <span>{{ s['FirstSurveDueDate'] }}</span>
             </td>
           }
@@ -81,28 +81,28 @@
           }
           <td class="text-center">
             @if (isDisabled(s)) {
-              <span class="status-badge is-inactive">DISABLED</span>
+              <span class="status-badge is-inactive">{{ 'DISABLED' | t: 'staff.registeredMsme.disabledLabel' }}</span>
             } @else {
               <div class="row-actions justify-content-center">
                 @if (isSuperAdmin() && main) {
-                  <button type="button" class="btn btn-outline-primary" (click)="resend(s)">Resend Details</button>
+                  <button type="button" class="btn btn-outline-primary" (click)="resend(s)">{{ 'Resend Details' | t: 'staff.registeredMsme.resendButton' }}</button>
                 }
-                <a class="btn btn-outline-primary" [routerLink]="profileUrl(s)">View Profile</a>
+                <a class="btn btn-outline-primary" [routerLink]="profileUrl(s)">{{ 'View Profile' | t: 'staff.registeredMsme.profileButton' }}</a>
                 @if (seesHistory()) {
-                  <a class="btn btn-outline-primary" [routerLink]="['/staff/history']" [queryParams]="{ zedId: s['ZedId'] }">History</a>
+                  <a class="btn btn-outline-primary" [routerLink]="['/staff/history']" [queryParams]="{ zedId: s['ZedId'] }">{{ 'History' | t: 'staff.registeredMsme.historyButton' }}</a>
                 }
                 @if (assessmentLink(s); as link) {
-                  <a class="btn btn-outline-primary" [routerLink]="link">Assessment Details</a>
+                  <a class="btn btn-outline-primary" [routerLink]="link">{{ 'Assessment Details' | t: 'staff.registeredMsme.assessmentButton' }}</a>
                 }
                 @if (isSuperAdmin()) {
-                  <button type="button" class="btn btn-outline-danger" (click)="openDisable(s)">IN-ACTIVE MSME</button>
+                  <button type="button" class="btn btn-outline-danger" (click)="openDisable(s)">{{ 'IN-ACTIVE MSME' | t: 'staff.registeredMsme.deactivateButton' }}</button>
                 }
               </div>
             }
           </td>
         </tr>
       } @empty {
-        @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+        @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.registeredMsme.empty' }}</div></td></tr> }
       }
     </tbody>
   </table>
@@ -116,22 +116,22 @@
       <div class="modal-content">
         <div class="modal-header">
           <div class="modal-title w-100 d-flex justify-content-between">
-            <strong id="disable-title">Deactivate MSME</strong>
-            <button type="button" class="btn-close" aria-label="Close" (click)="disabling.set(null)"></button>
+            <strong id="disable-title">{{ 'Deactivate MSME' | t: 'staff.registeredMsme.disable.title' }}</strong>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.registeredMsme.disable.closeAria'" (click)="disabling.set(null)"></button>
           </div>
         </div>
         <div class="modal-body">
           <div class="label-highlight mb-3">
-            <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
-            <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
+            <div><strong>{{ 'ZedId:' | t: 'staff.registeredMsme.disable.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
+            <div><strong>{{ 'UnitName:' | t: 'staff.registeredMsme.disable.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
           </div>
-          <label class="form-label" for="disableRemarks">Reason for Deactivate<span class="req">*</span></label>
+          <label class="form-label" for="disableRemarks">{{ 'Reason for Deactivate' | t: 'staff.registeredMsme.disable.reasonLabel' }}<span class="req">*</span></label>
           <textarea id="disableRemarks" class="form-control" maxlength="2000" [(ngModel)]="disableRemarks"></textarea>
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="disabling.set(null)">Cancel</button>
-          <button type="button" class="btn btn-primary" [disabled]="!disableRemarks.trim() || saving()" (click)="submitDisable()">SUBMIT</button>
+          <button type="button" class="btn btn-default" (click)="disabling.set(null)">{{ 'Cancel' | t: 'staff.registeredMsme.disable.cancelButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="!disableRemarks.trim() || saving()" (click)="submitDisable()">{{ 'SUBMIT' | t: 'staff.registeredMsme.disable.submitButton' }}</button>
         </div>
       </div>
     </div>
@@ -140,5 +140,5 @@
 }
 
 @if (loading()) {
-  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.registeredMsme.loadingText' }}</small></div></div></div>
 }

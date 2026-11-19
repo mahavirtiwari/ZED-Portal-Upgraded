@@ -16,7 +16,7 @@ import { ParameterNav } from '../../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../../msme/shared/page-head';
 import { staffCrumbs } from '../../staff-crumbs';
-import { ConfirmDialog } from '../../confirm-dialog';
+import { ConfirmAsk, ConfirmDialog } from '../../confirm-dialog';
 import { levelName } from '../../../msme/shared/levels';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
 import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
@@ -24,30 +24,34 @@ import { ChecklistItem, SubmissionChecklistApi } from '../../quality/quality.api
 import { SubmitChecklist, allTicked } from '../../quality/submit-checklist';
 import { ChecklistRecords } from '../../quality/checklist-records';
 import { QoTarget } from '../../quality/quality.api';
+import { TextPipe, t } from '../../../content/page-text';
+
+// 2026-11-19 ("All page wording"): the wording below is read through getters (the Admin's, Texts → Page wording,
+// staff.milestoneDetails.*, or the standard one), so the page follows the Admin's wording; fields and codes stay as they are.
 
 /** Tabs of the old consultancy SaDetails page. */
 export const MILESTONE_TABS: Record<number, string> = {
-  1: 'Overview',
-  2: 'Consultancy Plan',
-  3: 'Attendance',
-  4: 'Opening Meeting',
-  5: 'Consultants Selfie',
-  6: 'Basic Information',
-  7: 'Site Tour',
-  8: 'Trainings',
-  9: 'Parameters',
-  10: 'Closing Meeting',
+  get 1() { return t('staff.milestoneDetails.tab.overview', 'Overview'); },
+  get 2() { return t('staff.milestoneDetails.tab.plan', 'Consultancy Plan'); },
+  get 3() { return t('staff.milestoneDetails.tab.attendance', 'Attendance'); },
+  get 4() { return t('staff.milestoneDetails.tab.openingMeeting', 'Opening Meeting'); },
+  get 5() { return t('staff.milestoneDetails.tab.selfies', 'Consultants Selfie'); },
+  get 6() { return t('staff.milestoneDetails.tab.basicInfo', 'Basic Information'); },
+  get 7() { return t('staff.milestoneDetails.tab.siteTour', 'Site Tour'); },
+  get 8() { return t('staff.milestoneDetails.tab.trainings', 'Trainings'); },
+  get 9() { return t('staff.milestoneDetails.tab.parameters', 'Parameters'); },
+  get 10() { return t('staff.milestoneDetails.tab.closingMeeting', 'Closing Meeting'); },
 };
 
 /** Requirement columns of the parameters tab; the page shows them under its own captions, `label` names the EDIT button. */
-export const REQUIREMENT_FIELDS: Record<string, { label: string }> = {
-  BaselineRemarks: { label: 'Baseline Diagnostic Remarks' },
-  EstimatedTimeInDays: { label: 'Estimated Time (in days)' },
-  HActionPlanRemarks: { label: 'Handholding Action Plan Remarks' },
-  Intervention: { label: 'Rationale for Technology Intervention' },
-  InterventionRemarks: { label: 'Technology Intervention Remarks' },
-  ProgressReviewRemarks: { label: 'Progress Review 1 Remarks' },
-  ProgressReviewRemarks2: { label: 'Progress Review 2 Remarks' },
+export const REQUIREMENT_FIELDS: Record<string, { readonly label: string }> = {
+  BaselineRemarks: { get label() { return t('staff.milestoneDetails.field.baselineRemarks.label', 'Baseline Diagnostic Remarks'); } },
+  EstimatedTimeInDays: { get label() { return t('staff.milestoneDetails.field.estimatedTime.label', 'Estimated Time (in days)'); } },
+  HActionPlanRemarks: { get label() { return t('staff.milestoneDetails.field.actionPlanRemarks.label', 'Handholding Action Plan Remarks'); } },
+  Intervention: { get label() { return t('staff.milestoneDetails.field.intervention.label', 'Rationale for Technology Intervention'); } },
+  InterventionRemarks: { get label() { return t('staff.milestoneDetails.field.interventionRemarks.label', 'Technology Intervention Remarks'); } },
+  ProgressReviewRemarks: { get label() { return t('staff.milestoneDetails.field.review1Remarks.label', 'Progress Review 1 Remarks'); } },
+  ProgressReviewRemarks2: { get label() { return t('staff.milestoneDetails.field.review2Remarks.label', 'Progress Review 2 Remarks'); } },
 };
 
 /** The progress review tables of a parameter, shown once its section reaches the milestone (MsmeSections.NcCount). */
@@ -55,105 +59,122 @@ export const REQUIREMENT_FIELDS: Record<string, { label: string }> = {
 const NO_CHECKPOINTS: Checkpoint[] = [];
 
 export const PROGRESS_REVIEWS = [
-  { milestone: 2, title: 'Progress Review 1', completed: 'IsProposedActivityCompleted', field: 'ProgressReviewRemarks', stage: 'Review1' as const },
-  { milestone: 3, title: 'Progress Review 2', completed: 'IsProposedActivityCompleted2', field: 'ProgressReviewRemarks2', stage: 'Review2' as const },
+  { milestone: 2, get title() { return t('staff.milestoneDetails.review1.title', 'Progress Review 1'); }, completed: 'IsProposedActivityCompleted', field: 'ProgressReviewRemarks', stage: 'Review1' as const },
+  { milestone: 3, get title() { return t('staff.milestoneDetails.review2.title', 'Progress Review 2'); }, completed: 'IsProposedActivityCompleted2', field: 'ProgressReviewRemarks2', stage: 'Review2' as const },
 ];
 
 interface BasicInfoField {
   field: string;
-  label: string;
+  readonly label: string;
   /** Half width (the energy sources' unit and share). */
   half?: boolean;
   /** Black sub-heading above the field (the energy source). */
-  heading?: string;
+  readonly heading?: string;
 }
 
-const ENERGY_SOURCES: [string, string][] = [['Electri', 'Electrical'], ['Solar', 'Solar'], ['Wind', 'Wind'], ['Fossil', 'Fossil Fuel'], ['Gas', 'Gas'], ['Others', 'Others']];
-const MEASURES_TAKEN = 'Measures Taken (New technologies, new machines, new processes etc.)';
+/** The energy sources (column prefix) of the Energy Management section. */
+const ENERGY_SOURCES = ['Electri', 'Solar', 'Wind', 'Fossil', 'Gas', 'Others'] as const;
+
+/** The sub-heading of an energy source. */
+function energyHeading(prefix: (typeof ENERGY_SOURCES)[number]): string {
+  switch (prefix) {
+    case 'Electri': return t('staff.milestoneDetails.basicInfo.energy.electrical.title', 'Electrical');
+    case 'Solar': return t('staff.milestoneDetails.basicInfo.energy.solar.title', 'Solar');
+    case 'Wind': return t('staff.milestoneDetails.basicInfo.energy.wind.title', 'Wind');
+    case 'Fossil': return t('staff.milestoneDetails.basicInfo.energy.fossil.title', 'Fossil Fuel');
+    case 'Gas': return t('staff.milestoneDetails.basicInfo.energy.gas.title', 'Gas');
+    default: return t('staff.milestoneDetails.basicInfo.energy.others.title', 'Others');
+  }
+}
+
+/** The "Measures Taken" field of several sections (one wording). */
+function measuresTaken(): string {
+  return t('staff.milestoneDetails.basicInfo.measuresTaken.label', 'Measures Taken (New technologies, new machines, new processes etc.)');
+}
 
 /** The "Basic Information" tab (ConsultancyBasicInformation), its sections, captions and order as on the old page. */
-export const BASIC_INFO_SECTIONS: { title: string; fields: BasicInfoField[] }[] = [
+export const BASIC_INFO_SECTIONS: { readonly title: string; fields: BasicInfoField[] }[] = [
   {
-    title: 'Occupational (Workplace) Safety', fields: [
-      { field: 'NumOfAccedents', label: 'No. of accidents (incl. fatalities & disabilities caused, if any)' },
-      { field: 'NumOfNearMisses', label: 'No. of near misses' },
-      { field: 'ManHoursLast', label: 'Man hours lost' },
-      { field: 'LosttimeInjuryfreqRate', label: 'Lost Time Injury Frequency Rate (LTIFR)' },
+    get title() { return t('staff.milestoneDetails.basicInfo.safety.title', 'Occupational (Workplace) Safety'); }, fields: [
+      { field: 'NumOfAccedents', get label() { return t('staff.milestoneDetails.basicInfo.accidents.label', 'No. of accidents (incl. fatalities & disabilities caused, if any)'); } },
+      { field: 'NumOfNearMisses', get label() { return t('staff.milestoneDetails.basicInfo.nearMisses.label', 'No. of near misses'); } },
+      { field: 'ManHoursLast', get label() { return t('staff.milestoneDetails.basicInfo.manHoursLost.label', 'Man hours lost'); } },
+      { field: 'LosttimeInjuryfreqRate', get label() { return t('staff.milestoneDetails.basicInfo.ltifr.label', 'Lost Time Injury Frequency Rate (LTIFR)'); } },
     ],
   },
   {
-    title: 'Measurement of Timely Delivery', fields: [
-      { field: 'NumOfDeliveries', label: 'Number of Deliveries' },
-      { field: 'NumOfDeliveriesOntimeFull', label: 'Number of Deliveries made On Time In Full (OTIF) per month' },
+    get title() { return t('staff.milestoneDetails.basicInfo.delivery.title', 'Measurement of Timely Delivery'); }, fields: [
+      { field: 'NumOfDeliveries', get label() { return t('staff.milestoneDetails.basicInfo.deliveries.label', 'Number of Deliveries'); } },
+      { field: 'NumOfDeliveriesOntimeFull', get label() { return t('staff.milestoneDetails.basicInfo.otif.label', 'Number of Deliveries made On Time In Full (OTIF) per month'); } },
     ],
   },
   {
-    title: 'Planned Maintenance & Calibration', fields: [
-      { field: 'MeanTimeToRepair', label: 'Mean Time To Repair (MTTR)' },
-      { field: 'MeanTimeBetweenFailure', label: 'Mean Time Between Failure (MTBF)' },
+    get title() { return t('staff.milestoneDetails.basicInfo.maintenance.title', 'Planned Maintenance & Calibration'); }, fields: [
+      { field: 'MeanTimeToRepair', get label() { return t('staff.milestoneDetails.basicInfo.mttr.label', 'Mean Time To Repair (MTTR)'); } },
+      { field: 'MeanTimeBetweenFailure', get label() { return t('staff.milestoneDetails.basicInfo.mtbf.label', 'Mean Time Between Failure (MTBF)'); } },
     ],
   },
   {
-    title: 'Energy Management', fields: [
-      ...ENERGY_SOURCES.flatMap(([prefix, heading]): BasicInfoField[] => [
-        { field: `${prefix}Unit`, label: 'Unit', half: true, heading },
-        { field: `${prefix}TotConsumpPer`, label: '% of total consumption', half: true },
+    get title() { return t('staff.milestoneDetails.basicInfo.energy.title', 'Energy Management'); }, fields: [
+      ...ENERGY_SOURCES.flatMap((prefix): BasicInfoField[] => [
+        { field: `${prefix}Unit`, get label() { return t('staff.milestoneDetails.basicInfo.energy.unit.label', 'Unit'); }, half: true, get heading() { return energyHeading(prefix); } },
+        { field: `${prefix}TotConsumpPer`, get label() { return t('staff.milestoneDetails.basicInfo.energy.share.label', '% of total consumption'); }, half: true },
       ]),
-      { field: 'TotalCost', label: 'Total Cost' },
-      { field: 'EnergyMgmtMeasuresTaken', label: MEASURES_TAKEN },
+      { field: 'TotalCost', get label() { return t('staff.milestoneDetails.basicInfo.energy.totalCost.label', 'Total Cost'); } },
+      { field: 'EnergyMgmtMeasuresTaken', get label() { return measuresTaken(); } },
     ],
   },
   {
-    title: 'Environment Management', fields: [
-      { field: 'Cox', label: 'COx (please mention unit)' },
-      { field: 'Nox', label: 'NOx (please mention unit)' },
-      { field: 'Sox', label: 'SOx (please mention unit)' },
-      { field: 'SuspPertiMaterial', label: 'Suspended Particulate Material (SPM)' },
-      { field: 'TotSuspenSolid', label: 'Total Suspended Solid (TSS)' },
-      { field: 'BioChemOxyDemand', label: 'Biochemical Oxygen Demand (BOD)' },
-      { field: 'SolidWaste', label: 'Solid Waste (Kg/Month)' },
-      { field: 'PlasticWaste', label: 'Plastic Waste (Kg/Month)' },
-      { field: 'Ewaste', label: 'e-Waste (Kg/Month)' },
-      { field: 'hazardWaste', label: 'Hazardous Waste (Kg/Month)' },
-      { field: 'NoiseLevel', label: 'Noise Level (dB)' },
-      { field: 'EnviMgmtMeasuresTaken', label: MEASURES_TAKEN },
+    get title() { return t('staff.milestoneDetails.basicInfo.environment.title', 'Environment Management'); }, fields: [
+      { field: 'Cox', get label() { return t('staff.milestoneDetails.basicInfo.cox.label', 'COx (please mention unit)'); } },
+      { field: 'Nox', get label() { return t('staff.milestoneDetails.basicInfo.nox.label', 'NOx (please mention unit)'); } },
+      { field: 'Sox', get label() { return t('staff.milestoneDetails.basicInfo.sox.label', 'SOx (please mention unit)'); } },
+      { field: 'SuspPertiMaterial', get label() { return t('staff.milestoneDetails.basicInfo.spm.label', 'Suspended Particulate Material (SPM)'); } },
+      { field: 'TotSuspenSolid', get label() { return t('staff.milestoneDetails.basicInfo.tss.label', 'Total Suspended Solid (TSS)'); } },
+      { field: 'BioChemOxyDemand', get label() { return t('staff.milestoneDetails.basicInfo.bod.label', 'Biochemical Oxygen Demand (BOD)'); } },
+      { field: 'SolidWaste', get label() { return t('staff.milestoneDetails.basicInfo.solidWaste.label', 'Solid Waste (Kg/Month)'); } },
+      { field: 'PlasticWaste', get label() { return t('staff.milestoneDetails.basicInfo.plasticWaste.label', 'Plastic Waste (Kg/Month)'); } },
+      { field: 'Ewaste', get label() { return t('staff.milestoneDetails.basicInfo.eWaste.label', 'e-Waste (Kg/Month)'); } },
+      { field: 'hazardWaste', get label() { return t('staff.milestoneDetails.basicInfo.hazardousWaste.label', 'Hazardous Waste (Kg/Month)'); } },
+      { field: 'NoiseLevel', get label() { return t('staff.milestoneDetails.basicInfo.noise.label', 'Noise Level (dB)'); } },
+      { field: 'EnviMgmtMeasuresTaken', get label() { return measuresTaken(); } },
     ],
   },
   {
-    title: 'Human Resource Management', fields: [
-      { field: 'EmpEngagedInActivities', label: '% of employees engaged in improvement activities' },
-      { field: 'NumOfSuggestions', label: 'No. of suggestions received' },
-      { field: 'HrmMeasuresTaken', label: 'Measures Taken to develop human resources' },
+    get title() { return t('staff.milestoneDetails.basicInfo.hr.title', 'Human Resource Management'); }, fields: [
+      { field: 'EmpEngagedInActivities', get label() { return t('staff.milestoneDetails.basicInfo.employeesEngaged.label', '% of employees engaged in improvement activities'); } },
+      { field: 'NumOfSuggestions', get label() { return t('staff.milestoneDetails.basicInfo.suggestions.label', 'No. of suggestions received'); } },
+      { field: 'HrmMeasuresTaken', get label() { return t('staff.milestoneDetails.basicInfo.hrMeasures.label', 'Measures Taken to develop human resources'); } },
     ],
   },
   {
-    title: 'Measurement & Analysis', fields: [
-      { field: 'Defects', label: 'Defects (%)' },
-      { field: 'ReWork', label: 'Rework (%)' },
-      { field: 'CustRejections', label: 'Customer Rejections (%)' },
-      { field: 'NumOfCustComplaints', label: 'Number of Customer Complaints' },
-      { field: 'NumOfComplaintsResolved', label: 'Customer Complaints resolved (%)' },
-      { field: 'CustSatisLevel', label: 'Customer Satisfaction level (%)' },
-      { field: 'CostOfPoorQuality', label: 'Cost of Poor Quality (COPQ)' },
+    get title() { return t('staff.milestoneDetails.basicInfo.analysis.title', 'Measurement & Analysis'); }, fields: [
+      { field: 'Defects', get label() { return t('staff.milestoneDetails.basicInfo.defects.label', 'Defects (%)'); } },
+      { field: 'ReWork', get label() { return t('staff.milestoneDetails.basicInfo.rework.label', 'Rework (%)'); } },
+      { field: 'CustRejections', get label() { return t('staff.milestoneDetails.basicInfo.rejections.label', 'Customer Rejections (%)'); } },
+      { field: 'NumOfCustComplaints', get label() { return t('staff.milestoneDetails.basicInfo.complaints.label', 'Number of Customer Complaints'); } },
+      { field: 'NumOfComplaintsResolved', get label() { return t('staff.milestoneDetails.basicInfo.complaintsResolved.label', 'Customer Complaints resolved (%)'); } },
+      { field: 'CustSatisLevel', get label() { return t('staff.milestoneDetails.basicInfo.satisfaction.label', 'Customer Satisfaction level (%)'); } },
+      { field: 'CostOfPoorQuality', get label() { return t('staff.milestoneDetails.basicInfo.copq.label', 'Cost of Poor Quality (COPQ)'); } },
     ],
   },
   {
-    title: 'Natural Resources Management', fields: [
-      { field: 'Water', label: 'Water (Litres)' },
-      { field: 'Minarals', label: 'Minerals (Coal) (Kg)' },
-      { field: 'Wood', label: 'Wood (Kg)' },
-      { field: 'NrmOthers', label: 'Others' },
-      { field: 'WaterRecycling', label: 'Water recycling (Litres)' },
-      { field: 'Waterreuse', label: 'Water reuse (Litres)' },
-      { field: 'RainWaterHarvest', label: 'Rain water harvesting (Litres)' },
-      { field: 'NumofTreesPlanted', label: 'No. of Tree planted' },
-      { field: 'NrmMeasuresTaken', label: MEASURES_TAKEN },
+    get title() { return t('staff.milestoneDetails.basicInfo.resources.title', 'Natural Resources Management'); }, fields: [
+      { field: 'Water', get label() { return t('staff.milestoneDetails.basicInfo.water.label', 'Water (Litres)'); } },
+      { field: 'Minarals', get label() { return t('staff.milestoneDetails.basicInfo.minerals.label', 'Minerals (Coal) (Kg)'); } },
+      { field: 'Wood', get label() { return t('staff.milestoneDetails.basicInfo.wood.label', 'Wood (Kg)'); } },
+      { field: 'NrmOthers', get label() { return t('staff.milestoneDetails.basicInfo.resourcesOthers.label', 'Others'); } },
+      { field: 'WaterRecycling', get label() { return t('staff.milestoneDetails.basicInfo.waterRecycling.label', 'Water recycling (Litres)'); } },
+      { field: 'Waterreuse', get label() { return t('staff.milestoneDetails.basicInfo.waterReuse.label', 'Water reuse (Litres)'); } },
+      { field: 'RainWaterHarvest', get label() { return t('staff.milestoneDetails.basicInfo.rainWater.label', 'Rain water harvesting (Litres)'); } },
+      { field: 'NumofTreesPlanted', get label() { return t('staff.milestoneDetails.basicInfo.trees.label', 'No. of Tree planted'); } },
+      { field: 'NrmMeasuresTaken', get label() { return measuresTaken(); } },
     ],
   },
   {
-    title: 'Financial Performance (Previous Financial Year)', fields: [
-      { field: 'TurnOver', label: 'Turnover' },
-      { field: 'GrossProfit', label: 'Gross Profit' },
+    get title() { return t('staff.milestoneDetails.basicInfo.finance.title', 'Financial Performance (Previous Financial Year)'); }, fields: [
+      { field: 'TurnOver', get label() { return t('staff.milestoneDetails.basicInfo.turnover.label', 'Turnover'); } },
+      { field: 'GrossProfit', get label() { return t('staff.milestoneDetails.basicInfo.grossProfit.label', 'Gross Profit'); } },
     ],
   },
 ];
@@ -175,10 +196,12 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  * The server decides what is editable (`permissions`, `Editable` per row, `editable` per meeting) and checks it again on
  * every call. The layout is the old page's: the overview per milestone, the parameters as an accordion with a table per
  * milestone, the basic information per section.
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.milestoneDetails.*) or the standard
+ * one here and in milestone-details.html; the pledges stay HTML texts (zed-text).
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, ConfirmDialog],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, ConfirmDialog, TextPipe],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -298,14 +321,20 @@ export class MilestoneDetailsPage {
   protected readonly headTitle = computed(() => {
     const m1 = this.milestoneRow(1);
     const unit = (m1 && text(m1, 'PUnitName')) || this.zedId();
-    return `${unit} · ${(m1 && text(m1, 'Certification')) || this.certification()} handholding`;
+    return t('staff.milestoneDetails.title', '{unit} · {level} handholding', { unit, level: (m1 && text(m1, 'Certification')) || this.certification() });
   });
   protected readonly headCrumbs = computed(() => staffCrumbs(
-    ...(this.milestone() ? [{ label: `Milestone ${this.milestone()}`, link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []),
+    ...(this.milestone() ? [{ label: t('staff.milestoneDetails.crumb.milestone', 'Milestone {n}', { n: this.milestone() }), link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []),
     { label: this.zedId() },
   ));
   /** 2026-11-17 (approved staff redesign): the item whose deletion is being confirmed (the confirmation pop-up, not confirm()). */
   protected readonly bulletToDelete = signal<MilestoneBullet | null>(null);
+  protected readonly deleteAsk = computed<ConfirmAsk>(() => ({
+    title: t('staff.milestoneDetails.deleteBullet.title', 'Delete this item?'),
+    message: t('staff.milestoneDetails.deleteBullet.message', 'The item is removed from this milestone.'),
+    confirmLabel: t('staff.milestoneDetails.deleteBullet.confirmButton', 'Delete'),
+    danger: true,
+  }));
   private readonly location = inject(Location);
   protected goBack(): void {
     this.location.back();
@@ -432,7 +461,7 @@ export class MilestoneDetailsPage {
     const value = this.draft().trim();
     if (!e || !d) return;
     if (!value) {
-      this.notice.set({ ok: false, text: 'Please enter a value.' });
+      this.notice.set({ ok: false, text: t('staff.milestoneDetails.edit.emptyError', 'Please enter a value.') });
       return;
     }
     const call: Observable<{ message: string }> =
@@ -596,7 +625,8 @@ export class MilestoneDetailsPage {
   protected answersOf(r: Row, o: Row): { label: string; value: CheckpointValue }[] {
     const c = checkpointsOf(this.data()?.checkpoints, r['Id']).find((x) => x.optionCode === text(o, 'OptionCode').trim());
     const list: { label: string; value: CheckpointValue | null | undefined }[] =
-      [{ label: 'Baseline', value: c?.baseline?.value }, { label: 'PR 1', value: c?.review1 }, { label: 'PR 2', value: c?.review2 }];
+      [{ label: t('staff.milestoneDetails.answer.baseline', 'Baseline'), value: c?.baseline?.value },
+        { label: t('staff.milestoneDetails.answer.review1', 'PR 1'), value: c?.review1 }, { label: t('staff.milestoneDetails.answer.review2', 'PR 2'), value: c?.review2 }];
     return list.filter((x): x is { label: string; value: CheckpointValue } => !!x.value);
   }
 
@@ -655,7 +685,7 @@ export class MilestoneDetailsPage {
     this.error.set('');
     if (!isZedId(zedId) || !level) {
       this.data.set(null);
-      this.error.set('Invalid request.');
+      this.error.set(t('staff.milestoneDetails.invalidError', 'Invalid request.'));
       return;
     }
     this.loading.set(true);
@@ -672,7 +702,7 @@ export class MilestoneDetailsPage {
       this.data.set(null);
       this.error.set(
         err instanceof HttpErrorResponse && err.status === 404
-          ? 'Milestone details are not available, or this unit is not allotted to you.'
+          ? t('staff.milestoneDetails.notFoundError', 'Milestone details are not available, or this unit is not allotted to you.')
           : apiErrorMessage(err),
       );
     } finally {

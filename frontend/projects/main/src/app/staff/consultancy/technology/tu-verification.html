@@ -1,9 +1,10 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/FinancialAssistance/Verification.cshtml, laid out with the V4 blocks. -->
 <!-- 2026-11-17 (approved staff redesign): the page head with crumbs and the light buttons; completed actions as toasts. -->
-<zed-page-head [crumbs]="crumbs()" [title]="'Technology upgradation · ' + zedId"
-               subtitle="The unit's purchased technologies, payments and documents; validate the documents, then accept or reject.">
-  <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
-  <a class="btn btn-ph" [routerLink]="backLink">Back</a>
+<!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.tuVerification.*). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Technology upgradation · {zedId}' | t: 'staff.tuVerification.title' : { zedId }"
+               [subtitle]="'The unit\'s purchased technologies, payments and documents; validate the documents, then accept or reject.' | t: 'staff.tuVerification.sub'">
+  <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.tuVerification.refreshButton' }}</button>
+  <a class="btn btn-ph" [routerLink]="backLink">{{ 'Back' | t: 'staff.tuVerification.backButton' }}</a>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -15,14 +16,14 @@
       @for (a of applications(); track a.certification) {
         <li class="nav-item" role="presentation">
           <button type="button" class="nav-link" role="tab" [class.active]="tab() === a.certification" [attr.aria-selected]="tab() === a.certification"
-                  (click)="selectTab(a.certification)">{{ a.certification }} Certification</button>
+                  (click)="selectTab(a.certification)">{{ '{level} Certification' | t: 'staff.tuVerification.tab.level' : { level: a.certification } }}</button>
         </li>
       }
       <li class="nav-item" role="presentation">
-        <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'overview'" [attr.aria-selected]="tab() === 'overview'" (click)="selectTab('overview')">Overview</button>
+        <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'overview'" [attr.aria-selected]="tab() === 'overview'" (click)="selectTab('overview')">{{ 'Overview' | t: 'staff.tuVerification.tab.overview' }}</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'recommended'" [attr.aria-selected]="tab() === 'recommended'" (click)="selectTab('recommended')">Technologies Recommended</button>
+        <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'recommended'" [attr.aria-selected]="tab() === 'recommended'" (click)="selectTab('recommended')">{{ 'Technologies Recommended' | t: 'staff.tuVerification.tab.recommended' }}</button>
       </li>
     </ul>
 
@@ -30,32 +31,32 @@
       <!-- ================================================= overview -->
       @if (tab() === 'overview') {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="sub-title">Unit Details</h4>
+          <h4 class="sub-title">{{ 'Unit Details' | t: 'staff.tuVerification.overview.title' }}</h4>
           @let ov = overview();
           <div class="table-responsive">
             <table class="table table-zed details">
               <tbody>
-                <tr><th class="w-40">ZEDID</th><td>{{ value(ov, 'ZedId') }}</td></tr>
-                <tr><th class="w-40">Unit Name</th><td>{{ value(ov, 'PUnitName') }}</td></tr>
-                <tr><th>Udyam Registration Number</th><td>{{ value(ov, 'UdyogAadharNo') }}</td></tr>
-                <tr><th>Certification</th><td>{{ value(ov, 'Certification') }}</td></tr>
-                <tr><th>Unit Address</th><td>{{ value(ov, 'PlantAddress') }}</td></tr>
-                <tr><th>Milestone 1 Completed on</th><td>{{ value(ov, 'Milestone1Date') }}</td></tr>
-                <tr><th>Milestone 2 Completed on</th><td>{{ value(ov, 'Milestone2Date') }}</td></tr>
-                <tr><th>Milestone 3 Completed on</th><td>{{ value(ov, 'Milestone3Date') }}</td></tr>
+                <tr><th class="w-40">{{ 'ZEDID' | t: 'staff.tuVerification.overview.zedIdLabel' }}</th><td>{{ value(ov, 'ZedId') }}</td></tr>
+                <tr><th class="w-40">{{ 'Unit Name' | t: 'staff.tuVerification.overview.unitLabel' }}</th><td>{{ value(ov, 'PUnitName') }}</td></tr>
+                <tr><th>{{ 'Udyam Registration Number' | t: 'staff.tuVerification.overview.udyamLabel' }}</th><td>{{ value(ov, 'UdyogAadharNo') }}</td></tr>
+                <tr><th>{{ 'Certification' | t: 'staff.tuVerification.overview.certificationLabel' }}</th><td>{{ value(ov, 'Certification') }}</td></tr>
+                <tr><th>{{ 'Unit Address' | t: 'staff.tuVerification.overview.addressLabel' }}</th><td>{{ value(ov, 'PlantAddress') }}</td></tr>
+                <tr><th>{{ 'Milestone 1 Completed on' | t: 'staff.tuVerification.overview.milestone1Label' }}</th><td>{{ value(ov, 'Milestone1Date') }}</td></tr>
+                <tr><th>{{ 'Milestone 2 Completed on' | t: 'staff.tuVerification.overview.milestone2Label' }}</th><td>{{ value(ov, 'Milestone2Date') }}</td></tr>
+                <tr><th>{{ 'Milestone 3 Completed on' | t: 'staff.tuVerification.overview.milestone3Label' }}</th><td>{{ value(ov, 'Milestone3Date') }}</td></tr>
               </tbody>
             </table>
           </div>
           <!-- The old page also drew a Google static map; V4 links to the map instead. -->
-          <h4 class="sub-title">Unit Location</h4>
+          <h4 class="sub-title">{{ 'Unit Location' | t: 'staff.tuVerification.location.title' }}</h4>
           @let loc = location();
           <div class="table-responsive mb-0">
             <table class="table table-zed details">
               <tbody>
-                <tr><th class="w-40">Latitude</th><td>{{ value(loc, 'Latitude') }}</td></tr>
-                <tr><th>Longitude</th><td>{{ value(loc, 'Longitude') }}</td></tr>
+                <tr><th class="w-40">{{ 'Latitude' | t: 'staff.tuVerification.location.latitudeLabel' }}</th><td>{{ value(loc, 'Latitude') }}</td></tr>
+                <tr><th>{{ 'Longitude' | t: 'staff.tuVerification.location.longitudeLabel' }}</th><td>{{ value(loc, 'Longitude') }}</td></tr>
                 @if (mapUrl(loc); as href) {
-                  <tr><td colspan="2"><a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">Click here to view map</a></td></tr>
+                  <tr><td colspan="2"><a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">{{ 'Click here to view map' | t: 'staff.tuVerification.location.mapLink' }}</a></td></tr>
                 }
               </tbody>
             </table>
@@ -66,16 +67,16 @@
       <!-- ================================================= technologies recommended -->
       @if (tab() === 'recommended') {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="sub-title">Recommended Technologies Checklist</h4>
+          <h4 class="sub-title">{{ 'Recommended Technologies Checklist' | t: 'staff.tuVerification.recommended.title' }}</h4>
           @if (recommended().length) {
             <div class="table-responsive mb-0">
               <table class="table table-zed table-bordered">
                 <thead>
                   <tr>
-                    <th class="text-center" style="width: 70px">S.No</th>
-                    <th class="text-center" style="width: 130px">Technology Code</th>
-                    <th>Technology Name</th>
-                    <th>Description</th>
+                    <th class="text-center" style="width: 70px">{{ 'S.No' | t: 'staff.tuVerification.recommended.column.serial' }}</th>
+                    <th class="text-center" style="width: 130px">{{ 'Technology Code' | t: 'staff.tuVerification.recommended.column.code' }}</th>
+                    <th>{{ 'Technology Name' | t: 'staff.tuVerification.recommended.column.name' }}</th>
+                    <th>{{ 'Description' | t: 'staff.tuVerification.recommended.column.description' }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -85,10 +86,10 @@
                       <td class="text-center"><strong>{{ r.code }}</strong></td>
                       <td><strong>{{ r.name }}</strong></td>
                       <td class="description">
-                        @let d = r.description || 'No detailed log summary description submitted.';
+                        @let d = r.description || ('No detailed log summary description submitted.' | t: 'staff.tuVerification.recommended.noDescription');
                         <div [class.clamp-3]="!isOpen('desc' + $index)" [title]="d">{{ d }}</div>
                         @if (d.length > 160) {
-                          <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle('desc' + $index)">{{ isOpen('desc' + $index) ? 'less' : 'more' }}</button>
+                          <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle('desc' + $index)">{{ isOpen('desc' + $index) ? ('less' | t: 'staff.tuVerification.lessButton') : ('more' | t: 'staff.tuVerification.moreButton') }}</button>
                         }
                       </td>
                     </tr>
@@ -98,7 +99,7 @@
             </div>
           } @else {
             <div class="alert alert-info mb-0">
-              No target technologies recommendation records compiled inside this target verification layout.
+              {{ 'No target technologies recommendation records compiled inside this target verification layout.' | t: 'staff.tuVerification.recommended.empty' }}
             </div>
           }
         </div>
@@ -109,26 +110,26 @@
         @if (tab() === app.certification) {
           <div class="tab-pane fade show active" role="tabpanel">
             @if (app.hasReport) {
-              <div class="form-actions mt-0 mb-2"><a class="btn btn-outline-primary btn-sm" [href]="reportUrl(app)" target="_blank" rel="noopener">Download TU Report (PDF)</a></div>
+              <div class="form-actions mt-0 mb-2"><a class="btn btn-outline-primary btn-sm" [href]="reportUrl(app)" target="_blank" rel="noopener">{{ 'Download TU Report (PDF)' | t: 'staff.tuVerification.reportButton' }}</a></div>
             }
             <!-- Attendance -->
-            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'attendance', title: 'Attendance' }" />
+            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'attendance', title: ('Attendance' | t: 'staff.tuVerification.section.attendance') }" />
             @if (isOpen('attendance')) {
               <div class="table-responsive section-body">
                 <table class="table table-zed table-bordered">
                   <thead>
-                    <tr><th class="text-center">Day</th><th class="text-center">Date</th><th class="text-center">Punch-In</th><th class="text-center">Punch-Out</th><th class="text-center">No. of Hours</th><th class="text-center">Punch-In Selfie</th><th class="text-center">Punch-Out Selfie</th></tr>
+                    <tr><th class="text-center">{{ 'Day' | t: 'staff.tuVerification.attendance.column.day' }}</th><th class="text-center">{{ 'Date' | t: 'staff.tuVerification.attendance.column.date' }}</th><th class="text-center">{{ 'Punch-In' | t: 'staff.tuVerification.attendance.column.in' }}</th><th class="text-center">{{ 'Punch-Out' | t: 'staff.tuVerification.attendance.column.out' }}</th><th class="text-center">{{ 'No. of Hours' | t: 'staff.tuVerification.attendance.column.hours' }}</th><th class="text-center">{{ 'Punch-In Selfie' | t: 'staff.tuVerification.attendance.column.inSelfie' }}</th><th class="text-center">{{ 'Punch-Out Selfie' | t: 'staff.tuVerification.attendance.column.outSelfie' }}</th></tr>
                   </thead>
                   <tbody>
                     @for (a of app.attendance; track $index) {
                       <tr class="text-center">
-                        <td>Day {{ $index + 1 }}</td>
+                        <td>{{ 'Day {n}' | t: 'staff.tuVerification.attendance.dayText' : { n: $index + 1 } }}</td>
                         <td>{{ a.date }}</td>
                         <td>{{ a.loginTime }}</td>
                         <td>{{ a.logoutTime }}</td>
-                        <td>{{ a.hours ?? '' }} ({{ a.minutes ?? '' }} Minutes)</td>
-                        <td>@if (a.loginPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.loginPhotoUrl)"><img class="selfie" [src]="a.loginPhotoUrl" alt="Login Selfie" width="50" height="50" /></button> }</td>
-                        <td>@if (a.logoutPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.logoutPhotoUrl)"><img class="selfie" [src]="a.logoutPhotoUrl" alt="Logout Selfie" width="50" height="50" /></button> }</td>
+                        <td>{{ '{hours} ({minutes} Minutes)' | t: 'staff.tuVerification.attendance.hoursText' : { hours: a.hours ?? '', minutes: a.minutes ?? '' } }}</td>
+                        <td>@if (a.loginPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.loginPhotoUrl)"><img class="selfie" [src]="a.loginPhotoUrl" [alt]="'Login Selfie' | t: 'staff.tuVerification.attendance.inSelfieAlt'" width="50" height="50" /></button> }</td>
+                        <td>@if (a.logoutPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.logoutPhotoUrl)"><img class="selfie" [src]="a.logoutPhotoUrl" [alt]="'Logout Selfie' | t: 'staff.tuVerification.attendance.outSelfieAlt'" width="50" height="50" /></button> }</td>
                       </tr>
                     }
                   </tbody>
@@ -138,7 +139,7 @@
 
             @if (app.meeting; as m) {
               <!-- Site Interior/Exterior: the meeting photos other than the opening meeting's -->
-              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'site', title: 'Site Interior/Exterior' }" />
+              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'site', title: ('Site Interior/Exterior' | t: 'staff.tuVerification.section.site') }" />
               @if (isOpen('site')) {
                 <div class="section-body photo-grid">
                   @for (p of sitePhotos(m); track p.id) {
@@ -148,11 +149,11 @@
               }
 
               <!-- Opening Meeting -->
-              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'meeting', title: 'Opening Meeting' }" />
+              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'meeting', title: ('Opening Meeting' | t: 'staff.tuVerification.section.meeting') }" />
               @if (isOpen('meeting')) {
                 <div class="section-body meeting">
                   <div>
-                    <p class="sub-heading">REMARK</p>
+                    <p class="sub-heading">{{ 'REMARK' | t: 'staff.tuVerification.meeting.remarkTitle' }}</p>
                     <p>{{ m.comments }}</p>
                   </div>
                   <div class="photo-grid">
@@ -162,7 +163,7 @@
                   </div>
                 </div>
                 <div class="section-body">
-                  <p class="sub-heading">PARTICIPANTS</p>
+                  <p class="sub-heading">{{ 'PARTICIPANTS' | t: 'staff.tuVerification.meeting.participantsTitle' }}</p>
                   <div class="participants">
                     @for (p of m.participants; track $index) {
                       <div class="participant">
@@ -178,7 +179,7 @@
             <!-- The purchased technologies: on Silver a section per technology; on Gold all of them under "New tech with
                  live sectors", each with its Technology Name row; on Bronze the certificate, then its Details of Expenditure. -->
             @if (isGold(app)) {
-              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'goldTech', title: 'New tech with live sectors' }" />
+              <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'goldTech', title: ('New tech with live sectors' | t: 'staff.tuVerification.section.goldTech') }" />
               @if (isOpen('goldTech')) {
                 @for (t of app.technologies; track t.id) {
                   <ng-container [ngTemplateOutlet]="technologyTable" [ngTemplateOutletContext]="{ app, t, named: true }" />
@@ -201,7 +202,7 @@
                         </tbody>
                       </table>
                     </div>
-                    <h4 class="sub-title">Details of Expenditure</h4>
+                    <h4 class="sub-title">{{ 'Details of Expenditure' | t: 'staff.tuVerification.expenditure.title' }}</h4>
                   }
                   <ng-container [ngTemplateOutlet]="technologyTable" [ngTemplateOutletContext]="{ app, t, named: false }" />
                 }
@@ -209,16 +210,16 @@
             }
 
             <!-- Account Details of Reimbursement -->
-            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'account', title: 'Account Details of Reimbursement' }" />
+            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'account', title: ('Account Details of Reimbursement' | t: 'staff.tuVerification.section.account') }" />
             @if (isOpen('account')) {
               <div class="section-body">
                 @if (app.canEditAccount) {
                   <div class="form-actions mt-0 mb-2">
                     @if (account()) {
-                      <button type="button" class="btn btn-default btn-sm" (click)="account.set(null)">Cancel</button>
-                      <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAccount(app)">Update Account Details</button>
+                      <button type="button" class="btn btn-default btn-sm" (click)="account.set(null)">{{ 'Cancel' | t: 'staff.tuVerification.account.cancelButton' }}</button>
+                      <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAccount(app)">{{ 'Update Account Details' | t: 'staff.tuVerification.account.updateButton' }}</button>
                     } @else {
-                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="editAccount(app)">Edit Account Details</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="editAccount(app)">{{ 'Edit Account Details' | t: 'staff.tuVerification.account.editButton' }}</button>
                     }
                   </div>
                 }
@@ -250,32 +251,32 @@
             }
 
             <!-- Summary -->
-            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'summary', title: 'Summary' }" />
+            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'summary', title: ('Summary' | t: 'staff.tuVerification.section.summary') }" />
             @if (isOpen('summary')) {
               <div class="table-responsive section-body">
                 <table class="table table-zed table-bordered">
                   <thead>
-                    <tr><th>Name of Technology</th><th class="text-center">Amount (Rs.)</th></tr>
+                    <tr><th>{{ 'Name of Technology' | t: 'staff.tuVerification.summary.column.technology' }}</th><th class="text-center">{{ 'Amount (Rs.)' | t: 'staff.tuVerification.summary.column.amount' }}</th></tr>
                   </thead>
                   <tbody>
                     @for (t of eligible(app); track t.id) {
                       <tr><td class="w-50">{{ value(t.details, 'TechnologyName') }}</td><td class="text-center"><div class="row-data"><b>{{ value(t.details, 'AmountPaid') }}</b></div></td></tr>
                     }
-                    <tr><td class="w-50">Total Amount</td><td class="text-center"><div class="row-data"><b>{{ totalAmount(app) }}</b></div></td></tr>
-                    <tr><td class="w-50">Technology Support Eligible Amount</td><td class="text-center"><div class="row-data"><b>{{ value(app.details, 'EligibleAmount') }}</b></div></td></tr>
+                    <tr><td class="w-50">{{ 'Total Amount' | t: 'staff.tuVerification.summary.totalLabel' }}</td><td class="text-center"><div class="row-data"><b>{{ totalAmount(app) }}</b></div></td></tr>
+                    <tr><td class="w-50">{{ 'Technology Support Eligible Amount' | t: 'staff.tuVerification.summary.eligibleLabel' }}</td><td class="text-center"><div class="row-data"><b>{{ value(app.details, 'EligibleAmount') }}</b></div></td></tr>
                   </tbody>
                 </table>
               </div>
             }
 
             @if (statusAlert(app); as s) {
-              <div class="alert mt-3" [class.alert-success]="s === 'ACCEPTED'" [class.alert-danger]="s === 'REJECTED'">{{ s === 'ACCEPTED' ? 'Accepted' : 'Rejected' }}</div>
+              <div class="alert mt-3" [class.alert-success]="s === 'ACCEPTED'" [class.alert-danger]="s === 'REJECTED'">{{ s === 'ACCEPTED' ? ('Accepted' | t: 'staff.tuVerification.outcome.accepted') : ('Rejected' | t: 'staff.tuVerification.outcome.rejected') }}</div>
             }
             @if (app.canDecide) {
               <div class="form-actions">
-                <button type="button" class="btn btn-outline-danger" (click)="openDecision('reject')">Reject</button>
+                <button type="button" class="btn btn-outline-danger" (click)="openDecision('reject')">{{ 'Reject' | t: 'staff.tuVerification.rejectButton' }}</button>
                 @if (app.canApprove) {
-                  <button type="button" class="btn btn-primary" (click)="openDecision('approve')">Accept</button>
+                  <button type="button" class="btn btn-primary" (click)="openDecision('approve')">{{ 'Accept' | t: 'staff.tuVerification.acceptButton' }}</button>
                 }
               </div>
             }
@@ -288,8 +289,8 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header justify-content-between">
-                  <h3 class="registration-title" id="tuValidateTitle">Validate Evidence</h3>
-                  <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                  <h3 class="registration-title" id="tuValidateTitle">{{ 'Validate Evidence' | t: 'staff.tuVerification.validate.title' }}</h3>
+                  <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.tuVerification.closeAria'" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
                 </div>
                 <div class="modal-body">
                   <p><strong>{{ v.doc.photoType }}</strong></p>
@@ -297,27 +298,27 @@
                     <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
                   }
                   <div class="form-group mb-3">
-                    <span class="form-label">Verified:</span>
-                    <label class="ms-2"><input type="radio" name="tuIsVerified" value="Yes" [checked]="v.isVerified === 'Yes'" (change)="patchValidation({ isVerified: 'Yes' })" /> Yes</label>
-                    <label class="ms-2"><input type="radio" name="tuIsVerified" value="No" [checked]="v.isVerified === 'No'" (change)="patchValidation({ isVerified: 'No' })" /> No</label>
+                    <span class="form-label">{{ 'Verified:' | t: 'staff.tuVerification.validate.verifiedLabel' }}</span>
+                    <label class="ms-2"><input type="radio" name="tuIsVerified" value="Yes" [checked]="v.isVerified === 'Yes'" (change)="patchValidation({ isVerified: 'Yes' })" /> {{ 'Yes' | t: 'staff.tuVerification.validate.yesOption' }}</label>
+                    <label class="ms-2"><input type="radio" name="tuIsVerified" value="No" [checked]="v.isVerified === 'No'" (change)="patchValidation({ isVerified: 'No' })" /> {{ 'No' | t: 'staff.tuVerification.validate.noOption' }}</label>
                   </div>
                   <div class="form-group mb-3">
-                    <label class="form-label" for="tuSource">Source of Validation</label>
+                    <label class="form-label" for="tuSource">{{ 'Source of Validation' | t: 'staff.tuVerification.validate.sourceLabel' }}</label>
                     <input id="tuSource" class="form-control" maxlength="200" [ngModel]="v.sourceOfValidation" (ngModelChange)="patchValidation({ sourceOfValidation: $event })" />
                   </div>
                   <div class="form-group mb-3">
-                    <label class="form-label" for="tuShot">Upload Screenshot @if (v.doc.needsScreenshot) {<span class="req">*</span>}</label>
+                    <label class="form-label" for="tuShot">{{ 'Upload Screenshot' | t: 'staff.tuVerification.validate.screenshotLabel' }} @if (v.doc.needsScreenshot) {<span class="req">*</span>}</label>
                     <input id="tuShot" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" (change)="pickFile($event)" />
-                    <small class="text-danger d-block">(Valid file types: PDF/JPG/PNG, file size &lt; 2MB)</small>
-                    @if (v.doc.screenshots.length) { <small class="d-block">A screenshot is already attached; choose a file only to replace it.</small> }
+                    <small class="text-danger d-block">{{ '(Valid file types: PDF/JPG/PNG, file size < 2MB)' | t: 'staff.tuVerification.validate.fileNote' }}</small>
+                    @if (v.doc.screenshots.length) { <small class="d-block">{{ 'A screenshot is already attached; choose a file only to replace it.' | t: 'staff.tuVerification.validate.replaceNote' }}</small> }
                   </div>
                   <div class="form-group mb-3">
-                    <label class="form-label" for="tuRemarks">Remarks</label>
+                    <label class="form-label" for="tuRemarks">{{ 'Remarks' | t: 'staff.tuVerification.validate.remarksLabel' }}</label>
                     <textarea id="tuRemarks" class="form-control" rows="4" maxlength="1000" [ngModel]="v.remarks" (ngModelChange)="patchValidation({ remarks: $event })"></textarea>
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-primary w-100" [disabled]="saving()" (click)="saveValidation(app)">Submit</button>
+                  <button type="button" class="btn btn-primary w-100" [disabled]="saving()" (click)="saveValidation(app)">{{ 'Submit' | t: 'staff.tuVerification.validate.submitButton' }}</button>
                 </div>
               </div>
             </div>
@@ -330,14 +331,14 @@
             <div class="modal-dialog">
               <div class="modal-content">
                 <div class="modal-header justify-content-between">
-                  <h3 class="registration-title" id="tuDecisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
-                  <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                  <h3 class="registration-title" id="tuDecisionTitle">{{ d.decision === 'approve' ? ('Confirm Final Submit (Accept)' | t: 'staff.tuVerification.decision.acceptTitle') : ('Confirm Final Submit (Reject)' | t: 'staff.tuVerification.decision.rejectTitle') }}</h3>
+                  <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.tuVerification.closeAria'" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
                 </div>
                 <div class="modal-body">
                   @if (dialogError()) {
                     <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
                   }
-                  <label class="form-label" for="tuComments">Comments@if (d.decision === 'reject') {<span class="req">*</span>}</label>
+                  <label class="form-label" for="tuComments">{{ 'Comments' | t: 'staff.tuVerification.decision.commentsLabel' }}@if (d.decision === 'reject') {<span class="req">*</span>}</label>
                   <textarea id="tuComments" class="form-control mb-2" rows="4" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
                   <div class="form-check">
                     <input id="tuConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />
@@ -345,8 +346,8 @@
                   </div>
                 </div>
                 <div class="modal-footer">
-                  <button type="button" class="btn btn-default" (click)="closeDialogs()">Cancel</button>
-                  <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">Submit</button>
+                  <button type="button" class="btn btn-default" (click)="closeDialogs()">{{ 'Cancel' | t: 'staff.tuVerification.decision.cancelButton' }}</button>
+                  <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">{{ 'Submit' | t: 'staff.tuVerification.decision.submitButton' }}</button>
                 </div>
               </div>
             </div>
@@ -357,7 +358,7 @@
     </div>
   </div>
 } @else if (!loading() && !error()) {
-  <div class="no-data">No Data</div>
+  <div class="no-data">{{ 'No Data' | t: 'staff.tuVerification.empty' }}</div>
 }
 
 <!-- ================================================= templates -->
@@ -372,9 +373,9 @@
   <div class="row-data doc-row">
     <div class="doc-file">
       <img class="thumb" [src]="p.url" alt="" />
-      <span><strong>{{ p.name }}</strong> captured at {{ p.timeStamp }}</span>
+      <span><strong>{{ p.name }}</strong> {{ 'captured at {time}' | t: 'staff.tuVerification.doc.capturedNote' : { time: p.timeStamp } }}</span>
     </div>
-    <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(p.url)">View</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(p.url)">{{ 'View' | t: 'staff.tuVerification.doc.viewButton' }}</button>
   </div>
 </ng-template>
 
@@ -384,25 +385,25 @@
     <table class="table table-zed details">
       <tbody>
         @if (named) {
-          <tr><td class="w-50">Technology Name</td><td><div class="row-data"><b>{{ value(t.details, 'TechnologyName') }}</b></div></td><td></td></tr>
+          <tr><td class="w-50">{{ 'Technology Name' | t: 'staff.tuVerification.technology.nameLabel' }}</td><td><div class="row-data"><b>{{ value(t.details, 'TechnologyName') }}</b></div></td><td></td></tr>
         }
         @for (f of fieldsFor(app); track f.key) {
           <tr><td class="w-50">{{ f.label }}</td><td><div class="row-data"><b>{{ value(t.details, f.key) }}</b></div></td><td></td></tr>
         }
         <tr>
-          <td class="w-50">Amount Paid (Rs.) (Entered by MSME)</td>
-          <td><div class="row-data"><b>Rs. {{ value(t.details, 'MsmeAmountPaid') }}</b></div></td>
+          <td class="w-50">{{ 'Amount Paid (Rs.) (Entered by MSME)' | t: 'staff.tuVerification.technology.msmeAmountLabel' }}</td>
+          <td><div class="row-data"><b>{{ 'Rs. {amount}' | t: 'staff.tuVerification.technology.amountText' : { amount: value(t.details, 'MsmeAmountPaid') } }}</b></div></td>
           <td></td>
         </tr>
         <tr>
-          <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
+          <td class="w-50">{{ 'Amount Paid (Rs.) (Verified by Expert)' | t: 'staff.tuVerification.technology.verifiedAmountLabel' }}</td>
           <td>
             <div class="row-data">
               @if (amountEdit()?.id === t.id) {
-                <input class="form-control" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
+                <input class="form-control" [attr.aria-label]="'Verified amount' | t: 'staff.tuVerification.technology.amountAria'" inputmode="decimal" [ngModel]="amountEdit()!.value"
                        (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
               } @else {
-                <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
+                <b>{{ 'Rs. {amount}' | t: 'staff.tuVerification.technology.amountText' : { amount: value(t.details, 'AmountPaid') } }}</b>
               }
             </div>
           </td>
@@ -410,17 +411,17 @@
             <td>
               <div class="row-actions">
                 @if (amountEdit()?.id === t.id) {
-                  <button type="button" class="btn btn-default" (click)="amountEdit.set(null)">Cancel</button>
-                  <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
+                  <button type="button" class="btn btn-default" (click)="amountEdit.set(null)">{{ 'Cancel' | t: 'staff.tuVerification.technology.cancelButton' }}</button>
+                  <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="saveAmount(app)">{{ 'Update' | t: 'staff.tuVerification.technology.updateButton' }}</button>
                 } @else {
-                  <button type="button" class="btn btn-outline-primary" (click)="editAmount(t)">Edit</button>
+                  <button type="button" class="btn btn-outline-primary" (click)="editAmount(t)">{{ 'Edit' | t: 'staff.tuVerification.technology.editButton' }}</button>
                 }
               </div>
             </td>
           }
         </tr>
         <tr>
-          <td class="w-50">Mode of Payment</td>
+          <td class="w-50">{{ 'Mode of Payment' | t: 'staff.tuVerification.technology.modeLabel' }}</td>
           <td><div class="row-data"><b>{{ value(t.details, 'ModeOfPayment') }}</b></div></td>
           <td></td>
         </tr>
@@ -441,18 +442,18 @@
         <div class="row-data doc-row">
           <div class="doc-file">
             @if (doc.isPdf) {
-              <img class="thumb" src="Images/svgicons/pdf-icon.svg" alt="PDF" />
+              <img class="thumb" src="Images/svgicons/pdf-icon.svg" [alt]="'PDF' | t: 'staff.tuVerification.doc.pdfAlt'" />
             } @else if (!$any(app).canValidate) {
               <img class="thumb" [src]="doc.url" alt="" />
             } @else {
-              <img class="thumb" src="Images/svgicons/document.svg" alt="Document" />
+              <img class="thumb" src="Images/svgicons/document.svg" [alt]="'Document' | t: 'staff.tuVerification.doc.imageAlt'" />
             }
-            <span>captured at {{ doc.timeStamp }}</span>
+            <span>{{ 'captured at {time}' | t: 'staff.tuVerification.doc.capturedNote' : { time: doc.timeStamp } }}</span>
           </div>
           @if (doc.isPdf) {
-            <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">View</a>
+            <a class="btn btn-outline-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">{{ 'View' | t: 'staff.tuVerification.doc.viewButton' }}</a>
           } @else {
-            <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc.url, doc)">View</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" (click)="showImage(doc.url, doc)">{{ 'View' | t: 'staff.tuVerification.doc.viewButton' }}</button>
           }
         </div>
       }
@@ -462,28 +463,28 @@
         <div class="row-data doc-row">
           <div class="doc-status">
             @if (doc.isVerified) {
-              <small><strong>Verified:</strong> <span class="status-badge" [class.is-success]="doc.isVerified === 'Yes'" [class.is-rejected]="doc.isVerified !== 'Yes'">{{ doc.isVerified }}</span></small>
-              @if (doc.sourceOfValidation) { <small><strong>Source of Validation:</strong> {{ doc.sourceOfValidation }}</small> }
+              <small><strong>{{ 'Verified:' | t: 'staff.tuVerification.doc.verifiedLabel' }}</strong> <span class="status-badge" [class.is-success]="doc.isVerified === 'Yes'" [class.is-rejected]="doc.isVerified !== 'Yes'">{{ doc.isVerified }}</span></small>
+              @if (doc.sourceOfValidation) { <small><strong>{{ 'Source of Validation:' | t: 'staff.tuVerification.doc.sourceLabel' }}</strong> {{ doc.sourceOfValidation }}</small> }
               @if (doc.assessorRemarks) {
                 <small>
-                  <strong>Remarks:</strong>
+                  <strong>{{ 'Remarks:' | t: 'staff.tuVerification.doc.remarksLabel' }}</strong>
                   <span class="remarks" [class.clamp-3]="!isOpen('remarks' + doc.id)" [title]="doc.assessorRemarks">{{ doc.assessorRemarks }}</span>
                   @if (doc.assessorRemarks.length > 120) {
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle('remarks' + doc.id)">{{ isOpen('remarks' + doc.id) ? 'less' : 'more' }}</button>
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle('remarks' + doc.id)">{{ isOpen('remarks' + doc.id) ? ('less' | t: 'staff.tuVerification.lessButton') : ('more' | t: 'staff.tuVerification.moreButton') }}</button>
                   }
                 </small>
               }
               @if (doc.screenshots.length) {
                 <span class="shots">
                   @for (s of doc.screenshots; track s.id) {
-                    <a [href]="s.url" target="_blank" rel="noopener"><img src="Images/svgicons/pdf-icon.svg" height="25" alt="Screenshot" /></a>
+                    <a [href]="s.url" target="_blank" rel="noopener"><img src="Images/svgicons/pdf-icon.svg" height="25" [alt]="'Screenshot' | t: 'staff.tuVerification.doc.screenshotAlt'" /></a>
                   }
                 </span>
               }
             }
           </div>
           @if ($any(app).canValidate && opened(doc)) {
-            <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'Validate' }}</button>
+            <button type="button" class="btn btn-sm" [class.btn-outline-primary]="doc.isVerified" [class.btn-primary]="!doc.isVerified" (click)="openValidation(doc)">{{ doc.isVerified ? ('Edit' | t: 'staff.tuVerification.doc.editButton') : ('Validate' | t: 'staff.tuVerification.doc.validateButton') }}</button>
           }
         </div>
       }
@@ -492,14 +493,14 @@
 </ng-template>
 
 @if (preview(); as url) {
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image preview" (click)="closeDialogs()">
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" [attr.aria-label]="'Image preview' | t: 'staff.tuVerification.preview.title'" (click)="closeDialogs()">
     <div class="modal-dialog" (click)="$event.stopPropagation()">
       <div class="modal-content">
         <div class="modal-header justify-content-between">
-          <h3 class="registration-title">Image preview</h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+          <h3 class="registration-title">{{ 'Image preview' | t: 'staff.tuVerification.preview.title' }}</h3>
+          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.tuVerification.closeAria'" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
         </div>
-        <div class="modal-body text-center preview"><img [src]="url" alt="Document" /></div>
+        <div class="modal-body text-center preview"><img [src]="url" [alt]="'Document' | t: 'staff.tuVerification.doc.imageAlt'" /></div>
       </div>
     </div>
   </div>

@@ -4,6 +4,7 @@ import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface PortalLink {
   key: string;
@@ -23,19 +24,19 @@ const API = '/api/staff/settings/links';
 function addressProblem(value: string): string {
   const v = value.trim();
   if (!v) return '';
-  if (v.length > 500) return 'The address is too long (500 characters at most).';
+  if (v.length > 500) return t('staff.links.error.tooLong', 'The address is too long (500 characters at most).');
   try {
     const u = new URL(v);
-    return (u.protocol === 'https:' || u.protocol === 'http:') && u.hostname.includes('.') ? '' : `'${v}' is not a web address.`;
+    return (u.protocol === 'https:' || u.protocol === 'http:') && u.hostname.includes('.') ? '' : t('staff.links.error.notAddress', "'{address}' is not a web address.", { address: v });
   } catch {
-    return `'${v}' is not a web address (e.g. https://zed.msme.gov.in/contact-us).`;
+    return t('staff.links.error.notAddressExample', "'{address}' is not a web address (e.g. https://zed.msme.gov.in/contact-us).", { address: v });
   }
 }
 
 /** One link: its switch, address and Save (only after a change). */
 @Component({
   selector: 'zed-staff-link-card',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @let l = link();
     <form class="zed-card link-card" [class.is-off]="!enabled()" [class.is-dirty]="dirty()" (ngSubmit)="save()" novalidate>
@@ -49,25 +50,25 @@ function addressProblem(value: string): string {
           <h5 [id]="l.key + '-name'">{{ l.name }}</h5>
           <!-- 2026-11-19 (admin audit: status shown twice): the switch is the one Enabled / Disabled indicator. -->
           <div class="link-badges">
-            <span class="addr-chip" [class.own]="!!l.url">{{ l.url ? 'Own address' : 'Default address' }}</span>
+            <span class="addr-chip" [class.own]="!!l.url">{{ l.url ? ('Own address' | t: 'staff.links.card.ownChip') : ('Default address' | t: 'staff.links.card.defaultChip') }}</span>
           </div>
         </div>
         <div class="form-check form-switch link-switch">
           <input class="form-check-input" type="checkbox" role="switch" [id]="l.key + '-enabled'" name="enabled"
                  [attr.aria-describedby]="l.key + '-name'" [ngModel]="enabled()" (ngModelChange)="enabled.set($event); message.set(null)" />
-          <label class="form-check-label" [for]="l.key + '-enabled'">{{ enabled() ? 'Enabled' : 'Disabled' }}</label>
+          <label class="form-check-label" [for]="l.key + '-enabled'">{{ enabled() ? ('Enabled' | t: 'staff.links.card.enabled') : ('Disabled' | t: 'staff.links.card.disabled') }}</label>
         </div>
       </div>
-      <p class="link-where"><span class="where-label">Shown on</span> {{ l.shownOn }}</p>
+      <p class="link-where"><span class="where-label">{{ 'Shown on' | t: 'staff.links.card.shownOnLabel' }}</span> {{ l.shownOn }}</p>
 
       <div class="link-body">
-        <label [for]="l.key + '-url'">Web address</label>
+        <label [for]="l.key + '-url'">{{ 'Web address' | t: 'staff.links.card.addressLabel' }}</label>
         <div class="input-group">
           <input [id]="l.key + '-url'" name="url" type="url" class="form-control" maxlength="500" autocomplete="off"
                  [class.is-invalid]="!!problem()" [placeholder]="l.defaultUrl" [ngModel]="url()"
                  (ngModelChange)="url.set($event); problem.set(''); message.set(null)" />
-          <a class="btn btn-outline-primary link-open" [href]="url().trim() || l.defaultUrl" target="_blank" rel="noopener" title="Open the address in a new tab to test it">
-            Open
+          <a class="btn btn-outline-primary link-open" [href]="url().trim() || l.defaultUrl" target="_blank" rel="noopener" [title]="'Open the address in a new tab to test it' | t: 'staff.links.card.openTooltip'">
+            {{ 'Open' | t: 'staff.links.card.openButton' }}
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
             </svg>
@@ -76,12 +77,12 @@ function addressProblem(value: string): string {
         @if (problem()) {
           <small class="help-block d-block">{{ problem() }}</small>
         } @else if (url().trim()) {
-          <small class="link-hint">Leave empty to use the default: <a [href]="l.defaultUrl" target="_blank" rel="noopener">{{ l.defaultUrl }}</a></small>
+          <small class="link-hint">{{ 'Leave empty to use the default:' | t: 'staff.links.card.defaultHint' }} <a [href]="l.defaultUrl" target="_blank" rel="noopener">{{ l.defaultUrl }}</a></small>
         } @else {
-          <small class="link-hint">Empty: the default address (shown greyed in the box) is used.</small>
+          <small class="link-hint">{{ 'Empty: the default address (shown greyed in the box) is used.' | t: 'staff.links.card.emptyHint' }}</small>
         }
         @if (!enabled()) {
-          <div class="link-off-note" role="note">The link is switched off on the pages. The address is kept for when you enable it again.</div>
+          <div class="link-off-note" role="note">{{ 'The link is switched off on the pages. The address is kept for when you enable it again.' | t: 'staff.links.card.offNote' }}</div>
         }
         @if (message(); as m) {
           <div class="alert mt-3 mb-0" [class.alert-success]="m.ok" [class.alert-danger]="!m.ok" [attr.role]="m.ok ? 'status' : 'alert'">{{ m.text }}</div>
@@ -91,9 +92,9 @@ function addressProblem(value: string): string {
       <!-- 2026-11-19 (admin audit: eight greyed Save buttons): Cancel / Save appear once the card has a change. -->
       @if (dirty()) {
         <div class="form-actions">
-          <span class="unsaved me-auto">Not saved yet.</span>
-          <button type="button" class="btn btn-default" [disabled]="busy()" (click)="undo()">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          <span class="unsaved me-auto">{{ 'Not saved yet.' | t: 'staff.links.card.unsaved' }}</span>
+          <button type="button" class="btn btn-default" [disabled]="busy()" (click)="undo()">{{ 'Cancel' | t: 'staff.links.card.cancelButton' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save' | t: 'staff.links.card.saveButton' }}</button>
         </div>
       } @else {
         <div class="form-actions-spacer"></div>
@@ -198,12 +199,12 @@ export class LinkCard {
  */
 @Component({
   selector: 'zed-staff-links',
-  imports: [LinkCard, PortalSwitchComponent],
+  imports: [LinkCard, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Links</h3>
-        <p class="page-sub">The portal's links to pages outside it: switch each on or off and change where it goes.</p>
+        <h3 class="registration-title">{{ 'Links' | t: 'staff.links.title' }}</h3>
+        <p class="page-sub">{{ "The portal's links to pages outside it: switch each on or off and change where it goes." | t: 'staff.links.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the links of the portal chosen here (each portal keeps its own). -->
@@ -213,10 +214,10 @@ export class LinkCard {
     }
     @if (links(); as list) {
       <div class="links-stats">
-        <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Links</span></div>
-        <div class="stat"><span class="stat-value is-on">{{ stats().enabled }}<small>/{{ stats().total }}</small></span><span class="stat-label">Enabled</span></div>
-        <div class="stat"><span class="stat-value is-own">{{ stats().own }}</span><span class="stat-label">Own address</span></div>
-        <div class="stat"><span class="stat-value is-off">{{ stats().off }}</span><span class="stat-label">Switched off</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Links' | t: 'staff.links.count.links' }}</span></div>
+        <div class="stat"><span class="stat-value is-on">{{ stats().enabled }}<small>/{{ stats().total }}</small></span><span class="stat-label">{{ 'Enabled' | t: 'staff.links.count.enabled' }}</span></div>
+        <div class="stat"><span class="stat-value is-own">{{ stats().own }}</span><span class="stat-label">{{ 'Own address' | t: 'staff.links.count.own' }}</span></div>
+        <div class="stat"><span class="stat-value is-off">{{ stats().off }}</span><span class="stat-label">{{ 'Switched off' | t: 'staff.links.count.off' }}</span></div>
       </div>
       @if (list.length) {
         <div class="links-grid">
@@ -225,7 +226,7 @@ export class LinkCard {
           }
         </div>
       } @else {
-        <div class="zed-card no-data">No links to set up.</div>
+        <div class="zed-card no-data">{{ 'No links to set up.' | t: 'staff.links.empty' }}</div>
       }
     }
   `,

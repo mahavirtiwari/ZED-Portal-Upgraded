@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe } from '../../content/page-text';
 import { PublicFrame } from './incentives';
 import { IncentiveSubmission, STATES, SchemesApi } from './schemes.api';
 
@@ -16,7 +17,7 @@ const PAGE_SIZE = 10;
  */
 @Component({
   selector: 'zed-public-incentive-submissions',
-  imports: [PublicFrame],
+  imports: [PublicFrame, TextPipe],
   template: `
     <zed-public-frame>
       <div class="container form-page" id="zed_user_form">
@@ -25,25 +26,25 @@ const PAGE_SIZE = 10;
             <div class="panel-body p-3">
               <div class="d-flex flex-wrap gap-3 align-items-end">
                 <div>
-                  <label for="subState">State</label>
+                  <label for="subState">{{ 'State' | t: 'public.incentiveSubmissions.stateLabel' }}</label>
                   <select id="subState" class="form-control" style="width: 200px" [value]="state()" (change)="filter({ id: value($event) })">
-                    <option value="">All</option>
+                    <option value="">{{ 'All' | t: 'public.incentiveSubmissions.allOption' }}</option>
                     @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
                   </select>
                 </div>
                 <div>
-                  <label for="subLevel">Certification Level</label>
+                  <label for="subLevel">{{ 'Certification Level' | t: 'public.incentiveSubmissions.levelLabel' }}</label>
                   <select id="subLevel" class="form-control" style="width: 200px" [value]="ct()" (change)="filter({ ct: value($event) })">
-                    <option value="">All</option>
+                    <option value="">{{ 'All' | t: 'public.incentiveSubmissions.allOption' }}</option>
                     <option value="Bronze">Bronze</option>
                     <option value="Silver">Silver</option>
                     <option value="Gold">Gold</option>
                   </select>
                 </div>
                 <div>
-                  <label for="subSize">MSME Size</label>
+                  <label for="subSize">{{ 'MSME Size' | t: 'public.incentiveSubmissions.sizeLabel' }}</label>
                   <select id="subSize" class="form-control" style="width: 200px" [value]="size()" (change)="filter({ msmeSize: value($event) })">
-                    <option value="">All</option>
+                    <option value="">{{ 'All' | t: 'public.incentiveSubmissions.allOption' }}</option>
                     <option value="Micro">Micro</option>
                     <option value="Small">Small</option>
                     <option value="Medium">Medium</option>
@@ -53,12 +54,12 @@ const PAGE_SIZE = 10;
             </div>
           </div>
 
-          <div class="panel panel-default panel-incentive m-b-2"><h4 class="incentive-title">API Incentives Submitted</h4></div>
+          <div class="panel panel-default panel-incentive m-b-2"><h4 class="incentive-title">{{ 'API Incentives Submitted' | t: 'public.incentiveSubmissions.title' }}</h4></div>
           @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
           @if (rows().length) {
             <div class="panel panel-default panel-grey">
               <table class="table table-striped bg-white" id="incSubmissions">
-                <thead><tr><th>S.No</th><th>Unit Name<br />State Name</th><th>Certification</th><th>Service Name<br />Incentive Name</th></tr></thead>
+                <thead><tr><th>{{ 'S.No' | t: 'public.incentiveSubmissions.column.number' }}</th><th>{{ 'Unit Name' | t: 'public.incentiveSubmissions.column.unit' }}<br />{{ 'State Name' | t: 'public.incentiveSubmissions.column.state' }}</th><th>{{ 'Certification' | t: 'public.incentiveSubmissions.column.certification' }}</th><th>{{ 'Service Name' | t: 'public.incentiveSubmissions.column.service' }}<br />{{ 'Incentive Name' | t: 'public.incentiveSubmissions.column.incentive' }}</th></tr></thead>
                 <tbody>
                   @for (r of pageRows(); track $index) {
                     <tr>
@@ -71,16 +72,16 @@ const PAGE_SIZE = 10;
                 </tbody>
               </table>
               <div class="d-flex justify-content-between align-items-center p-2">
-                <span>Page {{ pageNo() }} of {{ lastPage() }}</span>
+                <span>{{ 'Page {page} of {pages}' | t: 'public.incentiveSubmissions.pageText' : { page: pageNo(), pages: lastPage() } }}</span>
                 <div class="btn-group">
-                  <button type="button" class="btn btn-default btn-sm" [disabled]="pageNo() === 1" (click)="pageNo.set(pageNo() - 1)">Previous</button>
-                  <button type="button" class="btn btn-default btn-sm" [disabled]="pageNo() >= lastPage()" (click)="pageNo.set(pageNo() + 1)">Next</button>
+                  <button type="button" class="btn btn-default btn-sm" [disabled]="pageNo() === 1" (click)="pageNo.set(pageNo() - 1)">{{ 'Previous' | t: 'public.incentiveSubmissions.previousButton' }}</button>
+                  <button type="button" class="btn btn-default btn-sm" [disabled]="pageNo() >= lastPage()" (click)="pageNo.set(pageNo() + 1)">{{ 'Next' | t: 'public.incentiveSubmissions.nextButton' }}</button>
                 </div>
               </div>
             </div>
           } @else if (loaded()) {
             <div class="label-highlight4">
-              <div class="no-incentive-block"><img src="/Images/svgicons/no-incentive.svg" alt="" /><p>No incentives found for the selection.</p></div>
+              <div class="no-incentive-block"><img src="/Images/svgicons/no-incentive.svg" alt="" /><p>{{ 'No incentives found for the selection.' | t: 'public.incentiveSubmissions.empty' }}</p></div>
             </div>
           }
         </div>

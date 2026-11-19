@@ -1,5 +1,6 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TextPipe } from '../../content/page-text';
 
 /** One step of the breadcrumb: a link, or the current page (no link). */
 export interface Crumb {
@@ -17,12 +18,12 @@ export interface Crumb {
  */
 @Component({
   selector: 'zed-page-head',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   host: { class: 'd-block' },
   template: `
     <div class="ph">
       <div class="ph-text">
-        <nav class="ph-crumb" aria-label="Breadcrumb">
+        <nav class="ph-crumb" [attr.aria-label]="'Breadcrumb' | t: 'common.pageHead.crumbsAria'">
           @for (c of crumbs(); track $index; let last = $last) {
             @if (c.link && !last) { <a [routerLink]="c.link" [fragment]="c.fragment">{{ c.label }}</a> } @else { <span [attr.aria-current]="last ? 'page' : null">{{ c.label }}</span> }
             @if (!last) { <span class="ph-sep" aria-hidden="true">›</span> }

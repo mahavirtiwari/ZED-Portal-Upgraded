@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { t } from '../../content/page-text';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 
 /** What a reason pop-up asks for: block or unblock a login. */
@@ -31,13 +32,19 @@ export class ReasonDialog {
   protected readonly confirm = computed<ConfirmAsk>(() => {
     const a = this.ask();
     const block = a.action === 'block';
+    const name = a.userName || a.userId;
     return {
-      title: `${block ? 'Block' : 'Unblock'} ${a.userName || a.userId}`,
-      message: `${block ? 'The login cannot sign in until it is unblocked.' : 'The login can sign in again with its existing password.'} ` +
-        'The reason is kept in its history and e-mailed to the user.',
-      confirmLabel: block ? 'Block' : 'Unblock',
+      title: block ? t('staff.userLists.reason.blockTitle', 'Block {name}', { name }) : t('staff.userLists.reason.unblockTitle', 'Unblock {name}', { name }),
+      message: block
+        ? t('staff.userLists.reason.blockMessage', 'The login cannot sign in until it is unblocked. The reason is kept in its history and e-mailed to the user.')
+        : t('staff.userLists.reason.unblockMessage', 'The login can sign in again with its existing password. The reason is kept in its history and e-mailed to the user.'),
+      confirmLabel: block ? t('staff.userLists.reason.blockButton', 'Block') : t('staff.userLists.reason.unblockButton', 'Unblock'),
       danger: block,
-      reason: { label: 'Reason', placeholder: block ? 'Why the login is blocked' : 'Why the login is unblocked', maxLength: 2000 },
+      reason: {
+        label: t('staff.userLists.reason.reasonLabel', 'Reason'),
+        placeholder: block ? t('staff.userLists.reason.blockPlaceholder', 'Why the login is blocked') : t('staff.userLists.reason.unblockPlaceholder', 'Why the login is unblocked'),
+        maxLength: 2000,
+      },
     };
   });
 }

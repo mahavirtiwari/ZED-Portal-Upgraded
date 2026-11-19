@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 export type ChangeKind = 'addState' | 'renameState' | 'addDistrict' | 'renameDistrict' | 'deactivateDistrict';
 
@@ -23,13 +24,19 @@ export interface LgdPreview {
   changes: LgdChange[];
 }
 
-const KIND_LABELS: Record<ChangeKind, string> = {
-  addState: 'New state / UT',
-  renameState: 'State renamed',
-  addDistrict: 'New district',
-  renameDistrict: 'District renamed',
-  deactivateDistrict: 'No longer in LGD (deactivate)',
-};
+/** The kinds of change, in the order the page lists them. */
+const KINDS: readonly ChangeKind[] = ['addState', 'renameState', 'addDistrict', 'renameDistrict', 'deactivateDistrict'];
+
+/** A kind of change as shown (read in templates / computed, so the Admin's wording shows). */
+function kindName(kind: ChangeKind): string {
+  switch (kind) {
+    case 'addState': return t('staff.lgDirectory.kind.addState.label', 'New state / UT');
+    case 'renameState': return t('staff.lgDirectory.kind.renameState.label', 'State renamed');
+    case 'addDistrict': return t('staff.lgDirectory.kind.addDistrict.label', 'New district');
+    case 'renameDistrict': return t('staff.lgDirectory.kind.renameDistrict.label', 'District renamed');
+    default: return t('staff.lgDirectory.kind.deactivateDistrict.label', 'No longer in LGD (deactivate)');
+  }
+}
 
 /** Colour of each kind's badge and card: new (green), renamed (teal), no longer in LGD (red). */
 const KIND_TONES: Record<ChangeKind, string> = {
@@ -49,16 +56,16 @@ const KIND_TONES: Record<ChangeKind, string> = {
  */
 @Component({
   selector: 'zed-staff-lgd-directory',
-  imports: [PagerComponent, ListSearchComponent, ExcelToolsComponent],
+  imports: [PagerComponent, ListSearchComponent, ExcelToolsComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">LG Directory</h3>
-        <p class="page-sub">Bring the states and districts up to date with the Local Government Directory (LGD).</p>
+        <h3 class="registration-title">{{ 'LG Directory' | t: 'staff.lgDirectory.title' }}</h3>
+        <p class="page-sub">{{ 'Bring the states and districts up to date with the Local Government Directory (LGD).' | t: 'staff.lgDirectory.sub' }}</p>
       </div>
       <!-- Export: the masters' active districts in the LGD file's columns (an exported file can be uploaded below). -->
       <div class="page-actions">
-        <zed-excel-tools api="/api/staff/masters/lgd" title="Districts" fileName="lgd-districts" [uploadable]="false" />
+        <zed-excel-tools api="/api/staff/masters/lgd" [title]="'Districts' | t: 'staff.lgDirectory.excel.title'" fileName="lgd-districts" [uploadable]="false" />
       </div>
     </div>
     @if (error()) {
@@ -71,16 +78,17 @@ const KIND_TONES: Record<ChangeKind, string> = {
     <ol class="lgd-steps">
       <li class="lgd-step" [class.is-done]="!!fileName()">
         <span class="lgd-no" aria-hidden="true">1</span>
-        <div><strong>Download from LGD</strong>
-          <span>On @if (links.url('lgd'); as u) {<a [href]="u" target="_blank" rel="noopener noreferrer">lgdirectory.gov.in → Download Directory</a>} @else {lgdirectory.gov.in → Download Directory}, download the list of <b>all districts</b> (CSV or Excel).</span></div>
+        <!-- The step's line is one wording; the link (Admin → Links) is shown where its {link} is. -->
+        <div><strong>{{ 'Download from LGD' | t: 'staff.lgDirectory.steps.download.title' }}</strong>
+          <span>{{ downloadLine()[0] }}@if (links.url('lgd'); as u) {<a [href]="u" target="_blank" rel="noopener noreferrer">{{ 'lgdirectory.gov.in → Download Directory' | t: 'staff.lgDirectory.steps.download.link' }}</a>} @else { {{ 'lgdirectory.gov.in → Download Directory' | t: 'staff.lgDirectory.steps.download.link' }} }{{ downloadLine()[1] }}</span></div>
       </li>
       <li class="lgd-step" [class.is-now]="!result()" [class.is-done]="!!result()">
         <span class="lgd-no" aria-hidden="true">2</span>
-        <div><strong>Upload and check</strong><span>Upload it here and check the changes.</span></div>
+        <div><strong>{{ 'Upload and check' | t: 'staff.lgDirectory.steps.upload.title' }}</strong><span>{{ 'Upload it here and check the changes.' | t: 'staff.lgDirectory.steps.upload.text' }}</span></div>
       </li>
       <li class="lgd-step" [class.is-now]="!!result()">
         <span class="lgd-no" aria-hidden="true">3</span>
-        <div><strong>Tick and apply</strong><span>Tick the changes to make and apply them. Codes are LGD codes; names are stored in capitals.</span></div>
+        <div><strong>{{ 'Tick and apply' | t: 'staff.lgDirectory.steps.apply.title' }}</strong><span>{{ 'Tick the changes to make and apply them. Codes are LGD codes; names are stored in capitals.' | t: 'staff.lgDirectory.steps.apply.text' }}</span></div>
       </li>
     </ol>
 
@@ -91,25 +99,25 @@ const KIND_TONES: Record<ChangeKind, string> = {
             <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M12 17v-6" /><path d="m9 14 3-3 3 3" />
           </svg>
           <span class="lgd-drop-text">
-            @if (fileName(); as f) { <strong>{{ f }}</strong> <small class="muted">Choose another file to replace it.</small> }
-            @else { <strong>Choose the LGD district list</strong> <small class="muted">CSV or Excel (.xlsx), as downloaded from LGD.</small> }
+            @if (fileName(); as f) { <strong>{{ f }}</strong> <small class="muted">{{ 'Choose another file to replace it.' | t: 'staff.lgDirectory.upload.replace.note' }}</small> }
+            @else { <strong>{{ 'Choose the LGD district list' | t: 'staff.lgDirectory.upload.choose.label' }}</strong> <small class="muted">{{ 'CSV or Excel (.xlsx), as downloaded from LGD.' | t: 'staff.lgDirectory.upload.choose.note' }}</small> }
           </span>
         </label>
-        <input type="file" class="form-control" id="lgd-file" accept=".csv,.xlsx" aria-label="LGD district list" (change)="pickFile($event)" />
-        <button type="button" class="btn btn-primary" [disabled]="busy() || !file" (click)="preview()">Check changes</button>
+        <input type="file" class="form-control" id="lgd-file" accept=".csv,.xlsx" [attr.aria-label]="'LGD district list' | t: 'staff.lgDirectory.upload.file.aria'" (change)="pickFile($event)" />
+        <button type="button" class="btn btn-primary" [disabled]="busy() || !file" (click)="preview()">{{ 'Check changes' | t: 'staff.lgDirectory.upload.check.button' }}</button>
       </div>
     </section>
 
     @if (result(); as r) {
       <div class="lgd-stats">
-        <div class="stat"><span class="stat-value">{{ r.statesInFile }}</span><span class="stat-label">States / UTs in the file</span></div>
-        <div class="stat"><span class="stat-value">{{ r.districtsInFile }}</span><span class="stat-label">Districts in the file</span></div>
-        <div class="stat" [class.stat-warn]="r.changes.length"><span class="stat-value">{{ r.changes.length }}</span><span class="stat-label">Changes found</span></div>
+        <div class="stat"><span class="stat-value">{{ r.statesInFile }}</span><span class="stat-label">{{ 'States / UTs in the file' | t: 'staff.lgDirectory.count.states' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ r.districtsInFile }}</span><span class="stat-label">{{ 'Districts in the file' | t: 'staff.lgDirectory.count.districts' }}</span></div>
+        <div class="stat" [class.stat-warn]="r.changes.length"><span class="stat-value">{{ r.changes.length }}</span><span class="stat-label">{{ 'Changes found' | t: 'staff.lgDirectory.count.changes' }}</span></div>
       </div>
       <section class="zed-card" aria-labelledby="lgd-changes">
-        <h5 class="lgd-h" id="lgd-changes">Changes</h5>
+        <h5 class="lgd-h" id="lgd-changes">{{ 'Changes' | t: 'staff.lgDirectory.changes.title' }}</h5>
         @if (!r.changes.length) {
-          <div class="no-data">The states and districts already match LGD. Nothing to apply.</div>
+          <div class="no-data">{{ 'The states and districts already match LGD. Nothing to apply.' | t: 'staff.lgDirectory.changes.empty' }}</div>
         } @else {
           <div class="lgd-summary">
             @for (k of kinds(); track k.kind) {
@@ -120,17 +128,18 @@ const KIND_TONES: Record<ChangeKind, string> = {
               </label>
             }
           </div>
-          <p class="muted lgd-hint">New and renamed entries are ticked. Tick a district no longer in LGD only when it has really gone.</p>
-          <zed-list-search [(value)]="search" placeholder="Search changes" inputId="lgd-search" [found]="list.total()" />
+          <p class="muted lgd-hint">{{ 'New and renamed entries are ticked. Tick a district no longer in LGD only when it has really gone.' | t: 'staff.lgDirectory.changes.note' }}</p>
+          <zed-list-search [(value)]="search" [placeholder]="'Search changes' | t: 'staff.lgDirectory.search.placeholder'" inputId="lgd-search" [found]="list.total()" />
           <div class="table-responsive lgd-list">
             <table class="table table-zed">
-              <thead><tr><th style="width: 40px"></th><th>Change</th><th>State / UT</th><th>District</th><th>Now in ZED</th></tr></thead>
+              <thead><tr><th style="width: 40px"></th><th>{{ 'Change' | t: 'staff.lgDirectory.column.change' }}</th><th>{{ 'State / UT' | t: 'staff.lgDirectory.column.state' }}</th>
+                <th>{{ 'District' | t: 'staff.lgDirectory.column.district' }}</th><th>{{ 'Now in ZED' | t: 'staff.lgDirectory.column.now' }}</th></tr></thead>
               <tbody>
                 @for (row of list.page(); track row.i) {
                   @let c = row.c;
                   @let i = row.i;
                   <tr [class.is-ticked]="ticked().has(i)">
-                    <td><input type="checkbox" class="form-check-input" [attr.aria-label]="'Apply ' + labelOf(c)" [checked]="ticked().has(i)" (change)="tick(i)" /></td>
+                    <td><input type="checkbox" class="form-check-input" [attr.aria-label]="'Apply {change}' | t: 'staff.lgDirectory.row.apply.aria' : { change: labelOf(c) }" [checked]="ticked().has(i)" (change)="tick(i)" /></td>
                     <td><span class="lgd-badge {{ toneOf(c.kind) }}">{{ kindLabel(c.kind) }}</span></td>
                     <td>{{ c.stateName }} <small class="muted">({{ c.stateCode }})</small></td>
                     <td>{{ c.districtName }} @if (c.districtCode) { <small class="muted">({{ c.districtCode }})</small> }</td>
@@ -142,8 +151,8 @@ const KIND_TONES: Record<ChangeKind, string> = {
           </div>
           <zed-pager [pager]="list" [sizes]="[20, 50, 100, 500]" />
           <div class="form-actions lgd-bar">
-            <span class="me-auto lgd-count"><strong>{{ ticked().size }}</strong> of {{ r.changes.length }} ticked</span>
-            <button type="button" class="btn btn-primary" [disabled]="busy() || !ticked().size" (click)="apply()">Apply ticked changes</button>
+            <span class="me-auto lgd-count">{{ '{ticked} of {total} ticked' | t: 'staff.lgDirectory.ticked.label' : { ticked: ticked().size, total: r.changes.length } }}</span>
+            <button type="button" class="btn btn-primary" [disabled]="busy() || !ticked().size" (click)="apply()">{{ 'Apply ticked changes' | t: 'staff.lgDirectory.apply.button' }}</button>
           </div>
         }
       </section>
@@ -236,8 +245,8 @@ export class LgdDirectoryPage {
   protected readonly ticked = signal<Set<number>>(new Set());
   protected readonly kinds = computed(() => {
     const changes = this.result()?.changes ?? [];
-    return (Object.keys(KIND_LABELS) as ChangeKind[])
-      .map((kind) => ({ kind, label: KIND_LABELS[kind], count: changes.filter((c) => c.kind === kind).length }))
+    return KINDS
+      .map((kind) => ({ kind, label: kindName(kind), count: changes.filter((c) => c.kind === kind).length }))
       .filter((k) => k.count > 0);
   });
   /** The changes with their place in the file's list (the ticks), paged; ticking keeps the page. */
@@ -248,9 +257,14 @@ export class LgdDirectoryPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Step 1's line around its link: [before, after] (the wording's {link} is where the link goes). */
+  protected readonly downloadLine = computed(() => {
+    const [before, ...after] = t('staff.lgDirectory.steps.download.text', 'On {link}, download the list of all districts (CSV or Excel).').split('{link}');
+    return [before, after.join('')] as const;
+  });
 
   protected kindLabel(kind: ChangeKind): string {
-    return KIND_LABELS[kind];
+    return kindName(kind);
   }
 
   protected toneOf(kind: ChangeKind): string {
@@ -258,7 +272,7 @@ export class LgdDirectoryPage {
   }
 
   protected labelOf(c: LgdChange): string {
-    return `${KIND_LABELS[c.kind]} ${c.districtName ?? c.stateName ?? ''}`.trim();
+    return `${kindName(c.kind)} ${c.districtName ?? c.stateName ?? ''}`.trim();
   }
 
   protected pickFile(event: Event): void {
@@ -313,7 +327,11 @@ export class LgdDirectoryPage {
     const r = this.result();
     if (!r) return;
     const changes = r.changes.filter((_, i) => this.ticked().has(i));
-    if (!(await this.confirms.ask({ title: 'Apply the Changes?', message: `${changes.length} change(s) are applied to the states and districts.`, confirmLabel: 'Apply' }))) return;
+    if (!(await this.confirms.ask({
+      title: t('staff.lgDirectory.apply.title', 'Apply the Changes?'),
+      message: t('staff.lgDirectory.apply.message', '{count} change(s) are applied to the states and districts.', { count: changes.length }),
+      confirmLabel: t('staff.lgDirectory.apply.confirm.button', 'Apply'),
+    }))) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -329,5 +347,5 @@ export class LgdDirectoryPage {
 }
 
 function sizeOf(bytes: number): string {
-  return bytes < 1024 ? 'under 1 KB' : bytes < 1048576 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+  return bytes < 1024 ? t('staff.lgDirectory.upload.underOneKb.label', 'under 1 KB') : bytes < 1048576 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 }

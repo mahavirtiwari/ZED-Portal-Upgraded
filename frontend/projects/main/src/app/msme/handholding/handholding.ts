@@ -18,7 +18,8 @@ import {
   handholdingLevelName,
 } from './handholding.api';
 import { HandholdingLevelCard, LevelCardVm } from './handholding-level-card';
-import { Crumb, PageHead } from '../shared/page-head';
+import { PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
 
 type InfoTopic = 'My' | HandholdingLevel;
 
@@ -43,10 +44,19 @@ interface MilestoneRow {
   state: string;
 }
 
-/** "MILESTONE 1: BASIC DIAGNOSTIC STUDY" → "Basic diagnostic study" (the old titles, without the prefix). */
-function milestoneName(title: string): string {
-  const name = title.replace(/^Milestone\s*\d+\s*:\s*/i, '').trim();
-  return name === name.toUpperCase() ? name.charAt(0) + name.slice(1).toLowerCase() : name;
+/**
+ * A milestone's name: the old titles (MILESTONE_TITLES) without their "Milestone n:" prefix, in sentence case when they
+ * were in capitals (Silver and Gold name them differently; ZED-X takes Gold's).
+ */
+function milestoneName(level: HandholdingLevel, n: number): string {
+  if (level === 'Silver') {
+    if (n === 1) return t('msme.handholding.milestones.silver1Title', 'Baseline Diagnostic Study and Handholding Action Plan');
+    if (n === 2) return t('msme.handholding.milestones.silver2Title', 'Implementation & Progress Review 1');
+    return t('msme.handholding.milestones.silver3Title', 'Implementation & Progress Review 2');
+  }
+  if (n === 1) return t('msme.handholding.milestones.gold1Title', 'Basic diagnostic study and handholding');
+  if (n === 2) return t('msme.handholding.milestones.gold2Title', 'Progress review 1');
+  return t('msme.handholding.milestones.gold3Title', 'Progress review 2');
 }
 
 /**
@@ -59,7 +69,7 @@ function milestoneName(title: string): string {
  */
 @Component({
   selector: 'zed-msme-handholding',
-  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, PageHead, HandholdingLevelCard],
+  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, PageHead, HandholdingLevelCard, TextPipe],
   templateUrl: './handholding.html',
   styleUrls: ['../shared/msme-page.scss', './handholding.scss'],
 })
@@ -94,7 +104,11 @@ export class HandholdingPage {
 
   /** Level whose milestones are shown below the cards (outlined). */
   protected readonly selected = signal<HandholdingLevel | null>(null);
-  protected readonly crumbs: Crumb[] = [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Incentives', link: '/msme/dashboard', fragment: 'incentives' }, { label: 'Handholding support' }];
+  protected readonly crumbs = computed(() => [
+    { label: t('msme.handholding.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.handholding.crumb.incentives', 'Incentives'), link: '/msme/dashboard', fragment: 'incentives' },
+    { label: t('msme.handholding.crumb.handholding', 'Handholding support') },
+  ]);
   protected readonly info = signal<InfoTopic | null>(null);
   protected readonly detailsOf = signal<HandholdingLevel | null>(null);
   protected readonly accepting = signal<{ level: HandholdingLevel; milestone: number } | null>(null);
@@ -120,13 +134,14 @@ export class HandholdingPage {
 
   /** The unit's size (Micro / Small / Medium): the subsidy depends on it. */
   protected readonly size = computed(() => {
-    const t = String(this.msme()['EnterpriseType'] ?? '').trim();
-    return /^(micro|small|medium)$/i.test(t) ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : '';
+    const s = String(this.msme()['EnterpriseType'] ?? '').trim();
+    return /^(micro|small|medium)$/i.test(s) ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
   });
 
   protected readonly subtitle = computed(() => {
     const cost = this.cost();
-    return 'Consultancy to help you reach your target level.' + (cost ? ` Cost ₹ ${cost.amount}, subsidy as per MSME size.` : '');
+    const sub = t('msme.handholding.sub', 'Consultancy to help you reach your target level.');
+    return cost ? `${sub} ${t('msme.handholding.costSub', 'Cost ₹ {amount}, subsidy as per MSME size.', { amount: cost.amount })}` : sub;
   });
 
   protected readonly cards = computed<LevelCardVm[]>(() =>
@@ -134,7 +149,8 @@ export class HandholdingPage {
       const started = this.started(level);
       const completed = this.completed(level);
       const current = this.currentMilestone(level);
-      const points = ['Baseline', 'Review 1', 'Review 2'].map((label, i) => ({
+      const labels = [t('msme.handholding.levelCard.step.baseline', 'Baseline'), t('msme.handholding.levelCard.step.review1', 'Review 1'), t('msme.handholding.levelCard.step.review2', 'Review 2')];
+      const points = labels.map((label, i) => ({
         label,
         done: completed || this.isAccepted(level, i + 1),
         now: started && !completed && current === i + 1,
@@ -144,11 +160,11 @@ export class HandholdingPage {
         name: handholdingLevelName(level),
         logo: this.logo(level),
         chip: completed
-          ? { label: 'Completed', tone: 'done' as const }
+          ? { label: t('msme.handholding.levelCard.chip.completed', 'Completed'), tone: 'done' as const }
           : started
-            ? { label: `In progress · Milestone ${current}`, tone: 'prog' as const }
-            : { label: 'Not started', tone: 'new' as const },
-        points: [...points, { label: 'Complete', done: completed, now: false }],
+            ? { label: t('msme.handholding.levelCard.chip.inProgress', 'In progress · Milestone {number}', { number: current }), tone: 'prog' as const }
+            : { label: t('msme.handholding.levelCard.chip.notStarted', 'Not started'), tone: 'new' as const },
+        points: [...points, { label: t('msme.handholding.levelCard.step.complete', 'Complete'), done: completed, now: false }],
         canApply: !started && !!this.state(level)?.canPay,
         selected: this.selected() === level,
       };
@@ -160,11 +176,11 @@ export class HandholdingPage {
     if (!level) return [];
     const state = this.state(level);
     let nowTaken = false;
-    return MILESTONE_TITLES[level].map((title, i) => {
+    return MILESTONE_TITLES[level].map((_, i) => {
       const n = i + 1;
       const row = {
         number: n,
-        title: milestoneName(title),
+        title: milestoneName(level, n),
         disabled: n > 1 && this.num(completionColumn(level, n - 1)) < 100,
         applied: this.num(`${level}StatusOfNc${n}`) === 1,
         canApply: !!state?.canPay && state.nextMilestone === n,
@@ -174,16 +190,16 @@ export class HandholdingPage {
         state: '',
       };
       row.state = row.canAccept
-        ? 'Submitted by the consultant: please accept'
+        ? t('msme.handholding.milestones.state.submitted', 'Submitted by the consultant: please accept')
         : row.accepted
-          ? 'Completed'
+          ? t('msme.handholding.milestones.state.completed', 'Completed')
           : row.applied
-            ? 'Applied · in progress'
+            ? t('msme.handholding.milestones.state.applied', 'Applied · in progress')
             : row.canApply
-              ? 'Apply and pay to start'
+              ? t('msme.handholding.milestones.state.apply', 'Apply and pay to start')
               : row.disabled
-                ? `Starts after Milestone ${n - 1}`
-                : 'Not started';
+                ? t('msme.handholding.milestones.state.waiting', 'Starts after Milestone {number}', { number: n - 1 })
+                : t('msme.handholding.milestones.state.notStarted', 'Not started');
       if (!nowTaken && !row.accepted && (row.canAccept || row.applied || row.canApply)) row.now = nowTaken = true;
       return row;
     });

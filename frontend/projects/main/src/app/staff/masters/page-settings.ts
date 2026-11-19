@@ -3,6 +3,7 @@ import { PortalSwitchComponent, BANNER_PORTALS } from '../admin-portal';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MastersApi, PageSettings } from './masters.api';
+import { TextPipe, t } from '../../content/page-text';
 
 export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
 
@@ -14,12 +15,12 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
  */
 @Component({
   selector: 'zed-staff-page-settings',
-  imports: [PortalSwitchComponent],
+  imports: [PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Home Page</h3>
-        <p class="page-sub">The banner image shown on the portal's home (login) page.</p>
+        <h3 class="registration-title">{{ 'Home Page' | t: 'staff.homePage.title' }}</h3>
+        <p class="page-sub">{{ "The banner image shown on the portal's home (login) page." | t: 'staff.homePage.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the portal whose settings these are (its home page banner). -->
@@ -33,78 +34,79 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
     <div class="ps-grid">
       <section class="zed-card img-card" aria-labelledby="ps-current-h">
         <div class="img-card-head">
-          <h5 class="ps-h m-0" id="ps-current-h">Current banner</h5>
+          <h5 class="ps-h m-0" id="ps-current-h">{{ 'Current banner' | t: 'staff.homePage.current.title' }}</h5>
           @if (settings()?.imageUrl) {
-            <span class="status-badge is-active">In use</span>
+            <span class="status-badge is-active">{{ 'In use' | t: 'staff.homePage.current.inUse.status' }}</span>
           } @else if (settings()?.fileMissing) {
-            <span class="status-badge is-pending">File missing</span>
+            <span class="status-badge is-pending">{{ 'File missing' | t: 'staff.homePage.current.missing.status' }}</span>
           } @else if (settings()) {
-            <span class="status-badge is-inactive">None saved</span>
+            <span class="status-badge is-inactive">{{ 'None saved' | t: 'staff.homePage.current.none.status' }}</span>
           }
         </div>
         <div class="img-frame">
           @if (settings()?.imageUrl; as url) {
-            <a target="_blank" rel="noopener" [href]="url" title="Open full size"><img [src]="url" alt="Current home page banner" /></a>
+            <a target="_blank" rel="noopener" [href]="url" [title]="'Open full size' | t: 'staff.homePage.current.open.tooltip'"><img [src]="url" [alt]="'Current home page banner' | t: 'staff.homePage.current.image.aria'" /></a>
           } @else {
             <div class="img-empty">
               <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="m3 16 5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /><circle cx="16" cy="9.5" r="1.6" fill="currentColor" /></svg>
               @if (settings()?.fileMissing) {
-                <span class="img-missing" role="status">The saved banner file is missing — upload it again.</span>
+                <span class="img-missing" role="status">{{ 'The saved banner file is missing — upload it again.' | t: 'staff.homePage.current.missing.note' }}</span>
               } @else {
-                <span>No banner saved. Choose a PNG to add one.</span>
+                <span>{{ 'No banner saved. Choose a PNG to add one.' | t: 'staff.homePage.current.empty' }}</span>
               }
             </div>
           }
         </div>
         <dl class="img-meta">
-          <dt>Shown on</dt>
-          <dd><span class="zed-chip">Home (login) page</span></dd>
+          <dt>{{ 'Shown on' | t: 'staff.homePage.meta.shownOn.label' }}</dt>
+          <dd><span class="zed-chip">{{ 'Home (login) page' | t: 'staff.homePage.meta.shownOn.chip' }}</span></dd>
           <!-- 2026-11-19 (admin audit): the file and date only with a banner shown, or with the missing one named as missing. -->
           @if (settings()?.fileName && (settings()?.imageUrl || settings()?.fileMissing)) {
-            <dt>File</dt>
-            <dd>{{ settings()?.fileName }}@if (settings()?.fileMissing) {&ngsp;<span class="muted">(missing)</span>}</dd>
+            <dt>{{ 'File' | t: 'staff.homePage.meta.file.label' }}</dt>
+            <dd>{{ settings()?.fileName }}@if (settings()?.fileMissing) {&ngsp;<span class="muted">{{ '(missing)' | t: 'staff.homePage.meta.file.missing.label' }}</span>}</dd>
           }
           @if (settings()?.updatedOn && (settings()?.imageUrl || settings()?.fileMissing)) {
-            <dt>Saved on</dt>
+            <dt>{{ 'Saved on' | t: 'staff.homePage.meta.savedOn.label' }}</dt>
             <dd>{{ settings()?.updatedOn }}</dd>
           }
         </dl>
         @if (settings()?.imageUrl; as url) {
-          <a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" [href]="url">Open full size</a>
+          <a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" [href]="url">{{ 'Open full size' | t: 'staff.homePage.current.open.link' }}</a>
         }
       </section>
 
       <form class="zed-card img-card" aria-labelledby="ps-upload-h" (submit)="$event.preventDefault(); save()" novalidate>
         <div class="img-card-head">
-          <h5 class="ps-h m-0" id="ps-upload-h">{{ settings()?.imageUrl ? 'Replace the banner' : settings()?.fileMissing ? 'Upload the banner again' : 'Add a banner' }}</h5>
-          @if (preview()) { <span class="status-badge is-pending">Not saved yet</span> }
+          <h5 class="ps-h m-0" id="ps-upload-h">{{ settings()?.imageUrl ? ('Replace the banner' | t: 'staff.homePage.upload.replace.title')
+            : settings()?.fileMissing ? ('Upload the banner again' | t: 'staff.homePage.upload.again.title') : ('Add a banner' | t: 'staff.homePage.upload.add.title') }}</h5>
+          @if (preview()) { <span class="status-badge is-pending">{{ 'Not saved yet' | t: 'staff.homePage.upload.notSaved.status' }}</span> }
         </div>
         @if (preview(); as url) {
           <div class="img-frame picked">
-            <img [src]="url" alt="Selected banner (not saved yet)" />
+            <img [src]="url" [alt]="'Selected banner (not saved yet)' | t: 'staff.homePage.upload.preview.aria'" />
           </div>
           <p class="picked-name">{{ picked()?.name }} <span class="muted">· {{ picked()?.size }}</span></p>
         }
         <label class="drop" [class.compact]="preview()" for="fileControl">
           <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
-          <span class="drop-title">{{ preview() ? 'Choose another image' : 'Choose a PNG image, or drop it here' }}<span class="req">*</span></span>
+          <span class="drop-title">{{ preview() ? ('Choose another image' | t: 'staff.homePage.upload.another.label') : ('Choose a PNG image, or drop it here' | t: 'staff.homePage.upload.choose.label') }}<span class="req">*</span></span>
           <input #fileInput type="file" id="fileControl" accept=".png,image/png" (change)="pick($event)" />
         </label>
-        <ul class="hints" aria-label="Image rules">
-          <li><span class="hint-chip">PNG only</span></li>
-          <li><span class="hint-chip">Up to 3 MB</span></li>
-          <li class="muted">Saving replaces the current banner at once.</li>
+        <ul class="hints" [attr.aria-label]="'Image rules' | t: 'staff.homePage.upload.rules.aria'">
+          <li><span class="hint-chip">{{ 'PNG only' | t: 'staff.homePage.upload.rules.png.chip' }}</span></li>
+          <li><span class="hint-chip">{{ 'Up to 3 MB' | t: 'staff.homePage.upload.rules.size.chip' }}</span></li>
+          <li class="muted">{{ 'Saving replaces the current banner at once.' | t: 'staff.homePage.upload.rules.note' }}</li>
         </ul>
         <div class="form-actions">
           @if (preview()) {
-            <button type="button" class="btn btn-default" [disabled]="saving()" (click)="discard()">Cancel</button>
+            <button type="button" class="btn btn-default" [disabled]="saving()" (click)="discard()">{{ 'Cancel' | t: 'staff.homePage.upload.cancel.button' }}</button>
           }
-          <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Save' | t: 'staff.homePage.upload.save.button' }}</button>
         </div>
       </form>
     </div>
     @if (saving()) {
-      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Saving…</span></div>
+      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Saving…' | t: 'staff.homePage.saving.label' }}</span></div>
     }
   `,
   styles: `
@@ -171,7 +173,7 @@ export class PageSettingsPage {
     this.setPreview(null);
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
     if (file && (!/\.png$/i.test(file.name) || file.size > BANNER_MAX_BYTES)) {
-      this.error.set('Please upload valid document.');
+      this.error.set(t('staff.homePage.upload.invalid.error', 'Please upload valid document.'));
       this.clearFile();
       return;
     }
@@ -203,7 +205,7 @@ export class PageSettingsPage {
     this.error.set('');
     this.success.set('');
     if (!this.file) {
-      this.error.set('Please enter valid data.');
+      this.error.set(t('staff.homePage.upload.none.error', 'Please enter valid data.'));
       return;
     }
     this.saving.set(true);

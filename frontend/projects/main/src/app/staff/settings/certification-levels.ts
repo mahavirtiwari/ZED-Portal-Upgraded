@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 import { ToastService } from '../toast';
 
 export interface CertificationLevel {
@@ -106,17 +107,18 @@ interface LevelItem {
 export type AssessmentFlow = 'Desktop' | 'Remote' | 'Onsite' | 'DesktopRemote' | 'DesktopOnsite';
 export type SurveillanceMode = 'Remote' | 'Onsite';
 
-/** The Admin's choices (2026-11-14, approved): the level's flow decides the assessment steps. */
-export const ASSESSMENT_FLOWS: { value: AssessmentFlow; label: string; hint: string }[] = [
-  { value: 'Desktop', label: 'Desktop only', hint: 'Documents checked, as Bronze today.' },
-  { value: 'Remote', label: 'Remote only', hint: 'No desktop step; a remote visit.' },
-  { value: 'Onsite', label: 'Onsite only', hint: 'No desktop step; an onsite visit.' },
-  { value: 'DesktopRemote', label: 'Desktop + Remote', hint: 'Desktop, then a remote visit.' },
-  { value: 'DesktopOnsite', label: 'Desktop + Onsite', hint: 'Desktop, then an onsite visit.' },
+/** The Admin's choices (2026-11-14, approved): the level's flow decides the assessment steps (wording: Administration → Texts). */
+export const assessmentFlows = (): { value: AssessmentFlow; label: string; hint: string }[] => [
+  { value: 'Desktop', label: t('staff.levels.flow.desktop.label', 'Desktop only'), hint: t('staff.levels.flow.desktop.hint', 'Documents checked, as Bronze today.') },
+  { value: 'Remote', label: t('staff.levels.flow.remote.label', 'Remote only'), hint: t('staff.levels.flow.remote.hint', 'No desktop step; a remote visit.') },
+  { value: 'Onsite', label: t('staff.levels.flow.onsite.label', 'Onsite only'), hint: t('staff.levels.flow.onsite.hint', 'No desktop step; an onsite visit.') },
+  { value: 'DesktopRemote', label: t('staff.levels.flow.desktopRemote.label', 'Desktop + Remote'), hint: t('staff.levels.flow.desktopRemote.hint', 'Desktop, then a remote visit.') },
+  { value: 'DesktopOnsite', label: t('staff.levels.flow.desktopOnsite.label', 'Desktop + Onsite'), hint: t('staff.levels.flow.desktopOnsite.hint', 'Desktop, then an onsite visit.') },
 ];
-export const SURVEILLANCE_MODES: { value: SurveillanceMode; label: string; hint: string }[] = [
-  { value: 'Remote', label: 'Remote', hint: 'The current surveillance flow (meeting link).' },
-  { value: 'Onsite', label: 'Onsite', hint: 'As an onsite assessment, on the parameters marked "In surveillance".' },
+export const surveillanceModes = (): { value: SurveillanceMode; label: string; hint: string }[] => [
+  { value: 'Remote', label: t('staff.levels.surveillanceMode.remote.label', 'Remote'), hint: t('staff.levels.surveillanceMode.remote.hint', 'The current surveillance flow (meeting link).') },
+  { value: 'Onsite', label: t('staff.levels.surveillanceMode.onsite.label', 'Onsite'),
+    hint: t('staff.levels.surveillanceMode.onsite.hint', 'As an onsite assessment, on the parameters marked "In surveillance".') },
 ];
 /**
  * The flows a level can choose: every flow the server runs, for every level (2026-11-15: Bronze, Silver and Gold too; the
@@ -135,15 +137,19 @@ export const NC_MAX_DAYS = 365;
 /** Where a flow raises its NCs: the desktop for Desktop only, otherwise the visit (none at a combined flow's desktop step). */
 export const ncStage = (flow: AssessmentFlow): 'desktop' | 'remote' | 'onsite' =>
   flow === 'Desktop' ? 'desktop' : flow === 'Remote' || flow === 'DesktopRemote' ? 'remote' : 'onsite';
-export const ncNote = (flow: AssessmentFlow): string =>
-  flow === 'Desktop'
-    ? 'Raised at the desktop assessment.'
-    : flow === 'DesktopRemote' || flow === 'DesktopOnsite'
-      ? `Raised at the ${ncStage(flow)} assessment only. The desktop assessment raises no NCs in this flow.`
-      : `Raised at the ${ncStage(flow)} assessment.`;
+export const ncNote = (flow: AssessmentFlow): string => {
+  switch (flow) {
+    case 'Desktop': return t('staff.levels.nc.desktop.note', 'Raised at the desktop assessment.');
+    case 'DesktopRemote': return t('staff.levels.nc.desktopRemote.note', 'Raised at the remote assessment only. The desktop assessment raises no NCs in this flow.');
+    case 'DesktopOnsite': return t('staff.levels.nc.desktopOnsite.note', 'Raised at the onsite assessment only. The desktop assessment raises no NCs in this flow.');
+    case 'Remote': return t('staff.levels.nc.remote.note', 'Raised at the remote assessment.');
+    default: return t('staff.levels.nc.onsite.note', 'Raised at the onsite assessment.');
+  }
+};
 
 export const flowLabel = (f: string | undefined, mode: string) =>
-  ASSESSMENT_FLOWS.find((x) => x.value === f)?.label ?? (mode === 'Desktop' ? 'Desktop only' : 'Desktop + Onsite');
+  assessmentFlows().find((x) => x.value === f)?.label
+    ?? (mode === 'Desktop' ? t('staff.levels.flow.desktop.label', 'Desktop only') : t('staff.levels.flow.desktopOnsite.label', 'Desktop + Onsite'));
 
 /** The built-in levels: ready by themselves, no checklist. */
 const BUILT_IN_LEVELS = ['bronze', 'silver', 'gold', 'zedx'];
@@ -242,25 +248,25 @@ const API = '/api/staff/settings/levels';
  */
 @Component({
   selector: 'zed-staff-certification-levels',
-  imports: [FormsModule, RouterLink, UpperCasePipe],
+  imports: [FormsModule, RouterLink, UpperCasePipe, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Certification Levels</h3>
-        <p class="page-sub">The certification boxes MSMEs see, and each level's certificate settings.</p>
+        <h3 class="registration-title">{{ 'Certification Levels' | t: 'staff.levels.title' }}</h3>
+        <p class="page-sub">{{ "The certification boxes MSMEs see, and each level's certificate settings." | t: 'staff.levels.sub' }}</p>
       </div>
-      <button type="button" class="btn btn-primary" [disabled]="busy() || !stored()" (click)="startAdd()">+ Add level</button>
+      <button type="button" class="btn btn-primary" [disabled]="busy() || !stored()" (click)="startAdd()">{{ '+ Add level' | t: 'staff.levels.addButton' }}</button>
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     @if (loaded() && !stored()) {
-      <div class="alert alert-warning" role="alert">These are the built-in levels. They can be changed once the administrator has applied database migration 0028.</div>
+      <div class="alert alert-warning" role="alert">{{ 'These are the built-in levels. They can be changed once the administrator has applied database migration 0028.' | t: 'staff.levels.notStored.warning' }}</div>
     }
     @if (levels().length) {
       <p class="lv-summary">
-        <strong>{{ levels().length }}</strong> levels · <span class="dot on"></span>{{ enabledCount() }} shown to MSMEs
-        @if (levels().length - enabledCount()) { · <span class="dot"></span>{{ levels().length - enabledCount() }} hidden }
+        <strong>{{ levels().length }}</strong> {{ 'levels' | t: 'staff.levels.summary.levels.label' }} · <span class="dot on"></span>{{ '{count} shown to MSMEs' | t: 'staff.levels.summary.shown' : { count: enabledCount() } }}
+        @if (levels().length - enabledCount()) { · <span class="dot"></span>{{ '{count} hidden' | t: 'staff.levels.summary.hidden' : { count: levels().length - enabledCount() } }} }
       </p>
     }
 
@@ -271,94 +277,97 @@ const API = '/api/staff/settings/levels';
           <div class="lv-band"></div>
           <div class="lv-top">
             @if (i.logoUrl) {
-              <img class="lv-logo" [src]="i.logoUrl" [alt]="l.name + ' logo'" />
+              <img class="lv-logo" [src]="i.logoUrl" [alt]="'{name} logo' | t: 'staff.levels.card.logoAlt' : { name: l.name }" />
             } @else {
               <span class="lv-logo lv-logo-none" aria-hidden="true">{{ l.name }}</span>
             }
             @if (!l.isEnabled && missing(i).length) {
-              <span class="status-badge is-inactive lv-until" data-off-until-ready>Off until ready</span>
+              <span class="status-badge is-inactive lv-until" data-off-until-ready>{{ 'Off until ready' | t: 'staff.levels.card.offUntilReady' }}</span>
             } @else {
-              <span class="status-badge" [class.is-active]="l.isEnabled" [class.is-inactive]="!l.isEnabled">{{ l.isEnabled ? 'Enabled' : 'Disabled' }}</span>
+              <span class="status-badge" [class.is-active]="l.isEnabled" [class.is-inactive]="!l.isEnabled">{{ l.isEnabled ? ('Enabled' | t: 'staff.levels.card.enabled') : ('Disabled' | t: 'staff.levels.card.disabled') }}</span>
             }
           </div>
           <div class="lv-title">
-            <h5>{{ l.name | uppercase }} CERTIFICATION</h5>
-            <code class="lv-code" title="Code">{{ l.code }}</code>
+            <h5>{{ '{level} CERTIFICATION' | t: 'staff.levels.card.title' : { level: (l.name | uppercase) } }}</h5>
+            <code class="lv-code" [title]="'Code' | t: 'staff.levels.card.codeTooltip'">{{ l.code }}</code>
           </div>
           <!-- Always present (empty when none) and clamped, so the facts of the cards line up across a row. -->
           <p class="lv-desc" [attr.title]="l.description || null">{{ l.description }}</p>
           <dl class="lv-facts">
-            <div><dt>Assessment</dt><dd>{{ flowOf(l) }}</dd></div>
-            <div><dt>NCs</dt><dd data-nc-fact>{{ ncFact(i) }}</dd></div>
-            <div><dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd></div>
-            <div><dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd></div>
-            <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
-            <div><dt>Fees</dt><dd>
+            <div><dt>{{ 'Assessment' | t: 'staff.levels.fact.assessment' }}</dt><dd>{{ flowOf(l) }}</dd></div>
+            <div><dt>{{ 'NCs' | t: 'staff.levels.fact.ncs' }}</dt><dd data-nc-fact>{{ ncFact(i) }}</dd></div>
+            <div><dt>{{ 'Valid for' | t: 'staff.levels.fact.validity' }}</dt><dd>{{ months(l.validityMonths) }}</dd></div>
+            <div><dt>{{ 'Surveillance' | t: 'staff.levels.fact.surveillance' }}</dt><dd>{{ surveillanceFact(l) }}</dd></div>
+            <div><dt>{{ 'Certificate no.' | t: 'staff.levels.fact.certificateNo' }}</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
+            <div><dt>{{ 'Fees' | t: 'staff.levels.fact.fees' }}</dt><dd>
               @if (i.fees?.length) { <span class="lv-fees" data-fees>{{ feeText(i) }}</span> }
-              @else { <a class="lv-fees-missing" routerLink="/staff/fees" data-fees-missing>Not set in Master → Payments</a> }
+              @else { <a class="lv-fees-missing" routerLink="/staff/fees" data-fees-missing>{{ 'Not set in Master → Payments' | t: 'staff.levels.fact.feesMissingLink' }}</a> }
             </dd></div>
           </dl>
           @if (checklist(i); as r) {
             <!-- 2026-11-08: what a level the Admin added still needs before it can be switched on. -->
-            <section class="lv-ready" [attr.aria-label]="'What ' + l.name + ' needs'" data-checklist>
-              <div class="lv-ready-head"><span>Ready to switch on</span><span class="lv-ready-count">{{ doneCount(r) }} of 6</span></div>
+            <section class="lv-ready" [attr.aria-label]="'What {name} needs' | t: 'staff.levels.checklist.aria' : { name: l.name }" data-checklist>
+              <div class="lv-ready-head"><span>{{ 'Ready to switch on' | t: 'staff.levels.checklist.title' }}</span><span class="lv-ready-count">{{ '{done} of {total}' | t: 'staff.levels.checklist.count' : { done: doneCount(r), total: 6 } }}</span></div>
               <ul>
                 <li class="ok" data-check="settings">
                   <span class="ck" aria-hidden="true">✓</span>
-                  <span class="ck-text">Name, logo, validity, certificate number</span>
+                  <span class="ck-text">{{ 'Name, logo, validity, certificate number' | t: 'staff.levels.checklist.settings' }}</span>
                 </li>
                 <li [class.ok]="r.questionnaire" data-check="questionnaire">
                   <span class="ck" aria-hidden="true">{{ r.questionnaire ? '✓' : '!' }}</span>
-                  <span class="ck-text">Questionnaire ({{ r.parameterCount }} parameter{{ r.parameterCount === 1 ? '' : 's' }})
-                    @if (!r.questionnaire) { <em class="ck-hint">missing</em> }</span>
-                  <a class="ck-link" [routerLink]="['/staff/masters/parameters', l.code]">{{ r.questionnaire ? 'Open' : 'Add' }} →</a>
+                  <span class="ck-text">{{ r.parameterCount === 1 ? ('Questionnaire ({count} parameter)' | t: 'staff.levels.checklist.questionnaire.parameter' : { count: r.parameterCount })
+                    : ('Questionnaire ({count} parameters)' | t: 'staff.levels.checklist.questionnaire.parameters' : { count: r.parameterCount }) }}
+                    @if (!r.questionnaire) { <em class="ck-hint">{{ 'missing' | t: 'staff.levels.checklist.questionnaire.hint' }}</em> }</span>
+                  <a class="ck-link" [routerLink]="['/staff/masters/parameters', l.code]">{{ r.questionnaire ? ('Open →' | t: 'staff.levels.checklist.questionnaire.openLink') : ('Add →' | t: 'staff.levels.checklist.questionnaire.addLink') }}</a>
                 </li>
                 <li [class.ok]="r.fees" data-check="fees">
                   <span class="ck" aria-hidden="true">{{ r.fees ? '✓' : '!' }}</span>
-                  <span class="ck-text">Fees in Master → Payments @if (!r.fees) { <em class="ck-hint">missing</em> }</span>
-                  <a class="ck-link" routerLink="/staff/fees" [queryParams]="{ level: l.code }">{{ r.fees ? 'Open' : 'Set' }} →</a>
+                  <span class="ck-text">{{ 'Fees in Master → Payments' | t: 'staff.levels.checklist.fees.text' }} @if (!r.fees) { <em class="ck-hint">{{ 'missing' | t: 'staff.levels.checklist.fees.hint' }}</em> }</span>
+                  <a class="ck-link" routerLink="/staff/fees" [queryParams]="{ level: l.code }">{{ r.fees ? ('Open →' | t: 'staff.levels.checklist.fees.openLink') : ('Set →' | t: 'staff.levels.checklist.fees.setLink') }}</a>
                 </li>
                 <li [class.ok]="r.artwork" data-check="artwork">
                   <span class="ck" aria-hidden="true">{{ r.artwork ? '✓' : '!' }}</span>
-                  <span class="ck-text">Certificate and report artwork @if (!r.artwork) { <em class="ck-hint">upload</em> }</span>
+                  <span class="ck-text">{{ 'Certificate and report artwork' | t: 'staff.levels.checklist.artwork.text' }} @if (!r.artwork) { <em class="ck-hint">{{ 'upload' | t: 'staff.levels.checklist.artwork.hint' }}</em> }</span>
                   <span class="ck-art">
-                    @for (k of artworkKinds; track k.key) {
+                    @for (k of artworkKinds(); track k.key) {
                       <label class="btn btn-outline-primary btn-sm ck-upload" [class.disabled]="busy()">
                         {{ k.label }}
                         <input type="file" class="visually-hidden" accept="image/png,image/jpeg" [attr.data-artwork]="k.key"
-                               [attr.aria-label]="'Upload the ' + k.key + ' artwork of ' + l.name" [disabled]="busy()" (change)="uploadArtwork(l.code, k.key, $event)" />
+                               [attr.aria-label]="k.key === 'certificate' ? ('Upload the certificate artwork of {name}' | t: 'staff.levels.checklist.artwork.certificateAria' : { name: l.name })
+                                 : ('Upload the report artwork of {name}' | t: 'staff.levels.checklist.artwork.reportAria' : { name: l.name })" [disabled]="busy()" (change)="uploadArtwork(l.code, k.key, $event)" />
                       </label>
-                      <button type="button" class="btn btn-link btn-sm p-0" [attr.data-view-artwork]="k.key" [disabled]="busy()" (click)="viewArtwork(l, k.key)">View</button>
+                      <button type="button" class="btn btn-link btn-sm p-0" [attr.data-view-artwork]="k.key" [disabled]="busy()" (click)="viewArtwork(l, k.key)">{{ 'View' | t: 'staff.levels.checklist.artwork.viewButton' }}</button>
                     }
                   </span>
                 </li>
                 <li [class.ok]="r.agencies" data-check="agencies">
                   <span class="ck" aria-hidden="true">{{ r.agencies ? '✓' : '!' }}</span>
-                  <span class="ck-text">Agencies allowed (Agency level allocation) @if (!r.agencies) { <em class="ck-hint">none yet</em> }</span>
-                  <a class="ck-link" routerLink="/staff/users/bronze-agencies" title="The Master Admin's Agency Level Allocation">Open →</a>
+                  <span class="ck-text">{{ 'Agencies allowed (Agency level allocation)' | t: 'staff.levels.checklist.agencies.text' }} @if (!r.agencies) { <em class="ck-hint">{{ 'none yet' | t: 'staff.levels.checklist.agencies.hint' }}</em> }</span>
+                  <a class="ck-link" routerLink="/staff/users/bronze-agencies" [title]="agenciesLinkTitle()">{{ 'Open →' | t: 'staff.levels.checklist.agencies.openLink' }}</a>
                 </li>
                 <li [class.ok]="r.columns" data-check="columns">
                   <span class="ck" aria-hidden="true">{{ r.columns ? '✓' : '!' }}</span>
-                  <span class="ck-text">Database columns
-                    @if (!r.columns) { <em class="ck-hint" data-columns-message>{{ r.columnsMessage || 'Ready after the next update' }}</em> }</span>
+                  <span class="ck-text">{{ 'Database columns' | t: 'staff.levels.checklist.columns.text' }}
+                    @if (!r.columns) { <em class="ck-hint" data-columns-message>{{ r.columnsMessage || ('Ready after the next update' | t: 'staff.levels.checklist.columns.hint') }}</em> }</span>
                 </li>
               </ul>
             </section>
           }
           <div class="lv-actions">
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy() || !stored()" (click)="edit(i)">Edit</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy() || !stored()" (click)="edit(i)">{{ 'Edit' | t: 'staff.levels.card.editButton' }}</button>
             <button type="button" class="btn btn-sm" [class.btn-outline-danger]="l.isEnabled" [class.btn-outline-primary]="!l.isEnabled"
-                    [disabled]="busy() || !stored()" [attr.aria-label]="(l.isEnabled ? 'Disable ' : 'Enable ') + l.name"
-                    [attr.title]="!l.isEnabled && missing(i).length ? 'Missing: ' + listText(missing(i)) : null" (click)="toggle(l)">{{ l.isEnabled ? 'Disable' : 'Enable' }}</button>
-            <a class="btn btn-link btn-sm ms-auto" [routerLink]="['/staff/masters/parameters', l.code]">Questionnaire →</a>
+                    [disabled]="busy() || !stored()"
+                    [attr.aria-label]="l.isEnabled ? ('Disable {name}' | t: 'staff.levels.card.disableAria' : { name: l.name }) : ('Enable {name}' | t: 'staff.levels.card.enableAria' : { name: l.name })"
+                    [attr.title]="!l.isEnabled && missing(i).length ? ('Missing: {list}' | t: 'staff.levels.card.missingTooltip' : { list: listText(missing(i)) }) : null" (click)="toggle(l)">{{ l.isEnabled ? ('Disable' | t: 'staff.levels.card.disableButton') : ('Enable' | t: 'staff.levels.card.enableButton') }}</button>
+            <a class="btn btn-link btn-sm ms-auto" [routerLink]="['/staff/masters/parameters', l.code]">{{ 'Questionnaire →' | t: 'staff.levels.card.questionnaireLink' }}</a>
           </div>
           @if (!l.isEnabled && missing(i).length) {
-            <p class="lv-why" data-why>To enable {{ l.name }}, add {{ listText(missing(i)) }}.</p>
+            <p class="lv-why" data-why>{{ 'To enable {name}, add {list}.' | t: 'staff.levels.card.why' : { name: l.name, list: listText(missing(i)) } }}</p>
           }
         </article>
       }
     </div>
-    <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> The fees charged are set in Master → Payments; the questionnaire of each level in the Questionnaire menu.</p>
+    <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> {{ 'The fees charged are set in Master → Payments; the questionnaire of each level in the Questionnaire menu.' | t: 'staff.levels.note' }}</p>
 
     @if (artwork(); as a) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lv-art-title">
@@ -366,12 +375,14 @@ const API = '/api/staff/settings/levels';
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="lv-art-title">{{ a.name }}: {{ a.kind }} artwork</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeArtwork()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="lv-art-title">{{ a.kind === 'certificate' ? ('{name}: certificate artwork' | t: 'staff.levels.artwork.certificateTitle' : { name: a.name })
+                  : ('{name}: report artwork' | t: 'staff.levels.artwork.reportTitle' : { name: a.name }) }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.levels.artwork.closeAria'" (click)="closeArtwork()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body text-center">
-              @if (a.url) { <img class="lv-art-preview" [src]="a.url" [alt]="a.name + ' ' + a.kind + ' artwork'" /> }
+              @if (a.url) { <img class="lv-art-preview" [src]="a.url" [alt]="a.kind === 'certificate' ? ('{name} certificate artwork' | t: 'staff.levels.artwork.certificateAlt' : { name: a.name })
+                : ('{name} report artwork' | t: 'staff.levels.artwork.reportAlt' : { name: a.name })" /> }
               @else { <p class="muted m-0" data-no-artwork>{{ a.message }}</p> }
             </div>
           </div>
@@ -385,14 +396,14 @@ const API = '/api/staff/settings/levels';
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="lv-edit-title">{{ e.isNew ? 'Add level' : 'Edit ' + e.name }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="lv-edit-title">{{ e.isNew ? ('Add level' | t: 'staff.levels.edit.addTitle') : ('Edit {name}' | t: 'staff.levels.edit.title' : { name: e.name }) }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.levels.edit.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form class="d-contents" (ngSubmit)="save()" novalidate>
               <div class="modal-body">
-                <div class="lv-tabs" role="tablist" aria-label="Settings">
-                  @for (t of tabs; track t.key) {
+                <div class="lv-tabs" role="tablist" [attr.aria-label]="'Settings' | t: 'staff.levels.edit.tabsAria'">
+                  @for (t of tabs(); track t.key) {
                     <button type="button" role="tab" class="lv-tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
                   }
                 </div>
@@ -401,196 +412,195 @@ const API = '/api/staff/settings/levels';
                     <div [hidden]="tab() !== 'box'">
                       <div class="form-grid">
                         @if (e.isNew) {
-                          <label for="lv-code">Code<span class="req">*</span></label>
+                          <label for="lv-code">{{ 'Code' | t: 'staff.levels.edit.code.label' }}<span class="req">*</span></label>
                           <div>
-                            <input id="lv-code" name="code" class="form-control" maxlength="20" placeholder="e.g. ZEDX" [(ngModel)]="e.code" />
-                            <small class="muted d-block">Letters and digits; stored with the level's questionnaire, fees and certificates, so it cannot change later.</small>
+                            <input id="lv-code" name="code" class="form-control" maxlength="20" [placeholder]="'e.g. ZEDX' | t: 'staff.levels.edit.code.placeholder'" [(ngModel)]="e.code" />
+                            <small class="muted d-block">{{ "Letters and digits; stored with the level's questionnaire, fees and certificates, so it cannot change later." | t: 'staff.levels.edit.code.note' }}</small>
                           </div>
                         }
-                        <label for="lv-name">Name<span class="req">*</span></label>
+                        <label for="lv-name">{{ 'Name' | t: 'staff.levels.edit.name.label' }}<span class="req">*</span></label>
                         <input id="lv-name" name="name" class="form-control" maxlength="100" [(ngModel)]="e.name" />
-                        <label for="lv-desc" class="top">Description</label>
+                        <label for="lv-desc" class="top">{{ 'Description' | t: 'staff.levels.edit.description.label' }}</label>
                         <textarea id="lv-desc" name="description" class="form-control" rows="2" maxlength="1000" [(ngModel)]="e.description"></textarea>
-                        <label for="lv-comment" class="top">Comment</label>
+                        <label for="lv-comment" class="top">{{ 'Comment' | t: 'staff.levels.edit.comment.label' }}</label>
                         <div>
                           <textarea id="lv-comment" name="comment" class="form-control" rows="3" maxlength="2000" [(ngModel)]="e.comment"></textarea>
-                          <small class="muted d-block">The information text of the box (its "i").</small>
+                          <small class="muted d-block">{{ 'The information text of the box (its "i").' | t: 'staff.levels.edit.comment.note' }}</small>
                         </div>
                         @if (!e.isNew) {
-                          <label for="lv-logo">Logo</label>
+                          <label for="lv-logo">{{ 'Logo' | t: 'staff.levels.edit.logo.label' }}</label>
                           <div class="lv-logo-row">
-                            @if (logoOf(e.code); as url) { <img [src]="url" alt="Current logo" class="lv-logo-small" /> }
+                            @if (logoOf(e.code); as url) { <img [src]="url" [alt]="'Current logo' | t: 'staff.levels.edit.logo.currentAlt'" class="lv-logo-small" /> }
                             <!-- 2026-11-19 (admin audit): a styled upload control instead of the browser's native file input. -->
                             <input id="lv-logo" type="file" class="visually-hidden" accept="image/png,image/jpeg" (change)="pickLogo($event)" />
                             <label class="lv-upload" for="lv-logo">
-                              <span class="btn btn-outline-primary btn-sm">{{ logoName() ? 'Choose another' : 'Choose logo' }}</span>
-                              <span class="lv-upload-name" [class.muted]="!logoName()">{{ logoName() || 'No file chosen' }}</span>
+                              <span class="btn btn-outline-primary btn-sm">{{ logoName() ? ('Choose another' | t: 'staff.levels.edit.logo.anotherButton') : ('Choose logo' | t: 'staff.levels.edit.logo.chooseButton') }}</span>
+                              <span class="lv-upload-name" [class.muted]="!logoName()">{{ logoName() || ('No file chosen' | t: 'staff.levels.edit.logo.none') }}</span>
                             </label>
-                            <small class="muted d-block w-100">PNG or JPG, up to 1 MB.</small>
+                            <small class="muted d-block w-100">{{ 'PNG or JPG, up to 1 MB.' | t: 'staff.levels.edit.logo.note' }}</small>
                           </div>
                         }
-                        <span class="label-like">Fees</span>
+                        <span class="label-like">{{ 'Fees' | t: 'staff.levels.edit.fees.label' }}</span>
                         <div data-edit-fees>
-                          @if (feesOf(e.code); as f) { <span>{{ f }}</span> } @else { <span class="lv-fees-missing">Not set yet</span> }
-                          <small class="muted d-block">With GST, before subsidy. Each MSME sees its own fee on the box.
-                            <a routerLink="/staff/fees" (click)="editing.set(null)">Edit in Master → Payments</a></small>
+                          @if (feesOf(e.code); as f) { <span>{{ f }}</span> } @else { <span class="lv-fees-missing">{{ 'Not set yet' | t: 'staff.levels.edit.fees.none' }}</span> }
+                          <small class="muted d-block">{{ 'With GST, before subsidy. Each MSME sees its own fee on the box.' | t: 'staff.levels.edit.fees.note' }}
+                            <a routerLink="/staff/fees" (click)="editing.set(null)">{{ 'Edit in Master → Payments' | t: 'staff.levels.edit.fees.link' }}</a></small>
                         </div>
-                        <span class="label-like">Shown to MSMEs</span>
+                        <span class="label-like">{{ 'Shown to MSMEs' | t: 'staff.levels.edit.enabled.label' }}</span>
                         <div class="form-check form-switch lv-switch">
                           <input class="form-check-input" type="checkbox" role="switch" id="lv-enabled" name="isEnabled" [(ngModel)]="e.isEnabled" />
-                          <label class="form-check-label" for="lv-enabled">{{ e.isEnabled ? 'Enabled' : 'Disabled' }}</label>
+                          <label class="form-check-label" for="lv-enabled">{{ e.isEnabled ? ('Enabled' | t: 'staff.levels.edit.enabled.on') : ('Disabled' | t: 'staff.levels.edit.enabled.off') }}</label>
                         </div>
                         @if (!e.isNew && missingOf(e.code).length) {
                           <span></span>
-                          <small class="lv-why d-block">Off until ready: add {{ listText(missingOf(e.code)) }} first.</small>
+                          <small class="lv-why d-block">{{ 'Off until ready: add {list} first.' | t: 'staff.levels.edit.why' : { list: listText(missingOf(e.code)) } }}</small>
                         }
                       </div>
                     </div>
 
                     <div [hidden]="tab() !== 'certificate'">
                       <div class="form-grid">
-                        <span class="label-like">Assessment</span>
+                        <span class="label-like">{{ 'Assessment' | t: 'staff.levels.edit.flow.label' }}</span>
                         <!-- 2026-11-14 (approved): five flows; those the portal does not run yet show as "available soon". -->
-                        <div class="lv-choice lv-flows" role="radiogroup" aria-label="Assessment">
-                          @for (f of flows; track f.value) {
+                        <div class="lv-choice lv-flows" role="radiogroup" [attr.aria-label]="'Assessment' | t: 'staff.levels.edit.flow.aria'">
+                          @for (f of flows(); track f.value) {
                             @let soon = !e.availableFlows.includes(f.value) && e.assessmentFlow !== f.value;
                             <label class="choice-card" [class.active]="e.assessmentFlow === f.value" [class.is-soon]="soon">
                               <input type="radio" class="form-check-input" name="assessmentFlow" [value]="f.value" [attr.disabled]="soon ? '' : null"
                                      [ngModel]="e.assessmentFlow" (ngModelChange)="setFlow(e, $event)" />
-                              <span><strong>{{ f.label }}</strong><small>{{ f.hint }}</small>@if (soon) { <em class="lv-soon">Available soon</em> }</span>
+                              <span><strong>{{ f.label }}</strong><small>{{ f.hint }}</small>@if (soon) { <em class="lv-soon">{{ 'Available soon' | t: 'staff.levels.edit.flow.soon' }}</em> }</span>
                             </label>
                           }
                         </div>
                         <!-- 2026-11-16 (approved): the level's NC rounds and days (migration 0086). -->
-                        <span class="label-like top">Non-conformities</span>
+                        <span class="label-like top">{{ 'Non-conformities' | t: 'staff.levels.edit.nc.label' }}</span>
                         <div class="lv-nc" data-nc>
                           <small class="muted d-block" data-nc-note>{{ ncNote(e.assessmentFlow) }}</small>
                           <div class="lv-nc-row">
-                            <label for="lv-nc-rounds">NC rounds<span class="req">*</span></label>
+                            <label for="lv-nc-rounds">{{ 'NC rounds' | t: 'staff.levels.edit.nc.rounds.label' }}<span class="req">*</span></label>
                             <input id="lv-nc-rounds" name="ncRounds" type="number" min="1" [max]="ncMaxRounds" class="form-control lv-short" [(ngModel)]="e.ncRounds" />
-                            <label for="lv-nc-days">Days to close<span class="req">*</span></label>
+                            <label for="lv-nc-days">{{ 'Days to close' | t: 'staff.levels.edit.nc.days.label' }}<span class="req">*</span></label>
                             <input id="lv-nc-days" name="ncDays" type="number" min="1" [max]="ncMaxDays" class="form-control lv-short" [(ngModel)]="e.ncDays" />
                           </div>
-                          <small class="muted d-block">1 to {{ ncMaxRounds }} rounds. The days count from the first NC and cover every round; after that the application is rejected automatically.</small>
+                          <small class="muted d-block">{{ '1 to {max} rounds. The days count from the first NC and cover every round; after that the application is rejected automatically.' | t: 'staff.levels.edit.nc.note' : { max: ncMaxRounds } }}</small>
                         </div>
                         <!-- 2026-11-18 (migration 0101): man-days of the site assessment and the surveillance visit (monitoring's "submission pending"). -->
-                        <span class="label-like top">Man-days</span>
+                        <span class="label-like top">{{ 'Man-days' | t: 'staff.levels.edit.manDays.label' }}</span>
                         <div class="lv-nc" data-man-days>
                           <div class="lv-nc-row">
-                            <label for="lv-man-days">Assessment</label>
-                            <input id="lv-man-days" name="manDays" type="number" min="1" max="30" class="form-control lv-short" placeholder="Not set" [(ngModel)]="e.manDays" />
-                            <label for="lv-surv-man-days">Surveillance</label>
-                            <input id="lv-surv-man-days" name="surveillanceManDays" type="number" min="1" max="30" class="form-control lv-short" placeholder="Not set" [(ngModel)]="e.surveillanceManDays" />
+                            <label for="lv-man-days">{{ 'Assessment' | t: 'staff.levels.edit.manDays.assessment.label' }}</label>
+                            <input id="lv-man-days" name="manDays" type="number" min="1" max="30" class="form-control lv-short" [placeholder]="'Not set' | t: 'staff.levels.edit.manDays.assessment.placeholder'" [(ngModel)]="e.manDays" />
+                            <label for="lv-surv-man-days">{{ 'Surveillance' | t: 'staff.levels.edit.manDays.surveillance.label' }}</label>
+                            <input id="lv-surv-man-days" name="surveillanceManDays" type="number" min="1" max="30" class="form-control lv-short" [placeholder]="'Not set' | t: 'staff.levels.edit.manDays.surveillance.placeholder'" [(ngModel)]="e.surveillanceManDays" />
                           </div>
-                          <small class="muted d-block">Days a site visit takes (1 to 30). A visit still not submitted through the mobile app this many days after it started shows as "Submission pending through mobile app" in monitoring. Blank = not set.</small>
+                          <small class="muted d-block">{{ 'Days a site visit takes (1 to 30). A visit still not submitted through the mobile app this many days after it started shows as "Submission pending through mobile app" in monitoring. Blank = not set.' | t: 'staff.levels.edit.manDays.note' }}</small>
                         </div>
-                        <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
+                        <label for="lv-validity">{{ 'Valid for (months)' | t: 'staff.levels.edit.validity.label' }}<span class="req">*</span></label>
                         <div class="lv-surv">
                           <input id="lv-validity" name="validityMonths" type="number" min="1" max="120" class="form-control lv-short" [(ngModel)]="e.validityMonths" />
                           @if (e.validityMonths) { <span class="muted">{{ months(e.validityMonths) }}</span> }
                         </div>
-                        <label for="lv-format">Certificate number<span class="req">*</span></label>
+                        <label for="lv-format">{{ 'Certificate number' | t: 'staff.levels.edit.format.label' }}<span class="req">*</span></label>
                         <div>
                           <input id="lv-format" name="certNoFormat" class="form-control lv-mono" maxlength="100" [(ngModel)]="e.certNoFormat" />
-                          <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormat, e.code, null) }}</code></small>
+                          <small class="muted d-block">{{ 'e.g.' | t: 'staff.levels.edit.format.example' }} <code>{{ preview(e.certNoFormat, e.code, null) }}</code></small>
                           @if (builtIn(e.code)) {
                             <!-- 2026-11-08: the legacy procedures number Bronze, Silver and Gold certificates and set their first surveillance. -->
-                            <small class="lv-builtin d-block" data-builtin-note>Bronze, Silver and Gold certificates keep the number the certification gives them (date_ZED number) and
-                              their usual first surveillance date; these formats apply to ZED-X and the levels you add.</small>
+                            <small class="lv-builtin d-block" data-builtin-note>{{ 'Bronze, Silver and Gold certificates keep the number the certification gives them (date_ZED number) and their usual first surveillance date; these formats apply to ZED-X and the levels you add.' | t: 'staff.levels.edit.format.builtInNote' }}</small>
                           }
                         </div>
-                        <label for="lv-format-m">Manufacturing units</label>
+                        <label for="lv-format-m">{{ 'Manufacturing units' | t: 'staff.levels.edit.format.manufacturing.label' }}</label>
                         <div>
-                          <input id="lv-format-m" name="certNoFormatManufacturing" class="form-control lv-mono" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatManufacturing" />
-                          @if (e.certNoFormatManufacturing.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatManufacturing, e.code, 'Manufacturing') }}</code></small> }
+                          <input id="lv-format-m" name="certNoFormatManufacturing" class="form-control lv-mono" maxlength="100" [placeholder]="'Same as above' | t: 'staff.levels.edit.format.manufacturing.placeholder'" [(ngModel)]="e.certNoFormatManufacturing" />
+                          @if (e.certNoFormatManufacturing.trim()) { <small class="muted d-block">{{ 'e.g.' | t: 'staff.levels.edit.format.example' }} <code>{{ preview(e.certNoFormatManufacturing, e.code, 'Manufacturing') }}</code></small> }
                         </div>
-                        <label for="lv-format-s">Services units</label>
+                        <label for="lv-format-s">{{ 'Services units' | t: 'staff.levels.edit.format.services.label' }}</label>
                         <div>
-                          <input id="lv-format-s" name="certNoFormatService" class="form-control lv-mono" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatService" />
-                          @if (e.certNoFormatService.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatService, e.code, 'Services') }}</code></small> }
+                          <input id="lv-format-s" name="certNoFormatService" class="form-control lv-mono" maxlength="100" [placeholder]="'Same as above' | t: 'staff.levels.edit.format.services.placeholder'" [(ngModel)]="e.certNoFormatService" />
+                          @if (e.certNoFormatService.trim()) { <small class="muted d-block">{{ 'e.g.' | t: 'staff.levels.edit.format.example' }} <code>{{ preview(e.certNoFormatService, e.code, 'Services') }}</code></small> }
                         </div>
-                        <span class="label-like top">Parts</span>
+                        <span class="label-like top">{{ 'Parts' | t: 'staff.levels.edit.parts.label' }}</span>
                         <div class="lv-tokens">
                           @for (t of tokens(); track t) { <code class="token">{{ t }}</code> }
-                          <small class="muted d-block w-100">A number must include {{ '{' }}ZEDID{{ '}' }} or {{ '{' }}ZEDNO{{ '}' }}. The Manufacturing / Services formats apply once filled in.</small>
+                          <small class="muted d-block w-100">{{ partsNote() }}</small>
                         </div>
                       </div>
                     </div>
 
                     <div [hidden]="tab() !== 'surveillance'">
                       <div class="form-grid">
-                        <span class="label-like">Surveillance</span>
+                        <span class="label-like">{{ 'Surveillance' | t: 'staff.levels.edit.surveillance.label' }}</span>
                         <div class="lv-surv">
                           <div class="form-check form-switch lv-switch">
                             <input class="form-check-input" type="checkbox" role="switch" id="lv-surv" name="surveillanceEnabled" [(ngModel)]="e.surveillanceEnabled" />
-                            <label class="form-check-label" for="lv-surv">{{ e.surveillanceEnabled ? 'Yes, first one due after' : 'No surveillance' }}</label>
+                            <label class="form-check-label" for="lv-surv">{{ e.surveillanceEnabled ? ('Yes, first one due after' | t: 'staff.levels.edit.surveillance.on') : ('No surveillance' | t: 'staff.levels.edit.surveillance.off') }}</label>
                           </div>
                           @if (e.surveillanceEnabled) {
-                            <input id="lv-first" name="firstSurveillanceMonths" type="number" min="1" max="120" class="form-control lv-short" aria-label="First surveillance due after (months)" [(ngModel)]="e.firstSurveillanceMonths" />
-                            <span>months</span>
+                            <input id="lv-first" name="firstSurveillanceMonths" type="number" min="1" max="120" class="form-control lv-short" [attr.aria-label]="'First surveillance due after (months)' | t: 'staff.levels.edit.surveillance.firstAria'" [(ngModel)]="e.firstSurveillanceMonths" />
+                            <span>{{ 'months' | t: 'staff.levels.edit.surveillance.firstMonths' }}</span>
                           }
                         </div>
                         @if (e.surveillanceEnabled) {
                           <!-- 2026-11-14 (approved): how the surveillance is assessed. -->
-                          <span class="label-like">Mode of assessment</span>
-                          <div class="lv-choice lv-flows" role="radiogroup" aria-label="Surveillance mode of assessment">
-                            @for (m of surveillanceModes; track m.value) {
+                          <span class="label-like">{{ 'Mode of assessment' | t: 'staff.levels.edit.surveillanceMode.label' }}</span>
+                          <div class="lv-choice lv-flows" role="radiogroup" [attr.aria-label]="'Surveillance mode of assessment' | t: 'staff.levels.edit.surveillanceMode.aria'">
+                            @for (m of surveillanceModes(); track m.value) {
                               @let soon = !e.availableSurveillanceModes.includes(m.value) && e.surveillanceMode !== m.value;
                               <label class="choice-card" [class.active]="e.surveillanceMode === m.value" [class.is-soon]="soon">
                                 <input type="radio" class="form-check-input" name="surveillanceMode" [value]="m.value" [attr.disabled]="soon ? '' : null" [(ngModel)]="e.surveillanceMode" />
-                                <span><strong>{{ m.label }}</strong><small>{{ m.hint }}</small>@if (soon) { <em class="lv-soon">Available soon</em> }</span>
+                                <span><strong>{{ m.label }}</strong><small>{{ m.hint }}</small>@if (soon) { <em class="lv-soon">{{ 'Available soon' | t: 'staff.levels.edit.surveillanceMode.soon' }}</em> }</span>
                               </label>
                             }
                           </div>
                         }
                         @if (e.surveillanceEnabled) {
-                          <label for="lv-count">Surveillances<span class="req">*</span></label>
+                          <label for="lv-count">{{ 'Surveillances' | t: 'staff.levels.edit.count.label' }}<span class="req">*</span></label>
                           <div class="lv-surv">
                             <input id="lv-count" name="surveillanceCount" type="number" min="1" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceCount" />
                             @if ((e.surveillanceCount ?? 0) > 1) {
-                              <span>one every</span>
-                              <input id="lv-interval" name="surveillanceIntervalMonths" type="number" min="1" max="60" class="form-control lv-short" aria-label="Months between two surveillances" [(ngModel)]="e.surveillanceIntervalMonths" />
-                              <span>months</span>
+                              <span>{{ 'one every' | t: 'staff.levels.edit.count.every' }}</span>
+                              <input id="lv-interval" name="surveillanceIntervalMonths" type="number" min="1" max="60" class="form-control lv-short" [attr.aria-label]="'Months between two surveillances' | t: 'staff.levels.edit.count.intervalAria'" [(ngModel)]="e.surveillanceIntervalMonths" />
+                              <span>{{ 'months' | t: 'staff.levels.edit.count.months' }}</span>
                             }
                           </div>
-                          <label for="lv-notice">Notice mail<span class="req">*</span></label>
+                          <label for="lv-notice">{{ 'Notice mail' | t: 'staff.levels.edit.notice.label' }}<span class="req">*</span></label>
                           <div class="lv-surv">
                             <input id="lv-notice" name="surveillanceNoticeMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceNoticeMonths" />
-                            <span>months before the due date</span>
+                            <span>{{ 'months before the due date' | t: 'staff.levels.edit.notice.months' }}</span>
                           </div>
-                          <label for="lv-reminders">Reminders<span class="req">*</span></label>
+                          <label for="lv-reminders">{{ 'Reminders' | t: 'staff.levels.edit.reminders.label' }}<span class="req">*</span></label>
                           <div class="lv-surv">
                             <input id="lv-reminders" name="surveillanceReminders" type="number" min="0" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceReminders" />
                             @if ((e.surveillanceReminders ?? 0) > 0) {
-                              <span>one every</span>
-                              <input id="lv-every" name="surveillanceReminderEveryMonths" type="number" min="1" max="12" class="form-control lv-short" aria-label="Months between reminders" [(ngModel)]="e.surveillanceReminderEveryMonths" />
-                              <span>months after the notice</span>
+                              <span>{{ 'one every' | t: 'staff.levels.edit.reminders.every' }}</span>
+                              <input id="lv-every" name="surveillanceReminderEveryMonths" type="number" min="1" max="12" class="form-control lv-short" [attr.aria-label]="'Months between reminders' | t: 'staff.levels.edit.reminders.everyAria'" [(ngModel)]="e.surveillanceReminderEveryMonths" />
+                              <span>{{ 'months after the notice' | t: 'staff.levels.edit.reminders.months' }}</span>
                             }
                           </div>
                           @if (autoApplies(e) && (e.surveillanceReminders ?? 0) > 0) {
                             <span></span>
                             <div class="form-check lv-check">
                               <input class="form-check-input" type="checkbox" id="lv-autoapply" name="surveillanceAutoApply" [(ngModel)]="e.surveillanceAutoApply" />
-                              <label class="form-check-label" for="lv-autoapply">On the last reminder, the portal applies for the surveillance on the unit's behalf (as Bronze)</label>
+                              <label class="form-check-label" for="lv-autoapply">{{ "On the last reminder, the portal applies for the surveillance on the unit's behalf (as Bronze)" | t: 'staff.levels.edit.autoApply.label' }}</label>
                             </div>
                           }
-                          <label for="lv-suspend-in">Suspension<span class="req">*</span></label>
+                          <label for="lv-suspend-in">{{ 'Suspension' | t: 'staff.levels.edit.suspension.label' }}<span class="req">*</span></label>
                           <div class="lv-surv">
                             <select id="lv-suspend-in" name="surveillanceSuspendRounds" class="form-select lv-select" [(ngModel)]="e.surveillanceSuspendRounds">
-                              <option [ngValue]="null">In every surveillance</option>
-                              <option [ngValue]="1">In the first surveillance only</option>
-                              <option [ngValue]="0">Never</option>
+                              <option [ngValue]="null">{{ 'In every surveillance' | t: 'staff.levels.edit.suspension.everyOption' }}</option>
+                              <option [ngValue]="1">{{ 'In the first surveillance only' | t: 'staff.levels.edit.suspension.firstOption' }}</option>
+                              <option [ngValue]="0">{{ 'Never' | t: 'staff.levels.edit.suspension.neverOption' }}</option>
                             </select>
                             @if (e.surveillanceSuspendRounds !== 0) {
-                              <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" aria-label="Suspended months after the due date" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
-                              <span>months after the due date, if not applied for</span>
+                              <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" [attr.aria-label]="'Suspended months after the due date' | t: 'staff.levels.edit.suspension.monthsAria'" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
+                              <span>{{ 'months after the due date, if not applied for' | t: 'staff.levels.edit.suspension.months' }}</span>
                             }
                           </div>
                           @if (e.surveillanceSuspendRounds !== 0) {
-                            <label for="lv-withdraw">Withdrawal<span class="req">*</span></label>
+                            <label for="lv-withdraw">{{ 'Withdrawal' | t: 'staff.levels.edit.withdrawal.label' }}<span class="req">*</span></label>
                             <div class="lv-surv">
                               <input id="lv-withdraw" name="surveillanceWithdrawAfterDays" type="number" min="1" max="365" class="form-control lv-short" [(ngModel)]="e.surveillanceWithdrawAfterDays" />
-                              <span>days after the suspension</span>
+                              <span>{{ 'days after the suspension' | t: 'staff.levels.edit.withdrawal.days' }}</span>
                             </div>
                           }
                         }
@@ -601,13 +611,13 @@ const API = '/api/staff/settings/levels';
                     </div>
                   </div>
 
-                  <aside class="lv-preview" aria-label="Preview">
-                    <h4>Dashboard box</h4>
+                  <aside class="lv-preview" [attr.aria-label]="'Preview' | t: 'staff.levels.preview.aria'">
+                    <h4>{{ 'Dashboard box' | t: 'staff.levels.preview.box.title' }}</h4>
                     <div class="pv-box" [style.--accent]="accent(e.code)" [class.is-off]="!e.isEnabled">
-                      <div class="pv-head">{{ (e.name || 'Name') | uppercase }} CERTIFICATION</div>
+                      <div class="pv-head">{{ '{level} CERTIFICATION' | t: 'staff.levels.card.title' : { level: ((e.name || ('Name' | t: 'staff.levels.preview.box.noName')) | uppercase) } }}</div>
                       <div class="pv-body">
                         <div>
-                          <div class="pv-status">→ Get started</div>
+                          <div class="pv-status">{{ '→ Get started' | t: 'staff.levels.preview.box.status' }}</div>
                           <div class="pv-steps"><i></i><i></i><i></i>@if (e.assessmentMode === 'Site') {<i></i>}</div>
                         </div>
                         @if (logoOf(e.code); as url) { <img class="pv-logo" [src]="url" alt="" /> } @else { <span class="pv-logo pv-logo-none">{{ e.name || '?' }}</span> }
@@ -615,33 +625,33 @@ const API = '/api/staff/settings/levels';
                       @if (e.description) { <p class="pv-desc">{{ e.description }}</p> }
                       @if (feesOf(e.code); as f) { <div class="pv-fee">{{ f }}</div> }
                     </div>
-                    <small class="muted d-block mt-1">{{ e.isEnabled ? 'Shown on the MSME dashboard.' : 'Hidden from MSMEs until enabled.' }}</small>
+                    <small class="muted d-block mt-1">{{ e.isEnabled ? ('Shown on the MSME dashboard.' | t: 'staff.levels.preview.box.shown') : ('Hidden from MSMEs until enabled.' | t: 'staff.levels.preview.box.hidden') }}</small>
 
-                    <h4 class="mt-3">Certificate numbers</h4>
+                    <h4 class="mt-3">{{ 'Certificate numbers' | t: 'staff.levels.preview.numbers.title' }}</h4>
                     <dl class="pv-numbers">
-                      <dt>General</dt><dd><code>{{ preview(e.certNoFormat, e.code, null) }}</code></dd>
-                      <dt>Manufacturing</dt><dd><code>{{ preview(e.certNoFormatManufacturing.trim() || e.certNoFormat, e.code, 'Manufacturing') }}</code></dd>
-                      <dt>Services</dt><dd><code>{{ preview(e.certNoFormatService.trim() || e.certNoFormat, e.code, 'Services') }}</code></dd>
+                      <dt>{{ 'General' | t: 'staff.levels.preview.numbers.general' }}</dt><dd><code>{{ preview(e.certNoFormat, e.code, null) }}</code></dd>
+                      <dt>{{ 'Manufacturing' | t: 'staff.levels.preview.numbers.manufacturing' }}</dt><dd><code>{{ preview(e.certNoFormatManufacturing.trim() || e.certNoFormat, e.code, 'Manufacturing') }}</code></dd>
+                      <dt>{{ 'Services' | t: 'staff.levels.preview.numbers.services' }}</dt><dd><code>{{ preview(e.certNoFormatService.trim() || e.certNoFormat, e.code, 'Services') }}</code></dd>
                     </dl>
 
                     @if (timeline(e); as tl) {
-                      <h4 class="mt-3">Over {{ months(e.validityMonths ?? 0) }}</h4>
+                      <h4 class="mt-3">{{ 'Over {period}' | t: 'staff.levels.preview.timeline.title' : { period: months(e.validityMonths ?? 0) } }}</h4>
                       <div class="pv-timeline" role="img" [attr.aria-label]="tl.label">
                         <div class="tl-bar"></div>
                         @for (d of tl.due; track $index) {
-                          <span class="tl-mark" [style.left.%]="d.at" [title]="'Surveillance ' + ($index + 1) + ': month ' + d.month"><b>S{{ $index + 1 }}</b><small>{{ d.month }}m</small></span>
+                          <span class="tl-mark" [style.left.%]="d.at" [title]="'Surveillance {number}: month {month}' | t: 'staff.levels.preview.timeline.markTooltip' : { number: $index + 1, month: d.month }"><b>{{ 'S{number}' | t: 'staff.levels.preview.timeline.mark' : { number: $index + 1 } }}</b><small>{{ '{months}m' | t: 'staff.levels.preview.timeline.months' : { months: d.month } }}</small></span>
                         }
-                        <span class="tl-end"><small>{{ e.validityMonths }}m</small></span>
+                        <span class="tl-end"><small>{{ '{months}m' | t: 'staff.levels.preview.timeline.months' : { months: e.validityMonths } }}</small></span>
                       </div>
-                      <small class="muted d-block">S = surveillance due, months after certification.</small>
+                      <small class="muted d-block">{{ 'S = surveillance due, months after certification.' | t: 'staff.levels.preview.timeline.note' }}</small>
                     }
                   </aside>
                 </div>
                 @if (editError()) { <div class="alert alert-danger help-block mt-3 mb-0" role="alert">{{ editError() }}</div> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ e.isNew ? 'Add level' : 'Update' }}</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.levels.edit.cancelButton' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ e.isNew ? ('Add level' | t: 'staff.levels.edit.addButton') : ('Update' | t: 'staff.levels.edit.updateButton') }}</button>
               </div>
             </form>
           </div>
@@ -711,10 +721,21 @@ export class CertificationLevelsPage {
     return item && item.fees?.length ? this.feeText(item) || null : null;
   }
 
-  protected readonly artworkKinds: readonly { key: ArtworkKind; label: string }[] = [
-    { key: 'certificate', label: 'Certificate' },
-    { key: 'report', label: 'Report' },
-  ];
+  protected readonly artworkKinds = computed<readonly { key: ArtworkKind; label: string }[]>(() => [
+    { key: 'certificate', label: t('staff.levels.checklist.artwork.certificateButton', 'Certificate') },
+    { key: 'report', label: t('staff.levels.checklist.artwork.reportButton', 'Report') },
+  ]);
+
+  /** The checklist's link to the agencies' level allocation: its tooltip. */
+  protected agenciesLinkTitle(): string {
+    return t('staff.levels.checklist.agencies.linkTooltip', "The Master Admin's Agency Level Allocation");
+  }
+
+  /** The certificate number's parts: the note under them. */
+  protected partsNote(): string {
+    return t('staff.levels.edit.parts.note', 'A number must include {zedId} or {zedNo}. The Manufacturing / Services formats apply once filled in.',
+      { zedId: '{ZEDID}', zedNo: '{ZEDNO}' });
+  }
   /** The artwork shown in the preview pop-up. */
   protected readonly artwork = signal<{ name: string; kind: ArtworkKind; url: string | null; message: string } | null>(null);
 
@@ -732,10 +753,11 @@ export class CertificationLevelsPage {
     const r = this.checklist(i);
     if (!r) return [];
     return [
-      !r.questionnaire && 'the questionnaire',
-      !r.fees && 'the fees in Master → Payments',
-      !r.artwork && 'the certificate and report artwork',
-      !r.columns && `the database columns (${r.columnsMessage || 'ready after the next update'})`,
+      !r.questionnaire && t('staff.levels.missing.questionnaire', 'the questionnaire'),
+      !r.fees && t('staff.levels.missing.fees', 'the fees in Master → Payments'),
+      !r.artwork && t('staff.levels.missing.artwork', 'the certificate and report artwork'),
+      !r.columns && t('staff.levels.missing.columns', 'the database columns ({reason})',
+        { reason: r.columnsMessage || t('staff.levels.missing.columnsReason', 'ready after the next update') }),
     ].filter((m): m is string => !!m);
   }
 
@@ -746,7 +768,7 @@ export class CertificationLevelsPage {
 
   /** "a, b and c". */
   protected listText(items: readonly string[]): string {
-    return items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : (items[0] ?? '');
+    return items.length > 1 ? t('staff.levels.list.and', '{items} and {last}', { items: items.slice(0, -1).join(', '), last: items[items.length - 1] }) : (items[0] ?? '');
   }
 
   /** Uploads the background image of the level's certificate or report (JPG / PNG, up to 2 MB). */
@@ -757,7 +779,7 @@ export class CertificationLevelsPage {
     if (!file) return;
     this.error.set('');
     if (file.size > 2 * 1024 * 1024 || !/\.(png|jpe?g)$/i.test(file.name)) {
-      this.error.set('Please choose a JPG or PNG image of up to 2 MB.');
+      this.error.set(t('staff.levels.error.artworkFile', 'Please choose a JPG or PNG image of up to 2 MB.'));
       return;
     }
     this.busy.set(true);
@@ -781,10 +803,12 @@ export class CertificationLevelsPage {
     try {
       const blob = await firstValueFrom(this.http.get(`${API}/${encodeURIComponent(l.code)}/artwork`, { params: { kind }, responseType: 'blob' }));
       const url = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
-      this.artwork.set({ name: l.name, kind, url, message: url ? '' : 'The image cannot be shown in this browser.' });
+      this.artwork.set({ name: l.name, kind, url, message: url ? '' : t('staff.levels.artwork.cannotShow', 'The image cannot be shown in this browser.') });
     } catch (err) {
       const notFound = err instanceof HttpErrorResponse && err.status === 404;
-      this.artwork.set({ name: l.name, kind, url: null, message: notFound ? `No ${kind} artwork uploaded yet.` : apiErrorMessage(err) });
+      const none = kind === 'certificate' ? t('staff.levels.artwork.noCertificate', 'No certificate artwork uploaded yet.')
+        : t('staff.levels.artwork.noReport', 'No report artwork uploaded yet.');
+      this.artwork.set({ name: l.name, kind, url: null, message: notFound ? none : apiErrorMessage(err) });
     } finally {
       this.busy.set(false);
     }
@@ -807,11 +831,11 @@ export class CertificationLevelsPage {
 
   protected readonly levels = signal<LevelItem[]>([]);
   protected readonly enabledCount = computed(() => this.levels().filter((i) => i.level.isEnabled).length);
-  protected readonly tabs: readonly { key: EditTab; label: string }[] = [
-    { key: 'box', label: 'Dashboard box' },
-    { key: 'certificate', label: 'Certificate' },
-    { key: 'surveillance', label: 'Surveillance' },
-  ];
+  protected readonly tabs = computed<readonly { key: EditTab; label: string }[]>(() => [
+    { key: 'box', label: t('staff.levels.edit.tab.box', 'Dashboard box') },
+    { key: 'certificate', label: t('staff.levels.edit.tab.certificate', 'Certificate') },
+    { key: 'surveillance', label: t('staff.levels.edit.tab.surveillance', 'Surveillance') },
+  ]);
   protected readonly tab = signal<EditTab>('box');
   protected readonly tokens = signal<string[]>([]);
   protected readonly stored = signal(false);
@@ -829,15 +853,17 @@ export class CertificationLevelsPage {
   }
 
   protected months(n: number): string {
-    return n % 12 === 0 ? `${n / 12} year${n === 12 ? '' : 's'}` : `${n} months`;
+    if (n % 12 !== 0) return t('staff.levels.months', '{count} months', { count: n });
+    return n === 12 ? t('staff.levels.year', '{count} year', { count: n / 12 }) : t('staff.levels.years', '{count} years', { count: n / 12 });
   }
 
   protected surveillanceFact(l: CertificationLevel): string {
-    if (!l.surveillanceEnabled) return 'none';
+    if (!l.surveillanceEnabled) return t('staff.levels.fact.surveillanceNone', 'none');
     const first = l.firstSurveillanceMonths ?? DEFAULT_SCHEDULE.firstSurveillanceMonths;
     const count = l.surveillanceCount ?? DEFAULT_SCHEDULE.surveillanceCount;
     const every = l.surveillanceIntervalMonths ?? DEFAULT_SCHEDULE.surveillanceIntervalMonths;
-    return count > 1 ? `${count}, after ${first} months, then every ${every}` : `1, after ${this.months(first)}`;
+    return count > 1 ? t('staff.levels.fact.surveillanceMany', '{count}, after {first} months, then every {every}', { count, first, every })
+      : t('staff.levels.fact.surveillanceOne', '1, after {period}', { period: this.months(first) });
   }
 
   /** "Due at 15 and 27 months after certification." */
@@ -845,8 +871,9 @@ export class CertificationLevelsPage {
     const first = e.firstSurveillanceMonths ?? 0, count = e.surveillanceCount ?? 0, every = e.surveillanceIntervalMonths ?? 0;
     if (first < 1 || count < 1 || count > 5 || (count > 1 && every < 1)) return '';
     const due = Array.from({ length: count }, (_, i) => first + i * every);
-    const list = due.length > 1 ? `${due.slice(0, -1).join(', ')} and ${due[due.length - 1]}` : `${due[0]}`;
-    return `Due at ${list} months after certification.`;
+    return due.length > 1
+      ? t('staff.levels.schedule.dueMany', 'Due at {list} and {last} months after certification.', { list: due.slice(0, -1).join(', '), last: due[due.length - 1] })
+      : t('staff.levels.schedule.dueOne', 'Due at {month} months after certification.', { month: due[0] });
   }
 
   /** The portal applies a unit for its surveillance only for Bronze (CertificationLevelsController.AutoApplies). */
@@ -858,9 +885,9 @@ export class CertificationLevelsPage {
   protected scheduleStart(e: LevelForm): string {
     const from = e.surveillanceScheduleFrom ? new Date(e.surveillanceScheduleFrom) : null;
     if (!from || Number.isNaN(from.getTime())) return '';
-    if (from.getFullYear() === 9999) return 'These timings apply from the day the new surveillance schedule is switched on for this level.';
+    if (from.getFullYear() === 9999) return t('staff.levels.schedule.notStarted', 'These timings apply from the day the new surveillance schedule is switched on for this level.');
     const day = from.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-    return `Run by the new surveillance schedule since ${day}; a step that fell due before that day was not done.`;
+    return t('staff.levels.schedule.since', 'Run by the new surveillance schedule since {day}; a step that fell due before that day was not done.', { day });
   }
 
   protected accent(code: string): string {
@@ -876,7 +903,9 @@ export class CertificationLevelsPage {
     const due = Array.from({ length: count }, (_, i) => first + i * (count > 1 ? every : 0))
       .filter((m) => m > 0 && m < validity)
       .map((month) => ({ month, at: (month / validity) * 100 }));
-    return due.length ? { due, label: `Surveillance due at ${due.map((d) => d.month).join(', ')} months of ${validity}` } : null;
+    return due.length
+      ? { due, label: t('staff.levels.preview.timeline.aria', 'Surveillance due at {months} months of {validity}', { months: due.map((d) => d.month).join(', '), validity }) }
+      : null;
   }
 
   protected preview(format: string, code: string, category: 'Manufacturing' | 'Services' | null): string {
@@ -902,8 +931,8 @@ export class CertificationLevelsPage {
     });
   }
 
-  protected readonly flows = ASSESSMENT_FLOWS;
-  protected readonly surveillanceModes = SURVEILLANCE_MODES;
+  protected readonly flows = computed(() => assessmentFlows());
+  protected readonly surveillanceModes = computed(() => surveillanceModes());
 
   /** The level's flow as the list shows it. */
   protected flowOf(l: CertificationLevel): string {
@@ -918,7 +947,12 @@ export class CertificationLevelsPage {
   protected ncFact(i: LevelItem): string {
     const flow = i.assessmentFlow ?? (i.level.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite');
     const rounds = i.ncRounds ?? NC_MAX_ROUNDS;
-    return `${ncStage(flow)[0].toUpperCase()}${ncStage(flow).slice(1)}, ${rounds} round${rounds === 1 ? '' : 's'}, ${i.ncDays ?? defaultNcDays(flow)} days`;
+    const stage = ncStage(flow);
+    const where = stage === 'desktop' ? t('staff.levels.fact.nc.desktop', 'Desktop')
+      : stage === 'remote' ? t('staff.levels.fact.nc.remote', 'Remote') : t('staff.levels.fact.nc.onsite', 'Onsite');
+    const days = i.ncDays ?? defaultNcDays(flow);
+    return rounds === 1 ? t('staff.levels.fact.nc.round', '{stage}, {rounds} round, {days} days', { stage: where, rounds, days })
+      : t('staff.levels.fact.nc.rounds', '{stage}, {rounds} rounds, {days} days', { stage: where, rounds, days });
   }
 
   /**
@@ -960,7 +994,7 @@ export class CertificationLevelsPage {
       input.value = '';
       this.logo = null;
       this.logoName.set('');
-      this.editError.set('Please choose a PNG or JPG image of up to 1 MB.');
+      this.editError.set(t('staff.levels.error.logoFile', 'Please choose a PNG or JPG image of up to 1 MB.'));
       return;
     }
     this.logo = file;
@@ -1003,7 +1037,7 @@ export class CertificationLevelsPage {
       };
       if (this.logo && !e.isNew) {
         await firstValueFrom(logo());
-        message += ' Logo saved.';
+        message += ' ' + t('staff.levels.toast.logoSaved', 'Logo saved.');
       }
       message += await this.onSurveillance(async (context) => {
         // A level the surveillance portal does not have yet is added there.
@@ -1026,7 +1060,11 @@ export class CertificationLevelsPage {
   }
 
   protected async toggle(l: CertificationLevel): Promise<void> {
-    if (l.isEnabled && !(await this.confirms.ask({ title: `Disable ${l.name}?`, message: 'MSMEs will no longer see it or apply for it.', confirmLabel: 'Disable', danger: true }))) return;
+    if (l.isEnabled && !(await this.confirms.ask({
+      title: t('staff.levels.disable.confirm.title', 'Disable {name}?', { name: l.name }),
+      message: t('staff.levels.disable.confirm.message', 'MSMEs will no longer see it or apply for it.'),
+      confirmLabel: t('staff.levels.disable.confirm.button', 'Disable'), danger: true,
+    }))) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -1049,36 +1087,47 @@ export class CertificationLevelsPage {
     if (!this.portals.enabled) return '';
     try {
       await save(new HttpContext().set(ADMIN_PORTAL, 'surveillance'));
-      return ' Saved on the Surveillance portal too.';
+      return ' ' + t('staff.levels.toast.surveillanceSaved', 'Saved on the Surveillance portal too.');
     } catch (err) {
-      return ` Not saved on the Surveillance portal: ${apiErrorMessage(err)}`;
+      return ' ' + t('staff.levels.toast.surveillanceFailed', 'Not saved on the Surveillance portal: {error}', { error: apiErrorMessage(err) });
     }
   }
 
   /** The server's rules, so most mistakes show before saving. */
   private check(e: LevelForm): string {
-    if (e.isNew && !/^[A-Za-z][A-Za-z0-9]{1,19}$/.test(e.code.trim())) return 'The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).';
-    if (!e.name.trim()) return "Please enter the level's name.";
-    if (!e.validityMonths || e.validityMonths < 1 || e.validityMonths > 120) return 'The validity must be 1 to 120 months.';
-    if (!Number.isInteger(e.ncRounds) || e.ncRounds! < 1 || e.ncRounds! > NC_MAX_ROUNDS) return `NC rounds must be 1 to ${NC_MAX_ROUNDS}.`;
-    if (!Number.isInteger(e.ncDays) || e.ncDays! < 1 || e.ncDays! > NC_MAX_DAYS) return `Days to close NCs must be 1 to ${NC_MAX_DAYS}.`;
-    for (const [v, what] of [[e.manDays, 'assessment'], [e.surveillanceManDays, 'surveillance']] as const)
-      if (manDaysValue(v) !== 0 && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 30)) return `Man-days (${what}) must be 1 to 30.`;
+    if (e.isNew && !/^[A-Za-z][A-Za-z0-9]{1,19}$/.test(e.code.trim())) return t('staff.levels.error.code', 'The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).');
+    if (!e.name.trim()) return t('staff.levels.error.name', "Please enter the level's name.");
+    if (!e.validityMonths || e.validityMonths < 1 || e.validityMonths > 120) return t('staff.levels.error.validity', 'The validity must be 1 to 120 months.');
+    if (!Number.isInteger(e.ncRounds) || e.ncRounds! < 1 || e.ncRounds! > NC_MAX_ROUNDS) return t('staff.levels.error.ncRounds', 'NC rounds must be 1 to {max}.', { max: NC_MAX_ROUNDS });
+    if (!Number.isInteger(e.ncDays) || e.ncDays! < 1 || e.ncDays! > NC_MAX_DAYS) return t('staff.levels.error.ncDays', 'Days to close NCs must be 1 to {max}.', { max: NC_MAX_DAYS });
+    const badManDays = (v: number | null) => manDaysValue(v) !== 0 && !(Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 30);
+    if (badManDays(e.manDays)) return t('staff.levels.error.manDaysAssessment', 'Man-days (assessment) must be 1 to 30.');
+    if (badManDays(e.surveillanceManDays)) return t('staff.levels.error.manDaysSurveillance', 'Man-days (surveillance) must be 1 to 30.');
     if (e.surveillanceEnabled && (!e.firstSurveillanceMonths || e.firstSurveillanceMonths < 1 || e.firstSurveillanceMonths >= e.validityMonths))
-      return 'The first surveillance must be due before the certificate expires.';
+      return t('staff.levels.error.firstSurveillance', 'The first surveillance must be due before the certificate expires.');
     if (e.surveillanceEnabled) {
       const problem = this.checkSchedule(e);
       if (problem) return problem;
     }
-    for (const [label, f, required] of [['', e.certNoFormat, true], ['Manufacturing: ', e.certNoFormatManufacturing, false], ['Services: ', e.certNoFormatService, false]] as const) {
+    const parts = { zedId: '{ZEDID}', zedNo: '{ZEDNO}' };
+    for (const [kind, f, required] of [['general', e.certNoFormat, true], ['manufacturing', e.certNoFormatManufacturing, false], ['services', e.certNoFormatService, false]] as const) {
       const v = f.trim();
       if (!v) {
-        if (required) return 'Please enter the certificate number format.';
+        if (required) return t('staff.levels.error.format', 'Please enter the certificate number format.');
         continue;
       }
-      if (!v.includes('{ZEDID}') && !v.includes('{ZEDNO}')) return `${label}The format must include {ZEDID} or {ZEDNO}, so that every certificate gets its own number.`;
-      const unknown = (v.match(/\{[A-Z]+\}/g) ?? []).find((t) => !this.tokens().includes(t));
-      if (unknown) return `${label}${unknown} is not a known part.`;
+      if (!v.includes('{ZEDID}') && !v.includes('{ZEDNO}')) {
+        return kind === 'general' ? t('staff.levels.error.formatId', 'The format must include {zedId} or {zedNo}, so that every certificate gets its own number.', parts)
+          : kind === 'manufacturing'
+            ? t('staff.levels.error.formatIdManufacturing', 'Manufacturing: The format must include {zedId} or {zedNo}, so that every certificate gets its own number.', parts)
+            : t('staff.levels.error.formatIdServices', 'Services: The format must include {zedId} or {zedNo}, so that every certificate gets its own number.', parts);
+      }
+      const unknown = (v.match(/\{[A-Z]+\}/g) ?? []).find((p) => !this.tokens().includes(p));
+      if (unknown) {
+        return kind === 'general' ? t('staff.levels.error.formatPart', '{part} is not a known part.', { part: unknown })
+          : kind === 'manufacturing' ? t('staff.levels.error.formatPartManufacturing', 'Manufacturing: {part} is not a known part.', { part: unknown })
+            : t('staff.levels.error.formatPartServices', 'Services: {part} is not a known part.', { part: unknown });
+      }
     }
     return '';
   }
@@ -1087,14 +1136,18 @@ export class CertificationLevelsPage {
   private checkSchedule(e: LevelForm): string {
     const n = (v: number | null) => (v === null || v === undefined || Number.isNaN(v) ? -1 : v);
     const count = n(e.surveillanceCount), every = n(e.surveillanceIntervalMonths), reminders = n(e.surveillanceReminders);
-    if (count < 1 || count > 5) return 'The number of surveillances must be 1 to 5.';
-    if (count > 1 && (every < 1 || every > 60)) return 'The months between two surveillances must be 1 to 60.';
-    if (n(e.firstSurveillanceMonths) + (count - 1) * Math.max(every, 0) >= (e.validityMonths ?? 0)) return 'The last surveillance must be due before the certificate expires.';
-    if (n(e.surveillanceNoticeMonths) < 0 || n(e.surveillanceNoticeMonths) > 24) return 'The notice must go 0 to 24 months before the due date.';
-    if (reminders < 0 || reminders > 5) return 'The reminders must be 0 to 5.';
-    if (reminders > 0 && (n(e.surveillanceReminderEveryMonths) < 1 || n(e.surveillanceReminderEveryMonths) > 12)) return 'The months between reminders must be 1 to 12.';
-    if (n(e.surveillanceSuspendAfterMonths) < 0 || n(e.surveillanceSuspendAfterMonths) > 24) return 'The suspension must come 0 to 24 months after the due date.';
-    if (n(e.surveillanceWithdrawAfterDays) < 1 || n(e.surveillanceWithdrawAfterDays) > 365) return 'The withdrawal must come 1 to 365 days after the suspension.';
+    if (count < 1 || count > 5) return t('staff.levels.error.surveillanceCount', 'The number of surveillances must be 1 to 5.');
+    if (count > 1 && (every < 1 || every > 60)) return t('staff.levels.error.surveillanceInterval', 'The months between two surveillances must be 1 to 60.');
+    if (n(e.firstSurveillanceMonths) + (count - 1) * Math.max(every, 0) >= (e.validityMonths ?? 0)) {
+      return t('staff.levels.error.lastSurveillance', 'The last surveillance must be due before the certificate expires.');
+    }
+    if (n(e.surveillanceNoticeMonths) < 0 || n(e.surveillanceNoticeMonths) > 24) return t('staff.levels.error.notice', 'The notice must go 0 to 24 months before the due date.');
+    if (reminders < 0 || reminders > 5) return t('staff.levels.error.reminders', 'The reminders must be 0 to 5.');
+    if (reminders > 0 && (n(e.surveillanceReminderEveryMonths) < 1 || n(e.surveillanceReminderEveryMonths) > 12)) {
+      return t('staff.levels.error.reminderEvery', 'The months between reminders must be 1 to 12.');
+    }
+    if (n(e.surveillanceSuspendAfterMonths) < 0 || n(e.surveillanceSuspendAfterMonths) > 24) return t('staff.levels.error.suspension', 'The suspension must come 0 to 24 months after the due date.');
+    if (n(e.surveillanceWithdrawAfterDays) < 1 || n(e.surveillanceWithdrawAfterDays) > 365) return t('staff.levels.error.withdrawal', 'The withdrawal must come 1 to 365 days after the suspension.');
     return '';
   }
 

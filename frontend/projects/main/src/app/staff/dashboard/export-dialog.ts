@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, afterNextRender, inject, input, output, signal } from '@angular/core';
 import { EXPORT_SECTIONS, ExportChoice, ExportFormat, ExportSection } from './dashboard-export';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-17 (approved staff redesign, pop-up 07): "Export dashboard": the filters that apply, the sections to export and
@@ -10,27 +11,28 @@ import { EXPORT_SECTIONS, ExportChoice, ExportFormat, ExportSection } from './da
  */
 @Component({
   selector: 'zed-dashboard-export',
+  imports: [TextPipe],
   template: `
     <div class="xd-backdrop" (click)="close.emit()"></div>
     <div class="xd" role="dialog" aria-modal="true" aria-labelledby="xd-title" aria-describedby="xd-sub">
       <div class="xd-head">
         <span class="xd-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg></span>
         <div class="xd-titles">
-          <h2 id="xd-title">Export dashboard</h2>
-          <p id="xd-sub">Uses the filters applied on the dashboard.</p>
+          <h2 id="xd-title">{{ 'Export dashboard' | t: 'staff.dashboard.export.title' }}</h2>
+          <p id="xd-sub">{{ 'Uses the filters applied on the dashboard.' | t: 'staff.dashboard.export.sub' }}</p>
         </div>
-        <button type="button" class="xd-close" aria-label="Close" (click)="close.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+        <button type="button" class="xd-close" [attr.aria-label]="'Close' | t: 'staff.dashboard.export.closeAria'" (click)="close.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
       </div>
       <div class="xd-body">
-        <h3>Filters applied</h3>
+        <h3>{{ 'Filters applied' | t: 'staff.dashboard.export.filtersHeading' }}</h3>
         <ul class="xd-chips">@for (f of filters(); track f) { <li>{{ f }}</li> }</ul>
-        <h3 id="xd-what">What to export</h3>
+        <h3 id="xd-what">{{ 'What to export' | t: 'staff.dashboard.export.sectionsHeading' }}</h3>
         <div class="xd-checks" role="group" aria-labelledby="xd-what">
           @for (s of sections; track s.key) {
             <label class="xd-check"><input type="checkbox" [attr.data-section]="s.key" [checked]="picked().includes(s.key)" (change)="toggle(s.key)" /> {{ s.label }}</label>
           }
         </div>
-        <h3 id="xd-format">Format</h3>
+        <h3 id="xd-format">{{ 'Format' | t: 'staff.dashboard.export.formatHeading' }}</h3>
         <div class="xd-formats" role="radiogroup" aria-labelledby="xd-format">
           @for (f of formats; track f.key) {
             <button type="button" role="radio" [attr.data-format]="f.key" [class.on]="format() === f.key" [attr.aria-checked]="format() === f.key" (click)="format.set(f.key)">{{ f.label }}</button>
@@ -39,9 +41,9 @@ import { EXPORT_SECTIONS, ExportChoice, ExportFormat, ExportSection } from './da
         @if (error()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div> }
       </div>
       <div class="xd-foot">
-        <span>The file downloads to your computer.</span>
-        <button type="button" class="btn xd-cancel" (click)="close.emit()">Cancel</button>
-        <button type="button" class="btn btn-primary xd-go" [disabled]="busy() || !picked().length" (click)="run()">{{ busy() ? 'Exporting…' : 'Export' }}</button>
+        <span>{{ 'The file downloads to your computer.' | t: 'staff.dashboard.export.downloadNote' }}</span>
+        <button type="button" class="btn xd-cancel" (click)="close.emit()">{{ 'Cancel' | t: 'staff.dashboard.export.cancelButton' }}</button>
+        <button type="button" class="btn btn-primary xd-go" [disabled]="busy() || !picked().length" (click)="run()">{{ busy() ? ('Exporting…' | t: 'staff.dashboard.export.exportingButton') : ('Export' | t: 'staff.dashboard.export.exportButton') }}</button>
       </div>
     </div>
   `,
@@ -85,8 +87,10 @@ export class DashboardExportDialog {
   readonly close = output<void>();
 
   protected readonly sections = EXPORT_SECTIONS;
-  protected readonly formats: { key: ExportFormat; label: string }[] = [
-    { key: 'xlsx', label: 'Excel (.xlsx)' }, { key: 'csv', label: 'CSV' }, { key: 'pdf', label: 'PDF' },
+  protected readonly formats: { key: ExportFormat; readonly label: string }[] = [
+    { key: 'xlsx', get label() { return t('staff.dashboard.export.format.xlsx', 'Excel (.xlsx)'); } },
+    { key: 'csv', get label() { return t('staff.dashboard.export.format.csv', 'CSV'); } },
+    { key: 'pdf', get label() { return t('staff.dashboard.export.format.pdf', 'PDF'); } },
   ];
   protected readonly picked = signal<ExportSection[]>(EXPORT_SECTIONS.map((s) => s.key));
   protected readonly format = signal<ExportFormat>('xlsx');

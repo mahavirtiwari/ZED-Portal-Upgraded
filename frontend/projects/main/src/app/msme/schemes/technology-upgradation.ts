@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
 import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
@@ -30,7 +31,7 @@ type TechnologyForm = Omit<TuTechnologySubmission, 'documents'>;
  */
 @Component({
   selector: 'zed-msme-technology-upgradation',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead, TextPipe],
   templateUrl: './technology-upgradation.html',
   styleUrls: ['../shared/msme-page.scss', './scheme-page.scss'],
 })
@@ -38,6 +39,10 @@ export class TechnologyUpgradationPage {
   private readonly api = inject(SchemesApi);
 
   protected readonly docTypes = TU_DOCUMENTS;
+  protected get crumbs() {
+    return [{ label: t('msme.technologyUpgradation.crumb.home', 'Home'), link: '/msme/dashboard' },
+      { label: t('msme.technologyUpgradation.crumb.page', 'Technology upgradation') }];
+  }
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
   /** Error pop-up (the legacy swal). */
@@ -55,7 +60,7 @@ export class TechnologyUpgradationPage {
 
   protected readonly unit = computed(() => this.page()?.unit ?? {});
   protected readonly technologies = computed(() => this.page()?.technologies ?? []);
-  protected readonly anySubmitted = computed(() => this.technologies().some((t) => t.submitted));
+  protected readonly anySubmitted = computed(() => this.technologies().some((x) => x.submitted));
   protected readonly minDate = computed(() => this.page()?.minDate ?? '');
 
   protected tech: TechnologyForm = this.emptyTechnology();
@@ -76,9 +81,9 @@ export class TechnologyUpgradationPage {
   }
 
   /** Apply (new) or view/edit (submitted) one technology, as the APPLY / VIEW buttons. */
-  protected open(t: TuTechnology): void {
-    this.current.set(t);
-    const d = t.details;
+  protected open(row: TuTechnology): void {
+    this.current.set(row);
+    const d = row.details;
     this.tech = d
       ? {
           nameOfTheManufaturer: String(d['NameOfTheManufaturer'] ?? ''),
@@ -91,7 +96,7 @@ export class TechnologyUpgradationPage {
           modeOfPayment: String(d['ModeOfPayment'] ?? ''),
         }
       : this.emptyTechnology();
-    this.techDocs.set(d ? [...t.documents] : []);
+    this.techDocs.set(d ? [...row.documents] : []);
     this.go('technology');
   }
 
@@ -117,21 +122,21 @@ export class TechnologyUpgradationPage {
   }
 
   protected async saveTechnology(): Promise<void> {
-    const t = this.current();
-    if (!t) return;
+    const row = this.current();
+    if (!row) return;
     const f = this.tech;
     const required = [f.nameOfTheManufaturer, f.makeOrModelName, f.dateOfPurchase, f.agencyOrSupplier, f.invoiceNo, f.invoiceBillDate, f.modeOfPayment];
     if (required.some((v) => !String(v ?? '').trim()) || !f.amountPaid) {
-      this.alert.set(errorAlert('Please enter required data.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.required', 'Please enter required data.')));
       return;
     }
     if (!this.docs(this.techDocs(), TU_DOCUMENTS.purchased).length || !this.docs(this.techDocs(), TU_DOCUMENTS.invoice).length) {
-      this.alert.set(errorAlert('Please upload the required documents.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.documents', 'Please upload the required documents.')));
       return;
     }
     this.busy.set(true);
     try {
-      await firstValueFrom(this.api.submitTechnology(t.code, {
+      await firstValueFrom(this.api.submitTechnology(row.code, {
         ...f,
         documents: this.techDocs().map((d) => ({ fileName: d.fileName, type: d.type ?? '' })),
       }));
@@ -147,23 +152,23 @@ export class TechnologyUpgradationPage {
   protected async submit(): Promise<void> {
     const a = this.account;
     if (![a.accountNo, a.confirmAccountNo, a.ifscCode, a.branchAddress, a.bankName].every((v) => v.trim())) {
-      this.alert.set(errorAlert('Please enter required data.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.required', 'Please enter required data.')));
       return;
     }
     if (a.accountNo.trim() !== a.confirmAccountNo.trim()) {
-      this.alert.set(errorAlert('Account Number and Re-Enter Account Number must match.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.accountMismatch', 'Account Number and Re-Enter Account Number must match.')));
       return;
     }
     if (!/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(a.ifscCode.trim())) {
-      this.alert.set(errorAlert('Invalid IFSC code format.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.ifsc', 'Invalid IFSC code format.')));
       return;
     }
     if (!this.chequeDocs().length) {
-      this.alert.set(errorAlert('Please upload the required documents.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.documents', 'Please upload the required documents.')));
       return;
     }
     if (!this.declaration) {
-      this.alert.set(errorAlert('Please accept the declaration.'));
+      this.alert.set(errorAlert(t('msme.technologyUpgradation.error.declaration', 'Please accept the declaration.')));
       return;
     }
     this.busy.set(true);

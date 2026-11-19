@@ -4,19 +4,19 @@
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
         @if (type()) {
-          <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+          <button type="button" class="btn btn-link" (click)="refresh()">{{ 'Try again' | t: 'msme.assessment.retryButton' }}</button>
         }
-        <a class="btn btn-link" [routerLink]="backLink()">Back</a>
+        <a class="btn btn-link" [routerLink]="backLink()">{{ 'Back' | t: 'msme.assessment.backButton' }}</a>
       </div>
     }
 
     @if (basic() || nc()) {
       <!-- 2026-11-14 (approved): the shared header and the key facts strip in place of the unit side bar; read-only (the app uploads). -->
       <zed-page-head [crumbs]="crumbs()" [title]="pageTitle()">
-        <a class="btn btn-outline-secondary btn-sm" [routerLink]="backLink()"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-        <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+        <a class="btn btn-outline-secondary btn-sm" [routerLink]="backLink()"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back' | t: 'msme.assessment.backButton' }}</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.assessment.refreshButton' }}</button>
       </zed-page-head>
-      <zed-unit-facts [msme]="msme()" [udyam]="udyam()" [extra]="[{ label: 'Level', value: levelTitle() }]" />
+      <zed-unit-facts [msme]="msme()" [udyam]="udyam()" [extra]="[{ label: ('Level' | t: 'msme.assessment.levelLabel'), value: levelTitle() }]" />
 
       <div>
         <div class="dash-main" [class.zed-tabs]="mode() === 'basic-info'">
@@ -29,7 +29,7 @@
                       <ul class="cert-steps">
                         <li>
                           <div class="step-num"><span>1</span></div>
-                          <div class="step-details"><h3 class="registration-title">Basic Information &amp; Documents Upload</h3></div>
+                          <div class="step-details"><h3 class="registration-title">{{ 'Basic Information & Documents Upload' | t: 'msme.assessment.basic.title' }}</h3></div>
                         </li>
                       </ul>
                     </div>
@@ -40,13 +40,13 @@
                     <div class="panel-body">
                       <ul class="nav nav-tabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                          <button class="nav-link" [class.active]="basicTab() === 'basicInfo'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'basicInfo'" (click)="basicTab.set('basicInfo')">Basic Information</button>
+                          <button class="nav-link" [class.active]="basicTab() === 'basicInfo'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'basicInfo'" (click)="basicTab.set('basicInfo')">{{ 'Basic Information' | t: 'msme.assessment.basic.tab.basicInfo' }}</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                          <button class="nav-link" [class.active]="basicTab() === 'esg'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'esg'" (click)="basicTab.set('esg')">ESG Checklist</button>
+                          <button class="nav-link" [class.active]="basicTab() === 'esg'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'esg'" (click)="basicTab.set('esg')">{{ 'ESG Checklist' | t: 'msme.assessment.basic.tab.esg' }}</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                          <button class="nav-link" [class.active]="basicTab() === 'elements'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'elements'" (click)="basicTab.set('elements')">Parameters / Document Uploaded</button>
+                          <button class="nav-link" [class.active]="basicTab() === 'elements'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'elements'" (click)="basicTab.set('elements')">{{ 'Parameters / Document Uploaded' | t: 'msme.assessment.basic.tab.elements' }}</button>
                         </li>
                       </ul>
                       <div class="tab-content">
@@ -56,43 +56,43 @@
                               <table class="table table-default table-zed">
                                 <tbody>
                                   <tr>
-                                    <td class="w-50">Unit Representative Selfie</td>
+                                    <td class="w-50">{{ 'Unit Representative Selfie' | t: 'msme.assessment.basic.selfieLabel' }}</td>
                                     <td>
                                       @for (p of selfies(); track $index) {
                                         <div class="row-data">
                                           <div>
-                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" alt="Unit representative selfie" /> }
-                                            <span>captured at {{ p['TimeStamp'] }}<br />uploaded at {{ p['CreatedDate'] }}</span>
+                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" [alt]="'Unit representative selfie' | t: 'msme.assessment.basic.selfieAlt'" /> }
+                                            <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p['TimeStamp'] } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p['CreatedDate'] } }}</span>
                                           </div>
                                           @if (p['FileUrl']) {
-                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">VIEW</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                                           }
                                         </div>
                                       }
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Site Exterior Photos</td>
+                                    <td class="w-50">{{ 'Site Exterior Photos' | t: 'msme.assessment.basic.exteriorLabel' }}</td>
                                     <td>
                                       @for (p of exteriorPhotos(); track $index) {
                                         <div class="row-data">
                                           <div>
-                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" alt="Site exterior" /> }
-                                            <span>captured at {{ p['TimeStamp'] }}<br />uploaded at {{ p['CreatedDate'] }}</span>
+                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" [alt]="'Site exterior' | t: 'msme.assessment.basic.exteriorAlt'" /> }
+                                            <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p['TimeStamp'] } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p['CreatedDate'] } }}</span>
                                           </div>
                                           @if (p['FileUrl']) {
-                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">VIEW</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                                           }
                                         </div>
                                       }
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Whether 3rd Party Financial Audits are conducted?</td>
+                                    <td class="w-50">{{ 'Whether 3rd Party Financial Audits are conducted?' | t: 'msme.assessment.basic.auditsLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['AuditsConducted'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Product manufactured</td>
+                                    <td class="w-50">{{ 'Product manufactured' | t: 'msme.assessment.basic.productLabel' }}</td>
                                     <td>
                                       @for (p of b.products; track $index) {
                                         <div class="row-data">
@@ -100,50 +100,50 @@
                                             @if (p['PhotoUrl']) { <img [src]="p['PhotoUrl']" alt="" /> }
                                             <span>{{ p['ProductName'] }}</span>
                                           </div>
-                                          <button type="button" class="btn btn-primary pull-right" (click)="product.set(p)">VIEW</button>
+                                          <button type="button" class="btn btn-primary pull-right" (click)="product.set(p)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                                         </div>
                                       }
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Key Domestic Customers</td>
+                                    <td class="w-50">{{ 'Key Domestic Customers' | t: 'msme.assessment.basic.domesticLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['DomesticCustomers'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Key International Customers</td>
+                                    <td class="w-50">{{ 'Key International Customers' | t: 'msme.assessment.basic.internationalLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['InternationalCustomers'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Whether Raw Material is Imported?</td>
+                                    <td class="w-50">{{ 'Whether Raw Material is Imported?' | t: 'msme.assessment.basic.rawImportedLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['RawMaterialImported'] }}</b></div></td>
                                   </tr>
                                   @if (answers()['RawMaterialImported'] === 'Yes') {
                                     <tr>
-                                      <td class="w-50">Raw Materials</td>
+                                      <td class="w-50">{{ 'Raw Materials' | t: 'msme.assessment.basic.rawMaterialsLabel' }}</td>
                                       <td>
                                         @for (r of b.rawMaterials; track $index) {
                                           <div class="row-data">
                                             <span>{{ r['RawMaterialName'] }}</span>
-                                            <button type="button" class="btn btn-primary pull-right" (click)="rawMaterial.set(r)">VIEW</button>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="rawMaterial.set(r)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                                           </div>
                                         }
                                       </td>
                                     </tr>
                                   }
                                   <tr>
-                                    <td class="w-50">Processed Outsourced, if any?</td>
+                                    <td class="w-50">{{ 'Processed Outsourced, if any?' | t: 'msme.assessment.basic.outsourcedLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['OutsourcedProcesses'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Energy Source(s) Used</td>
+                                    <td class="w-50">{{ 'Energy Source(s) Used' | t: 'msme.assessment.basic.energyLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['EnergySources'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">monthly Manufacturing Capacity</td>
+                                    <td class="w-50">{{ 'monthly Manufacturing Capacity' | t: 'msme.assessment.basic.capacityLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['ManufacturingCapacityValue'] }} {{ answers()['ManufacturingCapacityUnits'] }}</b></div></td>
                                   </tr>
                                   <tr>
-                                    <td class="w-50">Monthly Utilization</td>
+                                    <td class="w-50">{{ 'Monthly Utilization' | t: 'msme.assessment.basic.utilizationLabel' }}</td>
                                     <td><div class="row-data"><b>{{ answers()['MonthlyUtilizationValue'] }} {{ answers()['MonthlyUtilizationUnits'] }}</b></div></td>
                                   </tr>
                                 </tbody>
@@ -155,11 +155,11 @@
                             <div class="tab-pane fade show active ar-pane-grey" role="tabpanel">
                               <div class="row">
                                 <div class="col-sm-12">
-                                  <strong>ESG Check List</strong>
+                                  <strong>{{ 'ESG Check List' | t: 'msme.assessment.esg.heading' }}</strong>
                                   <table class="table table-bordered table-zed">
                                     <thead>
                                       <tr>
-                                        <th>Question</th><th class="text-center">Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                        <th>{{ 'Question' | t: 'msme.assessment.esg.column.question' }}</th><th class="text-center">{{ 'Answer' | t: 'msme.assessment.esg.column.answer' }}</th><th>{{ 'If Yes, Question' | t: 'msme.assessment.esg.column.yesQuestion' }}</th><th>{{ 'If Yes, Answer' | t: 'msme.assessment.esg.column.yesAnswer' }}</th><th>{{ 'If No, Question' | t: 'msme.assessment.esg.column.noQuestion' }}</th><th>{{ 'If No, Answer' | t: 'msme.assessment.esg.column.noAnswer' }}</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -175,11 +175,11 @@
                               </div>
                               <div class="row">
                                 <div class="col-sm-12">
-                                  <strong>Social/OHS Check List</strong>
+                                  <strong>{{ 'Social/OHS Check List' | t: 'msme.assessment.social.heading' }}</strong>
                                   <table class="table table-bordered table-zed">
                                     <thead>
                                       <tr>
-                                        <th class="text-center">S.No</th><th>Question</th><th class="text-center">Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                        <th class="text-center">{{ 'S.No' | t: 'msme.assessment.social.column.number' }}</th><th>{{ 'Question' | t: 'msme.assessment.esg.column.question' }}</th><th class="text-center">{{ 'Answer' | t: 'msme.assessment.esg.column.answer' }}</th><th>{{ 'If Yes, Question' | t: 'msme.assessment.esg.column.yesQuestion' }}</th><th>{{ 'If Yes, Answer' | t: 'msme.assessment.esg.column.yesAnswer' }}</th><th>{{ 'If No, Question' | t: 'msme.assessment.esg.column.noQuestion' }}</th><th>{{ 'If No, Answer' | t: 'msme.assessment.esg.column.noAnswer' }}</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -201,14 +201,14 @@
                               @let cur = pn.active();
                               <div class="zp-layout">
                                 <nav class="zp-nav" aria-labelledby="arParamNavTitle">
-                                  <div class="zp-nav-head" id="arParamNavTitle">Parameters</div>
+                                  <div class="zp-nav-head" id="arParamNavTitle">{{ 'Parameters' | t: 'msme.assessment.parameters.heading' }}</div>
                                   <div class="zp-nav-list">
                                     @for (s of sections(); track $index) {
                                       <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="s.section['SectionCode']" (click)="pn.select(s)">
                                         <span class="zp-num">{{ s.section['SectionCode'] }}</span>
                                         <span class="zp-nav-body">
                                           <span class="zp-nav-name">{{ s.section['SectionName'] }}</span>
-                                          <span class="zp-nav-meta">{{ s.requirements.length }} requirements</span>
+                                          <span class="zp-nav-meta">{{ '{count} requirements' | t: 'msme.assessment.parameters.countText' : { count: s.requirements.length } }}</span>
                                         </span>
                                       </button>
                                     }
@@ -224,7 +224,7 @@
                                           <h5>{{ s.section['SectionName'] }}</h5>
                                           @if (s.section['iButton']) {
                                             <span class="zp-info" tabindex="0">
-                                              <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                                              <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'msme.assessment.infoAria'">i</span>
                                               <span class="tooltiptext">{{ s.section['iButton'] }}</span>
                                             </span>
                                           }
@@ -234,11 +234,11 @@
                                         <article class="zp-req" [attr.data-requirement]="r.requirement['RequirementCode']">
                                           <div class="zp-req-title">
                                             <span class="zp-code">{{ s.section['SectionCode'] }}.{{ r.requirement['RequirementCode'] }}</span>
-                                            <span class="zp-req-text">{{ r.requirement['RequirementName'] || 'Requirement' }}</span>
+                                            <span class="zp-req-text">{{ r.requirement['RequirementName'] || ('Requirement' | t: 'msme.assessment.requirementFallback') }}</span>
                                           </div>
                                           <div class="zp-req-body">
                                             <div class="zp-block zp-checkpoints">
-                                              <div class="zp-block-head">Checkpoints</div>
+                                              <div class="zp-block-head">{{ 'Checkpoints' | t: 'msme.assessment.checkpoints.heading' }}</div>
                                               @for (o of r.options; track $index) {
                                                 <div class="zp-cp">
                                                   <div class="zp-cp-text">
@@ -250,31 +250,31 @@
                                                   <div class="zp-cp-answer"></div>
                                                 </div>
                                               } @empty {
-                                                <div class="zp-block-empty">No checkpoints.</div>
+                                                <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'msme.assessment.checkpoints.empty' }}</div>
                                               }
                                             </div>
                                             <div class="zp-block zp-evidences">
-                                              <div class="zp-block-head">Documents uploaded</div>
+                                              <div class="zp-block-head">{{ 'Documents uploaded' | t: 'msme.assessment.evidence.heading' }}</div>
                                               @if (r.evidences.length === 0) {
-                                                <div class="zp-block-empty">No Documents necessary</div>
+                                                <div class="zp-block-empty">{{ 'No Documents necessary' | t: 'msme.assessment.evidence.noneNeeded' }}</div>
                                               } @else {
                                                 <table class="zp-ev-table">
-                                                  <thead><tr><th>Document</th><th>Generated at</th></tr></thead>
+                                                  <thead><tr><th>{{ 'Document' | t: 'msme.assessment.evidence.column.document' }}</th><th>{{ 'Generated at' | t: 'msme.assessment.evidence.column.generated' }}</th></tr></thead>
                                                   <tbody>
                                                     @for (e of r.evidences; track $index) {
                                                       <tr class="zp-ev-row">
-                                                        <td class="zp-ev-doc" data-label="Document">
+                                                        <td class="zp-ev-doc" [attr.data-label]="'Document' | t: 'msme.assessment.evidence.column.document'">
                                                           @if (e['GeneratedTime'] && e['FileUrl']) {
-                                                            <a class="pdf-link" [href]="e['FileUrl']" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e['EvidenceName'] || 'View PDF' }}</span></a>
+                                                            <a class="pdf-link" [href]="e['FileUrl']" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e['EvidenceName'] || ('View PDF' | t: 'msme.assessment.viewPdfLink') }}</span></a>
                                                           } @else {
                                                             {{ e['EvidenceName'] }}
                                                           }
                                                         </td>
-                                                        <td data-label="Generated at">
+                                                        <td [attr.data-label]="'Generated at' | t: 'msme.assessment.evidence.column.generated'">
                                                           @if (!e['GeneratedTime']) {
-                                                            <span class="zp-chip">No Documents uploaded</span>
+                                                            <span class="zp-chip">{{ 'No Documents uploaded' | t: 'msme.assessment.evidence.notUploadedChip' }}</span>
                                                           } @else {
-                                                            Generated at {{ e['GeneratedTime'] }}
+                                                            {{ 'Generated at {time}' | t: 'msme.assessment.evidence.generatedText' : { time: e['GeneratedTime'] } }}
                                                           }
                                                         </td>
                                                       </tr>
@@ -286,11 +286,11 @@
                                           </div>
                                         </article>
                                       } @empty {
-                                        <p class="zp-muted">No requirements in this parameter.</p>
+                                        <p class="zp-muted">{{ 'No requirements in this parameter.' | t: 'msme.assessment.parameters.noRequirements' }}</p>
                                       }
                                     </div>
                                   } @else {
-                                    <p class="zp-muted">No parameters.</p>
+                                    <p class="zp-muted">{{ 'No parameters.' | t: 'msme.assessment.parameters.empty' }}</p>
                                   }
                                 </div>
                               </div>
@@ -308,19 +308,19 @@
                   <div class="alert alert-document alert-document-danger m-0 ar-transparent">
                     <div>
                       <img class="icon-bg" src="/Images/svgicons/non-conformance.svg" alt="" />
-                      <h3 class="registration-title m-0">&nbsp;Non-Conformance(s)</h3>
+                      <h3 class="registration-title m-0">&nbsp;{{ 'Non-Conformance(s)' | t: 'msme.assessment.nc.title' }}</h3>
                     </div>
                   </div>
                 </div>
                 <div class="row">
                   <div class="col-sm-12 zed-tabs">
                     @if (rounds().length === 0) {
-                      <p class="mt-3">No non-conformance has been raised.</p>
+                      <p class="mt-3">{{ 'No non-conformance has been raised.' | t: 'msme.assessment.nc.empty' }}</p>
                     }
                     <ul class="nav nav-tabs" role="tablist">
                       @for (r of rounds(); track r.number) {
                         <li class="nav-item" role="presentation">
-                          <button class="nav-link" [class.active]="ncTab() === r.number" type="button" role="tab" [attr.aria-selected]="ncTab() === r.number" (click)="ncTab.set(r.number)">NC{{ r.number }}</button>
+                          <button class="nav-link" [class.active]="ncTab() === r.number" type="button" role="tab" [attr.aria-selected]="ncTab() === r.number" (click)="ncTab.set(r.number)">{{ 'NC{round}' | t: 'msme.assessment.nc.tab' : { round: r.number } }}</button>
                         </li>
                       }
                     </ul>
@@ -331,10 +331,10 @@
                             @if (r.siteExterior; as se) {
                               <div>
                                 <table class="table table-default table-zed">
-                                  <thead><tr><th>Description</th><th>Value</th></tr></thead>
+                                  <thead><tr><th>{{ 'Description' | t: 'msme.assessment.nc.column.description' }}</th><th>{{ 'Value' | t: 'msme.assessment.nc.column.value' }}</th></tr></thead>
                                   <tbody>
                                     <tr>
-                                      <td class="w-50">Site Exterior Photos</td>
+                                      <td class="w-50">{{ 'Site Exterior Photos' | t: 'msme.assessment.basic.exteriorLabel' }}</td>
                                       <td>
                                         @for (p of se.previous; track $index) {
                                           <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
@@ -345,16 +345,16 @@
                                       <td colspan="2">
                                         <div class="d-flex flex-column">
                                           <div class="label-highlight label-highlight-assesor ar-w80">
-                                            <div><strong>ASSESSOR RESPONSE</strong><span class="pull-right">{{ se.assessor['UpdatedDate'] }}</span></div>
+                                            <div><strong>{{ 'ASSESSOR RESPONSE' | t: 'msme.assessment.nc.assessorResponseLabel' }}</strong><span class="pull-right">{{ se.assessor['UpdatedDate'] }}</span></div>
                                             <span>{{ se.assessor['AssessorRemarks'] }}</span>
                                           </div>
                                           <div class="label-highlight label-highlight-msme ms-auto ar-w80">
                                             <div>
-                                              <strong>MSME RESPONSE</strong>
+                                              <strong>{{ 'MSME RESPONSE' | t: 'msme.assessment.nc.msmeResponseLabel' }}</strong>
                                               <span class="pull-right">{{ se.msme['CreatedDate'] }}</span>
                                               <span>{{ se.msme['MsmeRemarks'] }}</span>
                                             </div>
-                                            @if (!se.hasResponse) { <div>No response yet</div> }
+                                            @if (!se.hasResponse) { <div>{{ 'No response yet' | t: 'msme.assessment.nc.noResponseText' }}</div> }
                                             @for (p of se.current; track $index) {
                                               <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
                                             }
@@ -370,7 +370,7 @@
                             @if (r.products.length > 0) {
                               <div class="col-sm-12 ar-pt20">
                                 <div class="panel panel-default panel-black m-b-2">
-                                  <div class="panel-body"><div class="info-block">Product manufactured</div></div>
+                                  <div class="panel-body"><div class="info-block">{{ 'Product manufactured' | t: 'msme.assessment.basic.productLabel' }}</div></div>
                                 </div>
                                 @for (prod of r.products; track $index) {
                                   <div>
@@ -388,13 +388,13 @@
                                           <td colspan="2">
                                             <div class="d-flex flex-column">
                                               <div class="label-highlight label-highlight-assesor ar-w80">
-                                                <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ prod.product['PreviousAssessorUpdatedDate'] }}</span></div>
+                                                <div><strong>{{ 'ASSESSOR COMMENT' | t: 'msme.assessment.nc.assessorCommentLabel' }}</strong><span class="pull-right">{{ prod.product['PreviousAssessorUpdatedDate'] }}</span></div>
                                                 <span>{{ prod.product['PreviousAssessorRemarks'] }}</span>
                                               </div>
                                               <div class="label-highlight label-highlight-msme ms-auto ar-w80">
-                                                <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ prod.product['MsmeUpdatedDate'] }}</span></div>
+                                                <div><strong>{{ 'MSME RESPONSE' | t: 'msme.assessment.nc.msmeResponseLabel' }}</strong><span class="pull-right">{{ prod.product['MsmeUpdatedDate'] }}</span></div>
                                                 <span>{{ prod.product['MsmeRemarks'] }}</span>
-                                                @if (!prod.hasResponse) { <div>No response yet</div> }
+                                                @if (!prod.hasResponse) { <div>{{ 'No response yet' | t: 'msme.assessment.nc.noResponseText' }}</div> }
                                                 @for (p of prod.current; track $index) {
                                                   <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
                                                 }
@@ -413,7 +413,7 @@
                             <div class="col-sm-12 ar-pt20">
                               <div class="zp-layout zp-round">
                                 <nav class="zp-nav" [attr.aria-labelledby]="'arNcNavTitle' + r.number">
-                                  <div class="zp-nav-head" [id]="'arNcNavTitle' + r.number">NC{{ r.number }} · {{ rn.complete() }} of {{ ncSections().length }} answered</div>
+                                  <div class="zp-nav-head" [id]="'arNcNavTitle' + r.number">{{ 'NC{round} · {done} of {total} answered' | t: 'msme.assessment.nc.navTitle' : { round: r.number, done: rn.complete(), total: ncSections().length } }}</div>
                                   <div class="zp-nav-list">
                                     @for (s of ncSections(); track $index) {
                                       @let pg = rn.progress(s);
@@ -421,7 +421,7 @@
                                         <span class="zp-num">{{ s.section['SectionCode'] }}</span>
                                         <span class="zp-nav-body">
                                           <span class="zp-nav-name">{{ s.section['SectionName'] }}</span>
-                                          <span class="zp-nav-meta">{{ pg.done }} of {{ pg.total }} answered</span>
+                                          <span class="zp-nav-meta">{{ '{done} of {total} answered' | t: 'msme.assessment.nc.navMeta' : { done: pg.done, total: pg.total } }}</span>
                                           <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pg.percent"></span></span>
                                         </span>
                                       </button>
@@ -438,7 +438,7 @@
                                           <h5>{{ s.section['SectionName'] }}</h5>
                                           @if (s.section['iButton']) {
                                             <span class="zp-info" tabindex="0">
-                                              <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                                              <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'msme.assessment.infoAria'">i</span>
                                               <span class="tooltiptext">{{ s.section['iButton'] }}</span>
                                             </span>
                                           }
@@ -449,12 +449,12 @@
                                         <article class="zp-req" [attr.data-requirement]="req.requirement['RequirementCode']">
                                           <div class="zp-req-title">
                                             <span class="zp-code">{{ s.section['SectionCode'] }}.{{ req.requirement['RequirementCode'] }}</span>
-                                            <span class="zp-req-text">{{ req.requirement['RequirementName'] || 'Requirement' }}</span>
-                                            @if (req.responded) { <span class="zp-chip zp-req-status" data-v="Yes">Answered</span> } @else { <span class="zp-chip zp-req-status">No response yet</span> }
+                                            <span class="zp-req-text">{{ req.requirement['RequirementName'] || ('Requirement' | t: 'msme.assessment.requirementFallback') }}</span>
+                                            @if (req.responded) { <span class="zp-chip zp-req-status" data-v="Yes">{{ 'Answered' | t: 'msme.assessment.nc.answeredChip' }}</span> } @else { <span class="zp-chip zp-req-status">{{ 'No response yet' | t: 'msme.assessment.nc.noResponseChip' }}</span> }
                                           </div>
                                           <div class="zp-req-body">
                                             <div class="zp-block zp-checkpoints">
-                                              <div class="zp-block-head">Checkpoints</div>
+                                              <div class="zp-block-head">{{ 'Checkpoints' | t: 'msme.assessment.checkpoints.heading' }}</div>
                                               @for (o of req.options; track $index) {
                                                 <div class="zp-cp">
                                                   <div class="zp-cp-text">
@@ -466,32 +466,32 @@
                                                   <div class="zp-cp-answer"></div>
                                                 </div>
                                               } @empty {
-                                                <div class="zp-block-empty">No checkpoints.</div>
+                                                <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'msme.assessment.checkpoints.empty' }}</div>
                                               }
                                             </div>
 
                                             <div class="zp-chat">
-                                              <div class="zp-block-head">Non-conformance conversation</div>
+                                              <div class="zp-block-head">{{ 'Non-conformance conversation' | t: 'msme.assessment.thread.heading' }}</div>
                                               <div class="zp-chat-list">
                                                 @for (m of ncThread(req); track $index) {
                                                   <div class="zp-msg" [class.from-msme]="m.from === 'msme'" [attr.data-from]="m.from">
                                                     <span class="zp-av" aria-hidden="true">{{ m.from === 'msme' ? 'MS' : 'AS' }}</span>
                                                     <div class="zp-msg-body">
-                                                      <div class="zp-msg-meta">{{ m.from === 'msme' ? 'Applicant' : 'Assessor' }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
+                                                      <div class="zp-msg-meta">{{ m.from === 'msme' ? ('Applicant' | t: 'msme.assessment.thread.applicantLabel') : ('Assessor' | t: 'msme.assessment.thread.assessorLabel') }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
                                                       <div class="zp-bubble">
                                                         @if (m.text) { <div class="zp-msg-text">{{ m.text }}</div> }
-                                                        @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">Conformance: {{ m.conformance }}</span></div> }
+                                                        @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">{{ 'Conformance: {value}' | t: 'msme.assessment.thread.conformanceChip' : { value: m.conformance } }}</span></div> }
                                                         @if (m.pictures.length) {
                                                           <div class="zp-pics">
                                                             @for (p of m.pictures; track $index) {
-                                                              <button type="button" class="zp-pic" [attr.aria-label]="'View ' + (p.name || 'picture')" (click)="view({ url: p.url, isPdf: false, timeStamp: null, createdDate: null })"><img [src]="p.url" [alt]="p.name || 'Picture'" /></button>
+                                                              <button type="button" class="zp-pic" [attr.aria-label]="p.name ? ('View {name}' | t: 'msme.assessment.thread.viewPictureAria' : { name: p.name }) : ('View picture' | t: 'msme.assessment.thread.viewPictureNoNameAria')" (click)="view({ url: p.url, isPdf: false, timeStamp: null, createdDate: null })"><img [src]="p.url" [alt]="p.name || ('Picture' | t: 'msme.assessment.thread.pictureAlt')" /></button>
                                                             }
                                                           </div>
                                                         }
                                                         @if (m.files.length) {
                                                           <div class="zp-files">
                                                             @for (fl of m.files; track $index) {
-                                                              <a class="pdf-link zp-doc" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || 'View PDF' }}</span></a>
+                                                              <a class="pdf-link zp-doc" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || ('View PDF' | t: 'msme.assessment.viewPdfLink') }}</span></a>
                                                             }
                                                           </div>
                                                         }
@@ -499,7 +499,7 @@
                                                     </div>
                                                   </div>
                                                 } @empty {
-                                                  <div class="zp-muted">No messages yet.</div>
+                                                  <div class="zp-muted">{{ 'No messages yet.' | t: 'msme.assessment.thread.empty' }}</div>
                                                 }
                                               </div>
                                             </div>
@@ -508,7 +508,7 @@
                                       }
                                     </div>
                                   } @else {
-                                    <p class="zp-muted">No parameter has a non-conformance in this round.</p>
+                                    <p class="zp-muted">{{ 'No parameter has a non-conformance in this round.' | t: 'msme.assessment.nc.noParameters' }}</p>
                                   }
                                 </div>
                               </div>
@@ -537,10 +537,10 @@
       } @else {
         <img [src]="p.url" alt="" />
       }
-      <span>captured at {{ p.timeStamp }}<br />uploaded at {{ p.createdDate }}</span>
+      <span>{{ 'captured at {time}' | t: 'msme.assessment.photo.capturedText' : { time: p.timeStamp } }}<br />{{ 'uploaded at {time}' | t: 'msme.assessment.photo.uploadedText' : { time: p.createdDate } }}</span>
     </div>
     @if (p.url) {
-      <button type="button" class="btn btn-primary pull-right" (click)="view(p)">VIEW</button>
+      <button type="button" class="btn btn-primary pull-right" (click)="view(p)">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
     }
   </div>
 </ng-template>
@@ -554,7 +554,7 @@
           <div class="modal-title w-100">
             <div>
               <h3 class="registration-title" id="productTitle">{{ p['ProductName'] }}</h3>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="product.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.assessment.closeAria'" (click)="product.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
         </div>
@@ -564,33 +564,33 @@
               <table class="table table-default table-zed">
                 <tbody>
                   <tr>
-                    <td class="w-50">Weather Exported</td>
+                    <td class="w-50">{{ 'Weather Exported' | t: 'msme.assessment.product.exportedLabel' }}</td>
                     <td>{{ p['Exported'] }}</td>
                   </tr>
                   <tr>
-                    <td class="w-50">Product Photos</td>
+                    <td class="w-50">{{ 'Product Photos' | t: 'msme.assessment.product.photosLabel' }}</td>
                     <td>
                       @if (p['PhotoUrl']) {
                         <div class="row-data">
                           <div><img [src]="p['PhotoUrl']" alt="" /></div>
-                          <button type="button" class="btn btn-primary" (click)="preview.set(value(p['PhotoUrl']))">VIEW</button>
+                          <button type="button" class="btn btn-primary" (click)="preview.set(value(p['PhotoUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                         </div>
                       }
                     </td>
                   </tr>
                   <tr>
-                    <td class="w-50">Product Lable / Description Photos</td>
+                    <td class="w-50">{{ 'Product Lable / Description Photos' | t: 'msme.assessment.product.labelPhotosLabel' }}</td>
                     <td>
                       @if (p['DescriptionUrl']) {
                         @if (p['DescriptionType'] === 'pdf') {
                           <div class="row-data">
                             <div><img src="/Images/svgicons/pdf-icon.svg" alt="" /></div>
-                            <a class="btn btn-primary" [href]="p['DescriptionUrl']" target="_blank" rel="noopener">VIEW</a>
+                            <a class="btn btn-primary" [href]="p['DescriptionUrl']" target="_blank" rel="noopener">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</a>
                           </div>
                         } @else {
                           <div class="row-data">
                             <div><img [src]="p['DescriptionUrl']" alt="" /></div>
-                            <button type="button" class="btn btn-primary" (click)="preview.set(value(p['DescriptionUrl']))">VIEW</button>
+                            <button type="button" class="btn btn-primary" (click)="preview.set(value(p['DescriptionUrl']))">{{ 'VIEW' | t: 'msme.assessment.viewButton' }}</button>
                           </div>
                         }
                       }
@@ -615,7 +615,7 @@
         <div class="modal-header">
           <div class="modal-title w-100">
             <strong id="rawTitle">{{ r['RawMaterialName'] }}</strong>
-            <button type="button" class="close" aria-label="Close" (click)="rawMaterial.set(null)"><strong>x&nbsp;</strong></button>
+            <button type="button" class="close" [attr.aria-label]="'Close' | t: 'msme.assessment.closeAria'" (click)="rawMaterial.set(null)"><strong>x&nbsp;</strong></button>
           </div>
         </div>
         <div class="modal-body">
@@ -623,9 +623,9 @@
             <div class="col-sm-12">
               <table class="table table-default table-zed">
                 <tbody>
-                  <tr><td class="w-50">Raw Material Name</td><th>{{ r['RawMaterialName'] }}</th></tr>
-                  <tr><td class="w-50">Percentage</td><th>{{ r['Percentage'] }}</th></tr>
-                  <tr><td class="w-50">Country Name</td><th>{{ r['CountryName'] }}</th></tr>
+                  <tr><td class="w-50">{{ 'Raw Material Name' | t: 'msme.assessment.raw.nameLabel' }}</td><th>{{ r['RawMaterialName'] }}</th></tr>
+                  <tr><td class="w-50">{{ 'Percentage' | t: 'msme.assessment.raw.percentageLabel' }}</td><th>{{ r['Percentage'] }}</th></tr>
+                  <tr><td class="w-50">{{ 'Country Name' | t: 'msme.assessment.raw.countryLabel' }}</td><th>{{ r['CountryName'] }}</th></tr>
                 </tbody>
               </table>
             </div>
@@ -645,14 +645,14 @@
         <div class="modal-header">
           <div class="modal-title w-100">
             <div>
-              <h3 class="registration-title" id="previewTitle">Image preview</h3>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="preview.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <h3 class="registration-title" id="previewTitle">{{ 'Image preview' | t: 'msme.assessment.preview.title' }}</h3>
+              <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.assessment.closeAria'" (click)="preview.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
         </div>
         <div class="modal-body">
           <div class="text-center img-responsive mb-2">
-            <img [src]="src" alt="Preview" />
+            <img [src]="src" [alt]="'Preview' | t: 'msme.assessment.preview.alt'" />
           </div>
         </div>
       </div>
@@ -666,8 +666,8 @@
     <div class="loadingimage">
       <div class="loader"></div>
       <div class="text-center">
-        <small>Please wait ...</small><br />
-        <small>It may take upto 60 seconds</small>
+        <small>{{ 'Please wait ...' | t: 'msme.assessment.waitText' }}</small><br />
+        <small>{{ 'It may take upto 60 seconds' | t: 'msme.assessment.waitNote' }}</small>
       </div>
     </div>
   </div>

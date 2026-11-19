@@ -12,6 +12,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 type RowAction = 'allot' | 'reallot' | 'accept' | 'reject' | 'open';
 
@@ -33,10 +34,12 @@ const NO_FILTER: FaFilter = { level: '', agency: '', from: '', to: '' };
  * Re-allot, Accept or View details) with the other actions in the ⋮ menu; each action keeps its pop-up and reason. The
  * verification date shows only when the list has one. The design's days badge is not shown: the list has no date of
  * entering a stage (RegisteredDate is the unit's registration).</p>
+ * <p>2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.faSubmissions.*) or the standard
+ * one here and in fa-submissions.html.</p>
  */
 @Component({
   selector: 'zed-staff-fa-submissions',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ChipFilter, RowMenu],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ChipFilter, RowMenu, TextPipe],
   host: { class: 'list-v2 d-block' },
   templateUrl: './fa-submissions.html',
   styles: `
@@ -75,21 +78,22 @@ export class FaSubmissionsPage {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly user = inject(AuthService).currentUser;
-  protected readonly crumbs = staffCrumbs({ label: 'Financial Assistance' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.faSubmissions.crumb', 'Financial Assistance') }));
 
   protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
 
+  /** The stage tabs (their wording is read in chips()). */
   protected readonly tabs = [
-    { status: FaStatus.New, label: 'FA allotment', count: 'New' },
-    { status: FaStatus.InProgress, label: 'In-progress', count: 'InProgress' },
-    { status: FaStatus.Qc, label: 'QC', count: 'Qc' },
-    { status: FaStatus.Approved, label: 'Approved', count: 'Approved' },
-    { status: FaStatus.Rejected, label: 'Rejected', count: 'Rejected' },
+    { status: FaStatus.New, count: 'New' },
+    { status: FaStatus.InProgress, count: 'InProgress' },
+    { status: FaStatus.Qc, count: 'Qc' },
+    { status: FaStatus.Approved, count: 'Approved' },
+    { status: FaStatus.Rejected, count: 'Rejected' },
   ] as const;
   /** The stage tabs as chips, with the counts of the (filtered) lists. */
-  protected readonly chips = computed<FilterChip[]>(() => this.tabs.map((t) => ({ key: String(t.status), label: t.label, count: this.counts()[t.count] ?? 0 })));
+  protected readonly chips = computed<FilterChip[]>(() => this.tabs.map((tab) => ({ key: String(tab.status), label: this.tabLabel(tab.status), count: this.counts()[tab.count] ?? 0 })));
 
   protected readonly status = signal<number>(FaStatus.New);
   protected readonly rows = signal<FaSubmission[]>([]);
@@ -106,20 +110,21 @@ export class FaSubmissionsPage {
   protected readonly agencyOptions = signal<UserOption[]>([]);
   /** 2026-11-18 (the user: staff pages 'not aligned with SVG files'): one "Registered" dropdown (staff-16) in place of the two
    *  date boxes; a period sets "from" to that many days back, "Custom dates…" shows the two boxes. */
-  protected readonly whenOptions = [
-    { key: '', label: 'Registered: any date' },
-    { key: '7', label: 'Registered: last 7 days' },
-    { key: '30', label: 'Registered: last 30 days' },
-    { key: '90', label: 'Registered: last 90 days' },
-    { key: '365', label: 'Registered: last 12 months' },
-    { key: 'custom', label: 'Registered: custom dates…' },
-  ] as const;
+  protected readonly whenOptions = computed(() => [
+    { key: '', label: t('staff.faSubmissions.when.any', 'Registered: any date') },
+    { key: '7', label: t('staff.faSubmissions.when.days7', 'Registered: last 7 days') },
+    { key: '30', label: t('staff.faSubmissions.when.days30', 'Registered: last 30 days') },
+    { key: '90', label: t('staff.faSubmissions.when.days90', 'Registered: last 90 days') },
+    { key: '365', label: t('staff.faSubmissions.when.months12', 'Registered: last 12 months') },
+    { key: 'custom', label: t('staff.faSubmissions.when.custom', 'Registered: custom dates…') },
+  ]);
   protected readonly when = signal<string>('');
   protected readonly filtering = computed(() => Object.values(this.filter()).some((v) => !!v));
   protected readonly filterSummary = computed(() => {
     const f = this.filter();
     const agency = this.agencyOptions().find((a) => a.userId === f.agency)?.userName ?? f.agency;
-    return [levelName(f.level), agency, f.from || f.to ? `registered ${f.from || '…'} to ${f.to || '…'}` : ''].filter((x) => !!x).join(' · ');
+    const dates = f.from || f.to ? t('staff.faSubmissions.filter.registeredText', 'registered {from} to {to}', { from: f.from || '…', to: f.to || '…' }) : '';
+    return [levelName(f.level), agency, dates].filter((x) => !!x).join(' · ');
   });
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -138,6 +143,16 @@ export class FaSubmissionsPage {
   constructor() {
     // Assessors only have their in-progress list (the old page had no tabs for them).
     void this.load(this.isAssessor() ? FaStatus.InProgress : FaStatus.New);
+  }
+
+  private tabLabel(status: number): string {
+    switch (status) {
+      case FaStatus.New: return t('staff.faSubmissions.tab.allotment', 'FA allotment');
+      case FaStatus.InProgress: return t('staff.faSubmissions.tab.inProgress', 'In-progress');
+      case FaStatus.Qc: return t('staff.faSubmissions.tab.qc', 'QC');
+      case FaStatus.Approved: return t('staff.faSubmissions.tab.approved', 'Approved');
+      default: return t('staff.faSubmissions.tab.rejected', 'Rejected');
+    }
   }
 
   protected count(key: keyof FaCounts): number {
@@ -164,7 +179,7 @@ export class FaSubmissionsPage {
   protected setFilter(key: keyof FaFilter, value: string): void {
     const f = { ...this.filter(), [key]: value ?? '' };
     if (f.from && f.to && f.from > f.to) {
-      this.error.set("The 'from' date is after the 'to' date.");
+      this.error.set(t('staff.faSubmissions.filter.datesError', "The 'from' date is after the 'to' date."));
       return;
     }
     this.filter.set(f);
@@ -224,13 +239,13 @@ export class FaSubmissionsPage {
   /** The row's actions: the first is its button, the others are in the ⋮ menu. */
   protected actions(r: FaSubmission): (RowMenuItem & { key: RowAction })[] {
     const list: (RowMenuItem & { key: RowAction })[] = [];
-    if (this.canAllot(r)) list.push({ key: 'allot', label: 'Allot', icon: 'people' });
-    if (this.canReAllot(r)) list.push({ key: 'reallot', label: 'Re-allot', icon: 'refresh' });
+    if (this.canAllot(r)) list.push({ key: 'allot', label: t('staff.faSubmissions.action.allot', 'Allot'), icon: 'people' });
+    if (this.canReAllot(r)) list.push({ key: 'reallot', label: t('staff.faSubmissions.action.reallot', 'Re-allot'), icon: 'refresh' });
     if (this.canRespond(r)) {
-      list.push({ key: 'accept', label: 'Accept', icon: 'people' });
-      list.push({ key: 'reject', label: 'Reject', icon: 'trash', danger: true });
+      list.push({ key: 'accept', label: t('staff.faSubmissions.action.accept', 'Accept'), icon: 'people' });
+      list.push({ key: 'reject', label: t('staff.faSubmissions.action.reject', 'Reject'), icon: 'trash', danger: true });
     }
-    if (this.canOpen(r)) list.push({ key: 'open', label: this.isAssessor() ? 'Assess' : 'View details', icon: 'eye' });
+    if (this.canOpen(r)) list.push({ key: 'open', label: this.isAssessor() ? t('staff.faSubmissions.action.assess', 'Assess') : t('staff.faSubmissions.action.view', 'View details'), icon: 'eye' });
     return list;
   }
 
@@ -277,11 +292,11 @@ export class FaSubmissionsPage {
     const d = this.dialog();
     if (!d) return;
     if (d.kind !== 'reject' && !d.choice) {
-      this.dialogError.set(d.kind === 'allot' ? 'Please select assessment agency.' : 'Please select valid data.');
+      this.dialogError.set(d.kind === 'allot' ? t('staff.faSubmissions.dialog.agencyError', 'Please select assessment agency.') : t('staff.faSubmissions.dialog.assessorError', 'Please select valid data.'));
       return;
     }
     if (d.kind === 'reject' && !d.reason.trim()) {
-      this.dialogError.set('Please enter the reason for rejection.');
+      this.dialogError.set(t('staff.faSubmissions.dialog.reasonError', 'Please enter the reason for rejection.'));
       return;
     }
     this.saving.set(true);

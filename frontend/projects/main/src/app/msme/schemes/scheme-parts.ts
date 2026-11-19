@@ -1,11 +1,13 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe } from '../../content/page-text';
 import { SchemeDocument, UnitPanel } from './schemes.api';
 
 /** Unit summary on the left of the FA/TU pages (enterprise, Udyam number, ZED ID, unit, activity). */
 @Component({
   selector: 'zed-scheme-unit-panel',
+  imports: [TextPipe],
   styleUrl: '../shared/msme-page.scss',
   template: `
     @let u = unit();
@@ -22,15 +24,15 @@ import { SchemeDocument, UnitPanel } from './schemes.api';
             <p class="entp-type-title">{{ u['RegistrationType'] === 'UAM' ? u['EnterpriseTypee'] : u['EnterpriseType'] }}</p>
           </div>
           <div class="entrp-title"><h4>{{ u['EnterpriseName'] }}</h4></div>
-          <div class="entp-details"><small>UDYAM Number</small><p>{{ u['UdyogAadharNo'] }}</p></div>
-          <div class="entp-details"><small>ZED ID</small><p>{{ u['ZedId'] }}</p></div>
+          <div class="entp-details"><small>{{ 'UDYAM Number' | t: 'msme.schemeParts.unit.udyamLabel' }}</small><p>{{ u['UdyogAadharNo'] }}</p></div>
+          <div class="entp-details"><small>{{ 'ZED ID' | t: 'msme.schemeParts.unit.zedIdLabel' }}</small><p>{{ u['ZedId'] }}</p></div>
         </div>
       </div>
       @if (full()) {
-        <div class="panel panel-default panel-black"><div class="panel-body">Selected Unit</div></div>
+        <div class="panel panel-default panel-black"><div class="panel-body">{{ 'Selected Unit' | t: 'msme.schemeParts.unit.unitHeading' }}</div></div>
         <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ u['PUnitName'] }}</p></div>
         <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ address() }}</p></div>
-        <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
+        <div class="panel panel-default panel-black"><div class="panel-body">{{ 'Selected Activity' | t: 'msme.schemeParts.unit.activityHeading' }}</div></div>
         <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ u['Activity'] }}</p></div>
         <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ u['TwoDigitActivity'] }}</p></div>
         <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ u['FourDigitActivity'] }}</p></div>
@@ -38,11 +40,11 @@ import { SchemeDocument, UnitPanel } from './schemes.api';
       }
       @if (pledge() && u['PledgeOn']) {
         <!-- As FinancialAssistance/Details.cshtml: the pledge certificate under the unit. -->
-        <div class="panel panel-default panel-black"><div class="panel-body">ZED Pledge Certificate</div></div>
+        <div class="panel panel-default panel-black"><div class="panel-body">{{ 'ZED Pledge Certificate' | t: 'msme.schemeParts.pledge.heading' }}</div></div>
         <div class="unit-selection">
           <div class="col-sm-12 p-0">
-            <p>Pledge taken on {{ u['PledgeOn'] }}</p>
-            <div class="btn-download"><a href="/msme/pledge-certificate">DOWNLOAD</a></div>
+            <p>{{ 'Pledge taken on {date}' | t: 'msme.schemeParts.pledge.dateText' : { date: u['PledgeOn'] } }}</p>
+            <div class="btn-download"><a href="/msme/pledge-certificate">{{ 'DOWNLOAD' | t: 'msme.schemeParts.pledge.downloadButton' }}</a></div>
           </div>
         </div>
       }
@@ -67,7 +69,7 @@ export class SchemeUnitPanel {
  */
 @Component({
   selector: 'zed-scheme-intro',
-  imports: [RouterLink, ContentTextComponent],
+  imports: [RouterLink, ContentTextComponent, TextPipe],
   styleUrl: '../shared/msme-page.scss',
   template: `
     <div class="row justify-content-center">
@@ -76,15 +78,15 @@ export class SchemeUnitPanel {
           <div class="card-body disclaimer-sec">
             <div class="col-sm-12">
               @if (step() === 1) {
-                <h3 class="registration-title">DISCLAIMER</h3>
+                <h3 class="registration-title">{{ 'DISCLAIMER' | t: 'msme.schemeParts.intro.disclaimerTitle' }}</h3>
                 <zed-text key="msme.schemes.disclaimer" />
               } @else {
-                <h3 class="registration-title">Instructions</h3>
+                <h3 class="registration-title">{{ 'Instructions' | t: 'msme.schemeParts.intro.instructionsTitle' }}</h3>
                 <zed-text key="msme.schemes.instructions" />
               }
               <div class="stepper-footer-sec initial-step1">
-                <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
-                <button type="button" class="btn btn-primary" (click)="accept.emit()">ACCEPT &amp; PROCEED</button>
+                <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.schemeParts.intro.dashboardButton' }}</a>
+                <button type="button" class="btn btn-primary" (click)="accept.emit()">{{ 'ACCEPT & PROCEED' | t: 'msme.schemeParts.intro.acceptButton' }}</button>
               </div>
             </div>
           </div>
@@ -105,17 +107,18 @@ export class SchemeIntro {
 @Component({
   selector: 'zed-scheme-document',
   host: { class: 'card card-default m-b-0 scheme-document' },
+  imports: [TextPipe],
   template: `
     <div class="card-body">
       <label class="col-sm-12 p-l-0" [attr.for]="inputId()">{{ label() }}</label>
       @for (d of documents(); track d.fileName) {
         <div class="scheme-doc d-flex justify-content-between align-items-center p-2 mb-1">
           <a [href]="d.url" target="_blank" rel="noopener" class="d-flex align-items-center gap-2">
-            @if (d.isPdf) { <img src="/Images/svgicons/pdf-icon.svg" alt="PDF" /> } @else { <img [src]="d.url" alt="" class="img-tile" /> }
+            @if (d.isPdf) { <img src="/Images/svgicons/pdf-icon.svg" [alt]="'PDF' | t: 'msme.schemeParts.document.pdfAlt'" /> } @else { <img [src]="d.url" alt="" class="img-tile" /> }
             <span>{{ d.type }}</span>
           </a>
           @if (!readonly()) {
-            <button type="button" class="btn btn-white" [attr.aria-label]="'Remove ' + label()" (click)="remove.emit(d.fileName)">
+            <button type="button" class="btn btn-white" [attr.aria-label]="'Remove {label}' | t: 'msme.schemeParts.document.removeAria' : { label: label() }" (click)="remove.emit(d.fileName)">
               <img src="/Images/svgicons/close.svg" alt="" />
             </button>
           }
@@ -123,14 +126,14 @@ export class SchemeIntro {
       }
       @if (!readonly() && documents().length < max()) {
         <div class="col-sm-12 bg-grey p-4">
-          @if (!documents().length) { <div class="custom-file1">No file selected</div> }
+          @if (!documents().length) { <div class="custom-file1">{{ 'No file selected' | t: 'msme.schemeParts.document.empty' }}</div> }
           <label class="file btn btn-md btn-primary mt-2" [class.disabled]="busy()">
-            + UPLOAD
+            {{ '+ UPLOAD' | t: 'msme.schemeParts.document.uploadButton' }}
             <input type="file" class="input-file" [id]="inputId()" accept="image/*,application/pdf" [disabled]="busy()" (change)="onPick($event)" />
           </label>
         </div>
       }
-      <p class="text-grey mb-0">Photos of the format PDF/Image allowed with maximum size of 5 MB</p>
+      <p class="text-grey mb-0">{{ 'Photos of the format PDF/Image allowed with maximum size of 5 MB' | t: 'msme.schemeParts.document.sizeNote' }}</p>
     </div>
   `,
   styles: `

@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
@@ -41,15 +42,16 @@ export interface PledgeCertificate {
  */
 @Component({
   selector: 'zed-pledge-certificate',
+  imports: [TextPipe],
   template: `
     @let c = certificate();
     @if (showActions()) {
       <div class="pledge-actions">
-        <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">DOWNLOAD PDF</a>
-        <a class="btn btn-default" [href]="inlineUrl()" target="_blank" rel="noopener">OPEN PDF</a>
+        <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">{{ 'DOWNLOAD PDF' | t: 'common.pledgeCertificate.downloadButton' }}</a>
+        <a class="btn btn-default" [href]="inlineUrl()" target="_blank" rel="noopener">{{ 'OPEN PDF' | t: 'common.pledgeCertificate.openButton' }}</a>
       </div>
     }
-    <div class="pledge-sheet" role="img" [attr.aria-label]="'ZED pledge certificate of ' + c.name + ', ' + c.zedId">
+    <div class="pledge-sheet" role="img" [attr.aria-label]="'ZED pledge certificate of {name}, {zedId}' | t: 'common.pledgeCertificate.sheetAria' : { name: c.name, zedId: c.zedId }">
       @for (f of c.fields; track f.name) {
         @switch (f.align) {
           @case ('image') {
@@ -119,13 +121,13 @@ export const pledgeInlineUrl = (pdfUrl: string) => pdfUrl + (pdfUrl.includes('?'
 /** The signed-in MSME's pledge certificate (/msme/pledge-certificate). 2026-11-14 (approved): the actions in the header. */
 @Component({
   selector: 'zed-msme-pledge-certificate',
-  imports: [PledgeCertificateCard, PageHead],
+  imports: [PledgeCertificateCard, PageHead, TextPipe],
   template: `
     <div class="container pledge-page">
-      <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Pledge certificate' }]" title="Pledge certificate">
+      <zed-page-head [crumbs]="crumbs()" [title]="'Pledge certificate' | t: 'msme.pledge.title'">
         @if (certificate(); as c) {
-          <a class="btn btn-outline-secondary btn-sm" [href]="inline" target="_blank" rel="noopener">OPEN PDF</a>
-          <a class="btn btn-primary btn-sm" [href]="pdf" [attr.download]="c.fileName">DOWNLOAD PDF</a>
+          <a class="btn btn-outline-secondary btn-sm" [href]="inline" target="_blank" rel="noopener">{{ 'OPEN PDF' | t: 'msme.pledge.openButton' }}</a>
+          <a class="btn btn-primary btn-sm" [href]="pdf" [attr.download]="c.fileName">{{ 'DOWNLOAD PDF' | t: 'msme.pledge.downloadButton' }}</a>
         }
       </zed-page-head>
       @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
@@ -143,6 +145,7 @@ export const pledgeInlineUrl = (pdfUrl: string) => pdfUrl + (pdfUrl.includes('?'
 export class MsmePledgePage {
   protected readonly pdf = '/api/msme/pledge-certificate/pdf';
   protected readonly inline = pledgeInlineUrl(this.pdf);
+  protected readonly crumbs = computed(() => [{ label: t('msme.pledge.crumb.home', 'Home'), link: '/msme/dashboard' }, { label: t('msme.pledge.crumb.pledge', 'Pledge certificate') }]);
   protected readonly certificate = signal<PledgeCertificate | null>(null);
   protected readonly error = signal('');
 
@@ -156,11 +159,11 @@ export class MsmePledgePage {
 /** An MSME's pledge certificate for staff (/staff/pledge-certificate/:zedId), for those who may see its records. */
 @Component({
   selector: 'zed-staff-pledge-certificate',
-  imports: [PledgeCertificateCard],
+  imports: [PledgeCertificateCard, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">ZED Pledge Certificate</h3>
+        <h3 class="registration-title">{{ 'ZED Pledge Certificate' | t: 'staff.pledgeCertificate.title' }}</h3>
       </div>
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }

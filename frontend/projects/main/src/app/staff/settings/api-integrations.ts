@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ConfirmService } from '../confirm-dialog';
 import { IndianTimePipe } from '../utc-time';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface ApiClientItem {
   id: number;
@@ -79,14 +80,14 @@ type Section = 'partners' | 'apis' | 'services';
  */
 @Component({
   selector: 'zed-staff-api-integrations',
-  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent],
+  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">API Integrations</h3>
-        <p class="page-sub">The partners that call ZED's APIs and the services ZED calls. Disable a partner or an API to stop its calls.</p>
+        <h3 class="registration-title">{{ 'API Integrations' | t: 'staff.apiIntegrations.title' }}</h3>
+        <p class="page-sub">{{ "The partners that call ZED's APIs and the services ZED calls. Disable a partner or an API to stop its calls." | t: 'staff.apiIntegrations.sub' }}</p>
       </div>
-      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="startAdd()">+ Add partner</button>
+      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="startAdd()">{{ '+ Add partner' | t: 'staff.apiIntegrations.addButton' }}</button>
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -96,15 +97,15 @@ type Section = 'partners' | 'apis' | 'services';
     }
 
     <div class="ai-stats">
-      <div class="stat"><span class="stat-value">{{ stats().enabled }}<small>/{{ stats().partners }}</small></span><span class="stat-label">Partners enabled</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().apisOn }}<small>/{{ stats().apis }}</small></span><span class="stat-label">Partner APIs on</span></div>
-      <div class="stat"><span class="stat-value stat-text">{{ stats().lastToken ? (stats().lastToken!.on | date: 'dd-MM-yyyy HH:mm') : 'None yet' }}</span>
-        <span class="stat-label">Latest token{{ stats().lastToken ? ': ' + stats().lastToken!.name : '' }}</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().servicesInUse }}</span><span class="stat-label">Services ZED calls</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().enabled }}<small>/{{ stats().partners }}</small></span><span class="stat-label">{{ 'Partners enabled' | t: 'staff.apiIntegrations.stat.partnersLabel' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().apisOn }}<small>/{{ stats().apis }}</small></span><span class="stat-label">{{ 'Partner APIs on' | t: 'staff.apiIntegrations.stat.apisLabel' }}</span></div>
+      <div class="stat"><span class="stat-value stat-text">{{ stats().lastToken ? (stats().lastToken!.on | date: 'dd-MM-yyyy HH:mm') : ('None yet' | t: 'staff.apiIntegrations.stat.noTokenText') }}</span>
+        <span class="stat-label">{{ stats().lastToken ? ('Latest token: {name}' | t: 'staff.apiIntegrations.stat.latestTokenOfLabel' : { name: stats().lastToken!.name }) : ('Latest token' | t: 'staff.apiIntegrations.stat.latestTokenLabel') }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().servicesInUse }}</span><span class="stat-label">{{ 'Services ZED calls' | t: 'staff.apiIntegrations.stat.servicesLabel' }}</span></div>
     </div>
 
-    <div class="ai-tabs" role="tablist" aria-label="Sections">
-      @for (t of tabs; track t.key) {
+    <div class="ai-tabs" role="tablist" [attr.aria-label]="'Sections' | t: 'staff.apiIntegrations.tabsAria'">
+      @for (t of tabs(); track t.key) {
         <button type="button" role="tab" class="ai-tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">
           {{ t.label }} <span class="tab-count">{{ tabCount(t.key) }}</span>
         </button>
@@ -114,16 +115,16 @@ type Section = 'partners' | 'apis' | 'services';
     <section class="zed-card" aria-labelledby="ai-clients" [hidden]="tab() !== 'partners'">
       <div class="ai-head">
         <div>
-          <h5 class="ai-h m-0" id="ai-clients">Partners</h5>
-          <p class="muted m-0">Each partner holds its own key. Disabled, its key and the tokens it already holds are refused.</p>
+          <h5 class="ai-h m-0" id="ai-clients">{{ 'Partners' | t: 'staff.apiIntegrations.partners.title' }}</h5>
+          <p class="muted m-0">{{ 'Each partner holds its own key. Disabled, its key and the tokens it already holds are refused.' | t: 'staff.apiIntegrations.partners.sub' }}</p>
         </div>
-        <input type="search" class="form-control ai-search" placeholder="Search partner, client ID or access" aria-label="Search partners"
+        <input type="search" class="form-control ai-search" [placeholder]="'Search partner, client ID or access' | t: 'staff.apiIntegrations.partners.search.placeholder'" [attr.aria-label]="'Search partners' | t: 'staff.apiIntegrations.partners.search.aria'"
                [value]="partners.search()" (input)="partners.setSearch($any($event.target).value)" />
       </div>
       <div class="table-responsive">
         <table class="table table-zed ai-table">
           <thead>
-            <tr><th>Partner</th><th>May call</th><th>Activity</th><th class="text-center">Status</th><th class="text-center ai-actions-h">Action</th></tr>
+            <tr><th>{{ 'Partner' | t: 'staff.apiIntegrations.column.partner' }}</th><th>{{ 'May call' | t: 'staff.apiIntegrations.column.access' }}</th><th>{{ 'Activity' | t: 'staff.apiIntegrations.column.activity' }}</th><th class="text-center">{{ 'Status' | t: 'staff.apiIntegrations.column.status' }}</th><th class="text-center ai-actions-h">{{ 'Action' | t: 'staff.apiIntegrations.column.action' }}</th></tr>
           </thead>
           <tbody>
             @for (c of partners.page(); track c.id) {
@@ -134,31 +135,31 @@ type Section = 'partners' | 'apis' | 'services';
                     <div class="partner-text">
                       <strong>{{ c.name }}</strong>
                       <div class="partner-meta">
-                        <span class="auth-chip" [class.static]="!c.clientId">{{ c.clientId ? 'Client ID + key' : 'Key only' }}</span>
-                        @if (c.maySubmitIncentives) { <span class="auth-chip incentive">Submits incentives</span> }
+                        <span class="auth-chip" [class.static]="!c.clientId">{{ c.clientId ? ('Client ID + key' | t: 'staff.apiIntegrations.auth.tokenChip') : ('Key only' | t: 'staff.apiIntegrations.auth.keyChip') }}</span>
+                        @if (c.maySubmitIncentives) { <span class="auth-chip incentive">{{ 'Submits incentives' | t: 'staff.apiIntegrations.row.incentivesChip' }}</span> }
                       </div>
-                      @if (c.clientId) { <small class="d-block muted">Client ID <code>{{ c.clientId }}</code></small> }
+                      @if (c.clientId) { <small class="d-block muted">{{ 'Client ID' | t: 'staff.apiIntegrations.row.clientIdLabel' }} <code>{{ c.clientId }}</code></small> }
                       @if (c.baseUrl) { <small class="d-block muted ai-url" [title]="c.baseUrl">{{ c.baseUrl }}</small> }
                     </div>
                   </div>
                 </td>
                 <td>@for (a of c.access; track a) { <span class="ai-chip">{{ a }}</span> }</td>
                 <td class="activity">
-                  <div><span class="act-label">Registered</span> {{ c.createdDate ? (c.createdDate | date: 'dd-MM-yyyy') : '—' }}</div>
-                  <div><span class="act-label">Last token</span> {{ c.lastTokenOn ? (c.lastTokenOn | date: 'dd-MM-yyyy HH:mm') : 'never' }}</div>
+                  <div><span class="act-label">{{ 'Registered' | t: 'staff.apiIntegrations.row.registeredLabel' }}</span> {{ c.createdDate ? (c.createdDate | date: 'dd-MM-yyyy') : '—' }}</div>
+                  <div><span class="act-label">{{ 'Last token' | t: 'staff.apiIntegrations.row.lastTokenLabel' }}</span> {{ c.lastTokenOn ? (c.lastTokenOn | date: 'dd-MM-yyyy HH:mm') : ('never' | t: 'staff.apiIntegrations.row.neverText') }}</div>
                 </td>
                 <td class="text-center">
-                  <span class="status-badge" [class.is-active]="c.enabled" [class.is-rejected]="!c.enabled">{{ c.enabled ? 'Enabled' : 'Disabled' }}</span>
+                  <span class="status-badge" [class.is-active]="c.enabled" [class.is-rejected]="!c.enabled">{{ c.enabled ? ('Enabled' | t: 'staff.apiIntegrations.row.enabledStatus') : ('Disabled' | t: 'staff.apiIntegrations.row.disabledStatus') }}</span>
                   @if (c.updatedOn) { <small class="d-block muted mt-1">{{ c.updatedBy }} · {{ c.updatedOn | indianTime: 'dd-MM-yyyy' }}</small> }
                 </td>
                 <td class="text-center ai-actions">
-                  <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" [attr.aria-label]="'Edit ' + c.name" (click)="edit(c)">Edit</button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" [attr.aria-label]="'Edit {name}' | t: 'staff.apiIntegrations.row.editAria' : { name: c.name }" (click)="edit(c)">{{ 'Edit' | t: 'staff.apiIntegrations.row.editButton' }}</button>
                   <button type="button" class="btn btn-sm" [class.btn-outline-danger]="c.enabled" [class.btn-outline-primary]="!c.enabled" [disabled]="busy()"
-                          [attr.aria-label]="(c.enabled ? 'Disable ' : 'Enable ') + c.name" (click)="setClient(c, !c.enabled)">{{ c.enabled ? 'Disable' : 'Enable' }}</button>
+                          [attr.aria-label]="c.enabled ? ('Disable {name}' | t: 'staff.apiIntegrations.row.disableAria' : { name: c.name }) : ('Enable {name}' | t: 'staff.apiIntegrations.row.enableAria' : { name: c.name })" (click)="setClient(c, !c.enabled)">{{ c.enabled ? ('Disable' | t: 'staff.apiIntegrations.row.disableButton') : ('Enable' | t: 'staff.apiIntegrations.row.enableButton') }}</button>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ partners.search() ? 'No partner matches the search.' : 'No partners are registered. Use "+ Add partner" to register one.' }}</div></td></tr>
+              <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ partners.search() ? ('No partner matches the search.' | t: 'staff.apiIntegrations.partners.noMatchEmpty') : ('No partners are registered. Use "+ Add partner" to register one.' | t: 'staff.apiIntegrations.partners.empty') }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -169,20 +170,20 @@ type Section = 'partners' | 'apis' | 'services';
     </section>
 
     <section class="zed-card" aria-labelledby="ai-groups" [hidden]="tab() !== 'apis'">
-      <h5 class="ai-h" id="ai-groups">Partner APIs</h5>
-      <p class="muted">Switch an API off for every partner at once. Its calls are then answered "switched off".</p>
+      <h5 class="ai-h" id="ai-groups">{{ 'Partner APIs' | t: 'staff.apiIntegrations.apis.title' }}</h5>
+      <p class="muted">{{ 'Switch an API off for every partner at once. Its calls are then answered "switched off".' | t: 'staff.apiIntegrations.apis.sub' }}</p>
       <div class="ai-groups">
         @for (g of groups(); track g.key) {
           <div class="ai-group" [class.ai-off]="!g.enabled">
             <div class="ai-group-head">
               <strong>{{ g.name }}</strong>
               <label class="ai-switch form-switch">
-                <input type="checkbox" class="form-check-input" role="switch" [checked]="g.enabled" [disabled]="busy()" [attr.aria-label]="(g.enabled ? 'Switch off ' : 'Switch on ') + g.name" (change)="setGroup(g, $any($event.target))" />
-                <span>{{ g.enabled ? 'On' : 'Off' }}</span>
+                <input type="checkbox" class="form-check-input" role="switch" [checked]="g.enabled" [disabled]="busy()" [attr.aria-label]="g.enabled ? ('Switch off {name}' | t: 'staff.apiIntegrations.apis.switchOffAria' : { name: g.name }) : ('Switch on {name}' | t: 'staff.apiIntegrations.apis.switchOnAria' : { name: g.name })" (change)="setGroup(g, $any($event.target))" />
+                <span>{{ g.enabled ? ('On' | t: 'staff.apiIntegrations.apis.onLabel') : ('Off' | t: 'staff.apiIntegrations.apis.offLabel') }}</span>
               </label>
             </div>
             <p class="mb-2 group-desc">{{ g.description }}</p>
-            <small class="used-by"><span class="act-label">Used by</span> {{ g.usedBy }}</small>
+            <small class="used-by"><span class="act-label">{{ 'Used by' | t: 'staff.apiIntegrations.apis.usedByLabel' }}</span> {{ g.usedBy }}</small>
             <div class="endpoints">
               @for (ep of g.endpoints; track ep) { <code class="ep">{{ ep }}</code> }
             </div>
@@ -192,8 +193,8 @@ type Section = 'partners' | 'apis' | 'services';
     </section>
 
     <section class="zed-card" aria-labelledby="ai-outbound" [hidden]="tab() !== 'services'">
-      <h5 class="ai-h" id="ai-outbound">Services ZED calls</h5>
-      <p class="muted">For information: these are set up on the server; the captcha and the mail servers have their own settings pages.</p>
+      <h5 class="ai-h" id="ai-outbound">{{ 'Services ZED calls' | t: 'staff.apiIntegrations.services.title' }}</h5>
+      <p class="muted">{{ 'For information: these are set up on the server; the captcha and the mail servers have their own settings pages.' | t: 'staff.apiIntegrations.services.sub' }}</p>
       <div class="ai-services">
         @for (o of outbound(); track o.name) {
           <div class="service" [class.ai-off]="!o.inV4">
@@ -201,9 +202,9 @@ type Section = 'partners' | 'apis' | 'services';
             <div class="svc-text">
               <strong>{{ o.name }}</strong>
               <small class="d-block muted">{{ o.purpose }}</small>
-              <small class="d-block svc-at"><span class="act-label">Managed at</span> {{ o.managedAt }}</small>
+              <small class="d-block svc-at"><span class="act-label">{{ 'Managed at' | t: 'staff.apiIntegrations.services.managedAtLabel' }}</span> {{ o.managedAt }}</small>
             </div>
-            <span class="status-badge" [class.is-active]="o.inV4" [class.is-inactive]="!o.inV4">{{ o.inV4 ? 'In use' : 'Not used' }}</span>
+            <span class="status-badge" [class.is-active]="o.inV4" [class.is-inactive]="!o.inV4">{{ o.inV4 ? ('In use' | t: 'staff.apiIntegrations.services.inUseStatus') : ('Not used' | t: 'staff.apiIntegrations.services.notUsedStatus') }}</span>
           </div>
         }
       </div>
@@ -217,34 +218,34 @@ type Section = 'partners' | 'apis' | 'services';
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-2">
                   <span class="avatar" aria-hidden="true">{{ initials(e.name) }}</span>
-                  <h3 class="registration-title m-0" id="ai-edit-title">Edit partner</h3>
+                  <h3 class="registration-title m-0" id="ai-edit-title">{{ 'Edit partner' | t: 'staff.apiIntegrations.edit.title' }}</h3>
                 </div>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.apiIntegrations.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="saveEdit()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <label for="ai-name">Partner name<span class="req">*</span></label>
+                  <label for="ai-name">{{ 'Partner name' | t: 'staff.apiIntegrations.form.name.label' }}<span class="req">*</span></label>
                   <input id="ai-name" name="name" class="form-control" maxlength="200" [(ngModel)]="e.name" />
-                  <label for="ai-url">Its address</label>
-                  <input id="ai-url" name="baseUrl" type="url" class="form-control" maxlength="500" placeholder="https://" [(ngModel)]="e.baseUrl" />
-                  <span class="label-like">Sign-in</span>
+                  <label for="ai-url">{{ 'Its address' | t: 'staff.apiIntegrations.form.url.label' }}</label>
+                  <input id="ai-url" name="baseUrl" type="url" class="form-control" maxlength="500" [placeholder]="'https://' | t: 'staff.apiIntegrations.form.url.placeholder'" [(ngModel)]="e.baseUrl" />
+                  <span class="label-like">{{ 'Sign-in' | t: 'staff.apiIntegrations.edit.signInLabel' }}</span>
                   <span>
-                    @if (e.clientId) { <span class="auth-chip">Client ID + key</span> <code class="ms-1">{{ e.clientId }}</code> } @else { <span class="auth-chip static">Key only</span> }
-                    <small class="muted d-block mt-1">The client ID and the key stay as they are.</small>
+                    @if (e.clientId) { <span class="auth-chip">{{ 'Client ID + key' | t: 'staff.apiIntegrations.auth.tokenChip' }}</span> <code class="ms-1">{{ e.clientId }}</code> } @else { <span class="auth-chip static">{{ 'Key only' | t: 'staff.apiIntegrations.auth.keyChip' }}</span> }
+                    <small class="muted d-block mt-1">{{ 'The client ID and the key stay as they are.' | t: 'staff.apiIntegrations.edit.signInNote' }}</small>
                   </span>
-                  <span class="label-like">Incentive submission</span>
+                  <span class="label-like">{{ 'Incentive submission' | t: 'staff.apiIntegrations.edit.incentivesLabel' }}</span>
                   <label class="toggle-card form-switch" for="ai-incentives">
                     <input id="ai-incentives" type="checkbox" role="switch" class="form-check-input" name="maySubmitIncentives" [(ngModel)]="e.maySubmitIncentives" />
-                    <span>May submit incentive disbursements to ZED</span>
+                    <span>{{ 'May submit incentive disbursements to ZED' | t: 'staff.apiIntegrations.form.incentivesText' }}</span>
                   </label>
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">Update</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.apiIntegrations.cancelButton' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Update' | t: 'staff.apiIntegrations.edit.updateButton' }}</button>
               </div>
             </form>
           </div>
@@ -258,37 +259,37 @@ type Section = 'partners' | 'apis' | 'services';
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="ai-add-title">Add partner</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="adding.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="ai-add-title">{{ 'Add partner' | t: 'staff.apiIntegrations.add.title' }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.apiIntegrations.closeAria'" (click)="adding.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="saveAdd()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <label for="ai-add-name">Partner name<span class="req">*</span></label>
-                  <input id="ai-add-name" name="name" class="form-control" maxlength="200" placeholder="e.g. SIDBI" [(ngModel)]="a.name" />
-                  <label for="ai-add-url">Its address</label>
-                  <input id="ai-add-url" name="baseUrl" type="url" class="form-control" maxlength="500" placeholder="https://" [(ngModel)]="a.baseUrl" />
-                  <span class="label-like top" id="ai-add-kind">How it calls ZED<span class="req">*</span></span>
+                  <label for="ai-add-name">{{ 'Partner name' | t: 'staff.apiIntegrations.form.name.label' }}<span class="req">*</span></label>
+                  <input id="ai-add-name" name="name" class="form-control" maxlength="200" [placeholder]="'e.g. SIDBI' | t: 'staff.apiIntegrations.add.name.placeholder'" [(ngModel)]="a.name" />
+                  <label for="ai-add-url">{{ 'Its address' | t: 'staff.apiIntegrations.form.url.label' }}</label>
+                  <input id="ai-add-url" name="baseUrl" type="url" class="form-control" maxlength="500" [placeholder]="'https://' | t: 'staff.apiIntegrations.form.url.placeholder'" [(ngModel)]="a.baseUrl" />
+                  <span class="label-like top" id="ai-add-kind">{{ 'How it calls ZED' | t: 'staff.apiIntegrations.add.kindLabel' }}<span class="req">*</span></span>
                   <div class="ai-kinds" role="radiogroup" aria-labelledby="ai-add-kind">
                     <label class="choice-card" [class.active]="a.kind === 'token'"><input type="radio" class="form-check-input" name="kind" value="token" [(ngModel)]="a.kind" />
-                      <span><strong>Client ID and key</strong> takes a token, then calls the APIs <small class="muted d-block">Banks, states, dashboards (the usual partner)</small></span></label>
+                      <span><strong>{{ 'Client ID and key' | t: 'staff.apiIntegrations.add.token.label' }}</strong> {{ 'takes a token, then calls the APIs' | t: 'staff.apiIntegrations.add.token.text' }} <small class="muted d-block">{{ 'Banks, states, dashboards (the usual partner)' | t: 'staff.apiIntegrations.add.token.note' }}</small></span></label>
                     <label class="choice-card" [class.active]="a.kind === 'static'"><input type="radio" class="form-check-input" name="kind" value="static" [(ngModel)]="a.kind" />
-                      <span><strong>Key alone</strong>, sent with each call <small class="muted d-block">Certificate lookups, as the oldest partners</small></span></label>
+                      <span><strong>{{ 'Key alone' | t: 'staff.apiIntegrations.add.static.label' }}</strong>{{ ', sent with each call' | t: 'staff.apiIntegrations.add.static.text' }} <small class="muted d-block">{{ 'Certificate lookups, as the oldest partners' | t: 'staff.apiIntegrations.add.static.note' }}</small></span></label>
                   </div>
-                  <span class="label-like top">Also</span>
+                  <span class="label-like top">{{ 'Also' | t: 'staff.apiIntegrations.add.alsoLabel' }}</span>
                   <div class="ai-kinds">
                     <label class="toggle-card form-switch"><input type="checkbox" role="switch" class="form-check-input" name="maySubmitIncentives" [(ngModel)]="a.maySubmitIncentives" />
-                      <span>May submit incentive disbursements to ZED</span></label>
+                      <span>{{ 'May submit incentive disbursements to ZED' | t: 'staff.apiIntegrations.form.incentivesText' }}</span></label>
                     <label class="toggle-card form-switch"><input type="checkbox" role="switch" class="form-check-input" name="encrypted" [(ngModel)]="a.encrypted" />
-                      <span>Lists answered encrypted <small class="muted d-block">AES key, as the RAMP dashboard</small></span></label>
+                      <span>{{ 'Lists answered encrypted' | t: 'staff.apiIntegrations.add.encrypted.label' }} <small class="muted d-block">{{ 'AES key, as the RAMP dashboard' | t: 'staff.apiIntegrations.add.encrypted.note' }}</small></span></label>
                   </div>
                 </div>
                 @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">Add partner</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(null)">{{ 'Cancel' | t: 'staff.apiIntegrations.cancelButton' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Add partner' | t: 'staff.apiIntegrations.add.saveButton' }}</button>
               </div>
             </form>
           </div>
@@ -301,20 +302,20 @@ type Section = 'partners' | 'apis' | 'services';
         <div class="modal-dialog modal-popup">
           <div class="modal-content">
             <div class="modal-header">
-              <h3 class="registration-title m-0" id="ai-created-title">Partner added</h3>
+              <h3 class="registration-title m-0" id="ai-created-title">{{ 'Partner added' | t: 'staff.apiIntegrations.created.title' }}</h3>
             </div>
             <div class="modal-body">
-              <div class="alert alert-warning" role="alert">Copy these now and give them to the partner securely. The key is not shown again.</div>
+              <div class="alert alert-warning" role="alert">{{ 'Copy these now and give them to the partner securely. The key is not shown again.' | t: 'staff.apiIntegrations.created.warningNote' }}</div>
               <dl class="ai-secrets">
-                @if (c.clientId) { <dt>Client ID</dt><dd><code>{{ c.clientId }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('Client ID', c.clientId)">{{ copiedOne() === 'Client ID' ? 'Copied' : 'Copy' }}</button></dd> }
-                <dt>Key (client secret)</dt><dd><code class="ai-secret">{{ c.secret }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('Key', c.secret)">{{ copiedOne() === 'Key' ? 'Copied' : 'Copy' }}</button></dd>
-                @if (c.aesKey) { <dt>AES key</dt><dd><code class="ai-secret">{{ c.aesKey }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('AES key', c.aesKey)">{{ copiedOne() === 'AES key' ? 'Copied' : 'Copy' }}</button></dd> }
-                @if (c.aesIv) { <dt>AES IV</dt><dd><code class="ai-secret">{{ c.aesIv }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('AES IV', c.aesIv)">{{ copiedOne() === 'AES IV' ? 'Copied' : 'Copy' }}</button></dd> }
+                @if (c.clientId) { <dt>{{ 'Client ID' | t: 'staff.apiIntegrations.created.clientIdLabel' }}</dt><dd><code>{{ c.clientId }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('Client ID', c.clientId)">{{ copiedOne() === 'Client ID' ? ('Copied' | t: 'staff.apiIntegrations.created.copiedButton') : ('Copy' | t: 'staff.apiIntegrations.created.copyButton') }}</button></dd> }
+                <dt>{{ 'Key (client secret)' | t: 'staff.apiIntegrations.created.keyLabel' }}</dt><dd><code class="ai-secret">{{ c.secret }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('Key', c.secret)">{{ copiedOne() === 'Key' ? ('Copied' | t: 'staff.apiIntegrations.created.copiedButton') : ('Copy' | t: 'staff.apiIntegrations.created.copyButton') }}</button></dd>
+                @if (c.aesKey) { <dt>{{ 'AES key' | t: 'staff.apiIntegrations.created.aesKeyLabel' }}</dt><dd><code class="ai-secret">{{ c.aesKey }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('AES key', c.aesKey)">{{ copiedOne() === 'AES key' ? ('Copied' | t: 'staff.apiIntegrations.created.copiedButton') : ('Copy' | t: 'staff.apiIntegrations.created.copyButton') }}</button></dd> }
+                @if (c.aesIv) { <dt>{{ 'AES IV' | t: 'staff.apiIntegrations.created.aesIvLabel' }}</dt><dd><code class="ai-secret">{{ c.aesIv }}</code><button type="button" class="btn btn-link btn-sm copy-one" (click)="copyOne('AES IV', c.aesIv)">{{ copiedOne() === 'AES IV' ? ('Copied' | t: 'staff.apiIntegrations.created.copiedButton') : ('Copy' | t: 'staff.apiIntegrations.created.copyButton') }}</button></dd> }
               </dl>
-              <button type="button" class="btn btn-outline-primary btn-sm" (click)="copy(c)">{{ copied() ? 'Copied' : 'Copy all' }}</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="copy(c)">{{ copied() ? ('Copied' | t: 'staff.apiIntegrations.created.copiedButton') : ('Copy all' | t: 'staff.apiIntegrations.created.copyAllButton') }}</button>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-primary" (click)="created.set(null)">Done</button>
+              <button type="button" class="btn btn-primary" (click)="created.set(null)">{{ 'Done' | t: 'staff.apiIntegrations.created.doneButton' }}</button>
             </div>
           </div>
         </div>
@@ -437,11 +438,11 @@ export class ApiIntegrationsPage {
   protected readonly copied = signal(false);
   /** Which of the new partner's values was copied last (its own Copy button). */
   protected readonly copiedOne = signal('');
-  protected readonly tabs: readonly { key: Section; label: string }[] = [
-    { key: 'partners', label: 'Partners' },
-    { key: 'apis', label: 'Partner APIs' },
-    { key: 'services', label: 'Services ZED calls' },
-  ];
+  protected readonly tabs = computed<readonly { key: Section; label: string }[]>(() => [
+    { key: 'partners', label: t('staff.apiIntegrations.tab.partners', 'Partners') },
+    { key: 'apis', label: t('staff.apiIntegrations.tab.apis', 'Partner APIs') },
+    { key: 'services', label: t('staff.apiIntegrations.tab.services', 'Services ZED calls') },
+  ]);
   protected readonly tab = signal<Section>('partners');
   protected readonly stats = computed(() => {
     const all = this.partners.all();
@@ -484,7 +485,11 @@ export class ApiIntegrationsPage {
   }
 
   protected async setClient(c: ApiClientItem, enabled: boolean): Promise<void> {
-    if (!enabled && !(await this.confirms.ask({ title: `Disable ${c.name}?`, message: 'Its calls to ZED will be refused.', confirmLabel: 'Disable', danger: true }))) return;
+    if (!enabled && !(await this.confirms.ask({
+      title: t('staff.apiIntegrations.disable.title', 'Disable {name}?', { name: c.name }),
+      message: t('staff.apiIntegrations.disable.message', 'Its calls to ZED will be refused.'),
+      confirmLabel: t('staff.apiIntegrations.disable.confirmButton', 'Disable'), danger: true,
+    }))) return;
     await this.run(() => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/clients/${c.id}`, { enabled }));
   }
 
@@ -497,8 +502,8 @@ export class ApiIntegrationsPage {
     const a = this.adding();
     if (!a) return;
     const url = a.baseUrl.trim();
-    if (!a.name.trim()) return this.addError.set("Please enter the partner's name.");
-    if (url && !/^https?:\/\/[^\s]+$/i.test(url)) return this.addError.set('The address must be a full http(s):// address, or empty.');
+    if (!a.name.trim()) return this.addError.set(t('staff.apiIntegrations.form.nameError', "Please enter the partner's name."));
+    if (url && !/^https?:\/\/[^\s]+$/i.test(url)) return this.addError.set(t('staff.apiIntegrations.form.urlError', 'The address must be a full http(s):// address, or empty.'));
     this.addError.set('');
     this.busy.set(true);
     this.error.set('');
@@ -519,7 +524,12 @@ export class ApiIntegrationsPage {
   }
 
   protected async copy(c: PartnerCreated): Promise<void> {
-    const lines = [c.clientId && `Client ID: ${c.clientId}`, `Key: ${c.secret}`, c.aesKey && `AES key: ${c.aesKey}`, c.aesIv && `AES IV: ${c.aesIv}`];
+    const lines = [
+      c.clientId && t('staff.apiIntegrations.copy.clientIdText', 'Client ID: {value}', { value: c.clientId }),
+      t('staff.apiIntegrations.copy.keyText', 'Key: {value}', { value: c.secret }),
+      c.aesKey && t('staff.apiIntegrations.copy.aesKeyText', 'AES key: {value}', { value: c.aesKey }),
+      c.aesIv && t('staff.apiIntegrations.copy.aesIvText', 'AES IV: {value}', { value: c.aesIv }),
+    ];
     try {
       await navigator.clipboard.writeText(lines.filter(Boolean).join('\n'));
       this.copied.set(true);
@@ -537,8 +547,8 @@ export class ApiIntegrationsPage {
     const e = this.editing();
     if (!e) return;
     const url = e.baseUrl.trim();
-    if (!e.name.trim()) return this.editError.set("Please enter the partner's name.");
-    if (url && !/^https?:\/\/[^\s]+$/i.test(url)) return this.editError.set('The address must be a full http(s):// address, or empty.');
+    if (!e.name.trim()) return this.editError.set(t('staff.apiIntegrations.form.nameError', "Please enter the partner's name."));
+    if (url && !/^https?:\/\/[^\s]+$/i.test(url)) return this.editError.set(t('staff.apiIntegrations.form.urlError', 'The address must be a full http(s):// address, or empty.'));
     this.editError.set('');
     const ok = await this.run(
       () => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/clients/${e.id}/details`, { name: e.name.trim(), baseUrl: url, maySubmitIncentives: e.maySubmitIncentives }),
@@ -549,7 +559,11 @@ export class ApiIntegrationsPage {
 
   protected async setGroup(g: ApiGroupItem, input: HTMLInputElement): Promise<void> {
     const enabled = input.checked;
-    if (!enabled && !(await this.confirms.ask({ title: `Switch Off ${g.name}?`, message: 'It is switched off for every partner.', confirmLabel: 'Switch Off', danger: true }))) {
+    if (!enabled && !(await this.confirms.ask({
+      title: t('staff.apiIntegrations.switchOff.title', 'Switch Off {name}?', { name: g.name }),
+      message: t('staff.apiIntegrations.switchOff.message', 'It is switched off for every partner.'),
+      confirmLabel: t('staff.apiIntegrations.switchOff.confirmButton', 'Switch Off'), danger: true,
+    }))) {
       input.checked = true;
       return;
     }

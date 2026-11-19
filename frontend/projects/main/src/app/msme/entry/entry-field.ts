@@ -4,6 +4,7 @@ import { MultiSelect, MultiSelectOption } from '../../staff/users/multi-select';
 import { COUNTRIES } from './countries';
 import { CellValue, PhotoSlot } from './entry-form';
 import { FormField } from './entry.api';
+import { TextPipe } from '../../content/page-text';
 
 /** Product label/description: a photo or a PDF, as in the app. */
 const PDF_ALLOWED = ['productDescriptionPhoto'];
@@ -14,7 +15,7 @@ const PDF_ALLOWED = ['productDescriptionPhoto'];
  */
 @Component({
   selector: 'zed-entry-field',
-  imports: [FormsModule, MultiSelect],
+  imports: [FormsModule, MultiSelect, TextPipe],
   template: `
     @let f = field();
     @switch (f.type) {
@@ -22,14 +23,14 @@ const PDF_ALLOWED = ['productDescriptionPhoto'];
         <div class="yes-no" role="radiogroup" [attr.aria-label]="f.label">
           @for (o of ['Yes', 'No']; track o) {
             <label class="radio-inline me-3">
-              <input type="radio" [name]="inputId()" [checked]="value() === o" [disabled]="disabled()" (change)="value.set(o)" /> {{ o }}
+              <input type="radio" [name]="inputId()" [checked]="value() === o" [disabled]="disabled()" (change)="value.set(o)" /> {{ o === 'Yes' ? ('Yes' | t: 'msme.entry.field.yesOption') : ('No' | t: 'msme.entry.field.noOption') }}
             </label>
           }
         </div>
       }
       @case ('dropdown') {
         <select class="form-control" [id]="inputId()" [disabled]="disabled()" [ngModel]="value() ?? ''" (ngModelChange)="value.set($event || null)">
-          <option value="">Select</option>
+          <option value="">{{ 'Select' | t: 'msme.entry.field.selectOption' }}</option>
           @for (o of f.options ?? []; track o) { <option [value]="o">{{ o }}</option> }
         </select>
       }
@@ -50,18 +51,18 @@ const PDF_ALLOWED = ['productDescriptionPhoto'];
           @for (s of slots(); track $index) {
             <div class="photo-slot">
               @if (isPdf(s)) {
-                <a [href]="s.saved?.url ?? preview(s)" target="_blank" rel="noopener" class="pdf-link">PDF {{ s.file?.name ?? '' }}</a>
+                <a [href]="s.saved?.url ?? preview(s)" target="_blank" rel="noopener" class="pdf-link">{{ 'PDF {name}' | t: 'msme.entry.field.pdfLink' : { name: s.file?.name ?? '' } }}</a>
               } @else {
                 <a [href]="s.saved?.url ?? preview(s)" target="_blank" rel="noopener"><img [src]="s.saved?.url ?? preview(s)" [alt]="f.label" /></a>
               }
               @if (!disabled()) {
-                <button type="button" class="btn btn-link btn-sm text-danger p-0" [attr.aria-label]="'Remove ' + f.label" (click)="remove($index)">Remove</button>
+                <button type="button" class="btn btn-link btn-sm text-danger p-0" [attr.aria-label]="'Remove {name}' | t: 'msme.entry.field.removeAria' : { name: f.label }" (click)="remove($index)">{{ 'Remove' | t: 'msme.entry.field.removeButton' }}</button>
               }
             </div>
           }
           @if (!disabled() && slots().length < max()) {
             <label class="btn btn-outline-primary btn-sm add-photo">
-              {{ pdf() ? 'Add photo / PDF' : 'Add photo' }}
+              {{ pdf() ? ('Add photo / PDF' | t: 'msme.entry.field.addPhotoPdfButton') : ('Add photo' | t: 'msme.entry.field.addPhotoButton') }}
               <input type="file" class="visually-hidden" [id]="inputId()" [attr.aria-label]="f.label" [accept]="accept()" (change)="add($event)" />
             </label>
           }

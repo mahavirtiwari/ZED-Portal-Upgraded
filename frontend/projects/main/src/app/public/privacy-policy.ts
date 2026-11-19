@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ContentTextComponent } from '../content/content-text';
 import { PortalLinksService } from '@zed/shared';
+import { TextPipe } from '../content/page-text';
 
 /**
  * Public privacy policy page (old Home/PrivacyPolicy). No sign-in, no data. The old page had a heading
@@ -10,23 +11,23 @@ import { PortalLinksService } from '@zed/shared';
  */
 @Component({
   selector: 'zed-privacy-policy',
-  imports: [RouterLink, ContentTextComponent],
+  imports: [RouterLink, ContentTextComponent, TextPipe],
   template: `
     <header class="container py-3 d-flex align-items-center justify-content-between">
       @if (links.url('ministry'); as u) {
-        <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
+        <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.privacy.ministryLogoAlt'" width="200" /></a>
       } @else {
-        <img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" />
+        <img src="/Images/header/ministry.png" [alt]="'Ministry of MSME' | t: 'public.privacy.ministryLogoAlt'" width="200" />
       }
-      <img src="/Images/header/zed-logo.png" alt="ZED" width="100" />
+      <img src="/Images/header/zed-logo.png" [alt]="'ZED' | t: 'public.privacy.zedLogoAlt'" width="100" />
     </header>
     <main class="container form-page">
       <div class="text-center">
-        <h3 style="font-weight: 600">Privacy Policy</h3>
+        <h3 style="font-weight: 600">{{ 'Privacy Policy' | t: 'public.privacy.title' }}</h3>
         <hr />
       </div>
       <zed-text key="public.privacyPolicy" />
-      <p class="text-center"><a routerLink="/msme/login">Back to login</a></p>
+      <p class="text-center"><a routerLink="/msme/login">{{ 'Back to login' | t: 'public.privacy.loginLink' }}</a></p>
     </main>
   `,
 })

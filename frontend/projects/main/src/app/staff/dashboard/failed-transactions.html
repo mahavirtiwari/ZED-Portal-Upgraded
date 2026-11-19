@@ -2,16 +2,16 @@
 <zed-dashboard-portal-switch [screens]="['failed-transactions']" />
 <div class="page-head">
   <div>
-    <h3 class="registration-title">Failed Transactions</h3>
-    <p class="page-sub">Gateway payments that did not complete; update the payment status once the bank confirms it.</p>
+    <h3 class="registration-title">{{ 'Failed Transactions' | t: 'staff.failedTransactions.title' }}</h3>
+    <p class="page-sub">{{ 'Gateway payments that did not complete; update the payment status once the bank confirms it.' | t: 'staff.failedTransactions.sub' }}</p>
   </div>
 </div>
 
 <div class="zed-card">
   <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
     <div class="filter wide">
-      <label class="form-label" for="ft-search">Search</label>
-      <input type="search" id="ft-search" class="form-control" maxlength="50" placeholder="Search" aria-label="Search"
+      <label class="form-label" for="ft-search">{{ 'Search' | t: 'staff.failedTransactions.search.label' }}</label>
+      <input type="search" id="ft-search" class="form-control" maxlength="50" [placeholder]="'Search' | t: 'staff.failedTransactions.search.placeholder'" [attr.aria-label]="'Search' | t: 'staff.failedTransactions.search.label'"
              [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
     </div>
   </zed-list-filters>
@@ -23,18 +23,18 @@
   <table class="table table-zed table-bordered">
     <thead>
       <tr>
-        <th class="text-center">S.No.</th>
-        <th class="text-center" style="width: 140px">Actions</th>
-        <th class="text-center">ZED ID<br />Certification<br />Transaction Date</th>
-        <th>Unit Name<br />Transaction Id</th>
-        <th class="text-center">Size/Gender</th>
-        <th class="text-center">Social Category</th>
-        <th class="text-center">Joining Reward</th>
-        <th>StateName<br />District Name</th>
-        <th class="text-center">Amount Paid (Rs.)</th>
-        <th class="text-center">TAN (%)</th>
-        <th class="text-center">Subsidy (%)</th>
-        <th class="text-center">GSTIN/ TAN Number</th>
+        <th class="text-center">{{ 'S.No.' | t: 'staff.failedTransactions.column.serial' }}</th>
+        <th class="text-center" style="width: 140px">{{ 'Actions' | t: 'staff.failedTransactions.column.actions' }}</th>
+        <th class="text-center">{{ 'ZED ID' | t: 'staff.failedTransactions.column.zedId' }}<br />{{ 'Certification' | t: 'staff.failedTransactions.column.certification' }}<br />{{ 'Transaction Date' | t: 'staff.failedTransactions.column.date' }}</th>
+        <th>{{ 'Unit Name' | t: 'staff.failedTransactions.column.unitName' }}<br />{{ 'Transaction Id' | t: 'staff.failedTransactions.column.transactionId' }}</th>
+        <th class="text-center">{{ 'Size/Gender' | t: 'staff.failedTransactions.column.sizeGender' }}</th>
+        <th class="text-center">{{ 'Social Category' | t: 'staff.failedTransactions.column.social' }}</th>
+        <th class="text-center">{{ 'Joining Reward' | t: 'staff.failedTransactions.column.reward' }}</th>
+        <th>{{ 'StateName' | t: 'staff.failedTransactions.column.state' }}<br />{{ 'District Name' | t: 'staff.failedTransactions.column.district' }}</th>
+        <th class="text-center">{{ 'Amount Paid (Rs.)' | t: 'staff.failedTransactions.column.amount' }}</th>
+        <th class="text-center">{{ 'TAN (%)' | t: 'staff.failedTransactions.column.tds' }}</th>
+        <th class="text-center">{{ 'Subsidy (%)' | t: 'staff.failedTransactions.column.subsidy' }}</th>
+        <th class="text-center">{{ 'GSTIN/ TAN Number' | t: 'staff.failedTransactions.column.tax' }}</th>
       </tr>
     </thead>
     <tbody>
@@ -43,24 +43,24 @@
           <td class="text-center">{{ s['RowNumber'] }}</td>
           <td class="text-center">
             @if (isUpdated(s)) {
-              <span class="status-badge is-success">SUCCESS</span>
+              <span class="status-badge is-success">{{ 'SUCCESS' | t: 'staff.failedTransactions.successLabel' }}</span>
             } @else if (canUpdate(s)) {
               <div class="row-actions justify-content-center">
-                <button type="button" class="btn btn-primary" (click)="open(s)">UPDATE PAYMENT STATUS</button>
+                <button type="button" class="btn btn-primary" (click)="open(s)">{{ 'UPDATE PAYMENT STATUS' | t: 'staff.failedTransactions.updateButton' }}</button>
               </div>
             }
           </td>
           <td class="cell-lines text-center">
             <strong>{{ s['ZedId'] }}</strong>
             <span>{{ s['Certification'] }}</span>
-            @if (s['MileStoneNumber']) { <span>Milestone {{ s['MileStoneNumber'] }}</span> }
+            @if (s['MileStoneNumber']) { <span>{{ 'Milestone {no}' | t: 'staff.failedTransactions.milestoneText' : { no: s['MileStoneNumber'] } }}</span> }
             <span class="muted">{{ s['TransactionDate'] }}</span>
           </td>
           <td class="cell-lines"><strong>{{ s['PUnitName'] }}</strong><strong>{{ s['TransactionId'] }}</strong></td>
           <td class="cell-lines text-center"><span>{{ s['EnterpriseTypee'] }}</span><span>{{ s['Gender'] }}</span></td>
           <td class="text-center">{{ s['SocialCategoryName'] }}</td>
           <td class="text-center">
-            <span class="status-badge" [class.is-success]="flag(s, 'IsCouponUsed')" [class.is-inactive]="!flag(s, 'IsCouponUsed')">{{ flag(s, 'IsCouponUsed') ? 'Yes' : 'No' }}</span>
+            <span class="status-badge" [class.is-success]="flag(s, 'IsCouponUsed')" [class.is-inactive]="!flag(s, 'IsCouponUsed')">{{ flag(s, 'IsCouponUsed') ? ('Yes' | t: 'staff.failedTransactions.reward.yes') : ('No' | t: 'staff.failedTransactions.reward.no') }}</span>
           </td>
           <td class="cell-lines"><strong>{{ s['PStateName'] }}</strong><span>{{ s['PDistrictName'] }}</span></td>
           <td class="text-center"><strong>{{ s['FinalAmountPaid'] }}</strong></td>
@@ -69,7 +69,7 @@
           <td class="text-center">{{ s['GstinNumber'] }} {{ s['TanNumber'] }}</td>
         </tr>
       } @empty {
-        @if (!loading()) { <tr><td colspan="12" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+        @if (!loading()) { <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.failedTransactions.empty' }}</div></td></tr> }
       }
     </tbody>
   </table>
@@ -83,78 +83,78 @@
         <form #paymentForm="ngForm" novalidate (ngSubmit)="submit()">
           <div class="modal-header">
             <div class="modal-title w-100 d-flex justify-content-between">
-              <strong id="pay-title">Update Payment Status</strong>
-              <button type="button" class="btn-close" aria-label="Close" (click)="current.set(null)"></button>
+              <strong id="pay-title">{{ 'Update Payment Status' | t: 'staff.failedTransactions.update.title' }}</strong>
+              <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.failedTransactions.update.closeAria'" (click)="current.set(null)"></button>
             </div>
           </div>
           <div class="modal-body">
             <div class="label-highlight mb-3">
-              <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
-              <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
-              <div><strong>Certification:</strong> {{ m['Certification'] }}</div>
+              <div><strong>{{ 'ZedId:' | t: 'staff.failedTransactions.update.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
+              <div><strong>{{ 'UnitName:' | t: 'staff.failedTransactions.update.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
+              <div><strong>{{ 'Certification:' | t: 'staff.failedTransactions.update.certificationLabel' }}</strong> {{ m['Certification'] }}</div>
             </div>
             <div class="row">
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="pgType">PG Type<span class="req">*</span></label>
+                <label class="form-label" for="pgType">{{ 'PG Type' | t: 'staff.failedTransactions.update.pgTypeLabel' }}<span class="req">*</span></label>
                 <select id="pgType" name="pgType" class="form-select" required [(ngModel)]="form.pgType">
-                  <option value="">-- Select PG Type --</option>
+                  <option value="">{{ '-- Select PG Type --' | t: 'staff.failedTransactions.update.pgTypePlaceholder' }}</option>
                   @for (p of pgTypes; track p.value) { <option [value]="p.value">{{ p.label }}</option> }
                 </select>
               </div>
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="trackingId">CC Avenue Ref No.<span class="req">*</span></label>
+                <label class="form-label" for="trackingId">{{ 'CC Avenue Ref No.' | t: 'staff.failedTransactions.update.trackingIdLabel' }}<span class="req">*</span></label>
                 <input type="text" id="trackingId" name="trackingId" class="form-control" maxlength="12" inputmode="numeric"
-                       placeholder="Enter 12-digit number" required [(ngModel)]="form.trackingId" />
-                @if (form.trackingId && !trackingIdValid()) { <small class="help-block">Must be exactly 12 numeric digits.</small> }
+                       [placeholder]="'Enter 12-digit number' | t: 'staff.failedTransactions.update.trackingIdPlaceholder'" required [(ngModel)]="form.trackingId" />
+                @if (form.trackingId && !trackingIdValid()) { <small class="help-block">{{ 'Must be exactly 12 numeric digits.' | t: 'staff.failedTransactions.update.trackingIdError' }}</small> }
               </div>
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="bankRefNumber">Bank Ref Number<span class="req">*</span></label>
-                <input type="text" id="bankRefNumber" name="bankRefNumber" class="form-control" maxlength="50" placeholder="Enter Bank Ref No."
+                <label class="form-label" for="bankRefNumber">{{ 'Bank Ref Number' | t: 'staff.failedTransactions.update.bankRefLabel' }}<span class="req">*</span></label>
+                <input type="text" id="bankRefNumber" name="bankRefNumber" class="form-control" maxlength="50" [placeholder]="'Enter Bank Ref No.' | t: 'staff.failedTransactions.update.bankRefPlaceholder'"
                        required [(ngModel)]="form.bankRefNumber" />
               </div>
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="bankCode">Bank Code</label>
-                <input type="text" id="bankCode" name="bankCode" class="form-control" maxlength="50" placeholder="Enter Bank Code (Optional)"
+                <label class="form-label" for="bankCode">{{ 'Bank Code' | t: 'staff.failedTransactions.update.bankCodeLabel' }}</label>
+                <input type="text" id="bankCode" name="bankCode" class="form-control" maxlength="50" [placeholder]="'Enter Bank Code (Optional)' | t: 'staff.failedTransactions.update.bankCodePlaceholder'"
                        [(ngModel)]="form.bankCode" />
               </div>
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="paymentReceivedDate">Payment Received Date<span class="req">*</span></label>
+                <label class="form-label" for="paymentReceivedDate">{{ 'Payment Received Date' | t: 'staff.failedTransactions.update.dateLabel' }}<span class="req">*</span></label>
                 <input type="date" id="paymentReceivedDate" name="paymentReceivedDate" class="form-control" [max]="maxDate" required
                        [(ngModel)]="form.paymentReceivedDate" />
               </div>
               <div class="col-sm-6 mb-2">
-                <label class="form-label" for="gstin">GST Number</label>
+                <label class="form-label" for="gstin">{{ 'GST Number' | t: 'staff.failedTransactions.update.gstLabel' }}</label>
                 @if (m['Gstin']) {
                   <input type="text" id="gstin" class="form-control" readonly [value]="m['Gstin']" />
                 } @else {
-                  <input type="text" id="gstin" name="gstNumber" class="form-control" maxlength="15" placeholder="Enter 15-digit GSTIN (Optional)"
+                  <input type="text" id="gstin" name="gstNumber" class="form-control" maxlength="15" [placeholder]="'Enter 15-digit GSTIN (Optional)' | t: 'staff.failedTransactions.update.gstPlaceholder'"
                          [(ngModel)]="form.gstNumber" />
-                  @if (!gstValid()) { <small class="help-block">Invalid GSTIN format (e.g., 22AAAAA0000A1Z5).</small> }
+                  @if (!gstValid()) { <small class="help-block">{{ 'Invalid GSTIN format (e.g., 22AAAAA0000A1Z5).' | t: 'staff.failedTransactions.update.gstError' }}</small> }
                 }
               </div>
               @if (m['PanNo']) {
                 <div class="col-sm-6 mb-2">
-                  <label class="form-label" for="panNo">PAN Number</label>
+                  <label class="form-label" for="panNo">{{ 'PAN Number' | t: 'staff.failedTransactions.update.panLabel' }}</label>
                   <input type="text" id="panNo" class="form-control" readonly [value]="m['PanNo']" />
                 </div>
               }
               @if (m['TanNo']) {
                 <div class="col-sm-6 mb-2">
-                  <label class="form-label" for="tanNo">TAN Number</label>
+                  <label class="form-label" for="tanNo">{{ 'TAN Number' | t: 'staff.failedTransactions.update.tanLabel' }}</label>
                   <input type="text" id="tanNo" class="form-control" readonly [value]="m['TanNo']" />
                 </div>
               }
             </div>
             <div class="mb-2">
-              <label class="form-label" for="paymentRemarks">Remarks if Any<span class="req">*</span></label>
+              <label class="form-label" for="paymentRemarks">{{ 'Remarks if Any' | t: 'staff.failedTransactions.update.remarksLabel' }}<span class="req">*</span></label>
               <textarea id="paymentRemarks" name="paymentRemarks" class="form-control" maxlength="2000" rows="4"
                         [(ngModel)]="form.paymentRemarks"></textarea>
             </div>
             @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" (click)="current.set(null)">Cancel</button>
-            <button type="submit" class="btn btn-primary" [disabled]="!canSubmit() || saving()">SUBMIT</button>
+            <button type="button" class="btn btn-default" (click)="current.set(null)">{{ 'Cancel' | t: 'staff.failedTransactions.update.cancelButton' }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!canSubmit() || saving()">{{ 'SUBMIT' | t: 'staff.failedTransactions.update.submitButton' }}</button>
           </div>
         </form>
       </div>
@@ -164,5 +164,5 @@
 }
 
 @if (loading()) {
-  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.failedTransactions.loadingText' }}</small></div></div></div>
 }

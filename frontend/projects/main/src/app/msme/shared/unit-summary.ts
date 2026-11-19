@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { TextPipe } from '../../content/page-text';
 
 type Row = Record<string, unknown>;
 
@@ -10,12 +11,13 @@ type Row = Record<string, unknown>;
  */
 @Component({
   selector: 'zed-msme-unit-summary',
+  imports: [TextPipe],
   host: { class: 'd-block' },
   template: `
     @let m = msme();
     @if (compact()) {
       <!-- 2026-11-14 (approved design): the unit as one compact card, for the right column of a page. -->
-      <section class="us-card" aria-label="Your unit">
+      <section class="us-card" [attr.aria-label]="'Your unit' | t: 'common.unitSummary.aria'">
         <div class="us-head">
           @switch (m['EnterpriseType']) {
             @case ('Micro') { <span class="entp-label micro">M</span> }
@@ -25,10 +27,10 @@ type Row = Record<string, unknown>;
           <b>{{ m['EnterpriseName'] }}</b>
         </div>
         <dl>
-          <div><dt>UDYAM</dt><dd>{{ udyam() }}</dd></div>
-          <div><dt>ZED ID</dt><dd>{{ m['ZedId'] }}</dd></div>
+          <div><dt>{{ 'UDYAM' | t: 'common.unitSummary.udyamLabel' }}</dt><dd>{{ udyam() }}</dd></div>
+          <div><dt>{{ 'ZED ID' | t: 'common.unitSummary.zedIdLabel' }}</dt><dd>{{ m['ZedId'] }}</dd></div>
           <!-- 2026-11-14: short (the user): the plant's name and its district and state only; no activity, no pledge. -->
-          <div><dt>Plant</dt><dd>{{ m['PUnitName'] }}@if (showAddress() && (m['PDistrictName'] || m['PStateName'])) {<small>{{ shortPlace() }}</small>}</dd></div>
+          <div><dt>{{ 'Plant' | t: 'common.unitSummary.plantLabel' }}</dt><dd>{{ m['PUnitName'] }}@if (showAddress() && (m['PDistrictName'] || m['PStateName'])) {<small>{{ shortPlace() }}</small>}</dd></div>
         </dl>
       </section>
     } @else {
@@ -43,34 +45,34 @@ type Row = Record<string, unknown>;
           @if (showType()) {
             <p class="entp-type-title">{{ m['RegistrationType'] === 'UAM' ? m['EnterpriseTypee'] : m['EnterpriseType'] }}</p>
           }
-          @if (m['OldEnterpriseType']) { <span class="old-type">(Old Type: {{ m['OldEnterpriseType'] }})</span> }
+          @if (m['OldEnterpriseType']) { <span class="old-type">{{ '(Old Type: {type})' | t: 'common.unitSummary.oldTypeText' : { type: m['OldEnterpriseType'] } }}</span> }
         </div>
         <div class="entrp-title"><h4>{{ m['EnterpriseName'] }}</h4></div>
-        <div class="entp-details"><small>UDYAM Number</small><p>{{ udyam() }}</p></div>
-        <div class="entp-details"><small>ZED ID</small><p>{{ m['ZedId'] }}</p></div>
+        <div class="entp-details"><small>{{ 'UDYAM Number' | t: 'common.unitSummary.udyamNumberLabel' }}</small><p>{{ udyam() }}</p></div>
+        <div class="entp-details"><small>{{ 'ZED ID' | t: 'common.unitSummary.zedIdLabel' }}</small><p>{{ m['ZedId'] }}</p></div>
       </div>
     </div>
 
-    <div class="panel panel-default panel-black"><div class="panel-body">Selected Unit</div></div>
+    <div class="panel panel-default panel-black"><div class="panel-body">{{ 'Selected Unit' | t: 'common.unitSummary.unitTitle' }}</div></div>
     <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ m['PUnitName'] }}</p></div>
     <div class="unit-selection">
       <img src="/Images/svgicons/mapicon.svg" alt="" />
       @if (showAddress()) { <p>{{ m['PAddress'] }}, {{ m['PDistrictName'] }}, {{ m['PStateName'] }}, {{ m['PPin'] }}</p> }
     </div>
 
-    <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
+    <div class="panel panel-default panel-black"><div class="panel-body">{{ 'Selected Activity' | t: 'common.unitSummary.activityTitle' }}</div></div>
     <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ m['Activity'] }}</p></div>
     <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ m['TwoDigitActivity'] }}</p></div>
     <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ m['FourDigitActivity'] }}</p></div>
     <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ m['FiveDigitActivity'] }}</p></div>
 
-    <div class="panel panel-default panel-black"><div class="panel-body">{{ basicInfo() ? 'ZED Pledge' : 'ZED Pledge Certificate' }}</div></div>
+    <div class="panel panel-default panel-black"><div class="panel-body">{{ basicInfo() ? ('ZED Pledge' | t: 'common.unitSummary.pledgeTitle') : ('ZED Pledge Certificate' | t: 'common.unitSummary.pledgeCertificateTitle') }}</div></div>
     <div class="unit-selection">
       <div class="col-sm-12 p-0">
-        <p>{{ basicInfo() ? 'Pledged on' : 'Pledge taken on' }} {{ m['PledgeOn'] }}</p>
+        <p>{{ basicInfo() ? ('Pledged on {date}' | t: 'common.unitSummary.pledgedOnText' : { date: m['PledgeOn'] }) : ('Pledge taken on {date}' | t: 'common.unitSummary.pledgeTakenOnText' : { date: m['PledgeOn'] }) }}</p>
         <div class="btn-download">
           <!-- V4: the certificate page (DOWNLOAD PDF there); the PDF is drawn when downloaded, never stored. -->
-          <a href="/msme/pledge-certificate">{{ basicInfo() ? 'DOWNLOAD PLEDGE' : 'DOWNLOAD' }}</a>
+          <a href="/msme/pledge-certificate">{{ basicInfo() ? ('DOWNLOAD PLEDGE' | t: 'common.unitSummary.downloadPledgeButton') : ('DOWNLOAD' | t: 'common.unitSummary.downloadButton') }}</a>
         </div>
       </div>
     </div>

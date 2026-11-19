@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, Injectable, inject, signal } from '@angular/core';
+import { TextPipe } from '../content/page-text';
 
 export type ToastTone = 'success' | 'error';
 
@@ -44,7 +45,7 @@ export class ToastService {
 /** The toasts, bottom right (once, in the staff layout). */
 @Component({
   selector: 'zed-toast',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, TextPipe],
   host: { class: 'zed-toast' },
   template: `
     <div class="tt-live" aria-live="polite" role="status">
@@ -64,7 +65,7 @@ export class ToastService {
           @else { <svg viewBox="0 0 24 24"><path d="M12 7v6M12 16.5v.5" /></svg> }
         </span>
         <span class="tt-text"><b>{{ t.title }}</b>@if (t.message) {&ngsp;<small>{{ t.message }}</small> }</span>
-        <button type="button" class="tt-x" aria-label="Close message" (click)="service.dismiss(t.id)">×</button>
+        <button type="button" class="tt-x" [attr.aria-label]="'Close message' | t: 'common.toast.closeAria'" (click)="service.dismiss(t.id)">×</button>
       </div>
     </ng-template>
   `,

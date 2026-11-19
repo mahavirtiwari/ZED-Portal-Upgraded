@@ -1,11 +1,12 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagerComponent, ServerPager } from '../../staff/pager';
 import { PageHead } from '../shared/page-head';
 import { ProfileShell } from '../profile/profile-shell';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface EditItem {
   id: number;
@@ -63,10 +64,10 @@ export function submittedValues(data: string | null): string[] {
  */
 @Component({
   selector: 'zed-edit-history-table',
-  imports: [DatePipe, PagerComponent],
+  imports: [DatePipe, PagerComponent, TextPipe],
   template: `
-    <div class="eh-filters" [class.eh-round]="layout() === 'table'" role="group" aria-label="Show changes">
-      @for (k of kinds; track k.key) {
+    <div class="eh-filters" [class.eh-round]="layout() === 'table'" role="group" [attr.aria-label]="'Show changes' | t: 'common.editHistory.filter.aria'">
+      @for (k of kinds(); track k.key) {
         <button type="button" class="eh-chip" [class.active]="kind() === k.key" [attr.aria-pressed]="kind() === k.key" (click)="setKind(k.key)">{{ k.label }}</button>
       }
     </div>
@@ -78,22 +79,22 @@ export function submittedValues(data: string | null): string[] {
         @for (r of rows(); track r.id) {
           <div class="eh-row">
             <span class="eh-at">{{ r.at | date: 'd MMM y, HH:mm' }}</span>
-            <span class="eh-type">@if (typeOf(r.action); as ty) { <span class="eh-pill" [attr.data-type]="ty">{{ ty }}</span> }</span>
-            <span class="eh-sum">{{ title(r.action) }}@if (r.result !== 'Success') {&ngsp;<span class="status-badge is-rejected">Not saved</span>}
+            <span class="eh-type">@if (typeOf(r.action); as ty) { <span class="eh-pill" [attr.data-type]="ty">{{ typeLabel(ty) }}</span> }</span>
+            <span class="eh-sum">{{ title(r.action) }}@if (r.result !== 'Success') {&ngsp;<span class="status-badge is-rejected">{{ 'Not saved' | t: 'common.editHistory.notSavedLabel' }}</span>}
               @if (r.message) { <small>{{ r.message }}</small> }</span>
             @if (values(r).length || (showOrigin() && r.ipAddress)) {
               <button type="button" class="eh-more" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
-                {{ open() === r.id ? 'Hide details' : 'Show details' }}</button>
+                {{ open() === r.id ? ('Hide details' | t: 'common.editHistory.hideButton') : ('Show details' | t: 'common.editHistory.showButton') }}</button>
             } @else { <span></span> }
             @if (open() === r.id) {
               <ul class="list-unstyled small mb-0 values eh-vals">
-                <li class="text-muted">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}@if (showOrigin() && r.ipAddress) { · IP {{ r.ipAddress }} }</li>
+                <li class="text-muted">{{ r.channel === 'Mobile' ? ('MSME app' | t: 'common.editHistory.appLabel') : ('Web' | t: 'common.editHistory.webLabel') }}@if (showOrigin() && r.ipAddress) { · {{ 'IP {ip}' | t: 'common.editHistory.ipLabel' : { ip: r.ipAddress } }} }</li>
                 @for (v of values(r); track $index) { <li>{{ v }}</li> }
               </ul>
             }
           </div>
         } @empty {
-          @if (!loading()) { <div class="no-data">No changes recorded yet</div> }
+          @if (!loading()) { <div class="no-data">{{ 'No changes recorded yet' | t: 'common.editHistory.empty' }}</div> }
         }
       </div>
     } @else {
@@ -107,16 +108,16 @@ export function submittedValues(data: string | null): string[] {
           <div class="eh-head">
             <span class="eh-title">{{ title(r.action) }}</span>
             <span class="eh-meta">
-              <span class="eh-where">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}</span>
-              <span class="status-badge" [class.is-success]="r.result === 'Success'" [class.is-rejected]="r.result !== 'Success'">{{ r.result === 'Success' ? 'Saved' : 'Not saved' }}</span>
+              <span class="eh-where">{{ r.channel === 'Mobile' ? ('MSME app' | t: 'common.editHistory.appLabel') : ('Web' | t: 'common.editHistory.webLabel') }}</span>
+              <span class="status-badge" [class.is-success]="r.result === 'Success'" [class.is-rejected]="r.result !== 'Success'">{{ r.result === 'Success' ? ('Saved' | t: 'common.editHistory.savedLabel') : ('Not saved' | t: 'common.editHistory.notSavedLabel') }}</span>
               <span class="eh-time">{{ r.at | date: 'HH:mm' }}</span>
             </span>
           </div>
           @if (r.message) { <div class="eh-message">{{ r.message }}</div> }
-          @if (showOrigin() && r.ipAddress) { <div class="eh-message text-muted">IP {{ r.ipAddress }}</div> }
+          @if (showOrigin() && r.ipAddress) { <div class="eh-message text-muted">{{ 'IP {ip}' | t: 'common.editHistory.ipLabel' : { ip: r.ipAddress } }}</div> }
           @if (values(r).length) {
             <button type="button" class="btn btn-link btn-sm p-0" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
-              {{ open() === r.id ? 'Hide details' : 'Show details' }}
+              {{ open() === r.id ? ('Hide details' | t: 'common.editHistory.hideButton') : ('Show details' | t: 'common.editHistory.showButton') }}
             </button>
             @if (open() === r.id) {
               <ul class="list-unstyled small mb-0 mt-1 values">
@@ -126,7 +127,7 @@ export function submittedValues(data: string | null): string[] {
           }
         </div>
       } @empty {
-        @if (!loading()) { <div class="no-data">No changes recorded yet</div> }
+        @if (!loading()) { <div class="no-data">{{ 'No changes recorded yet' | t: 'common.editHistory.empty' }}</div> }
       }
     </div>
     }
@@ -195,13 +196,13 @@ export class EditHistoryTable {
   }
 
   /** The filters (server side, all pages): Action LIKE ... (MsmeEditHistoryResponses.Kinds). */
-  protected readonly kinds = [
-    { key: '', label: 'All' },
-    { key: 'profile', label: 'Profile' },
-    { key: 'password', label: 'Password' },
-    { key: 'certification', label: 'Certification' },
-    { key: 'payment', label: 'Payments' },
-  ];
+  protected readonly kinds = computed(() => [
+    { key: '', label: t('common.editHistory.chip.all', 'All') },
+    { key: 'profile', label: t('common.editHistory.chip.profile', 'Profile') },
+    { key: 'password', label: t('common.editHistory.chip.password', 'Password') },
+    { key: 'certification', label: t('common.editHistory.chip.certification', 'Certification') },
+    { key: 'payment', label: t('common.editHistory.chip.payments', 'Payments') },
+  ]);
   protected readonly kind = signal('');
 
   protected setKind(kind: string): void {
@@ -212,8 +213,8 @@ export class EditHistoryTable {
 
   /** "App: password changed" -> "Password changed" (where it was made has its own chip). */
   protected title(action: string): string {
-    const t = action.replace(/^(App|Web)\s*:\s*/i, '').trim();
-    return t ? t.charAt(0).toUpperCase() + t.slice(1) : action;
+    const s = action.replace(/^(App|Web)\s*:\s*/i, '').trim();
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : action;
   }
 
   /** The change's type pill, by the server's filter rules (MsmeEditHistoryController.Kinds); '' when none applies. */
@@ -224,6 +225,17 @@ export class EditHistoryTable {
     if (a.includes('certification')) return 'Certification';
     if (a.includes('payment')) return 'Payments';
     return '';
+  }
+
+  /** The pill's wording of a type (typeOf keeps the code, used for its colour). */
+  protected typeLabel(type: string): string {
+    switch (type) {
+      case 'Profile': return t('common.editHistory.type.profile', 'Profile');
+      case 'Password': return t('common.editHistory.type.password', 'Password');
+      case 'Certification': return t('common.editHistory.type.certification', 'Certification');
+      case 'Payments': return t('common.editHistory.type.payments', 'Payments');
+      default: return type;
+    }
   }
 
   protected dayOf(at: string): string {
@@ -253,10 +265,10 @@ export class EditHistoryTable {
  */
 @Component({
   selector: 'zed-msme-edit-history',
-  imports: [EditHistoryTable, PageHead, ProfileShell],
+  imports: [EditHistoryTable, PageHead, ProfileShell, TextPipe],
   template: `
     <div class="container eh-page">
-      <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Edit history' }]" title="Edit history" />
+      <zed-page-head [crumbs]="crumbs()" [title]="'Edit history' | t: 'msme.editHistory.title'" />
       <zed-profile-shell active="history">
         <div class="eh-card"><zed-edit-history-table url="/api/msme/edit-history" /></div>
       </zed-profile-shell>
@@ -268,4 +280,10 @@ export class EditHistoryTable {
     @media (max-width: 767.98px) { .eh-card { padding: 14px 16px; } }
   `,
 })
-export class EditHistoryPage {}
+export class EditHistoryPage {
+  protected readonly crumbs = computed(() => [
+    { label: t('msme.editHistory.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.editHistory.crumb.profile', 'Profile'), link: '/msme/profile' },
+    { label: t('msme.editHistory.crumb.history', 'Edit history') },
+  ]);
+}

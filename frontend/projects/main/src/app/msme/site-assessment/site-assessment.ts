@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SiteAssessmentApi, SiteAssessmentData, SitePhoto, SiteRequirement, SiteSection, canonicalSiteAssessment } from './site-assessment.api';
+import { TextPipe, t } from '../../content/page-text';
 import { Crumb, PageHead } from '../shared/page-head';
 import { UnitFacts } from '../shared/unit-facts';
 import { levelName } from '../shared/levels';
@@ -25,131 +26,133 @@ interface InfoSection {
   groups: readonly InfoGroup[];
 }
 
-const MEASURES = 'Measures Taken (New technologies, new machines, new processes etc.)';
+const measures = () => t('msme.siteAssessment.info.measuresLabel', 'Measures Taken (New technologies, new machines, new processes etc.)');
 const energy = (heading: string, prefix: string): InfoGroup => ({
   heading,
-  fields: [['Unit', `${prefix}Unit`], ['% of total consumption', `${prefix}TotConsumpPer`]],
+  fields: [[t('msme.siteAssessment.info.energy.unitLabel', 'Unit'), `${prefix}Unit`], [t('msme.siteAssessment.info.energy.shareLabel', '% of total consumption'), `${prefix}TotConsumpPer`]],
 });
 
-/** The milestone "Basic Information" tab, in the order and wording of the old page. */
-export const MILESTONE_INFO: readonly InfoSection[] = [
-  {
-    title: 'Occupational (Workplace) Safety',
-    groups: [{
-      fields: [
-        ['No. of accidents (incl. fatalities & disabilities caused, if any)', 'NumOfAccedents'],
-        ['No. of near misses', 'NumOfNearMisses'],
-        ['Man hours lost', 'ManHoursLast'],
-        ['Lost Time Injury Frequency Rate (LTIFR)', 'LosttimeInjuryfreqRate'],
-      ],
-    }],
-  },
-  {
-    title: 'Measurement of Timely Delivery',
-    groups: [{
-      fields: [
-        ['Number of Deliveries', 'NumOfDeliveries'],
-        ['Number of Deliveries made On Time In Full (OTIF) per month', 'NumOfDeliveriesOntimeFull'],
-      ],
-    }],
-  },
-  {
-    title: 'Planned Maintenance & Calibration',
-    groups: [{
-      fields: [
-        ['Mean Time To Repair (MTTR)', 'MeanTimeToRepair'],
-        ['Mean Time Between Failure (MTBF)', 'MeanTimeBetweenFailure'],
-      ],
-    }],
-  },
-  {
-    title: 'Energy Management',
-    groups: [
-      energy('Electrical', 'Electri'),
-      energy('Solar', 'Solar'),
-      energy('Wind', 'Wind'),
-      energy('Fossil Fuel', 'Fossil'),
-      energy('Gas', 'Gas'),
-      energy('Others', 'Others'),
-      { fields: [['Total Cost', 'TotalCost'], [MEASURES, 'EnergyMgmtMeasuresTaken']] },
-    ],
-  },
-  {
-    title: 'Environment Management',
-    groups: [
-      {
-        heading: 'Emissions', centred: true,
+/** The milestone "Basic Information" tab, in the order and wording of the old page (the Admin can change the wording). */
+export function milestoneInfo(): readonly InfoSection[] {
+  return [
+    {
+      title: t('msme.siteAssessment.info.section1.title', 'Occupational (Workplace) Safety'),
+      groups: [{
         fields: [
-          ['COx (please mention unit)', 'Cox'],
-          ['NOx (please mention unit)', 'Nox'],
-          ['SOx (please mention unit)', 'Sox'],
-          ['Suspended Particulate Material (SPM)', 'SuspPertiMaterial'],
+          [t('msme.siteAssessment.info.field.NumOfAccedents', 'No. of accidents (incl. fatalities & disabilities caused, if any)'), 'NumOfAccedents'],
+          [t('msme.siteAssessment.info.field.NumOfNearMisses', 'No. of near misses'), 'NumOfNearMisses'],
+          [t('msme.siteAssessment.info.field.ManHoursLast', 'Man hours lost'), 'ManHoursLast'],
+          [t('msme.siteAssessment.info.field.LosttimeInjuryfreqRate', 'Lost Time Injury Frequency Rate (LTIFR)'), 'LosttimeInjuryfreqRate'],
         ],
-      },
-      {
-        heading: 'Effluents', centred: true,
-        fields: [['Total Suspended Solid (TSS)', 'TotSuspenSolid'], ['Biochemical Oxygen Demand (BOD)', 'BioChemOxyDemand']],
-      },
-      {
-        heading: 'Solid Waste & Hazardous Waste', centred: true,
+      }],
+    },
+    {
+      title: t('msme.siteAssessment.info.section2.title', 'Measurement of Timely Delivery'),
+      groups: [{
         fields: [
-          ['Solid Waste (Kg/Month)', 'SolidWaste'],
-          ['Plastic Waste (Kg/Month)', 'PlasticWaste'],
-          ['e-Waste (Kg/Month)', 'Ewaste'],
-          ['Hazardous Waste (Kg/Month)', 'hazardWaste'],
+          [t('msme.siteAssessment.info.field.NumOfDeliveries', 'Number of Deliveries'), 'NumOfDeliveries'],
+          [t('msme.siteAssessment.info.field.NumOfDeliveriesOntimeFull', 'Number of Deliveries made On Time In Full (OTIF) per month'), 'NumOfDeliveriesOntimeFull'],
         ],
-      },
-      { heading: 'Noise Level', centred: true, fields: [['Noise Level (dB)', 'NoiseLevel'], [MEASURES, 'EnviMgmtMeasuresTaken']] },
-    ],
-  },
-  {
-    title: 'Human Resource Management',
-    groups: [{
-      fields: [
-        ['% of employees engaged in improvement activities', 'EmpEngagedInActivities'],
-        ['No. of suggestions received', 'NumOfSuggestions'],
-        ['Measures Taken to develop human resources', 'HrmMeasuresTaken'],
-      ],
-    }],
-  },
-  {
-    title: 'Measurement & Analysis',
-    groups: [{
-      fields: [
-        ['Defects (%)', 'Defects'],
-        ['Rework (%)', 'ReWork'],
-        ['Customer Rejections (%)', 'CustRejections'],
-        ['Number of Customer Complaints', 'NumOfCustComplaints'],
-        ['Customer Complaints resolved (%)', 'NumOfComplaintsResolved'],
-        ['Customer Satisfaction level (%)', 'CustSatisLevel'],
-        ['Cost of Poor Quality (COPQ)', 'CostOfPoorQuality'],
-      ],
-    }],
-  },
-  {
-    title: 'Natural Resources Management',
-    groups: [
-      {
-        heading: '1. Consumption of natural resources', centred: true,
-        fields: [['Water (Litres)', 'Water'], ['Minerals (Coal) (Kg)', 'Minarals'], ['Wood (Kg)', 'Wood'], ['Others', 'NrmOthers']],
-      },
-      {
-        heading: '2. Conservation', centred: true,
+      }],
+    },
+    {
+      title: t('msme.siteAssessment.info.section3.title', 'Planned Maintenance & Calibration'),
+      groups: [{
         fields: [
-          ['Water recycling (Litres)', 'WaterRecycling'],
-          ['Water reuse (Litres)', 'Waterreuse'],
-          ['Rain water harvesting (Litres)', 'RainWaterHarvest'],
-          ['No. of Tree planted', 'NumofTreesPlanted'],
-          [MEASURES, 'NrmMeasuresTaken'],
+          [t('msme.siteAssessment.info.field.MeanTimeToRepair', 'Mean Time To Repair (MTTR)'), 'MeanTimeToRepair'],
+          [t('msme.siteAssessment.info.field.MeanTimeBetweenFailure', 'Mean Time Between Failure (MTBF)'), 'MeanTimeBetweenFailure'],
         ],
-      },
-    ],
-  },
-  {
-    title: 'Financial Performance (Previous Financial Year)',
-    groups: [{ fields: [['Turnover', 'TurnOver'], ['Gross Profit', 'GrossProfit']] }],
-  },
-];
+      }],
+    },
+    {
+      title: t('msme.siteAssessment.info.section4.title', 'Energy Management'),
+      groups: [
+        energy(t('msme.siteAssessment.info.energy.electrical', 'Electrical'), 'Electri'),
+        energy(t('msme.siteAssessment.info.energy.solar', 'Solar'), 'Solar'),
+        energy(t('msme.siteAssessment.info.energy.wind', 'Wind'), 'Wind'),
+        energy(t('msme.siteAssessment.info.energy.fossilFuel', 'Fossil Fuel'), 'Fossil'),
+        energy(t('msme.siteAssessment.info.energy.gas', 'Gas'), 'Gas'),
+        energy(t('msme.siteAssessment.info.energy.others', 'Others'), 'Others'),
+        { fields: [[t('msme.siteAssessment.info.field.TotalCost', 'Total Cost'), 'TotalCost'], [measures(), 'EnergyMgmtMeasuresTaken']] },
+      ],
+    },
+    {
+      title: t('msme.siteAssessment.info.section5.title', 'Environment Management'),
+      groups: [
+        {
+          heading: t('msme.siteAssessment.info.heading.emissions', 'Emissions'), centred: true,
+          fields: [
+            [t('msme.siteAssessment.info.field.Cox', 'COx (please mention unit)'), 'Cox'],
+            [t('msme.siteAssessment.info.field.Nox', 'NOx (please mention unit)'), 'Nox'],
+            [t('msme.siteAssessment.info.field.Sox', 'SOx (please mention unit)'), 'Sox'],
+            [t('msme.siteAssessment.info.field.SuspPertiMaterial', 'Suspended Particulate Material (SPM)'), 'SuspPertiMaterial'],
+          ],
+        },
+        {
+          heading: t('msme.siteAssessment.info.heading.effluents', 'Effluents'), centred: true,
+          fields: [[t('msme.siteAssessment.info.field.TotSuspenSolid', 'Total Suspended Solid (TSS)'), 'TotSuspenSolid'], [t('msme.siteAssessment.info.field.BioChemOxyDemand', 'Biochemical Oxygen Demand (BOD)'), 'BioChemOxyDemand']],
+        },
+        {
+          heading: t('msme.siteAssessment.info.heading.solidWasteHazardousWaste', 'Solid Waste & Hazardous Waste'), centred: true,
+          fields: [
+            [t('msme.siteAssessment.info.field.SolidWaste', 'Solid Waste (Kg/Month)'), 'SolidWaste'],
+            [t('msme.siteAssessment.info.field.PlasticWaste', 'Plastic Waste (Kg/Month)'), 'PlasticWaste'],
+            [t('msme.siteAssessment.info.field.Ewaste', 'e-Waste (Kg/Month)'), 'Ewaste'],
+            [t('msme.siteAssessment.info.field.hazardWaste', 'Hazardous Waste (Kg/Month)'), 'hazardWaste'],
+          ],
+        },
+        { heading: t('msme.siteAssessment.info.heading.noiseLevel', 'Noise Level'), centred: true, fields: [[t('msme.siteAssessment.info.field.NoiseLevel', 'Noise Level (dB)'), 'NoiseLevel'], [measures(), 'EnviMgmtMeasuresTaken']] },
+      ],
+    },
+    {
+      title: t('msme.siteAssessment.info.section6.title', 'Human Resource Management'),
+      groups: [{
+        fields: [
+          [t('msme.siteAssessment.info.field.EmpEngagedInActivities', '% of employees engaged in improvement activities'), 'EmpEngagedInActivities'],
+          [t('msme.siteAssessment.info.field.NumOfSuggestions', 'No. of suggestions received'), 'NumOfSuggestions'],
+          [t('msme.siteAssessment.info.field.HrmMeasuresTaken', 'Measures Taken to develop human resources'), 'HrmMeasuresTaken'],
+        ],
+      }],
+    },
+    {
+      title: t('msme.siteAssessment.info.section7.title', 'Measurement & Analysis'),
+      groups: [{
+        fields: [
+          [t('msme.siteAssessment.info.field.Defects', 'Defects (%)'), 'Defects'],
+          [t('msme.siteAssessment.info.field.ReWork', 'Rework (%)'), 'ReWork'],
+          [t('msme.siteAssessment.info.field.CustRejections', 'Customer Rejections (%)'), 'CustRejections'],
+          [t('msme.siteAssessment.info.field.NumOfCustComplaints', 'Number of Customer Complaints'), 'NumOfCustComplaints'],
+          [t('msme.siteAssessment.info.field.NumOfComplaintsResolved', 'Customer Complaints resolved (%)'), 'NumOfComplaintsResolved'],
+          [t('msme.siteAssessment.info.field.CustSatisLevel', 'Customer Satisfaction level (%)'), 'CustSatisLevel'],
+          [t('msme.siteAssessment.info.field.CostOfPoorQuality', 'Cost of Poor Quality (COPQ)'), 'CostOfPoorQuality'],
+        ],
+      }],
+    },
+    {
+      title: t('msme.siteAssessment.info.section8.title', 'Natural Resources Management'),
+      groups: [
+        {
+          heading: t('msme.siteAssessment.info.heading.1ConsumptionOfNaturalResources', '1. Consumption of natural resources'), centred: true,
+          fields: [[t('msme.siteAssessment.info.field.Water', 'Water (Litres)'), 'Water'], [t('msme.siteAssessment.info.field.Minarals', 'Minerals (Coal) (Kg)'), 'Minarals'], [t('msme.siteAssessment.info.field.Wood', 'Wood (Kg)'), 'Wood'], [t('msme.siteAssessment.info.field.NrmOthers', 'Others'), 'NrmOthers']],
+        },
+        {
+          heading: t('msme.siteAssessment.info.heading.2Conservation', '2. Conservation'), centred: true,
+          fields: [
+            [t('msme.siteAssessment.info.field.WaterRecycling', 'Water recycling (Litres)'), 'WaterRecycling'],
+            [t('msme.siteAssessment.info.field.Waterreuse', 'Water reuse (Litres)'), 'Waterreuse'],
+            [t('msme.siteAssessment.info.field.RainWaterHarvest', 'Rain water harvesting (Litres)'), 'RainWaterHarvest'],
+            [t('msme.siteAssessment.info.field.NumofTreesPlanted', 'No. of Tree planted'), 'NumofTreesPlanted'],
+            [measures(), 'NrmMeasuresTaken'],
+          ],
+        },
+      ],
+    },
+    {
+      title: t('msme.siteAssessment.info.section9.title', 'Financial Performance (Previous Financial Year)'),
+      groups: [{ fields: [[t('msme.siteAssessment.info.field.TurnOver', 'Turnover'), 'TurnOver'], [t('msme.siteAssessment.info.field.GrossProfit', 'Gross Profit'), 'GrossProfit']] }],
+    },
+  ];
+}
 
 /**
  * Read-only report of the MSME's site (onsite/remote) assessment for Silver/Gold, or of a
@@ -159,7 +162,7 @@ export const MILESTONE_INFO: readonly InfoSection[] = [
  */
 @Component({
   selector: 'zed-msme-site-assessment',
-  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts, RequirementVideo],
+  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts, RequirementVideo, TextPipe],
   templateUrl: './site-assessment.html',
   styleUrls: ['../shared/msme-page.scss', './site-assessment.scss'],
   host: { '(document:keydown.escape)': 'closePreview()' },
@@ -178,7 +181,7 @@ export class SiteAssessmentPage {
   /** Address of the image shown in the "Image" pop-up. */
   protected readonly preview = signal<string | null>(null);
 
-  protected readonly milestoneInfo = MILESTONE_INFO;
+  protected readonly milestoneInfo = computed(() => milestoneInfo());
 
   protected readonly type = computed(() => canonicalSiteAssessment(this.certification()));
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
@@ -190,12 +193,15 @@ export class SiteAssessmentPage {
     const c = this.type() ?? this.certification() ?? '';
     const m = /^(.*?)(Surveillance|Milestone(\d))$/i.exec(c);
     if (!m) return levelName(c);
-    return levelName(m[1]) + (m[3] ? ` milestone ${m[3]}` : ' surveillance');
+    return m[3] ? t('msme.siteAssessment.milestoneLevel', '{level} milestone {milestone}', { level: levelName(m[1]), milestone: m[3] })
+      : t('msme.siteAssessment.surveillanceLevel', '{level} surveillance', { level: levelName(m[1]) });
   });
   protected readonly crumbs = computed<Crumb[]>(() => this.isMilestone()
-    ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support', link: '/msme/handholding' }, { label: this.levelTitle() }]
-    : [{ label: 'Home', link: '/msme/dashboard' }, { label: `${this.levelTitle()} certification`, link: ['/msme/certification', this.certification()] },
-       { label: 'Site assessment' }]);
+    ? [{ label: t('msme.siteAssessment.crumb.home', 'Home'), link: '/msme/dashboard' },
+      { label: t('msme.siteAssessment.crumb.handholding', 'Handholding support'), link: '/msme/handholding' }, { label: this.levelTitle() }]
+    : [{ label: t('msme.siteAssessment.crumb.home', 'Home'), link: '/msme/dashboard' },
+      { label: t('msme.siteAssessment.crumb.certification', '{level} certification', { level: this.levelTitle() }), link: ['/msme/certification', this.certification()] },
+      { label: t('msme.siteAssessment.crumb.page', 'Site assessment') }]);
   /**
    * Parameters tab: the parameter list and the selected parameter. Handholding milestones show the basic diagnostic
    * conformance as status; the Silver / Gold report has no conformance for the unit, so it lists the parameters only.
@@ -253,7 +259,7 @@ export class SiteAssessmentPage {
     this.preview.set(null);
     if (!type) {
       this.data.set(null);
-      this.error.set('Invalid certification.');
+      this.error.set(t('msme.siteAssessment.error.invalidLevel', 'Invalid certification.'));
       return;
     }
     this.loading.set(true);

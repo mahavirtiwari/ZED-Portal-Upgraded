@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
 import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeUnitPanel } from './scheme-parts';
@@ -29,27 +30,40 @@ export const FA_CAP = 50000;
  * disclaimer and instructions (1, 2), unit confirmation (3), the claim form with its documents (4), the summary.
  * The form takes the details and the documents together, so there is no separate "upload documents" step.
  */
-const TRACKER: { label: string; note: string; subtitle: Partial<Record<Step, string>> }[] = [
-  { label: 'Disclaimer', note: 'Disclaimer, instructions', subtitle: {
-    1: 'read and accept the disclaimer before you start a claim.', 2: 'read the instructions before you start a claim.' } },
-  { label: 'Confirm unit', note: 'Unit and activity', subtitle: { 3: 'confirm the unit the claim is for.' } },
-  { label: 'Claim details', note: 'Certification, cost, bank, documents', subtitle: {
-    4: 'enter the certification, expenditure and bank details and upload the documents.' } },
-  { label: 'Review & submit', note: 'Eligible amount', subtitle: { summary: 'check the eligible amount and submit the claim.' } },
+const TRACKER: { readonly label: string; readonly note: string; readonly subtitle: Partial<Record<Step, (v: { step: number; steps: number }) => string>> }[] = [
+  { get label() { return t('msme.financialAssistance.tracker.disclaimerLabel', 'Disclaimer'); },
+    get note() { return t('msme.financialAssistance.tracker.disclaimerNote', 'Disclaimer, instructions'); },
+    subtitle: {
+      1: (v) => t('msme.financialAssistance.step1.sub', 'Step {step} of {steps}: read and accept the disclaimer before you start a claim.', v),
+      2: (v) => t('msme.financialAssistance.step2.sub', 'Step {step} of {steps}: read the instructions before you start a claim.', v) } },
+  { get label() { return t('msme.financialAssistance.tracker.unitLabel', 'Confirm unit'); },
+    get note() { return t('msme.financialAssistance.tracker.unitNote', 'Unit and activity'); },
+    subtitle: { 3: (v) => t('msme.financialAssistance.step3.sub', 'Step {step} of {steps}: confirm the unit the claim is for.', v) } },
+  { get label() { return t('msme.financialAssistance.tracker.claimLabel', 'Claim details'); },
+    get note() { return t('msme.financialAssistance.tracker.claimNote', 'Certification, cost, bank, documents'); },
+    subtitle: {
+      4: (v) => t('msme.financialAssistance.step4.sub', 'Step {step} of {steps}: enter the certification, expenditure and bank details and upload the documents.', v) } },
+  { get label() { return t('msme.financialAssistance.tracker.reviewLabel', 'Review & submit'); },
+    get note() { return t('msme.financialAssistance.tracker.reviewNote', 'Eligible amount'); },
+    subtitle: { summary: (v) => t('msme.financialAssistance.summaryStep.sub', 'Step {step} of {steps}: check the eligible amount and submit the claim.', v) } },
 ];
 
 /** What the rail says comes next, per step. */
-const NEXT: Partial<Record<Step, string>> = {
-  1: 'After you accept, you read the instructions, confirm your unit, enter the certification, expenditure and bank details with the documents, and submit the claim for scrutiny.',
-  2: 'After you accept, you confirm your unit and then enter the claim details.',
-  3: 'Next you enter the certification, expenditure and bank details and upload the documents.',
-  4: 'Next you check the eligible amount and submit the claim for scrutiny.',
-  summary: 'After you submit, the claim goes for scrutiny and a confirmation is e-mailed to you.',
+const NEXT: Partial<Record<Step, () => string>> = {
+  1: () => t('msme.financialAssistance.next.step1Text', 'After you accept, you read the instructions, confirm your unit, enter the certification, expenditure and bank details with the documents, and submit the claim for scrutiny.'),
+  2: () => t('msme.financialAssistance.next.step2Text', 'After you accept, you confirm your unit and then enter the claim details.'),
+  3: () => t('msme.financialAssistance.next.step3Text', 'Next you enter the certification, expenditure and bank details and upload the documents.'),
+  4: () => t('msme.financialAssistance.next.step4Text', 'Next you check the eligible amount and submit the claim for scrutiny.'),
+  summary: () => t('msme.financialAssistance.next.summaryText', 'After you submit, the claim goes for scrutiny and a confirmation is e-mailed to you.'),
 };
 
 /** FinancialAssistance.VerificationStatus as the MSME sees it. */
-const STATUS: Record<number, string> = {
-  1: 'Submitted', 2: 'Under verification', 3: 'Under verification', 4: 'Approved', 6: 'Reimbursed',
+const STATUS: Record<number, () => string> = {
+  1: () => t('msme.financialAssistance.status.submitted', 'Submitted'),
+  2: () => t('msme.financialAssistance.status.verifying', 'Under verification'),
+  3: () => t('msme.financialAssistance.status.verifying', 'Under verification'),
+  4: () => t('msme.financialAssistance.status.approved', 'Approved'),
+  6: () => t('msme.financialAssistance.status.reimbursed', 'Reimbursed'),
 };
 
 /**
@@ -61,7 +75,7 @@ const STATUS: Record<number, string> = {
  */
 @Component({
   selector: 'zed-msme-financial-assistance',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead, StepTracker],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead, StepTracker, TextPipe],
   templateUrl: './financial-assistance.html',
   styleUrls: ['../shared/msme-page.scss', './scheme-page.scss', './financial-assistance.scss', './financial-assistance-form.scss'],
 })
@@ -86,14 +100,21 @@ export class FinancialAssistancePage {
   protected readonly unit = computed(() => this.page()?.unit ?? {});
   protected readonly applications = computed(() => this.page()?.applications ?? []);
 
-  protected readonly crumbs: Crumb[] = [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Incentives', link: '/msme/dashboard', fragment: 'incentives' }, { label: 'Financial assistance' }];
+  protected get crumbs(): Crumb[] {
+    return [{ label: t('msme.financialAssistance.crumb.home', 'Home'), link: '/msme/dashboard' },
+      { label: t('msme.financialAssistance.crumb.incentives', 'Incentives'), link: '/msme/dashboard', fragment: 'incentives' },
+      { label: t('msme.financialAssistance.crumb.page', 'Financial assistance') }];
+  }
   protected readonly sharePct = FA_SHARE * 100;
   protected readonly cap = FA_CAP.toLocaleString('en-IN');
   /** The documents the claim form asks for (the CA certificate is optional), then the bank details. */
-  protected readonly keepReady = [
-    'Copy of the testing, system or product certificate', 'Invoice / bill of the certifying agency',
-    'CA certificate of expenditure (optional)', "Cancelled cheque of the unit's account", 'Bank account number, IFSC and branch',
-  ];
+  protected readonly keepReady = computed(() => [
+    t('msme.financialAssistance.ready.point1', 'Copy of the testing, system or product certificate'),
+    t('msme.financialAssistance.ready.point2', 'Invoice / bill of the certifying agency'),
+    t('msme.financialAssistance.ready.point3', 'CA certificate of expenditure (optional)'),
+    t('msme.financialAssistance.ready.point4', "Cancelled cheque of the unit's account"),
+    t('msme.financialAssistance.ready.point5', 'Bank account number, IFSC and branch'),
+  ]);
 
   /** 0-based tracker step of the page's step (past the last once submitted). */
   protected readonly trackerIndex = computed(() => {
@@ -101,13 +122,13 @@ export class FinancialAssistancePage {
     return s === 1 || s === 2 ? 0 : s === 3 ? 1 : s === 4 ? 2 : s === 'summary' ? 3 : 4;
   });
   protected readonly trackerSteps = computed<TrackerStep[]>(() =>
-    TRACKER.map((t, i) => ({ label: t.label, note: i === this.trackerIndex() ? 'You are here' : t.note })));
+    TRACKER.map((s, i) => ({ label: s.label, note: i === this.trackerIndex() ? t('msme.financialAssistance.tracker.hereNote', 'You are here') : s.note })));
   protected readonly subtitle = computed(() => {
     const i = this.trackerIndex();
     const line = TRACKER[i]?.subtitle[this.step()];
-    return line ? `Step ${i + 1} of ${TRACKER.length}: ${line}` : null;
+    return line ? line({ step: i + 1, steps: TRACKER.length }) : null;
   });
-  protected readonly next = computed(() => NEXT[this.step()] ?? null);
+  protected readonly next = computed(() => NEXT[this.step()]?.() ?? null);
   /** Where the page's Back goes (null = the dashboard). */
   protected readonly previous = computed<Step | null>(() => {
     const s = this.step();
@@ -118,14 +139,14 @@ export class FinancialAssistancePage {
     const u = this.unit();
     const values = (...keys: string[]) => keys.map((k) => u[k]).filter((v) => v !== null && v !== undefined && v !== '').map(String);
     return [
-      { label: 'Enterprise', lines: values('EnterpriseName'), wide: false },
-      { label: 'Enterprise type', lines: values(u['RegistrationType'] === 'UAM' ? 'EnterpriseTypee' : 'EnterpriseType'), wide: false },
-      { label: 'UDYAM number', lines: values('UdyogAadharNo'), wide: false },
-      { label: 'ZED ID', lines: values('ZedId'), wide: false },
-      { label: 'Provided e-mail ID', lines: values('PledgeEmailId'), wide: false },
-      { label: 'Selected unit', lines: values('PUnitName'), wide: false },
-      { label: 'Address', lines: [values('PAddress', 'PDistrictName', 'PStateName', 'PPin').join(', ')].filter(Boolean), wide: true },
-      { label: 'Selected activity', lines: values('Activity', 'TwoDigitActivity', 'FourDigitActivity', 'FiveDigitActivity'), wide: true },
+      { label: t('msme.financialAssistance.unit.enterpriseLabel', 'Enterprise'), lines: values('EnterpriseName'), wide: false },
+      { label: t('msme.financialAssistance.unit.typeLabel', 'Enterprise type'), lines: values(u['RegistrationType'] === 'UAM' ? 'EnterpriseTypee' : 'EnterpriseType'), wide: false },
+      { label: t('msme.financialAssistance.unit.udyamLabel', 'UDYAM number'), lines: values('UdyogAadharNo'), wide: false },
+      { label: t('msme.financialAssistance.unit.zedIdLabel', 'ZED ID'), lines: values('ZedId'), wide: false },
+      { label: t('msme.financialAssistance.unit.emailLabel', 'Provided e-mail ID'), lines: values('PledgeEmailId'), wide: false },
+      { label: t('msme.financialAssistance.unit.unitLabel', 'Selected unit'), lines: values('PUnitName'), wide: false },
+      { label: t('msme.financialAssistance.unit.addressLabel', 'Address'), lines: [values('PAddress', 'PDistrictName', 'PStateName', 'PPin').join(', ')].filter(Boolean), wide: true },
+      { label: t('msme.financialAssistance.unit.activityLabel', 'Selected activity'), lines: values('Activity', 'TwoDigitActivity', 'FourDigitActivity', 'FiveDigitActivity'), wide: true },
     ].filter((r) => r.lines.length);
   });
   protected readonly unitLine = computed(() =>
@@ -167,7 +188,13 @@ export class FinancialAssistancePage {
   }
 
   protected status(app: FaApplication): string {
-    return STATUS[Number(app.details['VerificationStatus'])] ?? '';
+    return STATUS[Number(app.details['VerificationStatus'])]?.() ?? '';
+  }
+
+  /** The certificate category as shown (the value stays Quality / Product / Testing). */
+  protected categoryLabel(c: string): string {
+    return c === 'Quality' ? t('msme.financialAssistance.category.quality', 'System/Quality')
+      : c === 'Product' ? t('msme.financialAssistance.category.product', 'Product') : t('msme.financialAssistance.category.testing', 'Testing');
   }
 
   protected appDocs(app: FaApplication, type: string): SchemeDocument[] {
@@ -207,25 +234,25 @@ export class FinancialAssistancePage {
     const required = [f.categoryOfCertificate, f.nameOfCertficate, f.certificationAgency, f.certficateNumber, f.dateOfIssue,
       f.invoiceNo, f.invoiceBillDate, f.modeOfPayment, a.accountNo, a.confirmAccountNo, a.ifscCode, a.branchAddress, a.bankName];
     if (required.some((v) => !String(v ?? '').trim()) || !f.validityOfCertificate || !f.amountPaid) {
-      this.alert.set(errorAlert('Please enter required data.'));
+      this.alert.set(errorAlert(t('msme.financialAssistance.error.required', 'Please enter required data.')));
       return;
     }
     if (a.accountNo.trim() !== a.confirmAccountNo.trim()) {
-      this.alert.set(errorAlert('Account Number and Re-Enter Account Number must match.'));
+      this.alert.set(errorAlert(t('msme.financialAssistance.error.accountMismatch', 'Account Number and Re-Enter Account Number must match.')));
       return;
     }
     if (!/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(a.ifscCode.trim())) {
-      this.alert.set(errorAlert('Invalid IFSC Code format. Please enter the correct 11-digit code.'));
+      this.alert.set(errorAlert(t('msme.financialAssistance.error.ifsc', 'Invalid IFSC Code format. Please enter the correct 11-digit code.')));
       return;
     }
     // The CA certificate is optional, but the expenditure section needs two documents at least (as the live form).
     const requiredDocs = [FA_DOCUMENTS.certificate, FA_DOCUMENTS.invoice, FA_DOCUMENTS.cheque];
-    if (requiredDocs.some((t) => this.docs(t).length === 0) || this.docs(FA_DOCUMENTS.ca).length + this.docs(FA_DOCUMENTS.invoice).length < 2) {
-      this.alert.set(errorAlert('Please upload the required documents.'));
+    if (requiredDocs.some((d) => this.docs(d).length === 0) || this.docs(FA_DOCUMENTS.ca).length + this.docs(FA_DOCUMENTS.invoice).length < 2) {
+      this.alert.set(errorAlert(t('msme.financialAssistance.error.documents', 'Please upload the required documents.')));
       return;
     }
     if (!f.declaration) {
-      this.alert.set(errorAlert('Please accept the declaration.'));
+      this.alert.set(errorAlert(t('msme.financialAssistance.error.declaration', 'Please accept the declaration.')));
       return;
     }
     this.go('summary');

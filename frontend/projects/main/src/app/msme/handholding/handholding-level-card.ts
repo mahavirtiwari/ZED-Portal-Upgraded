@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { HandholdingLevel } from './handholding.api';
+import { TextPipe } from '../../content/page-text';
 
 /** One point of a level card's milestone tracker (Baseline, Review 1, Review 2, Complete). */
 export interface TrackPoint {
@@ -28,30 +29,31 @@ export interface LevelCardVm {
  */
 @Component({
   selector: 'zed-hh-level-card',
+  imports: [TextPipe],
   host: { class: 'd-block h-100' },
   template: `
     @let v = vm();
     <article class="hh-card hh-{{ v.code.toLowerCase() }}" [class.is-active]="v.selected" [attr.data-level]="v.code">
       <div class="hh-top">
-        <button type="button" class="hh-pick" [attr.aria-pressed]="v.selected" [attr.aria-label]="'Show ' + v.name + ' handholding milestones'" (click)="pick.emit()">
+        <button type="button" class="hh-pick" [attr.aria-pressed]="v.selected" [attr.aria-label]="'Show {level} handholding milestones' | t: 'msme.handholding.levelCard.showAria' : { level: v.name }" (click)="pick.emit()">
           <span class="hh-badge"><img [src]="v.logo" alt="" /></span>
-          <span class="hh-id"><small>Handholding for</small><strong class="hh-name">{{ v.name }}</strong></span>
+          <span class="hh-id"><small>{{ 'Handholding for' | t: 'msme.handholding.levelCard.eyebrowLabel' }}</small><strong class="hh-name">{{ v.name }}</strong></span>
         </button>
         <div class="hh-side">
           @if (v.canApply) {
-            <button type="button" class="btn hh-apply" (click)="apply.emit()">Apply
+            <button type="button" class="btn hh-apply" (click)="apply.emit()">{{ 'Apply' | t: 'msme.handholding.levelCard.applyButton' }}
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </button>
           } @else if (v.selected) {
-            <span class="hh-viewing">Viewing below</span>
+            <span class="hh-viewing">{{ 'Viewing below' | t: 'msme.handholding.levelCard.viewingLabel' }}</span>
           } @else {
-            <button type="button" class="hh-link" (click)="pick.emit()">View milestones</button>
+            <button type="button" class="hh-link" (click)="pick.emit()">{{ 'View milestones' | t: 'msme.handholding.levelCard.viewButton' }}</button>
           }
-          <button type="button" class="hh-info" [attr.aria-label]="'About Handholding for ' + v.name + ' Level'" (click)="info.emit()"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
+          <button type="button" class="hh-info" [attr.aria-label]="'About Handholding for {level} Level' | t: 'msme.handholding.levelCard.infoAria' : { level: v.name }" (click)="info.emit()"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
         </div>
       </div>
       <p class="hh-chip is-{{ v.chip.tone }}">{{ v.chip.label }}</p>
-      <ol class="hh-track" [attr.aria-label]="v.name + ' milestones'">
+      <ol class="hh-track" [attr.aria-label]="'{level} milestones' | t: 'msme.handholding.levelCard.trackAria' : { level: v.name }">
         @for (p of v.points; track p.label) {
           <li [class.done]="p.done" [class.now]="p.now" [attr.aria-current]="p.now ? 'step' : null"><span class="dot"></span><span class="lbl">{{ p.label }}</span></li>
         }

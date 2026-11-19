@@ -3,6 +3,7 @@ import { Component, ElementRef, HostListener, Injectable, inject, signal } from 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { firstValueFrom, filter } from 'rxjs';
+import { TextPipe } from '../content/page-text';
 
 /** One kind of work waiting for the login (api/staff/attention, AttentionController). */
 export interface AttentionItem {
@@ -73,22 +74,22 @@ export class AttentionService {
  */
 @Component({
   selector: 'zed-attention-bell',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   host: { class: 'ab' },
   template: `
     @let d = service.data();
     <button type="button" class="ab-btn" aria-haspopup="true" [attr.aria-expanded]="open()"
-            [attr.aria-label]="d?.total ? 'Needs your attention, ' + d!.total + ' waiting' : 'Needs your attention'" (click)="toggle($event)">
+            [attr.aria-label]="d?.total ? ('Needs your attention, {count} waiting' | t: 'staff.attention.bellCountAria' : { count: d!.total }) : ('Needs your attention' | t: 'staff.attention.title')" (click)="toggle($event)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
       @if (d?.total) { <span class="ab-count" data-total>{{ d!.total > 99 ? '99+' : d!.total }}</span> }
     </button>
     @if (open()) {
-      <div class="ab-panel" role="dialog" aria-label="Needs your attention">
-        <div class="ab-head">Needs your attention</div>
+      <div class="ab-panel" role="dialog" [attr.aria-label]="'Needs your attention' | t: 'staff.attention.title'">
+        <div class="ab-head">{{ 'Needs your attention' | t: 'staff.attention.title' }}</div>
         @if (d === null) {
-          <p class="ab-empty">Loading…</p>
+          <p class="ab-empty">{{ 'Loading…' | t: 'staff.attention.loadingText' }}</p>
         } @else if (!d.total) {
-          <p class="ab-empty" data-nothing>Nothing is waiting for you.</p>
+          <p class="ab-empty" data-nothing>{{ 'Nothing is waiting for you.' | t: 'staff.attention.empty' }}</p>
         }
         @if (d?.items?.length) {
           <ul class="ab-list">

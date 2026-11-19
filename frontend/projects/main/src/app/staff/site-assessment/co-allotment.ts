@@ -12,6 +12,7 @@ import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 interface CoForm {
   unit: Row;
@@ -26,7 +27,13 @@ interface CoForm {
 }
 
 /** Names of the review stage per milestone, as the old pop-up labelled the BDS row. */
-export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Study', 2: 'Progress Review 1', 3: 'Progress Review 2' };
+export function stageLabel(milestone: number): string {
+  switch (milestone) {
+    case 2: return t('staff.coAllotment.stage.review1.label', 'Progress Review 1');
+    case 3: return t('staff.coAllotment.stage.review2.label', 'Progress Review 2');
+    default: return t('staff.coAllotment.stage.bds.label', 'Baseline Diagnostic Study');
+  }
+}
 
 /**
  * "Allot Consultancy" of a Consultant Organisation (consultancy build). Port of the consultancy
@@ -39,19 +46,19 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
  */
 @Component({
   selector: 'zed-staff-co-allotment',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, RouterLink],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, RouterLink, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" title="Allot Consultancy"
-                   subtitle="Accept the milestones allotted to your organisation and choose the consultancy team and the visit dates, or reject them.">
-      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="'Allot Consultancy' | t: 'staff.coAllotment.title'"
+                   [subtitle]="'Accept the milestones allotted to your organisation and choose the consultancy team and the visit dates, or reject them.' | t: 'staff.coAllotment.sub'">
+      <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.coAllotment.refreshButton' }}</button>
     </zed-page-head>
-    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" label="Milestones by status" (pick)="pickStage($event.key)" />
+    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" [label]="'Milestones by status' | t: 'staff.coAllotment.counts.aria'" (pick)="pickStage($event.key)" />
 
     <div class="zed-card co-filters">
-      <input type="search" id="co-allot-search" class="form-control co-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or consultant"
-             aria-label="Search ZED ID, unit, SPOC or consultant" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-      <zed-chip-filter label="Milestone" [chips]="milestoneChips()" [value]="milestone()" (valueChange)="milestone.set($event)" />
+      <input type="search" id="co-allot-search" class="form-control co-q" maxlength="50" [placeholder]="'Search ZED ID, unit, SPOC or consultant' | t: 'staff.coAllotment.search.placeholder'"
+             [attr.aria-label]="'Search ZED ID, unit, SPOC or consultant' | t: 'staff.coAllotment.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <zed-chip-filter [label]="'Milestone' | t: 'staff.coAllotment.milestone.label'" [chips]="milestoneChips()" [value]="milestone()" (valueChange)="milestone.set($event)" />
     </div>
 
     @if (error()) {
@@ -63,13 +70,13 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
       <table class="table table-zed">
         <thead>
           <tr>
-            <th>Unit</th>
-            <th>Desired level</th>
-            <th>Milestone</th>
-            <th>Unit SPOC</th>
-            <th>Consultants</th>
-            <th>Status</th>
-            <th class="text-end">Actions</th>
+            <th>{{ 'Unit' | t: 'staff.coAllotment.column.unit' }}</th>
+            <th>{{ 'Desired level' | t: 'staff.coAllotment.column.level' }}</th>
+            <th>{{ 'Milestone' | t: 'staff.coAllotment.column.milestone' }}</th>
+            <th>{{ 'Unit SPOC' | t: 'staff.coAllotment.column.spoc' }}</th>
+            <th>{{ 'Consultants' | t: 'staff.coAllotment.column.consultants' }}</th>
+            <th>{{ 'Status' | t: 'staff.coAllotment.column.status' }}</th>
+            <th class="text-end">{{ 'Actions' | t: 'staff.coAllotment.column.actions' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -81,7 +88,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                 <small class="co-addr" [title]="str(s['UnitAddress'])">{{ s['UnitAddress'] }}</small>
               </td>
               <td><span [class]="'lv-tag lv-' + str(s['Certification']).toLowerCase()">{{ s['Certification'] }}</span></td>
-              <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span></td>
+              <td><span class="chip is-info">{{ 'Milestone {number}' | t: 'staff.coAllotment.row.milestone.chip' : { number: s['NcCount'] } }}</span></td>
               <!-- Masked in the list; the MSME profile has the full values. -->
               <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
               <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
@@ -91,24 +98,24 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                 <div><div class="muted">{{ s['TechExpert'] }}</div>{{ s['TechnicalExpertNames'] }}</div>
               </td>
               <td>
-                @if (s['SiteAssessorId']) { <span class="chip is-good">Allotted</span> }
-                @else if (s['ReasonForRejection']) { <span class="chip is-bad" [title]="str(s['ReasonForRejection'])">Rejected</span> }
-                @else { <span class="chip is-warn">Waiting</span> }
+                @if (s['SiteAssessorId']) { <span class="chip is-good">{{ 'Allotted' | t: 'staff.coAllotment.status.allotted.chip' }}</span> }
+                @else if (s['ReasonForRejection']) { <span class="chip is-bad" [title]="str(s['ReasonForRejection'])">{{ 'Rejected' | t: 'staff.coAllotment.status.rejected.chip' }}</span> }
+                @else { <span class="chip is-warn">{{ 'Waiting' | t: 'staff.coAllotment.status.waiting.chip' }}</span> }
               </td>
               <td class="text-end text-nowrap">
                 @if (s['SiteAssessorId']) {
-                  <button type="button" class="btn co-act re-allot allot" (click)="open(s)">Re-allot</button>
+                  <button type="button" class="btn co-act re-allot allot" (click)="open(s)">{{ 'Re-allot' | t: 'staff.coAllotment.reallotButton' }}</button>
                 } @else if (!s['ReasonForRejection']) {
-                  <button type="button" class="btn btn-primary co-act allot" (click)="open(s)">Accept</button>
+                  <button type="button" class="btn btn-primary co-act allot" (click)="open(s)">{{ 'Accept' | t: 'staff.coAllotment.acceptButton' }}</button>
                 }
                 <!-- 2026-11-18 (the user: "accept, reject, view details and other option similar to combination one"). -->
-                <a class="btn btn-outline-primary co-act co-view" [routerLink]="detailsLink(s)">View details</a>
-                <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
+                <a class="btn btn-outline-primary co-act co-view" [routerLink]="detailsLink(s)">{{ 'View details' | t: 'staff.coAllotment.viewDetailsButton' }}</a>
+                <zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.coAllotment.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" />
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" style="padding: 0px"><div class="no-data">{{ busy() ? 'Loading…' : 'No Data' }}</div></td>
+              <td colspan="7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.coAllotment.loading.text') : ('No Data' | t: 'staff.coAllotment.empty') }}</div></td>
             </tr>
           }
         </tbody>
@@ -123,66 +130,66 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
           <div class="modal-content co-pop">
             <div class="modal-header justify-content-between">
               <div>
-                <h3 class="co-pop-title" id="co-allot-title">{{ f.unit['SiteAssessorId'] ? 'Re-allot unit' : 'Allot unit' }}</h3>
-                <p class="co-pop-sub">{{ f.unit['ZedId'] }} · {{ f.unit['Certification'] }}, Milestone {{ f.milestone }}@if (f.unit['PUnitName']) { · {{ f.unit['PUnitName'] }} }</p>
+                <h3 class="co-pop-title" id="co-allot-title">{{ f.unit['SiteAssessorId'] ? ('Re-allot unit' | t: 'staff.coAllotment.dialog.reallotTitle') : ('Allot unit' | t: 'staff.coAllotment.dialog.allotTitle') }}</h3>
+                <p class="co-pop-sub">{{ f.unit['ZedId'] }} · {{ '{level}, Milestone {number}' | t: 'staff.coAllotment.dialog.unit.sub' : { level: f.unit['Certification'], number: f.milestone } }}@if (f.unit['PUnitName']) { · {{ f.unit['PUnitName'] }} }</p>
               </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+              <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.coAllotment.dialog.closeAria'" (click)="close()"></button>
             </div>
             <div class="modal-body">
               <div class="row mb-3">
                 <div class="col-sm-4"><div class="stage">{{ stageLabel(f.milestone) }}</div></div>
                 <div class="col-sm-4">
-                  <label class="form-label" for="BdsFromDate">From<span class="req">*</span></label>
+                  <label class="form-label" for="BdsFromDate">{{ 'From' | t: 'staff.coAllotment.dialog.from.label' }}<span class="req">*</span></label>
                   <input type="date" id="BdsFromDate" name="BdsFromDate" class="form-control" [min]="minDate" [(ngModel)]="f.bdsFromDate" />
                 </div>
                 <div class="col-sm-4">
-                  <label class="form-label" for="BdsToDate">To<span class="req">*</span></label>
+                  <label class="form-label" for="BdsToDate">{{ 'To' | t: 'staff.coAllotment.dialog.to.label' }}<span class="req">*</span></label>
                   <input type="date" id="BdsToDate" name="BdsToDate" class="form-control" [min]="f.bdsFromDate || minDate" [(ngModel)]="f.bdsToDate" />
                 </div>
               </div>
               @if (f.milestone === 1) {
                 <div class="row mb-3">
-                  <div class="col-sm-4"><div class="stage">Handholding Action Plan</div></div>
+                  <div class="col-sm-4"><div class="stage">{{ 'Handholding Action Plan' | t: 'staff.coAllotment.stage.hap.label' }}</div></div>
                   <div class="col-sm-4">
-                    <label class="form-label" for="HapFromDate">From<span class="req">*</span></label>
+                    <label class="form-label" for="HapFromDate">{{ 'From' | t: 'staff.coAllotment.dialog.from.label' }}<span class="req">*</span></label>
                     <input type="date" id="HapFromDate" name="HapFromDate" class="form-control" [min]="minDate" [(ngModel)]="f.hapFromDate" />
                   </div>
                   <div class="col-sm-4">
-                    <label class="form-label" for="HapToDate">To<span class="req">*</span></label>
+                    <label class="form-label" for="HapToDate">{{ 'To' | t: 'staff.coAllotment.dialog.to.label' }}<span class="req">*</span></label>
                     <input type="date" id="HapToDate" name="HapToDate" class="form-control" [min]="f.hapFromDate || minDate" [(ngModel)]="f.hapToDate" />
                   </div>
                 </div>
               }
               <div class="row">
-                <div class="col-sm-4"><div class="stage">Consultancy Team</div></div>
+                <div class="col-sm-4"><div class="stage">{{ 'Consultancy Team' | t: 'staff.coAllotment.dialog.team.label' }}</div></div>
                 <div class="col-sm-8">
-                  <label class="form-label" for="LeadConsultant">Lead Consultant<span class="req">*</span></label>
+                  <label class="form-label" for="LeadConsultant">{{ 'Lead Consultant' | t: 'staff.coAllotment.dialog.lead.label' }}<span class="req">*</span></label>
                   <select id="LeadConsultant" name="LeadConsultant" class="form-select mb-3" [(ngModel)]="f.leadConsultantId" (ngModelChange)="leadChanged(f)">
-                    <option value="">--Select--</option>
+                    <option value="">{{ '--Select--' | t: 'staff.coAllotment.dialog.selectLabel' }}</option>
                     @for (a of consultants(); track a.userId) {
                       <option [value]="a.userId">{{ a.userName }}</option>
                     }
                   </select>
                   <fieldset class="mb-3">
-                    <legend class="form-label fs-6 mb-1">Co-consultant(s)</legend>
+                    <legend class="form-label fs-6 mb-1">{{ 'Co-consultant(s)' | t: 'staff.coAllotment.dialog.co.label' }}</legend>
                     @for (a of coCandidates(f.leadConsultantId); track a.userId) {
                       <div class="form-check">
                         <input type="checkbox" class="form-check-input co" [id]="'co-' + a.userId" [checked]="f.coConsultantIds.includes(a.userId)" (change)="toggle(f.coConsultantIds, a.userId)" />
                         <label class="form-check-label" [for]="'co-' + a.userId">{{ a.userName }} ({{ a.userId }})</label>
                       </div>
                     } @empty {
-                      <small class="text-muted">No other consultants.</small>
+                      <small class="text-muted">{{ 'No other consultants.' | t: 'staff.coAllotment.dialog.co.empty' }}</small>
                     }
                   </fieldset>
                   <fieldset>
-                    <legend class="form-label fs-6 mb-1">Technical Expert(s)</legend>
+                    <legend class="form-label fs-6 mb-1">{{ 'Technical Expert(s)' | t: 'staff.coAllotment.dialog.experts.label' }}</legend>
                     @for (a of experts(); track a.userId) {
                       <div class="form-check">
                         <input type="checkbox" class="form-check-input expert" [id]="'te-' + a.userId" [checked]="f.technicalExpertIds.includes(a.userId)" (change)="toggle(f.technicalExpertIds, a.userId)" />
                         <label class="form-check-label" [for]="'te-' + a.userId">{{ a.userName }} ({{ a.userId }})</label>
                       </div>
                     } @empty {
-                      <small class="text-muted">No technical experts.</small>
+                      <small class="text-muted">{{ 'No technical experts.' | t: 'staff.coAllotment.dialog.experts.empty' }}</small>
                     }
                   </fieldset>
                 </div>
@@ -192,8 +199,8 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
               }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
-              <button type="button" class="btn btn-primary submit" [disabled]="busy()" (click)="allot(f)">Allot</button>
+              <button type="button" class="btn btn-light" (click)="close()">{{ 'Cancel' | t: 'staff.coAllotment.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary submit" [disabled]="busy()" (click)="allot(f)">{{ 'Allot' | t: 'staff.coAllotment.dialog.allotButton' }}</button>
             </div>
           </div>
         </div>
@@ -210,7 +217,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
       <div class="loadingdiv" role="status" aria-live="polite">
         <div class="text-center text-white">
           <div class="spinner-border text-light"></div>
-          <div><small>Please wait ...</small></div>
+          <div><small>{{ 'Please wait ...' | t: 'staff.coAllotment.wait.text' }}</small></div>
         </div>
       </div>
     }
@@ -238,7 +245,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
 export class CoAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly toast = inject(ToastService);
-  protected readonly crumbs = staffCrumbs({ label: 'Allot Consultancy' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.coAllotment.title', 'Allot Consultancy') }));
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
   private readonly router = inject(Router);
 
@@ -249,8 +256,11 @@ export class CoAllotmentPage {
 
   /** The row menu: the details, the profile, and Reject (before the first allotment, once). */
   protected menu(s: Row): RowMenuItem[] {
-    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
-    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: 'Reject', danger: true });
+    const items: RowMenuItem[] = [
+      { key: 'details', label: t('staff.coAllotment.menu.details.label', 'View details'), icon: 'eye' },
+      { key: 'profile', label: t('staff.coAllotment.menu.profile.label', 'View MSME profile'), icon: 'people' },
+    ];
+    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: t('staff.coAllotment.menu.reject.label', 'Reject'), danger: true });
     return items;
   }
 
@@ -263,16 +273,16 @@ export class CoAllotmentPage {
     const rows = this.units();
     const by = (k: string) => rows.filter((r) => this.stageOf(r) === k).length;
     return [
-      { key: 'all', label: 'All milestones', value: rows.length },
-      { key: 'waiting', label: 'Waiting for allotment', value: by('waiting'), tone: 'warn' },
-      { key: 'allotted', label: 'Allotted', value: by('allotted'), tone: 'good' },
-      { key: 'rejected', label: 'Rejected', value: by('rejected'), tone: 'bad' },
+      { key: 'all', label: t('staff.coAllotment.count.all.label', 'All milestones'), value: rows.length },
+      { key: 'waiting', label: t('staff.coAllotment.count.waiting.label', 'Waiting for allotment'), value: by('waiting'), tone: 'warn' },
+      { key: 'allotted', label: t('staff.coAllotment.count.allotted.label', 'Allotted'), value: by('allotted'), tone: 'good' },
+      { key: 'rejected', label: t('staff.coAllotment.count.rejected.label', 'Rejected'), value: by('rejected'), tone: 'bad' },
     ];
   });
   protected readonly milestoneChips = computed<FilterChip[]>(() => {
     const rows = this.units();
-    return [{ key: '', label: 'All', count: rows.length },
-      ...['1', '2', '3'].map((m) => ({ key: m, label: 'Milestone ' + m, count: rows.filter((r) => String(r['NcCount'] ?? '') === m).length }))];
+    return [{ key: '', label: t('staff.coAllotment.milestone.all.chip', 'All'), count: rows.length },
+      ...['1', '2', '3'].map((m) => ({ key: m, label: t('staff.coAllotment.milestone.chip', 'Milestone {number}', { number: m }), count: rows.filter((r) => String(r['NcCount'] ?? '') === m).length }))];
   });
   /** The search box above the list (any column). Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly search = signal('');
@@ -309,17 +319,17 @@ export class CoAllotmentPage {
 
   protected rejectAsk(s: Row): ConfirmAsk {
     return {
-      title: 'Reject unit?',
-      message: `${this.str(s['ZedId'])} (${this.str(s['Certification'])}, Milestone ${this.str(s['NcCount'])}) goes back to the ZED team with your reason.`,
-      confirmLabel: 'Reject',
+      title: t('staff.coAllotment.reject.title', 'Reject unit?'),
+      message: t('staff.coAllotment.reject.message', '{zedId} ({level}, Milestone {number}) goes back to the ZED team with your reason.',
+        { zedId: this.str(s['ZedId']), level: this.str(s['Certification']), number: this.str(s['NcCount']) }),
+      confirmLabel: t('staff.coAllotment.reject.confirmButton', 'Reject'),
       danger: true,
-      reason: { label: 'Reason for rejection', maxLength: 100, requiredMessage: 'Please enter the reason for rejection.' },
+      reason: { label: t('staff.coAllotment.reject.reasonLabel', 'Reason for rejection'), maxLength: 100,
+        requiredMessage: t('staff.coAllotment.reject.reasonRequired.message', 'Please enter the reason for rejection.') },
     };
   }
 
-  protected stageLabel(milestone: number): string {
-    return STAGE_LABEL[milestone] ?? STAGE_LABEL[1];
-  }
+  protected readonly stageLabel = stageLabel;
 
   protected async load(): Promise<void> {
     this.busy.set(true);
@@ -374,11 +384,11 @@ export class CoAllotmentPage {
   protected async allot(f: CoForm): Promise<void> {
     const hap = f.milestone === 1;
     if (!f.leadConsultantId || !f.bdsFromDate || !f.bdsToDate || (hap && (!f.hapFromDate || !f.hapToDate))) {
-      this.formError.set('Please select required data.');
+      this.formError.set(t('staff.coAllotment.dialog.required.error', 'Please select required data.'));
       return;
     }
     if (f.bdsToDate < f.bdsFromDate || (hap && f.hapToDate < f.hapFromDate)) {
-      this.formError.set('The To date cannot be before the From date.');
+      this.formError.set(t('staff.coAllotment.dialog.dates.error', 'The To date cannot be before the From date.'));
       return;
     }
     this.busy.set(true);
@@ -399,7 +409,8 @@ export class CoAllotmentPage {
       );
       this.form.set(null);
       const lead = this.consultants().find((a) => a.userId === f.leadConsultantId)?.userName;
-      this.toast.success(`${f.unit['ZedId']} allotted`, lead ? `Lead consultant: ${lead}.` : null);
+      this.toast.success(t('staff.coAllotment.toast.allotted', '{zedId} allotted', { zedId: f.unit['ZedId'] }),
+        lead ? t('staff.coAllotment.toast.allottedLead', 'Lead consultant: {name}.', { name: lead }) : null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;
@@ -411,7 +422,7 @@ export class CoAllotmentPage {
 
   protected async reject(unit: Row, reason: string): Promise<void> {
     if (!reason.trim()) {
-      this.formError.set('Please enter the reason for rejection.');
+      this.formError.set(t('staff.coAllotment.reject.reasonRequired.message', 'Please enter the reason for rejection.'));
       return;
     }
     this.busy.set(true);
@@ -419,7 +430,7 @@ export class CoAllotmentPage {
     try {
       await firstValueFrom(this.api.coReject(String(unit['ZedId']), String(unit['Certification']), reason.trim()));
       this.rejectFor.set(null);
-      this.toast.success(`${unit['ZedId']} rejected`);
+      this.toast.success(t('staff.coAllotment.toast.rejected', '{zedId} rejected', { zedId: unit['ZedId'] }));
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

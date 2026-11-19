@@ -1,7 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
 import { PagedView, PagerComponent, searchRows } from '../pager';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
@@ -14,37 +15,37 @@ import { staffCrumbs } from '../staff-crumbs';
  * (SP_GET_API_INCENTIVES, which also lists technology upgradation reimbursements from ZED_CONSULTANT).
  * <p>2026-11-17 (approved staff redesign, "same look"): the page head, the count, the filters in one bar, the list in one card
  * with the light header.</p>
+ * <p>2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.incentiveSubmissions.*) or the standard one here.</p>
  */
 @Component({
   selector: 'zed-staff-incentive-submissions',
-  imports: [FormsModule, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts],
+  imports: [FormsModule, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['incentive-submissions']" />
-    <zed-page-head [crumbs]="crumbs" title="API Incentives Submitted"
-                   subtitle="Incentives disbursed to the units, as reported by the ministries' APIs and technology upgradation reimbursements.">
-      <button type="button" class="btn btn-ph" (click)="search()">Refresh</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="'API Incentives Submitted' | t: 'staff.incentiveSubmissions.title'" [subtitle]="subtitle()">
+      <button type="button" class="btn btn-ph" (click)="search()">{{ 'Refresh' | t: 'staff.incentiveSubmissions.refreshButton' }}</button>
     </zed-page-head>
-    <zed-list-counts [counts]="[{ label: 'Submissions', value: rows().length }]" class="is-counts" />
+    <zed-list-counts [counts]="counts()" class="is-counts" />
     <form class="zed-card is-filters" (ngSubmit)="search()">
-      <select id="incState" name="state" class="form-select" aria-label="State" [(ngModel)]="filter.state">
-        <option value="">All states</option>
+      <select id="incState" name="state" class="form-select" [attr.aria-label]="'State' | t: 'staff.incentiveSubmissions.filter.stateAria'" [(ngModel)]="filter.state">
+        <option value="">{{ 'All states' | t: 'staff.incentiveSubmissions.filter.allStates' }}</option>
         @for (s of states; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
       </select>
-      <select id="incCert" name="certification" class="form-select" aria-label="Certification level" [(ngModel)]="filter.certification">
-        <option value="">All levels</option>
+      <select id="incCert" name="certification" class="form-select" [attr.aria-label]="'Certification level' | t: 'staff.incentiveSubmissions.filter.levelAria'" [(ngModel)]="filter.certification">
+        <option value="">{{ 'All levels' | t: 'staff.incentiveSubmissions.filter.allLevels' }}</option>
         <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
       </select>
-      <select id="incSize" name="msmeSize" class="form-select" aria-label="MSME size" [(ngModel)]="filter.msmeSize">
-        <option value="">All sizes</option>
-        <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
+      <select id="incSize" name="msmeSize" class="form-select" [attr.aria-label]="'MSME size' | t: 'staff.incentiveSubmissions.filter.sizeAria'" [(ngModel)]="filter.msmeSize">
+        <option value="">{{ 'All sizes' | t: 'staff.incentiveSubmissions.filter.allSizes' }}</option>
+        <option value="Micro">{{ 'Micro' | t: 'staff.incentiveSubmissions.size.micro' }}</option><option value="Small">{{ 'Small' | t: 'staff.incentiveSubmissions.size.small' }}</option><option value="Medium">{{ 'Medium' | t: 'staff.incentiveSubmissions.size.medium' }}</option>
       </select>
-      <select id="incGender" name="gender" class="form-select" aria-label="Gender" [(ngModel)]="filter.gender">
-        <option value="">All genders</option>
-        <option value="male">Male</option><option value="female">Female</option><option value="Others">Others</option>
+      <select id="incGender" name="gender" class="form-select" [attr.aria-label]="'Gender' | t: 'staff.incentiveSubmissions.filter.genderAria'" [(ngModel)]="filter.gender">
+        <option value="">{{ 'All genders' | t: 'staff.incentiveSubmissions.filter.allGenders' }}</option>
+        <option value="male">{{ 'Male' | t: 'staff.incentiveSubmissions.gender.male' }}</option><option value="female">{{ 'Female' | t: 'staff.incentiveSubmissions.gender.female' }}</option><option value="Others">{{ 'Others' | t: 'staff.incentiveSubmissions.gender.others' }}</option>
       </select>
-      <button type="submit" class="btn btn-primary">Search</button>
+      <button type="submit" class="btn btn-primary">{{ 'Search' | t: 'staff.incentiveSubmissions.searchButton' }}</button>
     </form>
 
     @if (error()) {
@@ -53,20 +54,20 @@ import { staffCrumbs } from '../staff-crumbs';
     @if (rows().length) {
       <div class="list-card">
       <div class="list-card-head">
-        <b>Submissions</b>
-        <input type="search" id="inc-sub-search" class="form-control is-q" maxlength="50" placeholder="Search submissions" aria-label="Search submissions"
+        <b>{{ 'Submissions' | t: 'staff.incentiveSubmissions.list.title' }}</b>
+        <input type="search" id="inc-sub-search" class="form-control is-q" maxlength="50" [placeholder]="'Search submissions' | t: 'staff.incentiveSubmissions.search.placeholder'" [attr.aria-label]="'Search submissions' | t: 'staff.incentiveSubmissions.search.placeholder'"
                [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" />
       </div>
       <div class="table-responsive">
         <table class="table table-zed">
           <thead>
             <tr>
-              <th class="text-center" style="width: 60px">S.No</th>
-              <th>Unit Name<br />State Name</th>
-              <th class="text-center">Udyam No.<br />Application Id</th>
-              <th>Service Name<br />Incentive Name</th>
-              <th class="text-center">Certification<br />Enterprise Type<br />Gender</th>
-              <th class="text-center">Disbursed Date<br />Disbursed Amount</th>
+              <th class="text-center" style="width: 60px">{{ 'S.No' | t: 'staff.incentiveSubmissions.column.serial' }}</th>
+              <th>{{ 'Unit Name' | t: 'staff.incentiveSubmissions.column.unit' }}<br />{{ 'State Name' | t: 'staff.incentiveSubmissions.column.state' }}</th>
+              <th class="text-center">{{ 'Udyam No.' | t: 'staff.incentiveSubmissions.column.udyam' }}<br />{{ 'Application Id' | t: 'staff.incentiveSubmissions.column.applicationId' }}</th>
+              <th>{{ 'Service Name' | t: 'staff.incentiveSubmissions.column.service' }}<br />{{ 'Incentive Name' | t: 'staff.incentiveSubmissions.column.incentive' }}</th>
+              <th class="text-center">{{ 'Certification' | t: 'staff.incentiveSubmissions.column.certification' }}<br />{{ 'Enterprise Type' | t: 'staff.incentiveSubmissions.column.enterpriseType' }}<br />{{ 'Gender' | t: 'staff.incentiveSubmissions.column.gender' }}</th>
+              <th class="text-center">{{ 'Disbursed Date' | t: 'staff.incentiveSubmissions.column.disbursedDate' }}<br />{{ 'Disbursed Amount' | t: 'staff.incentiveSubmissions.column.disbursedAmount' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -89,7 +90,7 @@ import { staffCrumbs } from '../staff-crumbs';
       <div class="label-highlight4">
         <div class="no-incentive-block">
           <img src="Images/svgicons/no-incentive.svg" alt="" />
-          <p>No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.</p>
+          <p>{{ 'No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.' | t: 'staff.incentiveSubmissions.empty' }}</p>
         </div>
       </div>
     }
@@ -111,7 +112,10 @@ import { staffCrumbs } from '../staff-crumbs';
 })
 export class IncentiveSubmissionsPage {
   private readonly api = inject(IncentivesApi);
-  protected readonly crumbs = staffCrumbs({ label: 'Incentive Submissions' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.incentiveSubmissions.crumb', 'Incentive Submissions') }));
+  protected readonly subtitle = computed(() =>
+    t('staff.incentiveSubmissions.sub', 'Incentives disbursed to the units, as reported by the ministries\' APIs and technology upgradation reimbursements.'));
+  protected readonly counts = computed(() => [{ label: t('staff.incentiveSubmissions.count.submissions', 'Submissions'), value: this.rows().length }]);
   protected readonly states = STATES;
   protected readonly filter: IncentiveFilter = { state: '', certification: '', msmeSize: '', gender: '' };
   protected readonly rows = signal<Row[]>([]);

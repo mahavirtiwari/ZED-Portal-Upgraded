@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, input, output, signal, untracked } from '@angular/core';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Who answers: the desktop assessor, the lead site assessor, or the handholding consultant (baseline, progress reviews). */
 export type CheckpointStage = 'Desktop' | 'Site' | 'Baseline' | 'Review1' | 'Review2';
@@ -76,13 +77,29 @@ export const CHECKPOINT_CHIP_STYLES = `
 
 const VALUES: readonly CheckpointValue[] = ['Yes', 'Partial', 'No'];
 
-const TITLES: Record<CheckpointStage, string> = {
-  Desktop: 'Desktop assessment',
-  Site: 'Site assessment',
-  Baseline: 'Baseline',
-  Review1: 'Progress Review 1',
-  Review2: 'Progress Review 2',
-};
+/** The shown name of a stage. */
+function stageName(stage: CheckpointStage): string {
+  switch (stage) {
+    case 'Desktop': return t('staff.checkpointDialog.stage.desktopLabel', 'Desktop assessment');
+    case 'Site': return t('staff.checkpointDialog.stage.siteLabel', 'Site assessment');
+    case 'Baseline': return t('staff.checkpointDialog.stage.baselineLabel', 'Baseline');
+    case 'Review1': return t('staff.checkpointDialog.stage.review1Label', 'Progress Review 1');
+    default: return t('staff.checkpointDialog.stage.review2Label', 'Progress Review 2');
+  }
+}
+
+/** The shown word of an answer (the code value stays Yes / Partial / No). */
+function valueName(v: CheckpointValue): string {
+  return v === 'Yes' ? t('staff.checkpointDialog.answer.yesLabel', 'Yes') : v === 'Partial' ? t('staff.checkpointDialog.answer.partialLabel', 'Partial')
+    : t('staff.checkpointDialog.answer.noLabel', 'No');
+}
+
+/** "2 Yes" … for the result line. */
+function valueCount(v: CheckpointValue, count: number): string {
+  return v === 'Yes' ? t('staff.checkpointDialog.result.yesCount', '{count} Yes', { count })
+    : v === 'Partial' ? t('staff.checkpointDialog.result.partialCount', '{count} Partial', { count })
+      : t('staff.checkpointDialog.result.noCount', '{count} No', { count });
+}
 
 /**
  * Yes / Partial / No for each checkpoint of a requirement (desktop assessment, remote / site assessment, handholding):
@@ -91,7 +108,7 @@ const TITLES: Record<CheckpointStage, string> = {
  */
 @Component({
   selector: 'zed-checkpoint-dialog',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, TextPipe],
   template: `
     <ng-template #body>
             @for (c of checkpoints(); track c.id; let i = $index) {
@@ -99,27 +116,28 @@ const TITLES: Record<CheckpointStage, string> = {
               <section class="cp" [attr.data-checkpoint]="c.optionCode">
                 <div class="cp-top">
                   <div class="cp-q"><b>{{ c.optionCode }}.</b> {{ c.text }}</div>
-                  <div class="cp-seg" role="radiogroup" [attr.aria-label]="'Answer of checkpoint ' + c.optionCode">
+                  <div class="cp-seg" role="radiogroup" [attr.aria-label]="'Answer of checkpoint {code}' | t: 'staff.checkpointDialog.answerAria' : { code: c.optionCode }">
                     @for (v of values; track v) {
                       <label class="cp-opt" [class.on]="e?.answer === v" [attr.data-v]="v">
-                        <input type="radio" [name]="'cp' + c.id" [value]="v" [checked]="e?.answer === v" (change)="set(i, { answer: v })" />{{ v }}
+                        <input type="radio" [name]="'cp' + c.id" [value]="v" [checked]="e?.answer === v" (change)="set(i, { answer: v })" />{{ valueName(v) }}
                       </label>
                     }
                   </div>
                 </div>
                 @for (p of prior(c); track p.label) {
-                  <div class="cp-prior">{{ p.label }}: <span class="cp-chip" [attr.data-v]="p.value">{{ p.value }}</span></div>
+                  <div class="cp-prior">{{ p.label }}: <span class="cp-chip" [attr.data-v]="p.value">{{ valueName(p.value) }}</span></div>
                 }
                 @if (c.evidences.length) {
                   <div class="cp-box ev">
-                    <h6>{{ handholding() ? 'Evidence to see (for Yes)' : 'Evidence (for Yes)' }}</h6>
+                    <h6>{{ handholding() ? ('Evidence to see (for Yes)' | t: 'staff.checkpointDialog.evidence.handholdingHeading') : ('Evidence (for Yes)' | t: 'staff.checkpointDialog.evidence.heading') }}</h6>
                     @for (ev of c.evidences; track ev.id) {
                       <div class="cp-line">
-                        <span class="cp-tag" [class.m]="ev.mandatory">{{ ev.mandatory ? 'Mandatory' : 'Optional' }}</span>
+                        <span class="cp-tag" [class.m]="ev.mandatory">{{ ev.mandatory ? ('Mandatory' | t: 'staff.checkpointDialog.evidence.mandatoryLabel') : ('Optional' | t: 'staff.checkpointDialog.evidence.optionalLabel') }}</span>
                         <span>{{ ev.name }}</span>
                         @if (!handholding()) {
                           <span class="cp-state" [class.bad]="!ev.uploaded || ev.verified === 'No'">
-                            {{ !ev.uploaded ? 'not uploaded' : ev.verified === 'Yes' ? 'verified' : ev.verified === 'No' ? 'not verified' : 'uploaded' }}
+                            {{ !ev.uploaded ? ('not uploaded' | t: 'staff.checkpointDialog.evidence.notUploadedLabel') : ev.verified === 'Yes' ? ('verified' | t: 'staff.checkpointDialog.evidence.verifiedLabel')
+                              : ev.verified === 'No' ? ('not verified' | t: 'staff.checkpointDialog.evidence.notVerifiedLabel') : ('uploaded' | t: 'staff.checkpointDialog.evidence.uploadedLabel') }}
                           </span>
                         }
                       </div>
@@ -130,15 +148,15 @@ const TITLES: Record<CheckpointStage, string> = {
                   @if (!review()) {
                     <div class="cp-box act">
                       @if (c.actions.length) {
-                        <h6>Actions needed – tick the ones that apply</h6>
+                        <h6>{{ 'Actions needed – tick the ones that apply' | t: 'staff.checkpointDialog.actions.heading' }}</h6>
                         @for (a of c.actions; track a) {
                           <label class="cp-line cp-check">
                             <input type="checkbox" [checked]="e.actions.includes(a)" (change)="toggle(i, a)" /> {{ a }}
                           </label>
                         }
                       }
-                      <textarea class="form-control cp-remark" rows="2" maxlength="1000" [attr.aria-label]="'Remark on checkpoint ' + c.optionCode"
-                        [placeholder]="c.actions.length ? 'Remark (optional)' : 'What is needed (required)'" [value]="e.remarks" (input)="remark(i, $event)"></textarea>
+                      <textarea class="form-control cp-remark" rows="2" maxlength="1000" [attr.aria-label]="'Remark on checkpoint {code}' | t: 'staff.checkpointDialog.remarkAria' : { code: c.optionCode }"
+                        [placeholder]="c.actions.length ? ('Remark (optional)' | t: 'staff.checkpointDialog.remark.optionalPlaceholder') : ('What is needed (required)' | t: 'staff.checkpointDialog.remark.requiredPlaceholder')" [value]="e.remarks" (input)="remark(i, $event)"></textarea>
                     </div>
                   }
                 }
@@ -146,12 +164,12 @@ const TITLES: Record<CheckpointStage, string> = {
             }
             @if (!handholding()) {
               <div class="cp-result" [class.ok]="conforming()" [hidden]="!allAnswered()">
-                Requirement result: <b>{{ conforming() ? 'Conforming' : 'Not conforming' }}</b>
+                {{ 'Requirement result:' | t: 'staff.checkpointDialog.result.label' }} <b>{{ conforming() ? ('Conforming' | t: 'staff.checkpointDialog.result.conformingText') : ('Not conforming' | t: 'staff.checkpointDialog.result.notConformingText') }}</b>
                 <small>{{ counts() }}</small>
               </div>
-              <label class="cp-label" for="cpRemarks">Remarks for the unit</label>
+              <label class="cp-label" for="cpRemarks">{{ 'Remarks for the unit' | t: 'staff.checkpointDialog.remarks.label' }}</label>
               <textarea id="cpRemarks" class="form-control" rows="3" maxlength="2000" [value]="remarks()" (input)="remarks.set(value($event))"
-                placeholder="Optional. If empty and not conforming, the actions ticked are written as the remarks."></textarea>
+                [placeholder]="'Optional. If empty and not conforming, the actions ticked are written as the remarks.' | t: 'staff.checkpointDialog.remarks.placeholder'"></textarea>
             }
             @if (problem() || error()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ problem() || error() }}</div> }
     </ng-template>
@@ -160,7 +178,7 @@ const TITLES: Record<CheckpointStage, string> = {
       <div class="cp-inline" data-checkpoints-inline>
         <ng-container [ngTemplateOutlet]="body" />
         <div class="cp-inline-actions">
-          <input type="button" class="btn btn-primary btn-sm" value="Save Checkpoints" [disabled]="busy()" (click)="submit()" />
+          <input type="button" class="btn btn-primary btn-sm" [attr.value]="'Save Checkpoints' | t: 'staff.checkpointDialog.saveButton'" [disabled]="busy()" (click)="submit()" />
         </div>
       </div>
     } @else {
@@ -169,17 +187,17 @@ const TITLES: Record<CheckpointStage, string> = {
         <div class="modal-content">
           <div class="modal-header justify-content-between">
             <div>
-              <h5 class="modal-title" id="cpTitle">Checkpoints · {{ stageTitle() }}</h5>
+              <h5 class="modal-title" id="cpTitle">{{ 'Checkpoints · {stage}' | t: 'staff.checkpointDialog.title' : { stage: stageTitle() } }}</h5>
               <small class="cp-sub">{{ title() }}</small>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.checkpointDialog.closeAria'" (click)="closed.emit()"></button>
           </div>
           <div class="modal-body">
             <ng-container [ngTemplateOutlet]="body" />
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="Cancel" (click)="closed.emit()" />
-            <input type="button" class="btn btn-primary" value="Submit" [disabled]="busy()" (click)="submit()" />
+            <input type="button" class="btn btn-default" [attr.value]="'Cancel' | t: 'staff.checkpointDialog.cancelButton'" (click)="closed.emit()" />
+            <input type="button" class="btn btn-primary" [attr.value]="'Submit' | t: 'staff.checkpointDialog.submitButton'" [disabled]="busy()" (click)="submit()" />
           </div>
         </div>
       </div>
@@ -240,16 +258,17 @@ export class CheckpointDialog {
   readonly closed = output<void>();
 
   protected readonly values = VALUES;
+  protected readonly valueName = valueName;
   protected readonly edits = signal<Edit[]>([]);
   protected readonly remarks = signal('');
   protected readonly problem = signal('');
-  protected readonly stageTitle = computed(() => TITLES[this.stage()]);
+  protected readonly stageTitle = computed(() => stageName(this.stage()));
   protected readonly handholding = computed(() => ['Baseline', 'Review1', 'Review2'].includes(this.stage()));
   protected readonly review = computed(() => this.stage() === 'Review1' || this.stage() === 'Review2');
   protected readonly allAnswered = computed(() => this.edits().length > 0 && this.edits().every((e) => e.answer));
   protected readonly conforming = computed(() => this.edits().every((e) => e.answer === 'Yes'));
   protected readonly counts = computed(() =>
-    VALUES.map((v) => [v, this.edits().filter((e) => e.answer === v).length] as const).filter(([, n]) => n > 0).map(([v, n]) => `${n} ${v}`).join(' · '));
+    VALUES.map((v) => [v, this.edits().filter((e) => e.answer === v).length] as const).filter(([, n]) => n > 0).map(([v, n]) => valueCount(v, n)).join(' · '));
 
   constructor() {
     // Each checkpoint starts with the answer already given at this stage.
@@ -267,9 +286,9 @@ export class CheckpointDialog {
   protected prior(c: Checkpoint): { label: string; value: CheckpointValue }[] {
     const stage = this.stage();
     const list: { label: string; value: CheckpointValue | null | undefined }[] =
-      stage === 'Site' ? [{ label: 'Desktop assessor', value: c.desktop?.value }]
-        : stage === 'Review1' ? [{ label: 'Baseline', value: c.baseline?.value }]
-          : stage === 'Review2' ? [{ label: 'Baseline', value: c.baseline?.value }, { label: 'Progress Review 1', value: c.review1 }]
+      stage === 'Site' ? [{ label: t('staff.checkpointDialog.prior.desktopLabel', 'Desktop assessor'), value: c.desktop?.value }]
+        : stage === 'Review1' ? [{ label: stageName('Baseline'), value: c.baseline?.value }]
+          : stage === 'Review2' ? [{ label: stageName('Baseline'), value: c.baseline?.value }, { label: stageName('Review1'), value: c.review1 }]
             : [];
     return list.filter((p): p is { label: string; value: CheckpointValue } => !!p.value);
   }
@@ -312,17 +331,17 @@ export class CheckpointDialog {
     const assessment = !this.handholding();
     for (const [i, c] of this.checkpoints().entries()) {
       const e = this.edits()[i];
-      const name = `Checkpoint ${c.optionCode}`;
-      if (!e?.answer) return `${name}: please choose Yes, Partial or No.`;
+      const code = c.optionCode;
+      if (!e?.answer) return t('staff.checkpointDialog.chooseError', 'Checkpoint {code}: please choose Yes, Partial or No.', { code });
       if (e.answer === 'Yes' && assessment) {
         const missing = c.evidences.find((ev) => ev.mandatory && !ev.uploaded);
-        if (missing) return `${name}: Yes needs every mandatory evidence; "${missing.name}" is not uploaded.`;
+        if (missing) return t('staff.checkpointDialog.notUploadedError', 'Checkpoint {code}: Yes needs every mandatory evidence; "{evidence}" is not uploaded.', { code, evidence: missing.name });
         const refused = c.evidences.find((ev) => ev.mandatory && ev.verified === 'No');
-        if (refused) return `${name}: Yes needs every mandatory evidence; "${refused.name}" was not verified.`;
+        if (refused) return t('staff.checkpointDialog.notVerifiedError', 'Checkpoint {code}: Yes needs every mandatory evidence; "{evidence}" was not verified.', { code, evidence: refused.name });
       }
       if (e.answer !== 'Yes' && !this.review()) {
-        if (c.actions.length && !c.actions.some((a) => e.actions.includes(a))) return `${name}: please tick the actions needed.`;
-        if (!c.actions.length && !e.remarks.trim()) return `${name}: please write what is needed.`;
+        if (c.actions.length && !c.actions.some((a) => e.actions.includes(a))) return t('staff.checkpointDialog.actionsError', 'Checkpoint {code}: please tick the actions needed.', { code });
+        if (!c.actions.length && !e.remarks.trim()) return t('staff.checkpointDialog.remarksError', 'Checkpoint {code}: please write what is needed.', { code });
       }
     }
     return '';

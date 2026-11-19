@@ -1,41 +1,42 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/Assessment/SaDetails.cshtml, laid out with the V4 blocks. -->
 <!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the tabs as pills below. -->
 <!-- 2026-11-17 (approved staff redesign): "Home > Milestone n > ZED ID" crumbs and the light head buttons. -->
+<!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.milestoneDetails.*). -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-ph" (click)="goBack()">Back</button>
-  <button type="button" class="btn btn-ph" (click)="refresh()">Refresh</button>
+  <button type="button" class="btn btn-ph" (click)="goBack()">{{ 'Back' | t: 'staff.milestoneDetails.backButton' }}</button>
+  <button type="button" class="btn btn-ph" (click)="refresh()">{{ 'Refresh' | t: 'staff.milestoneDetails.refreshButton' }}</button>
 </zed-page-head>
 @if (milestoneRow(1); as m1) {
   <zed-unit-facts [msme]="m1" [udyam]="t(m1, 'UdyogAadharNo')"
-                  [extra]="[{ label: 'Desired level', value: levelName(t(m1, 'Certification') || certification()) }, { label: 'Current milestone', value: milestone() ? milestone() + ' of 3' : '' }]" />
+                  [extra]="[{ label: ('Desired level' | t: 'staff.milestoneDetails.facts.levelLabel'), value: levelName(t(m1, 'Certification') || certification()) }, { label: ('Current milestone' | t: 'staff.milestoneDetails.facts.milestoneLabel'), value: milestone() ? ('{n} of 3' | t: 'staff.milestoneDetails.facts.milestoneValue' : { n: milestone() }) : '' }]" />
 }
 <!-- 2026-11-17: the confirmation of a bullet's deletion. -->
 @if (bulletToDelete()) {
-  <zed-confirm-dialog [ask]="{ title: 'Delete this item?', message: 'The item is removed from this milestone.', confirmLabel: 'Delete', danger: true }"
+  <zed-confirm-dialog [ask]="deleteAsk()"
                       (confirmed)="confirmDeleteBullet()" (cancel)="bulletToDelete.set(null)" />
 }
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">
     {{ error() }}
-    <a class="btn btn-link" routerLink="/staff">Back to home</a>
+    <a class="btn btn-link" routerLink="/staff">{{ 'Back to home' | t: 'staff.milestoneDetails.homeLink' }}</a>
   </div>
 }
 
 @if (notice(); as nt) {
   <div class="alert alert-dismissible" [class.alert-success]="nt.ok" [class.alert-danger]="!nt.ok" role="status">
     {{ nt.text }}
-    <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+    <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.milestoneDetails.closeAria'" (click)="notice.set(null)"></button>
   </div>
 }
 
-@if (loading() && !data()) { <p role="status">Loading…</p> }
+@if (loading() && !data()) { <p role="status">{{ 'Loading…' | t: 'staff.milestoneDetails.loadingText' }}</p> }
 
 @if (data(); as d) {
   <!-- 2026-11-16 (approved): what the CO asked the consultants to fix. -->
   @if (d.sentBack; as sb) {
     <div class="alert alert-warning" role="status" data-sent-back>
-      <strong>Sent back by the Consultant Organisation{{ sb.sentOn ? ' on ' + (sb.sentOn | date: 'd MMM yyyy') : '' }}:</strong>
+      <strong>{{ sb.sentOn ? ('Sent back by the Consultant Organisation on {date}:' | t: 'staff.milestoneDetails.sentBack.onTitle' : { date: (sb.sentOn | date: 'd MMM yyyy') }) : ('Sent back by the Consultant Organisation:' | t: 'staff.milestoneDetails.sentBack.title') }}</strong>
       <span class="d-block" style="white-space: pre-line">{{ sb.remarks }}</span>
     </div>
   }
@@ -63,35 +64,35 @@
             <table class="table table-zed details">
               <tbody>
                 @if (milestoneRow(1); as m1) {
-                  <tr><th class="w-40">ZEDID</th><td>{{ t(m1, 'ZedId') || d.zedId }}</td></tr>
-                  <tr><th class="w-40">Unit Name</th><td>{{ t(m1, 'PUnitName') }}</td></tr>
-                  <tr><th>Udyam Registration Number</th><td>{{ t(m1, 'UdyogAadharNo') }}</td></tr>
-                  <tr><th>Unit Address</th><td>{{ t(m1, 'PlantAddress') }}</td></tr>
-                  <tr><th>Existing Level of Certification</th><td>{{ t(m1, 'LastestCertification') }}</td></tr>
-                  <tr><th>Desired Level of Certification</th><td>{{ t(m1, 'Certification') || d.certification }}</td></tr>
+                  <tr><th class="w-40">{{ 'ZEDID' | t: 'staff.milestoneDetails.overview.zedIdLabel' }}</th><td>{{ t(m1, 'ZedId') || d.zedId }}</td></tr>
+                  <tr><th class="w-40">{{ 'Unit Name' | t: 'staff.milestoneDetails.overview.unitLabel' }}</th><td>{{ t(m1, 'PUnitName') }}</td></tr>
+                  <tr><th>{{ 'Udyam Registration Number' | t: 'staff.milestoneDetails.overview.udyamLabel' }}</th><td>{{ t(m1, 'UdyogAadharNo') }}</td></tr>
+                  <tr><th>{{ 'Unit Address' | t: 'staff.milestoneDetails.overview.addressLabel' }}</th><td>{{ t(m1, 'PlantAddress') }}</td></tr>
+                  <tr><th>{{ 'Existing Level of Certification' | t: 'staff.milestoneDetails.overview.existingLevelLabel' }}</th><td>{{ t(m1, 'LastestCertification') }}</td></tr>
+                  <tr><th>{{ 'Desired Level of Certification' | t: 'staff.milestoneDetails.overview.desiredLevelLabel' }}</th><td>{{ t(m1, 'Certification') || d.certification }}</td></tr>
                 }
                 @for (m of milestoneRows(); track $index; let i = $index) {
                   <tr>
-                    <th>Milestone {{ i + 1 }} Date</th>
+                    <th>{{ 'Milestone {n} Date' | t: 'staff.milestoneDetails.overview.milestoneDateLabel' : { n: i + 1 } }}</th>
                     <td>
                       @switch (i) {
                         @case (0) {
-                          BDSR From: {{ t(m, 'BdsFromDate') }} To: {{ t(m, 'BdsToDate') }}<br />
-                          HAP From: {{ t(m, 'HapFromDate') }} To: {{ t(m, 'HapToDate') }}
+                          {{ 'BDSR From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.bdsrDates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }}<br />
+                          {{ 'HAP From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.hapDates' : { from: t(m, 'HapFromDate'), to: t(m, 'HapToDate') } }}
                         }
-                        @case (1) { PR 1 From: {{ t(m, 'BdsFromDate') }} PR 1 To: {{ t(m, 'BdsToDate') }} }
-                        @default { PR 2 From: {{ t(m, 'BdsFromDate') }} To: {{ t(m, 'BdsToDate') }} }
+                        @case (1) { {{ 'PR 1 From: {from} PR 1 To: {to}' | t: 'staff.milestoneDetails.overview.review1Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }} }
+                        @default { {{ 'PR 2 From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.review2Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }} }
                       }
                     </td>
                   </tr>
-                  <tr><th>Milestone {{ i + 1 }} Completed on</th><td>{{ t(m, 'CertificationStatusDate') }}</td></tr>
-                  <tr><th>Milestone {{ i + 1 }} CO Name &amp; ID</th><td>{{ t(m, 'CertificationBodyUserId') }} - {{ t(m, 'AgencyName') }}</td></tr>
-                  <tr><th>Milestone {{ i + 1 }} Lead Consultant Name &amp; ID</th><td>{{ t(m, 'SiteAssessorId') }} - {{ t(m, 'SiteAssessorName') }}</td></tr>
+                  <tr><th>{{ 'Milestone {n} Completed on' | t: 'staff.milestoneDetails.overview.completedLabel' : { n: i + 1 } }}</th><td>{{ t(m, 'CertificationStatusDate') }}</td></tr>
+                  <tr><th>{{ 'Milestone {n} CO Name & ID' | t: 'staff.milestoneDetails.overview.coLabel' : { n: i + 1 } }}</th><td>{{ t(m, 'CertificationBodyUserId') }} - {{ t(m, 'AgencyName') }}</td></tr>
+                  <tr><th>{{ 'Milestone {n} Lead Consultant Name & ID' | t: 'staff.milestoneDetails.overview.leadLabel' : { n: i + 1 } }}</th><td>{{ t(m, 'SiteAssessorId') }} - {{ t(m, 'SiteAssessorName') }}</td></tr>
                   @if (t(m, 'CoAssessorId')) {
-                    <tr><th>Milestone {{ i + 1 }} Co-consultant Name &amp; ID</th><td>{{ t(m, 'CoAssessorId') }} - {{ t(m, 'CoAssessorName') }}</td></tr>
+                    <tr><th>{{ 'Milestone {n} Co-consultant Name & ID' | t: 'staff.milestoneDetails.overview.coConsultantLabel' : { n: i + 1 } }}</th><td>{{ t(m, 'CoAssessorId') }} - {{ t(m, 'CoAssessorName') }}</td></tr>
                   }
                   @if (t(m, 'TechExpert')) {
-                    <tr><th>Milestone {{ i + 1 }} Technical Expert Name &amp; ID</th><td>{{ t(m, 'TechExpert') }} - {{ t(m, 'TechExpertName') }}</td></tr>
+                    <tr><th>{{ 'Milestone {n} Technical Expert Name & ID' | t: 'staff.milestoneDetails.overview.expertLabel' : { n: i + 1 } }}</th><td>{{ t(m, 'TechExpert') }} - {{ t(m, 'TechExpertName') }}</td></tr>
                   }
                 }
               </tbody>
@@ -101,17 +102,17 @@
           <!-- The old page also drew a Google static map above each table; V4 links to the map instead. -->
           <div class="loc-grid">
             <div>
-              <p class="sub-heading">Location-ZED Certification</p>
+              <p class="sub-heading">{{ 'Location-ZED Certification' | t: 'staff.milestoneDetails.location.zedTitle' }}</p>
               <ng-container [ngTemplateOutlet]="location" [ngTemplateOutletContext]="{ lat: t(d.zedLocation, 'ZedSaLatitude'), lng: t(d.zedLocation, 'ZedSaLongitude') }" />
             </div>
             @for (loc of d.locations.slice(0, 3); track $index; let i = $index) {
               <div>
-                <p class="sub-heading">Location-Milestone {{ i + 1 }}</p>
+                <p class="sub-heading">{{ 'Location-Milestone {n}' | t: 'staff.milestoneDetails.location.milestoneTitle' : { n: i + 1 } }}</p>
                 <ng-container [ngTemplateOutlet]="location" [ngTemplateOutletContext]="{ lat: t(loc, 'SaLatitude'), lng: t(loc, 'SaLongitude') }" />
               </div>
             } @empty {
               <div>
-                <p class="sub-heading">Location-Milestone 1</p>
+                <p class="sub-heading">{{ 'Location-Milestone {n}' | t: 'staff.milestoneDetails.location.milestoneTitle' : { n: 1 } }}</p>
                 <ng-container [ngTemplateOutlet]="location" [ngTemplateOutletContext]="{ lat: '', lng: '' }" />
               </div>
             }
@@ -122,13 +123,13 @@
       <!-- ================================================= consultancy plan -->
       @if (tab() === 2) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="block-title">Consultancy Plan</h4>
+          <h4 class="block-title">{{ 'Consultancy Plan' | t: 'staff.milestoneDetails.plan.title' }}</h4>
           @for (pl of d.sections; track $index) {
             <div class="plan-card">
-              <p class="sub-heading mb-1">Parameter</p>
+              <p class="sub-heading mb-1">{{ 'Parameter' | t: 'staff.milestoneDetails.plan.parameterTitle' }}</p>
               <p class="plan-param">{{ t(pl, 'SectionsOrder') || t(pl, 'SectionCode') }}. {{ t(pl, 'SectionName') }}</p>
               @for (a of allotmentsOf(pl); track $index) {
-                <h6 class="consultancy-milestone">Milestone {{ t(a, 'NcCount') }}: <span>{{ t(a, 'AllotedAssessorName') }} - {{ t(a, 'AssessorRank') }}</span></h6>
+                <h6 class="consultancy-milestone">{{ 'Milestone {n}:' | t: 'staff.milestoneDetails.plan.milestoneLabel' : { n: t(a, 'NcCount') } }} <span>{{ t(a, 'AllotedAssessorName') }} - {{ t(a, 'AssessorRank') }}</span></h6>
               }
             </div>
           }
@@ -143,25 +144,25 @@
             <div class="table-responsive">
               <table class="table table-zed table-bordered">
                 <thead>
-                  <tr class="text-center"><th>MileStone</th><th>Day</th><th>Date</th><th>Punch-In</th><th>Punch-Out</th><th>No. of Hours</th><th>Punch-In Selfie</th><th>Punch-Out Selfie</th></tr>
+                  <tr class="text-center"><th>{{ 'MileStone' | t: 'staff.milestoneDetails.attendance.column.milestone' }}</th><th>{{ 'Day' | t: 'staff.milestoneDetails.attendance.column.day' }}</th><th>{{ 'Date' | t: 'staff.milestoneDetails.attendance.column.date' }}</th><th>{{ 'Punch-In' | t: 'staff.milestoneDetails.attendance.column.in' }}</th><th>{{ 'Punch-Out' | t: 'staff.milestoneDetails.attendance.column.out' }}</th><th>{{ 'No. of Hours' | t: 'staff.milestoneDetails.attendance.column.hours' }}</th><th>{{ 'Punch-In Selfie' | t: 'staff.milestoneDetails.attendance.column.inSelfie' }}</th><th>{{ 'Punch-Out Selfie' | t: 'staff.milestoneDetails.attendance.column.outSelfie' }}</th></tr>
                 </thead>
                 <tbody>
                   @for (a of attendanceOf(c); track $index) {
                     <tr class="text-center">
                       <td>{{ t(a, 'MileStoneNo') }}</td>
-                      <td>Day {{ t(a, 'RowNumber') }}</td>
+                      <td>{{ 'Day {n}' | t: 'staff.milestoneDetails.attendance.dayText' : { n: t(a, 'RowNumber') } }}</td>
                       <td>{{ t(a, 'TimeStamps') }}</td>
                       <td>{{ t(a, 'LoginTime') }}</td>
                       <td>{{ t(a, 'LogoutTime') }}</td>
-                      <td>{{ t(a, 'NoOfHours') }} Hours ({{ t(a, 'NoOfMinutes') }} Minutes)</td>
+                      <td>{{ '{hours} Hours ({minutes} Minutes)' | t: 'staff.milestoneDetails.attendance.hoursText' : { hours: t(a, 'NoOfHours'), minutes: t(a, 'NoOfMinutes') } }}</td>
                       <td>
                         @if (a['LoginPhotoUrl']) {
-                          <button type="button" class="btn btn-link p-0" (click)="openImage($any(a['LoginPhotoUrl']))"><img class="selfie" [src]="a['LoginPhotoUrl']" alt="Login Selfie" width="50" height="50" /></button>
+                          <button type="button" class="btn btn-link p-0" (click)="openImage($any(a['LoginPhotoUrl']))"><img class="selfie" [src]="a['LoginPhotoUrl']" [alt]="'Login Selfie' | t: 'staff.milestoneDetails.attendance.inSelfieAlt'" width="50" height="50" /></button>
                         }
                       </td>
                       <td>
                         @if (a['LogoutPhotoUrl']) {
-                          <button type="button" class="btn btn-link p-0" (click)="openImage($any(a['LogoutPhotoUrl']))"><img class="selfie" [src]="a['LogoutPhotoUrl']" alt="Logout Selfie" width="50" height="50" /></button>
+                          <button type="button" class="btn btn-link p-0" (click)="openImage($any(a['LogoutPhotoUrl']))"><img class="selfie" [src]="a['LogoutPhotoUrl']" [alt]="'Logout Selfie' | t: 'staff.milestoneDetails.attendance.outSelfieAlt'" width="50" height="50" /></button>
                         }
                       </td>
                     </tr>
@@ -177,7 +178,7 @@
       @if (tab() === 4) {
         <div class="tab-pane fade show active" role="tabpanel">
           @for (m of d.openMeetings; track $index) {
-            <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m, photoTitle: 'Opening Meeting Photo:' }" />
+            <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m, photoTitle: ('Opening Meeting Photo:' | t: 'staff.milestoneDetails.meeting.openingPhotoTitle') }" />
           }
         </div>
       }
@@ -185,11 +186,11 @@
       <!-- ================================================= consultants selfie -->
       @if (tab() === 5) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="block-title">Selfies</h4>
+          <h4 class="block-title">{{ 'Selfies' | t: 'staff.milestoneDetails.selfies.title' }}</h4>
           <div class="milestone-border">
             @for (om of d.openMeetings; track $index) {
               <!-- The old page coloured every milestone as milestone 1 here. -->
-              <ng-container [ngTemplateOutlet]="photoTable" [ngTemplateOutletContext]="{ css: 'milestone-1', title: 'Milestone ' + (om.ncCount ?? ''), photos: byMilestone(d.selfies, om.ncCount) }" />
+              <ng-container [ngTemplateOutlet]="photoTable" [ngTemplateOutletContext]="{ css: 'milestone-1', title: ('Milestone {n}' | t: 'staff.milestoneDetails.milestoneText' : { n: om.ncCount ?? '' }), photos: byMilestone(d.selfies, om.ncCount) }" />
             }
           </div>
         </div>
@@ -198,10 +199,10 @@
       <!-- ================================================= basic information -->
       @if (tab() === 6) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="block-title">Site Exterior Photos</h4>
+          <h4 class="block-title">{{ 'Site Exterior Photos' | t: 'staff.milestoneDetails.siteExterior.title' }}</h4>
           <div class="milestone-border">
             @for (om of d.openMeetings; track $index) {
-              <ng-container [ngTemplateOutlet]="photoTable" [ngTemplateOutletContext]="{ css: 'milestone-' + (om.ncCount ?? ''), title: 'Milestone ' + (om.ncCount ?? ''), photos: byMilestone(d.siteExterior, om.ncCount) }" />
+              <ng-container [ngTemplateOutlet]="photoTable" [ngTemplateOutletContext]="{ css: 'milestone-' + (om.ncCount ?? ''), title: ('Milestone {n}' | t: 'staff.milestoneDetails.milestoneText' : { n: om.ncCount ?? '' }), photos: byMilestone(d.siteExterior, om.ncCount) }" />
             }
           </div>
 
@@ -211,7 +212,7 @@
               @for (b of d.basicInformation; track $index) {
                 <table class="table table-bordered table-zed ms-table">
                   <tr>
-                    <td rowspan="3" [class]="'milestone-' + t(b, 'NcCount')"><p>Milestone {{ t(b, 'NcCount') }}</p></td>
+                    <td rowspan="3" [class]="'milestone-' + t(b, 'NcCount')"><p>{{ 'Milestone {n}' | t: 'staff.milestoneDetails.milestoneText' : { n: t(b, 'NcCount') } }}</p></td>
                     <td class="p-0"></td>
                   </tr>
                   <tr>
@@ -239,14 +240,14 @@
       <!-- ================================================= site tour -->
       @if (tab() === 7) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="block-title">SITE TOUR PICTURES</h4>
+          <h4 class="block-title">{{ 'SITE TOUR PICTURES' | t: 'staff.milestoneDetails.siteTour.title' }}</h4>
           <div class="photo-grid">
             @for (p of d.siteTour; track $index) {
               <div class="evidence-img">
                 @if (p.url) {
-                  <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(p.url)"><img [src]="p.url" [alt]="p.name ?? 'Photo'" /></button>
+                  <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(p.url)"><img [src]="p.url" [alt]="p.name ?? ('Photo' | t: 'staff.milestoneDetails.photoAlt')" /></button>
                 } @else {
-                  <span class="muted small">Photo not available</span>
+                  <span class="muted small">{{ 'Photo not available' | t: 'staff.milestoneDetails.siteTour.noPhotoNote' }}</span>
                 }
                 <p class="sub-heading mt-2 mb-0">{{ p.name }}</p>
               </div>
@@ -258,12 +259,12 @@
       <!-- ================================================= trainings -->
       @if (tab() === 8) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <h4 class="block-title">TRAINING ON ZED</h4>
+          <h4 class="block-title">{{ 'TRAINING ON ZED' | t: 'staff.milestoneDetails.training.zedTitle' }}</h4>
           <ng-container [ngTemplateOutlet]="training"
                         [ngTemplateOutletContext]="{ $implicit: d.zedTrainings[0] ?? {}, photos: d.zedTrainingPhotos, upper: true }" />
 
           @for (hht of d.handholdingTrainings; track $index) {
-            <h4 class="block-title">Milestone {{ t(hht, 'NcCount') }} - TRAINING ON HANDHOLDING IMPLEMENTATION PLAN</h4>
+            <h4 class="block-title">{{ 'Milestone {n} - TRAINING ON HANDHOLDING IMPLEMENTATION PLAN' | t: 'staff.milestoneDetails.training.handholdingTitle' : { n: t(hht, 'NcCount') } }}</h4>
             <ng-container [ngTemplateOutlet]="training"
                           [ngTemplateOutletContext]="{ $implicit: hht, photos: trainingPhotos(d.handholdingTrainingPhotos, hht), upper: false }" />
           }
@@ -276,7 +277,7 @@
           @let cur = pn.active();
           <div class="zp-layout">
             <nav class="zp-nav" aria-labelledby="msParamNavTitle">
-              <div class="zp-nav-head" id="msParamNavTitle">Parameters · {{ pn.complete() }} of {{ d.sections.length }} complete</div>
+              <div class="zp-nav-head" id="msParamNavTitle">{{ 'Parameters · {done} of {total} complete' | t: 'staff.milestoneDetails.parameters.navTitle' : { done: pn.complete(), total: d.sections.length } }}</div>
               <div class="zp-nav-list">
                 @for (s of d.sections; track $index) {
                   @let st = pn.chip(s);
@@ -285,7 +286,7 @@
                     <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                      <span class="zp-nav-meta">{{ pn.exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-nav-meta">{{ pn.exempted(s) ? ('Exempted' | t: 'staff.milestoneDetails.parameters.exemptedTag') : ('{done} of {total} requirements' | t: 'staff.milestoneDetails.parameters.progressText' : { done: pg.done, total: pg.total }) }}</span>
                       <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
                     </span>
                     <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
@@ -305,14 +306,14 @@
                       <h5>{{ t(s, 'SectionName') }}</h5>
                       @if (t(s, 'iButton')) {
                         <span class="zp-info" tabindex="0">
-                          <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                          <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'staff.milestoneDetails.parameters.infoAria'">i</span>
                           <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
                         </span>
                       }
-                      @if (isExempted) { <span class="zp-tag">Exempted</span> }
+                      @if (isExempted) { <span class="zp-tag">{{ 'Exempted' | t: 'staff.milestoneDetails.parameters.exemptedTag' }}</span> }
                     </div>
                     <div class="zp-head-status">
-                      <span class="zp-label">Conformance</span>
+                      <span class="zp-label">{{ 'Conformance' | t: 'staff.milestoneDetails.parameters.conformanceLabel' }}</span>
                       <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
                     </div>
                   </div>
@@ -322,7 +323,7 @@
                     <article class="zp-req requirement" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
                       <div class="zp-req-title">
                         <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
-                        <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                        <span class="zp-req-text">{{ t(r, 'RequirementName') || ('Requirement' | t: 'staff.milestoneDetails.parameters.requirementFallback') }}</span>
                         <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [compact]="true" />
                         <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
                       </div>
@@ -330,11 +331,11 @@
                       <div class="zp-req-body">
                         <!-- Milestone 1 : Basic Diagnostic Study -->
                         <div class="zp-block zp-milestone milestone-1">
-                          <div class="zp-block-head">Milestone 1 : Basic Diagnostic Study</div>
+                          <div class="zp-block-head">{{ 'Milestone 1 : Basic Diagnostic Study' | t: 'staff.milestoneDetails.parameters.baseline.title' }}</div>
                           <div class="zp-block-body">
                             <!-- 2026-11-16 (approved): the checkpoints inside the baseline, answered in place (as in the consultant app). -->
                             <div class="zp-checkpoints">
-                              <div class="zp-label">CHECKPOINTS</div>
+                              <div class="zp-label">{{ 'CHECKPOINTS' | t: 'staff.milestoneDetails.parameters.checkpointsLabel' }}</div>
                               @if (checkpointStage() === 'Baseline' && checkpointsToAnswer(r).length) {
                                 <zed-checkpoint-dialog [inline]="true" [title]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [checkpoints]="checkpointsToAnswer(r)"
                                   stage="Baseline" [busy]="busy()" [error]="checkpointErrorOf(r)" (saved)="saveCheckpoints($event, r)" />
@@ -352,44 +353,44 @@
                                     </div>
                                   </div>
                                 } @empty {
-                                  <div class="zp-block-empty">No checkpoints.</div>
+                                  <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'staff.milestoneDetails.parameters.checkpointsEmpty' }}</div>
                                 }
                               }
                             </div>
                             @if (!isExempted) {
                               <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, 1) }" />
-                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'BaselineDiagnostic', label: 'GAPS IDENTIFIED' }" />
-                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'BaselineRemarks', label: 'REMARKS, IF ANY' }" />
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'BaselineDiagnostic', label: ('GAPS IDENTIFIED' | t: 'staff.milestoneDetails.parameters.gapsLabel') }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'BaselineRemarks', label: ('REMARKS, IF ANY' | t: 'staff.milestoneDetails.parameters.remarksLabel') }" />
                             } @else {
-                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                              <span class="zp-muted">{{ 'Exempted from Remote/Site Assessment' | t: 'staff.milestoneDetails.parameters.exemptedNote' }}</span>
                             }
                           </div>
                         </div>
 
                         <!-- Milestone 1 : Handholding Action Plan -->
                         <div class="zp-block zp-milestone milestone-1">
-                          <div class="zp-block-head">Milestone 1 : Handholding Action Plan</div>
+                          <div class="zp-block-head">{{ 'Milestone 1 : Handholding Action Plan' | t: 'staff.milestoneDetails.parameters.actionPlan.title' }}</div>
                           <div class="zp-block-body">
                             @if (!isExempted) {
-                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: 'PLANNED ACTIVIES' }" />
-                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'EstimatedTimeInDays', label: 'ESTIMATED TIME (IN DAYS)' }" />
-                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'HActionPlanRemarks', label: 'REMARKS, IF ANY' }" />
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: ('PLANNED ACTIVIES' | t: 'staff.milestoneDetails.parameters.plannedLabel') }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'EstimatedTimeInDays', label: ('ESTIMATED TIME (IN DAYS)' | t: 'staff.milestoneDetails.parameters.estimatedTimeLabel') }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'HActionPlanRemarks', label: ('REMARKS, IF ANY' | t: 'staff.milestoneDetails.parameters.remarksLabel') }" />
                             } @else {
-                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                              <span class="zp-muted">{{ 'Exempted from Remote/Site Assessment' | t: 'staff.milestoneDetails.parameters.exemptedNote' }}</span>
                             }
                           </div>
                         </div>
 
                         <!-- Milestone 1 : Technology Intervention -->
                         <div class="zp-block zp-milestone milestone-1">
-                          <div class="zp-block-head">Milestone 1 : Technology Intervention</div>
+                          <div class="zp-block-head">{{ 'Milestone 1 : Technology Intervention' | t: 'staff.milestoneDetails.parameters.intervention.title' }}</div>
                           <div class="zp-block-body">
                             @if (!isExempted) {
-                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'TechnologyIntervention', label: 'SUGGESTED TECHNOLOGY INTERVENTION' }" />
-                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'Intervention', label: 'RATIONALE FOR TECHNOLOGY INTERVENTION' }" />
-                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'InterventionRemarks', label: 'REMARKS, IF ANY' }" />
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'TechnologyIntervention', label: ('SUGGESTED TECHNOLOGY INTERVENTION' | t: 'staff.milestoneDetails.parameters.suggestedLabel') }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'Intervention', label: ('RATIONALE FOR TECHNOLOGY INTERVENTION' | t: 'staff.milestoneDetails.parameters.rationaleLabel') }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'InterventionRemarks', label: ('REMARKS, IF ANY' | t: 'staff.milestoneDetails.parameters.remarksLabel') }" />
                             } @else {
-                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                              <span class="zp-muted">{{ 'Exempted from Remote/Site Assessment' | t: 'staff.milestoneDetails.parameters.exemptedNote' }}</span>
                             }
                           </div>
                         </div>
@@ -397,22 +398,22 @@
                         @for (pr of progressReviews; track pr.milestone) {
                           @if (n(s, 'NcCount') >= pr.milestone) {
                             <div [class]="'zp-block zp-milestone milestone-' + pr.milestone">
-                              <div class="zp-block-head">Milestone {{ pr.milestone }} : {{ pr.title }}</div>
+                              <div class="zp-block-head">{{ 'Milestone {n} : {title}' | t: 'staff.milestoneDetails.parameters.review.title' : { n: pr.milestone, title: pr.title } }}</div>
                               <div class="zp-block-body">
                                 @if (checkpointStage() === pr.stage && checkpointsToAnswer(r).length) {
-                                  <div class="zp-label">CHECKPOINTS</div>
+                                  <div class="zp-label">{{ 'CHECKPOINTS' | t: 'staff.milestoneDetails.parameters.checkpointsLabel' }}</div>
                                   <zed-checkpoint-dialog [inline]="true" [title]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [checkpoints]="checkpointsToAnswer(r)"
                                     [stage]="pr.stage" [busy]="busy()" [error]="checkpointErrorOf(r)" (saved)="saveCheckpoints($event, r)" />
                                 }
                                 @if (!isExempted) {
                                   <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, pr.milestone) }" />
                                   <div class="zp-row my-2">
-                                    <span class="zp-label m-0">Is proposed activity completed</span>
-                                    @if (t(r, pr.completed)) { <span class="zp-chip" [attr.data-v]="t(r, pr.completed)">{{ t(r, pr.completed) }}</span> } @else { <span class="zp-chip">Not given</span> }
+                                    <span class="zp-label m-0">{{ 'Is proposed activity completed' | t: 'staff.milestoneDetails.parameters.completedLabel' }}</span>
+                                    @if (t(r, pr.completed)) { <span class="zp-chip" [attr.data-v]="t(r, pr.completed)">{{ t(r, pr.completed) }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.milestoneDetails.parameters.notGiven' }}</span> }
                                   </div>
-                                  <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: pr.field, label: 'REMARKS, IF ANY' }" />
+                                  <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: pr.field, label: ('REMARKS, IF ANY' | t: 'staff.milestoneDetails.parameters.remarksLabel') }" />
                                 } @else {
-                                  <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                                  <span class="zp-muted">{{ 'Exempted from Remote/Site Assessment' | t: 'staff.milestoneDetails.parameters.exemptedNote' }}</span>
                                 }
                               </div>
                             </div>
@@ -422,25 +423,25 @@
 
                       <div class="zp-foot">
                         <div class="zp-conf">
-                          <div class="zp-label">Conformance (basic diagnostic study)</div>
+                          <div class="zp-label">{{ 'Conformance (basic diagnostic study)' | t: 'staff.milestoneDetails.parameters.baselineConformanceLabel' }}</div>
                           <div class="zp-row">
                             @if (isExempted) {
-                              <span class="zp-chip" data-v="Exempt">Exempt</span>
+                              <span class="zp-chip" data-v="Exempt">{{ 'Exempt' | t: 'staff.milestoneDetails.parameters.exemptChip' }}</span>
                             } @else if (t(r, 'SaConformance')) {
                               <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span>
                             } @else {
-                              <span class="zp-chip">Not given</span>
+                              <span class="zp-chip">{{ 'Not given' | t: 'staff.milestoneDetails.parameters.notGiven' }}</span>
                             }
                           </div>
                         </div>
                       </div>
                     </article>
                   } @empty {
-                    <p class="zp-muted">No requirements in this parameter.</p>
+                    <p class="zp-muted">{{ 'No requirements in this parameter.' | t: 'staff.milestoneDetails.parameters.requirementsEmpty' }}</p>
                   }
                 </div>
               } @else {
-                <p class="zp-muted">No parameters.</p>
+                <p class="zp-muted">{{ 'No parameters.' | t: 'staff.milestoneDetails.parameters.empty' }}</p>
               }
             </div>
           </div>
@@ -451,31 +452,31 @@
       @if (tab() === 10) {
         <div class="tab-pane fade show active" role="tabpanel">
           @for (m of d.closeMeetings; track $index) {
-            <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m, photoTitle: 'Closing Meeting Photo:' }" />
+            <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m, photoTitle: ('Closing Meeting Photo:' | t: 'staff.milestoneDetails.meeting.closingPhotoTitle') }" />
             @if (milestoneRow(m.ncCount ?? 0); as row) {
               @if (n(row, 'CertificationStatus') > 13 && t(row, 'SaAssessorRemarks')) {
-                <div class="alert alert-success mt-3"><strong>Consultant Final Comments :</strong> {{ t(row, 'SaAssessorRemarks') }}</div>
+                <div class="alert alert-success mt-3"><strong>{{ 'Consultant Final Comments :' | t: 'staff.milestoneDetails.closing.finalCommentsLabel' }}</strong> {{ t(row, 'SaAssessorRemarks') }}</div>
               }
               @if (canEditFinalComments(m, row)) {
                 <div class="form-actions mt-2">
-                  <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="openFinalComments(row)" />
+                  <input type="button" [value]="'Edit Remarks' | t: 'staff.milestoneDetails.editRemarksButton'" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="openFinalComments(row)" />
                 </div>
               }
             }
           }
           <div class="form-actions">
             @if (d.permissions.canSendBack) {
-              <input type="button" value="Send Back to Consultant" class="btn btn-outline-danger" [disabled]="busy()" (click)="openDialog('sendBack')" />
+              <input type="button" [value]="'Send Back to Consultant' | t: 'staff.milestoneDetails.closing.sendBackButton'" class="btn btn-outline-danger" [disabled]="busy()" (click)="openDialog('sendBack')" />
             }
             <!-- 2026-11-16 (approved): the CO's Reject (the old page had the dialog but no button). -->
             @if (d.permissions.canReject) {
-              <input type="button" value="Reject" class="btn btn-danger" [disabled]="busy()" (click)="openDialog('reject')" />
+              <input type="button" [value]="'Reject' | t: 'staff.milestoneDetails.closing.rejectButton'" class="btn btn-danger" [disabled]="busy()" (click)="openDialog('reject')" />
             }
             @if (d.permissions.canConsultantFinalSubmit) {
-              <input type="button" value="Final Submit" class="btn btn-primary" [disabled]="busy()" (click)="openConsultantSubmit()" />
+              <input type="button" [value]="'Final Submit' | t: 'staff.milestoneDetails.closing.finalSubmitButton'" class="btn btn-primary" [disabled]="busy()" (click)="openConsultantSubmit()" />
             }
             @if (d.permissions.canCoFinalSubmit) {
-              <input type="button" value="Final Submit" class="btn btn-primary" [disabled]="busy()" (click)="openDialog('coSubmit')" />
+              <input type="button" [value]="'Final Submit' | t: 'staff.milestoneDetails.closing.finalSubmitButton'" class="btn btn-primary" [disabled]="busy()" (click)="openDialog('coSubmit')" />
             }
           </div>
         </div>
@@ -488,10 +489,10 @@
 <ng-template #location let-lat="lat" let-lng="lng">
   <table class="table table-zed details">
     <tbody>
-      <tr><th class="w-40">Latitude</th><td>{{ lat }}</td></tr>
-      <tr><th>Longitude</th><td>{{ lng }}</td></tr>
+      <tr><th class="w-40">{{ 'Latitude' | t: 'staff.milestoneDetails.location.latitudeLabel' }}</th><td>{{ lat }}</td></tr>
+      <tr><th>{{ 'Longitude' | t: 'staff.milestoneDetails.location.longitudeLabel' }}</th><td>{{ lng }}</td></tr>
       @if (mapUrl(lat, lng); as href) {
-        <tr><td colspan="2"><a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">Click here to view map</a></td></tr>
+        <tr><td colspan="2"><a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener">{{ 'Click here to view map' | t: 'staff.milestoneDetails.location.mapLink' }}</a></td></tr>
       }
     </tbody>
   </table>
@@ -511,9 +512,9 @@
             <p class="photo-name">{{ p.name }}</p>
             <div class="photo-file">
               @if (p.url) { <img [src]="p.url" alt="" height="60" /> }
-              <span class="muted">Captured at {{ p.createdDate }}</span>
+              <span class="muted">{{ 'Captured at {time}' | t: 'staff.milestoneDetails.photo.capturedNote' : { time: p.createdDate } }}</span>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!p.url" (click)="openImage(p.url)">View</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!p.url" (click)="openImage(p.url)">{{ 'View' | t: 'staff.milestoneDetails.photo.viewButton' }}</button>
           </div>
         }
       </td>
@@ -531,14 +532,14 @@
             <p class="photo-name">{{ pp.name }}</p>
             <div class="photo-file">
               @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
-              <span class="muted">Generated at {{ pp.createdDate }}</span>
+              <span class="muted">{{ 'Generated at {time}' | t: 'staff.milestoneDetails.photo.generatedNote' : { time: pp.createdDate } }}</span>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm zp-btn" [disabled]="!pp.url" (click)="openImage(pp.url)">View</button>
+            <button type="button" class="btn btn-outline-primary btn-sm zp-btn" [disabled]="!pp.url" (click)="openImage(pp.url)">{{ 'View' | t: 'staff.milestoneDetails.photo.viewButton' }}</button>
           </div>
         </td>
       </tr>
     } @empty {
-      <tr><td><p class="p-2 mb-0 muted">No Documents Uploaded</p></td></tr>
+      <tr><td><p class="p-2 mb-0 muted">{{ 'No Documents Uploaded' | t: 'staff.milestoneDetails.photo.empty' }}</p></td></tr>
     }
   </table>
 </ng-template>
@@ -555,8 +556,8 @@
           } @else {
             <span>{{ b.text }}</span>
             @if (b.editable) {
-              <button type="button" class="btn btn-link p-0 ms-1 cursor-pointer" title="Edit" aria-label="Edit" (click)="startEdit({ kind: 'bullet', id: b.id }, b.text)"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></button>
-              <button type="button" class="btn btn-link p-0 ms-1 cursor-pointer" title="Delete" aria-label="Delete" (click)="deleteBullet(b)"><i class="fa fa-trash" aria-hidden="true"></i></button>
+              <button type="button" class="btn btn-link p-0 ms-1 cursor-pointer" [title]="'Edit' | t: 'staff.milestoneDetails.bullet.editAria'" [attr.aria-label]="'Edit' | t: 'staff.milestoneDetails.bullet.editAria'" (click)="startEdit({ kind: 'bullet', id: b.id }, b.text)"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></button>
+              <button type="button" class="btn btn-link p-0 ms-1 cursor-pointer" [title]="'Delete' | t: 'staff.milestoneDetails.bullet.deleteAria'" [attr.aria-label]="'Delete' | t: 'staff.milestoneDetails.bullet.deleteAria'" (click)="deleteBullet(b)"><i class="fa fa-trash" aria-hidden="true"></i></button>
             }
           }
         </li>
@@ -566,7 +567,7 @@
           @if (isEditing({ kind: 'newBullet', requirementId: r['Id'], type })) {
             <ng-container [ngTemplateOutlet]="editor" />
           } @else {
-            <input type="button" value="Add More" class="btn btn-outline-primary btn-sm zp-btn" (click)="startEdit({ kind: 'newBullet', requirementId: r['Id'], type }, '')" />
+            <input type="button" [value]="'Add More' | t: 'staff.milestoneDetails.bullet.addButton'" class="btn btn-outline-primary btn-sm zp-btn" (click)="startEdit({ kind: 'newBullet', requirementId: r['Id'], type }, '')" />
           }
         </li>
       }
@@ -583,32 +584,32 @@
     } @else {
       <div class="value-box">{{ t(r, f) }}</div>
       @if (canEditField(r, f)) {
-        <input type="button" value="Edit" class="btn btn-outline-primary btn-sm zp-btn mt-2" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
+        <input type="button" [value]="'Edit' | t: 'staff.milestoneDetails.field.editButton'" class="btn btn-outline-primary btn-sm zp-btn mt-2" [attr.aria-label]="'Edit {field}' | t: 'staff.milestoneDetails.field.editAria' : { field: fieldInfo[f].label }" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
       }
     }
   </div>
 </ng-template>
 
 <ng-template #meeting let-m let-photoTitle="photoTitle">
-  <h4 class="block-title">MILESTONE {{ $any(m).ncCount }}</h4>
+  <h4 class="block-title">{{ 'MILESTONE {n}' | t: 'staff.milestoneDetails.meeting.title' : { n: $any(m).ncCount } }}</h4>
   <div class="meeting">
     <div class="meeting-remark">
-      <p class="sub-heading">CONSULTANT REMARK</p>
+      <p class="sub-heading">{{ 'CONSULTANT REMARK' | t: 'staff.milestoneDetails.consultantRemarkTitle' }}</p>
       <p>{{ $any(m).comments }}</p>
       @if ($any(m).editable) {
-        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="openMeetingRemarks($any(m))" />
+        <input type="button" [value]="'Edit Remarks' | t: 'staff.milestoneDetails.editRemarksButton'" class="btn btn-outline-primary btn-sm" (click)="openMeetingRemarks($any(m))" />
       }
     </div>
     <div class="evidence-img">
       <p class="sub-heading">{{ photoTitle }}</p>
       @for (pp of $any(m).photos; track $index) {
         @if (pp.url) {
-          <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? 'Meeting photo'" /></button>
+          <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? ('Meeting photo' | t: 'staff.milestoneDetails.meeting.photoAlt')" /></button>
         }
       }
     </div>
   </div>
-  <p class="sub-heading mt-3">PARTICIPANTS</p>
+  <p class="sub-heading mt-3">{{ 'PARTICIPANTS' | t: 'staff.milestoneDetails.meeting.participantsTitle' }}</p>
   <div class="participants">
     @for (p of $any(m).participants; track $index) {
       <div class="participant">
@@ -626,27 +627,27 @@
   }
   <ng-container [ngTemplateOutlet]="trainingPhotosRow" [ngTemplateOutletContext]="{ $implicit: photos }" />
   <div class="training-facts">
-    <div class="fact"><p class="sub-heading">{{ upper ? 'TRAINING TOPIC' : 'Training Topic' }}</p><small>{{ t(tr, 'TrainingTopic') }}</small></div>
-    <div class="fact"><p class="sub-heading">{{ upper ? 'TRAINING DATE' : 'Training Date' }}</p><small>{{ shortDate(t(tr, 'CreatedDate')) }}</small></div>
+    <div class="fact"><p class="sub-heading">{{ upper ? ('TRAINING TOPIC' | t: 'staff.milestoneDetails.training.topicUpperTitle') : ('Training Topic' | t: 'staff.milestoneDetails.training.topicTitle') }}</p><small>{{ t(tr, 'TrainingTopic') }}</small></div>
+    <div class="fact"><p class="sub-heading">{{ upper ? ('TRAINING DATE' | t: 'staff.milestoneDetails.training.dateUpperTitle') : ('Training Date' | t: 'staff.milestoneDetails.training.dateTitle') }}</p><small>{{ shortDate(t(tr, 'CreatedDate')) }}</small></div>
   </div>
   @for (pp of named($any(photos), 'Attendance Sheet'); track $index) {
     <div class="fact photo-row">
-      <p class="photo-name">Attendane Record</p>
+      <p class="photo-name">{{ 'Attendane Record' | t: 'staff.milestoneDetails.training.attendanceTitle' }}</p>
       <div class="photo-file">
         @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
-        <span class="muted">Captured at {{ pp.createdDate }}</span>
+        <span class="muted">{{ 'Captured at {time}' | t: 'staff.milestoneDetails.photo.capturedNote' : { time: pp.createdDate } }}</span>
       </div>
-      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!pp.url" (click)="openImage(pp.url)">View</button>
+      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!pp.url" (click)="openImage(pp.url)">{{ 'View' | t: 'staff.milestoneDetails.photo.viewButton' }}</button>
     </div>
   }
   <div class="fact">
-    <p class="sub-heading">CONSULTANT REMARK</p>
+    <p class="sub-heading">{{ 'CONSULTANT REMARK' | t: 'staff.milestoneDetails.consultantRemarkTitle' }}</p>
     @if (tr['Id'] !== undefined && isEditing({ kind: 'training', id: tr['Id'] })) {
       <ng-container [ngTemplateOutlet]="editor" />
     } @else {
       <div class="value-box">{{ t(tr, 'Remarks') }}</div>
       @if (tr['Editable'] === true) {
-        <input type="button" value="Edit" class="btn btn-outline-primary btn-sm mt-2" aria-label="Edit consultant remark" (click)="startEdit({ kind: 'training', id: tr['Id'] }, tr['Remarks'])" />
+        <input type="button" [value]="'Edit' | t: 'staff.milestoneDetails.training.editButton'" class="btn btn-outline-primary btn-sm mt-2" [attr.aria-label]="'Edit consultant remark' | t: 'staff.milestoneDetails.training.editAria'" (click)="startEdit({ kind: 'training', id: tr['Id'] }, tr['Remarks'])" />
       }
     }
   </div>
@@ -657,7 +658,7 @@
     @for (pp of named($any(photos), 'Training Photo'); track $index) {
       <div class="evidence-img">
         @if (pp.url) {
-          <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(pp.url)"><img [src]="pp.url" alt="Training photo" /></button>
+          <button type="button" class="btn btn-link p-0 w-100" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="'Training photo' | t: 'staff.milestoneDetails.training.photoAlt'" /></button>
         }
       </div>
     }
@@ -666,10 +667,10 @@
 
 <ng-template #editor>
   <div class="editor">
-    <textarea class="form-control" maxlength="2000" aria-label="Text" [ngModel]="draft()" (ngModelChange)="draft.set($event)"></textarea>
+    <textarea class="form-control" maxlength="2000" [attr.aria-label]="'Text' | t: 'staff.milestoneDetails.editor.textAria'" [ngModel]="draft()" (ngModelChange)="draft.set($event)"></textarea>
     <div class="row-actions mt-2">
-      <input type="button" value="Cancel" class="btn btn-default btn-sm" (click)="cancelEdit()" />
-      <input type="button" value="Update" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="saveEdit()" />
+      <input type="button" [value]="'Cancel' | t: 'staff.milestoneDetails.editor.cancelButton'" class="btn btn-default btn-sm" (click)="cancelEdit()" />
+      <input type="button" [value]="'Update' | t: 'staff.milestoneDetails.editor.updateButton'" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="saveEdit()" />
     </div>
   </div>
 </ng-template>
@@ -681,18 +682,18 @@
         <div class="modal-header">
           <h3 class="registration-title" id="milestoneDialogTitle">
             @switch (dlg) {
-              @case ('reject') { Confirm Reject }
-              @case ('sendBack') { Send Back to Consultant }
-              @case ('meetingRemarks') { Remarks }
-              @case ('finalComments') { Remarks }
-              @default { Confirm Final Submit }
+              @case ('reject') { {{ 'Confirm Reject' | t: 'staff.milestoneDetails.dialog.rejectTitle' }} }
+              @case ('sendBack') { {{ 'Send Back to Consultant' | t: 'staff.milestoneDetails.dialog.sendBackTitle' }} }
+              @case ('meetingRemarks') { {{ 'Remarks' | t: 'staff.milestoneDetails.dialog.remarksTitle' }} }
+              @case ('finalComments') { {{ 'Remarks' | t: 'staff.milestoneDetails.dialog.remarksTitle' }} }
+              @default { {{ 'Confirm Final Submit' | t: 'staff.milestoneDetails.dialog.submitTitle' }} }
             }
           </h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.milestoneDetails.closeAria'" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
           @if (dlg === 'consultantSubmit' || dlg === 'sendBack' || dlg === 'meetingRemarks' || dlg === 'finalComments') {
-            <label class="form-label" for="milestoneDialogText">{{ dlg === 'sendBack' ? 'Send Back Remarks' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'Remarks' : 'Final Comments' }}<span class="req">*</span></label>
+            <label class="form-label" for="milestoneDialogText">{{ dlg === 'sendBack' ? ('Send Back Remarks' | t: 'staff.milestoneDetails.dialog.sendBackLabel') : dlg === 'meetingRemarks' || dlg === 'finalComments' ? ('Remarks' | t: 'staff.milestoneDetails.dialog.remarksLabel') : ('Final Comments' | t: 'staff.milestoneDetails.dialog.finalCommentsLabel') }}<span class="req">*</span></label>
             <textarea id="milestoneDialogText" class="form-control" maxlength="2000" rows="4" [ngModel]="dialogText()" (ngModelChange)="dialogText.set($event)"></textarea>
           } @else if (dlg === 'coSubmit' && (checklistLoading() || checklist().length)) {
             <!-- the Admin's consultant organisation quality-check checklist replaces the review box below -->
@@ -707,7 +708,7 @@
           <!-- 2026-11-17 (approved): the Admin's submission checklist (consultant final submit / consultant organisation quality check). -->
           @if (dlg === 'consultantSubmit' || dlg === 'coSubmit') {
             @if (checklistLoading()) {
-              <p class="text-muted mt-2 mb-0">Loading the checklist…</p>
+              <p class="text-muted mt-2 mb-0">{{ 'Loading the checklist…' | t: 'staff.milestoneDetails.dialog.checklistLoadingText' }}</p>
             } @else if (checklist().length) {
               <div class="mt-3"><zed-submit-checklist [items]="checklist()" [(ticked)]="ticked" /></div>
             }
@@ -715,8 +716,8 @@
           @if (dialogError()) { <div class="alert alert-danger mt-2" role="alert">{{ dialogError() }}</div> }
         </div>
         <div class="modal-footer">
-          <input type="button" class="btn btn-default" value="Cancel" (click)="dialog.set(null)" />
-          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'Reject' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'Update' : 'Submit'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
+          <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.milestoneDetails.dialog.cancelButton'" (click)="dialog.set(null)" />
+          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? ('Reject' | t: 'staff.milestoneDetails.dialog.rejectButton') : dlg === 'meetingRemarks' || dlg === 'finalComments' ? ('Update' | t: 'staff.milestoneDetails.dialog.updateButton') : ('Submit' | t: 'staff.milestoneDetails.dialog.submitButton')" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
         </div>
       </div>
     </div>
@@ -725,8 +726,8 @@
 }
 
 @if (preview(); as src) {
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Photo" (click)="preview.set(null)">
-    <div class="modal-dialog modal-lg"><div class="modal-content p-2"><img class="preview-img" [src]="src" alt="Photo" /></div></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" [attr.aria-label]="'Photo' | t: 'staff.milestoneDetails.photoAlt'" (click)="preview.set(null)">
+    <div class="modal-dialog modal-lg"><div class="modal-content p-2"><img class="preview-img" [src]="src" [alt]="'Photo' | t: 'staff.milestoneDetails.photoAlt'" /></div></div>
   </div>
   <div class="modal-backdrop show"></div>
 }

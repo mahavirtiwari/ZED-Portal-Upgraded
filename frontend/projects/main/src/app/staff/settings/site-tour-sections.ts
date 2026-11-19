@@ -6,6 +6,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { AdminPortalService, PortalSwitchComponent, SITE_TOUR_PORTALS } from '../admin-portal';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /** A section of the site tour (Zed.Core.Assessment.SiteTourSection). Empty levels / sectors: all. */
 export interface SiteTourSection {
@@ -80,17 +81,19 @@ export function sectionId(title: string, taken: readonly string[]): string {
  */
 @Component({
   selector: 'zed-staff-site-tour-sections',
-  imports: [FormsModule, MultiSelect, PortalSwitchComponent],
+  imports: [FormsModule, MultiSelect, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Site tour sections</h3>
-        <p class="page-sub">The sections the {{ appName() }} files site tour photos under, with the photos each needs. Limit a section to levels and NIC sectors.</p>
+        <h3 class="registration-title">{{ 'Site tour sections' | t: 'staff.siteTour.title' }}</h3>
+        <p class="page-sub">{{ consultantApp()
+          ? ('The sections the consultant app (milestone 1 visit) files site tour photos under, with the photos each needs. Limit a section to levels and NIC sectors.' | t: 'staff.siteTour.subConsultant')
+          : ('The sections the site assessor app files site tour photos under, with the photos each needs. Limit a section to levels and NIC sectors.' | t: 'staff.siteTour.sub') }}</p>
       </div>
       @if (data(); as d) {
         <div class="page-actions">
-          <button type="button" class="btn btn-default" [disabled]="!d.customised || busy()" (click)="resetAll()">Reset to standard sections</button>
-          <button type="button" class="btn btn-primary" [disabled]="d.sections.length >= limits.sections || busy()" [title]="d.sections.length >= limits.sections ? 'At most ' + limits.sections + ' sections' : ''" (click)="add()">Add section</button>
+          <button type="button" class="btn btn-default" [disabled]="!d.customised || busy()" (click)="resetAll()">{{ 'Reset to standard sections' | t: 'staff.siteTour.resetButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="d.sections.length >= limits.sections || busy()" [title]="d.sections.length >= limits.sections ? ('At most {count} sections' | t: 'staff.siteTour.addLimitTooltip' : { count: limits.sections }) : ''" (click)="add()">{{ 'Add section' | t: 'staff.siteTour.addButton' }}</button>
         </div>
       }
     </div>
@@ -106,14 +109,14 @@ export function sectionId(title: string, taken: readonly string[]): string {
     @if (data(); as d) {
       <!-- 2026-11-15 (design approved): count tiles, then a compact list with small arrows, an On/Off switch and Edit. -->
       <div class="st-tiles">
-        <div class="st-tile"><b>{{ d.sections.length }}</b><small>Sections ({{ activeCount() }} on)</small></div>
-        <div class="st-tile"><b>{{ photoRange() }}</b><small>Photos per site tour</small></div>
-        <div class="st-tile"><b class="st-word">{{ d.customised ? 'Changed' : 'Standard' }}</b><small>{{ d.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
+        <div class="st-tile"><b>{{ d.sections.length }}</b><small>{{ 'Sections ({count} on)' | t: 'staff.siteTour.tile.sections' : { count: activeCount() } }}</small></div>
+        <div class="st-tile"><b>{{ photoRange() }}</b><small>{{ 'Photos per site tour' | t: 'staff.siteTour.tile.photos' }}</small></div>
+        <div class="st-tile"><b class="st-word">{{ d.customised ? ('Changed' | t: 'staff.siteTour.tile.changed') : ('Standard' | t: 'staff.siteTour.tile.standard') }}</b><small>{{ d.customised ? ('Changed by the Admin' | t: 'staff.siteTour.tile.changedNote') : ('Not changed yet' | t: 'staff.siteTour.tile.standardNote') }}</small></div>
       </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
-        @if (!d.customised) { <span class="standard-note">Standard sections (not changed yet).</span> }
-        A change reaches the app when an assessment is next opened.
+        @if (!d.customised) { <span class="standard-note">{{ 'Standard sections (not changed yet).' | t: 'staff.siteTour.standardNote' }}</span> }
+        {{ 'A change reaches the app when an assessment is next opened.' | t: 'staff.siteTour.syncNote' }}
       </p>
       <div class="table-responsive">
         <table class="table table-zed sections-table">
@@ -127,10 +130,10 @@ export function sectionId(title: string, taken: readonly string[]): string {
           <thead>
             <tr>
               <th class="text-center">#</th>
-              <th>Section</th>
-              <th>Photos</th>
-              <th>Used for</th>
-              <th class="text-end">Action</th>
+              <th>{{ 'Section' | t: 'staff.siteTour.column.section' }}</th>
+              <th>{{ 'Photos' | t: 'staff.siteTour.column.photos' }}</th>
+              <th>{{ 'Used for' | t: 'staff.siteTour.column.usedFor' }}</th>
+              <th class="text-end">{{ 'Action' | t: 'staff.siteTour.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -143,48 +146,48 @@ export function sectionId(title: string, taken: readonly string[]): string {
                   </div>
                   @if (s.hint) { <small class="section-hint">{{ s.hint }}</small> }
                 </td>
-                <td><span class="photos-pill"><span class="num">{{ s.min }}</span> – <span class="num">{{ s.max }}</span> photos</span></td>
+                <td><span class="photos-pill"><span class="num">{{ s.min }}</span> – <span class="num">{{ s.max }}</span> {{ 'photos' | t: 'staff.siteTour.row.photosUnit' }}</span></td>
                 <td>
                   <div class="scope" [title]="scopeText(s)">
                     @if (!s.levels.length && !s.nicSectors.length) {
-                      <span class="scope-all">All levels · All sectors</span>
+                      <span class="scope-all">{{ 'All levels · All sectors' | t: 'staff.siteTour.scope.all' }}</span>
                     } @else {
                       @if (s.levels.length) {
                         @for (l of s.levels; track l) { <span class="zed-chip">{{ levelName(l) }}</span> }
                       } @else {
-                        <span class="scope-all">All levels</span>
+                        <span class="scope-all">{{ 'All levels' | t: 'staff.siteTour.scope.allLevels' }}</span>
                       }
                       @if (s.nicSectors.length) {
-                        @for (c of s.nicSectors; track c) { <span class="zed-chip sector">NIC {{ c }}</span> }
+                        @for (c of s.nicSectors; track c) { <span class="zed-chip sector">{{ 'NIC {code}' | t: 'staff.siteTour.scope.nicChip' : { code: c } }}</span> }
                       } @else {
-                        <span class="scope-all">All sectors</span>
+                        <span class="scope-all">{{ 'All sectors' | t: 'staff.siteTour.scope.allSectors' }}</span>
                       }
                     }
                   </div>
                 </td>
                 <td>
                   <div class="st-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move up' | t: 'staff.siteTour.row.moveUpTooltip'" [attr.aria-label]="'Move up' | t: 'staff.siteTour.row.moveUpTooltip'" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move down' | t: 'staff.siteTour.row.moveDownTooltip'" [attr.aria-label]="'Move down' | t: 'staff.siteTour.row.moveDownTooltip'" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
                     <!-- 2026-11-15 (the user): switch a section off (or on) from the list. -->
-                    <label class="st-switch" [class.off]="!s.active" [title]="s.active ? 'Switch this section off' : 'Switch this section on'">
-                      <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()" [attr.aria-label]="(s.active ? 'Switch off ' : 'Switch on ') + s.title"
+                    <label class="st-switch" [class.off]="!s.active" [title]="s.active ? ('Switch this section off' | t: 'staff.siteTour.row.switchOffTooltip') : ('Switch this section on' | t: 'staff.siteTour.row.switchOnTooltip')">
+                      <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()" [attr.aria-label]="s.active ? ('Switch off {title}' | t: 'staff.siteTour.row.switchOffAria' : { title: s.title }) : ('Switch on {title}' | t: 'staff.siteTour.row.switchOnAria' : { title: s.title })"
                              (click)="$event.preventDefault(); toggle(i)" />
-                      <span class="st-track" aria-hidden="true"></span>{{ s.active ? 'On' : 'Off' }}
+                      <span class="st-track" aria-hidden="true"></span>{{ s.active ? ('On' | t: 'staff.siteTour.row.on') : ('Off' | t: 'staff.siteTour.row.off') }}
                     </label>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(s)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(s)">{{ 'Edit' | t: 'staff.siteTour.row.editButton' }}</button>
                   </div>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" style="padding: 0"><div class="no-data">No sections</div></td></tr>
+              <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ 'No sections' | t: 'staff.siteTour.empty' }}</div></td></tr>
             }
           </tbody>
         </table>
       </div>
       <p class="totals">{{ totals() }}</p>
     } @else if (!busy()) {
-      <div class="no-data">The site tour sections could not be loaded</div>
+      <div class="no-data">{{ 'The site tour sections could not be loaded' | t: 'staff.siteTour.loadError' }}</div>
     }
 
     @if (editing(); as e) {
@@ -193,65 +196,65 @@ export function sectionId(title: string, taken: readonly string[]): string {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-start gap-3">
-                <h3 class="registration-title m-0" id="sectionTitle">{{ e.section ? 'Edit section' : 'Add section' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="sectionTitle">{{ e.section ? ('Edit section' | t: 'staff.siteTour.dialog.editTitle') : ('Add section' | t: 'staff.siteTour.dialog.addTitle') }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.siteTour.dialog.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               @let p = check(e);
               <div>
                 <div class="form-grid">
-                  <label for="sectionName">Section name<span class="req">*</span></label>
+                  <label for="sectionName">{{ 'Section name' | t: 'staff.siteTour.dialog.nameLabel' }}<span class="req">*</span></label>
                   <div>
-                    <input type="text" class="form-control" id="sectionName" [maxlength]="limits.title" placeholder="e.g. Paint Shop" [class.is-invalid]="p.title" [(ngModel)]="e.title" />
+                    <input type="text" class="form-control" id="sectionName" [maxlength]="limits.title" [placeholder]="'e.g. Paint Shop' | t: 'staff.siteTour.dialog.namePlaceholder'" [class.is-invalid]="p.title" [(ngModel)]="e.title" />
                     @if (p.title) { <small class="invalid" id="sectionNameError">{{ p.title }}</small> }
                   </div>
-                  <label class="top" for="sectionHint">What to capture <small class="text-muted fw-normal d-block">(optional, shown in the app)</small></label>
+                  <label class="top" for="sectionHint">{{ 'What to capture' | t: 'staff.siteTour.dialog.hintLabel' }} <small class="text-muted fw-normal d-block">{{ '(optional, shown in the app)' | t: 'staff.siteTour.dialog.hintNote' }}</small></label>
                   <div>
-                    <textarea class="form-control" id="sectionHint" rows="2" [maxlength]="limits.hint" placeholder="e.g. Spray booth, drying oven, PPE" [class.is-invalid]="p.hint" [(ngModel)]="e.hint"></textarea>
+                    <textarea class="form-control" id="sectionHint" rows="2" [maxlength]="limits.hint" [placeholder]="'e.g. Spray booth, drying oven, PPE' | t: 'staff.siteTour.dialog.hintPlaceholder'" [class.is-invalid]="p.hint" [(ngModel)]="e.hint"></textarea>
                     @if (p.hint) { <small class="invalid">{{ p.hint }}</small> }
                   </div>
-                  <label for="sectionMin">Minimum photos<span class="req">*</span></label>
+                  <label for="sectionMin">{{ 'Minimum photos' | t: 'staff.siteTour.dialog.minLabel' }}<span class="req">*</span></label>
                   <div>
                     <input type="number" class="form-control num-input" id="sectionMin" min="0" [max]="limits.photos" step="1" [class.is-invalid]="p.min" [(ngModel)]="e.min" />
                     @if (p.min) { <small class="invalid" id="sectionMinError">{{ p.min }}</small> }
-                    @else { <small class="text-muted d-block">0: the section is optional.</small> }
+                    @else { <small class="text-muted d-block">{{ '0: the section is optional.' | t: 'staff.siteTour.dialog.minNote' }}</small> }
                   </div>
-                  <label for="sectionMax">Maximum photos<span class="req">*</span></label>
+                  <label for="sectionMax">{{ 'Maximum photos' | t: 'staff.siteTour.dialog.maxLabel' }}<span class="req">*</span></label>
                   <div>
                     <input type="number" class="form-control num-input" id="sectionMax" min="1" [max]="limits.photos" step="1" [class.is-invalid]="p.max" [(ngModel)]="e.max" />
                     @if (p.max) { <small class="invalid" id="sectionMaxError">{{ p.max }}</small> }
                   </div>
                   @if (levelOptions().length) {
-                    <span class="label top">Certification levels</span>
+                    <span class="label top">{{ 'Certification levels' | t: 'staff.siteTour.dialog.levelsLabel' }}</span>
                     <div>
-                      <div class="seg" role="group" aria-label="Certification levels">
-                        <button type="button" [class.active]="!e.limitLevels" [attr.aria-pressed]="!e.limitLevels" (click)="limit('levels', false)">Every level</button>
-                        <button type="button" [class.active]="e.limitLevels" [attr.aria-pressed]="e.limitLevels" (click)="limit('levels', true)">Only these levels</button>
+                      <div class="seg" role="group" [attr.aria-label]="'Certification levels' | t: 'staff.siteTour.dialog.levelsLabel'">
+                        <button type="button" [class.active]="!e.limitLevels" [attr.aria-pressed]="!e.limitLevels" (click)="limit('levels', false)">{{ 'Every level' | t: 'staff.siteTour.dialog.everyLevelButton' }}</button>
+                        <button type="button" [class.active]="e.limitLevels" [attr.aria-pressed]="e.limitLevels" (click)="limit('levels', true)">{{ 'Only these levels' | t: 'staff.siteTour.dialog.onlyLevelsButton' }}</button>
                       </div>
                       @if (e.limitLevels) {
-                        <div class="mt-2"><zed-multi-select inputId="sectionLevels" label="Certification levels" [options]="levelOptions()" [(value)]="e.levels" /></div>
+                        <div class="mt-2"><zed-multi-select inputId="sectionLevels" [label]="'Certification levels' | t: 'staff.siteTour.dialog.levelsLabel'" [options]="levelOptions()" [(value)]="e.levels" /></div>
                       }
                     </div>
                   }
-                  <span class="label top">NIC sectors</span>
+                  <span class="label top">{{ 'NIC sectors' | t: 'staff.siteTour.dialog.sectorsLabel' }}</span>
                   <div>
-                    <div class="seg" role="group" aria-label="NIC sectors">
-                      <button type="button" [class.active]="!e.limitSectors" [attr.aria-pressed]="!e.limitSectors" (click)="limit('sectors', false)">Every sector</button>
-                      <button type="button" [class.active]="e.limitSectors" [attr.aria-pressed]="e.limitSectors" (click)="limit('sectors', true)">Only these sectors</button>
+                    <div class="seg" role="group" [attr.aria-label]="'NIC sectors' | t: 'staff.siteTour.dialog.sectorsLabel'">
+                      <button type="button" [class.active]="!e.limitSectors" [attr.aria-pressed]="!e.limitSectors" (click)="limit('sectors', false)">{{ 'Every sector' | t: 'staff.siteTour.dialog.everySectorButton' }}</button>
+                      <button type="button" [class.active]="e.limitSectors" [attr.aria-pressed]="e.limitSectors" (click)="limit('sectors', true)">{{ 'Only these sectors' | t: 'staff.siteTour.dialog.onlySectorsButton' }}</button>
                     </div>
                     @if (e.limitSectors) {
-                      <div class="mt-2"><zed-multi-select inputId="sectionSectors" label="NIC sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" /></div>
+                      <div class="mt-2"><zed-multi-select inputId="sectionSectors" [label]="'NIC sectors' | t: 'staff.siteTour.dialog.sectorsLabel'" [options]="sectorOptions()" [(value)]="e.nicSectors" /></div>
                     }
                   </div>
-                  <span class="label">In use</span>
+                  <span class="label">{{ 'In use' | t: 'staff.siteTour.dialog.activeLabel' }}</span>
                   <div>
                     <label class="check-line" for="sectionActive">
                       <input class="form-check-input" type="checkbox" id="sectionActive" [(ngModel)]="e.active" />
-                      <span>Section is in use</span>
+                      <span>{{ 'Section is in use' | t: 'staff.siteTour.dialog.activeCheck' }}</span>
                     </label>
                     @if (p.active) { <small class="invalid">{{ p.active }}</small> }
-                    @else if (!e.active) { <small class="text-muted d-block">Not asked in the app; photos already taken are kept.</small> }
+                    @else if (!e.active) { <small class="text-muted d-block">{{ 'Not asked in the app; photos already taken are kept.' | t: 'staff.siteTour.dialog.inactiveNote' }}</small> }
                   </div>
                 </div>
                 <small class="text-muted d-block mt-3">{{ scopeOf(e) }}</small>
@@ -259,8 +262,8 @@ export function sectionId(title: string, taken: readonly string[]): string {
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.siteTour.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.siteTour.dialog.saveButton' }}</button>
             </div>
           </div>
         </div>
@@ -354,8 +357,7 @@ export class SiteTourSectionsPage {
   protected readonly portals = SITE_TOUR_PORTALS;
   /** The app whose site tour the chosen portal's sections are. */
   private readonly adminPortal = inject(AdminPortalService);
-  protected readonly appName = computed(() =>
-    this.adminPortal.effective(SITE_TOUR_PORTALS) === 'consultancy' ? 'consultant app (milestone 1 visit)' : 'site assessor app');
+  protected readonly consultantApp = computed(() => this.adminPortal.effective(SITE_TOUR_PORTALS) === 'consultancy');
   protected readonly data = signal<SiteTourSectionsResponse | null>(null);
   protected readonly editing = signal<Editing | null>(null);
   protected readonly busy = signal(false);
@@ -372,7 +374,13 @@ export class SiteTourSectionsPage {
     const sections = this.data()?.sections ?? [];
     const off = sections.filter((s) => !s.active).length;
     const photos = sections.filter((s) => s.active).reduce((sum, s) => sum + s.max, 0);
-    return `${sections.length} ${sections.length === 1 ? 'section' : 'sections'}` + (off ? ` (${off} off)` : '') + ` · up to ${photos} photos in total`;
+    const values = { count: sections.length, off, photos };
+    if (sections.length === 1) {
+      return off ? t('staff.siteTour.totals.oneOff', '{count} section ({off} off) · up to {photos} photos in total', values)
+        : t('staff.siteTour.totals.one', '{count} section · up to {photos} photos in total', values);
+    }
+    return off ? t('staff.siteTour.totals.manyOff', '{count} sections ({off} off) · up to {photos} photos in total', values)
+      : t('staff.siteTour.totals.many', '{count} sections · up to {photos} photos in total', values);
   });
 
   /** Save was pressed in the pop-up: an empty name is reported too. */
@@ -390,16 +398,21 @@ export class SiteTourSectionsPage {
   }
 
   protected scopeText(s: SiteTourSection): string {
-    const levels = s.levels.length ? s.levels.map((l) => this.levelName(l)).join(', ') : 'All levels';
-    const sectors = s.nicSectors.length ? `NIC ${s.nicSectors.join(', ')}` : 'All sectors';
+    const levels = s.levels.length ? s.levels.map((l) => this.levelName(l)).join(', ') : t('staff.siteTour.scope.allLevels', 'All levels');
+    const sectors = s.nicSectors.length ? t('staff.siteTour.scope.nicChip', 'NIC {code}', { code: s.nicSectors.join(', ') }) : t('staff.siteTour.scope.allSectors', 'All sectors');
     return `${levels} · ${sectors}`;
   }
 
   /** The pop-up's line under the form: who is asked the section. */
   protected scopeOf(e: Editing): string {
-    const levels = e.levels.length ? e.levels.map((l) => this.levelName(l)).join(', ') : 'every level';
-    const sectors = e.nicSectors.length ? `NIC sectors ${e.nicSectors.join(', ')}` : 'units of every sector';
-    return `Asked for ${levels}, of ${sectors}.`;
+    const levels = e.levels.map((l) => this.levelName(l)).join(', ');
+    const sectors = e.nicSectors.join(', ');
+    if (levels) {
+      return sectors ? t('staff.siteTour.dialog.scopeLevelsSectors', 'Asked for {levels}, of NIC sectors {sectors}.', { levels, sectors })
+        : t('staff.siteTour.dialog.scopeLevels', 'Asked for {levels}, of units of every sector.', { levels });
+    }
+    return sectors ? t('staff.siteTour.dialog.scopeSectors', 'Asked for every level, of NIC sectors {sectors}.', { sectors })
+      : t('staff.siteTour.dialog.scopeAll', 'Asked for every level, of units of every sector.');
   }
 
   protected add(): void {
@@ -478,7 +491,9 @@ export class SiteTourSectionsPage {
     const s = sections[index];
     if (!s) return Promise.resolve();
     if (s.active && !(await this.confirms.ask({
-      title: 'Switch the Section Off?', message: `"${s.title}": the app no longer asks for its photos.`, confirmLabel: 'Switch Off', danger: true,
+      title: t('staff.siteTour.switchOffConfirm.title', 'Switch the Section Off?'),
+      message: t('staff.siteTour.switchOffConfirm.message', '"{title}": the app no longer asks for its photos.', { title: s.title }),
+      confirmLabel: t('staff.siteTour.switchOffConfirm.button', 'Switch Off'), danger: true,
     }))) return;
     s.active = !s.active;
     return this.change(() => this.http.put<MessageResponse>(SiteTourSectionsPage.url, { sections }));
@@ -494,8 +509,9 @@ export class SiteTourSectionsPage {
 
   protected async resetAll(): Promise<void> {
     if (!(await this.confirms.ask({
-      title: 'Reset to the Standard Sections?', message: 'The ten standard site tour sections are used again. The sections added or changed here are removed.',
-      confirmLabel: 'Reset', danger: true,
+      title: t('staff.siteTour.resetConfirm.title', 'Reset to the Standard Sections?'),
+      message: t('staff.siteTour.resetConfirm.message', 'The ten standard site tour sections are used again. The sections added or changed here are removed.'),
+      confirmLabel: t('staff.siteTour.resetConfirm.button', 'Reset'), danger: true,
     }))) return;
     return this.change(() => this.http.delete<MessageResponse>(SiteTourSectionsPage.url));
   }
@@ -509,28 +525,28 @@ export class SiteTourSectionsPage {
     const title = e.title.trim();
     const others = (this.data()?.sections ?? []).filter((s) => s.id !== e.section?.id);
     if (!title) {
-      if (this.tried()) p.title = 'Enter the section name.';
+      if (this.tried()) p.title = t('staff.siteTour.error.nameMissing', 'Enter the section name.');
     } else if (title.length > SITE_TOUR_LIMITS.title) {
-      p.title = `At most ${SITE_TOUR_LIMITS.title} characters.`;
+      p.title = t('staff.siteTour.error.tooLong', 'At most {count} characters.', { count: SITE_TOUR_LIMITS.title });
     } else if (/^[0-9]/.test(title)) {
-      p.title = 'The name cannot start with a number.';
+      p.title = t('staff.siteTour.error.nameNumber', 'The name cannot start with a number.');
     } else if (title.includes(' - ')) {
-      p.title = 'The name cannot contain " - " (a space, a dash and a space).';
+      p.title = t('staff.siteTour.error.nameDash', 'The name cannot contain " - " (a space, a dash and a space).');
     } else if (others.some((s) => s.title.trim().toLowerCase() === title.toLowerCase())) {
-      p.title = 'Another section has this name.';
+      p.title = t('staff.siteTour.error.nameTaken', 'Another section has this name.');
     }
-    if (e.hint.trim().length > SITE_TOUR_LIMITS.hint) p.hint = `At most ${SITE_TOUR_LIMITS.hint} characters.`;
+    if (e.hint.trim().length > SITE_TOUR_LIMITS.hint) p.hint = t('staff.siteTour.error.tooLong', 'At most {count} characters.', { count: SITE_TOUR_LIMITS.hint });
     const max = e.max;
     const min = e.min;
     if (max === null || max === undefined || !Number.isInteger(max) || max < 1 || max > SITE_TOUR_LIMITS.photos) {
-      p.max = `Enter a whole number from 1 to ${SITE_TOUR_LIMITS.photos}.`;
+      p.max = t('staff.siteTour.error.maxRange', 'Enter a whole number from 1 to {max}.', { max: SITE_TOUR_LIMITS.photos });
     }
     if (min === null || min === undefined || !Number.isInteger(min) || min < 0) {
-      p.min = 'Enter a whole number, 0 or more.';
+      p.min = t('staff.siteTour.error.minRange', 'Enter a whole number, 0 or more.');
     } else if (!p.max && min > max!) {
-      p.min = 'The minimum cannot be more than the maximum.';
+      p.min = t('staff.siteTour.error.minOverMax', 'The minimum cannot be more than the maximum.');
     }
-    if (!e.active && !others.some((s) => s.active)) p.active = 'At least one section must be in use.';
+    if (!e.active && !others.some((s) => s.active)) p.active = t('staff.siteTour.error.noneActive', 'At least one section must be in use.');
     return p;
   }
 

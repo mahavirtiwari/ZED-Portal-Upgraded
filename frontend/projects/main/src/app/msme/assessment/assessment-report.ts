@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { CertificationApi, CertificationData } from '../certification/certification.api';
 import { AssessmentApi, AssessmentReport, NonConformanceReport, Row, assessmentType } from './assessment.api';
 import { FileItem, NcRequirementView, NcSectionView, SectionView, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
@@ -27,7 +28,7 @@ type BasicTab = 'basicInfo' | 'esg' | 'elements';
  */
 @Component({
   selector: 'zed-msme-assessment-report',
-  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts],
+  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts, TextPipe],
   templateUrl: './assessment-report.html',
   styleUrls: ['../shared/msme-page.scss', './assessment-report.scss'],
 })
@@ -46,14 +47,15 @@ export class AssessmentReportView {
   protected readonly levelTitle = computed(() => {
     const c = this.type() ?? this.certification() ?? '';
     const base = c.replace(/Surveillance$/i, '');
-    return levelName(base) + (base !== c ? ' surveillance' : '');
+    return base !== c ? t('msme.assessment.surveillanceLevel', '{level} surveillance', { level: levelName(base) }) : levelName(base);
   });
-  protected readonly pageTitle = computed(() =>
-    `${this.levelTitle()}: ${this.mode() === 'basic-info' ? 'Basic information and documents' : 'Non-conformances'}`);
+  protected readonly pageTitle = computed(() => this.mode() === 'basic-info'
+    ? t('msme.assessment.basicTitle', '{level}: Basic information and documents', { level: this.levelTitle() })
+    : t('msme.assessment.ncTitle', '{level}: Non-conformances', { level: this.levelTitle() }));
   protected readonly crumbs = computed<Crumb[]>(() => [
-    { label: 'Home', link: '/msme/dashboard' },
-    { label: `${this.levelTitle()} certification`, link: ['/msme/certification', this.certification()] },
-    { label: this.mode() === 'basic-info' ? 'Basic information' : 'Non-conformances' },
+    { label: t('msme.assessment.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.assessment.crumb.certification', '{level} certification', { level: this.levelTitle() }), link: ['/msme/certification', this.certification()] },
+    { label: this.mode() === 'basic-info' ? t('msme.assessment.crumb.basicInfo', 'Basic information') : t('msme.assessment.crumb.nc', 'Non-conformances') },
   ]);
 
   protected readonly loading = signal(false);
@@ -127,14 +129,14 @@ export class AssessmentReportView {
       // From NC2 on, what the NC was raised on is the previous reply's documents, already in the conversation.
       const raisedOn = first ? rq.previous.filter((e) => !!e.url) : [];
       first = false;
-      out.push(message('assessor', `NC${rv.number} raised`, {
+      out.push(message('assessor', t('msme.assessment.thread.raisedLabel', 'NC{round} raised', { round: rv.number }), {
         date: this.value(rq.requirement['PreviousAssessorUpdatedDate']),
         text: this.value(rq.requirement['PreviousAssessorRemarks']),
         files: raisedOn.filter((e) => e.isPdf).map((e) => ({ name: e.label, url: e.url ?? '' })),
         pictures: raisedOn.filter((e) => !e.isPdf).map((e) => ({ name: e.label, url: e.url ?? '' })),
       }));
       if (rq.responded) {
-        out.push(message('msme', `NC${rv.number}`, {
+        out.push(message('msme', t('msme.assessment.thread.roundLabel', 'NC{round}', { round: rv.number }), {
           date: this.value(rq.requirement['MsmeUpdatedDate']),
           text: this.value(rq.requirement['MsmeComments']),
           all: rq.current.map((e) => ({ name: this.value(e['EvidenceName']), url: this.value(e['FileUrl']) })),
@@ -172,7 +174,7 @@ export class AssessmentReportView {
     }
     if (!type) {
       this.unit.set(null);
-      this.error.set('Invalid certification.');
+      this.error.set(t('msme.assessment.error.invalidLevel', 'Invalid certification.'));
       return;
     }
     this.loading.set(true);

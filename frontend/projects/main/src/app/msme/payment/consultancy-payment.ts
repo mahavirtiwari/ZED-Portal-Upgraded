@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { handholdingLevel, handholdingLevelName } from '../handholding/handholding.api';
 import { ConsultancyOptions, ConsultancyPaymentApi, milestoneTitle } from './consultancy-payment.api';
@@ -32,7 +33,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-consultancy-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead, StepTracker, PayDisclaimer],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead, StepTracker, PayDisclaimer, TextPipe],
   templateUrl: './consultancy-payment.html',
   styleUrl: './payment-step.scss',
 })
@@ -64,31 +65,45 @@ export class ConsultancyPaymentPage implements OnInit {
   /** "Milestone 1: Baseline Diagnostic Study and Handholding Action Plan". */
   protected readonly milestoneLabel = computed(() => milestoneTitle(this.milestone()));
 
+  protected readonly crumbs = computed(() => [
+    { label: t('msme.handholdingPayment.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.handholdingPayment.crumb.incentives', 'Incentives'), link: '/msme/dashboard', fragment: 'incentives' },
+    { label: t('msme.handholdingPayment.crumb.handholding', 'Handholding support'), link: '/msme/handholding' },
+    { label: t('msme.handholdingPayment.crumb.payment', 'Payment') },
+  ]);
+
   protected readonly subtitle = computed(() =>
-    this.step() === 'payment' ? 'Step 2 of 4: confirm tax details and the amount before you pay.'
-      : this.step() === 'instructions' ? 'Step 1 of 4: read the instructions before payment.'
-        : this.step() ? 'Step 1 of 4: read and accept the disclaimer before payment.' : null);
+    this.step() === 'payment' ? t('msme.payment.step2.sub', 'Step 2 of 4: confirm tax details and the amount before you pay.')
+      : this.step() === 'instructions' ? t('msme.payment.instructionsStep.sub', 'Step 1 of 4: read the instructions before payment.')
+        : this.step() ? t('msme.payment.disclaimerStep.sub', 'Step 1 of 4: read and accept the disclaimer before payment.') : null);
 
   protected readonly steps = computed<TrackerStep[]>(() => {
     const atFee = this.step() === 'payment';
+    const here = t('msme.payment.tracker.hereNote', 'You are here');
     return [
-      { label: 'Disclaimer', note: atFee ? 'Read and accept' : 'You are here' },
-      { label: 'Fee & tax details', note: atFee ? 'You are here' : 'GSTIN, TDS, coupon' },
-      { label: 'Payment', note: 'Secure gateway' },
-      { label: 'Confirmation', note: 'Receipt and next steps' },
+      { label: t('msme.payment.tracker.disclaimerLabel', 'Disclaimer'), note: atFee ? t('msme.payment.tracker.disclaimerNote', 'Read and accept') : here },
+      { label: t('msme.payment.tracker.feeLabel', 'Fee & tax details'), note: atFee ? here : t('msme.payment.tracker.feeNote', 'GSTIN, TDS, coupon') },
+      { label: t('msme.payment.tracker.paymentLabel', 'Payment'), note: t('msme.payment.tracker.paymentNote', 'Secure gateway') },
+      { label: t('msme.payment.tracker.confirmationLabel', 'Confirmation'), note: t('msme.payment.tracker.confirmationNote', 'Receipt and next steps') },
     ];
   });
 
   /** "You are paying for": the level's handholding milestone due. */
   protected readonly rail = computed<PayRail>(() => ({
     logo: this.logo(),
-    title: `${this.levelLabel()} Handholding support`,
+    title: t('msme.handholdingPayment.rail.title', '{level} Handholding support', { level: this.levelLabel() }),
     sub: this.billing()?.unit ?? null,
     facts: [
-      { label: 'Milestone', value: this.milestone() ? `Milestone ${this.milestone()}` : '—' },
-      ...(this.milestoneLabel() ? [{ label: 'Covers', value: this.milestoneLabel()! }] : []),
+      { label: t('msme.handholdingPayment.rail.milestoneLabel', 'Milestone'),
+        value: this.milestone() ? t('msme.handholdingPayment.rail.milestoneText', 'Milestone {milestone}', { milestone: this.milestone() }) : '—' },
+      ...(this.milestoneLabel() ? [{ label: t('msme.handholdingPayment.rail.coversLabel', 'Covers'), value: this.milestoneLabel()! }] : []),
     ],
   }));
+
+  /** "GST @ 18%" (written here: an @ in the template would start a block). */
+  protected gstLabel(): string {
+    return t('msme.payment.summary.gstLabel', 'GST @ 18%');
+  }
 
   protected gstinApplicable: 'Yes' | 'No' | null = null;
   protected gstin = '';
@@ -108,13 +123,13 @@ export class ConsultancyPaymentPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const level = this.level();
     if (!level) {
-      this.alert.set(errorAlert('Invalid certification.'));
+      this.alert.set(errorAlert(t('msme.handholdingPayment.error.invalidLevel', 'Invalid certification.')));
       return;
     }
     const status = await this.call(this.api.status(level));
     if (!status) return;
     if (!status.canPay) {
-      this.alert.set(errorAlert(status.refusal ?? 'Handholding Support is not available for this level.'));
+      this.alert.set(errorAlert(status.refusal ?? t('msme.handholdingPayment.error.notAvailable', 'Handholding Support is not available for this level.')));
       return;
     }
     this.milestone.set(status.nextMilestone);
@@ -193,7 +208,7 @@ export class ConsultancyPaymentPage implements OnInit {
   protected async proceed(): Promise<void> {
     this.submitted.set(true);
     if (!this.formValid()) {
-      this.alert.set(errorAlert('Please enter required data.'));
+      this.alert.set(errorAlert(t('msme.payment.error.required', 'Please enter required data.')));
       return;
     }
     if (this.gstinApplicable === 'Yes') {
@@ -212,17 +227,17 @@ export class ConsultancyPaymentPage implements OnInit {
   protected async savePan(): Promise<void> {
     const pan = this.correctedPan.trim().toUpperCase();
     if (pan.length !== 10) {
-      this.alert.set(errorAlert('Please enter a valid 10-character PAN.'));
+      this.alert.set(errorAlert(t('msme.payment.error.panLength', 'Please enter a valid 10-character PAN.')));
       return;
     }
     if (pan !== this.gstinPan) {
-      this.alert.set(errorAlert('Please enter the correct PAN associated with that GSTIN.'));
+      this.alert.set(errorAlert(t('msme.payment.error.panMismatch', 'Please enter the correct PAN associated with that GSTIN.')));
       return;
     }
     this.panModal.set(false);
     const ok = await this.call(this.api.correctPan(this.level()!, this.gstin.trim().toUpperCase(), pan));
     if (!ok) return;
-    this.alert.set(successAlert('PAN updated successfully. Proceeding...'));
+    this.alert.set(successAlert(t('msme.payment.toast.panUpdated', 'PAN updated successfully. Proceeding...')));
     await this.checkout();
   }
 

@@ -10,45 +10,54 @@ import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
 import { StaffRole } from '../../staff-menu';
 import { TuAccount, TuApi, TuApplication, TuDocument, TuMeeting, TuTechnology, TuValues } from './tu.api';
+import { TextPipe, t } from '../../../content/page-text';
 
 export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
 
+// 2026-11-19 ("All page wording"): the labels below are getters (the Admin's wording, Texts → Page wording, staff.tuVerification.*,
+// or the standard one), read where they are shown; the keys, columns and document types stay the code values.
+
 /** The purchase details of a technology; the amounts and the mode of payment follow them on the page. */
-export const TECHNOLOGY_FIELDS: { label: string; key: string }[] = [
-  { label: 'Name of Manufacturer', key: 'NameOfTheManufaturer' },
-  { label: 'Make / Model Name', key: 'MakeOrModelName' },
-  { label: 'Date of Purchase', key: 'DateOfPurchase' },
-  { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
-  { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
-  { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
+export const TECHNOLOGY_FIELDS: { readonly label: string; key: string }[] = [
+  { get label() { return t('staff.tuVerification.field.manufacturer.label', 'Name of Manufacturer'); }, key: 'NameOfTheManufaturer' },
+  { get label() { return t('staff.tuVerification.field.model.label', 'Make / Model Name'); }, key: 'MakeOrModelName' },
+  { get label() { return t('staff.tuVerification.field.purchased.label', 'Date of Purchase'); }, key: 'DateOfPurchase' },
+  { get label() { return t('staff.tuVerification.field.supplier.label', 'Name of Agency/Supplier'); }, key: 'AgencyOrSupplier' },
+  { get label() { return t('staff.tuVerification.field.invoiceNo.label', 'Invoice/Bill No.'); }, key: 'InvoiceNo' },
+  { get label() { return t('staff.tuVerification.field.invoiceDate.label', 'Invoice Bill Date'); }, key: 'InvoiceBillDate' },
 ];
 
 /** Bronze: the certificate the MSME obtained (the old page's Name of Certificate row is commented out there). */
-export const BRONZE_CERTIFICATE_FIELDS: { label: string; key: string }[] = [
-  { label: 'Category of Certificate', key: 'CategoryOfCertificate' },
-  { label: 'Name of Certification Agency', key: 'CertificationAgency' },
-  { label: 'Certificate Number', key: 'CertficateNumber' },
-  { label: 'Date of Issue of Certificate', key: 'DateOfIssue' },
-  { label: 'Period of validity of Certificate', key: 'ValidityOfCertificate' },
-  { label: 'Any other information related to this certificate', key: 'AnyOtherInformation' },
+export const BRONZE_CERTIFICATE_FIELDS: { readonly label: string; key: string }[] = [
+  { get label() { return t('staff.tuVerification.certificate.category.label', 'Category of Certificate'); }, key: 'CategoryOfCertificate' },
+  { get label() { return t('staff.tuVerification.certificate.agency.label', 'Name of Certification Agency'); }, key: 'CertificationAgency' },
+  { get label() { return t('staff.tuVerification.certificate.number.label', 'Certificate Number'); }, key: 'CertficateNumber' },
+  { get label() { return t('staff.tuVerification.certificate.issued.label', 'Date of Issue of Certificate'); }, key: 'DateOfIssue' },
+  { get label() { return t('staff.tuVerification.certificate.validity.label', 'Period of validity of Certificate'); }, key: 'ValidityOfCertificate' },
+  { get label() { return t('staff.tuVerification.certificate.other.label', 'Any other information related to this certificate'); }, key: 'AnyOtherInformation' },
 ];
 
-/** Bronze: the "Details of Expenditure" before the amounts and the mode of payment. */
-export const BRONZE_EXPENDITURE_FIELDS: { label: string; key: string }[] = [
-  { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
-  { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
-  { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
+/** Bronze: the "Details of Expenditure" before the amounts and the mode of payment (the same labels as a technology's). */
+export const BRONZE_EXPENDITURE_FIELDS: { readonly label: string; key: string }[] = [
+  { get label() { return t('staff.tuVerification.field.supplier.label', 'Name of Agency/Supplier'); }, key: 'AgencyOrSupplier' },
+  { get label() { return t('staff.tuVerification.field.invoiceNo.label', 'Invoice/Bill No.'); }, key: 'InvoiceNo' },
+  { get label() { return t('staff.tuVerification.field.invoiceDate.label', 'Invoice Bill Date'); }, key: 'InvoiceBillDate' },
 ];
 
 const CERTIFICATE_COPY = 'Copy of Certificate';
 
+/** The caption of the certificate copy's row (Bronze). */
+function certificateCopyLabel(): string {
+  return t('staff.tuVerification.doc.certificateCopy.label', 'Copy of Certificate');
+}
+
 /** The document rows of a technology and of the account, in the old page's order and captions (by PhotoType). */
-export const TECHNOLOGY_DOCUMENTS: { label: string; type: string }[] = [
-  { label: 'CA certificate of expenditure', type: 'CA certificate of expenditure' },
-  { label: 'Purchased Technology', type: 'Purchased Technology' },
-  { label: 'Invoice Copy', type: 'Copy of Invoice' },
+export const TECHNOLOGY_DOCUMENTS: { readonly label: string; type: string }[] = [
+  { get label() { return t('staff.tuVerification.doc.caCertificate.label', 'CA certificate of expenditure'); }, type: 'CA certificate of expenditure' },
+  { get label() { return t('staff.tuVerification.doc.purchased.label', 'Purchased Technology'); }, type: 'Purchased Technology' },
+  { get label() { return t('staff.tuVerification.doc.invoice.label', 'Invoice Copy'); }, type: 'Copy of Invoice' },
 ];
-export const ACCOUNT_DOCUMENTS: { label: string; type: string }[] = [{ label: 'Cancelled Cheque Copy', type: 'Copy of Cancelled Cheque' }];
+export const ACCOUNT_DOCUMENTS: { readonly label: string; type: string }[] = [{ get label() { return t('staff.tuVerification.doc.cheque.label', 'Cancelled Cheque Copy'); }, type: 'Copy of Cancelled Cheque' }];
 
 /** The opening meeting photo; the app's other meeting photos are the site's interior and exterior. */
 const OPENING_MEETING_PHOTO = 'Opening Meeting Photo';
@@ -75,11 +84,11 @@ function isCertificateCopy(d: TuDocument): boolean {
   return (d.photoType ?? '').toLowerCase() === CERTIFICATE_COPY.toLowerCase();
 }
 
-export const ACCOUNT_FIELDS: { label: string; key: keyof TuAccount; column: string; max: number }[] = [
-  { label: 'Account No.', key: 'accountNo', column: 'AccountNo', max: 18 },
-  { label: 'IFSC Code', key: 'ifscCode', column: 'IfscCode', max: 11 },
-  { label: 'Branch Address', key: 'branchAddress', column: 'BranchAddress', max: 500 },
-  { label: 'Name of the Bank', key: 'bankName', column: 'BankName', max: 200 },
+export const ACCOUNT_FIELDS: { readonly label: string; key: keyof TuAccount; column: string; max: number }[] = [
+  { get label() { return t('staff.tuVerification.account.number.label', 'Account No.'); }, key: 'accountNo', column: 'AccountNo', max: 18 },
+  { get label() { return t('staff.tuVerification.account.ifsc.label', 'IFSC Code'); }, key: 'ifscCode', column: 'IfscCode', max: 11 },
+  { get label() { return t('staff.tuVerification.account.branch.label', 'Branch Address'); }, key: 'branchAddress', column: 'BranchAddress', max: 500 },
+  { get label() { return t('staff.tuVerification.account.bank.label', 'Name of the Bank'); }, key: 'bankName', column: 'BankName', max: 200 },
 ];
 
 interface ValidationForm {
@@ -105,10 +114,12 @@ interface DecisionForm {
  * the eligible amount), then the unit's Overview and the Technologies Recommended tabs; the decisions of the CO and the
  * master admin (the DFO decides from the app and sees only the outcome) and the TU report (PDF).
  * Route: /staff/consultancy/technology/verification/:zedId/:level
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.tuVerification.*) or the standard one
+ * here and in tu-verification.html; the data-correct pledge stays an HTML text (zed-text).
  */
 @Component({
   selector: 'zed-staff-tu-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead, TextPipe],
   templateUrl: './tu-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -158,7 +169,7 @@ export class TuVerificationPage {
   protected readonly isCoordinator = computed(() => this.user()?.roleId === StaffRole.StateCoordinator);
   /** 2026-11-17 (approved staff redesign): "Home > the list > ZED ID" (the coordinator's NEFT list, else the TU list). */
   protected readonly crumbs = computed(() => staffCrumbs(
-    { label: this.isCoordinator() ? 'New Transactions' : 'Technology upgradation', link: this.backLink },
+    { label: this.isCoordinator() ? t('staff.tuVerification.crumb.neft', 'New Transactions') : t('staff.tuVerification.crumb.list', 'Technology upgradation'), link: this.backLink },
     { label: this.zedId },
   ));
   private readonly toast = inject(ToastService);
@@ -261,7 +272,7 @@ export class TuVerificationPage {
 
   /** Bronze: the certificate copy is shown with the certificate, the other documents with the expenditure. */
   protected certificateDocumentRows(app: TuApplication, t: TuTechnology): DocumentGroup[] {
-    return [{ label: CERTIFICATE_COPY, docs: this.docsOf(app, t).filter(isCertificateCopy) }];
+    return [{ label: certificateCopyLabel(), docs: this.docsOf(app, t).filter(isCertificateCopy) }];
   }
 
   protected documentRows(app: TuApplication, t: TuTechnology): DocumentGroup[] {
@@ -341,7 +352,7 @@ export class TuVerificationPage {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (file && (file.size > MAX_SCREENSHOT_BYTES || !/\.(pdf|jpe?g|png)$/i.test(file.name))) {
-      this.dialogError.set('Please upload valid document (PDF / JPG / PNG, less than 2 MB).');
+      this.dialogError.set(t('staff.tuVerification.validate.fileError', 'Please upload valid document (PDF / JPG / PNG, less than 2 MB).'));
       input.value = '';
       this.patchValidation({ file: null });
       return;
@@ -353,10 +364,10 @@ export class TuVerificationPage {
   protected async saveValidation(app: TuApplication): Promise<void> {
     const v = this.validation();
     if (!v) return;
-    if (!v.isVerified) return this.dialogError.set('Please select whether the document is verified.');
-    if (v.isVerified === 'No' && !v.remarks.trim()) return this.dialogError.set('Please enter the remarks.');
+    if (!v.isVerified) return this.dialogError.set(t('staff.tuVerification.validate.verifiedError', 'Please select whether the document is verified.'));
+    if (v.isVerified === 'No' && !v.remarks.trim()) return this.dialogError.set(t('staff.tuVerification.validate.remarksError', 'Please enter the remarks.'));
     if (v.isVerified === 'Yes' && v.doc.needsScreenshot && !v.file && v.doc.screenshots.length === 0)
-      return this.dialogError.set('Please upload valid pdf document.');
+      return this.dialogError.set(t('staff.tuVerification.validate.screenshotError', 'Please upload valid pdf document.'));
     await this.run(
       () => this.api.validate(this.zedId, app.certification, v.doc.id, {
         isVerified: v.isVerified as 'Yes' | 'No',
@@ -379,7 +390,7 @@ export class TuVerificationPage {
     const a = this.amountEdit();
     if (!a) return;
     if (!/^\d+(\.\d{1,2})?$/.test(a.value.trim())) {
-      this.error.set('Please enter a valid amount (up to 2 decimals).');
+      this.error.set(t('staff.tuVerification.amount.error', 'Please enter a valid amount (up to 2 decimals).'));
       return;
     }
     await this.run(() => this.api.updateAmount(this.zedId, app.certification, a.id, a.value.trim()), () => this.amountEdit.set(null), (m) => this.error.set(m));
@@ -400,7 +411,7 @@ export class TuVerificationPage {
   protected async saveDecision(app: TuApplication): Promise<void> {
     const d = this.decision();
     if (!d || !d.confirmed) return;
-    if (d.decision === 'reject' && !d.comments.trim()) return this.dialogError.set('Please enter the comments.');
+    if (d.decision === 'reject' && !d.comments.trim()) return this.dialogError.set(t('staff.tuVerification.decision.commentsError', 'Please enter the comments.'));
     await this.run(() => this.api.decide(this.zedId, app.certification, d.decision, d.comments.trim()), () => this.decision.set(null));
   }
 
@@ -425,7 +436,7 @@ export class TuVerificationPage {
     const a = this.account();
     if (!a) return;
     if (!a.accountNo.trim() || !a.ifscCode.trim() || !a.branchAddress.trim() || !a.bankName.trim()) {
-      this.error.set('All fields are mandatory');
+      this.error.set(t('staff.tuVerification.account.requiredError', 'All fields are mandatory'));
       return;
     }
     await this.run(

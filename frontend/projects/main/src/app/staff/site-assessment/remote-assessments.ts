@@ -10,6 +10,7 @@ import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -28,19 +29,19 @@ import { RowMenu, RowMenuItem } from '../row-menu';
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+      <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.remoteAssessments.refreshButton' }}</button>
     </zed-page-head>
-    <zed-list-counts [counts]="consultancy ? milestoneCounts() : counts()" [selected]="stage() ?? 'all'" label="Units by status" (pick)="pickStage($event.key)" />
+    <zed-list-counts [counts]="consultancy ? milestoneCounts() : counts()" [selected]="stage() ?? 'all'" [label]="'Units by status' | t: 'staff.remoteAssessments.counts.aria'" (pick)="pickStage($event.key)" />
 
     <div class="zed-card ra-filters">
-      <input type="search" id="remote-search" class="form-control ra-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or agency"
-             aria-label="Search ZED ID, unit, SPOC or agency" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <input type="search" id="remote-search" class="form-control ra-q" maxlength="50" [placeholder]="'Search ZED ID, unit, SPOC or agency' | t: 'staff.remoteAssessments.search.placeholder'"
+             [attr.aria-label]="'Search ZED ID, unit, SPOC or agency' | t: 'staff.remoteAssessments.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
       @if (!consultancy) {
-        <zed-chip-filter label="Mode" [chips]="modeChips()" [value]="modeFilter()" (valueChange)="modeFilter.set($event)" />
+        <zed-chip-filter [label]="'Mode' | t: 'staff.remoteAssessments.mode.label'" [chips]="modeChips()" [value]="modeFilter()" (valueChange)="modeFilter.set($event)" />
       }
     </div>
 
@@ -54,13 +55,13 @@ import { RowMenu, RowMenuItem } from '../row-menu';
         <table class="table table-zed">
           <thead>
             <tr>
-              <th>Unit</th>
-              <th>Desired level</th>
-              <th>Unit SPOC</th>
-              <th>Consultant organisation</th>
-              <th>Site visit dates</th>
-              <th>Status</th>
-              <th class="text-end">Actions</th>
+              <th>{{ 'Unit' | t: 'staff.remoteAssessments.column.unit' }}</th>
+              <th>{{ 'Desired level' | t: 'staff.remoteAssessments.column.desiredLevel' }}</th>
+              <th>{{ 'Unit SPOC' | t: 'staff.remoteAssessments.column.spoc' }}</th>
+              <th>{{ 'Consultant organisation' | t: 'staff.remoteAssessments.column.co' }}</th>
+              <th>{{ 'Site visit dates' | t: 'staff.remoteAssessments.column.siteVisitDates' }}</th>
+              <th>{{ 'Status' | t: 'staff.remoteAssessments.column.status' }}</th>
+              <th class="text-end">{{ 'Actions' | t: 'staff.remoteAssessments.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -76,19 +77,19 @@ import { RowMenu, RowMenuItem } from '../row-menu';
                 <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
                 @if (milestone === 1) {
-                  <td>BDS: {{ s['BdsToDate'] }}<span class="sub">HAP: {{ s['HapToDate'] }}</span></td>
+                  <td>{{ 'BDS: {date}' | t: 'staff.remoteAssessments.row.bds.label' : { date: s['BdsToDate'] } }}<span class="sub">{{ 'HAP: {date}' | t: 'staff.remoteAssessments.row.hap.label' : { date: s['HapToDate'] } }}</span></td>
                 } @else {
                   <td>{{ s['BdsToDate'] }}</td>
                 }
                 <td><span [class]="'chip ' + milestoneState(s).tone">{{ milestoneState(s).label }}</span></td>
                 <td class="text-end text-nowrap">
-                  <a class="btn btn-primary ra-act details" [routerLink]="reviewLink(s)">View details</a>
-                  <zed-row-menu [items]="profileMenu" [label]="'More actions for ' + s['ZedId']" (picked)="openProfile(s)" />
+                  <a class="btn btn-primary ra-act details" [routerLink]="reviewLink(s)">{{ 'View details' | t: 'staff.remoteAssessments.viewDetailsButton' }}</a>
+                  <zed-row-menu [items]="profileMenu()" [label]="'More actions for {zedId}' | t: 'staff.remoteAssessments.row.menuAria' : { zedId: s['ZedId'] }" (picked)="openProfile(s)" />
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" style="padding: 0px"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
+                <td colspan="7" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No Data' | t: 'staff.remoteAssessments.empty') }}</div></td>
               </tr>
             }
           </tbody>
@@ -100,14 +101,14 @@ import { RowMenu, RowMenuItem } from '../row-menu';
         <table class="table table-zed">
           <thead>
             <tr>
-              <th>Unit</th>
-              <th>Level</th>
-              <th>Unit SPOC</th>
-              <th>Agency</th>
-              <th>Mode</th>
-              <th>{{ surveillance ? 'Surveillance date' : 'Assessment date' }}</th>
-              <th>Status</th>
-              <th class="text-end">Actions</th>
+              <th>{{ 'Unit' | t: 'staff.remoteAssessments.column.unit' }}</th>
+              <th>{{ 'Level' | t: 'staff.remoteAssessments.column.level' }}</th>
+              <th>{{ 'Unit SPOC' | t: 'staff.remoteAssessments.column.spoc' }}</th>
+              <th>{{ 'Agency' | t: 'staff.remoteAssessments.column.agency' }}</th>
+              <th>{{ 'Mode' | t: 'staff.remoteAssessments.column.mode' }}</th>
+              <th>{{ surveillance ? ('Surveillance date' | t: 'staff.remoteAssessments.column.surveillanceDate') : ('Assessment date' | t: 'staff.remoteAssessments.column.assessmentDate') }}</th>
+              <th>{{ 'Status' | t: 'staff.remoteAssessments.column.status' }}</th>
+              <th class="text-end">{{ 'Actions' | t: 'staff.remoteAssessments.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +123,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
                 <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
                 <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
-                <td><span class="chip is-info">{{ mode(s) }}</span></td>
+                <td><span class="chip is-info">{{ modeName(mode(s)) }}</span></td>
                 <td class="text-nowrap">{{ s['AssessmentDate'] }}</td>
                 <td><span [class]="'chip ' + stateOf(s).tone">{{ stateOf(s).label }}</span></td>
                 <td class="text-end text-nowrap">
@@ -130,33 +131,33 @@ import { RowMenu, RowMenuItem } from '../row-menu';
                     @if (surveillance && s['OnsiteVisit']) {
                       <!-- 2026-11-14 (Onsite surveillance): assessed in the assessor app; reviewed here after its closing meeting. -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Review &amp; submit</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">{{ 'Review & submit' | t: 'staff.remoteAssessments.reviewButton' }}</a>
                       } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
-                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">Review NC</a>
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">{{ 'Review NC' | t: 'staff.remoteAssessments.reviewNcButton' }}</a>
                       }
                     } @else if (surveillance) {
                       <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
                       @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Assess</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">{{ 'Assess' | t: 'staff.remoteAssessments.assessButton' }}</a>
                       }
                     } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                      <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">View details</a>
+                      <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">{{ 'View details' | t: 'staff.remoteAssessments.viewDetailsButton' }}</a>
                       <!-- V4: after the SA app's closing meeting the lead assessor reviews and final-submits here (old SaDetails page). -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
-                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Review &amp; submit</a>
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">{{ 'Review & submit' | t: 'staff.remoteAssessments.reviewButton' }}</a>
                       } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
                         <!-- An NC round: the MSME's answers are reviewed and final-submitted on the same page (NC tab). -->
-                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">Review NC</a>
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">{{ 'Review NC' | t: 'staff.remoteAssessments.reviewNcButton' }}</a>
                       }
                     } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
-                      <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">Assess</a>
+                      <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">{{ 'Assess' | t: 'staff.remoteAssessments.assessButton' }}</a>
                     }
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" style="padding: 0px"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
+                <td colspan="8" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No Data' | t: 'staff.remoteAssessments.empty') }}</div></td>
               </tr>
             }
           </tbody>
@@ -182,7 +183,7 @@ export class RemoteAssessmentsPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly router = inject(Router);
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
-  protected readonly profileMenu: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
+  protected readonly profileMenu = computed<RowMenuItem[]>(() => [{ key: 'profile', label: t('staff.remoteAssessments.menu.profile.label', 'View MSME profile'), icon: 'people' }]);
   private readonly legacyUrl = signal('');
   private readonly system = inject(SITE_SYSTEM);
 
@@ -190,14 +191,16 @@ export class RemoteAssessmentsPage {
   protected readonly surveillance = this.system === 'surveillance';
   /** Consultancy: milestone of the list (1-3, route parameter; 1 when missing or invalid). */
   protected readonly milestone = RemoteAssessmentsPage.milestoneOf(inject(ActivatedRoute).snapshot.paramMap.get('milestone'));
-  protected readonly subtitle = this.consultancy
-    ? `Units allotted to you for milestone ${this.milestone}, with the site visit dates.`
-    : this.surveillance ? 'Surveillance assessments allotted to you; assess them on the meeting link.'
-    : 'Site assessments allotted to you: assess the remote ones here, open the onsite ones for their details.';
+  protected readonly subtitle = computed(() => this.consultancy
+    ? t('staff.remoteAssessments.milestone.sub', 'Units allotted to you for milestone {number}, with the site visit dates.', { number: this.milestone })
+    : this.surveillance ? t('staff.remoteAssessments.surveillance.sub', 'Surveillance assessments allotted to you; assess them on the meeting link.')
+    : t('staff.remoteAssessments.sub', 'Site assessments allotted to you: assess the remote ones here, open the onsite ones for their details.'));
 
   protected readonly rows = signal<Row[]>([]);
-  protected readonly title = this.consultancy ? `Milestone ${this.milestone}` : this.surveillance ? 'Surveillance assessments (site)' : 'Remote and onsite assessments';
-  protected readonly crumbs = staffCrumbs({ label: this.title });
+  protected readonly title = computed(() => this.consultancy
+    ? t('staff.remoteAssessments.milestone.title', 'Milestone {number}', { number: this.milestone })
+    : this.surveillance ? t('staff.remoteAssessments.surveillance.title', 'Surveillance assessments (site)') : t('staff.remoteAssessments.title', 'Remote and onsite assessments'));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
   /** The tile chosen (its key; null: every unit) and the mode chip ('' all). */
   protected readonly stage = signal<string | null>(null);
   protected readonly modeFilter = signal('');
@@ -209,34 +212,47 @@ export class RemoteAssessmentsPage {
   /** Where a site assessment stands for the assessor (the chip of its row). */
   protected stateOf(s: Row): { label: string; tone: string } {
     const st = +(s['CertificationStatus'] ?? 0);
-    if (st === 13) return { label: 'Meetings done: review', tone: 'is-warn' };
-    if (st === 14) return { label: 'NC answered: review', tone: 'is-bad' };
-    return { label: this.mode(s) === 'Remote' ? 'To assess' : 'Scheduled', tone: 'is-info' };
+    if (st === 13) return { label: t('staff.remoteAssessments.state.meetingsDone.chip', 'Meetings done: review'), tone: 'is-warn' };
+    if (st === 14) return { label: t('staff.remoteAssessments.state.ncAnswered.chip', 'NC answered: review'), tone: 'is-bad' };
+    return { label: this.mode(s) === 'Remote' ? t('staff.remoteAssessments.state.toAssess.chip', 'To assess')
+      : t('staff.remoteAssessments.state.scheduled.chip', 'Scheduled'), tone: 'is-info' };
   }
 
   /** Consultancy: where a milestone stands for the consultant (review after the meetings, the site visit to come, in progress). */
-  protected milestoneState(s: Row): { label: string; tone: string } {
+  protected milestoneState(s: Row): { key: string; label: string; tone: string } {
+    const key = this.milestoneKey(s);
+    return { key, label: this.milestoneLabel(key), tone: key === 'To review' ? 'is-warn' : key === 'Site visit due' ? 'is-info' : '' };
+  }
+
+  /** The milestone state's code (also the tile's key). */
+  private milestoneKey(s: Row): string {
     const st = +(s['CertificationStatus'] ?? 0);
-    if (st === 13 || st === 14) return { label: 'To review', tone: 'is-warn' };
+    if (st === 13 || st === 14) return 'To review';
     const visit = Date.parse(String(s['BdsToDate'] ?? ''));
-    if (!isNaN(visit) && visit >= new Date().setHours(0, 0, 0, 0)) return { label: 'Site visit due', tone: 'is-info' };
-    return { label: 'In progress', tone: '' };
+    if (!isNaN(visit) && visit >= new Date().setHours(0, 0, 0, 0)) return 'Site visit due';
+    return 'In progress';
+  }
+
+  private milestoneLabel(key: string): string {
+    return key === 'To review' ? t('staff.remoteAssessments.milestoneState.toReview.chip', 'To review')
+      : key === 'Site visit due' ? t('staff.remoteAssessments.milestoneState.visitDue.chip', 'Site visit due')
+      : t('staff.remoteAssessments.milestoneState.inProgress.chip', 'In progress');
   }
 
   protected readonly milestoneCounts = computed<ListCount[]>(() => {
     const rows = this.rows();
-    const by = (label: string) => rows.filter((r) => this.milestoneState(r).label === label).length;
+    const by = (key: string) => rows.filter((r) => this.milestoneKey(r) === key).length;
     return [
-      { key: 'all', label: 'Allotted to me', value: rows.length },
-      { key: 'Site visit due', label: 'Site visit due', value: by('Site visit due') },
-      { key: 'To review', label: 'To review', value: by('To review'), tone: 'warn' },
-      { key: 'In progress', label: 'In progress', value: by('In progress') },
+      { key: 'all', label: t('staff.remoteAssessments.count.allotted.label', 'Allotted to me'), value: rows.length },
+      { key: 'Site visit due', label: t('staff.remoteAssessments.count.visitDue.label', 'Site visit due'), value: by('Site visit due') },
+      { key: 'To review', label: t('staff.remoteAssessments.count.toReview.label', 'To review'), value: by('To review'), tone: 'warn' },
+      { key: 'In progress', label: t('staff.remoteAssessments.count.inProgress.label', 'In progress'), value: by('In progress') },
     ];
   });
 
   /** The tile of a row: its milestone state (consultancy), else to review (status 13 / 14) or waiting for the assessment. */
   private stageOf(r: Row): string {
-    if (this.consultancy) return this.milestoneState(r).label;
+    if (this.consultancy) return this.milestoneKey(r);
     const st = +(r['CertificationStatus'] ?? 0);
     return st === 13 || st === 14 ? 'review' : 'open';
   }
@@ -246,17 +262,18 @@ export class RemoteAssessmentsPage {
     const st = (r: Row) => +(r['CertificationStatus'] ?? 0);
     const review = rows.filter((r) => st(r) === 13 || st(r) === 14).length;
     return [
-      { key: 'all', label: 'Allotted to me', value: rows.length },
-      { key: 'open', label: this.surveillance ? 'To assess' : 'To assess or scheduled', value: rows.length - review, tone: 'info' },
-      { key: 'review', label: 'To review', value: review, tone: 'warn' },
+      { key: 'all', label: t('staff.remoteAssessments.count.allotted.label', 'Allotted to me'), value: rows.length },
+      { key: 'open', label: this.surveillance ? t('staff.remoteAssessments.count.toAssess.label', 'To assess')
+        : t('staff.remoteAssessments.count.toAssessOrScheduled.label', 'To assess or scheduled'), value: rows.length - review, tone: 'info' },
+      { key: 'review', label: t('staff.remoteAssessments.count.toReview.label', 'To review'), value: review, tone: 'warn' },
     ];
   });
 
   /** The units by mode (Remote / Onsite / Desktop), as chips. */
   protected readonly modeChips = computed<FilterChip[]>(() => {
     const rows = this.rows();
-    return [{ key: '', label: 'All', count: rows.length },
-      ...['Remote', 'Onsite', 'Desktop'].map((m) => ({ key: m, label: m, count: rows.filter((r) => this.mode(r) === m).length }))
+    return [{ key: '', label: t('staff.remoteAssessments.mode.all.chip', 'All'), count: rows.length },
+      ...['Remote', 'Onsite', 'Desktop'].map((m) => ({ key: m, label: this.modeName(m), count: rows.filter((r) => this.mode(r) === m).length }))
         .filter((c) => c.count > 0 || c.key !== 'Desktop')];
   });
 
@@ -306,6 +323,13 @@ export class RemoteAssessmentsPage {
   protected mode(s: Row): string {
     if (this.surveillance) return s['OnsiteVisit'] ? 'Onsite' : s['ModeOfAssessment'] ? 'Remote' : 'Desktop';
     return s['ModeOfAssessment'] === 'Remote Assessment' ? 'Remote' : s['ModeOfAssessment'] === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
+  }
+
+  /** The wording of a mode code (mode()). */
+  protected modeName(m: string): string {
+    return m === 'Remote' ? t('staff.remoteAssessments.mode.remote.chip', 'Remote')
+      : m === 'Onsite' ? t('staff.remoteAssessments.mode.onsite.chip', 'Onsite')
+      : m === 'Desktop' ? t('staff.remoteAssessments.mode.desktop.chip', 'Desktop') : m;
   }
 
   protected remoteLink(s: Row): string[] {

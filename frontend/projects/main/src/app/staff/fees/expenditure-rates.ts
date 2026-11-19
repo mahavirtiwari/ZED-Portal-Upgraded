@@ -8,6 +8,7 @@ import {
 } from '../expenditure/expenditure.api';
 import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
+import { TextPipe, t } from '../../content/page-text';
 import { ToastService } from '../toast';
 import { indianTime } from '../utc-time';
 
@@ -31,7 +32,7 @@ const NEW = '';
  */
 @Component({
   selector: 'zed-staff-expenditure-rates',
-  imports: [FormsModule, PageHead],
+  imports: [FormsModule, PageHead, TextPipe],
   styleUrl: '../expenditure/exp-dialog.scss',
   styles: `
     .xr-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; }
@@ -61,9 +62,9 @@ const NEW = '';
     @media (max-width: 575.98px) { .xr-two { grid-template-columns: 1fr; } }
   `,
   template: `
-    <zed-page-head [crumbs]="crumbs" title="Expenditure rates"
-                   subtitle="Amount paid per case to the assessment agency and the consultant organisation, before GST. A case keeps the rate in force on the day it counted.">
-      <button type="button" class="btn btn-outline-primary" (click)="openHistory()">Rate history</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="'Expenditure rates' | t: 'staff.expenditureRates.title'"
+                   [subtitle]="'Amount paid per case to the assessment agency and the consultant organisation, before GST. A case keeps the rate in force on the day it counted.' | t: 'staff.expenditureRates.subtitle'">
+      <button type="button" class="btn btn-outline-primary" (click)="openHistory()">{{ 'Rate history' | t: 'staff.expenditureRates.historyButton' }}</button>
     </zed-page-head>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
@@ -76,41 +77,41 @@ const NEW = '';
           <div class="zed-card xr-card">
             <div class="xr-head">
               <span class="xd-ico" aria-hidden="true">{{ kind === 'Agency' ? 'A' : 'C' }}</span>
-              <h3>{{ kind === 'Agency' ? 'Assessment agency · per case' : 'Consultant organisation · per milestone' }}</h3>
+              <h3>{{ kind === 'Agency' ? ('Assessment agency · per case' | t: 'staff.expenditureRates.agency.title') : ('Consultant organisation · per milestone' | t: 'staff.expenditureRates.consultant.title') }}</h3>
               <div class="xr-from">
-                <span>Date of effect</span>
-                <select class="form-select" [attr.aria-label]="kind + ' rate set'" [ngModel]="e.pick" (ngModelChange)="choose(kind, $event)">
+                <span>{{ 'Date of effect' | t: 'staff.expenditureRates.dateOfEffect.label' }}</span>
+                <select class="form-select" [attr.aria-label]="'{kind} rate set' | t: 'staff.expenditureRates.setAria' : { kind: kind }" [ngModel]="e.pick" (ngModelChange)="choose(kind, $event)">
                   @for (s of setsOf(kind); track s.effectiveFrom) {
-                    <option [value]="s.effectiveFrom">{{ dmy(s.effectiveFrom) }}{{ s.inForce ? ' (in force)' : s.effectiveFrom > d.today ? ' (future)' : '' }}{{ s.locked ? ' · read-only' : '' }}</option>
+                    <option [value]="s.effectiveFrom">{{ setLabel(s, d.today) }}</option>
                   }
-                  <option [value]="''">+ New rate set</option>
+                  <option [value]="''">{{ '+ New rate set' | t: 'staff.expenditureRates.newSetOption' }}</option>
                 </select>
-                @if (e.pick === '') { <input type="date" class="form-control" [attr.aria-label]="kind + ' date of effect'" [(ngModel)]="e.effectiveFrom" /> }
+                @if (e.pick === '') { <input type="date" class="form-control" [attr.aria-label]="'{kind} date of effect' | t: 'staff.expenditureRates.dateAria' : { kind: kind }" [(ngModel)]="e.effectiveFrom" /> }
               </div>
             </div>
             <div class="table-responsive">
               <table class="table table-zed">
                 @if (kind === 'Agency') {
                   <colgroup><col class="xr-c-level" /><col class="xr-c-flow" /><col /><col /><col /></colgroup>
-                  <thead><tr><th>Level</th><th>Assessment flow (Admin)</th><th class="num">Completed</th><th class="num">Rejected after assessment</th><th class="num">Surveillance visit</th></tr></thead>
+                  <thead><tr><th>{{ 'Level' | t: 'staff.expenditureRates.column.level' }}</th><th>{{ 'Assessment flow (Admin)' | t: 'staff.expenditureRates.column.flow' }}</th><th class="num">{{ 'Completed' | t: 'staff.expenditureRates.column.completed' }}</th><th class="num">{{ 'Rejected after assessment' | t: 'staff.expenditureRates.column.rejected' }}</th><th class="num">{{ 'Surveillance visit' | t: 'staff.expenditureRates.column.surveillance' }}</th></tr></thead>
                   <tbody>
                     @for (l of d.agencyLevels; track l.level; let i = $index) {
                       <tr><td class="xr-level">{{ l.name }}</td><td class="xr-flow"><small>{{ l.flow }}</small></td>
-                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' completed'" [(ngModel)]="e.levels[i].completed" /></td>
-                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' rejected'" [(ngModel)]="e.levels[i].rejected" /></td>
-                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' surveillance'" [(ngModel)]="e.levels[i].surveillance" /></td></tr>
+                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="'{level} completed' | t: 'staff.expenditureRates.completedAria' : { level: l.name }" [(ngModel)]="e.levels[i].completed" /></td>
+                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="'{level} rejected' | t: 'staff.expenditureRates.rejectedAria' : { level: l.name }" [(ngModel)]="e.levels[i].rejected" /></td>
+                        <td class="num"><input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="'{level} surveillance' | t: 'staff.expenditureRates.surveillanceAria' : { level: l.name }" [(ngModel)]="e.levels[i].surveillance" /></td></tr>
                     }
                   </tbody>
                 } @else {
                   <colgroup><col class="xr-c-level" /><col class="xr-c-count" />@for (m of milestoneColumns(); track m) { <col /> }</colgroup>
-                  <thead><tr><th>Level</th><th class="num">Milestones</th>@for (m of milestoneColumns(); track m) { <th class="num">Milestone {{ m }}</th> }</tr></thead>
+                  <thead><tr><th>{{ 'Level' | t: 'staff.expenditureRates.column.level' }}</th><th class="num">{{ 'Milestones' | t: 'staff.expenditureRates.column.milestones' }}</th>@for (m of milestoneColumns(); track m) { <th class="num">{{ 'Milestone {number}' | t: 'staff.expenditureRates.column.milestone' : { number: m } }}</th> }</tr></thead>
                   <tbody>
                     @for (l of d.consultantLevels; track l.level; let i = $index) {
                       <tr><td class="xr-level">{{ l.name }}</td><td class="num">{{ l.milestones }}</td>
                         @for (m of milestoneColumns(); track m) {
                           <td class="num">@if (m <= l.milestones) {
-                              <input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="l.name + ' milestone ' + m" [(ngModel)]="e.levels[i].milestones[m - 1]" />
-                            } @else { <span class="xr-na">not used</span> }</td>
+                              <input type="number" min="0" class="form-control" [disabled]="locked" [attr.aria-label]="'{level} milestone {number}' | t: 'staff.expenditureRates.milestoneAria' : { level: l.name, number: m }" [(ngModel)]="e.levels[i].milestones[m - 1]" />
+                            } @else { <span class="xr-na">{{ 'not used' | t: 'staff.expenditureRates.notUsed' }}</span> }</td>
                         }
                       </tr>
                     }
@@ -119,41 +120,41 @@ const NEW = '';
               </table>
             </div>
             <div class="xr-foot">
-              @if (locked) { <span>Read-only: an approved invoice includes cases priced with this set. Add a new rate set to change the rates from a later date.</span> }
-              @else if (kind === 'Agency') { <span>A case counts when the last assessment step of the level's flow is done; "rejected after assessment" only after that step.</span> }
-              @else { <span>The columns follow the level's handholding milestones. A milestone counts when the MSME pays the next milestone; the last milestone counts when the unit is certified at the level.</span> }
-              @if (set?.savedBy) { <span>Saved by {{ set!.savedBy }}, {{ date(set!.savedOn) }}</span> }
-              <button type="button" class="btn btn-primary" [disabled]="locked || busy()" (click)="save(kind)">{{ e.pick === '' ? 'Add rate set' : 'Save rates' }}</button>
+              @if (locked) { <span>{{ 'Read-only: an approved invoice includes cases priced with this set. Add a new rate set to change the rates from a later date.' | t: 'staff.expenditureRates.lockedNote' }}</span> }
+              @else if (kind === 'Agency') { <span>{{ agencyNote() }}</span> }
+              @else { <span>{{ "The columns follow the level's handholding milestones. A milestone counts when the MSME pays the next milestone; the last milestone counts when the unit is certified at the level." | t: 'staff.expenditureRates.consultant.note' }}</span> }
+              @if (set?.savedBy) { <span>{{ 'Saved by {name}, {date}' | t: 'staff.expenditureRates.savedBy' : { name: set!.savedBy, date: date(set!.savedOn) } }}</span> }
+              <button type="button" class="btn btn-primary" [disabled]="locked || busy()" (click)="save(kind)">{{ e.pick === '' ? ('Add rate set' | t: 'staff.expenditureRates.addButton') : ('Save rates' | t: 'staff.expenditureRates.saveButton') }}</button>
             </div>
           </div>
         }
       </div>
-      <div class="xr-gst"><label for="xr-gst">GST % added on invoices</label>
+      <div class="xr-gst"><label for="xr-gst">{{ 'GST % added on invoices' | t: 'staff.expenditureRates.gst.label' }}</label>
         <input id="xr-gst" type="number" min="0" max="100" step="0.01" class="form-control" [(ngModel)]="gst" /></div>
     } @else if (!error()) {
-      <p role="status">Loading…</p>
+      <p role="status">{{ 'Loading…' | t: 'staff.expenditureRates.loading' }}</p>
     }
 
     @if (history(); as h) {
       <div class="xd-back" (click)="history.set(null)"></div>
       <div class="xd wide" role="dialog" aria-modal="true" aria-labelledby="rh-title">
-        <div class="xd-head"><span class="xd-ico" aria-hidden="true">⟲</span><div><h3 id="rh-title">Rate history</h3><small>Every save of every rate set</small></div>
-          <button type="button" class="xd-x" aria-label="Close" (click)="history.set(null)">×</button></div>
+        <div class="xd-head"><span class="xd-ico" aria-hidden="true">⟲</span><div><h3 id="rh-title">{{ 'Rate history' | t: 'staff.expenditureRates.history.title' }}</h3><small>{{ 'Every save of every rate set' | t: 'staff.expenditureRates.history.sub' }}</small></div>
+          <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.expenditureRates.history.closeAria'" (click)="history.set(null)">×</button></div>
         <div class="xd-body">
           <table class="table table-zed rh-table">
             <colgroup><col class="rh-c-payee" /><col class="rh-c-date" /><col /><col class="rh-c-gst" /><col class="rh-c-by" /><col class="rh-c-on" /></colgroup>
-            <thead><tr><th>Payee</th><th>Date of effect</th><th>Rates</th><th class="num">GST</th><th>Saved by</th><th>Saved on</th></tr></thead>
+            <thead><tr><th>{{ 'Payee' | t: 'staff.expenditureRates.history.column.payee' }}</th><th>{{ 'Date of effect' | t: 'staff.expenditureRates.history.column.date' }}</th><th>{{ 'Rates' | t: 'staff.expenditureRates.history.column.rates' }}</th><th class="num">{{ 'GST' | t: 'staff.expenditureRates.history.column.gst' }}</th><th>{{ 'Saved by' | t: 'staff.expenditureRates.history.column.savedBy' }}</th><th>{{ 'Saved on' | t: 'staff.expenditureRates.history.column.savedOn' }}</th></tr></thead>
             <tbody>
               @for (r of h; track $index) {
-                <tr><td>{{ r.kind === 'Agency' ? 'Assessment agency' : 'Consultant organisation' }}</td><td class="nowrap">{{ dmy(r.effectiveFrom) }}@if (!r.current) { <small class="rh-replaced">replaced</small> }</td>
+                <tr><td>{{ payee(r.kind) }}</td><td class="nowrap">{{ dmy(r.effectiveFrom) }}@if (!r.current) { <small class="rh-replaced">{{ 'replaced' | t: 'staff.expenditureRates.history.replaced' }}</small> }</td>
                   <td><small>@for (line of ratesText(r).split(' · '); track $index) { <span class="rh-line">{{ line }}</span> }</small></td><td class="num">{{ r.gstPercent }}%</td><td>{{ r.savedBy || '—' }}</td><td class="nowrap">{{ date(r.savedOn) }}</td></tr>
-              } @empty { <tr><td colspan="6"><div class="no-data">No rates saved yet.</div></td></tr> }
+              } @empty { <tr><td colspan="6"><div class="no-data">{{ 'No rates saved yet.' | t: 'staff.expenditureRates.history.empty' }}</div></td></tr> }
             </tbody>
           </table>
         </div>
         <div class="xd-foot">
-          <button type="button" class="btn btn-outline-primary" [disabled]="!h.length" (click)="exportHistory(h)">Export</button>
-          <button type="button" class="btn btn-default" (click)="history.set(null)">Close</button>
+          <button type="button" class="btn btn-outline-primary" [disabled]="!h.length" (click)="exportHistory(h)">{{ 'Export' | t: 'staff.expenditureRates.history.exportButton' }}</button>
+          <button type="button" class="btn btn-default" (click)="history.set(null)">{{ 'Close' | t: 'staff.expenditureRates.history.closeButton' }}</button>
         </div>
       </div>
     }
@@ -164,7 +165,10 @@ export class ExpenditureRatesPage {
   private readonly excel = inject(TableExport);
   private readonly toast = inject(ToastService);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Fees', link: '/staff/fees' }, { label: 'Expenditure rates' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.expenditureRates.crumb.fees', 'Fees'), link: '/staff/fees' },
+    { label: t('staff.expenditureRates.crumb.rates', 'Expenditure rates') }));
+  protected readonly agencyNote = computed(() => t('staff.expenditureRates.agency.note',
+    'A case counts when the last assessment step of the level\'s flow is done; "rejected after assessment" only after that step.'));
   protected readonly kinds: PayeeKind[] = ['Agency', 'Consultant'];
   protected readonly data = signal<RatesResponse | null>(null);
   protected readonly error = signal('');
@@ -262,7 +266,7 @@ export class ExpenditureRatesPage {
       this.toast.success(r.message);
       await this.load();
     } catch (err) {
-      this.toast.error('Rates not saved', apiErrorMessage(err));
+      this.toast.error(t('staff.expenditureRates.toast.notSaved', 'Rates not saved'), apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }
@@ -272,8 +276,22 @@ export class ExpenditureRatesPage {
     try {
       this.history.set(await firstValueFrom(this.api.rateHistory()));
     } catch (e) {
-      this.toast.error('Rate history could not be loaded', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditureRates.toast.historyFailed', 'Rate history could not be loaded'), apiErrorMessage(e));
     }
+  }
+
+  /** A rate set in the "Date of effect" list: its date, whether it is in force or future, and read-only. */
+  protected setLabel(s: RateSet, today: string): string {
+    const date = dmy(s.effectiveFrom);
+    if (s.inForce) return s.locked ? t('staff.expenditureRates.set.inForceLocked', '{date} (in force) · read-only', { date })
+      : t('staff.expenditureRates.set.inForce', '{date} (in force)', { date });
+    if (s.effectiveFrom > today) return s.locked ? t('staff.expenditureRates.set.futureLocked', '{date} (future) · read-only', { date })
+      : t('staff.expenditureRates.set.future', '{date} (future)', { date });
+    return s.locked ? t('staff.expenditureRates.set.locked', '{date} · read-only', { date }) : date;
+  }
+
+  protected payee(kind: PayeeKind): string {
+    return kind === 'Agency' ? t('staff.expenditureRates.payee.agency', 'Assessment agency') : t('staff.expenditureRates.payee.consultant', 'Consultant organisation');
   }
 
   protected ratesText(r: RateHistoryEntry): string {
@@ -283,18 +301,23 @@ export class ExpenditureRatesPage {
   }
 
   protected async exportHistory(h: RateHistoryEntry[]): Promise<void> {
-    const rows = h.flatMap((r) => r.levels.map((l) => [r.kind === 'Agency' ? 'Assessment agency' : 'Consultant organisation', r.effectiveFrom, l.level,
+    const rows = h.flatMap((r) => r.levels.map((l) => [this.payee(r.kind), r.effectiveFrom, l.level,
       l.completed, l.rejected, l.surveillance, l.milestones[0] ?? null, l.milestones[1] ?? null, l.milestones[2] ?? null, r.gstPercent, r.savedBy, indianTime(r.savedOn),
-      r.current ? 'Current' : 'Replaced']));
+      r.current ? t('staff.expenditureRates.export.current', 'Current') : t('staff.expenditureRates.export.replaced', 'Replaced')]));
     try {
       await this.excel.xlsx('expenditure-rate-history', [{
-        name: 'Rate history',
-        columns: ['Payee', 'Date of effect', 'Level', 'Completed', 'Rejected after assessment', 'Surveillance visit', 'Milestone 1', 'Milestone 2', 'Milestone 3',
-          'GST %', 'Saved by', 'Saved on', 'State'],
+        name: t('staff.expenditureRates.export.sheet', 'Rate history'),
+        columns: [t('staff.expenditureRates.export.column.payee', 'Payee'), t('staff.expenditureRates.export.column.date', 'Date of effect'),
+          t('staff.expenditureRates.export.column.level', 'Level'), t('staff.expenditureRates.export.column.completed', 'Completed'),
+          t('staff.expenditureRates.export.column.rejected', 'Rejected after assessment'), t('staff.expenditureRates.export.column.surveillance', 'Surveillance visit'),
+          t('staff.expenditureRates.export.column.milestone1', 'Milestone 1'), t('staff.expenditureRates.export.column.milestone2', 'Milestone 2'),
+          t('staff.expenditureRates.export.column.milestone3', 'Milestone 3'), t('staff.expenditureRates.export.column.gst', 'GST %'),
+          t('staff.expenditureRates.export.column.savedBy', 'Saved by'), t('staff.expenditureRates.export.column.savedOn', 'Saved on'),
+          t('staff.expenditureRates.export.column.state', 'State')],
         rows,
       }]);
     } catch (e) {
-      this.toast.error('Export failed', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditureRates.toast.exportFailed', 'Export failed'), apiErrorMessage(e));
     }
   }
 }

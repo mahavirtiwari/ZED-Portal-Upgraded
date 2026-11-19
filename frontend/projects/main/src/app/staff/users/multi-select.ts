@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, computed, inject, input, model, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface MultiSelectOption {
   value: string;
@@ -29,25 +30,25 @@ export interface MultiSelectOption {
             @if (heading()) { <label class="msc-label" [attr.for]="inputId()">{{ heading() }}@if (required()) {<span class="req">*</span>}</label> }
             <span class="msc-meta" aria-live="polite">{{ countText() }}
               @if (!disabled()) {
-                · <button type="button" class="msc-link" (click)="selectAll()" [disabled]="allShownSelected()">Select all</button>
-                · <button type="button" class="msc-link" (click)="clear()" [disabled]="value().length === 0">Clear</button>
+                · <button type="button" class="msc-link" (click)="selectAll()" [disabled]="allShownSelected()">{{ 'Select all' | t: 'common.multiSelect.selectAllButton' }}</button>
+                · <button type="button" class="msc-link" (click)="clear()" [disabled]="value().length === 0">{{ 'Clear' | t: 'common.multiSelect.clearButton' }}</button>
               }
             </span>
           </div>
           <div class="msc-box" (click)="focusInput()">
             @for (v of value(); track v) {
               <span class="chip">{{ labelOf(v) }}
-                @if (!disabled()) { <button type="button" class="chip-remove" [attr.aria-label]="'Remove ' + labelOf(v)" (click)="toggle(v); $event.stopPropagation()">×</button> }
+                @if (!disabled()) { <button type="button" class="chip-remove" [attr.aria-label]="'Remove {option}' | t: 'common.multiSelect.removeAria' : { option: labelOf(v) }" (click)="toggle(v); $event.stopPropagation()">×</button> }
               </span>
             }
             @if (!disabled()) {
               <input type="text" class="msc-input" autocomplete="off" role="combobox" [attr.aria-expanded]="open()" [attr.id]="inputId()"
-                     [attr.aria-label]="(heading() || label()) + ': type to add'" [placeholder]="placeholder()" [value]="filter()"
+                     [attr.aria-label]="'{field}: type to add' | t: 'common.multiSelect.addAria' : { field: heading() || shownLabel() }" [placeholder]="placeholder() || ('Type to add' | t: 'common.multiSelect.addPlaceholder')" [value]="filter()"
                      (input)="filter.set($any($event.target).value); open.set(true)" (focus)="open.set(true)" (keydown.escape)="open.set(false)" />
             }
           </div>
           @if (!disabled()) {
-            <ul class="options msc-list" [class.wide]="wide()" role="group" [attr.aria-label]="label()">
+            <ul class="options msc-list" [class.wide]="wide()" role="group" [attr.aria-label]="shownLabel()">
               <ng-container *ngTemplateOutlet="ticks" />
             </ul>
           }
@@ -56,18 +57,18 @@ export interface MultiSelectOption {
       @case ('dropdown') {
         <div class="msd" [class.open]="open()" [class.disabled]="disabled()" (focusout)="left($event)">
           <button type="button" class="form-select msd-btn" [attr.id]="inputId()" [disabled]="disabled()" [attr.aria-expanded]="open()"
-                  [attr.aria-label]="label() + ': ' + summary()" (click)="open.set(!open())" (keydown.escape)="open.set(false)">{{ summary() }}</button>
+                  [attr.aria-label]="'{field}: {summary}' | t: 'common.multiSelect.buttonAria' : { field: shownLabel(), summary: summary() }" (click)="open.set(!open())" (keydown.escape)="open.set(false)">{{ summary() }}</button>
           <div class="msd-panel">
             <div class="ms-head">
               <span class="ms-count" [class.has]="value().length > 0">{{ countText() }}</span>
               <span class="ms-actions">
-                <button type="button" class="msc-link" (click)="selectAll()" [disabled]="allShownSelected()">Select all</button>
-                <button type="button" class="msc-link" (click)="clear()" [disabled]="value().length === 0">Clear</button>
+                <button type="button" class="msc-link" (click)="selectAll()" [disabled]="allShownSelected()">{{ 'Select all' | t: 'common.multiSelect.selectAllButton' }}</button>
+                <button type="button" class="msc-link" (click)="clear()" [disabled]="value().length === 0">{{ 'Clear' | t: 'common.multiSelect.clearButton' }}</button>
               </span>
             </div>
-            <input type="search" class="form-control filter" [attr.aria-label]="label() + ' filter'" placeholder="Type to filter…" [value]="filter()"
+            <input type="search" class="form-control filter" [attr.aria-label]="'{field} filter' | t: 'common.multiSelect.filterAria' : { field: shownLabel() }" [placeholder]="'Type to filter…' | t: 'common.multiSelect.filterPlaceholder'" [value]="filter()"
                    (input)="filter.set($any($event.target).value)" />
-            <ul class="options msd-list" role="group" [attr.aria-label]="label()">
+            <ul class="options msd-list" role="group" [attr.aria-label]="shownLabel()">
               <ng-container *ngTemplateOutlet="ticks" />
             </ul>
           </div>
@@ -79,8 +80,8 @@ export interface MultiSelectOption {
             <span class="ms-count" [class.has]="value().length > 0" aria-live="polite">{{ countText() }}</span>
             @if (!disabled()) {
               <span class="ms-actions">
-                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="selectAll()" [disabled]="allShownSelected()">Select all</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clear()" [disabled]="value().length === 0">Clear</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="selectAll()" [disabled]="allShownSelected()">{{ 'Select all' | t: 'common.multiSelect.selectAllButton' }}</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clear()" [disabled]="value().length === 0">{{ 'Clear' | t: 'common.multiSelect.clearButton' }}</button>
               </span>
             }
           </div>
@@ -90,7 +91,7 @@ export interface MultiSelectOption {
                 <span class="chip">
                   {{ labelOf(v) }}
                   @if (!disabled()) {
-                    <button type="button" class="chip-remove" [attr.aria-label]="'Remove ' + labelOf(v)" (click)="toggle(v)">×</button>
+                    <button type="button" class="chip-remove" [attr.aria-label]="'Remove {option}' | t: 'common.multiSelect.removeAria' : { option: labelOf(v) }" (click)="toggle(v)">×</button>
                   }
                 </span>
               }
@@ -99,10 +100,10 @@ export interface MultiSelectOption {
           @if (!disabled()) {
             <div class="filter-box">
               <span class="filter-icon" aria-hidden="true">&#9906;</span>
-              <input type="search" class="form-control input-100 filter" [attr.id]="inputId()" [attr.aria-label]="label() + ' filter'"
-                     placeholder="Type to filter…" [value]="filter()" (input)="filter.set($any($event.target).value)" />
+              <input type="search" class="form-control input-100 filter" [attr.id]="inputId()" [attr.aria-label]="'{field} filter' | t: 'common.multiSelect.filterAria' : { field: shownLabel() }"
+                     [placeholder]="'Type to filter…' | t: 'common.multiSelect.filterPlaceholder'" [value]="filter()" (input)="filter.set($any($event.target).value)" />
             </div>
-            <ul class="options" [class.wide]="wide()" role="group" [attr.aria-label]="label()">
+            <ul class="options" [class.wide]="wide()" role="group" [attr.aria-label]="shownLabel()">
               <ng-container *ngTemplateOutlet="ticks" />
             </ul>
           }
@@ -118,11 +119,11 @@ export interface MultiSelectOption {
           </label>
         </li>
       } @empty {
-        <li class="text-muted no-match">No match</li>
+        <li class="text-muted no-match">{{ 'No match' | t: 'common.multiSelect.noMatch' }}</li>
       }
     </ng-template>
   `,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, TextPipe],
   styles: `
     .zed-multi { border: 1px solid #ced4da; border-radius: 10px; padding: 10px 12px; background: #fff; }
     .zed-multi.disabled { background: #e9ecef; }
@@ -183,7 +184,8 @@ export class MultiSelect {
   readonly options = input.required<MultiSelectOption[]>();
   readonly value = model<string[]>([]);
   readonly disabled = input(false);
-  readonly label = input('Options');
+  /** The list's name for screen readers; empty: the standard "Options" (Admin → Texts → Page wording). */
+  readonly label = input('');
   readonly inputId = input<string | null>(null);
   /** 'list' (default, the tiles in columns), 'chips' (a chip field) or 'dropdown' (a select-like button). */
   readonly variant = input<'list' | 'chips' | 'dropdown'>('list');
@@ -191,9 +193,9 @@ export class MultiSelect {
   readonly heading = input<string | null>(null);
   readonly required = input(false);
   /** 'chips': the input's placeholder ("Type to add a state"). */
-  readonly placeholder = input('Type to add');
+  readonly placeholder = input('');
   /** 'dropdown': the button's text when every option is chosen ("(every state)"). */
-  readonly allText = input('every option');
+  readonly allText = input('');
 
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly open = signal(false);
@@ -208,14 +210,19 @@ export class MultiSelect {
     const v = this.value();
     return this.filtered().every((o) => v.includes(o.value));
   });
-  protected readonly countText = computed(() => (this.value().length ? `${this.value().length} of ${this.options().length} selected` : 'None selected'));
+  protected readonly shownLabel = computed(() => this.label() || t('common.multiSelect.label', 'Options'));
+  protected readonly countText = computed(() => (this.value().length
+    ? t('common.multiSelect.count', '{count} of {total} selected', { count: this.value().length, total: this.options().length })
+    : t('common.multiSelect.none', 'None selected')));
   /** 'dropdown': "36 of 36 selected (every state)", "1 selected: Mahavir Agency". */
   protected readonly summary = computed(() => {
     const v = this.value();
     const n = this.options().length;
-    if (!v.length) return 'None selected';
-    if (n && v.length === n) return `${v.length} of ${n} selected (${this.allText()})`;
-    return v.length <= 2 ? `${v.length} selected: ${v.map((x) => this.labelOf(x)).join(', ')}` : `${v.length} of ${n} selected`;
+    if (!v.length) return t('common.multiSelect.none', 'None selected');
+    if (n && v.length === n)
+      return t('common.multiSelect.countAll', '{count} of {total} selected ({all})', { count: v.length, total: n, all: this.allText() || t('common.multiSelect.allText', 'every option') });
+    return v.length <= 2 ? t('common.multiSelect.countNamed', '{count} selected: {names}', { count: v.length, names: v.map((x) => this.labelOf(x)).join(', ') })
+      : t('common.multiSelect.count', '{count} of {total} selected', { count: v.length, total: n });
   });
 
   protected labelOf(v: string): string {

@@ -6,6 +6,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { tokenFromFragment } from '../../staff/password-reset/staff-reset-password';
 import { LoginShell } from '../login-shell/login-shell';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * Target of the "Reset Password" e-mail link `/msme/reset-password#token=…`. Port of Views/Msme/ChangePassword.cshtml.
@@ -14,36 +15,36 @@ import { LoginShell } from '../login-shell/login-shell';
  */
 @Component({
   selector: 'zed-msme-reset-password',
-  imports: [FormsModule, RouterLink, LoginShell],
+  imports: [FormsModule, RouterLink, LoginShell, TextPipe],
   template: `
     <zed-login-shell>
       <div class="login-login">
         <form class="login-form mt-3" (ngSubmit)="submit()" novalidate>
-          <h2>Change Password</h2>
+          <h2>{{ 'Change Password' | t: 'public.msmeResetPassword.title' }}</h2>
           @if (state() === 'checking') {
-            <p>Checking your reset link…</p>
+            <p>{{ 'Checking your reset link…' | t: 'public.msmeResetPassword.checkingNote' }}</p>
           } @else if (state() === 'invalid') {
             <div class="alert alert-danger">{{ error() }}</div>
-            <p>Use "Forgot Password" on the login page to get a new link.</p>
-            <a routerLink="/msme/login" class="btn btn-primary">GO TO LOGIN</a>
+            <p>{{ 'Use "Forgot Password" on the login page to get a new link.' | t: 'public.msmeResetPassword.invalidNote' }}</p>
+            <a routerLink="/msme/login" class="btn btn-primary">{{ 'GO TO LOGIN' | t: 'public.msmeResetPassword.loginButton' }}</a>
           } @else if (state() === 'done') {
-            <div class="alert alert-success">Password reset successful. You can now log in with your new password.</div>
-            <a routerLink="/msme/login" class="btn btn-primary">GO TO LOGIN</a>
+            <div class="alert alert-success">{{ 'Password reset successful. You can now log in with your new password.' | t: 'public.msmeResetPassword.doneMessage' }}</div>
+            <a routerLink="/msme/login" class="btn btn-primary">{{ 'GO TO LOGIN' | t: 'public.msmeResetPassword.loginButton' }}</a>
           } @else {
-            <label for="newPassword">New Password</label>
+            <label for="newPassword">{{ 'New Password' | t: 'public.msmeResetPassword.newLabel' }}</label>
             <div class="mb-3">
               <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password"
                      [(ngModel)]="newPassword" required maxlength="50" />
-              <small class="text-muted">At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
+              <small class="text-muted">{{ 'At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character.' | t: 'public.msmeResetPassword.rulesNote' }}</small>
             </div>
-            <label for="confirmPassword">Confirm Password</label>
+            <label for="confirmPassword">{{ 'Confirm Password' | t: 'public.msmeResetPassword.confirmLabel' }}</label>
             <div class="mb-3">
               <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password"
                      [(ngModel)]="confirmPassword" required maxlength="50" />
             </div>
             <div class="register-btn">
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">Change Password</button>
-              <a routerLink="/msme/login" class="btn btn-dark">LOGIN</a>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Change Password' | t: 'public.msmeResetPassword.submitButton' }}</button>
+              <a routerLink="/msme/login" class="btn btn-dark">{{ 'LOGIN' | t: 'public.msmeResetPassword.cancelButton' }}</a>
             </div>
             @if (error()) {
               <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
@@ -70,7 +71,7 @@ export class ResetPasswordPage implements OnInit {
     // Keep the token out of the browser history once read.
     if (this.token && typeof history !== 'undefined') history.replaceState(history.state, '', location.pathname + location.search);
     if (!this.token) {
-      this.error.set('This reset link is invalid, has expired or has already been used. Please request a new one.');
+      this.error.set(t('public.msmeResetPassword.invalidError', 'This reset link is invalid, has expired or has already been used. Please request a new one.'));
       this.state.set('invalid');
       return;
     }
@@ -86,7 +87,7 @@ export class ResetPasswordPage implements OnInit {
   protected async submit(): Promise<void> {
     this.error.set('');
     if (this.newPassword !== this.confirmPassword) {
-      this.error.set('The new password and its confirmation do not match.');
+      this.error.set(t('public.msmeResetPassword.mismatchError', 'The new password and its confirmation do not match.'));
       return;
     }
     this.busy.set(true);

@@ -7,6 +7,7 @@ import { AgencyAllotment, AssessmentApi, Person, Row } from './assessment.api';
 import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit } from './da-allot-actions';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 import { Assessor, Row as SiteRow, SiteAssessmentApi } from '../site-assessment/site-assessment.api';
 import { SaAllotDialog, SiteAllotChoice, siteRejectAsk } from '../site-assessment/sa-allot-actions';
 
@@ -25,27 +26,27 @@ export const SA_ALLOTMENT_URL = '/staff/sa-allotment';
  */
 @Component({
   selector: 'zed-da-allotment-banner',
-  imports: [AllotAssessorDialog, ConfirmDialog, SaAllotDialog],
+  imports: [AllotAssessorDialog, ConfirmDialog, SaAllotDialog, TextPipe],
   template: `
     @let a = allotment();
     <section class="ab" aria-labelledby="abTitle" data-allotment-banner>
       <span class="ab-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01" /></svg></span>
       <div class="ab-body">
-        <h4 id="abTitle">Allotted to your agency@if (a.allottedOn) { on {{ a.allottedOn }} } · {{ a.kind === 'site' && a.stage === 'allotted' ? 'not yet started' : 'not yet accepted' }}</h4>
+        <h4 id="abTitle">{{ heading() }}</h4>
         <p class="ab-line">{{ stageLine() }}</p>
-        <dl class="ab-contact" aria-label="Applicant contact">
-          <div><dt>Unit SPOC</dt><dd>{{ a.spocName || '—' }}</dd></div>
-          <div><dt>Mobile</dt><dd>{{ a.mobile || '—' }}</dd></div>
-          <div><dt>E-mail</dt><dd>{{ a.email || '—' }}</dd></div>
-          <div><dt>PAN</dt><dd>{{ a.pan || '—' }}</dd></div>
+        <dl class="ab-contact" [attr.aria-label]="'Applicant contact' | t: 'staff.daAllotment.banner.contactAria'">
+          <div><dt>{{ 'Unit SPOC' | t: 'staff.daAllotment.banner.spocLabel' }}</dt><dd>{{ a.spocName || '—' }}</dd></div>
+          <div><dt>{{ 'Mobile' | t: 'staff.daAllotment.banner.mobileLabel' }}</dt><dd>{{ a.mobile || '—' }}</dd></div>
+          <div><dt>{{ 'E-mail' | t: 'staff.daAllotment.banner.emailLabel' }}</dt><dd>{{ a.email || '—' }}</dd></div>
+          <div><dt>{{ 'PAN' | t: 'staff.daAllotment.banner.panLabel' }}</dt><dd>{{ a.pan || '—' }}</dd></div>
         </dl>
       </div>
       <div class="ab-actions">
         @if (a.canAllot) {
-          <button type="button" class="btn btn-primary ab-allot" [disabled]="busy()" (click)="openAllot()">{{ a.assessorId ? 'Re-allot' : 'Accept' }}</button>
+          <button type="button" class="btn btn-primary ab-allot" [disabled]="busy()" (click)="openAllot()">{{ a.assessorId ? ('Re-allot' | t: 'staff.daAllotment.banner.reallotButton') : ('Accept' | t: 'staff.daAllotment.banner.acceptButton') }}</button>
         }
         @if (a.canReject) {
-          <button type="button" class="btn btn-outline-danger ab-reject" [disabled]="busy()" (click)="openReject()">Reject</button>
+          <button type="button" class="btn btn-outline-danger ab-reject" [disabled]="busy()" (click)="openReject()">{{ 'Reject' | t: 'staff.daAllotment.banner.rejectButton' }}</button>
         }
       </div>
     </section>
@@ -102,19 +103,36 @@ export class DaAllotmentBanner {
   private readonly unit = computed<Row>(() => ({ ZedId: this.zedId(), Certification: this.certification(), PUnitName: this.unitName() }));
   protected readonly rejectAsk = computed<ConfirmAsk>(() => (this.site() ? siteRejectAsk(this.unit() as SiteRow) : agencyRejectAsk(this.unit())));
 
+  /** The title: when it was allotted and what waits. */
+  protected readonly heading = computed(() => {
+    const a = this.allotment();
+    const started = a.kind === 'site' && a.stage === 'allotted';
+    if (a.allottedOn) {
+      const v = { date: a.allottedOn };
+      return started ? t('staff.daAllotment.banner.notStartedOnTitle', 'Allotted to your agency on {date} · not yet started', v)
+        : t('staff.daAllotment.banner.notAcceptedOnTitle', 'Allotted to your agency on {date} · not yet accepted', v);
+    }
+    return started ? t('staff.daAllotment.banner.notStartedTitle', 'Allotted to your agency · not yet started')
+      : t('staff.daAllotment.banner.notAcceptedTitle', 'Allotted to your agency · not yet accepted');
+  });
+
   /** What the agency can do now, under the title. */
   protected readonly stageLine = computed(() => {
     const a = this.allotment();
-    const who = a.assessorName || a.assessorId || 'The assessor';
+    const who = a.assessorName || a.assessorId || t('staff.daAllotment.banner.theAssessorLabel', 'The assessor');
     if (a.kind === 'site') {
-      if (a.stage === 'allotted') return `Allotted to ${who} for the site assessment, not started yet. You can still re-allot it.`;
+      if (a.stage === 'allotted') return t('staff.daAllotment.banner.siteAllotted.text', 'Allotted to {name} for the site assessment, not started yet. You can still re-allot it.', { name: who });
       return a.preview
-        ? 'A read-only preview of what the applicant submitted in the ZED MSME app. Accept it to allot the assessment to your site assessors, or reject it.'
-        : 'The desktop assessment is below. Accept it to allot the site assessment to your assessors, or reject it.';
+        ? t('staff.daAllotment.banner.sitePreview.text', 'A read-only preview of what the applicant submitted in the ZED MSME app. Accept it to allot the assessment to your site assessors, or reject it.')
+        : t('staff.daAllotment.banner.siteDesktop.text', 'The desktop assessment is below. Accept it to allot the site assessment to your assessors, or reject it.');
     }
-    if (a.stage === 'rejected') return `${who} rejected it${a.assessorReason ? ': ' + a.assessorReason : ''}. Re-allot it to another assessor or reject it.`;
-    if (a.stage === 'allotted') return `Allotted to ${who}, who has not accepted it yet. You can still re-allot it.`;
-    return 'A read-only preview of what the applicant submitted in the ZED MSME app. Accept it to allot it to one of your desktop assessors, or reject it.';
+    if (a.stage === 'rejected') {
+      return a.assessorReason
+        ? t('staff.daAllotment.banner.rejectedReason.text', '{name} rejected it: {reason}. Re-allot it to another assessor or reject it.', { name: who, reason: a.assessorReason })
+        : t('staff.daAllotment.banner.rejected.text', '{name} rejected it. Re-allot it to another assessor or reject it.', { name: who });
+    }
+    if (a.stage === 'allotted') return t('staff.daAllotment.banner.allotted.text', 'Allotted to {name}, who has not accepted it yet. You can still re-allot it.', { name: who });
+    return t('staff.daAllotment.banner.preview.text', 'A read-only preview of what the applicant submitted in the ZED MSME app. Accept it to allot it to one of your desktop assessors, or reject it.');
   });
 
   /** Accept / Re-allot: the agency's assessors from the list's API (the unit's row tells its kind and current assessor). */
@@ -126,7 +144,7 @@ export class DaAllotmentBanner {
       const res = await firstValueFrom(this.api.daAllotment());
       const row = res.rows.find((r) => text(r, 'ZedId') === this.zedId() && text(r, 'Certification') === this.certification());
       if (!row) {
-        this.toast.error('This assessment can no longer be allotted.', null);
+        this.toast.error(t('staff.daAllotment.banner.toast.gone', 'This assessment can no longer be allotted.'), null);
         return;
       }
       this.assessors.set(assessorsForUnit(row, res.assessors, res.bronzeAssessors));
@@ -146,7 +164,7 @@ export class DaAllotmentBanner {
       const res = await firstValueFrom(this.siteApi.allotments());
       const row = (res.units ?? []).find((r) => text(r, 'ZedId') === this.zedId() && text(r, 'Certification') === this.certification());
       if (!row) {
-        this.toast.error('This assessment can no longer be allotted.', null);
+        this.toast.error(t('staff.daAllotment.banner.toast.gone', 'This assessment can no longer be allotted.'), null);
         return;
       }
       this.siteAssessors.set(res.assessors ?? []);
@@ -159,7 +177,8 @@ export class DaAllotmentBanner {
   }
 
   protected async allotSite(choice: SiteAllotChoice): Promise<void> {
-    await this.run(() => this.siteApi.allot(choice.request), `${this.zedId()} allotted`, choice.assessorName ? `To ${choice.assessorName}.` : null);
+    await this.run(() => this.siteApi.allot(choice.request), t('staff.daAllotment.banner.toast.allotted', '{zedId} allotted', { zedId: this.zedId() }),
+      choice.assessorName ? t('staff.daAllotment.banner.toast.allottedTo', 'To {name}.', { name: choice.assessorName }) : null);
   }
 
   protected openReject(): void {
@@ -168,13 +187,15 @@ export class DaAllotmentBanner {
   }
 
   protected async allot(choice: AllotChoice): Promise<void> {
-    await this.run(() => this.api.allotToAssessor(this.zedId(), this.certification(), choice.assessorId), `${this.zedId()} allotted`, `To ${choice.assessorName}.`);
+    await this.run(() => this.api.allotToAssessor(this.zedId(), this.certification(), choice.assessorId),
+      t('staff.daAllotment.banner.toast.allotted', '{zedId} allotted', { zedId: this.zedId() }),
+      t('staff.daAllotment.banner.toast.allottedTo', 'To {name}.', { name: choice.assessorName }));
   }
 
   protected async reject(reason: string): Promise<void> {
     if (!reason) return;
     const call = () => (this.site() ? this.siteApi.reject(this.zedId(), this.certification(), reason) : this.api.agencyReject(this.zedId(), this.certification(), reason));
-    await this.run(call, `${this.zedId()} rejected`, null);
+    await this.run(call, t('staff.daAllotment.banner.toast.rejected', '{zedId} rejected', { zedId: this.zedId() }), null);
   }
 
   private async run(call: () => ReturnType<AssessmentApi['agencyReject']>, done: string, detail: string | null): Promise<void> {

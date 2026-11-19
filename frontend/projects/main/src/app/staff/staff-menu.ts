@@ -1,8 +1,9 @@
 import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
 import { LABELS } from '../portal-labels';
-import { INCENTIVE_GROUPS } from './schemes/incentives.api';
+import { INCENTIVE_GROUPS, groupText } from './schemes/incentives.api';
 import { allLevels, isLegacyLevel, levelName } from '../msme/shared/levels';
+import { t } from '../content/page-text';
 
 /** Users.RoleId values of the staff roles (legacy UserRoleEnum). */
 export const StaffRole = {
@@ -354,6 +355,127 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.Ministry, R.SuperAdmin] },
 ];
 
+/**
+ * The menu's wording the Admin can change (Administration → Texts → Page wording). The code keeps the English labels
+ * (grouping, icons and tracking use them); menuText() / menuGroupText() give the wording shown. A label not listed here
+ * (level names) is shown as it is; the incentive groups show groupText(key).label.
+ */
+const MENU_TEXTS: Readonly<Record<string, () => string>> = {
+  'Failed Transactions': () => t('staff.menu.item.failedTransactionsLabel', 'Failed Transactions'),
+  'Registered MSMEs': () => t('staff.menu.item.registeredMsmesLabel', 'Registered MSMEs'),
+  'Financial Support': () => t('staff.menu.item.financialSupportLabel', 'Financial Support'),
+  'Reports': () => t('staff.menu.item.reportsLabel', 'Reports'),
+  'Customer History': () => t('staff.menu.item.customerHistoryLabel', 'Customer History'),
+  'Assessment Agencies': () => t('staff.menu.item.assessmentAgenciesLabel', 'Assessment Agencies'),
+  'Agency Level Allocation': () => t('staff.menu.item.agencyLevelAllocationLabel', 'Agency Level Allocation'),
+  'Assessors': () => t('staff.menu.item.assessorsLabel', 'Assessors'),
+  'Payment Received': () => t('staff.menu.item.paymentReceivedLabel', 'Payment Received'),
+  'Allot Assessment': () => t('staff.menu.item.allotAssessmentLabel', 'Allot Assessment'),
+  'Assessment Monitoring': () => t('staff.menu.item.assessmentMonitoringLabel', 'Assessment Monitoring'),
+  'Assessment Completed': () => t('staff.menu.item.assessmentCompletedLabel', 'Assessment Completed'),
+  'Rejected Certification': () => t('staff.menu.item.rejectedCertificationLabel', 'Rejected Certification'),
+  'Password Reset Link': () => t('staff.menu.item.passwordResetLinkLabel', 'Password Reset Link'),
+  'NEFT Admins': () => t('staff.menu.item.neftAdminsLabel', 'NEFT Admins'),
+  'ZED ID History': () => t('staff.menu.item.zedIdHistoryLabel', 'ZED ID History'),
+  'Monitoring': () => t('staff.menu.item.monitoringLabel', 'Monitoring'),
+  'DA Allotment': () => t('staff.menu.item.daAllotmentLabel', 'DA Allotment'),
+  'SA Allotment': () => t('staff.menu.item.saAllotmentLabel', 'SA Allotment'),
+  'Desktop Verification': () => t('staff.menu.item.desktopVerificationLabel', 'Desktop Verification'),
+  'Non-Conformances': () => t('staff.menu.item.nonConformancesLabel', 'Non-Conformances'),
+  'Remote Assessments': () => t('staff.menu.item.remoteAssessmentsLabel', 'Remote Assessments'),
+  'Completed': () => t('staff.menu.item.completedLabel', 'Completed'),
+  'Financial Assistance': () => t('staff.menu.item.financialAssistanceLabel', 'Financial Assistance'),
+  'Incentive Submissions': () => t('staff.menu.item.incentiveSubmissionsLabel', 'Incentive Submissions'),
+  'Upload API Incentives': () => t('staff.menu.item.uploadApiIncentivesLabel', 'Upload API Incentives'),
+  'NEFT: New Transactions': () => t('staff.menu.item.neftNewTransactionsLabel', 'NEFT: New Transactions'),
+  'NEFT: Approved Transactions': () => t('staff.menu.item.neftApprovedTransactionsLabel', 'NEFT: Approved Transactions'),
+  'NEFT: Rejected Transactions': () => t('staff.menu.item.neftRejectedTransactionsLabel', 'NEFT: Rejected Transactions'),
+  'All settings': () => t('staff.menu.item.allSettingsLabel', 'All settings'),
+  'Upload Image': () => t('staff.menu.item.uploadImageLabel', 'Upload Image'),
+  'Documents/Videos': () => t('staff.menu.item.documentsVideosLabel', 'Documents/Videos'),
+  'Sectors': () => t('staff.menu.item.sectorsLabel', 'Sectors'),
+  'Payments': () => t('staff.menu.item.paymentsLabel', 'Payments'),
+  'Expenditure Rates': () => t('staff.menu.item.expenditureRatesLabel', 'Expenditure Rates'),
+  'Subsidy Regions': () => t('staff.menu.item.subsidyRegionsLabel', 'Subsidy Regions'),
+  'LG Directory': () => t('staff.menu.item.lgDirectoryLabel', 'LG Directory'),
+  'ESG Checklist': () => t('staff.menu.item.esgChecklistLabel', 'ESG Checklist'),
+  'Categories': () => t('staff.menu.item.categoriesLabel', 'Categories'),
+  'Technologies': () => t('staff.menu.item.technologiesLabel', 'Technologies'),
+  'Main Dashboard Cards': () => t('staff.menu.item.mainDashboardCardsLabel', 'Main Dashboard Cards'),
+  'User Management': () => t('staff.menu.item.userManagementLabel', 'User Management'),
+  'Captcha Settings': () => t('staff.menu.item.captchaSettingsLabel', 'Captcha Settings'),
+  'Email Settings': () => t('staff.menu.item.emailSettingsLabel', 'Email Settings'),
+  'Professional Verification': () => t('staff.menu.item.professionalVerificationLabel', 'Professional Verification'),
+  'Payment Gateway and Invoices': () => t('staff.menu.item.paymentGatewayAndInvoicesLabel', 'Payment Gateway and Invoices'),
+  'Email Templates': () => t('staff.menu.item.emailTemplatesLabel', 'Email Templates'),
+  'Maintenance mode': () => t('staff.menu.item.maintenanceModeLabel', 'Maintenance mode'),
+  'Branding': () => t('staff.menu.item.brandingLabel', 'Branding'),
+  'Texts': () => t('staff.menu.item.textsLabel', 'Texts'),
+  'App Forms': () => t('staff.menu.item.appFormsLabel', 'App Forms'),
+  'Site Tour Sections': () => t('staff.menu.item.siteTourSectionsLabel', 'Site Tour Sections'),
+  'Submission Checklists': () => t('staff.menu.item.submissionChecklistsLabel', 'Submission Checklists'),
+  'Observation Reasons': () => t('staff.menu.item.observationReasonsLabel', 'Observation Reasons'),
+  'TAT (Turnaround Time)': () => t('staff.menu.item.tatTurnaroundTimeLabel', 'TAT (Turnaround Time)'),
+  'API Integrations': () => t('staff.menu.item.apiIntegrationsLabel', 'API Integrations'),
+  'Links': () => t('staff.menu.item.linksLabel', 'Links'),
+  'Certification Levels': () => t('staff.menu.item.certificationLevelsLabel', 'Certification Levels'),
+  'Expenditure': () => t('staff.menu.item.expenditureLabel', 'Expenditure'),
+  'Documents': () => t('staff.menu.item.documentsLabel', 'Documents'),
+  'Quality Observations': () => t('staff.menu.item.qualityObservationsLabel', 'Quality Observations'),
+  'Operation Admins': () => t('staff.menu.item.operationAdminsLabel', 'Operation Admins'),
+  'Sub-Users': () => t('staff.menu.item.subUsersLabel', 'Sub-Users'),
+  'Registered MSME': () => t('staff.menu.item.registeredMsmeLabel', 'Registered MSME'),
+  'Allot Consultancy': () => t('staff.menu.item.allotConsultancyLabel', 'Allot Consultancy'),
+  'Consultant Organisations': () => t('staff.menu.item.consultantOrganisationsLabel', 'Consultant Organisations'),
+  'Consultants': () => t('staff.menu.item.consultantsLabel', 'Consultants'),
+  'Consultancy Completed': () => t('staff.menu.item.consultancyCompletedLabel', 'Consultancy Completed'),
+  'Technology Upgradation': () => t('staff.menu.item.technologyUpgradationLabel', 'Technology Upgradation'),
+  'Consultancy Monitoring': () => t('staff.menu.item.consultancyMonitoringLabel', 'Consultancy Monitoring'),
+  'Consultants/Experts': () => t('staff.menu.item.consultantsExpertsLabel', 'Consultants/Experts'),
+  'Milestone 1': () => t('staff.menu.item.milestone1Label', 'Milestone 1'),
+  'Milestone 2': () => t('staff.menu.item.milestone2Label', 'Milestone 2'),
+  'Milestone 3': () => t('staff.menu.item.milestone3Label', 'Milestone 3'),
+  'New Transactions': () => t('staff.menu.item.newTransactionsLabel', 'New Transactions'),
+  'Approved Transactions': () => t('staff.menu.item.approvedTransactionsLabel', 'Approved Transactions'),
+  'Allot Surveillance': () => t('staff.menu.item.allotSurveillanceLabel', 'Allot Surveillance'),
+  'Bronze Surveillance Agencies': () => t('staff.menu.item.bronzeSurveillanceAgenciesLabel', 'Bronze Surveillance Agencies'),
+  'Surveillance Payment Received': () => t('staff.menu.item.surveillancePaymentReceivedLabel', 'Surveillance Payment Received'),
+  'Surveillance Monitoring': () => t('staff.menu.item.surveillanceMonitoringLabel', 'Surveillance Monitoring'),
+  'Surveillance Completed': () => t('staff.menu.item.surveillanceCompletedLabel', 'Surveillance Completed'),
+  'Surveillance Rejected': () => t('staff.menu.item.surveillanceRejectedLabel', 'Surveillance Rejected'),
+  'Allot Surveillance (Site)': () => t('staff.menu.item.allotSurveillanceSiteLabel', 'Allot Surveillance (Site)'),
+  'Surveillance Assessments': () => t('staff.menu.item.surveillanceAssessmentsLabel', 'Surveillance Assessments'),
+  'Surveillance Assessments (Site)': () => t('staff.menu.item.surveillanceAssessmentsSiteLabel', 'Surveillance Assessments (Site)'),
+  // The four incentive groups: the wording of the incentive pages (staff.incentives.group.*.label).
+  ...Object.fromEntries(INCENTIVE_GROUPS.map((g) => [g.label, () => groupText(g.key).label])),
+};
+
+const MENU_GROUP_TEXTS: Readonly<Record<string, () => string>> = {
+  'Agencies': () => t('staff.menu.group.agenciesLabel', 'Agencies'),
+  'Assessment': () => t('staff.menu.group.assessmentLabel', 'Assessment'),
+  'Allotment': () => t('staff.menu.group.allotmentLabel', 'Allotment'),
+  'Schemes': () => t('staff.menu.group.schemesLabel', 'Schemes'),
+  'Master': () => t('staff.menu.group.masterLabel', 'Master'),
+  'Questionnaire': () => t('staff.menu.group.questionnaireLabel', 'Questionnaire'),
+  'Technology Upgradation': () => t('staff.menu.group.technologyUpgradationLabel', 'Technology Upgradation'),
+  'Incentives': () => t('staff.menu.group.incentivesLabel', 'Incentives'),
+  'Administration': () => t('staff.menu.group.administrationLabel', 'Administration'),
+  'Consultancy Monitoring': () => t('staff.menu.group.consultancyMonitoringLabel', 'Consultancy Monitoring'),
+  'Consultancy': () => t('staff.menu.group.consultancyLabel', 'Consultancy'),
+  'Surveillance Monitoring': () => t('staff.menu.group.surveillanceMonitoringLabel', 'Surveillance Monitoring'),
+  'Surveillance': () => t('staff.menu.group.surveillanceLabel', 'Surveillance'),
+};
+
+/** The wording shown for a menu entry's label (the Admin's, or the label itself). */
+export function menuText(label: string): string {
+  return MENU_TEXTS[label]?.() ?? label;
+}
+
+/** The wording shown for a drop-down's name or a heading inside one. */
+export function menuGroupText(name: string | null | undefined): string {
+  return name ? (MENU_GROUP_TEXTS[name]?.() ?? name) : '';
+}
+
 export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
 
 /** The system of this build for the staff pages that differ per portal (a token, so specs can render each variant). */
@@ -368,11 +490,11 @@ export function staffRoleName(
   if (!user) return '';
   // 2026-11-16: a sub-user (it signs in as its owner) is named for itself: a Master Admin's are its Operation Admins.
   if (user.actingUserId) {
-    if (user.roleId === R.MasterAdmin) return 'Operation Admin';
-    return `${staffRoleName({ ...user, actingUserId: null }, system)} Sub-User`;
+    if (user.roleId === R.MasterAdmin) return t('staff.menu.role.operationAdminLabel', 'Operation Admin');
+    return t('staff.menu.role.subUserLabel', '{role} Sub-User', { role: staffRoleName({ ...user, actingUserId: null }, system) });
   }
-  if (user.roleId === 10) return 'Dashboard Admin';
-  if (user.roleId === 6) return user.isNeftAdmin ? 'NEFT Admin' : 'MSME DFO';
+  if (user.roleId === 10) return t('staff.menu.role.dashboardAdminLabel', 'Dashboard Admin');
+  if (user.roleId === 6) return user.isNeftAdmin ? t('staff.menu.role.neftAdminLabel', 'NEFT Admin') : t('staff.menu.role.msmeDfoLabel', 'MSME DFO');
   // 2026-11-15: Consultancy's agencies and assessors are its Consultant Organisations and Consultants/Experts ("Desktop Assessor, ZED Handholding").
   if (system === 'consultancy' && (user.roleId === R.Agency || user.roleId === R.DesktopAssessor))
     return user.roleId === R.Agency ? LABELS.consultancy.agency : LABELS.consultancy.assessor;

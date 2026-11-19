@@ -8,6 +8,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { MultiSelect } from '../users/multi-select';
 import { ReasonAsk, ReasonDialog } from '../users/reason-dialog';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { RowMenu, RowMenuItem } from '../row-menu';
@@ -100,15 +101,18 @@ const API = '/api/staff/accounts';
 /** The Master Admin's NEFT Admins (2026-11-07): this page's `data.mode` 'neft' (Neft/NeftAdminsController). */
 const NEFT_API = '/api/staff/neft-admins';
 
-/** What each login type opens (the staff menu's roles), shown on its card in the pop-up. */
-const typeHints: Readonly<Record<number, string>> = {
-  7: 'Agencies, assessors and the assessment work.',
-  8: 'The Ministry of MSME: dashboards and reports.',
-  6: 'Financial Assistance and Handholding NEFT of its states and districts.',
-  10: 'Dashboards and the screens you tick below, on the three portals.',
-  11: 'Dashboards, financial support and reports.',
-  17: 'Dashboards: registered MSMEs and their history.',
-};
+/** What each login type opens (the staff menu's roles), shown on its card in the pop-up; '' for another type. */
+function typeHintOf(roleId: number): string {
+  switch (roleId) {
+    case 7: return t('staff.userManagement.typeHint.masterAdmin', 'Agencies, assessors and the assessment work.');
+    case 8: return t('staff.userManagement.typeHint.ministry', 'The Ministry of MSME: dashboards and reports.');
+    case 6: return t('staff.userManagement.typeHint.dfo', 'Financial Assistance and Handholding NEFT of its states and districts.');
+    case 10: return t('staff.userManagement.typeHint.dashboardAdmin', 'Dashboards and the screens you tick below, on the three portals.');
+    case 11: return t('staff.userManagement.typeHint.role11', 'Dashboards, financial support and reports.');
+    case 17: return t('staff.userManagement.typeHint.role17', 'Dashboards: registered MSMEs and their history.');
+    default: return '';
+  }
+}
 
 /**
  * Admin → User Management (new in V4): the Master Admin, Ministry, MSME DFO and dashboard logins of this portal. The
@@ -119,22 +123,22 @@ const typeHints: Readonly<Record<number, string>> = {
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, TextPipe],
   template: `
     @if (neft) {
       <!-- 2026-11-17 (approved staff-07): the page head with the main action, the counts, an empty state, the list with a row menu. -->
-      <zed-page-head [crumbs]="crumbs" title="NEFT Admins"
-                     subtitle="The national NEFT desk: one login for NEFT reimbursements of every state, financial assistance and Technology Upgradation.">
-        <button type="button" class="btn btn-primary" (click)="add()">+ Add NEFT admin</button>
+      <zed-page-head [crumbs]="crumbs()" [title]="'NEFT Admins' | t: 'staff.neftAdmins.title'"
+                     [subtitle]="'The national NEFT desk: one login for NEFT reimbursements of every state, financial assistance and Technology Upgradation.' | t: 'staff.neftAdmins.subtitle'">
+        <button type="button" class="btn btn-primary" (click)="add()">{{ '+ Add NEFT admin' | t: 'staff.neftAdmins.addButton' }}</button>
       </zed-page-head>
     } @else {
       <div class="page-head">
         <div>
-          <h3 class="registration-title">User Management</h3>
-          <p class="page-sub">Master Admin, Ministry, MSME DFO and dashboard logins; the password is generated and e-mailed to the user.</p>
+          <h3 class="registration-title">{{ 'User Management' | t: 'staff.userManagement.title' }}</h3>
+          <p class="page-sub">{{ 'Master Admin, Ministry, MSME DFO and dashboard logins; the password is generated and e-mailed to the user.' | t: 'staff.userManagement.subtitle' }}</p>
         </div>
         <div class="page-actions">
-          <button type="button" class="btn btn-primary" (click)="add()">+ Add Login</button>
+          <button type="button" class="btn btn-primary" (click)="add()">{{ '+ Add Login' | t: 'staff.userManagement.addButton' }}</button>
         </div>
       </div>
       <!-- One Admin (V4): the portal whose settings these are (each portal has its own logins). -->
@@ -144,45 +148,47 @@ const typeHints: Readonly<Record<number, string>> = {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     <!-- All, active and blocked logins (of the chosen login type); a click filters. 2026-11-17: the shared count tiles. -->
-    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="neft ? 'NEFT Admin logins by status' : 'Logins by status'" (pick)="pickStatus($event.key)" />
+    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="neft ? ('NEFT Admin logins by status' | t: 'staff.neftAdmins.countsLabel') : ('Logins by status' | t: 'staff.userManagement.countsLabel')" (pick)="pickStatus($event.key)" />
     @if (neft && loaded() && !accounts().length) {
       <section class="zed-card nf-empty" aria-labelledby="nf-empty-title">
         <span class="nf-icon nf-big" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="bankIcon" /></svg></span>
-        <h4 id="nf-empty-title">No NEFT desk logins yet</h4>
-        <p>Add the first login. The login details are e-mailed to the user.</p>
+        <h4 id="nf-empty-title">{{ 'No NEFT desk logins yet' | t: 'staff.neftAdmins.empty.title' }}</h4>
+        <p>{{ 'Add the first login. The login details are e-mailed to the user.' | t: 'staff.neftAdmins.empty.text' }}</p>
         <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): a 200 x 42 button; each step on one line, as staff-07. -->
-        <button type="button" class="btn btn-primary nf-first" (click)="add()">+ Add the first login</button>
+        <button type="button" class="btn btn-primary nf-first" (click)="add()">{{ '+ Add the first login' | t: 'staff.neftAdmins.empty.addButton' }}</button>
         <ol class="nf-steps">
-          <li><b>1 Add the login</b><small>Name, e-mail and mobile of the NEFT desk user.</small></li>
-          <li><b>2 Login details are e-mailed</b><small>You never see or set the password.</small></li>
-          <li><b>3 One desk for every state</b><small>Reimbursements, financial assistance and Technology Upgradation.</small></li>
+          <li><b>{{ '1 Add the login' | t: 'staff.neftAdmins.empty.step1' }}</b><small>{{ 'Name, e-mail and mobile of the NEFT desk user.' | t: 'staff.neftAdmins.empty.step1Note' }}</small></li>
+          <li><b>{{ '2 Login details are e-mailed' | t: 'staff.neftAdmins.empty.step2' }}</b><small>{{ 'You never see or set the password.' | t: 'staff.neftAdmins.empty.step2Note' }}</small></li>
+          <li><b>{{ '3 One desk for every state' | t: 'staff.neftAdmins.empty.step3' }}</b><small>{{ 'Reimbursements, financial assistance and Technology Upgradation.' | t: 'staff.neftAdmins.empty.step3Note' }}</small></li>
         </ol>
       </section>
     } @else {
     <div class="zed-card acc-list">
       @if (!neft) {
-        <div class="acc-tabs" role="tablist" aria-label="Login types">
+        <div class="acc-tabs" role="tablist" [attr.aria-label]="'Login types' | t: 'staff.userManagement.tabs.aria'">
           <button type="button" role="tab" class="acc-tab" [class.active]="!filter()" [attr.aria-selected]="!filter()" (click)="filter.set(0)">
-            All login types <span class="tab-count">{{ accounts().length }}</span>
+            {{ 'All login types' | t: 'staff.userManagement.tabs.all' }} <span class="tab-count">{{ accounts().length }}</span>
           </button>
-          @for (t of types(); track t.roleId) {
-            <button type="button" role="tab" class="acc-tab" [class.active]="filter() === t.roleId" [attr.aria-selected]="filter() === t.roleId" (click)="filter.set(t.roleId)">
-              {{ t.label }} <span class="tab-count">{{ countOf(t.roleId) }}</span>
+          @for (ty of types(); track ty.roleId) {
+            <button type="button" role="tab" class="acc-tab" [class.active]="filter() === ty.roleId" [attr.aria-selected]="filter() === ty.roleId" (click)="filter.set(ty.roleId)">
+              {{ ty.label }} <span class="tab-count">{{ countOf(ty.roleId) }}</span>
             </button>
           }
         </div>
       }
       <div class="acc-toolbar">
-        <input id="acc-search" type="search" class="form-control acc-search" placeholder="Search user ID, name, e-mail or mobile" aria-label="Search logins"
+        <input id="acc-search" type="search" class="form-control acc-search" [placeholder]="'Search user ID, name, e-mail or mobile' | t: 'staff.userManagement.search.placeholder'" [attr.aria-label]="'Search logins' | t: 'staff.userManagement.search.aria'"
                [ngModel]="search()" (ngModelChange)="search.set($event)" />
-        <span class="muted acc-showing">{{ shown().length }} of {{ accounts().length }} logins{{ status() === 'all' ? '' : ' · ' + (status() === 'active' ? 'active' : 'blocked') + ' only' }}</span>
+        <span class="muted acc-showing">{{ status() === 'all' ? ('{shown} of {total} logins' | t: 'staff.userManagement.showing' : { shown: shown().length, total: accounts().length })
+          : status() === 'active' ? ('{shown} of {total} logins · active only' | t: 'staff.userManagement.showingActive' : { shown: shown().length, total: accounts().length })
+          : ('{shown} of {total} logins · blocked only' | t: 'staff.userManagement.showingBlocked' : { shown: shown().length, total: accounts().length }) }}</span>
       </div>
       <div class="table-responsive">
         <table class="table table-zed acc-table">
           <thead>
             <tr>
-              <th>User</th>@if (!neft) {<th class="text-center">Login Type</th>}<th>Contact</th>
-              <th class="text-center acc-status-head">Status</th><th class="text-center acc-actions-head">Actions</th>
+              <th>{{ 'User' | t: 'staff.userManagement.column.user' }}</th>@if (!neft) {<th class="text-center">{{ 'Login Type' | t: 'staff.userManagement.column.type' }}</th>}<th>{{ 'Contact' | t: 'staff.userManagement.column.contact' }}</th>
+              <th class="text-center acc-status-head">{{ 'Status' | t: 'staff.userManagement.column.status' }}</th><th class="text-center acc-actions-head">{{ 'Actions' | t: 'staff.userManagement.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -195,38 +201,38 @@ const typeHints: Readonly<Record<number, string>> = {
                       <span class="acc-name">{{ a.userName || '—' }}</span>
                       <span class="acc-id">{{ a.userId }}</span>
                     </span>
-                    <span class="status-badge acc-badge-phone" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span>
+                    <span class="status-badge acc-badge-phone" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? ('Active' | t: 'staff.userManagement.row.active') : ('Blocked' | t: 'staff.userManagement.row.blocked') }}</span>
                   </div>
                 </td>
                 @if (!neft) {
-                  <td class="text-center acc-type-cell" data-label="Login Type">
+                  <td class="text-center acc-type-cell" [attr.data-label]="'Login Type' | t: 'staff.userManagement.column.type'">
                     <span class="zed-chip">{{ typeLabel(a.roleId) }}</span>
                     @if (stateName(a.stateCode); as s) { <span class="acc-state">{{ s }}</span> }
-                    @if (scopeText(a); as sc) { <span class="acc-state acc-scope" title="Scope of this login">{{ sc }}</span> }
+                    @if (scopeText(a); as sc) { <span class="acc-state acc-scope" [title]="'Scope of this login' | t: 'staff.userManagement.row.scopeTooltip'">{{ sc }}</span> }
                   </td>
                 }
                 <!-- 2026-11-18 (the user): the mobile and e-mail in full on every list (never masked); a long e-mail is cut with "…" and its tooltip. -->
-                <td class="acc-contact" data-label="Contact">
+                <td class="acc-contact" [attr.data-label]="'Contact' | t: 'staff.userManagement.column.contact'">
                   @if (a.mobileNo) {
                     <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ a.mobileNo }}</span>
                   } @else {
-                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span>
+                    <span class="acc-mobile"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">{{ 'Mobile not saved' | t: 'staff.userManagement.row.noMobile' }}</span></span>
                   }
                   @if (a.email) {
                     <span class="acc-mail" [title]="a.email"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg><span class="acc-txt">{{ a.email }}</span></span>
                   }
                 </td>
-                <td class="text-center acc-status-cell"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span></td>
+                <td class="text-center acc-status-cell"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? ('Active' | t: 'staff.userManagement.row.active') : ('Blocked' | t: 'staff.userManagement.row.blocked') }}</span></td>
                 <td class="text-center acc-actions-cell">
                   <div class="row-actions justify-content-center">
-                    <button type="button" class="btn btn-outline-primary" (click)="edit(a)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(a)">{{ 'Edit' | t: 'staff.userManagement.row.editButton' }}</button>
                     @if (neft) {
-                      <zed-row-menu [items]="menuOf(a)" [label]="'More actions for ' + (a.userName || a.userId)" (picked)="picked(a, $event)" />
+                      <zed-row-menu [items]="menuOf(a)" [label]="'More actions for {name}' | t: 'staff.neftAdmins.row.menuAria' : { name: a.userName || a.userId }" (picked)="picked(a, $event)" />
                     } @else if (a.isActive) {
-                      <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="act(a, 'reset-password')">Reset Password</button>
-                      <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">Block</button>
+                      <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="act(a, 'reset-password')">{{ 'Reset Password' | t: 'staff.userManagement.row.resetButton' }}</button>
+                      <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">{{ 'Block' | t: 'staff.userManagement.row.blockButton' }}</button>
                     } @else {
-                      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">Unblock</button>
+                      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">{{ 'Unblock' | t: 'staff.userManagement.row.unblockButton' }}</button>
                     }
                   </div>
                 </td>
@@ -237,11 +243,11 @@ const typeHints: Readonly<Record<number, string>> = {
                   <td [attr.colspan]="neft ? 4 : 5" style="padding: 0">
                     <div class="no-data acc-empty">
                       @if (search() || filter() || status() !== 'all') {
-                        No login matches the filters.
-                        <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all logins</button>
+                        {{ 'No login matches the filters.' | t: 'staff.userManagement.noMatch' }}
+                        <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all logins' | t: 'staff.userManagement.showAllButton' }}</button>
                       } @else {
-                        No logins yet.
-                        <button type="button" class="btn btn-link p-0 ms-1" (click)="add()">Add the first login</button>
+                        {{ 'No logins yet.' | t: 'staff.userManagement.empty' }}
+                        <button type="button" class="btn btn-link p-0 ms-1" (click)="add()">{{ 'Add the first login' | t: 'staff.userManagement.emptyAddButton' }}</button>
                       }
                     </div>
                   </td>
@@ -266,48 +272,48 @@ const typeHints: Readonly<Record<number, string>> = {
             <div class="modal-header nf-head">
               <span class="nf-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="bankIcon" /></svg></span>
               <div>
-                <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit NEFT admin' : 'Add NEFT admin' }}</h3>
-                <small class="nf-sub">{{ editing() ? editing() + ' · the national NEFT desk' : 'One login for the national NEFT desk.' }}</small>
+                <h3 class="registration-title m-0" id="account-title">{{ editing() ? ('Edit NEFT admin' | t: 'staff.neftAdmins.form.editTitle') : ('Add NEFT admin' | t: 'staff.neftAdmins.form.addTitle') }}</h3>
+                <small class="nf-sub">{{ editing() ? ('{id} · the national NEFT desk' | t: 'staff.neftAdmins.form.editSub' : { id: editing() }) : ('One login for the national NEFT desk.' | t: 'staff.neftAdmins.form.addSub') }}</small>
               </div>
-              <button type="button" class="nf-x" aria-label="Close" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
+              <button type="button" class="nf-x" [attr.aria-label]="'Close' | t: 'staff.neftAdmins.form.closeAria'" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
             </div>
             <form class="acc-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body acc-body">
                 <div class="acc-fields">
                   <div class="acc-field nf-wide">
-                    <label for="acc-name">Name<span class="req">*</span></label>
-                    <input class="form-control" id="acc-name" name="userName" maxlength="100" placeholder="Full name" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                    <label for="acc-name">{{ 'Name' | t: 'staff.neftAdmins.form.nameLabel' }}<span class="req">*</span></label>
+                    <input class="form-control" id="acc-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.neftAdmins.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
                   </div>
                   <div class="acc-field nf-wide">
-                    <label for="acc-email">E-mail<span class="req">*</span></label>
-                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" placeholder="name@organisation.in" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                    <label for="acc-email">{{ 'E-mail' | t: 'staff.neftAdmins.form.emailLabel' }}<span class="req">*</span></label>
+                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.neftAdmins.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
                   </div>
                   <div class="acc-field">
-                    <label for="acc-mobile">Mobile number<span class="req">*</span></label>
-                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" placeholder="10 digits" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                    <label for="acc-mobile">{{ 'Mobile number' | t: 'staff.neftAdmins.form.mobileLabel' }}<span class="req">*</span></label>
+                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits' | t: 'staff.neftAdmins.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
                   </div>
                   <div class="acc-field">
-                    <label class="nf-quiet" for="nf-type">Login type</label>
+                    <label class="nf-quiet" for="nf-type">{{ 'Login type' | t: 'staff.neftAdmins.form.typeLabel' }}</label>
                     <select class="form-select" id="nf-type" name="nfType" disabled><option>{{ typeLabel(f.roleId ?? 0) }}</option></select>
                   </div>
                   @if (!editing()) {
                     <div class="acc-field nf-wide">
-                      <label for="acc-id">User ID<span class="req">*</span></label>
-                      <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" placeholder="4 to 50 letters and digits"
+                      <label for="acc-id">{{ 'User ID' | t: 'staff.neftAdmins.form.userIdLabel' }}<span class="req">*</span></label>
+                      <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" [placeholder]="'4 to 50 letters and digits' | t: 'staff.neftAdmins.form.userIdPlaceholder'"
                              [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
                     </div>
                   }
                 </div>
                 @if (!editing()) {
                   <p class="nf-note"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>
-                    <span>The login details are e-mailed to this address; you never see or set the password. The user signs in with the User ID above.</span></p>
+                    <span>{{ 'The login details are e-mailed to this address; you never see or set the password. The user signs in with the User ID above.' | t: 'staff.neftAdmins.form.note' }}</span></p>
                 }
                 @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
               </div>
               <div class="modal-footer acc-foot nf-foot">
                 <span class="acc-foot-actions">
-                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Save changes' : 'Add NEFT admin' }}</button>
+                  <button type="button" class="btn btn-default" (click)="close()">{{ 'Cancel' | t: 'staff.neftAdmins.form.cancelButton' }}</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? ('Save changes' | t: 'staff.neftAdmins.form.saveButton') : ('Add NEFT admin' | t: 'staff.neftAdmins.form.addButton') }}</button>
                 </span>
               </div>
             </form>
@@ -322,30 +328,30 @@ const typeHints: Readonly<Record<number, string>> = {
           <div class="modal-content acc-content">
             <div class="modal-header acc-head">
               <div>
-                <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit Login ' + editing() : 'Add Login' }}</h3>
-                <small class="acc-head-sub">{{ editing() ? typeLabel(f.roleId ?? 0) : 'The password is made and e-mailed to the user' }}</small>
+                <h3 class="registration-title m-0" id="account-title">{{ editing() ? ('Edit Login {id}' | t: 'staff.userManagement.form.editTitle' : { id: editing() }) : ('Add Login' | t: 'staff.userManagement.form.addTitle') }}</h3>
+                <small class="acc-head-sub">{{ editing() ? typeLabel(f.roleId ?? 0) : ('The password is made and e-mailed to the user' | t: 'staff.userManagement.form.addSub') }}</small>
               </div>
-              <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="close()"></button>
+              <button type="button" class="btn-close btn-close-white" [attr.aria-label]="'Close' | t: 'staff.userManagement.form.closeAria'" (click)="close()"></button>
             </div>
             <form class="acc-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body acc-body">
                 <div class="acc-cols" [class.has-side]="scopeType() || screensType()">
                 <div class="acc-main">
                 <section class="acc-card">
-                <h4 class="acc-section" id="acc-type-head"><span class="acc-num">1</span>Login type@if (!editing()) {<span class="req">*</span>}</h4>
+                <h4 class="acc-section" id="acc-type-head"><span class="acc-num">1</span>{{ 'Login type' | t: 'staff.userManagement.form.typeTitle' }}@if (!editing()) {<span class="req">*</span>}</h4>
                 @if (editing()) {
                   <div class="acc-type-fixed">
                     <span class="zed-chip">{{ typeLabel(f.roleId ?? 0) }}</span>
-                    <small class="muted">The login type of a saved login cannot be changed.</small>
+                    <small class="muted">{{ 'The login type of a saved login cannot be changed.' | t: 'staff.userManagement.form.typeFixedNote' }}</small>
                   </div>
                 } @else {
                   <div class="acc-types" role="radiogroup" aria-labelledby="acc-type-head">
-                    @for (t of addableTypes(); track t.roleId) {
-                      <label class="choice-card" [class.active]="f.roleId === t.roleId" [for]="'acc-type-' + t.roleId">
-                        <input type="radio" class="form-check-input" name="roleId" [id]="'acc-type-' + t.roleId" [value]="t.roleId"
-                               [checked]="f.roleId === t.roleId" (change)="patch('roleId', t.roleId)" />
-                        <span><strong>{{ t.label }}</strong>
-                          @if (typeHint(t); as h) { <small class="muted d-block">{{ h }}</small> }
+                    @for (ty of addableTypes(); track ty.roleId) {
+                      <label class="choice-card" [class.active]="f.roleId === ty.roleId" [for]="'acc-type-' + ty.roleId">
+                        <input type="radio" class="form-check-input" name="roleId" [id]="'acc-type-' + ty.roleId" [value]="ty.roleId"
+                               [checked]="f.roleId === ty.roleId" (change)="patch('roleId', ty.roleId)" />
+                        <span><strong>{{ ty.label }}</strong>
+                          @if (typeHint(ty); as h) { <small class="muted d-block">{{ h }}</small> }
                         </span>
                       </label>
                     }
@@ -353,39 +359,39 @@ const typeHints: Readonly<Record<number, string>> = {
                 }
                 </section>
                 <section class="acc-card">
-                <h4 class="acc-section"><span class="acc-num">2</span>Details</h4>
+                <h4 class="acc-section"><span class="acc-num">2</span>{{ 'Details' | t: 'staff.userManagement.form.detailsTitle' }}</h4>
                 <div class="acc-fields">
                   @if (!editing()) {
                     <div class="acc-field">
-                      <label for="acc-id">User ID<span class="req">*</span></label>
+                      <label for="acc-id">{{ 'User ID' | t: 'staff.userManagement.form.userIdLabel' }}<span class="req">*</span></label>
                       <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
                     </div>
                   }
                   <div class="acc-field">
-                    <label for="acc-name">Name<span class="req">*</span></label>
+                    <label for="acc-name">{{ 'Name' | t: 'staff.userManagement.form.nameLabel' }}<span class="req">*</span></label>
                     <input class="form-control" id="acc-name" name="userName" maxlength="100" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
                   </div>
                   <div class="acc-field">
-                    <label for="acc-email">Email<span class="req">*</span></label>
+                    <label for="acc-email">{{ 'Email' | t: 'staff.userManagement.form.emailLabel' }}<span class="req">*</span></label>
                     <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
                   </div>
                   <div class="acc-field">
-                    <label for="acc-mobile">Mobile number<span class="req">*</span></label>
+                    <label for="acc-mobile">{{ 'Mobile number' | t: 'staff.userManagement.form.mobileLabel' }}<span class="req">*</span></label>
                     <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
                   </div>
                   @if (needsState()) {
                     <div class="acc-field">
-                      <label for="acc-state">State<span class="req">*</span></label>
+                      <label for="acc-state">{{ 'State' | t: 'staff.userManagement.form.stateLabel' }}<span class="req">*</span></label>
                       <select class="form-select" id="acc-state" name="stateCode" [ngModel]="f.stateCode" (ngModelChange)="patch('stateCode', $event)">
-                        <option value="">Select</option>
+                        <option value="">{{ 'Select' | t: 'staff.userManagement.form.statePlaceholder' }}</option>
                         @for (s of states(); track s.code) { <option [value]="s.code">{{ s.name }}</option> }
                       </select>
-                      <small class="text-muted">The MSME DFO sees the NEFT transactions of this state.</small>
+                      <small class="text-muted">{{ 'The MSME DFO sees the NEFT transactions of this state.' | t: 'staff.userManagement.form.stateNote' }}</small>
                     </div>
                   }
                 </div>
                 @if (!editing()) {
-                  <small class="text-muted d-block mt-2">User ID: 4 to 50 letters and digits, e.g. MINISTRY01.</small>
+                  <small class="text-muted d-block mt-2">{{ 'User ID: 4 to 50 letters and digits, e.g. MINISTRY01.' | t: 'staff.userManagement.form.userIdNote' }}</small>
                 }
                 </section>
                 </div>
@@ -395,10 +401,10 @@ const typeHints: Readonly<Record<number, string>> = {
                   <!-- 2026-11-07 (design approved): the Dashboard Admin's screens, per portal. -->
                   <section class="acc-scope-box acc-screens" aria-labelledby="acc-screens-head">
                     <div class="acc-scope-top">
-                      <h4 class="acc-section m-0" id="acc-screens-head"><span class="acc-num">3</span>Screens this login can open</h4>
+                      <h4 class="acc-section m-0" id="acc-screens-head"><span class="acc-num">3</span>{{ 'Screens this login can open' | t: 'staff.userManagement.form.screensTitle' }}</h4>
                       <span class="acc-screens-links">
-                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(true)">Select all</button> ·
-                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(false)">Clear</button>
+                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(true)">{{ 'Select all' | t: 'staff.userManagement.form.screensAllButton' }}</button> ·
+                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(false)">{{ 'Clear' | t: 'staff.userManagement.form.screensClearButton' }}</button>
                       </span>
                     </div>
                     @for (p of screenPortals(); track p.portal) {
@@ -418,18 +424,18 @@ const typeHints: Readonly<Record<number, string>> = {
                         }
                       </div>
                     }
-                    <p class="acc-scope-note">It signs in on the main portal and opens the other portals' screens from there. A change applies at the user's next sign-in.</p>
+                    <p class="acc-scope-note">{{ "It signs in on the main portal and opens the other portals' screens from there. A change applies at the user's next sign-in." | t: 'staff.userManagement.form.screensNote' }}</p>
                   </section>
                 }
                 @if (scopeType(); as st) {
                   <!-- 2026-11-07 (design approved): what the login works with; the users it creates stay within it. -->
                   <section class="acc-scope-box" aria-labelledby="acc-scope-head">
                     <div class="acc-scope-top">
-                      <h4 class="acc-section m-0" id="acc-scope-head"><span class="acc-num">{{ screensType() ? 4 : 3 }}</span>Scope of this login</h4>
-                      <small class="muted">It sees only these MSMEs, and the users it creates stay within them.</small>
+                      <h4 class="acc-section m-0" id="acc-scope-head"><span class="acc-num">{{ screensType() ? 4 : 3 }}</span>{{ 'Scope of this login' | t: 'staff.userManagement.form.scopeTitle' }}</h4>
+                      <small class="muted">{{ 'It sees only these MSMEs, and the users it creates stay within them.' | t: 'staff.userManagement.form.scopeNote' }}</small>
                     </div>
                     <div class="acc-scope-row">
-                      <span class="acc-scope-label" id="acc-sector-head">MSME category</span>
+                      <span class="acc-scope-label" id="acc-sector-head">{{ 'MSME category' | t: 'staff.userManagement.form.categoryLabel' }}</span>
                       <div class="acc-seg" role="radiogroup" aria-labelledby="acc-sector-head">
                         @for (o of sectorScopes; track o) {
                           <button type="button" class="acc-seg-btn" [class.on]="f.sectorActivity === o" role="radio" [attr.aria-checked]="f.sectorActivity === o"
@@ -439,9 +445,9 @@ const typeHints: Readonly<Record<number, string>> = {
                     </div>
                     @if (st.hasNeftLists) {
                       <div class="acc-scope-row">
-                        <span class="acc-scope-label" id="acc-lists-head">NEFT lists</span>
+                        <span class="acc-scope-label" id="acc-lists-head">{{ 'NEFT lists' | t: 'staff.userManagement.form.neftListsLabel' }}</span>
                         <div class="acc-levels" role="group" aria-labelledby="acc-lists-head">
-                          @for (l of neftListOptions; track l.key) {
+                          @for (l of neftListOptions(); track l.key) {
                             <label class="acc-level" [class.on]="f.neftLists.includes(l.key)">
                               <input type="checkbox" class="form-check-input" [name]="'acc-list-' + l.key" [checked]="f.neftLists.includes(l.key)" (change)="toggleNeftList(l.key)" />
                               {{ l.label }}
@@ -452,7 +458,7 @@ const typeHints: Readonly<Record<number, string>> = {
                     }
                     @if (st.hasLevels !== false) {
                     <div class="acc-scope-row">
-                      <span class="acc-scope-label" id="acc-levels-head">Certification levels</span>
+                      <span class="acc-scope-label" id="acc-levels-head">{{ 'Certification levels' | t: 'staff.userManagement.form.levelsLabel' }}</span>
                       <div class="acc-levels" role="group" aria-labelledby="acc-levels-head">
                         @for (l of levels(); track l.code) {
                           <label class="acc-level" [class.on]="f.levels.includes(l.code)">
@@ -465,29 +471,29 @@ const typeHints: Readonly<Record<number, string>> = {
                     }
                     @if (st.hasStateScope) {
                       <div class="acc-scope-row acc-scope-states">
-                        <span class="acc-scope-label">{{ st.hasDistricts ? 'States' : 'Applicable states' }}
-                          <small class="muted d-block">{{ st.hasDistricts ? 'At least one' : 'None selected = every state' }}</small></span>
-                        <zed-multi-select label="Applicable states" inputId="acc-states" [options]="stateOptions()" [value]="f.states"
+                        <span class="acc-scope-label">{{ st.hasDistricts ? ('States' | t: 'staff.userManagement.form.statesLabel') : ('Applicable states' | t: 'staff.userManagement.form.applicableStatesLabel') }}
+                          <small class="muted d-block">{{ st.hasDistricts ? ('At least one' | t: 'staff.userManagement.form.statesNote') : ('None selected = every state' | t: 'staff.userManagement.form.applicableStatesNote') }}</small></span>
+                        <zed-multi-select [label]="'Applicable states' | t: 'staff.userManagement.form.applicableStatesLabel'" inputId="acc-states" [options]="stateOptions()" [value]="f.states"
                                           (valueChange)="setStates($event)" />
                       </div>
                     }
                     @if (st.hasDistricts && f.states.length) {
                       <div class="acc-scope-row acc-scope-districts">
-                        <span class="acc-scope-label">Districts<small class="muted d-block">None selected = every district of the states</small></span>
+                        <span class="acc-scope-label">{{ 'Districts' | t: 'staff.userManagement.form.districtsLabel' }}<small class="muted d-block">{{ 'None selected = every district of the states' | t: 'staff.userManagement.form.districtsNote' }}</small></span>
                         <div>
                           @for (g of districtGroups(); track g.stateCode) {
                             @if (f.states.includes(g.stateCode)) {
                               <p class="acc-screen-group">{{ g.stateName }}</p>
-                              <zed-multi-select [label]="'Districts of ' + g.stateName" [options]="districtOptions(g)" [value]="f.districts"
+                              <zed-multi-select [label]="'Districts of {state}' | t: 'staff.userManagement.form.districtsAria' : { state: g.stateName }" [options]="districtOptions(g)" [value]="f.districts"
                                                 (valueChange)="setDistricts(g, $event)" />
                             }
                           } @empty {
-                            <small class="muted">Loading the districts…</small>
+                            <small class="muted">{{ 'Loading the districts…' | t: 'staff.userManagement.form.districtsLoading' }}</small>
                           }
                         </div>
                       </div>
                     }
-                    <p class="acc-scope-note">{{ st.hasDistricts ? 'One login: Financial Assistance on ZED Certification, Technology Upgradation on Handholding (a switch on its NEFT pages).' : 'Both, every level and every state = no limit.' }}</p>
+                    <p class="acc-scope-note">{{ st.hasDistricts ? ('One login: Financial Assistance on ZED Certification, Technology Upgradation on Handholding (a switch on its NEFT pages).' | t: 'staff.userManagement.form.dfoNote') : ('Both, every level and every state = no limit.' | t: 'staff.userManagement.form.noLimitNote') }}</p>
                   </section>
                 }
                 </div>
@@ -496,10 +502,10 @@ const typeHints: Readonly<Record<number, string>> = {
                 @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
               </div>
               <div class="modal-footer acc-foot">
-                <span class="acc-foot-note"><span class="req">*</span> required@if (!editing()) { · a password is generated and e-mailed to the user }</span>
+                <span class="acc-foot-note"><span class="req">*</span> {{ editing() ? ('required' | t: 'staff.userManagement.form.requiredNote') : ('required · a password is generated and e-mailed to the user' | t: 'staff.userManagement.form.requiredAddNote') }}</span>
                 <span class="acc-foot-actions">
-                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Update' : 'Save' }}</button>
+                  <button type="button" class="btn btn-default" (click)="close()">{{ 'Cancel' | t: 'staff.userManagement.form.cancelButton' }}</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? ('Update' | t: 'staff.userManagement.form.updateButton') : ('Save' | t: 'staff.userManagement.form.saveButton') }}</button>
                 </span>
               </div>
             </form>
@@ -632,7 +638,7 @@ export class AccountsPage {
   protected readonly neft = inject(ActivatedRoute, { optional: true })?.snapshot.data['mode'] === 'neft';
   private readonly api = this.neft ? NEFT_API : API;
   private readonly toast = inject(ToastService);
-  protected readonly crumbs = staffCrumbs({ label: 'NEFT Admins' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.neftAdmins.crumb', 'NEFT Admins') }));
   /** A bank (NEFT): the pop-up's and the empty state's icon. */
   protected readonly bankIcon = 'M3 10h18L12 4zM5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20.5h18';
   /** The list has loaded once (the NEFT Admins' empty state waits for it). */
@@ -658,9 +664,9 @@ export class AccountsPage {
     const ofType = this.accounts().filter((a) => !this.filter() || a.roleId === this.filter());
     const active = ofType.filter((a) => a.isActive).length;
     return [
-      { key: 'all', label: 'All logins', value: ofType.length },
-      { key: 'active', label: 'Active', value: active, tone: 'good' },
-      { key: 'blocked', label: 'Blocked', value: ofType.length - active, tone: 'bad' },
+      { key: 'all', label: t('staff.userManagement.count.all', 'All logins'), value: ofType.length },
+      { key: 'active', label: t('staff.userManagement.count.active', 'Active'), value: active, tone: 'good' },
+      { key: 'blocked', label: t('staff.userManagement.count.blocked', 'Blocked'), value: ofType.length - active, tone: 'bad' },
     ];
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
@@ -670,17 +676,17 @@ export class AccountsPage {
   protected readonly needsState = computed(() => this.types().find((t) => t.roleId === this.form()?.roleId)?.needsState ?? false);
   /** The chosen login type when it has a scope (Master Admin, Ministry). */
   protected readonly scopeType = computed(() => {
-    const t = this.types().find((x) => x.roleId === this.form()?.roleId);
-    return t?.hasScope ? t : null;
+    const type = this.types().find((x) => x.roleId === this.form()?.roleId);
+    return type?.hasScope ? type : null;
   });
   protected readonly levels = signal<{ code: string; name: string }[]>([]);
   protected readonly screenOptions = signal<ScreenOption[]>([]);
   /** The districts of the states chosen for an MSME DFO. */
   protected readonly districtGroups = signal<StateDistricts[]>([]);
-  protected readonly neftListOptions = [
-    { key: 'main', label: 'Financial Assistance' },
-    { key: 'consultancy', label: 'Handholding (Technology Upgradation)' },
-  ];
+  protected readonly neftListOptions = computed(() => [
+    { key: 'main', label: t('staff.userManagement.form.neftList.main', 'Financial Assistance') },
+    { key: 'consultancy', label: t('staff.userManagement.form.neftList.consultancy', 'Handholding (Technology Upgradation)') },
+  ]);
   /** The login types the pop-up offers for a new login (a Dashboard Admin only on the main portal). */
   protected readonly addableTypes = computed(() => (this.editing() ? this.types() : this.types().filter((t) => t.canAdd !== false)));
   protected readonly screensType = computed(() => !!this.types().find((x) => x.roleId === this.form()?.roleId)?.hasScreens);
@@ -711,8 +717,8 @@ export class AccountsPage {
   }
 
   /** The line under a login type in the pop-up: what the login opens. */
-  protected typeHint(t: AccountType): string {
-    return typeHints[t.roleId] ?? (t.needsState ? 'Linked to one state.' : '');
+  protected typeHint(type: AccountType): string {
+    return typeHintOf(type.roleId) || (type.needsState ? t('staff.userManagement.typeHint.oneState', 'Linked to one state.') : '');
   }
 
   protected countOf(roleId: number): number {
@@ -733,8 +739,9 @@ export class AccountsPage {
   /** A NEFT Admin's row menu: a new password, then block (red) or unblock. */
   protected menuOf(a: Account): RowMenuItem[] {
     return a.isActive
-      ? [{ key: 'reset-password', label: 'Send new password', icon: 'mail' }, { key: 'block', label: 'Block login', icon: 'lock', danger: true }]
-      : [{ key: 'unblock', label: 'Unblock login', icon: 'unlock' }];
+      ? [{ key: 'reset-password', label: t('staff.neftAdmins.menu.reset', 'Send new password'), icon: 'mail' },
+        { key: 'block', label: t('staff.neftAdmins.menu.block', 'Block login'), icon: 'lock', danger: true }]
+      : [{ key: 'unblock', label: t('staff.neftAdmins.menu.unblock', 'Unblock login'), icon: 'unlock' }];
   }
 
   protected picked(a: Account, key: string): void {
@@ -752,7 +759,7 @@ export class AccountsPage {
     const parts: string[] = [];
     if (a.sectorActivity === 'Manufacturing' || a.sectorActivity === 'Services') parts.push(a.sectorActivity);
     if (a.levels?.length) parts.push(a.levels.map((l) => this.levels().find((x) => x.code === l)?.name ?? l).join(', '));
-    if (a.states?.length) parts.push(a.states.length === 1 ? this.stateName(a.states[0]) : `${a.states.length} states`);
+    if (a.states?.length) parts.push(a.states.length === 1 ? this.stateName(a.states[0]) : t('staff.userManagement.row.statesCount', '{count} states', { count: a.states.length }));
     return parts.join(' · ');
   }
 
@@ -818,7 +825,7 @@ export class AccountsPage {
   }
 
   protected stateName(code: string | null): string {
-    if (code === 'ALL') return 'All states';
+    if (code === 'ALL') return t('staff.userManagement.row.allStates', 'All states');
     return code ? (this.states().find((s) => s.code === code)?.name ?? code) : '';
   }
 
@@ -862,20 +869,20 @@ export class AccountsPage {
     const id = this.editing();
     const scope = this.scopeType();
     if (scope && this.levels().length && !f.levels.length) {
-      this.formError.set('Please choose at least one certification level.');
+      this.formError.set(t('staff.userManagement.error.noLevel', 'Please choose at least one certification level.'));
       return;
     }
     if (this.screensType() && !f.screens.some((x) => !x.endsWith(':hide-names'))) {
-      this.formError.set('Please tick at least one screen for the Dashboard Admin.');
+      this.formError.set(t('staff.userManagement.error.noScreen', 'Please tick at least one screen for the Dashboard Admin.'));
       return;
     }
     const dfo = this.types().find((t) => t.roleId === f.roleId)?.hasDistricts;
     if (dfo && !f.states.length) {
-      this.formError.set("Please choose the MSME DFO's states.");
+      this.formError.set(t('staff.userManagement.error.noStates', "Please choose the MSME DFO's states."));
       return;
     }
     if (dfo && !f.neftLists.length) {
-      this.formError.set('Please tick Financial Assistance and / or Handholding.');
+      this.formError.set(t('staff.userManagement.error.noNeftList', 'Please tick Financial Assistance and / or Handholding.'));
       return;
     }
     const { sectorActivity, levels, states, screens, districts, neftLists, ...details } = f;
@@ -909,17 +916,20 @@ export class AccountsPage {
     if (action === 'reset-password') {
       const to = plain(a.email);
       this.pending.set({ account: a, action, ask: {
-        title: 'Send a new password?',
-        message: `${name} (${a.userId}) gets a new password by e-mail${to ? ' at ' + to : ''}. The current password stops working at once.`,
-        confirmLabel: 'Send new password',
+        title: t('staff.userManagement.reset.title', 'Send a new password?'),
+        message: to
+          ? t('staff.userManagement.reset.messageTo', '{name} ({id}) gets a new password by e-mail at {email}. The current password stops working at once.', { name, id: a.userId, email: to })
+          : t('staff.userManagement.reset.message', '{name} ({id}) gets a new password by e-mail. The current password stops working at once.', { name, id: a.userId }),
+        confirmLabel: t('staff.userManagement.reset.confirmButton', 'Send new password'),
       } });
     } else if (action === 'block' && this.neft) {
       this.pending.set({ account: a, action, ask: {
-        title: `Block ${name}?`,
-        message: 'The NEFT desk login cannot sign in until it is unblocked. Nothing is deleted; you can unblock it at any time.',
-        confirmLabel: 'Block login',
+        title: t('staff.neftAdmins.block.title', 'Block {name}?', { name }),
+        message: t('staff.neftAdmins.block.message', 'The NEFT desk login cannot sign in until it is unblocked. Nothing is deleted; you can unblock it at any time.'),
+        confirmLabel: t('staff.neftAdmins.block.confirmButton', 'Block login'),
         danger: true,
-        reason: { label: 'Reason for blocking', placeholder: "Shown in the login's history", maxLength: 2000, hint: 'Kept in its history and e-mailed to the user.' },
+        reason: { label: t('staff.neftAdmins.block.reasonLabel', 'Reason for blocking'), placeholder: t('staff.neftAdmins.block.reasonPlaceholder', "Shown in the login's history"),
+          maxLength: 2000, hint: t('staff.neftAdmins.block.reasonHint', 'Kept in its history and e-mailed to the user.') },
       } });
     } else {
       this.reasonAsk.set({ action, userId: a.userId, userName: a.userName ?? null });
@@ -936,7 +946,8 @@ export class AccountsPage {
     try {
       await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(p.account.userId)}/reset-password`, null));
       this.pending.set(null);
-      this.toast.success('New password sent', 'E-mailed to ' + (plain(p.account.email) || 'the registered e-mail address'));
+      this.toast.success(t('staff.userManagement.toast.passwordSent', 'New password sent'), t('staff.userManagement.toast.sentTo', 'E-mailed to {to}',
+        { to: plain(p.account.email) || t('staff.userManagement.toast.sentToFallback', 'the registered e-mail address') }));
       await this.load();
     } catch (err) {
       this.reasonError.set(apiErrorMessage(err));
@@ -953,8 +964,9 @@ export class AccountsPage {
       this.reasonAsk.set(null);
       this.pending.set(null);
       const block = r.action === 'block';
-      this.toast.success(block ? 'Login blocked' : 'Login unblocked',
-        `${r.userName || r.userId} (${r.userId}) ${block ? 'can no longer sign in' : 'can sign in again'}. The reason was e-mailed.`);
+      const v = { name: r.userName || r.userId, id: r.userId };
+      if (block) this.toast.success(t('staff.userManagement.toast.blocked', 'Login blocked'), t('staff.userManagement.toast.blockedText', '{name} ({id}) can no longer sign in. The reason was e-mailed.', v));
+      else this.toast.success(t('staff.userManagement.toast.unblocked', 'Login unblocked'), t('staff.userManagement.toast.unblockedText', '{name} ({id}) can sign in again. The reason was e-mailed.', v));
       await this.load();
     } catch (err) {
       this.reasonError.set(apiErrorMessage(err));
@@ -970,7 +982,7 @@ export class AccountsPage {
     try {
       const r = await firstValueFrom(call());
       this.close();
-      this.toast.success(added ? 'Login added' : 'Login updated', r.message);
+      this.toast.success(added ? t('staff.userManagement.toast.added', 'Login added') : t('staff.userManagement.toast.updated', 'Login updated'), r.message);
       await this.load();
     } catch (err) {
       this.formError.set(apiErrorMessage(err));

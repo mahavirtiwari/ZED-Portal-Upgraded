@@ -1,4 +1,5 @@
 import { TrackerStep } from '../../msme/shared/step-tracker';
+import { t } from '../../content/page-text';
 import { flag, num, text } from './assessment-shared';
 import { Row } from './assessment.api';
 import { shortDay } from './da-details.overview';
@@ -8,6 +9,7 @@ import { shortDay } from './da-details.overview';
  * the record's own columns only: the result chip, the five-step stage tracker and the non-conformance rounds with their dates.
  * Nothing is guessed: a step without its date is not ticked, "Certified" needs the server's IsCertified (status 6 with the
  * desktop certificate number, or 16), and a round is "Closed" only once a later round was raised or the assessment completed.
+ * 2026-11-19: the wording is the Admin's (Texts → Page wording, "Unit view": shared by the desktop and site review pages).
  */
 
 export type UnitTone = 'good' | 'bad' | 'warn' | 'info';
@@ -43,11 +45,11 @@ function finished(m: Row): boolean {
 
 /** The result chip beside the title. */
 export function unitResult(m: Row): UnitResult {
-  if (flag(m, 'IsCertified')) return { label: 'Certified', tone: 'good' };
-  if (num(m, 'CertificationStatus') === 99 || flag(m, 'IsAutoReject')) return { label: 'Rejected', tone: 'bad' };
-  if (ncOpen(m)) return { label: `NC ${num(m, 'NcCount')} open`, tone: 'warn' };
-  if (text(m, 'CompletedOn')) return { label: 'Assessment completed', tone: 'info' };
-  return { label: 'In progress', tone: 'info' };
+  if (flag(m, 'IsCertified')) return { label: t('staff.unitView.result.certified.chip', 'Certified'), tone: 'good' };
+  if (num(m, 'CertificationStatus') === 99 || flag(m, 'IsAutoReject')) return { label: t('staff.unitView.result.rejected.chip', 'Rejected'), tone: 'bad' };
+  if (ncOpen(m)) return { label: t('staff.unitView.result.ncOpen.chip', 'NC {round} open', { round: num(m, 'NcCount') }), tone: 'warn' };
+  if (text(m, 'CompletedOn')) return { label: t('staff.unitView.result.completed.chip', 'Assessment completed'), tone: 'info' };
+  return { label: t('staff.unitView.result.inProgress.chip', 'In progress'), tone: 'info' };
 }
 
 /** The NC rounds raised (Nc1Raised..Nc5Raised), with the unit's reply date. */
@@ -68,8 +70,9 @@ function ncStep(m: Row): { step: TrackerStep; done: boolean } {
   const n = num(m, 'NcCount');
   const open = ncOpen(m);
   const done = !open && (n > 0 || finished(m));
-  const note = n > 0 ? `${open ? n - 1 : n} of ${n}` : done ? 'None raised' : null;
-  return { step: { label: 'NCs closed', note }, done };
+  const note = n > 0 ? t('staff.unitView.stage.ncClosed.note', '{closed} of {total}', { closed: open ? n - 1 : n, total: n })
+    : done ? t('staff.unitView.stage.noneRaised.note', 'None raised') : null;
+  return { step: { label: t('staff.unitView.stage.ncClosed.label', 'NCs closed'), note }, done };
 }
 
 function stage(parts: { step: TrackerStep; done: boolean }[]): UnitStage {
@@ -84,11 +87,11 @@ const dated = (label: string, date: string) => ({ step: { label, note: shortDay(
 export function desktopStage(m: Row): UnitStage {
   const certified = flag(m, 'IsCertified');
   return stage([
-    dated('Documents submitted', text(m, 'BasicInfoStatus')),
-    dated('Allotted', text(m, 'DocVerifiAllot')),
+    dated(t('staff.unitView.stage.submitted.label', 'Documents submitted'), text(m, 'BasicInfoStatus')),
+    dated(t('staff.unitView.stage.allotted.label', 'Allotted'), text(m, 'DocVerifiAllot')),
     ncStep(m),
-    dated('Verified', text(m, 'CompletedOn')),
-    { step: { label: 'Certified', note: certified ? shortDay(text(m, 'CertificationStatusDate')) || null : null }, done: certified },
+    dated(t('staff.unitView.stage.verified.label', 'Verified'), text(m, 'CompletedOn')),
+    { step: { label: t('staff.unitView.stage.certified.label', 'Certified'), note: certified ? shortDay(text(m, 'CertificationStatusDate')) || null : null }, done: certified },
   ]);
 }
 
@@ -97,11 +100,11 @@ export function siteStage(m: Row): UnitStage {
   const certified = flag(m, 'IsCertified');
   const visited = num(m, 'NcCount') > 0 || finished(m) || [14, 15, 16].includes(num(m, 'CertificationStatus'));
   return stage([
-    dated('Documents submitted', text(m, 'BasicInfoStatus')),
-    dated('Desktop verified', text(m, 'DesktopVerificationCompleted')),
-    { step: { label: 'Site visit', note: shortDay(text(m, 'AssessmentDate')) || null }, done: visited },
+    dated(t('staff.unitView.stage.submitted.label', 'Documents submitted'), text(m, 'BasicInfoStatus')),
+    dated(t('staff.unitView.stage.desktopVerified.label', 'Desktop verified'), text(m, 'DesktopVerificationCompleted')),
+    { step: { label: t('staff.unitView.stage.siteVisit.label', 'Site visit'), note: shortDay(text(m, 'AssessmentDate')) || null }, done: visited },
     ncStep(m),
-    { step: { label: 'Certified', note: text(m, 'CompletedOn') ? `Completed ${shortDay(text(m, 'CompletedOn'))}` : null }, done: certified },
+    { step: { label: t('staff.unitView.stage.certified.label', 'Certified'), note: text(m, 'CompletedOn') ? t('staff.unitView.stage.completed.note', 'Completed {date}', { date: shortDay(text(m, 'CompletedOn')) }) : null }, done: certified },
   ]);
 }
 

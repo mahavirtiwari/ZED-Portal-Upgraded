@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { ADMIN_PORTAL, AdminPortal } from '../admin-portal';
+import { t } from '../../content/page-text';
 
 /**
  * 2026-11-18 (approved design "Expenditure monitoring"): the API of the Expenditure tab, the purchase orders, the monthly
@@ -407,22 +408,23 @@ export function dmy(iso: string | null | undefined): string {
 export function caseText(c: ExpenditureCase): string {
   if (c.kind === 'Milestone') {
     const m = c.milestone ?? 0;
+    const date = shownDate(c.countedOn);
     return c.lastMilestone
-      ? `M${m} · counted when the unit was certified on ${shownDate(c.countedOn)}`
-      : `M${m} · counted when M${m + 1} was paid on ${shownDate(c.countedOn)}`;
+      ? t('staff.expenditure.case.lastMilestoneText', 'M{milestone} · counted when the unit was certified on {date}', { milestone: m, date })
+      : t('staff.expenditure.case.milestoneText', 'M{milestone} · counted when M{next} was paid on {date}', { milestone: m, next: m + 1, date });
   }
-  if (c.kind === 'Rejected') return 'Rejected after assessment';
-  if (c.kind === 'Surveillance') return 'Surveillance visit';
-  return 'Completed';
+  if (c.kind === 'Rejected') return t('staff.expenditure.case.rejectedText', 'Rejected after assessment');
+  if (c.kind === 'Surveillance') return t('staff.expenditure.case.surveillanceText', 'Surveillance visit');
+  return t('staff.expenditure.case.completedText', 'Completed');
 }
 
 /** The PO pill: "Open", "9 left" (amber), "Stopped" (red), "No PO". */
 export function poPill(state: PoState, left: number | null): { text: string; tone: 'is-active' | 'is-pending' | 'is-rejected' | 'is-inactive' } {
   switch (state) {
-    case 'Stopped': return { text: 'Stopped', tone: 'is-rejected' };
-    case 'Low': return { text: `${left ?? 0} left`, tone: 'is-pending' };
-    case 'Open': return { text: 'Open', tone: 'is-active' };
-    default: return { text: 'No PO', tone: 'is-inactive' };
+    case 'Stopped': return { text: t('staff.expenditure.po.stoppedLabel', 'Stopped'), tone: 'is-rejected' };
+    case 'Low': return { text: t('staff.expenditure.po.leftLabel', '{count} left', { count: left ?? 0 }), tone: 'is-pending' };
+    case 'Open': return { text: t('staff.expenditure.po.openLabel', 'Open'), tone: 'is-active' };
+    default: return { text: t('staff.expenditure.po.noPoLabel', 'No PO'), tone: 'is-inactive' };
   }
 }
 
@@ -433,9 +435,15 @@ export function statusTone(status: InvoiceStatus): string {
 
 /** A rate line as the review shows it: "41 completed × ₹ 3,000 (Bronze, from 01-11-2026)". */
 export function rateLineText(l: RateLine): string {
-  const what = l.kind === 'Milestone' ? `milestone ${l.milestone ?? ''}`.trim() : l.kind === 'Surveillance' ? 'surveillance' : l.kind.toLowerCase();
-  const rate = l.rate === null ? 'no rate' : rupees(l.rate);
-  return `${l.cases} ${what} × ${rate} (${l.levelName}${l.rateFrom ? ', from ' + dmy(l.rateFrom) : ''})`;
+  const what =
+    l.kind === 'Milestone' ? (l.milestone === null ? t('staff.expenditure.rate.kind.milestones', 'milestone') : t('staff.expenditure.rate.kind.milestone', 'milestone {no}', { no: l.milestone }))
+    : l.kind === 'Surveillance' ? t('staff.expenditure.rate.kind.surveillance', 'surveillance')
+    : l.kind === 'Completed' ? t('staff.expenditure.rate.kind.completed', 'completed')
+    : l.kind === 'Rejected' ? t('staff.expenditure.rate.kind.rejected', 'rejected')
+    : l.kind.toLowerCase();
+  const rate = l.rate === null ? t('staff.expenditure.rate.noRateText', 'no rate') : rupees(l.rate);
+  const level = l.rateFrom ? t('staff.expenditure.rate.levelFromText', '{level}, from {date}', { level: l.levelName, date: dmy(l.rateFrom) }) : l.levelName;
+  return t('staff.expenditure.rate.lineText', '{cases} {what} × {rate} ({level})', { cases: l.cases, what, rate, level });
 }
 
 const BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -456,16 +464,16 @@ export function gstinCheckDigit(gstin: string): string {
 /** Null when the GSTIN is valid (as the server checks it); otherwise why not. */
 export function gstinProblem(value: string): string | null {
   const g = value.trim().toUpperCase();
-  if (!GSTIN.test(g)) return 'Please enter a valid GSTIN: 15 characters (state code, PAN, entity number, Z and check digit).';
-  return gstinCheckDigit(g) === g[14] ? null : "The GSTIN's last character (its check digit) does not match. Please check the GSTIN.";
+  if (!GSTIN.test(g)) return t('staff.expenditure.tax.gstinError', 'Please enter a valid GSTIN: 15 characters (state code, PAN, entity number, Z and check digit).');
+  return gstinCheckDigit(g) === g[14] ? null : t('staff.expenditure.tax.gstinCheckError', "The GSTIN's last character (its check digit) does not match. Please check the GSTIN.");
 }
 
 /** Null when the PAN is valid and is characters 3-12 of the GSTIN; otherwise why not. */
 export function panProblem(value: string, gstin: string): string | null {
   const p = value.trim().toUpperCase();
-  if (!PAN.test(p)) return 'Please enter a valid PAN: 10 characters, e.g. AAPFU0939F.';
+  if (!PAN.test(p)) return t('staff.expenditure.tax.panError', 'Please enter a valid PAN: 10 characters, e.g. AAPFU0939F.');
   const of = gstin.trim().toUpperCase().slice(2, 12);
-  return p === of ? null : `The PAN does not match the GSTIN: characters 3 to 12 of the GSTIN are the PAN (${of}).`;
+  return p === of ? null : t('staff.expenditure.tax.panMismatchError', 'The PAN does not match the GSTIN: characters 3 to 12 of the GSTIN are the PAN ({pan}).', { pan: of });
 }
 
 /** Opens a downloaded file (PDF, image) in a new tab. */

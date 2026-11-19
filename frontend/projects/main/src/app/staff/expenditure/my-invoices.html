@@ -1,7 +1,7 @@
 <!-- 2026-11-18 (the user): the agency's (consultant organisation's) Expenditure page, its own data only. -->
-<zed-page-head [crumbs]="crumbs" title="Expenditure" [subtitle]="data() ? data()!.partyName + ' · ' + data()!.partyId : ''">
-  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">Refresh</button>
-  <button type="button" class="btn btn-primary" [disabled]="!summary()" (click)="exportAll()">Export All</button>
+<zed-page-head [crumbs]="crumbs()" [title]="'Expenditure' | t: 'staff.myInvoices.title'" [subtitle]="headSub()">
+  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">{{ 'Refresh' | t: 'staff.myInvoices.refreshButton' }}</button>
+  <button type="button" class="btn btn-primary" [disabled]="!summary()" (click)="exportAll()">{{ 'Export All' | t: 'staff.myInvoices.exportAllButton' }}</button>
 </zed-page-head>
 
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
@@ -9,25 +9,25 @@
 <zed-tax-details [tax]="data()?.tax" [partyId]="partyId()" [editable]="true" (saved)="load()" />
 
 <div class="zed-card mi-bar">
-  <zed-chip-filter label="Level" [chips]="levelChips()" [value]="level()" (valueChange)="setLevel($event)" />
-  <label>Month
+  <zed-chip-filter [label]="'Level' | t: 'staff.myInvoices.filter.levelLabel'" [chips]="levelChips()" [value]="level()" (valueChange)="setLevel($event)" />
+  <label>{{ 'Month' | t: 'staff.myInvoices.filter.monthLabel' }}
     <select class="form-select" name="month" [ngModel]="month()" (ngModelChange)="setMonth($event)">
-      <option value="">Any month</option>
+      <option value="">{{ 'Any month' | t: 'staff.myInvoices.filter.anyMonth' }}</option>
       @for (m of months(); track m.month) { <option [value]="m.month">{{ m.label }}</option> }
     </select>
   </label>
-  <label>From <input type="date" class="form-control" name="from" [ngModel]="from()" (ngModelChange)="setDate('from', $event)" /></label>
-  <label>To <input type="date" class="form-control" name="to" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" /></label>
-  @if (filtering()) { <button type="button" class="mi-clear" (click)="clearAll()">Clear all</button> }
+  <label>{{ 'From' | t: 'staff.myInvoices.filter.fromLabel' }} <input type="date" class="form-control" name="from" [ngModel]="from()" (ngModelChange)="setDate('from', $event)" /></label>
+  <label>{{ 'To' | t: 'staff.myInvoices.filter.toLabel' }} <input type="date" class="form-control" name="to" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" /></label>
+  @if (filtering()) { <button type="button" class="mi-clear" (click)="clearAll()">{{ 'Clear all' | t: 'staff.myInvoices.clearAllButton' }}</button> }
 </div>
 
-<zed-list-counts [counts]="counts()" label="Your expenditure in figures" />
+<zed-list-counts [counts]="counts()" [label]="'Your expenditure in figures' | t: 'staff.myInvoices.countsAria'" />
 
 <section class="zed-card mi-card" aria-labelledby="mi-po">
-  <h2 id="mi-po">Purchase orders</h2>
+  <h2 id="mi-po">{{ 'Purchase orders' | t: 'staff.myInvoices.po.title' }}</h2>
   <div class="table-responsive">
     <table class="table table-zed mi-table">
-      <thead><tr><th>Level</th><th>PO number</th><th>PO date</th><th class="num">Cases in PO</th><th class="num">Used</th><th class="num">Balance</th><th>Use</th><th>Allotment</th></tr></thead>
+      <thead><tr><th>{{ 'Level' | t: 'staff.myInvoices.po.column.level' }}</th><th>{{ 'PO number' | t: 'staff.myInvoices.po.column.number' }}</th><th>{{ 'PO date' | t: 'staff.myInvoices.po.column.date' }}</th><th class="num">{{ 'Cases in PO' | t: 'staff.myInvoices.po.column.cases' }}</th><th class="num">{{ 'Used' | t: 'staff.myInvoices.po.column.used' }}</th><th class="num">{{ 'Balance' | t: 'staff.myInvoices.po.column.balance' }}</th><th>{{ 'Use' | t: 'staff.myInvoices.po.column.use' }}</th><th>{{ 'Allotment' | t: 'staff.myInvoices.po.column.allotment' }}</th></tr></thead>
       <tbody>
         @for (l of poLevels(); track l.level) {
           @let pp = pill(l);
@@ -36,31 +36,30 @@
             <td>@for (p of l.pos; track p.id) { <span class="d-block">{{ p.poNumber }}</span> }</td>
             <td>@for (p of l.pos; track p.id) { <span class="d-block">{{ date(p.poDate) }}</span> }</td>
             <td class="num">{{ l.cases }}</td>
-            <td class="num">{{ l.used }}@if (l.inProgress) { <small>+{{ l.inProgress }} in progress</small> }</td>
+            <td class="num">{{ l.used }}@if (l.inProgress) { <small>{{ '+{count} in progress' | t: 'staff.myInvoices.po.inProgressText' : { count: l.inProgress } }}</small> }</td>
             <td class="num">{{ l.left }}</td>
             <td><span class="bar" aria-hidden="true"><i [class.low]="l.state === 'Low'" [class.stop]="l.state === 'Stopped'" [style.width.%]="l.percent"></i></span>{{ l.percent }}%</td>
             <td><span class="status-badge" [class]="pp.tone">{{ pp.text }}</span></td>
           </tr>
         } @empty {
-          <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No purchase order yet.' }}</div></td></tr>
+          <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.myInvoices.loadingText') : ('No purchase order yet.' | t: 'staff.myInvoices.po.empty') }}</div></td></tr>
         }
       </tbody>
     </table>
   </div>
-  <p class="mi-note">Set by the master admin. When a PO's cases are used up (completed, rejected after assessment, or in progress), no more cases of
-    that level are allotted to you until the master admin reopens it.</p>
+  <p class="mi-note">{{ "Set by the master admin. When a PO's cases are used up (completed, rejected after assessment, or in progress), no more cases of that level are allotted to you until the master admin reopens it." | t: 'staff.myInvoices.po.note' }}</p>
 </section>
 
 <section class="zed-card mi-card" aria-labelledby="mi-levels">
-  <h2 id="mi-levels">By level</h2>
+  <h2 id="mi-levels">{{ 'By level' | t: 'staff.myInvoices.levels.title' }}</h2>
   <div class="table-responsive">
     <table class="table table-zed mi-table">
       <thead>
         <tr>
-          <th>Level</th><th>PO</th>
-          @if (consultant()) { <th class="num">Milestones</th> }
-          @else { <th class="num">Completed</th><th class="num">Rejected</th><th class="num">Surv.</th> }
-          <th class="num">Balance</th><th class="num">Payable</th><th class="num">Invoiced</th><th class="num">Outstanding</th><th></th>
+          <th>{{ 'Level' | t: 'staff.myInvoices.levels.column.level' }}</th><th>{{ 'PO' | t: 'staff.myInvoices.levels.column.po' }}</th>
+          @if (consultant()) { <th class="num">{{ 'Milestones' | t: 'staff.myInvoices.levels.column.milestones' }}</th> }
+          @else { <th class="num">{{ 'Completed' | t: 'staff.myInvoices.levels.column.completed' }}</th><th class="num">{{ 'Rejected' | t: 'staff.myInvoices.levels.column.rejected' }}</th><th class="num">{{ 'Surv.' | t: 'staff.myInvoices.levels.column.surveillance' }}</th> }
+          <th class="num">{{ 'Balance' | t: 'staff.myInvoices.levels.column.balance' }}</th><th class="num">{{ 'Payable' | t: 'staff.myInvoices.levels.column.payable' }}</th><th class="num">{{ 'Invoiced' | t: 'staff.myInvoices.levels.column.invoiced' }}</th><th class="num">{{ 'Outstanding' | t: 'staff.myInvoices.levels.column.outstanding' }}</th><th></th>
         </tr>
       </thead>
       <tbody>
@@ -68,7 +67,7 @@
           @let p = rowPill(r);
           <tr>
             <td>{{ r.levelName }}</td>
-            <td>{{ r.poLabel ?? 'No PO' }}@if (r.poCases) { <small>{{ r.poCases }} cases</small> }</td>
+            <td>{{ r.poLabel ?? ('No PO' | t: 'staff.expenditure.po.noPoLabel') }}@if (r.poCases) { <small>{{ casesText(r.poCases) }}</small> }</td>
             @if (consultant()) { <td class="num">{{ r.milestones }}</td> }
             @else { <td class="num">{{ r.completed }}</td><td class="num">{{ r.rejected }}</td><td class="num">{{ r.surveillance }}</td> }
             <td class="num">
@@ -78,11 +77,11 @@
             <td class="num"><b>{{ money(r.payable) }}</b></td>
             <td class="num">{{ money(r.invoiced) }}</td>
             <td class="num" [class.owe]="r.outstanding > 0">{{ money(r.outstanding) }}</td>
-            <td class="num"><button type="button" class="btn btn-default btn-sm" (click)="openCases(r)">Cases</button></td>
+            <td class="num"><button type="button" class="btn btn-default btn-sm" (click)="openCases(r)">{{ 'Cases' | t: 'staff.myInvoices.casesButton' }}</button></td>
           </tr>
         } @empty {
           <tr><td [attr.colspan]="consultant() ? 8 : 10" style="padding: 0">
-            <div class="no-data">{{ loading() ? 'Loading…' : filtering() ? 'Nothing matches the filters.' : 'No case counted yet.' }}</div>
+            <div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.myInvoices.loadingText') : filtering() ? ('Nothing matches the filters.' | t: 'staff.myInvoices.levels.filteredEmpty') : ('No case counted yet.' | t: 'staff.myInvoices.levels.empty') }}</div>
           </td></tr>
         }
       </tbody>
@@ -91,11 +90,11 @@
 </section>
 
 <section class="zed-card mi-card" aria-labelledby="mi-months">
-  <h2 id="mi-months">Monthly invoices</h2>
-  @if (data() && !taxReady()) { <p class="mi-gate" role="note">Submit your GSTIN and PAN above (once) to upload invoices.</p> }
+  <h2 id="mi-months">{{ 'Monthly invoices' | t: 'staff.myInvoices.months.title' }}</h2>
+  @if (data() && !taxReady()) { <p class="mi-gate" role="note">{{ 'Submit your GSTIN and PAN above (once) to upload invoices.' | t: 'staff.myInvoices.months.taxNote' }}</p> }
   <div class="table-responsive">
     <table class="table table-zed mi-table">
-      <thead><tr><th>Month</th><th class="num">Cases</th><th class="num">Amount (excl. GST)</th><th class="num">GST</th><th class="num">Total</th><th>Invoice</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>{{ 'Month' | t: 'staff.myInvoices.months.column.month' }}</th><th class="num">{{ 'Cases' | t: 'staff.myInvoices.months.column.cases' }}</th><th class="num">{{ 'Amount (excl. GST)' | t: 'staff.myInvoices.months.column.amount' }}</th><th class="num">{{ 'GST' | t: 'staff.myInvoices.months.column.gst' }}</th><th class="num">{{ 'Total' | t: 'staff.myInvoices.months.column.total' }}</th><th>{{ 'Invoice' | t: 'staff.myInvoices.months.column.invoice' }}</th><th>{{ 'Status' | t: 'staff.myInvoices.months.column.status' }}</th><th></th></tr></thead>
       <tbody>
         @for (m of months(); track m.month) {
           <tr>
@@ -104,7 +103,7 @@
             <td class="num">{{ money(m.amount) }}</td>
             <td class="num">{{ money(m.gstAmount) }}<small>{{ m.gstPercent }}%</small></td>
             <td class="num"><b>{{ money(m.total) }}</b></td>
-            <td>@if (m.invoice) { {{ m.invoice.invoiceNo }}<small>{{ date(m.invoice.invoiceDate) }} · {{ money(m.invoice.invoiceAmount) }}</small> } @else { — }</td>
+            <td>@if (m.invoice) { {{ m.invoice.invoiceNo }}<small>{{ '{date} · {amount}' | t: 'staff.myInvoices.months.invoiceText' : { date: date(m.invoice.invoiceDate), amount: money(m.invoice.invoiceAmount) } }}</small> } @else { — }</td>
             <td>@if (m.invoice) {
                 <span class="status-badge" [class]="tone(m.invoice.status)">{{ m.invoice.status }}</span>
                 @if (m.invoice.status === 'Returned' && m.invoice.remarks) { <small>{{ m.invoice.remarks }}</small> }
@@ -112,42 +111,41 @@
             <td class="num">
               <span class="mi-acts">
                 @if (m.canUpload) {
-                  <button type="button" class="btn btn-primary btn-sm" [disabled]="!taxReady()" [attr.title]="taxReady() ? null : 'Submit your GSTIN and PAN first'"
-                          (click)="start(m)">{{ m.invoice ? 'Upload Again' : 'Upload Invoice' }}</button>
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="!taxReady()" [attr.title]="taxReady() ? null : ('Submit your GSTIN and PAN first' | t: 'staff.myInvoices.months.uploadTooltip')"
+                          (click)="start(m)">{{ m.invoice ? ('Upload Again' | t: 'staff.myInvoices.months.uploadAgainButton') : ('Upload Invoice' | t: 'staff.myInvoices.months.uploadButton') }}</button>
                 }
-                @if (m.invoice) { <button type="button" class="btn btn-default btn-sm" (click)="viewing.set(m.invoice.id)">View</button> }
-                <button type="button" class="btn btn-default btn-sm" [disabled]="!m.cases" (click)="exportMonth(m)">Export Excel</button>
-                @if (m.invoice) { <zed-row-menu [items]="menu" [label]="'More actions for ' + m.label" (picked)="picked(m, $event)" /> }
+                @if (m.invoice) { <button type="button" class="btn btn-default btn-sm" (click)="viewing.set(m.invoice.id)">{{ 'View' | t: 'staff.myInvoices.months.viewButton' }}</button> }
+                <button type="button" class="btn btn-default btn-sm" [disabled]="!m.cases" (click)="exportMonth(m)">{{ 'Export Excel' | t: 'staff.myInvoices.months.exportButton' }}</button>
+                @if (m.invoice) { <zed-row-menu [items]="menu()" [label]="'More actions for {month}' | t: 'staff.myInvoices.months.menuAria' : { month: m.label }" (picked)="picked(m, $event)" /> }
               </span>
             </td>
           </tr>
         } @empty {
-          <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No month yet.' }}</div></td></tr>
+          <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.myInvoices.loadingText') : ('No month yet.' | t: 'staff.myInvoices.months.empty') }}</div></td></tr>
         }
       </tbody>
     </table>
   </div>
-  <p class="mi-note">The portal works out each month's cases and amount at the rates in force on the day each case counted. Upload one invoice per
-    month that has ended (number, date, amount incl. GST and the PDF); if your amount differs from the portal's, the master admin sees the difference.</p>
+  <p class="mi-note">{{ "The portal works out each month's cases and amount at the rates in force on the day each case counted. Upload one invoice per month that has ended (number, date, amount incl. GST and the PDF); if your amount differs from the portal's, the master admin sees the difference." | t: 'staff.myInvoices.months.note' }}</p>
 </section>
 
 @if (upload(); as u) {
   <div class="xd-back" (click)="upload.set(null)"></div>
   <form class="xd" role="dialog" aria-modal="true" aria-labelledby="up-title" (ngSubmit)="send()">
     <div class="xd-head"><span class="xd-ico" aria-hidden="true">₹</span>
-      <div><h3 id="up-title">Upload Invoice · {{ u.month.label }}</h3><small>Portal: {{ u.month.cases }} cases, {{ money(u.month.total) }} incl. GST</small></div>
-      <button type="button" class="xd-x" aria-label="Close" (click)="upload.set(null)">×</button></div>
+      <div><h3 id="up-title">{{ 'Upload Invoice · {month}' | t: 'staff.myInvoices.upload.title' : { month: u.month.label } }}</h3><small>{{ portalLine(u.month) }}</small></div>
+      <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.myInvoices.upload.closeAria'" (click)="upload.set(null)">×</button></div>
     <div class="xd-body">
       @if (formError()) { <div class="alert alert-danger xd-err" role="alert">{{ formError() }}</div> }
-      <label class="xd-field"><span>Invoice number</span><input class="form-control" name="invoiceNo" maxlength="60" [(ngModel)]="u.invoiceNo" /></label>
-      <label class="xd-field"><span>Invoice date</span><input type="date" class="form-control" name="invoiceDate" [(ngModel)]="u.invoiceDate" /></label>
-      <label class="xd-field"><span>Invoice amount (₹, GST included)</span><input type="number" min="0" step="0.01" class="form-control" name="amount" [(ngModel)]="u.invoiceAmount" /></label>
-      <label class="xd-field"><span>Invoice PDF (up to 5 MB)</span><input type="file" class="form-control" accept="application/pdf,.pdf" (change)="pick($event)" /></label>
-      @if (data()?.tax?.gstin) { <p class="xd-note">Billed with GSTIN {{ data()!.tax.gstin }} · PAN {{ data()!.tax.pan }}</p> }
+      <label class="xd-field"><span>{{ 'Invoice number' | t: 'staff.myInvoices.upload.numberLabel' }}</span><input class="form-control" name="invoiceNo" maxlength="60" [(ngModel)]="u.invoiceNo" /></label>
+      <label class="xd-field"><span>{{ 'Invoice date' | t: 'staff.myInvoices.upload.dateLabel' }}</span><input type="date" class="form-control" name="invoiceDate" [(ngModel)]="u.invoiceDate" /></label>
+      <label class="xd-field"><span>{{ 'Invoice amount (₹, GST included)' | t: 'staff.myInvoices.upload.amountLabel' }}</span><input type="number" min="0" step="0.01" class="form-control" name="amount" [(ngModel)]="u.invoiceAmount" /></label>
+      <label class="xd-field"><span>{{ 'Invoice PDF (up to 5 MB)' | t: 'staff.myInvoices.upload.fileLabel' }}</span><input type="file" class="form-control" accept="application/pdf,.pdf" (change)="pick($event)" /></label>
+      @if (data()?.tax?.gstin) { <p class="xd-note">{{ 'Billed with GSTIN {gstin} · PAN {pan}' | t: 'staff.myInvoices.upload.taxNote' : { gstin: data()!.tax.gstin, pan: data()!.tax.pan } }}</p> }
     </div>
     <div class="xd-foot">
-      <button type="button" class="btn btn-default" (click)="upload.set(null)">Cancel</button>
-      <button type="submit" class="btn btn-primary" [disabled]="busy()">Submit</button>
+      <button type="button" class="btn btn-default" (click)="upload.set(null)">{{ 'Cancel' | t: 'staff.myInvoices.upload.cancelButton' }}</button>
+      <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Submit' | t: 'staff.myInvoices.upload.submitButton' }}</button>
     </div>
   </form>
 }
@@ -158,5 +156,5 @@
   <zed-invoice-review [invoiceId]="id" (closed)="viewing.set(null)" />
 }
 @if (loading()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.myInvoices.loadingText' }}</span></div>
 }

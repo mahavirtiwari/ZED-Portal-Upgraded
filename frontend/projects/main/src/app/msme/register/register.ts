@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService, PortalLinksService, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { LookupResponse, RegistrationApi, SubmitResponse, UdyamRow } from './registration.api';
 import { PublicLayout } from '../public-layout/public-layout';
 import { AlertDialog, errorAlert } from '../shared/alert-dialog';
@@ -21,7 +22,7 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
  */
 @Component({
   selector: 'zed-msme-register',
-  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent, AlertDialog],
+  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent, AlertDialog, TextPipe],
   templateUrl: './register.html',
   // 2026-11-18 (the user approved the registration design): four sheets, each under the 8 kB per-component budget.
   styleUrls: ['./register.scss', './register-steps.scss', './register-done.scss', './register-modals.scss'],
@@ -40,12 +41,16 @@ export class RegisterPage {
    * The stepper's labels (V4 2026-11-08). 2026-11-18 (the user approved the registration design): each step also has a
    * small note under its label: what it asks for while still ahead, what was done once passed ("You are here" when current).
    */
-  protected readonly steps = [
-    { n: 1, label: 'Udyam check', todo: 'Udyam number, mobile', done: 'Validated' },
-    { n: 2, label: 'Unit and activity', todo: 'Plant, NIC code', done: 'Selected' },
-    { n: 3, label: 'Summary', todo: 'E-mail and details', done: 'Confirmed' },
-    { n: 4, label: 'ZED Pledge', todo: 'Get your ZED ID', done: 'Pledged' },
-  ];
+  protected readonly steps = computed(() => [
+    { n: 1, label: t('public.register.step1.label', 'Udyam check'), todo: t('public.register.step1.note', 'Udyam number, mobile'),
+      done: t('public.register.step1.doneNote', 'Validated') },
+    { n: 2, label: t('public.register.step2.label', 'Unit and activity'), todo: t('public.register.step2.note', 'Plant, NIC code'),
+      done: t('public.register.step2.doneNote', 'Selected') },
+    { n: 3, label: t('public.register.step3.label', 'Summary'), todo: t('public.register.step3.note', 'E-mail and details'),
+      done: t('public.register.step3.doneNote', 'Confirmed') },
+    { n: 4, label: t('public.register.step4.label', 'ZED Pledge'), todo: t('public.register.step4.note', 'Get your ZED ID'),
+      done: t('public.register.step4.doneNote', 'Pledged') },
+  ]);
   protected readonly modal = signal<'email' | 'otp' | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -135,15 +140,15 @@ export class RegisterPage {
   protected async submitUdyam(): Promise<void> {
     this.normaliseRegNo();
     if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(this.registrationNo)) {
-      this.error.set('Please enter a valid Udyam Registration Number.');
+      this.error.set(t('public.register.error.udyam', 'Please enter a valid Udyam Registration Number.'));
       return;
     }
     if (!/^\d{10}$/.test(this.mobileNo)) {
-      this.error.set('Please enter a valid 10 digit mobile number.');
+      this.error.set(t('public.register.error.mobile', 'Please enter a valid 10 digit mobile number.'));
       return;
     }
     if (!this.captchaToken) {
-      this.error.set('Invalid Captcha.');
+      this.error.set(t('public.register.error.captcha', 'Invalid Captcha.'));
       return;
     }
     const res = await this.call(this.api.lookup(this.registrationNo, this.mobileNo, this.captchaToken), () => this.captcha()?.reset());
@@ -160,7 +165,7 @@ export class RegisterPage {
     const p = this.plantIndex();
     const a = this.activityIndex();
     if (p === null || a === null) {
-      this.error.set('Please select the plant and its activity.');
+      this.error.set(t('public.register.error.plant', 'Please select the plant and its activity.'));
       return;
     }
     const ok = await this.call(this.api.selectPlant(this.lookup()!.registrationId, p, a));
@@ -183,11 +188,11 @@ export class RegisterPage {
     this.modalError.set('');
     const email = this.email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.modalError.set('Please enter the valid Email ID.');
+      this.modalError.set(t('public.register.error.email', 'Please enter the valid Email ID.'));
       return;
     }
     if (email.toLowerCase() !== this.confirmEmail.trim().toLowerCase()) {
-      this.modalError.set('The two e-mail addresses do not match.');
+      this.modalError.set(t('public.register.error.emailMismatch', 'The two e-mail addresses do not match.'));
       return;
     }
     const ok = await this.call(this.api.sendOtp(this.lookup()!.registrationId, email, this.confirmEmail.trim()), undefined, true);
@@ -210,7 +215,7 @@ export class RegisterPage {
   protected async verifyOtp(): Promise<void> {
     this.modalError.set('');
     if (!/^\d{6}$/.test(this.otp.trim())) {
-      this.modalError.set('Invalid OTP.');
+      this.modalError.set(t('public.register.error.otp', 'Invalid OTP.'));
       return;
     }
     const ok = await this.call(this.api.verifyOtp(this.lookup()!.registrationId, this.otp.trim()), undefined, true);
@@ -228,7 +233,7 @@ export class RegisterPage {
       return;
     }
     if (!this.accepted) {
-      this.error.set('Please enter the valid data.');
+      this.error.set(t('public.register.error.invalidData', 'Please enter the valid data.'));
       return;
     }
     this.pledgeReady.set(false);

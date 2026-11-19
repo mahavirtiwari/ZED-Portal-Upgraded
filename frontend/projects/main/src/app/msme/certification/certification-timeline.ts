@@ -1,5 +1,6 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TextPipe } from '../../content/page-text';
 import { TimelineItem, splitDate } from './certification-progress';
 
 /**
@@ -9,7 +10,7 @@ import { TimelineItem, splitDate } from './certification-progress';
  */
 @Component({
   selector: 'zed-certification-timeline',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   host: { class: 'd-block' },
   templateUrl: './certification-timeline.html',
   styleUrl: './certification-timeline.scss',

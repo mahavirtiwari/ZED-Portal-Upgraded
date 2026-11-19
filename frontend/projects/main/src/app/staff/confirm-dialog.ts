@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, Injectable, afterNextRender, computed, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TextPipe, t } from '../content/page-text';
 
 /** The icon in the pop-up's tile (popups 03 / 04 / 09). */
 export type ConfirmIcon = 'lock' | 'unlock' | 'mail' | 'warn' | 'info' | 'check';
@@ -73,7 +74,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'zed-confirm-dialog',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @let a = ask();
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" [attr.aria-labelledby]="id + '-title'"
@@ -88,7 +89,7 @@ let nextId = 0;
               <h3 class="m-0" [id]="id + '-title'">{{ a.title }}</h3>
               @if (a.subtitle) { <small>{{ a.subtitle }}</small> }
             </div>
-            <button type="button" class="cd-x" aria-label="Close" (click)="cancel.emit()">
+            <button type="button" class="cd-x" [attr.aria-label]="'Close' | t: 'common.confirm.closeAria'" (click)="cancel.emit()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg>
             </button>
           </div>
@@ -113,7 +114,7 @@ let nextId = 0;
                 </ul>
               }
               @if (a.reason; as r) {
-                <label class="cd-label" [for]="inputId()">{{ r.label ?? 'Reason' }}@if (r.required !== false) {<span class="req">*</span>}</label>
+                <label class="cd-label" [for]="inputId()">{{ r.label ?? ('Reason' | t: 'common.confirm.reasonLabel') }}@if (r.required !== false) {<span class="req">*</span>}</label>
                 <textarea [id]="inputId()" name="reason" class="form-control" rows="3" [attr.maxlength]="r.maxLength ?? 2000" [(ngModel)]="text"
                           [placeholder]="r.placeholder ?? ''" [attr.aria-invalid]="!!error()"></textarea>
                 @if (r.hint) { <small class="cd-hint">{{ r.hint }}</small> }
@@ -125,9 +126,9 @@ let nextId = 0;
               @if (error() || failed()) { <span class="help-block" role="alert">{{ error() || failed() }}</span> }
             </div>
             <div class="cd-foot">
-              <button type="button" class="btn btn-default cd-no" (click)="cancel.emit()">{{ a.cancelLabel ?? 'Cancel' }}</button>
+              <button type="button" class="btn btn-default cd-no" (click)="cancel.emit()">{{ a.cancelLabel ?? ('Cancel' | t: 'common.confirm.cancelButton') }}</button>
               <button type="submit" class="btn cd-ok" [class.btn-danger]="a.danger" [class.btn-primary]="!a.danger" [disabled]="busy() || blocked()">
-                {{ a.confirmLabel ?? 'Confirm' }}</button>
+                {{ a.confirmLabel ?? ('Confirm' | t: 'common.confirm.confirmButton') }}</button>
             </div>
           </form>
         </div>
@@ -243,7 +244,7 @@ export class ConfirmDialog {
   protected submit(): void {
     const reason = this.ask().reason ? this.text.trim() : '';
     if (this.needsReason() && !reason) {
-      this.error.set(this.ask().reason?.requiredMessage ?? 'Please enter the reason.');
+      this.error.set(this.ask().reason?.requiredMessage ?? t('common.confirm.reasonError', 'Please enter the reason.'));
       return;
     }
     this.error.set('');

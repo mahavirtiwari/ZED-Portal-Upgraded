@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
+import { TextPipe, t } from '../content/page-text';
 
 /** The roles that can open a unit's profile (the guard of /staff/msme-profile/:zedId in app.routes.ts). */
 export const MSME_PROFILE_ROLES: readonly number[] = [7, 10, 8, 11, 17, 2, 3];
@@ -16,11 +17,12 @@ export const ZED_ID_PATTERN = /^ZED[A-Z0-9_]{2,47}$/;
  */
 @Component({
   selector: 'zed-zed-id-search',
+  imports: [TextPipe],
   host: { class: 'zs' },
   template: `
     <form class="zs-box" role="search" (submit)="$event.preventDefault(); go()">
       <svg class="zs-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-      <input #box type="search" name="zedId" class="zs-input" placeholder="Search ZED ID" aria-label="Search ZED ID" autocomplete="off"
+      <input #box type="search" name="zedId" class="zs-input" [placeholder]="'Search ZED ID' | t: 'staff.zedIdSearch.placeholder'" [attr.aria-label]="'Search ZED ID' | t: 'staff.zedIdSearch.placeholder'" autocomplete="off"
              spellcheck="false" maxlength="60" [attr.aria-invalid]="!!note()" [attr.aria-describedby]="note() ? 'zs-note' : null"
              (input)="note.set('')" (keydown.escape)="clear()" />
       <kbd class="zs-key" aria-hidden="true">Ctrl K</kbd>
@@ -55,11 +57,11 @@ export class ZedIdSearch {
     const input = this.box().nativeElement;
     const id = input.value.trim().toUpperCase();
     if (!id) {
-      this.note.set('Type a ZED ID, e.g. ZEDMSME000001.');
+      this.note.set(t('staff.zedIdSearch.emptyError', 'Type a ZED ID, e.g. ZEDMSME000001.'));
       return;
     }
     if (!ZED_ID_PATTERN.test(id)) {
-      this.note.set('This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDMSME000001.');
+      this.note.set(t('staff.zedIdSearch.invalidError', 'This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDMSME000001.'));
       return;
     }
     this.note.set('');

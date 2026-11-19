@@ -1,4 +1,5 @@
 import { Component, Signal, WritableSignal, computed, input, linkedSignal, model, signal } from '@angular/core';
+import { TextPipe, t } from '../content/page-text';
 
 /** "Show N Entries" choices of the old list pages. */
 export const PAGE_SIZES: readonly number[] = [10, 20, 50, 100];
@@ -211,28 +212,29 @@ export function pageWindow(current: number, last: number): number[] {
 @Component({
   selector: 'zed-pager',
   host: { class: 'd-block' },
+  imports: [TextPipe],
   template: `
     @let p = pager();
     <div class="zed-pager zp">
       <div class="zp-info">
         @if (showCount()) { <span class="zp-count" role="status">{{ range() }}</span> }
-        <label class="zp-size">Rows per page
-          <select aria-label="Rows per page" (change)="p.setPageSize($any($event.target).value)">
+        <label class="zp-size">{{ 'Rows per page' | t: 'common.pager.rowsLabel' }}
+          <select [attr.aria-label]="'Rows per page' | t: 'common.pager.rowsLabel'" (change)="p.setPageSize($any($event.target).value)">
             @for (n of sizes(); track n) { <option [value]="n" [selected]="n === p.pageSize()">{{ n }}</option> }
           </select>
         </label>
       </div>
-      <nav class="zp-pages" aria-label="Pages">
-        <button type="button" class="zp-btn" [disabled]="current() <= 1" (click)="p.go('prev')">Prev</button>
+      <nav class="zp-pages" [attr.aria-label]="'Pages' | t: 'common.pager.pagesAria'">
+        <button type="button" class="zp-btn" [disabled]="current() <= 1" (click)="p.go('prev')">{{ 'Prev' | t: 'common.pager.prevButton' }}</button>
         @for (n of window(); track $index) {
           @if (n === 0) {
             <span class="zp-gap" aria-hidden="true">…</span>
           } @else {
             <button type="button" class="zp-btn zp-num" [class.on]="n === current()" [attr.aria-current]="n === current() ? 'page' : null"
-                    [attr.aria-label]="'Page ' + n" (click)="p.goTo(n)">{{ n }}</button>
+                    [attr.aria-label]="'Page {page}' | t: 'common.pager.pageAria' : { page: n }" (click)="p.goTo(n)">{{ n }}</button>
           }
         }
-        <button type="button" class="zp-btn" [disabled]="current() >= p.lastPage()" (click)="p.go('next')">Next</button>
+        <button type="button" class="zp-btn" [disabled]="current() >= p.lastPage()" (click)="p.go('next')">{{ 'Next' | t: 'common.pager.nextButton' }}</button>
       </nav>
     </div>
   `,
@@ -270,9 +272,9 @@ export class PagerComponent {
   protected readonly range = computed(() => {
     const p = this.pager();
     const total = p.total();
-    if (!total) return 'No records';
+    if (!total) return t('common.pager.empty', 'No records');
     const from = (this.current() - 1) * p.pageSize() + 1;
-    return `Showing ${from} to ${Math.min(total, from + p.pageSize() - 1)} of ${total}`;
+    return t('common.pager.showing', 'Showing {from} to {to} of {total}', { from, to: Math.min(total, from + p.pageSize() - 1), total });
   });
 }
 
@@ -302,16 +304,17 @@ export function searchRows<T>(rows: readonly T[], query: string): readonly T[] {
 @Component({
   selector: 'zed-list-search',
   host: { class: 'zed-list-search' },
+  imports: [TextPipe],
   template: `
     <div class="list-search-box">
       <svg class="list-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
       </svg>
-      <input type="search" class="form-control" maxlength="100" autocomplete="off" [id]="inputId()" [placeholder]="placeholder()"
-             [attr.aria-label]="placeholder()" [value]="value()" (input)="value.set($any($event.target).value)" />
+      <input type="search" class="form-control" maxlength="100" autocomplete="off" [id]="inputId()" [placeholder]="hint()"
+             [attr.aria-label]="hint()" [value]="value()" (input)="value.set($any($event.target).value)" />
     </div>
     @if (value().trim() && found() !== null) {
-      <span class="list-search-found" role="status">{{ found() }} found</span>
+      <span class="list-search-found" role="status">{{ '{count} found' | t: 'common.listSearch.found' : { count: found() } }}</span>
     }
   `,
   styles: `
@@ -327,8 +330,10 @@ export function searchRows<T>(rows: readonly T[], query: string): readonly T[] {
 })
 export class ListSearchComponent {
   readonly value = model('');
-  readonly placeholder = input('Search');
+  /** Unset: the standard "Search" (Admin-editable). */
+  readonly placeholder = input<string>();
   readonly inputId = input('list-search');
   /** Rows matching (shown next to the box while it has text); null hides it. */
   readonly found = input<number | null>(null);
+  protected readonly hint = computed(() => this.placeholder() || t('common.listSearch.placeholder', 'Search'));
 }

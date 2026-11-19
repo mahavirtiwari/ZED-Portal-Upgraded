@@ -1,4 +1,4 @@
-<zed-public-layout title="Registration">
+<zed-public-layout [title]="'Registration' | t: 'public.register.title'">
 
 <!-- 2026-11-18 (the user approved the registration design): white cards with a 56px head (icon tile and title), a rail
      card beside the main one, a footer bar (Back · Step n of 4 · main action), the 4-step tracker as a card, plants and
@@ -6,15 +6,16 @@
 <main class="container register-page">
   @if (stepNumber() > 0 && stepNumber() < 5) {
     <!-- V4 (2026-11-08): a labelled stepper; done steps ticked, the current one highlighted. -->
-    <ol class="reg-card reg-track" aria-label="Registration progress">
-      @for (s of steps; track s.n) {
+    <ol class="reg-card reg-track" [attr.aria-label]="'Registration progress' | t: 'public.register.trackAria'">
+      @for (s of steps(); track s.n) {
         <li [class.cur]="s.n === stepNumber()" [class.done]="s.n < stepNumber()">
           <span class="reg-dot" aria-hidden="true">
             @if (s.n < stepNumber()) { ✓ } @else { {{ s.n }} }
           </span>
           <span class="reg-track-label">{{ s.label }}</span>
-          <small class="reg-track-note" aria-hidden="true">{{ s.n < stepNumber() ? s.done : s.n === stepNumber() ? 'You are here' : s.todo }}</small>
-          <span class="visually-hidden">Step {{ s.n }}{{ s.n < stepNumber() ? ' (done)' : s.n === stepNumber() ? ' (current)' : '' }}</span>
+          <small class="reg-track-note" aria-hidden="true">{{ s.n < stepNumber() ? s.done : s.n === stepNumber() ? ('You are here' | t: 'public.register.track.hereNote') : s.todo }}</small>
+          <span class="visually-hidden">{{ s.n < stepNumber() ? ('Step {step} (done)' | t: 'public.register.track.doneText' : { step: s.n })
+            : s.n === stepNumber() ? ('Step {step} (current)' | t: 'public.register.track.currentText' : { step: s.n }) : ('Step {step}' | t: 'public.register.track.stepText' : { step: s.n }) }}</span>
         </li>
       }
     </ol>
@@ -24,23 +25,23 @@
     @case ('welcome') {
       <div class="reg-grid">
         <section class="reg-card" aria-labelledby="reg-welcome-h">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">i</span><h3 id="reg-welcome-h">Before you start</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">i</span><h3 id="reg-welcome-h">{{ 'Before you start' | t: 'public.register.welcome.title' }}</h3></div>
           <div class="reg-cb reg-welcome">
             <zed-text key="msme.registration.welcome" />
           </div>
           <div class="reg-ft">
-            <a routerLink="/msme/login" class="btn btn-default reg-back">Back to login</a>
-            <button type="button" class="btn btn-primary reg-next" (click)="go('udyam')">Start registration</button>
+            <a routerLink="/msme/login" class="btn btn-default reg-back">{{ 'Back to login' | t: 'public.register.welcome.loginButton' }}</a>
+            <button type="button" class="btn btn-primary reg-next" (click)="go('udyam')">{{ 'Start registration' | t: 'public.register.welcome.startButton' }}</button>
           </div>
         </section>
         <aside class="reg-card" aria-labelledby="reg-how-h">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">≡</span><h3 id="reg-how-h">How registration works</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">≡</span><h3 id="reg-how-h">{{ 'How registration works' | t: 'public.register.how.title' }}</h3></div>
           <div class="reg-rail">
-            <div class="reg-row"><span class="reg-n">1</span><div><b>Udyam check</b><small>Your Udyam number and mobile are checked with the Udyam portal.</small></div></div>
-            <div class="reg-row"><span class="reg-n">2</span><div><b>Unit and activity</b><small>Choose the plant and its activity to certify.</small></div></div>
-            <div class="reg-row"><span class="reg-n">3</span><div><b>Summary</b><small>Confirm your e-mail with an OTP and check the details.</small></div></div>
-            <div class="reg-row"><span class="reg-n">4</span><div><b>ZED Pledge</b><small>Take the pledge and get your ZED ID.</small></div></div>
-            <div class="reg-note reg-note-teal">Already registered? <a routerLink="/msme/login">Log in with your ZED ID</a></div>
+            <div class="reg-row"><span class="reg-n">1</span><div><b>{{ 'Udyam check' | t: 'public.register.how.step1Heading' }}</b><small>{{ 'Your Udyam number and mobile are checked with the Udyam portal.' | t: 'public.register.how.step1Text' }}</small></div></div>
+            <div class="reg-row"><span class="reg-n">2</span><div><b>{{ 'Unit and activity' | t: 'public.register.how.step2Heading' }}</b><small>{{ 'Choose the plant and its activity to certify.' | t: 'public.register.how.step2Text' }}</small></div></div>
+            <div class="reg-row"><span class="reg-n">3</span><div><b>{{ 'Summary' | t: 'public.register.how.step3Heading' }}</b><small>{{ 'Confirm your e-mail with an OTP and check the details.' | t: 'public.register.how.step3Text' }}</small></div></div>
+            <div class="reg-row"><span class="reg-n">4</span><div><b>{{ 'ZED Pledge' | t: 'public.register.how.step4Heading' }}</b><small>{{ 'Take the pledge and get your ZED ID.' | t: 'public.register.how.step4Text' }}</small></div></div>
+            <div class="reg-note reg-note-teal">{{ 'Already registered?' | t: 'public.register.how.registeredNote' }} <a routerLink="/msme/login">{{ 'Log in with your ZED ID' | t: 'public.register.how.loginLink' }}</a></div>
           </div>
         </aside>
       </div>
@@ -49,22 +50,22 @@
     @case ('udyam') {
       <div class="reg-grid">
         <section class="reg-card" aria-labelledby="reg-udyam-h">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">✓</span><h3 id="reg-udyam-h">Udyam Registration validation</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">✓</span><h3 id="reg-udyam-h">{{ 'Udyam Registration validation' | t: 'public.register.udyam.title' }}</h3></div>
           <form (ngSubmit)="submitUdyam()" novalidate>
             <div class="reg-cb">
               <zed-text key="msme.registration.udyamNote" box="reg-lead"><p class="reg-lead">Enter the Udyam Registration Number and mobile number exactly as given at the time of Udyam Registration.</p></zed-text>
               <div class="reg-fields">
                 <div class="reg-field">
-                  <label class="input-title" for="regNo">Udyam Registration Number</label>
+                  <label class="input-title" for="regNo">{{ 'Udyam Registration Number' | t: 'public.register.udyam.numberLabel' }}</label>
                   <input id="regNo" name="registrationNo" class="form-control input-custom" maxlength="19" autocomplete="off"
-                         placeholder="UDYAM-XX-00-0000000" [(ngModel)]="registrationNo" (blur)="normaliseRegNo()" required />
-                  <p class="input-sub-title">As on your Udyam certificate</p>
+                         [placeholder]="'UDYAM-XX-00-0000000' | t: 'public.register.udyam.numberPlaceholder'" [(ngModel)]="registrationNo" (blur)="normaliseRegNo()" required />
+                  <p class="input-sub-title">{{ 'As on your Udyam certificate' | t: 'public.register.udyam.numberNote' }}</p>
                 </div>
                 <div class="reg-field">
-                  <label class="input-title" for="mobileNo">Udyam registered mobile number</label>
+                  <label class="input-title" for="mobileNo">{{ 'Udyam registered mobile number' | t: 'public.register.udyam.mobileLabel' }}</label>
                   <input id="mobileNo" name="mobileNo" class="form-control input-custom" maxlength="10" inputmode="numeric"
-                         autocomplete="tel-national" placeholder="9999999999" [(ngModel)]="mobileNo" required />
-                  <p class="input-sub-title">10 digits, as in the Udyam Registration</p>
+                         autocomplete="tel-national" [placeholder]="'9999999999' | t: 'public.register.udyam.mobilePlaceholder'" [(ngModel)]="mobileNo" required />
+                  <p class="input-sub-title">{{ '10 digits, as in the Udyam Registration' | t: 'public.register.udyam.mobileNote' }}</p>
                 </div>
               </div>
               <div class="reg-captcha">
@@ -72,46 +73,46 @@
               </div>
             </div>
             <div class="reg-ft">
-              <button type="button" class="btn btn-default reg-back" (click)="go('welcome')">Back</button>
-              <span class="reg-ft-step">Step 1 of 4</span>
-              <button type="submit" class="btn btn-primary reg-next" [disabled]="busy()">Check and proceed</button>
+              <button type="button" class="btn btn-default reg-back" (click)="go('welcome')">{{ 'Back' | t: 'public.register.backButton' }}</button>
+              <span class="reg-ft-step">{{ 'Step 1 of 4' | t: 'public.register.udyam.stepText' }}</span>
+              <button type="submit" class="btn btn-primary reg-next" [disabled]="busy()">{{ 'Check and proceed' | t: 'public.register.udyam.submitButton' }}</button>
             </div>
           </form>
         </section>
         <aside class="reg-card" aria-labelledby="reg-where-h">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">?</span><h3 id="reg-where-h">Where to find these</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">?</span><h3 id="reg-where-h">{{ 'Where to find these' | t: 'public.register.where.title' }}</h3></div>
           <div class="reg-rail">
-            <div class="reg-row"><span class="reg-n">1</span><div><b>Udyam number</b><small>On the Udyam Registration Certificate, top right.</small></div></div>
-            <div class="reg-row"><span class="reg-n">2</span><div><b>Mobile number</b><small>The one you gave on the Udyam portal. Changed it? Update it on udyamregistration.gov.in first.</small></div></div>
+            <div class="reg-row"><span class="reg-n">1</span><div><b>{{ 'Udyam number' | t: 'public.register.where.numberHeading' }}</b><small>{{ 'On the Udyam Registration Certificate, top right.' | t: 'public.register.where.numberText' }}</small></div></div>
+            <div class="reg-row"><span class="reg-n">2</span><div><b>{{ 'Mobile number' | t: 'public.register.where.mobileHeading' }}</b><small>{{ 'The one you gave on the Udyam portal. Changed it? Update it on udyamregistration.gov.in first.' | t: 'public.register.where.mobileText' }}</small></div></div>
           </div>
         </aside>
       </div>
     }
 
     @case ('plant') {
-      <section class="reg-card reg-ent-card" aria-label="Enterprise">
+      <section class="reg-card reg-ent-card" [attr.aria-label]="'Enterprise' | t: 'public.register.plant.enterpriseAria'">
         <div class="reg-ent">
           <span class="reg-ent-badge" [class.ent-micro]="basic()['EnterpriseType'] === 'Micro'" [class.ent-small]="basic()['EnterpriseType'] === 'Small'"
                 [class.ent-medium]="basic()['EnterpriseType'] === 'Medium'" aria-hidden="true">{{ enterpriseInitial(basic()['EnterpriseType']) }}</span>
           <div class="reg-ent-text">
             <h4>{{ basic()['EnterpriseName'] }}</h4>
             @if (basic()['EnterpriseType']) { <span class="reg-chip reg-chip-size">{{ basic()['EnterpriseType'] }}</span> }
-            <span class="reg-chip">✓ Validated with Udyam</span>
+            <span class="reg-chip">{{ '✓ Validated with Udyam' | t: 'public.register.plant.validatedChip' }}</span>
           </div>
         </div>
         <dl class="reg-kv">
-          <div><dt>Udyam number</dt><dd>{{ basic()['UdyogAadharNo'] }}</dd></div>
-          <div><dt>Entrepreneur</dt><dd>{{ basic()['OwnerName'] }}</dd></div>
-          <div><dt>Gender</dt><dd>{{ basic()['Gender'] }}</dd></div>
-          <div><dt>Social category</dt><dd>{{ basic()['SocialCategory'] }}</dd></div>
+          <div><dt>{{ 'Udyam number' | t: 'public.register.plant.udyamLabel' }}</dt><dd>{{ basic()['UdyogAadharNo'] }}</dd></div>
+          <div><dt>{{ 'Entrepreneur' | t: 'public.register.plant.entrepreneurLabel' }}</dt><dd>{{ basic()['OwnerName'] }}</dd></div>
+          <div><dt>{{ 'Gender' | t: 'public.register.plant.genderLabel' }}</dt><dd>{{ basic()['Gender'] }}</dd></div>
+          <div><dt>{{ 'Social category' | t: 'public.register.plant.categoryLabel' }}</dt><dd>{{ basic()['SocialCategory'] }}</dd></div>
         </dl>
         <zed-text key="msme.registration.plant.validatedNote" box="reg-note reg-ent-note" />
       </section>
 
       <form class="reg-card" (ngSubmit)="submitPlant()" novalidate>
         <div class="reg-cb">
-          <h4 class="reg-sec"><span class="reg-n">1</span> Select one plant location</h4>
-          <div class="reg-units" role="radiogroup" aria-label="Plant location">
+          <h4 class="reg-sec"><span class="reg-n">1</span> {{ 'Select one plant location' | t: 'public.register.plant.locationHeading' }}</h4>
+          <div class="reg-units" role="radiogroup" [attr.aria-label]="'Plant location' | t: 'public.register.plant.locationAria'">
             @for (p of lookup()?.plants ?? []; track $index) {
               <label class="reg-unit" [class.sel]="plantIndex() === $index" [class.off]="registeredZedId(p) !== null">
                 <span class="reg-unit-head">
@@ -123,11 +124,11 @@
                     {{ p['UnitName'] }}
                   </b>
                   @if (registeredZedId(p); as registered) {
-                    <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">Already registered{{ registered ? ': ' + registered : '' }}. Log in with its ZED ID.</span>
+                    <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">{{ 'Already registered: {zedId}. Log in with its ZED ID.' | t: 'public.register.plant.registeredChip' : { zedId: registered } }}</span>
                   } @else if (registeredZedId(p) === '') {
-                    <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">Already registered. Log in with its ZED ID.</span>
+                    <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">{{ 'Already registered. Log in with its ZED ID.' | t: 'public.register.plant.registeredNoIdChip' }}</span>
                   } @else if (plantIndex() === $index) {
-                    <span class="reg-chip">Selected</span>
+                    <span class="reg-chip">{{ 'Selected' | t: 'public.register.plant.selectedChip' }}</span>
                   }
                 </span>
                 <span class="reg-unit-sub">{{ plantAddress(p) }}</span>
@@ -136,15 +137,15 @@
           </div>
 
           <div [class.reg-step-off]="plantIndex() === null">
-            <h4 class="reg-sec"><span class="reg-n">2</span> Select the activity of that plant</h4>
+            <h4 class="reg-sec"><span class="reg-n">2</span> {{ 'Select the activity of that plant' | t: 'public.register.plant.activityHeading' }}</h4>
             <div class="reg-note reg-note-teal reg-plant-note">
               @if (selectedPlant(); as sp) {
-                <p>Plant activity for: <strong>{{ plantAddress(sp) }}</strong></p>
+                <p>{{ 'Plant activity for:' | t: 'public.register.plant.activityForLabel' }} <strong>{{ plantAddress(sp) }}</strong></p>
               } @else {
-                <p>Please select a plant location first.</p>
+                <p>{{ 'Please select a plant location first.' | t: 'public.register.plant.selectFirstNote' }}</p>
               }
             </div>
-            <div class="reg-units" role="radiogroup" aria-label="Plant activity">
+            <div class="reg-units" role="radiogroup" [attr.aria-label]="'Plant activity' | t: 'public.register.plant.activityAria'">
               @for (a of lookup()?.activities ?? []; track $index) {
                 <label class="reg-unit" [class.sel]="activityIndex() === $index" [class.off]="notEligible(a) !== null">
                   <span class="reg-unit-head">
@@ -159,7 +160,7 @@
                     @if (notEligible(a); as reason) {
                       <span class="reg-chip reg-chip-off" [attr.data-activity-not-eligible]="$index">{{ reason }}</span>
                     } @else if (activityIndex() === $index) {
-                      <span class="reg-chip">Selected</span>
+                      <span class="reg-chip">{{ 'Selected' | t: 'public.register.plant.selectedChip' }}</span>
                     }
                   </span>
                   <ul class="reg-nic">
@@ -173,9 +174,9 @@
           </div>
         </div>
         <div class="reg-ft">
-          <button type="button" class="btn btn-default reg-back" (click)="go('udyam')">Back</button>
-          <span class="reg-ft-step">Step 2 of 4</span>
-          <button type="submit" class="btn btn-primary reg-next" [class.btn-disabled]="activityIndex() === null" [disabled]="busy()">Confirm and proceed</button>
+          <button type="button" class="btn btn-default reg-back" (click)="go('udyam')">{{ 'Back' | t: 'public.register.backButton' }}</button>
+          <span class="reg-ft-step">{{ 'Step 2 of 4' | t: 'public.register.plant.stepText' }}</span>
+          <button type="submit" class="btn btn-primary reg-next" [class.btn-disabled]="activityIndex() === null" [disabled]="busy()">{{ 'Confirm and proceed' | t: 'public.register.plant.submitButton' }}</button>
         </div>
       </form>
     }
@@ -183,25 +184,25 @@
     @case ('summary') {
       <div class="reg-sum">
         <section class="reg-card" aria-labelledby="reg-sum-ent">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">{{ enterpriseInitial(basic()['EnterpriseType']) }}</span><h3 id="reg-sum-ent">Enterprise</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">{{ enterpriseInitial(basic()['EnterpriseType']) }}</span><h3 id="reg-sum-ent">{{ 'Enterprise' | t: 'public.register.summary.enterpriseTitle' }}</h3></div>
           <div class="reg-cb reg-sum-body">
             <b class="reg-sum-name">{{ basic()['EnterpriseName'] }}</b>
             <div class="reg-hint">{{ basic()['EnterpriseType'] }}{{ basic()['EnterpriseType'] ? ' · ' : '' }}{{ basic()['UdyogAadharNo'] }}</div>
           </div>
         </section>
         <section class="reg-card" aria-labelledby="reg-sum-mail">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">&#64;</span><h3 id="reg-sum-mail">E-mail for ZED mails</h3>
-            <button type="button" class="reg-change" aria-label="Change Email ID" (click)="openEmailModal()">Change</button>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">&#64;</span><h3 id="reg-sum-mail">{{ 'E-mail for ZED mails' | t: 'public.register.summary.emailTitle' }}</h3>
+            <button type="button" class="reg-change" [attr.aria-label]="'Change Email ID' | t: 'public.register.summary.changeEmailAria'" (click)="openEmailModal()">{{ 'Change' | t: 'public.register.summary.changeButton' }}</button>
           </div>
           <div class="reg-cb reg-sum-body">
             <b>{{ verifiedEmail() }}</b>
-            @if (verifiedEmail()) { <span class="reg-verified">✓ Verified by OTP</span> }
+            @if (verifiedEmail()) { <span class="reg-verified">{{ '✓ Verified by OTP' | t: 'public.register.summary.verifiedChip' }}</span> }
             <zed-text key="msme.registration.emailNote" box="reg-hint reg-email-note" />
           </div>
         </section>
         <section class="reg-card" aria-labelledby="reg-sum-unit">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">⌂</span><h3 id="reg-sum-unit">Selected unit</h3>
-            <button type="button" class="reg-change" aria-label="Change plant" (click)="go('plant')">Change</button>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">⌂</span><h3 id="reg-sum-unit">{{ 'Selected unit' | t: 'public.register.summary.unitTitle' }}</h3>
+            <button type="button" class="reg-change" [attr.aria-label]="'Change plant' | t: 'public.register.summary.changePlantAria'" (click)="go('plant')">{{ 'Change' | t: 'public.register.summary.changeButton' }}</button>
           </div>
           <div class="reg-cb reg-sum-body">
             <b>{{ selectedPlant()?.['UnitName'] }}</b>
@@ -209,8 +210,8 @@
           </div>
         </section>
         <section class="reg-card" aria-labelledby="reg-sum-act">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">#</span><h3 id="reg-sum-act">Selected activity</h3>
-            <button type="button" class="reg-change" aria-label="Change activity" (click)="go('plant')">Change</button>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">#</span><h3 id="reg-sum-act">{{ 'Selected activity' | t: 'public.register.summary.activityTitle' }}</h3>
+            <button type="button" class="reg-change" [attr.aria-label]="'Change activity' | t: 'public.register.summary.changeActivityAria'" (click)="go('plant')">{{ 'Change' | t: 'public.register.summary.changeButton' }}</button>
           </div>
           <div class="reg-cb reg-sum-body">
             <b>{{ selectedActivity()?.['Activity'] }}</b>
@@ -230,9 +231,9 @@
           </label>
         </div>
         <div class="reg-ft">
-          <button type="button" class="btn btn-default reg-back" (click)="go('plant')">Back</button>
-          <span class="reg-ft-step">Step 3 of 4</span>
-          <button type="button" class="btn btn-primary reg-next" [class.btn-disabled]="!accepted" (click)="toPledge()">Proceed to pledge</button>
+          <button type="button" class="btn btn-default reg-back" (click)="go('plant')">{{ 'Back' | t: 'public.register.backButton' }}</button>
+          <span class="reg-ft-step">{{ 'Step 3 of 4' | t: 'public.register.summary.stepText' }}</span>
+          <button type="button" class="btn btn-primary reg-next" [class.btn-disabled]="!accepted" (click)="toPledge()">{{ 'Proceed to pledge' | t: 'public.register.summary.pledgeButton' }}</button>
         </div>
       </section>
     }
@@ -240,9 +241,9 @@
     @case ('pledge') {
       <section class="reg-card" aria-labelledby="reg-pledge-h">
         <div class="reg-pledge">
-          <h3 class="visually-hidden" id="reg-pledge-h">ZED Pledge</h3>
-          <img class="reg-pledge-logo" src="/Images/header/zed-logo.png" alt="ZED" />
-          <div><span class="reg-pledge-pill">PLEDGE</span></div>
+          <h3 class="visually-hidden" id="reg-pledge-h">{{ 'ZED Pledge' | t: 'public.register.pledge.title' }}</h3>
+          <img class="reg-pledge-logo" src="/Images/header/zed-logo.png" [alt]="'ZED' | t: 'public.register.pledge.logoAlt'" />
+          <div><span class="reg-pledge-pill">{{ 'PLEDGE' | t: 'public.register.pledge.pill' }}</span></div>
           <div class="reg-pledge-text">
             @for (line of pledgeLines(); track $index) {
               <span class="pledge-line" [style.animation-delay.ms]="$index * 1000" [innerHTML]="line + ' '"></span>
@@ -250,15 +251,15 @@
           </div>
           @if (pledgeFailed()) {
             <div class="alert alert-warning pledge-failed" role="alert">
-              This text could not be loaded. <button type="button" class="btn btn-link pledge-retry" (click)="retryPledge()">Try again</button>
+              {{ 'This text could not be loaded.' | t: 'public.register.pledge.failedText' }} <button type="button" class="btn btn-link pledge-retry" (click)="retryPledge()">{{ 'Try again' | t: 'public.register.pledge.retryButton' }}</button>
             </div>
           }
         </div>
         <div class="reg-ft">
-          <button type="button" class="btn btn-default reg-back" (click)="go('summary')">Back</button>
-          <span class="reg-ft-step">Step 4 of 4</span>
+          <button type="button" class="btn btn-default reg-back" (click)="go('summary')">{{ 'Back' | t: 'public.register.backButton' }}</button>
+          <span class="reg-ft-step">{{ 'Step 4 of 4' | t: 'public.register.pledge.stepText' }}</span>
           <button type="button" class="btn btn-primary" [class.btn-disabled]="!pledgeReady() || !pledgeLoaded()" [disabled]="!pledgeReady() || !pledgeLoaded() || busy()" (click)="takePledge()">
-            I/We pledge
+            {{ 'I/We pledge' | t: 'public.register.pledge.pledgeButton' }}
           </button>
         </div>
       </section>
@@ -268,8 +269,8 @@
       <div class="reg-grid">
         <section class="reg-card reg-done" aria-labelledby="reg-done-h">
           <div class="reg-tick" aria-hidden="true"><span>✓</span></div>
-          <h2 id="reg-done-h">Registration successful</h2>
-          <div class="reg-done-sub">Your ZED ID</div>
+          <h2 id="reg-done-h">{{ 'Registration successful' | t: 'public.register.done.title' }}</h2>
+          <div class="reg-done-sub">{{ 'Your ZED ID' | t: 'public.register.done.zedIdLabel' }}</div>
           <div class="reg-zed-id">{{ result()?.zedId }}</div>
           @if (result()?.unitName) { <div class="reg-done-sub">{{ result()?.unitName }}</div> }
           @if (result() && !result()!.emailSent) {
@@ -279,31 +280,31 @@
             </div></zed-text>
           }
           <div class="reg-done-actions">
-            <a class="btn btn-outline-primary reg-dl" routerLink="/msme/pledge-certificate">Pledge certificate</a>
-            <a class="btn btn-primary reg-next" routerLink="/msme/dashboard">Go to dashboard</a>
+            <a class="btn btn-outline-primary reg-dl" routerLink="/msme/pledge-certificate">{{ 'Pledge certificate' | t: 'public.register.done.certificateButton' }}</a>
+            <a class="btn btn-primary reg-next" routerLink="/msme/dashboard">{{ 'Go to dashboard' | t: 'public.register.done.dashboardButton' }}</a>
           </div>
           <zed-text key="msme.registration.success" box="reg-done-next" />
         </section>
 
         <!-- The ZED MSME app: scan a code with the phone's camera, or tap a badge. -->
         <aside class="reg-card" aria-labelledby="reg-app-h">
-          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">▯</span><h3 id="reg-app-h">Get the ZED MSME mobile app</h3></div>
+          <div class="reg-ch"><span class="reg-ico" aria-hidden="true">▯</span><h3 id="reg-app-h">{{ 'Get the ZED MSME mobile app' | t: 'public.register.app.title' }}</h3></div>
           <div class="reg-rail reg-app">
             <zed-text key="msme.registration.appDownload" box="reg-app-note"><p class="reg-app-note">Scan with your phone's camera to install the app, then sign in with your ZED ID.</p></zed-text>
             <div class="reg-app-codes">
               <!-- Admin → Links: each store can be switched off. -->
               @if (links.url('playStore'); as u) {
                 <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
-                  <img class="reg-qr" src="/api/public/links/playStore/qr" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
-                  <img src="/Images/google-play.png" width="130" alt="Get it on Google Play" />
-                  <span>Android</span>
+                  <img class="reg-qr" src="/api/public/links/playStore/qr" width="132" height="132" [alt]="'QR code: ZED MSME on Google Play' | t: 'public.register.app.playQrAlt'" />
+                  <img src="/Images/google-play.png" width="130" [alt]="'Get it on Google Play' | t: 'public.register.app.playAlt'" />
+                  <span>{{ 'Android' | t: 'public.register.app.android' }}</span>
                 </a>
               }
               @if (links.url('appStore'); as u) {
                 <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
-                  <img class="reg-qr" src="/api/public/links/appStore/qr" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
-                  <img src="/Images/app-store.png" width="130" alt="Download on the App Store" />
-                  <span>iPhone</span>
+                  <img class="reg-qr" src="/api/public/links/appStore/qr" width="132" height="132" [alt]="'QR code: ZED MSME on the App Store' | t: 'public.register.app.storeQrAlt'" />
+                  <img src="/Images/app-store.png" width="130" [alt]="'Download on the App Store' | t: 'public.register.app.storeAlt'" />
+                  <span>{{ 'iPhone' | t: 'public.register.app.iphone' }}</span>
                 </a>
               }
             </div>
@@ -319,21 +320,21 @@
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="emailTitle">
     <div class="modal-dialog modal-dialog-centered reg-dialog">
       <form class="modal-content reg-modal" (ngSubmit)="sendOtp()" novalidate>
-        <button type="button" class="reg-modal-close" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        <button type="button" class="reg-modal-close" [attr.aria-label]="'Close' | t: 'public.register.modal.closeAria'" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         <div class="modal-body">
           <div class="reg-modal-icon" aria-hidden="true"><img src="/Images/svgicons/email.svg" alt="" /></div>
-          <h3 class="reg-modal-title" id="emailTitle">Enter Email ID</h3>
+          <h3 class="reg-modal-title" id="emailTitle">{{ 'Enter Email ID' | t: 'public.register.email.title' }}</h3>
           <zed-text key="msme.registration.emailModalNote" box="label-highlight reg-modal-note" />
           <div class="mb-3 text-start">
-            <label class="reg-modal-label" for="email">Your Email ID</label>
-            <input id="email" name="email" type="email" class="form-control" maxlength="100" autocomplete="email" placeholder="name@example.com" [(ngModel)]="email" required />
+            <label class="reg-modal-label" for="email">{{ 'Your Email ID' | t: 'public.register.email.label' }}</label>
+            <input id="email" name="email" type="email" class="form-control" maxlength="100" autocomplete="email" [placeholder]="'name@example.com' | t: 'public.register.email.placeholder'" [(ngModel)]="email" required />
           </div>
           <div class="mb-3 text-start">
-            <label class="reg-modal-label" for="confirmEmail">Confirm Email ID</label>
+            <label class="reg-modal-label" for="confirmEmail">{{ 'Confirm Email ID' | t: 'public.register.email.confirmLabel' }}</label>
             <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
           </div>
           <div class="reg-modal-actions one">
-            <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">Proceed</button>
+            <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">{{ 'Proceed' | t: 'public.register.email.proceedButton' }}</button>
           </div>
         </div>
       </form>
@@ -347,21 +348,21 @@
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
     <div class="modal-dialog modal-dialog-centered reg-dialog">
       <form class="modal-content reg-modal" (ngSubmit)="verifyOtp()" novalidate>
-        <button type="button" class="reg-modal-close" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        <button type="button" class="reg-modal-close" [attr.aria-label]="'Close' | t: 'public.register.modal.closeAria'" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         <div class="modal-body reg-otp-box">
           <div class="reg-modal-icon" aria-hidden="true"><img src="/Images/svgicons/email.svg" alt="" /></div>
-          <h3 class="reg-modal-title" id="otpTitle">Enter OTP</h3>
+          <h3 class="reg-modal-title" id="otpTitle">{{ 'Enter OTP' | t: 'public.register.otp.title' }}</h3>
           <zed-text key="msme.registration.otpSent" [values]="{ Email: email }" box="reg-otp-sent"><p class="reg-otp-sent">OTP is successfully sent to <strong>{{ email }}</strong>, if not received, please check your junk/spam.</p></zed-text>
           <input name="otp" class="form-control reg-otp-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
-                 placeholder="••••••" aria-label="OTP" [(ngModel)]="otp" required />
+                 placeholder="••••••" [attr.aria-label]="'OTP' | t: 'public.register.otp.aria'" [(ngModel)]="otp" required />
           @if (resendIn() > 0) {
-            <p class="reg-otp-timer">Resend OTP will be activated after {{ resendIn() }} sec</p>
+            <p class="reg-otp-timer">{{ 'Resend OTP will be activated after {seconds} sec' | t: 'public.register.otp.timerText' : { seconds: resendIn() } }}</p>
           } @else {
-            <button type="button" class="btn btn-link reg-otp-resend" [disabled]="busy()" (click)="resendOtp()">Resend OTP</button>
+            <button type="button" class="btn btn-link reg-otp-resend" [disabled]="busy()" (click)="resendOtp()">{{ 'Resend OTP' | t: 'public.register.otp.resendButton' }}</button>
           }
           <div class="reg-modal-actions">
-            <button type="button" class="btn btn-default" (click)="modal.set(null)">Cancel</button>
-            <button type="submit" class="btn btn-primary" [disabled]="busy()">Submit</button>
+            <button type="button" class="btn btn-default" (click)="modal.set(null)">{{ 'Cancel' | t: 'public.register.otp.cancelButton' }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Submit' | t: 'public.register.otp.submitButton' }}</button>
           </div>
         </div>
       </form>
@@ -371,7 +372,7 @@
 }
 
 @if (busy()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'public.register.loadingText' }}</span></div>
 }
 </zed-public-layout>
 

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../content/page-text';
 
 export type SheetResult = 'new' | 'changed' | 'same' | 'error';
 
@@ -35,8 +36,6 @@ export interface SheetApplied {
 
 type Filter = 'all' | SheetResult;
 
-const RESULT_LABELS: Record<SheetResult, string> = { new: 'New', changed: 'Changed', same: 'No change', error: 'Errors' };
-
 /** The problem title of a failed blob request (the API answers problem+json). */
 export async function blobErrorMessage(err: unknown): Promise<string> {
   const e = err as { error?: unknown };
@@ -61,14 +60,15 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-excel-tools',
+  imports: [TextPipe],
   template: `
     <button type="button" class="btn btn-default xl-btn" [disabled]="busy() === 'export'" (click)="export()">
-      <span class="xl-icon" aria-hidden="true">X</span> {{ busy() === 'export' ? 'PLEASE WAIT' : 'Export Excel' }}</button>
+      <span class="xl-icon" aria-hidden="true">X</span> {{ busy() === 'export' ? ('PLEASE WAIT' | t: 'common.excel.waitButton') : ('Export Excel' | t: 'common.excel.exportButton') }}</button>
     @if (uploadable()) {
-      <button type="button" class="btn btn-default xl-btn" (click)="openUpload()"><span class="xl-icon" aria-hidden="true">X</span> Upload Excel</button>
+      <button type="button" class="btn btn-default xl-btn" (click)="openUpload()"><span class="xl-icon" aria-hidden="true">X</span> {{ 'Upload Excel' | t: 'common.excel.uploadButton' }}</button>
     } @else {
       <button type="button" class="btn btn-default xl-btn" [disabled]="busy() === 'template'" (click)="template()">
-        <span class="xl-icon" aria-hidden="true">X</span> Excel template</button>
+        <span class="xl-icon" aria-hidden="true">X</span> {{ 'Excel template' | t: 'common.excel.templateButton' }}</button>
     }
     @if (error() && !open()) { <span class="xl-fail help-block" role="alert">{{ error() }}</span> }
 
@@ -79,33 +79,33 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="xl-title">Upload {{ title() }} from Excel</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="xl-title">{{ 'Upload {name} from Excel' | t: 'common.excel.dialog.title' : { name: title() } }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'common.excel.dialog.closeAria'" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
-              <ol class="xl-steps" aria-label="Steps">
-                <li [class.ok]="templateTaken() || !!file()">1 Template{{ templateTaken() || file() ? ' ✓' : '' }}</li>
-                <li [class.ok]="!!file()" [class.on]="!file()">2 Choose file{{ file() ? ' ✓' : '' }}</li>
-                <li [class.ok]="!!check() || !!applied()" [class.on]="!!file() && !check() && !applied()">3 Check{{ check() || applied() ? ' ✓' : '' }}</li>
-                <li [class.ok]="!!applied()" [class.on]="!!check() && !applied()">4 Apply{{ applied() ? ' ✓' : '' }}</li>
+              <ol class="xl-steps" [attr.aria-label]="'Steps' | t: 'common.excel.steps.aria'">
+                <li [class.ok]="templateTaken() || !!file()">{{ '1 Template' | t: 'common.excel.steps.template' }}{{ templateTaken() || file() ? ' ✓' : '' }}</li>
+                <li [class.ok]="!!file()" [class.on]="!file()">{{ '2 Choose file' | t: 'common.excel.steps.file' }}{{ file() ? ' ✓' : '' }}</li>
+                <li [class.ok]="!!check() || !!applied()" [class.on]="!!file() && !check() && !applied()">{{ '3 Check' | t: 'common.excel.steps.check' }}{{ check() || applied() ? ' ✓' : '' }}</li>
+                <li [class.ok]="!!applied()" [class.on]="!!check() && !applied()">{{ '4 Apply' | t: 'common.excel.steps.apply' }}{{ applied() ? ' ✓' : '' }}</li>
               </ol>
 
               <div class="xl-file">
                 <span class="xl-icon" aria-hidden="true">X</span>
-                <b class="xl-file-name">@if (file(); as f) { {{ f.name }} <span class="muted">· {{ size(f.size) }}@if (check(); as c) { · {{ c.rows.length }} rows }</span> } @else { No file chosen }</b>
-                <button type="button" class="btn btn-default btn-sm" [disabled]="busy() === 'template'" (click)="template()">⬇ Download template</button>
-                <label class="btn btn-default btn-sm mb-0">{{ file() ? 'Choose another file' : 'Choose file' }}
+                <b class="xl-file-name">@if (file(); as f) { {{ f.name }} <span class="muted">· {{ size(f.size) }}@if (check(); as c) { · {{ c.rows.length === 1 ? ('{count} row' | t: 'common.excel.file.row' : { count: 1 }) : ('{count} rows' | t: 'common.excel.file.rows' : { count: c.rows.length }) }} }</span> } @else { {{ 'No file chosen' | t: 'common.excel.file.none' }} }</b>
+                <button type="button" class="btn btn-default btn-sm" [disabled]="busy() === 'template'" (click)="template()">{{ '⬇ Download template' | t: 'common.excel.file.templateButton' }}</button>
+                <label class="btn btn-default btn-sm mb-0">{{ file() ? ('Choose another file' | t: 'common.excel.file.anotherButton') : ('Choose file' | t: 'common.excel.file.chooseButton') }}
                   <input type="file" class="visually-hidden" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="choose($event)" /></label>
               </div>
 
               @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
               @if (applied(); as a) { <div class="alert alert-success" role="status">{{ a.message }}</div> }
-              @if (busy() === 'check') { <p class="muted">Checking the file…</p> }
+              @if (busy() === 'check') { <p class="muted">{{ 'Checking the file…' | t: 'common.excel.checkingText' }}</p> }
 
               @if (shown(); as c) {
                 <p class="muted xl-rule">{{ c.matchRule }}</p>
-                <div class="xl-sum" role="group" aria-label="Rows by result">
+                <div class="xl-sum" role="group" [attr.aria-label]="'Rows by result' | t: 'common.excel.summary.aria'">
                   @for (s of tiles(); track s.key) {
                     <button type="button" class="xl-tile xl-{{ s.key }}" [class.active]="filter() === s.key" [attr.aria-pressed]="filter() === s.key"
                             (click)="filter.set(filter() === s.key ? 'all' : s.key)"><b>{{ s.count }}</b> {{ s.label }}</button>
@@ -113,7 +113,7 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
                 </div>
                 <div class="table-responsive xl-table">
                   <table class="table">
-                    <thead><tr><th scope="col">Row</th>@for (h of c.columns; track $index) { <th scope="col">{{ h }}</th> }<th scope="col">Result</th></tr></thead>
+                    <thead><tr><th scope="col">{{ 'Row' | t: 'common.excel.column.row' }}</th>@for (h of c.columns; track $index) { <th scope="col">{{ h }}</th> }<th scope="col">{{ 'Result' | t: 'common.excel.column.result' }}</th></tr></thead>
                     <tbody>
                       @for (r of visible(); track r.row) {
                         <tr [class.is-error]="r.result === 'error'">
@@ -123,32 +123,32 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
                           }
                           <td class="xl-result">
                             @switch (r.result) {
-                              @case ('new') { <span class="xl-tag t-new">{{ applied() ? 'Added' : 'New' }}</span> }
-                              @case ('changed') { <span class="xl-tag t-chg">{{ applied() ? 'Updated' : 'Changed' }}: {{ r.changed.join(', ') }}</span> }
-                              @case ('same') { <span class="xl-tag t-same">No change</span> }
+                              @case ('new') { <span class="xl-tag t-new">{{ applied() ? ('Added' | t: 'common.excel.result.added') : ('New' | t: 'common.excel.result.new') }}</span> }
+                              @case ('changed') { <span class="xl-tag t-chg">{{ applied() ? ('Updated: {fields}' | t: 'common.excel.result.updatedFields' : { fields: r.changed.join(', ') }) : ('Changed: {fields}' | t: 'common.excel.result.changedFields' : { fields: r.changed.join(', ') }) }}</span> }
+                              @case ('same') { <span class="xl-tag t-same">{{ 'No change' | t: 'common.excel.result.same' }}</span> }
                               @case ('error') { <span class="xl-tag t-err">{{ r.errors.join(' · ') }}</span> }
                             }
                             @for (n of r.notes; track $index) { <small class="d-block muted mt-1">{{ n }}</small> }
                           </td>
                         </tr>
                       } @empty {
-                        <tr><td [attr.colspan]="c.columns.length + 2" class="muted">No rows of this kind.</td></tr>
+                        <tr><td [attr.colspan]="c.columns.length + 2" class="muted">{{ 'No rows of this kind.' | t: 'common.excel.table.empty' }}</td></tr>
                       }
                     </tbody>
                   </table>
                 </div>
               } @else if (!file()) {
-                <p class="muted mb-0">Download the template (or Export Excel to edit the current list), fill it in, then choose the file. Only .xlsx files are accepted (up to 5 MB).</p>
+                <p class="muted mb-0">{{ 'Download the template (or Export Excel to edit the current list), fill it in, then choose the file. Only .xlsx files are accepted (up to 5 MB).' | t: 'common.excel.dialog.note' }}</p>
               }
             </div>
             <div class="modal-footer xl-foot" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap">
-              <span class="muted">@if (check() && !applied()) { Rows with errors are skipped. Correct them in the file and upload again, or apply the others now. }</span>
+              <span class="muted">@if (check() && !applied()) { {{ 'Rows with errors are skipped. Correct them in the file and upload again, or apply the others now.' | t: 'common.excel.dialog.skipNote' }} }</span>
               <span>
-                <button type="button" class="btn btn-default" (click)="close()">{{ applied() ? 'Close' : 'Cancel' }}</button>
+                <button type="button" class="btn btn-default" (click)="close()">{{ applied() ? ('Close' | t: 'common.excel.dialog.closeButton') : ('Cancel' | t: 'common.excel.dialog.cancelButton') }}</button>
                 @if (check(); as c) {
                   @if (!applied()) {
                     <button type="button" class="btn btn-primary" [disabled]="busy() === 'apply' || c.new + c.changed === 0" (click)="apply()">
-                      {{ busy() === 'apply' ? 'PLEASE WAIT' : 'APPLY ' + (c.new + c.changed) + ' ROW' + (c.new + c.changed === 1 ? '' : 'S') }}</button>
+                      {{ busy() === 'apply' ? ('PLEASE WAIT' | t: 'common.excel.waitButton') : c.new + c.changed === 1 ? ('APPLY {count} ROW' | t: 'common.excel.applyOneButton' : { count: 1 }) : ('APPLY {count} ROWS' | t: 'common.excel.applyButton' : { count: c.new + c.changed }) }}</button>
                   }
                 }
               </span>
@@ -224,10 +224,10 @@ export class ExcelToolsComponent {
     if (!c) return [];
     const done = !!this.applied();
     return [
-      { key: 'new' as const, count: c.new, label: done ? 'Added' : RESULT_LABELS.new },
-      { key: 'changed' as const, count: c.changed, label: done ? 'Updated' : RESULT_LABELS.changed },
-      { key: 'same' as const, count: c.unchanged, label: RESULT_LABELS.same },
-      { key: 'error' as const, count: c.errors, label: done ? 'Skipped (errors)' : 'With errors' },
+      { key: 'new' as const, count: c.new, label: done ? t('common.excel.summary.added', 'Added') : t('common.excel.summary.new', 'New') },
+      { key: 'changed' as const, count: c.changed, label: done ? t('common.excel.summary.updated', 'Updated') : t('common.excel.summary.changed', 'Changed') },
+      { key: 'same' as const, count: c.unchanged, label: t('common.excel.summary.same', 'No change') },
+      { key: 'error' as const, count: c.errors, label: done ? t('common.excel.summary.skipped', 'Skipped (errors)') : t('common.excel.summary.errors', 'With errors') },
     ];
   });
 
@@ -295,11 +295,11 @@ export class ExcelToolsComponent {
     this.filter.set('all');
     this.error.set('');
     if (!file.name.toLowerCase().endsWith('.xlsx')) {
-      this.error.set('Please choose an Excel file (.xlsx). Save an .xls or .csv file as .xlsx first.');
+      this.error.set(t('common.excel.typeError', 'Please choose an Excel file (.xlsx). Save an .xls or .csv file as .xlsx first.'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      this.error.set('The file is larger than 5 MB.');
+      this.error.set(t('common.excel.sizeError', 'The file is larger than 5 MB.'));
       return;
     }
     this.busy.set('check');

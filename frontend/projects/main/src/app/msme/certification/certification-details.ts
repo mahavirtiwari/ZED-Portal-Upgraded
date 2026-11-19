@@ -4,9 +4,10 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { CertificationTimeline } from './certification-timeline';
 import { monthYear, nextSurveillance, parseShortDate, shortDate, validTill, validityOf } from './certification-dates';
-import { ncBlock, progressOptions, progressSteps, splitDate, statusText, timelineItems } from './certification-progress';
+import { INFO_STEP, NEXT_STEP_NOTE, ncBlock, progressOptions, progressSteps, splitDate, statusText, timelineItems } from './certification-progress';
 import {
   CertificationApi,
   CertificationData,
@@ -17,6 +18,7 @@ import {
   incentiveUrl,
   milestoneNumber,
 } from './certification.api';
+import { BOLD, boldParts } from '../shared/bold-parts';
 import { PageHead, Crumb } from '../shared/page-head';
 import { StepTracker } from '../shared/step-tracker';
 import { PublicLevels, allLevels, levelLogo, levelMode, levelName } from '../shared/levels';
@@ -36,6 +38,10 @@ interface Action {
   download?: boolean;
   /** A page of this portal opened in a new tab (the report page, 2026-11-15). */
   newTab?: boolean;
+  /** The header card's button wording ("Download certificate"); the label when absent. */
+  short?: string;
+  /** The page of the site assessment / milestone ("Your next step" links to the first one that is open). */
+  site?: boolean;
 }
 
 /** Folder of a stored surveillance certificate: {SurveCertPath}/DA|SA/{ZedId}/{Level}.pdf. */
@@ -69,7 +75,7 @@ interface GoFurther {
  */
 @Component({
   selector: 'zed-msme-certification-details',
-  imports: [NgTemplateOutlet, RouterLink, PageHead, StepTracker, CertificationTimeline],
+  imports: [NgTemplateOutlet, RouterLink, PageHead, StepTracker, CertificationTimeline, TextPipe],
   templateUrl: './certification-details.html',
   styleUrls: ['./certification-details.scss', './certification-rail.scss'],
 })
@@ -98,11 +104,11 @@ export class CertificationDetailsPage {
   protected readonly heading = computed(() => {
     switch (this.kind()) {
       case 'surveillance':
-        return `${levelName(this.level())} Surveillance`;
+        return t('msme.certification.surveillanceTitle', '{level} Surveillance', { level: levelName(this.level()) });
       case 'milestone':
-        return `Handholding Support: Milestone ${this.milestone()}`;
+        return t('msme.certification.milestoneTitle', 'Handholding Support: Milestone {milestone}', { milestone: this.milestone() });
       default:
-        return `${levelName(this.level())} Certification`;
+        return t('msme.certification.title', '{level} Certification', { level: levelName(this.level()) });
     }
   });
 
@@ -110,12 +116,14 @@ export class CertificationDetailsPage {
   protected readonly crumbs = computed<Crumb[]>(() => {
     const name = levelName(this.level());
     if (this.kind() === 'milestone') {
-      return [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding', link: '/msme/handholding' }, { label: `${name} milestone ${this.milestone()}` }];
+      return [{ label: t('msme.certification.crumb.home', 'Home'), link: '/msme/dashboard' },
+        { label: t('msme.certification.crumb.handholding', 'Handholding'), link: '/msme/handholding' },
+        { label: t('msme.certification.crumb.milestone', '{level} milestone {milestone}', { level: name, milestone: this.milestone() }) }];
     }
     return [
-      { label: 'Home', link: '/msme/dashboard' },
-      { label: 'Certifications', link: '/msme/dashboard' },
-      { label: this.kind() === 'surveillance' ? `${name} surveillance` : name },
+      { label: t('msme.certification.crumb.home', 'Home'), link: '/msme/dashboard' },
+      { label: t('msme.certification.crumb.certifications', 'Certifications'), link: '/msme/dashboard' },
+      { label: this.kind() === 'surveillance' ? t('msme.certification.crumb.surveillance', '{level} surveillance', { level: name }) : name },
     ];
   });
   protected readonly backLink = computed(() => (this.kind() === 'milestone' ? '/msme/handholding' : '/msme/dashboard'));
@@ -138,6 +146,10 @@ export class CertificationDetailsPage {
    * has web entry; everything is entered in the ZED MSME app).
    */
   protected readonly webEntry = computed(() => isWebEntryLevel(this.type()));
+  /** The app banner's sentence, the app's name in bold. */
+  protected readonly appBannerLine = computed(() => boldParts(
+    t('msme.certification.app.text', 'Please download the {app} to proceed to the next step, i.e. Basic Information and Document Upload', { app: BOLD }),
+    t('msme.certification.app.name', 'ZED MSME Mobile Application')));
 
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
@@ -153,11 +165,17 @@ export class CertificationDetailsPage {
     const place = [m['PDistrictName'], m['PStateName']].map((x) => String(x ?? '').trim()).filter((x) => x).join(', ');
     return [String(m['PUnitName'] ?? '').trim(), place].filter((x) => x).join(', ');
   });
-  /** The chip next to the unit's name. */
-  protected readonly statusChip = computed(() => {
-    if (this.kind() === 'milestone') return this.has('ApplicantAcceptedOn') ? 'COMPLETED' : this.anyStatus() ? 'IN PROGRESS' : '';
-    if (this.has('GetCertified')) return this.kind() === 'surveillance' ? 'SURVEILLANCE CERTIFIED' : `${this.levelTitle().toUpperCase()} CERTIFIED`;
-    return this.anyStatus() ? 'IN PROGRESS' : '';
+  /** The chip next to the unit's name (done: the tick and the done colour). */
+  protected readonly statusChip = computed<{ label: string; done: boolean } | null>(() => {
+    const inProgress = { label: t('msme.certification.chip.inProgress', 'IN PROGRESS'), done: false };
+    if (this.kind() === 'milestone') {
+      return this.has('ApplicantAcceptedOn') ? { label: t('msme.certification.chip.completed', 'COMPLETED'), done: true } : this.anyStatus() ? inProgress : null;
+    }
+    if (this.has('GetCertified')) {
+      return this.kind() === 'surveillance' ? { label: t('msme.certification.chip.surveillanceCertified', 'SURVEILLANCE CERTIFIED'), done: true }
+        : { label: t('msme.certification.chip.certified', '{level} CERTIFIED', { level: this.levelTitle().toUpperCase() }), done: true };
+    }
+    return this.anyStatus() ? inProgress : null;
   });
   /**
    * The dates the descriptions carry; 2026-11-18 (design): once a level is certified, Certified on, Valid till (the
@@ -168,18 +186,19 @@ export class CertificationDetailsPage {
     const date = (field: string) => splitDate(statusText(this.status(), field)).date;
     if ((this.kind() === 'bronze' || this.kind() === 'silverGold') && this.has('GetCertified')) {
       const on = date('GetCertified');
-      const list = [{ label: 'Certified on', value: on }];
+      const list = [{ label: t('msme.certification.facts.certifiedLabel', 'Certified on'), value: on }];
       const certified = parseShortDate(on);
       const v = this.validity();
       if (certified && v) {
-        if (v.validityMonths > 0) list.push({ label: 'Valid till', value: shortDate(validTill(certified, v.validityMonths)) });
+        if (v.validityMonths > 0) list.push({ label: t('msme.certification.facts.validLabel', 'Valid till'), value: shortDate(validTill(certified, v.validityMonths)) });
         const next = nextSurveillance(certified, v.surveillanceMonths);
-        if (next) list.push({ label: 'Next surveillance', value: monthYear(next) });
+        if (next) list.push({ label: t('msme.certification.facts.surveillanceLabel', 'Next surveillance'), value: monthYear(next) });
       }
       return list.filter((f) => f.value);
     }
-    const list = [{ label: 'Applied on', value: date('ApplicationReceived') }];
-    list.push(this.kind() === 'milestone' ? { label: 'Completed on', value: date('CompletedOn') } : { label: 'Certified on', value: date('GetCertified') });
+    const list = [{ label: t('msme.certification.facts.appliedLabel', 'Applied on'), value: date('ApplicationReceived') }];
+    list.push(this.kind() === 'milestone' ? { label: t('msme.certification.facts.completedLabel', 'Completed on'), value: date('CompletedOn') }
+      : { label: t('msme.certification.facts.certifiedLabel', 'Certified on'), value: date('GetCertified') });
     return list.filter((f) => f.value);
   });
   /** The level's validity and surveillance months: from the certification API, else the Admin's enabled level (api/public/levels). */
@@ -207,12 +226,11 @@ export class CertificationDetailsPage {
   protected readonly next = computed<NextStep | null>(() => {
     if (!this.data()) return null;
     const kind = this.kind();
-    const find = (icon: string, label?: RegExp) => this.actions().find((a) => a.icon === icon && a.enabled && (!label || label.test(a.label)));
     if (kind !== 'milestone' && this.has('GetCertified')) {
       return {
-        title: 'Avail your incentives',
-        text: `Your ${this.levelTitle()} certification opens incentives from the Ministry of MSME, States/UTs and financial institutions.`,
-        label: 'View my incentives',
+        title: t('msme.certification.next.incentivesTitle', 'Avail your incentives'),
+        text: t('msme.certification.next.incentivesText', 'Your {level} certification opens incentives from the Ministry of MSME, States/UTs and financial institutions.', { level: this.levelTitle() }),
+        label: t('msme.certification.action.incentives', 'View my incentives'),
         href: this.incentiveUrl(),
       };
     }
@@ -220,22 +238,25 @@ export class CertificationDetailsPage {
     const last = nc?.rounds[nc.rounds.length - 1];
     if (nc && last && !last.submitted && !nc.closed) {
       return {
-        title: 'Respond to the non-conformances',
-        text: nc.finalClosure ? `ZED raised non-conformances. Final closure date: ${nc.finalClosure}.` : 'ZED raised non-conformances.',
-        label: 'View non-conformances',
+        title: t('msme.certification.next.ncTitle', 'Respond to the non-conformances'),
+        text: nc.finalClosure ? t('msme.certification.next.ncClosureText', 'ZED raised non-conformances. Final closure date: {date}.', { date: nc.finalClosure })
+          : t('msme.certification.next.ncText', 'ZED raised non-conformances.'),
+        label: t('msme.certification.next.ncButton', 'View non-conformances'),
         route: this.ncRoute() ?? undefined,
       };
     }
     const { steps, current } = this.progress();
     const step = steps[current];
     if (!step) return null;
-    if (kind !== 'milestone' && kind !== 'surveillance' && step.label === 'Information & documents') {
-      return { title: 'Basic information & documents', text: 'Enter your basic information and upload the documents in the ZED MSME mobile app.' };
+    if (kind !== 'milestone' && kind !== 'surveillance' && step.label === INFO_STEP()) {
+      return { title: t('msme.certification.next.infoTitle', 'Basic information & documents'),
+        text: t('msme.certification.next.infoText', 'Enter your basic information and upload the documents in the ZED MSME mobile app.') };
     }
-    const site = kind !== 'milestone' ? find('basicInfo', /onsite|surveillance assessment/i) : find('basicInfo', /milestone/i);
+    const site = this.actions().find((a) => a.site && a.enabled);
     return {
       title: step.label,
-      text: step.note && step.note !== 'Your next step' ? step.note : kind === 'milestone' && current === 2 ? 'Review the milestone and accept it.' : 'This step is with ZED; nothing is needed from you now.',
+      text: step.note && step.note !== NEXT_STEP_NOTE() ? step.note : kind === 'milestone' && current === 2
+        ? t('msme.certification.next.acceptText', 'Review the milestone and accept it.') : t('msme.certification.next.withZedText', 'This step is with ZED; nothing is needed from you now.'),
       label: site ? site.label : undefined,
       route: site?.route,
     };
@@ -249,7 +270,7 @@ export class CertificationDetailsPage {
     const type = this.type();
     if (!type || !this.data()) return [];
     const has = (field: string) => this.has(field);
-    const basicInfo = 'View basic information & documents';
+    const basicInfo = t('msme.certification.action.basicInfo', 'View basic information & documents');
     const ncRaised = has('Nc1Raised');
     const list: Action[] = [];
 
@@ -260,8 +281,9 @@ export class CertificationDetailsPage {
     const ncRoute = `/msme/assessment/non-conformances/${type === 'BronzeSurveillance' ? 'Bronze' : type}`;
     // ZED-X and the added levels: the NCs (answered in the app) shown on the entry page.
     const nc: Action = this.webEntry()
-      ? { icon: 'non-conformance', label: 'Non-conformance history', enabled: true, danger: true, route: `/msme/entry/${type}` }
-      : { icon: 'non-conformance', label: 'Non-conformance history', enabled: true, danger: true, route: ncRoute };
+      ? { icon: 'non-conformance', label: t('msme.certification.action.nc', 'Non-conformance history'), enabled: true, danger: true, route: `/msme/entry/${type}` }
+      : { icon: 'non-conformance', label: t('msme.certification.action.nc', 'Non-conformance history'), enabled: true, danger: true, route: ncRoute };
+    const siteInfo = t('msme.certification.action.siteInfo', 'View onsite/remote assessment information');
     const siteRoute = `/msme/site-assessment/${this.kind() === 'surveillance' ? baseLevel : type}`;
 
     switch (this.kind()) {
@@ -275,33 +297,35 @@ export class CertificationDetailsPage {
           : { icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
         // A level the Admin added with desktop assessment only has no site visit (2026-11-08).
         if (levelMode(this.level()) !== 'Desktop') {
-          list.push({ icon: 'basicInfo', label: 'View onsite/remote assessment information', enabled: has('ScheduledOn'), route: siteRoute });
+          list.push({ icon: 'basicInfo', label: siteInfo, enabled: has('ScheduledOn'), route: siteRoute, site: true });
         }
         if (ncRaised) list.push(nc);
         break;
       case 'surveillance':
         list.push({ icon: 'basicInfo', label: basicInfo, enabled: true, route: basicInfoRoute });
         if (type !== 'BronzeSurveillance') {
-          list.push({ icon: 'basicInfo', label: 'View onsite/remote assessment information', enabled: true, route: siteRoute });
-          list.push({ icon: 'basicInfo', label: 'View surveillance assessment information', enabled: has('ScheduledOn'), route: siteRoute });
+          list.push({ icon: 'basicInfo', label: siteInfo, enabled: true, route: siteRoute, site: true });
+          list.push({ icon: 'basicInfo', label: t('msme.certification.action.surveillanceInfo', 'View surveillance assessment information'), enabled: has('ScheduledOn'), route: siteRoute, site: true });
         }
         if (ncRaised) list.push(nc);
         break;
       case 'milestone':
-        list.push({ icon: 'basicInfo', label: `View milestone ${this.milestone()}`, enabled: has('CompletedOn'), route: siteRoute });
-        list.push({ icon: 'report', label: 'View report', enabled: has('CompletedOn'), href: this.reportUrl(), newTab: true });
+        list.push({ icon: 'basicInfo', label: t('msme.certification.action.milestone', 'View milestone {milestone}', { milestone: this.milestone() }), enabled: has('CompletedOn'), route: siteRoute, site: true });
+        list.push({ icon: 'report', label: t('msme.certification.action.report', 'View report'), enabled: has('CompletedOn'), href: this.reportUrl(), newTab: true });
         break;
     }
 
     const certified = has('GetCertified');
     if (this.kind() === 'bronze' || this.kind() === 'silverGold') {
-      list.push({ icon: 'certificate', label: 'Download certificate (PDF)', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'View assessment report', enabled: certified, href: this.reportUrl(), newTab: true });
-      list.push({ icon: 'incentives', label: 'View my incentives', enabled: certified, href: this.incentiveUrl() });
+      list.push({ icon: 'certificate', label: t('msme.certification.action.certificate', 'Download certificate (PDF)'), enabled: certified, href: this.certificateUrl(), download: true,
+        short: t('msme.certification.certificateButton', 'Download certificate') });
+      list.push({ icon: 'report', label: t('msme.certification.action.assessmentReport', 'View assessment report'), enabled: certified, href: this.reportUrl(), newTab: true });
+      list.push({ icon: 'incentives', label: t('msme.certification.action.incentives', 'View my incentives'), enabled: certified, href: this.incentiveUrl() });
     } else if (this.kind() === 'surveillance') {
-      list.push({ icon: 'certificate', label: 'Download surveillance certificate (PDF)', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'View surveillance report', enabled: certified, href: this.reportUrl(), newTab: true });
-      list.push({ icon: 'incentives', label: 'View my incentives', enabled: true, href: this.incentiveUrl() });
+      list.push({ icon: 'certificate', label: t('msme.certification.action.surveillanceCertificate', 'Download surveillance certificate (PDF)'), enabled: certified,
+        href: this.certificateUrl(), download: true, short: t('msme.certification.surveillanceCertificateButton', 'Download surveillance certificate') });
+      list.push({ icon: 'report', label: t('msme.certification.action.surveillanceReport', 'View surveillance report'), enabled: certified, href: this.reportUrl(), newTab: true });
+      list.push({ icon: 'incentives', label: t('msme.certification.action.incentives', 'View my incentives'), enabled: true, href: this.incentiveUrl() });
     }
     // A download whose address cannot be built (no certificate path yet, settings not loaded) stays disabled.
     return list.map((a) => (a.href === '' ? { ...a, enabled: false } : a));
@@ -361,7 +385,7 @@ export class CertificationDetailsPage {
     this.error.set('');
     if (!type) {
       this.data.set(null);
-      this.error.set('Invalid certification.');
+      this.error.set(t('msme.certification.error.invalidLevel', 'Invalid certification.'));
       return;
     }
     this.loading.set(true);
@@ -395,8 +419,8 @@ export class CertificationDetailsPage {
 
   /** Basic information and documents submitted (a date, or a description other than "In-progress"). */
   private infoDone(): boolean {
-    const t = statusText(this.status(), 'BasicInfoStatus');
-    return !!t && (!!splitDate(t).date || !/progress|pending/i.test(t));
+    const text = statusText(this.status(), 'BasicInfoStatus');
+    return !!text && (!!splitDate(text).date || !/progress|pending/i.test(text));
   }
 
   protected num(row: Row, field: string): number {

@@ -4,7 +4,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom } from 'rxjs';
-import { CatalogueItem, INCENTIVE_GROUPS, IncentiveActivity, IncentiveGroup, IncentivesApi, STATES, incentiveActivity } from './incentives.api';
+import { TextPipe, t } from '../../content/page-text';
+import { CatalogueItem, INCENTIVE_GROUPS, IncentiveActivity, IncentiveGroup, IncentiveGroupKey, IncentivesApi, STATES, groupText, incentiveActivity } from './incentives.api';
 import { PagedView, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 
@@ -17,11 +18,6 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, string> = {
   bronze: 'ApplicableForBronze', silver: 'ApplicableForSilver', gold: 'ApplicableForGold', zedx: 'ApplicableForZEDX',
 };
 
-/** The dashboard card that lists a group's incentives. */
-export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
-  ministry: 'Ministry of MSME', state: 'States/UTs', financial: 'Financial Institutions', others: 'Other Incentives',
-};
-
 /**
  * Incentive catalogue for the Admin role (shown on the public incentive pages), one page per group of the Incentives
  * menu: Ministry of MSME, State Government (a state is chosen on the page), Financial Institution and Others (V4, as the
@@ -29,31 +25,32 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
  * Edit open the incentive's own page (incentive-form.ts); the two PDF documents can also be attached in the list. V4
  * layout: a pill tab per group, the counts (all, active, inactive, on the main dashboard), search with a level and a
  * status filter, and each incentive as a card with its highlight, department, levels, where it appears and documents.
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.incentives.*) or the standard one here.
  */
 @Component({
   selector: 'zed-staff-incentive-master',
-  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">{{ group().title }}</h3>
-        <p class="page-sub">{{ group().subtitle }}</p>
+        <h3 class="registration-title">{{ text().title }}</h3>
+        <p class="page-sub">{{ text().subtitle }}</p>
       </div>
       <div class="page-actions">
         <!-- Every group in one sheet (Type column). -->
-        <zed-excel-tools api="/api/staff/schemes/incentive-master" title="Incentives" fileName="incentives" (applied)="load()" />
+        <zed-excel-tools api="/api/staff/schemes/incentive-master" [title]="'Incentives' | t: 'staff.incentives.excel.title'" fileName="incentives" (applied)="load()" />
         @if (group().key !== 'state' || state()) {
-          <a class="btn btn-primary" [routerLink]="['/staff/incentives', group().key, 'new']" [queryParams]="stateParams()">+ Create New Incentive</a>
+          <a class="btn btn-primary" [routerLink]="['/staff/incentives', group().key, 'new']" [queryParams]="stateParams()">{{ '+ Create New Incentive' | t: 'staff.incentives.createButton' }}</a>
         }
       </div>
     </div>
 
-    <nav class="inc-groups" aria-label="Incentive groups">
+    <nav class="inc-groups" [attr.aria-label]="'Incentive groups' | t: 'staff.incentives.groupsAria'">
       @for (g of groups; track g.key) {
         <a class="inc-group-tab" [class.active]="g.key === group().key" [attr.aria-current]="g.key === group().key ? 'page' : null"
-           [routerLink]="['/staff/incentives', g.key]">{{ g.label }}</a>
+           [routerLink]="['/staff/incentives', g.key]">{{ groupLabel(g.key) }}</a>
       }
-      <a class="inc-group-tab inc-group-cards" routerLink="/staff/incentives/dashboard-cards">Main Dashboard Cards</a>
+      <a class="inc-group-tab inc-group-cards" routerLink="/staff/incentives/dashboard-cards">{{ 'Main Dashboard Cards' | t: 'staff.incentives.tab.dashboardCards' }}</a>
     </nav>
 
     @if (error()) {
@@ -65,9 +62,9 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
 
     @if (group().key === 'state') {
       <div class="zed-card state-pick">
-        <label class="form-label m-0" for="inc-state">State / UT</label>
+        <label class="form-label m-0" for="inc-state">{{ 'State / UT' | t: 'staff.incentives.state.label' }}</label>
         <select class="form-select" id="inc-state" [ngModel]="state() ?? ''" (ngModelChange)="pickState($event)">
-          <option value="">Select state</option>
+          <option value="">{{ 'Select state' | t: 'staff.incentives.state.selectOption' }}</option>
           @for (s of states; track s.id) { <option [value]="s.name">{{ s.name }}</option> }
         </select>
       </div>
@@ -82,23 +79,23 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
 
       <section class="zed-card inc-list" [attr.aria-label]="listTitle()">
         <div class="inc-list-head">
-          <h5 class="m-0">{{ listTitle() }} <span class="zed-chip">{{ items().length }} incentive{{ items().length === 1 ? '' : 's' }}</span></h5>
-          <input type="search" id="inc-search" class="form-control" maxlength="50" placeholder="Search name, department, contact or link"
-                 aria-label="Search incentives" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+          <h5 class="m-0">{{ listTitle() }} <span class="zed-chip">{{ items().length === 1 ? ('{count} incentive' | t: 'staff.incentives.count.incentive' : { count: items().length }) : ('{count} incentives' | t: 'staff.incentives.count.incentives' : { count: items().length }) }}</span></h5>
+          <input type="search" id="inc-search" class="form-control" maxlength="50" [placeholder]="'Search name, department, contact or link' | t: 'staff.incentives.search.placeholder'"
+                 [attr.aria-label]="'Search incentives' | t: 'staff.incentives.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
         </div>
         <div class="inc-list-tools">
-          <div class="seg" role="group" aria-label="Level">
+          <div class="seg" role="group" [attr.aria-label]="'Level' | t: 'staff.incentives.levelFilter.aria'">
             @for (l of levelFilters; track l.value) {
               <button type="button" [attr.data-level]="l.value" [class.active]="level() === l.value" [attr.aria-pressed]="level() === l.value"
                       (click)="level.set(l.value)">
-                @if (l.value !== 'all') { <i class="lv-dot" [class]="'lv-' + l.value"></i> }{{ l.label }} <span class="seg-count">{{ levelCount(l.value) }}</span>
+                @if (l.value !== 'all') { <i class="lv-dot" [class]="'lv-' + l.value"></i> }{{ l.value === 'all' ? ('All levels' | t: 'staff.incentives.levelFilter.all') : l.label }} <span class="seg-count">{{ levelCount(l.value) }}</span>
               </button>
             }
           </div>
-          <div class="seg" role="group" aria-label="Status">
+          <div class="seg" role="group" [attr.aria-label]="'Status' | t: 'staff.incentives.statusFilter.aria'">
             @for (f of filters; track f.value) {
               <button type="button" [attr.data-status]="f.value" [class.active]="status() === f.value" [attr.aria-pressed]="status() === f.value"
-                      (click)="status.set(f.value)">{{ f.label }} <span class="seg-count">{{ statusCount(f.value) }}</span></button>
+                      (click)="status.set(f.value)">{{ statusLabel(f.value) }} <span class="seg-count">{{ statusCount(f.value) }}</span></button>
             }
           </div>
         </div>
@@ -111,11 +108,11 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
                 <div class="inc-card-name">
                   <h6 class="inc-name">{{ item.incentive['Incentive'] }}</h6>
                   @if (item.incentive['MinistryOrDepartment']) {
-                    <small class="muted d-block">{{ group().department }}: {{ item.incentive['MinistryOrDepartment'] }}</small>
+                    <small class="muted d-block">{{ '{department}: {name}' | t: 'staff.incentives.card.department' : { department: text().department, name: item.incentive['MinistryOrDepartment'] } }}</small>
                   }
                 </div>
                 <span class="status-badge" [class.is-active]="!!item.incentive['ActiveStatus']" [class.is-inactive]="!item.incentive['ActiveStatus']">
-                  {{ item.incentive['ActiveStatus'] ? 'Active' : 'Inactive' }}
+                  {{ statusLabel(item.incentive['ActiveStatus'] ? 'active' : 'inactive') }}
                 </span>
               </div>
 
@@ -126,32 +123,32 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
                 <div class="inc-details">
                   <div [class.clamp-3]="!expanded().has(id(item))" [title]="d">{{ d }}</div>
                   @if (d.length > 160) {
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id(item))">{{ expanded().has(id(item)) ? 'less' : 'more' }}</button>
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id(item))">{{ expanded().has(id(item)) ? ('less' | t: 'staff.incentives.card.lessButton') : ('more' | t: 'staff.incentives.card.moreButton') }}</button>
                   }
                 </div>
               }
 
               <div class="inc-tags">
                 @for (l of levelsOf(item); track l) { <span class="lv-chip" [class]="'lv-' + l.toLowerCase().replace('-', '')">{{ l }}</span> }
-                @if (!levelsOf(item).length) { <span class="muted">No level</span> }
-                @if (activityOf(item) !== 'Both') { <span class="act-chip" data-activity>{{ activityOf(item) }} only</span> }
+                @if (!levelsOf(item).length) { <span class="muted">{{ 'No level' | t: 'staff.incentives.card.noLevelNote' }}</span> }
+                @if (activityOf(item) !== 'Both') { <span class="act-chip" data-activity>{{ activityOnly(activityOf(item)) }}</span> }
                 <span class="inc-where" [class.on-dashboard]="item.incentive['DisplayOn'] === 'Dashboard'">
-                  {{ item.incentive['DisplayOn'] === 'Dashboard' ? 'Main dashboard' : 'In the ' + groupCard() + ' card' }}
+                  {{ item.incentive['DisplayOn'] === 'Dashboard' ? ('Main dashboard' | t: 'staff.incentives.card.whereDashboard') : ('In the {card} card' | t: 'staff.incentives.card.whereCard' : { card: groupCard() }) }}
                 </span>
               </div>
 
               <dl class="inc-facts">
-                <div><dt>Contact</dt><dd>{{ item.incentive['ContactPerson'] || '—' }}
+                <div><dt>{{ 'Contact' | t: 'staff.incentives.card.contactLabel' }}</dt><dd>{{ item.incentive['ContactPerson'] || '—' }}
                   @if (item.incentive['MobileNo'] || item.incentive['Email']) {
                     <small class="muted d-block">{{ contactLine(item) }}</small>
                   }
                 </dd></div>
-                <div><dt>Links</dt><dd>
+                <div><dt>{{ 'Links' | t: 'staff.incentives.card.linksLabel' }}</dt><dd>
                   @if (httpLink(item.incentive['WebLink']); as link) {
-                    <a [href]="link" target="_blank" rel="noopener noreferrer">Web link</a>
+                    <a [href]="link" target="_blank" rel="noopener noreferrer">{{ 'Web link' | t: 'staff.incentives.card.webLink' }}</a>
                   } @else { {{ item.incentive['WebLink'] || '—' }} }
                   @if (httpLink(item.incentive['VideoLink']); as video) {
-                    · <a [href]="video" target="_blank" rel="noopener noreferrer">Video</a>
+                    · <a [href]="video" target="_blank" rel="noopener noreferrer">{{ 'Video' | t: 'staff.incentives.card.videoLink' }}</a>
                   }
                 </dd></div>
               </dl>
@@ -161,30 +158,30 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
                   @for (n of [1, 2]; track n) {
                     <div class="doc-slot">
                       @if (n === 1 ? item.hasDocument1 : item.hasDocument2) {
-                        <a class="doc-view" [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document ' + n"><img src="Images/svgicons/pdf-icon.svg" alt="" height="22" /> Doc {{ n }}</a>
+                        <a class="doc-view" [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document {n}' | t: 'staff.incentives.card.docAria' : { n }"><img src="Images/svgicons/pdf-icon.svg" alt="" height="22" /> {{ 'Doc {n}' | t: 'staff.incentives.card.docLabel' : { n } }}</a>
                       } @else {
-                        <span class="doc-none">Doc {{ n }}</span>
+                        <span class="doc-none">{{ 'Doc {n}' | t: 'staff.incentives.card.docLabel' : { n } }}</span>
                       }
                       <label class="doc-upload">
-                        {{ (n === 1 ? item.hasDocument1 : item.hasDocument2) ? 'Replace' : 'Upload' }}
+                        {{ (n === 1 ? item.hasDocument1 : item.hasDocument2) ? ('Replace' | t: 'staff.incentives.card.replaceButton') : ('Upload' | t: 'staff.incentives.card.uploadButton') }}
                         <input type="file" class="d-none" accept="application/pdf" (change)="uploadDoc(item, n === 1 ? 1 : 2, $event)" />
                       </label>
                     </div>
                   }
                 </div>
-                <a class="btn btn-outline-primary btn-sm inc-edit" [routerLink]="['/staff/incentives', group().key, id(item), 'edit']" [queryParams]="stateParams()">Edit</a>
+                <a class="btn btn-outline-primary btn-sm inc-edit" [routerLink]="['/staff/incentives', group().key, id(item), 'edit']" [queryParams]="stateParams()">{{ 'Edit' | t: 'staff.incentives.card.editButton' }}</a>
               </div>
             </article>
           } @empty {
             @if (!busy()) {
-              <div class="no-data">{{ items().length ? (search().trim() ? 'No incentive matches "' + search().trim() + '".' : 'No incentive matches this filter.') : 'Nothing here yet. Create the first incentive.' }}</div>
+              <div class="no-data">{{ items().length ? (search().trim() ? ('No incentive matches "{search}".' | t: 'staff.incentives.list.searchEmpty' : { search: search().trim() }) : ('No incentive matches this filter.' | t: 'staff.incentives.list.filterEmpty')) : ('Nothing here yet. Create the first incentive.' | t: 'staff.incentives.list.empty') }}</div>
             }
           }
         </div>
         @if (view.total()) { <zed-pager [pager]="view" /> }
       </section>
     } @else {
-      <div class="zed-card no-data">Choose a state to see its incentives.</div>
+      <div class="zed-card no-data">{{ 'Choose a state to see its incentives.' | t: 'staff.incentives.state.chooseNote' }}</div>
     }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
@@ -282,14 +279,15 @@ export class IncentiveMasterPage {
 
   protected readonly groups = INCENTIVE_GROUPS;
   protected readonly states = STATES;
-  protected readonly filters: { value: StatusFilter; label: string }[] = [
-    { value: 'all', label: 'All' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' },
-  ];
+  protected readonly filters: { value: StatusFilter }[] = [{ value: 'all' }, { value: 'active' }, { value: 'inactive' }];
+  /** The level names (as Certification Levels names them) stay as they are; "All levels" is shown through the t pipe. */
   protected readonly levelFilters: { value: LevelFilter; label: string }[] = [
     { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' }, { value: 'zedx', label: 'ZED-X' },
   ];
 
   protected readonly group = signal<IncentiveGroup>(INCENTIVE_GROUPS[0]);
+  /** The group's wording (the Admin's or the standard). */
+  protected readonly text = computed(() => groupText(this.group().key));
   /** State Government: the state chosen (?state=). */
   protected readonly state = signal<string | null>(null);
   protected readonly status = signal<StatusFilter>('all');
@@ -317,13 +315,14 @@ export class IncentiveMasterPage {
     const all = this.items();
     const active = all.filter((i) => !!i.incentive['ActiveStatus']).length;
     return [
-      { label: 'Incentives', value: all.length, tone: 'teal' },
-      { label: 'Active', value: active, tone: 'green' },
-      { label: 'Inactive', value: all.length - active, tone: 'grey' },
-      { label: 'On the main dashboard', value: all.filter((i) => i.incentive['DisplayOn'] === 'Dashboard').length, tone: 'violet' },
+      { label: t('staff.incentives.tile.allLabel', 'Incentives'), value: all.length, tone: 'teal' },
+      { label: t('staff.incentives.tile.activeLabel', 'Active'), value: active, tone: 'green' },
+      { label: t('staff.incentives.tile.inactiveLabel', 'Inactive'), value: all.length - active, tone: 'grey' },
+      { label: t('staff.incentives.tile.dashboardLabel', 'On the main dashboard'), value: all.filter((i) => i.incentive['DisplayOn'] === 'Dashboard').length, tone: 'violet' },
     ];
   });
-  protected readonly listTitle = computed(() => `${this.group().key === 'state' ? this.titleCase(this.state() ?? '') : this.group().label} Incentive Schemes`);
+  protected readonly listTitle = computed(() =>
+    t('staff.incentives.list.title', '{name} Incentive Schemes', { name: this.group().key === 'state' ? this.titleCase(this.state() ?? '') : this.text().label }));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -396,7 +395,20 @@ export class IncentiveMasterPage {
   }
 
   protected groupCard(): string {
-    return GROUP_CARD[this.group().key];
+    return this.text().card;
+  }
+
+  protected groupLabel(key: IncentiveGroupKey): string {
+    return groupText(key).label;
+  }
+
+  protected statusLabel(f: StatusFilter): string {
+    return f === 'active' ? t('staff.incentives.status.active', 'Active') : f === 'inactive' ? t('staff.incentives.status.inactive', 'Inactive') : t('staff.incentives.status.all', 'All');
+  }
+
+  /** "Manufacturing only" / "Services only" (an incentive for one activity). */
+  protected activityOnly(a: IncentiveActivity): string {
+    return a === 'Manufacturing' ? t('staff.incentives.card.manufacturingOnly', 'Manufacturing only') : t('staff.incentives.card.servicesOnly', 'Services only');
   }
 
   protected contactLine(item: CatalogueItem): string {
@@ -425,7 +437,7 @@ export class IncentiveMasterPage {
     const type = this.type();
     if (!file || !type) return;
     if (file.size > MAX_INCENTIVE_DOC_BYTES || !/\.pdf$/i.test(file.name)) {
-      this.error.set('Please upload a valid PDF document (less than 2 MB).');
+      this.error.set(t('staff.incentives.upload.pdfError', 'Please upload a valid PDF document (less than 2 MB).'));
       return;
     }
     this.busy.set(true);

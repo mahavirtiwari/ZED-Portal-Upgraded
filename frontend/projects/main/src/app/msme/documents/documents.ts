@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { CertifiedLevel, DocumentsApi, Guideline, Invoice, MyDocuments } from './documents.api';
 import { allLevels, levelLogo, levelMode, levelName } from '../shared/levels';
 import { PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
 import { reportRoute } from '../../report/report.api';
 
 /** The colour of a card's top edge: the level's, teal for the pledge. */
@@ -61,7 +62,7 @@ const isZedIdLevel = (code: string): boolean => /^zed[\s_-]*id$/i.test(code.trim
  */
 @Component({
   selector: 'zed-msme-documents',
-  imports: [RouterLink, PageHead],
+  imports: [RouterLink, PageHead, TextPipe],
   templateUrl: './documents.html',
   styleUrl: './documents.scss',
 })
@@ -74,6 +75,7 @@ export class DocumentsPage {
   protected readonly query = signal('');
   protected readonly filter = signal<Filter>('all');
   protected readonly levelLogo = levelLogo;
+  protected readonly crumbs = computed(() => [{ label: t('msme.documents.crumb.home', 'Home'), link: '/msme/dashboard' }, { label: t('msme.documents.crumb.documents', 'My Documents') }]);
 
   /** Only the guidelines that can be opened: a document whose file is not on the server (no path, no video) is left out. */
   protected readonly guidelines = computed(() => (this.docs()?.Guidelines ?? []).filter((g) => !!g.VideoUrl || !!g.DocumentPath));
@@ -87,8 +89,8 @@ export class DocumentsPage {
     const pledgeOn = shortDate(unit?.PledgeOn);
     // V4: the pledge certificate is drawn when asked for, so it is always there (its page has DOWNLOAD PDF).
     const items: CertificateItem[] = [{
-      label: 'Pledge Certificate', url: '/msme/pledge-certificate', detail: 'Certificate of the ZED Pledge',
-      meta: pledgeOn ? `Issued ${pledgeOn}` : '', tone: 'pledge',
+      label: t('msme.documents.pledge.title', 'Pledge Certificate'), url: '/msme/pledge-certificate', detail: t('msme.documents.pledge.note', 'Certificate of the ZED Pledge'),
+      meta: pledgeOn ? t('msme.documents.pledge.issuedNote', 'Issued {date}', { date: pledgeOn }) : '', tone: 'pledge',
     }];
     if (!c) return items;
     const today = todayIso();
@@ -98,12 +100,13 @@ export class DocumentsPage {
       const dates: CertifiedLevel | undefined = (d?.Certified ?? []).find((x) => x.Level?.toLowerCase() === code.toLowerCase());
       const validTill = shortDate(dates?.ValidTill);
       const certified = shortDate(dates?.CertifiedOn);
-      const meta = isZedIdLevel(code) && unit?.ZedId ? unit.ZedId : validTill ? `Valid till ${validTill}` : '';
-      items.push({ label: `${label} Certificate`, url, detail: 'ZED certification certificate', meta, valid: !!validTill && dates!.ValidTill >= today, tone });
+      const meta = isZedIdLevel(code) && unit?.ZedId ? unit.ZedId : validTill ? t('msme.documents.card.validTillNote', 'Valid till {date}', { date: validTill }) : '';
+      items.push({ label: t('msme.documents.card.certificateTitle', '{level} Certificate', { level: label }), url,
+        detail: t('msme.documents.card.certificateNote', 'ZED certification certificate'), meta, valid: !!validTill && dates!.ValidTill >= today, tone });
       items.push({
-        label: `${label} Assessment Report`, url: reportRoute({ kind: 'assessment', level: code }), report: true,
-        detail: levelMode(code) === 'Desktop' ? 'Desktop verification report' : 'Assessment report',
-        meta: certified ? `Generated ${certified}` : '', tone,
+        label: t('msme.documents.card.reportTitle', '{level} Assessment Report', { level: label }), url: reportRoute({ kind: 'assessment', level: code }), report: true,
+        detail: levelMode(code) === 'Desktop' ? t('msme.documents.card.desktopReportNote', 'Desktop verification report') : t('msme.documents.card.reportNote', 'Assessment report'),
+        meta: certified ? t('msme.documents.card.generatedNote', 'Generated {date}', { date: certified }) : '', tone,
       });
     };
     if (c.Gold) add('Gold', c.Gold);
@@ -130,7 +133,7 @@ export class DocumentsPage {
   private readonly q = computed(() => this.query().trim().toLowerCase());
   private matches(...texts: (string | null | undefined)[]): boolean {
     const q = this.q();
-    return !q || texts.some((t) => (t ?? '').toLowerCase().includes(q));
+    return !q || texts.some((x) => (x ?? '').toLowerCase().includes(q));
   }
   private shows(f: Filter): boolean {
     return this.filter() === 'all' || this.filter() === f;
@@ -146,11 +149,11 @@ export class DocumentsPage {
   protected readonly chips = computed(() => {
     const n = this.counts();
     const list: { id: Filter; label: string; count: number }[] = [
-      { id: 'all', label: 'All', count: n.all },
-      { id: 'cert', label: 'Certificates', count: n.cert },
-      { id: 'report', label: 'Reports', count: n.report },
-      { id: 'guide', label: 'Guidelines', count: n.guide },
-      { id: 'inv', label: 'Invoices', count: n.inv },
+      { id: 'all', label: t('msme.documents.chip.all', 'All'), count: n.all },
+      { id: 'cert', label: t('msme.documents.chip.certificates', 'Certificates'), count: n.cert },
+      { id: 'report', label: t('msme.documents.chip.reports', 'Reports'), count: n.report },
+      { id: 'guide', label: t('msme.documents.chip.guidelines', 'Guidelines'), count: n.guide },
+      { id: 'inv', label: t('msme.documents.chip.invoices', 'Invoices'), count: n.inv },
     ];
     return list.filter((c) => c.id === 'all' || c.count > 0);
   });
@@ -171,20 +174,22 @@ export class DocumentsPage {
 
   protected invoiceLabel(inv: Invoice): string {
     const parts = [`${inv.ModuleName ?? ''} - ${inv.Certification ?? ''}`];
-    if (inv.ModuleName === 'HANDHOLDING' && inv.MileStoneNo) parts.push(`milestone ${inv.MileStoneNo}`);
+    if (inv.ModuleName === 'HANDHOLDING' && inv.MileStoneNo) parts.push(t('msme.documents.invoice.milestoneLabel', 'milestone {number}', { number: inv.MileStoneNo }));
     if ((inv.ModuleName === 'ZED' || inv.ModuleName === 'SURVEILLANCE') && inv.SubModuleName) parts.push(inv.SubModuleName);
     if (inv.DocumentType) parts.push(inv.DocumentType);
     return parts.join(' ');
   }
 
   protected invoiceDetail(inv: Invoice): string {
-    return inv.TadaInvoiceNo ? `${inv.DocumentType || 'Document'} no. ${inv.TadaInvoiceNo}` : '';
+    return inv.TadaInvoiceNo
+      ? t('msme.documents.invoice.numberNote', '{type} no. {number}', { type: inv.DocumentType || t('msme.documents.invoice.documentLabel', 'Document'), number: inv.TadaInvoiceNo })
+      : '';
   }
 
   /** A guideline file's type badge: its extension (PDF, DOCX, ...), else FILE. */
   protected fileType(url: string | null | undefined): string {
     const m = /\.([a-z0-9]{2,5})(?:[?#].*)?$/i.exec(url ?? '');
-    return m ? m[1].toUpperCase() : 'FILE';
+    return m ? m[1].toUpperCase() : t('msme.documents.fileTag', 'FILE');
   }
 
   /** PDFs open in a new tab; other guideline files (docx, xlsx, ...) just download. */

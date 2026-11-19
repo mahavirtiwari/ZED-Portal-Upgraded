@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { withApiBase } from '../../api-base';
+import { TextPipe } from '../../content/page-text';
 
 export interface AppFormValue {
   key: string;
@@ -38,16 +39,16 @@ export interface AppFormValues {
  */
 @Component({
   selector: 'zed-app-form-values',
-  imports: [DatePipe],
+  imports: [DatePipe, TextPipe],
   template: `
     @for (f of forms(); track f.form) {
       <div class="card mb-3 app-form-values">
-        <div class="card-header"><strong>Additional information</strong> <small class="text-muted">· {{ f.app }}</small></div>
+        <div class="card-header"><strong>{{ 'Additional information' | t: 'staff.appFormValues.heading' }}</strong> <small class="text-muted">· {{ f.app }}</small></div>
         <table class="table table-bordered table-zed mb-0">
           <tbody>
             @for (v of f.values; track v.key) {
               <tr>
-                <th scope="row" style="width: 40%">{{ v.label }} @if (!v.enabled) { <small class="text-muted">(field disabled since)</small> }</th>
+                <th scope="row" style="width: 40%">{{ v.label }} @if (!v.enabled) { <small class="text-muted">{{ '(field disabled since)' | t: 'staff.appFormValues.disabledNote' }}</small> }</th>
                 <td>
                   @if (v.entries?.length) {
                     <div class="table-responsive">
@@ -61,7 +62,7 @@ export interface AppFormValues {
                                 <td>
                                   @if (c.type === 'photo') {
                                     @for (u of c.photoUrls; track u) {
-                                      <a [href]="api(u)" target="_blank" rel="noopener"><img class="afv-photo" [src]="api(u)" [alt]="c.label + ' ' + (i + 1)" /></a>
+                                      <a [href]="api(u)" target="_blank" rel="noopener"><img class="afv-photo" [src]="api(u)" [alt]="'{field} {number}' | t: 'staff.appFormValues.photoAlt' : { field: c.label, number: i + 1 }" /></a>
                                     } @empty { <span class="text-muted">—</span> }
                                   } @else { {{ c.text || '—' }} }
                                 </td>

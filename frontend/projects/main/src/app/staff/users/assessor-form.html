@@ -1,8 +1,9 @@
-<!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-05: only Back in the title row; the identity card
+<!-- 2026-11-19 (the user: "All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.assessorForm.*).
+     2026-11-18 (the user: staff pages 'not aligned with SVG files'): as staff-05: only Back in the title row; the identity card
      holds the status, type, sector and "View only" pills and the Block / Reset link / History buttons; a compact contact card
      when the page cannot edit. 2026-11-18 (the user): PAN, e-mail and mobile in full everywhere (never masked). -->
 <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  <a [routerLink]="backLink" class="btn btn-default" data-back><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.back" /></svg>Back</a>
+  <a [routerLink]="backLink" class="btn btn-default" data-back><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.back" /></svg>{{ 'Back' | t: 'staff.assessorForm.backButton' }}</a>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
@@ -13,27 +14,27 @@
     <span class="af-avatar" aria-hidden="true">{{ initials(model.userName) }}</span>
     <div class="af-who">
       <span class="af-name">{{ model.userName }}</span>
-      <span class="af-id">{{ userId }}@if (model.certificateNo) { · Certificate no. {{ model.certificateNo }} }@if (panNo()) { · PAN {{ panNo() }} }</span>
+      <span class="af-id">{{ userId }}@if (model.certificateNo) { · {{ 'Certificate no. {number}' | t: 'staff.assessorForm.profile.certificate' : { number: model.certificateNo } }} }@if (panNo()) { · {{ 'PAN {pan}' | t: 'staff.assessorForm.profile.pan' : { pan: panNo() } }} }</span>
       <div class="af-tags">
         @if (isActive() !== null) {
-          <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">@if (isActive()) {<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.check" /></svg>}{{ isActive() ? 'Active' : 'Blocked' }}</span>
+          <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">@if (isActive()) {<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.check" /></svg>}{{ isActive() ? ('Active' | t: 'staff.assessorForm.profile.active') : ('Blocked' | t: 'staff.assessorForm.profile.blocked') }}</span>
         }
         @if (model.assessorType) { <span class="status-badge is-info">{{ typeLabel(model.assessorType) }}</span> }
         @if (!consultancy && model.sectorActivity) { <span class="status-badge is-inactive">{{ model.sectorActivity }}</span> }
         @if (!canEdit() && !loading()) {
-          <span class="status-badge is-pending af-view-only"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>View only</span>
+          <span class="status-badge is-pending af-view-only"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>{{ 'View only' | t: 'staff.assessorForm.profile.viewOnly' }}</span>
         }
       </div>
     </div>
     @if (actions) {
       <div class="af-acts">
         @if (isActive()) {
-          <button type="button" class="btn af-btn-danger" data-act="block" (click)="ask('block')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>Block</button>
+          <button type="button" class="btn af-btn-danger" data-act="block" (click)="ask('block')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.lock" /></svg>{{ 'Block' | t: 'staff.assessorForm.profile.blockButton' }}</button>
         } @else {
-          <button type="button" class="btn btn-outline-primary" data-act="unblock" (click)="askUnblock()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.unlock" /></svg>Unblock</button>
+          <button type="button" class="btn btn-outline-primary" data-act="unblock" (click)="askUnblock()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.unlock" /></svg>{{ 'Unblock' | t: 'staff.assessorForm.profile.unblockButton' }}</button>
         }
-        <button type="button" class="btn btn-outline-primary" data-act="reset" (click)="ask('reset')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.mail" /></svg>Reset link</button>
-        <button type="button" class="btn btn-default" data-act="history" (click)="openHistory()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.clock" /></svg>History</button>
+        <button type="button" class="btn btn-outline-primary" data-act="reset" (click)="ask('reset')"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.mail" /></svg>{{ 'Reset link' | t: 'staff.assessorForm.profile.resetButton' }}</button>
+        <button type="button" class="btn btn-default" data-act="history" (click)="openHistory()"><svg class="af-ic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.clock" /></svg>{{ 'History' | t: 'staff.assessorForm.profile.historyButton' }}</button>
       </div>
     }
   </div>
@@ -45,79 +46,80 @@
   <fieldset [disabled]="!canEdit()">
     @if (!isNew && levels().length) {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.shield" /></svg></span>Assessments this {{ noun.toLowerCase() }} can do</h4>
+        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.shield" /></svg></span>{{ 'Assessments this {noun} can do' | t: 'staff.assessorForm.scope.title' : { noun: noun.toLowerCase() } }}</h4>
         <ng-container *ngTemplateOutlet="scopeGrid" />
       </section>
     }
     @if (isNew) {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? noun + ' type' : 'Assessments' }} and certificate</h4>
+        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? ('{noun} type and certificate' | t: 'staff.assessorForm.type.consultancyTitle' : { noun: noun }) : ('Assessments and certificate' | t: 'staff.assessorForm.type.title') }}</h4>
         @if (consultancy || !levels().length) {
           <div class="form-grid">
-            <span class="af-label top" id="assessorType-label">{{ consultancy ? 'Consultant/Expert' : 'Assessor Type' }}<span class="req">*</span></span>
+            <span class="af-label top" id="assessorType-label">{{ consultancy ? ('Consultant/Expert' | t: 'staff.assessorForm.type.consultancyLabel') : ('Assessor Type' | t: 'staff.assessorForm.type.label') }}<span class="req">*</span></span>
             <div>
               <div class="af-chips" role="radiogroup" aria-labelledby="assessorType-label">
-                @for (t of typeChoices; track t.value) {
-                  <label class="af-chip" [class.active]="model.assessorType === t.value"><input type="radio" name="assessorType" [value]="t.value"
-                         [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()" /> {{ t.label }}</label>
+                @for (tc of typeChoices; track tc.value) {
+                  <label class="af-chip" [class.active]="model.assessorType === tc.value"><input type="radio" name="assessorType" [value]="tc.value"
+                         [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()" /> {{ tc.label }}</label>
                 }
               </div>
-              @if (submitted() && !model.assessorType) { <span class="help-block">Assessor Type required.</span> }
+              @if (submitted() && !model.assessorType) { <span class="help-block">{{ 'Assessor Type required.' | t: 'staff.assessorForm.type.requiredError' }}</span> }
             </div>
           </div>
         } @else {
           <!-- 2026-11-14 (approved): one kind of assessor; the levels and modes it may do decide the allotments. -->
           <ng-container *ngTemplateOutlet="scopeGrid" />
-          @if (submitted() && !model.assessorType) { <span class="help-block">Please tick at least one level and mode.</span> }
+          @if (submitted() && !model.assessorType) { <span class="help-block">{{ 'Please tick at least one level and mode.' | t: 'staff.assessorForm.scope.requiredError' }}</span> }
         }
         @if (model.assessorType && verifyOff) {
           <!-- Verification off (Admin -> Settings -> Professional Verification): the details are typed, no Search. -->
-          <div class="alert alert-warning mt-3 mb-3" role="note">Verification is off: enter the {{ consultancy ? 'consultant/expert' : 'assessor' }}'s details as on the certificate.</div>
+          <div class="alert alert-warning mt-3 mb-3" role="note">{{ consultancy ? ("Verification is off: enter the consultant/expert's details as on the certificate." | t: 'staff.assessorForm.verifyOff.consultancyNote') : ("Verification is off: enter the assessor's details as on the certificate." | t: 'staff.assessorForm.verifyOff.note') }}</div>
           <div class="form-grid">
-            <label for="certificateNo">Certificate Number<span class="req">*</span></label>
+            <label for="certificateNo">{{ 'Certificate Number' | t: 'staff.assessorForm.certificateLabel' }}<span class="req">*</span></label>
             <div>
               <input id="certificateNo" name="certificateNo" class="form-control af-mid" maxlength="20" autocomplete="off" [(ngModel)]="model.certificateNo" />
-              @if (missing(model.certificateNo)) { <span class="help-block">This is required.</span> }
+              @if (missing(model.certificateNo)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
-            <label for="pan">PAN Number<span class="req">*</span></label>
+            <label for="pan">{{ 'PAN Number' | t: 'staff.assessorForm.panLabel' }}<span class="req">*</span></label>
             <div>
-              <input id="pan" name="pan" class="form-control af-mid" maxlength="10" autocomplete="off" placeholder="ABCDE1234F"
+              <input id="pan" name="pan" class="form-control af-mid" maxlength="10" autocomplete="off" [placeholder]="'ABCDE1234F' | t: 'staff.assessorForm.panPlaceholder'"
                      [ngModel]="model.pan" (ngModelChange)="panChanged($event)" />
-              @if (missing(model.pan)) { <span class="help-block">This is required.</span> }
-              @else if (submitted() && !panValid) { <span class="help-block">Enter a valid PAN (e.g. ABCDE1234F).</span> }
+              @if (missing(model.pan)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
+              @else if (submitted() && !panValid) { <span class="help-block">{{ 'Enter a valid PAN (e.g. ABCDE1234F).' | t: 'staff.assessorForm.panError' }}</span> }
             </div>
           </div>
         }
         @if (model.assessorType && searches) {
           <div class="lookup">
-            <p class="af-hint">{{ byApi ? 'Enter the certificate number and the PAN, then Search.' : 'Enter the certificate number and the e-mail registered with it, then Search.' }}</p>
+            <p class="af-hint">{{ byApi ? ('Enter the certificate number and the PAN, then Search.' | t: 'staff.assessorForm.lookup.panHint') : ('Enter the certificate number and the e-mail registered with it, then Search.' | t: 'staff.assessorForm.lookup.emailHint') }}</p>
             <div class="filter-bar">
               <div class="filter">
-                <label class="form-label" for="certificateNo">Certificate Number@if (byApi) {<span class="req">*</span>}</label>
+                <label class="form-label" for="certificateNo">{{ 'Certificate Number' | t: 'staff.assessorForm.certificateLabel' }}@if (byApi) {<span class="req">*</span>}</label>
                 <input id="certificateNo" name="certificateNo" class="form-control" maxlength="20" [(ngModel)]="model.certificateNo" />
               </div>
               @if (byApi) {
                 <div class="filter">
-                  <label class="form-label" for="pan">PAN Number<span class="req">*</span></label>
-                  <input id="pan" name="pan" class="form-control" maxlength="10" autocomplete="off" placeholder="ABCDE1234F"
+                  <label class="form-label" for="pan">{{ 'PAN Number' | t: 'staff.assessorForm.panLabel' }}<span class="req">*</span></label>
+                  <input id="pan" name="pan" class="form-control" maxlength="10" autocomplete="off" [placeholder]="'ABCDE1234F' | t: 'staff.assessorForm.panPlaceholder'"
                          [ngModel]="model.pan" (ngModelChange)="panChanged($event)" />
                 </div>
               } @else {
                 <div class="filter wide">
-                  <label class="form-label" for="professionalEmail">Registered Email Id</label>
+                  <label class="form-label" for="professionalEmail">{{ 'Registered Email Id' | t: 'staff.assessorForm.lookup.emailLabel' }}</label>
                   <input id="professionalEmail" name="professionalEmail" type="email" class="form-control" maxlength="100" [(ngModel)]="model.professionalEmail" />
                 </div>
               }
-              <button type="button" class="btn btn-primary" [disabled]="searching()" (click)="searchProfessional()">Search</button>
+              <button type="button" class="btn btn-primary" [disabled]="searching()" (click)="searchProfessional()">{{ 'Search' | t: 'staff.assessorForm.lookup.searchButton' }}</button>
             </div>
             @if (lookupDone) {
               <div class="af-found" role="status">
                 @if (professional()?.data?.selfieUrl; as selfie) {
-                  <img [src]="selfie" id="selfieimg" alt="Selfie of the professional" />
+                  <img [src]="selfie" id="selfieimg" [alt]="'Selfie of the professional' | t: 'staff.assessorForm.lookup.selfieAlt'" />
                 } @else {
                   <span class="af-avatar" aria-hidden="true">{{ initials(model.userName) }}</span>
                 }
-                <span><strong>{{ model.userName }}</strong> found. The name, e-mail and mobile below come from {{ byApi ? 'the other portal' : 'the certificate record' }}.</span>
+                <span>{{ byApi ? ('{name} found. The name, e-mail and mobile below come from the other portal.' | t: 'staff.assessorForm.lookup.foundApi' : { name: model.userName })
+                  : ('{name} found. The name, e-mail and mobile below come from the certificate record.' | t: 'staff.assessorForm.lookup.found' : { name: model.userName }) }}</span>
               </div>
             }
           </div>
@@ -127,97 +129,97 @@
 
     @if (viewOnly) {
       <section class="zed-card af-section af-view" data-view="contact">
-        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>Contact details</h4>
+        <h4 class="af-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.person" /></svg></span>{{ 'Contact details' | t: 'staff.assessorForm.contact.title' }}</h4>
         <dl class="af-facts">
-          <div><dt>{{ noun }} name</dt><dd>{{ model.userName || '—' }}</dd></div>
-          <div><dt>E-mail ID</dt><dd data-view="email" class="af-one-line" [attr.title]="model.emailId || null">{{ model.emailId || 'Not saved' }}</dd></div>
-          <div><dt>Mobile number</dt><dd data-view="mobile">{{ model.mobileNo || 'Not saved' }}</dd></div>
-          <div><dt>Address</dt><dd>{{ model.address || '—' }}</dd></div>
-          <div><dt>PIN code</dt><dd>{{ model.pinCode || '—' }}</dd></div>
-          <div><dt>ID proof</dt><dd data-view="id-proof">{{ idProofLine }}</dd></div>
+          <div><dt>{{ '{noun} name' | t: 'staff.assessorForm.contact.nameLabel' : { noun: noun } }}</dt><dd>{{ model.userName || '—' }}</dd></div>
+          <div><dt>{{ 'E-mail ID' | t: 'staff.assessorForm.view.emailLabel' }}</dt><dd data-view="email" class="af-one-line" [attr.title]="model.emailId || null">{{ model.emailId || ('Not saved' | t: 'staff.assessorForm.view.notSaved') }}</dd></div>
+          <div><dt>{{ 'Mobile number' | t: 'staff.assessorForm.view.mobileLabel' }}</dt><dd data-view="mobile">{{ model.mobileNo || ('Not saved' | t: 'staff.assessorForm.view.notSaved') }}</dd></div>
+          <div><dt>{{ 'Address' | t: 'staff.assessorForm.view.addressLabel' }}</dt><dd>{{ model.address || '—' }}</dd></div>
+          <div><dt>{{ 'PIN code' | t: 'staff.assessorForm.pinLabel' }}</dt><dd>{{ model.pinCode || '—' }}</dd></div>
+          <div><dt>{{ 'ID proof' | t: 'staff.assessorForm.view.idProofLabel' }}</dt><dd data-view="id-proof">{{ idProofLine }}</dd></div>
           @if (!isActive() && model.reasonForRejection) {
-            <div class="af-wide"><dt>Reason for block</dt><dd data-view="block-reason">{{ model.reasonForRejection }}</dd></div>
+            <div class="af-wide"><dt>{{ 'Reason for block' | t: 'staff.assessorForm.blockSection.reasonLabel' }}</dt><dd data-view="block-reason">{{ model.reasonForRejection }}</dd></div>
           }
         </dl>
       </section>
     } @else {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">{{ first + 1 }}</span>Contact details</h4>
+        <h4 class="af-head"><span class="af-no">{{ first + 1 }}</span>{{ 'Contact details' | t: 'staff.assessorForm.contact.title' }}</h4>
         <div class="form-grid">
-          <label for="userName">{{ noun }} name@if (typesIdentity) {<span class="req">*</span>}</label>
+          <label for="userName">{{ '{noun} name' | t: 'staff.assessorForm.contact.nameLabel' : { noun: noun } }}@if (typesIdentity) {<span class="req">*</span>}</label>
           @if (typesIdentity) {
             <div>
               <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" />
-              @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
+              @if (missing(model.userName)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
           } @else {
             <input id="userName" name="userName" class="form-control readonly" readonly [ngModel]="model.userName" />
           }
-          <label for="emailId">{{ noun }} e-mail ID@if (typesIdentity) {<span class="req">*</span>}</label>
+          <label for="emailId">{{ '{noun} e-mail ID' | t: 'staff.assessorForm.contact.emailLabel' : { noun: noun } }}@if (typesIdentity) {<span class="req">*</span>}</label>
           @if (typesIdentity) {
             <div>
               <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" />
-              @if (missing(model.emailId)) { <span class="help-block">This is required.</span> }
+              @if (missing(model.emailId)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
           } @else {
             <input id="emailId" name="emailId" class="form-control readonly" readonly [ngModel]="model.emailId" />
           }
-          <label for="mobileNo">{{ noun }} mobile number@if (typesIdentity || editsMobile) {<span class="req">*</span>}</label>
+          <label for="mobileNo">{{ '{noun} mobile number' | t: 'staff.assessorForm.contact.mobileLabel' : { noun: noun } }}@if (typesIdentity || editsMobile) {<span class="req">*</span>}</label>
           @if (typesIdentity || editsMobile) {
             <div>
               <input id="mobileNo" name="mobileNo" class="form-control af-mid" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" />
-              @if (missing(model.mobileNo)) { <span class="help-block">This is required.</span> }
+              @if (missing(model.mobileNo)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
           } @else {
             <input id="mobileNo" name="mobileNo" class="form-control readonly" readonly [ngModel]="model.mobileNo" />
           }
-          <label class="top" for="address">{{ noun }} address<span class="req">*</span></label>
+          <label class="top" for="address">{{ '{noun} address' | t: 'staff.assessorForm.contact.addressLabel' : { noun: noun } }}<span class="req">*</span></label>
           <div>
             <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address"></textarea>
-            @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+            @if (missing(model.address)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
           </div>
-          <label for="pinCode">PIN code<span class="req">*</span></label>
+          <label for="pinCode">{{ 'PIN code' | t: 'staff.assessorForm.pinLabel' }}<span class="req">*</span></label>
           <div>
             <input id="pinCode" name="pinCode" class="form-control af-short" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" />
-            @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
+            @if (missing(model.pinCode)) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
           </div>
         </div>
       </section>
 
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">{{ first + 2 }}</span>ID proof</h4>
+        <h4 class="af-head"><span class="af-no">{{ first + 2 }}</span>{{ 'ID proof' | t: 'staff.assessorForm.idProof.title' }}</h4>
         <div class="form-grid">
-          <span class="af-label" id="idProofType-label">ID Proof<span class="req">*</span></span>
+          <span class="af-label" id="idProofType-label">{{ 'ID Proof' | t: 'staff.assessorForm.idProof.typeLabel' }}<span class="req">*</span></span>
           <div>
             <div class="af-chips" role="radiogroup" aria-labelledby="idProofType-label">
               @for (p of idProofs; track p) {
-                <label class="af-chip" [class.active]="model.idProofType === p"><input type="radio" name="idProofType" [value]="p" [(ngModel)]="model.idProofType" /> {{ p }}</label>
+                <label class="af-chip" [class.active]="model.idProofType === p"><input type="radio" name="idProofType" [value]="p" [(ngModel)]="model.idProofType" /> {{ idProofName(p) }}</label>
               }
             </div>
-            @if (submitted() && !model.idProofType) { <span class="help-block">Id Proof required.</span> }
+            @if (submitted() && !model.idProofType) { <span class="help-block">{{ 'Id Proof required.' | t: 'staff.assessorForm.idProof.requiredError' }}</span> }
           </div>
           @if (model.idProofType) {
-            <label for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? 'Aadhaar Card Number' : 'PAN Card Number' }}</label>
+            <label for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? ('Aadhaar Card Number' | t: 'staff.assessorForm.idProof.aadhaarNumberLabel') : ('PAN Card Number' | t: 'staff.assessorForm.idProof.panNumberLabel') }}</label>
             <div>
               <input id="idProofNumber" name="idProofNumber" class="form-control af-mid" maxlength="20" autocomplete="off"
                      [placeholder]="idProofPlaceholder" [(ngModel)]="model.idProofNumber" />
-              @if (canEdit() && idProofPlaceholder) { <small class="muted d-block mt-1">Only the last digits of the saved number are shown.</small> }
+              @if (canEdit() && idProofPlaceholder) { <small class="muted d-block mt-1">{{ 'Only the last digits of the saved number are shown.' | t: 'staff.assessorForm.idProof.maskedNote' }}</small> }
             </div>
           }
         </div>
       </section>
 
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">{{ first + 3 }}</span>What the {{ noun.toLowerCase() }} assesses</h4>
+        <h4 class="af-head"><span class="af-no">{{ first + 3 }}</span>{{ 'What the {noun} assesses' | t: 'staff.assessorForm.cover.title' : { noun: noun.toLowerCase() } }}</h4>
         <div class="form-grid">
           @if (showStates) {
-            <label class="top" for="states">Applicable States</label>
-            <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" (valueChange)="dirty.set(true)" />
+            <label class="top" for="states">{{ 'Applicable States' | t: 'staff.assessorForm.cover.statesLabel' }}</label>
+            <zed-multi-select inputId="states" [label]="'Applicable States' | t: 'staff.assessorForm.cover.statesLabel'" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" (valueChange)="dirty.set(true)" />
           }
-          <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
-          <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" (valueChange)="dirty.set(true)" />
+          <label class="top" for="nicSectors">{{ 'NIC Sector (2 Digit)' | t: 'staff.assessorForm.cover.sectorsLabel' }}</label>
+          <zed-multi-select inputId="nicSectors" [label]="'NIC Sector' | t: 'staff.assessorForm.cover.sectorsAria'" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" (valueChange)="dirty.set(true)" />
           @if (!consultancy) {
-            <span class="af-label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
+            <span class="af-label top" id="sectorActivity-label">{{ 'Sector Type' | t: 'staff.assessorForm.cover.sectorTypeLabel' }}<span class="req">*</span></span>
             <div>
               <div class="af-chips" role="radiogroup" aria-labelledby="sectorActivity-label">
                 <!-- attr.disabled per radio: [disabled] with ngModel would disable the whole group (one control per name). -->
@@ -226,20 +228,20 @@
                          [attr.disabled]="!canEdit() || !allowed(a.value) ? '' : null" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
                 }
               </div>
-              @if (agencyActivity() && agencyActivity() !== 'Both') { <small class="text-muted d-block mt-1">Your agency assesses {{ agencyActivity() }} only.</small> }
-              @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+              @if (agencyActivity() && agencyActivity() !== 'Both') { <small class="text-muted d-block mt-1">{{ 'Your agency assesses {sectorType} only.' | t: 'staff.assessorForm.cover.agencySectorNote' : { sectorType: agencyActivity() } }}</small> }
+              @if (submitted() && !model.sectorActivity) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
           }
-          <label class="top" for="areas">Area of Knowledge and Expertise</label>
-          <zed-multi-select inputId="areas" label="Area of Knowledge and Expertise" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
+          <label class="top" for="areas">{{ 'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel' }}</label>
+          <zed-multi-select inputId="areas" [label]="'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel'" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
         </div>
       </section>
 
       @if (!isNew) {
         <section class="zed-card af-section">
-          <h4 class="af-head"><span class="af-no">{{ first + 4 }}</span>Block reason</h4>
+          <h4 class="af-head"><span class="af-no">{{ first + 4 }}</span>{{ 'Block reason' | t: 'staff.assessorForm.blockSection.title' }}</h4>
           <div class="form-grid">
-            <label class="top" for="reasonForRejection">Reason for block</label>
+            <label class="top" for="reasonForRejection">{{ 'Reason for block' | t: 'staff.assessorForm.blockSection.reasonLabel' }}</label>
             <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
                       [(ngModel)]="model.reasonForRejection"></textarea>
           </div>
@@ -250,7 +252,7 @@
   @if (canEdit()) {
     <div class="save-bar" [class.is-dirty]="dirty()">
       <span class="me-auto" [class.unsaved]="dirty()" [class.muted]="!dirty()">{{ saveNote }}</span>
-      <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || (isNew && searches && !lookupDone) || (isNew && verifyOff && !offDetailsValid)">{{ isNew ? 'Create' : 'Update' }}</button>
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || (isNew && searches && !lookupDone) || (isNew && verifyOff && !offDetailsValid)">{{ isNew ? ('Create' | t: 'staff.assessorForm.save.createButton') : ('Update' | t: 'staff.assessorForm.save.updateButton') }}</button>
     </div>
   }
 </form>
@@ -258,10 +260,10 @@
 </div>
 
 @if (!isNew && isActive() !== null) {
-  <aside class="af-rail" [attr.aria-label]="'About this ' + noun.toLowerCase()">
+  <aside class="af-rail" [attr.aria-label]="'About this {noun}' | t: 'staff.assessorForm.rail.aria' : { noun: noun.toLowerCase() }">
     <!-- 2026-11-18 (the user: one phone per assessor "not visible anywhere"): the registered mobile first in the rail. -->
     @if (showsMobile && userId) {
-      <zed-assessor-mobile [userId]="userId" [system]="mobileSystem" [name]="model.userName" [word]="consultancy ? 'consultant' : 'assessor'" />
+      <zed-assessor-mobile [userId]="userId" [system]="mobileSystem" [name]="model.userName" [word]="consultancy ? ('consultant' | t: 'staff.assessorForm.word.consultant') : ('assessor' | t: 'staff.assessorForm.word.assessor')" />
     }
     @if (agencyUserId(); as agency) {
       <section class="zed-card af-card" data-rail="agency">
@@ -272,33 +274,33 @@
             <span class="af-name">{{ agencyName || agency }}</span>
             @if (agencyName) { <span class="af-id">{{ agency }}</span> }
           </span>
-          @if (!isAgency) { <a class="af-link" [routerLink]="['/staff/users/agencies', agency]">Open</a> }
+          @if (!isAgency) { <a class="af-link" [routerLink]="['/staff/users/agencies', agency]">{{ 'Open' | t: 'staff.assessorForm.rail.agency.openLink' }}</a> }
         </div>
       </section>
     }
     <section class="zed-card af-card" data-rail="coverage">
-      <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.pin" /></svg></span>Coverage
-        <button type="button" class="btn btn-link af-link" [attr.aria-expanded]="coverageOpen()" (click)="coverageOpen.set(!coverageOpen())">{{ coverageOpen() ? 'Show less' : 'View all' }}</button>
+      <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.pin" /></svg></span>{{ 'Coverage' | t: 'staff.assessorForm.rail.coverage.title' }}
+        <button type="button" class="btn btn-link af-link" [attr.aria-expanded]="coverageOpen()" (click)="coverageOpen.set(!coverageOpen())">{{ coverageOpen() ? ('Show less' | t: 'staff.assessorForm.rail.coverage.lessButton') : ('View all' | t: 'staff.assessorForm.rail.coverage.allButton') }}</button>
       </h4>
       <dl class="af-cover">
         @if (showStates) {
-          <dt>States</dt>
-          <dd>{{ model.states.length ? model.states.length + ' of ' + states().length + ' selected' : 'None selected' }}
+          <dt>{{ 'States' | t: 'staff.assessorForm.rail.coverage.statesLabel' }}</dt>
+          <dd>{{ model.states.length ? ('{count} of {total} selected' | t: 'staff.assessorForm.rail.coverage.statesCount' : { count: model.states.length, total: states().length }) : ('None selected' | t: 'staff.assessorForm.rail.coverage.none') }}
             @if (coverageOpen() && model.states.length) { <small>{{ model.states.join(', ') }}</small> }</dd>
         }
-        <dt>NIC sectors</dt>
+        <dt>{{ 'NIC sectors' | t: 'staff.assessorForm.rail.coverage.sectorsLabel' }}</dt>
         <dd>{{ firstOf(model.nicSectors, sectors()) }}
           @if (coverageOpen() && model.nicSectors.length > 1) { <small>{{ labelsOf(model.nicSectors, sectors()).join(', ') }}</small> }</dd>
-        <dt>Areas of knowledge</dt>
+        <dt>{{ 'Areas of knowledge' | t: 'staff.assessorForm.rail.coverage.areasLabel' }}</dt>
         <dd>{{ firstOf(model.areasOfKnowledge, areas()) }}
           @if (coverageOpen() && model.areasOfKnowledge.length > 1) { <small>{{ labelsOf(model.areasOfKnowledge, areas()).join(', ') }}</small> }</dd>
       </dl>
     </section>
     @if (openCount() !== null) {
       <section class="zed-card af-card" data-rail="open">
-        <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.clock" /></svg></span>Open {{ consultancy ? 'cases' : 'assessments' }}</h4>
+        <h4 class="af-card-head"><span class="af-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon.clock" /></svg></span>{{ consultancy ? ('Open cases' | t: 'staff.assessorForm.rail.open.casesTitle') : ('Open assessments' | t: 'staff.assessorForm.rail.open.title') }}</h4>
         @let n = openCount()!;
-        <p class="af-open">@if (n) { <strong>{{ openWords(n) }}</strong> allotted and not certified yet. } @else { None: nothing allotted is open. }</p>
+        <p class="af-open">@if (n) { {{ openLine(n) }} } @else { {{ 'None: nothing allotted is open.' | t: 'staff.assessorForm.rail.open.none' }} }</p>
       </section>
     }
   </aside>
@@ -317,14 +319,14 @@
 }
 
 @if (loading() || saving() || searching()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.assessorForm.loading' }}</span></div>
 }
 
 <!-- The levels the assessor may assess and in which modes (Users.AssessmentModes, migration 0072). -->
 <ng-template #scopeGrid>
   <div class="af-scope">
     <table class="af-scope-table">
-      <thead><tr><th scope="col">Certification level</th>@for (m of modes; track m) { <th scope="col">{{ m }}</th> }</tr></thead>
+      <thead><tr><th scope="col">{{ 'Certification level' | t: 'staff.assessorForm.scope.levelColumn' }}</th>@for (m of modes; track m) { <th scope="col">{{ modeName(m) }}</th> }</tr></thead>
       <tbody>
         @for (l of levels(); track l.code) {
           <tr>
@@ -332,10 +334,10 @@
             @for (m of modes; track m) {
               <td>
                 @if (l.modes.includes(m)) {
-                  <input type="checkbox" class="form-check-input" [attr.aria-label]="l.name + ' ' + m" [attr.data-scope]="l.code + ':' + m"
+                  <input type="checkbox" class="form-check-input" [attr.aria-label]="'{level} {mode}' | t: 'staff.assessorForm.scope.tickAria' : { level: l.name, mode: modeName(m) }" [attr.data-scope]="l.code + ':' + m"
                          [checked]="ticked(l.code, m)" [disabled]="!canEdit()" (change)="tick(l.code, m, $any($event.target).checked)" />
                 } @else {
-                  <span class="af-scope-na">not used</span>
+                  <span class="af-scope-na">{{ 'not used' | t: 'staff.assessorForm.scope.notUsed' }}</span>
                 }
               </td>
             }
@@ -343,6 +345,6 @@
         }
       </tbody>
     </table>
-    <p class="af-scope-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.info" /></svg>Allotment lists offer this {{ noun.toLowerCase() }} only for the levels and modes ticked here (modes from Administration → Certification Levels).</p>
+    <p class="af-scope-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon.info" /></svg>{{ 'Allotment lists offer this {noun} only for the levels and modes ticked here (modes from Administration → Certification Levels).' | t: 'staff.assessorForm.scope.note' : { noun: noun.toLowerCase() } }}</p>
   </div>
 </ng-template>

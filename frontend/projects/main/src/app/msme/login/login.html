@@ -4,56 +4,56 @@
       <!-- 2026-11-07 redesign (option A): icons in the fields, Show / Hide, a full-width LOGIN and Forgot as a link. -->
       <form class="login-form" (ngSubmit)="login()" novalidate>
         <!-- 2026-11-17 (the user's design "ZED Login 3a"): flat and square; Login and Forgot password? side by side. -->
-        <span class="ml-tag">Registered MSMEs</span>
-        <h2 class="ml-heading">Sign in</h2>
-        <p class="ml-lead">Use your ZED ID and password.</p>
+        <span class="ml-tag">{{ 'Registered MSMEs' | t: 'public.msmeLogin.tagLabel' }}</span>
+        <h2 class="ml-heading">{{ 'Sign in' | t: 'public.msmeLogin.title' }}</h2>
+        <p class="ml-lead">{{ 'Use your ZED ID and password.' | t: 'public.msmeLogin.sub' }}</p>
         @if (expired()) {
           <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
         }
 
-        <label for="userId">ZED ID</label>
+        <label for="userId">{{ 'ZED ID' | t: 'public.msmeLogin.userIdLabel' }}</label>
         <div class="mb-3 in-field">
           <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg></span>
-          <input id="userId" name="userId" class="form-control" placeholder="ZED ID" autocomplete="username"
+          <input id="userId" name="userId" class="form-control" [placeholder]="'ZED ID' | t: 'public.msmeLogin.userIdPlaceholder'" autocomplete="username"
                  [(ngModel)]="userId" required maxlength="100" />
         </div>
 
-        <label for="password">Password</label>
+        <label for="password">{{ 'Password' | t: 'public.msmeLogin.passwordLabel' }}</label>
         <div class="mb-3 in-field">
           <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg></span>
-          <input id="password" name="password" class="form-control has-toggle" placeholder="Password" autocomplete="current-password"
+          <input id="password" name="password" class="form-control has-toggle" [placeholder]="'Password' | t: 'public.msmeLogin.passwordPlaceholder'" autocomplete="current-password"
                  [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" required maxlength="50" />
           <button type="button" class="in-toggle toggle-password"
-                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword()"
-                  (click)="showPassword.set(!showPassword())">{{ showPassword() ? 'Hide' : 'Show' }}</button>
+                  [attr.aria-label]="showPassword() ? ('Hide password' | t: 'public.msmeLogin.hidePasswordAria') : ('Show password' | t: 'public.msmeLogin.showPasswordAria')" [attr.aria-pressed]="showPassword()"
+                  (click)="showPassword.set(!showPassword())">{{ showPassword() ? ('Hide' | t: 'public.msmeLogin.hidePasswordButton') : ('Show' | t: 'public.msmeLogin.showPasswordButton') }}</button>
         </div>
 
         <div class="mb-3">
-          <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
+          <zed-recaptcha [label]="'Verification' | t: 'public.msmeLogin.captchaLabel'" (token)="onCaptcha($event)" />
         </div>
 
         <div class="ml-actions ml-two">
-          <button type="submit" class="btn ml-btn-login" [disabled]="busy()">Login
+          <button type="submit" class="btn ml-btn-login" [disabled]="busy()">{{ 'Login' | t: 'public.msmeLogin.loginButton' }}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg></button>
-          <button type="button" class="btn ml-btn-forgot" title="Forgot password or ZED ID" (click)="switchMode('reset')">Forgot password?</button>
+          <button type="button" class="btn ml-btn-forgot" [title]="'Forgot password or ZED ID' | t: 'public.msmeLogin.forgotTooltip'" (click)="switchMode('reset')">{{ 'Forgot password?' | t: 'public.msmeLogin.forgotButton' }}</button>
         </div>
       </form>
     } @else {
       <!-- New (2026-11-07): find the account by ZED ID, PAN or e-mail, choose the unit, the link goes to its registered e-mail. -->
       @if (sentTo() !== null) {
         <div class="login-form mt-3 forgot-sent" data-testid="reset-link-sent">
-          <h2>Link sent</h2>
-          <p>A reset link and your full ZED ID have been sent to</p>
+          <h2>{{ 'Link sent' | t: 'public.msmeLogin.sent.title' }}</h2>
+          <p>{{ 'A reset link and your full ZED ID have been sent to' | t: 'public.msmeLogin.sent.text' }}</p>
           <p class="masked-email" data-testid="masked-email">{{ sentTo() }}</p>
-          <p class="text-muted small">No access to this e-mail? Please contact the ZED team.</p>
+          <p class="text-muted small">{{ 'No access to this e-mail? Please contact the ZED team.' | t: 'public.msmeLogin.sent.note' }}</p>
           <div class="register-btn">
-            <button type="button" class="btn btn-primary" (click)="switchMode('login')">LOGIN</button>
+            <button type="button" class="btn btn-primary" (click)="switchMode('login')">{{ 'LOGIN' | t: 'public.msmeLogin.backToLoginButton' }}</button>
           </div>
         </div>
       } @else if (units(); as list) {
         <form class="login-form mt-3" (ngSubmit)="sendResetLink()" novalidate>
-          <h2>Select your unit</h2>
-          <div role="radiogroup" aria-label="Your units">
+          <h2>{{ 'Select your unit' | t: 'public.msmeLogin.units.title' }}</h2>
+          <div role="radiogroup" [attr.aria-label]="'Your units' | t: 'public.msmeLogin.units.aria'">
             @for (u of list; track u.ref) {
               <label class="found-unit" [class.found-unit-selected]="chosenRef() === u.ref">
                 <input type="radio" name="foundUnit" [value]="u.ref" [checked]="chosenRef() === u.ref" (change)="chosenRef.set(u.ref)" />
@@ -66,15 +66,15 @@
             }
           </div>
           <div class="register-btn mt-3">
-            <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">SEND RESET LINK</button>
-            <button type="button" class="btn ml-secondary" (click)="units.set(null)">BACK</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">{{ 'SEND RESET LINK' | t: 'public.msmeLogin.units.sendButton' }}</button>
+            <button type="button" class="btn ml-secondary" (click)="units.set(null)">{{ 'BACK' | t: 'public.msmeLogin.units.backButton' }}</button>
           </div>
         </form>
       } @else {
         <form class="login-form mt-3" (ngSubmit)="findAccounts()" novalidate>
-          <h2>Forgot Password</h2>
-          <p class="mb-2">Find your account by</p>
-          <div class="find-by mb-3" role="radiogroup" aria-label="Find your account by">
+          <h2>{{ 'Forgot Password' | t: 'public.msmeLogin.forgot.title' }}</h2>
+          <p class="mb-2">{{ 'Find your account by' | t: 'public.msmeLogin.forgot.findByLabel' }}</p>
+          <div class="find-by mb-3" role="radiogroup" [attr.aria-label]="'Find your account by' | t: 'public.msmeLogin.forgot.findByLabel'">
             @for (m of findModes; track m.key) {
               <button type="button" class="find-by-option" [class.active]="findBy() === m.key" [attr.aria-pressed]="findBy() === m.key"
                       (click)="chooseFindBy(m.key)">{{ m.title }}</button>
@@ -87,11 +87,11 @@
           </div>
           <p class="text-muted small mb-3">{{ findMode().hint }}</p>
           <div class="mb-3">
-            <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
+            <zed-recaptcha [label]="'Verification' | t: 'public.msmeLogin.captchaLabel'" (token)="onCaptcha($event)" />
           </div>
           <div class="register-btn">
-            <button type="submit" class="btn btn-primary" [disabled]="busy()">FIND MY ACCOUNT</button>
-            <button type="button" class="btn ml-secondary" (click)="switchMode('login')">LOGIN</button>
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'FIND MY ACCOUNT' | t: 'public.msmeLogin.forgot.findButton' }}</button>
+            <button type="button" class="btn ml-secondary" (click)="switchMode('login')">{{ 'LOGIN' | t: 'public.msmeLogin.backToLoginButton' }}</button>
           </div>
         </form>
       }
@@ -100,22 +100,22 @@
     @if (success()) {
       <div class="alert alert-warning alert-dismissible mt-3 mb-0" role="status">
         <div>{{ success() }}</div>
-        <button type="button" class="btn-close" aria-label="Close" (click)="success.set('')"></button>
+        <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'public.msmeLogin.closeAria'" (click)="success.set('')"></button>
       </div>
     }
     @if (error()) {
       <div class="alert alert-danger alert-dismissible mt-3 mb-0" role="alert">
         <div>{{ error() }}</div>
-        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+        <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'public.msmeLogin.closeAria'" (click)="error.set('')"></button>
       </div>
     }
   </div>
 
   <div class="ml-new" mlBottom>
     <div class="ml-new-text">
-      <h2>New to ZED?</h2>
+      <h2>{{ 'New to ZED?' | t: 'public.msmeLogin.newUser.title' }}</h2>
       <zed-text key="msme.login.newUserEligibility" />
     </div>
-    <a routerLink="/msme/register" class="btn ml-register">Register now</a>
+    <a routerLink="/msme/register" class="btn ml-register">{{ 'Register now' | t: 'public.msmeLogin.newUser.registerButton' }}</a>
   </div>
 </zed-login-shell>

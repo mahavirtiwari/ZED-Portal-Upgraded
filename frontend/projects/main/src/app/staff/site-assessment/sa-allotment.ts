@@ -14,6 +14,7 @@ import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * "Allot SA Assessments" for agencies with the site verification sub-role. Port of
@@ -31,21 +32,21 @@ import { ToastService } from '../toast';
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, RouterLink, CoAllotmentPage, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, SaAllotDialog],
+  imports: [FormsModule, RouterLink, CoAllotmentPage, PagerComponent, PageHead, ListCounts, ChipFilter, RowMenu, ConfirmDialog, SaAllotDialog, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
     @if (system === 'consultancy') {
       <zed-staff-co-allotment />
     } @else {
-    <zed-page-head [crumbs]="crumbs" [title]="pageTitle" [subtitle]="subtitle">
-      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="pageTitle()" [subtitle]="subtitle()">
+      <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.saAllotment.refreshButton' }}</button>
     </zed-page-head>
-    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" label="Units by status" (pick)="pickStage($event.key)" />
+    <zed-list-counts [counts]="counts()" [selected]="stage() ?? 'all'" [label]="'Units by status' | t: 'staff.saAllotment.counts.aria'" (pick)="pickStage($event.key)" />
 
     <div class="zed-card sa-filters">
-      <input type="search" id="sa-allot-search" class="form-control sa-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or assessor"
-             aria-label="Search ZED ID, unit, SPOC or assessor" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-      <zed-chip-filter label="Mode" [chips]="modeChips()" [value]="mode()" (valueChange)="mode.set($event)" />
+      <input type="search" id="sa-allot-search" class="form-control sa-q" maxlength="50" [placeholder]="'Search ZED ID, unit, SPOC or assessor' | t: 'staff.saAllotment.search.placeholder'"
+             [attr.aria-label]="'Search ZED ID, unit, SPOC or assessor' | t: 'staff.saAllotment.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <zed-chip-filter [label]="'Mode' | t: 'staff.saAllotment.mode.label'" [chips]="modeChips()" [value]="mode()" (valueChange)="mode.set($event)" />
     </div>
 
     @if (error()) {
@@ -57,14 +58,14 @@ import { ToastService } from '../toast';
       <table class="table table-zed">
         <thead>
           <tr>
-            <th>Unit</th>
-            <th>Level</th>
-            <th>Unit SPOC</th>
-            @if (surveillance) { <th>Surveillance Date</th> }
-            <th>Mode</th>
-            <th>Assessors</th>
-            <th>Status</th>
-            <th class="text-end">Action</th>
+            <th>{{ 'Unit' | t: 'staff.saAllotment.column.unit' }}</th>
+            <th>{{ 'Level' | t: 'staff.saAllotment.column.level' }}</th>
+            <th>{{ 'Unit SPOC' | t: 'staff.saAllotment.column.spoc' }}</th>
+            @if (surveillance) { <th>{{ 'Surveillance Date' | t: 'staff.saAllotment.column.surveillanceDate' }}</th> }
+            <th>{{ 'Mode' | t: 'staff.saAllotment.column.mode' }}</th>
+            <th>{{ 'Assessors' | t: 'staff.saAllotment.column.assessors' }}</th>
+            <th>{{ 'Status' | t: 'staff.saAllotment.column.status' }}</th>
+            <th class="text-end">{{ 'Action' | t: 'staff.saAllotment.column.action' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -82,7 +83,7 @@ import { ToastService } from '../toast';
               <!-- Masked in the list; the MSME profile has the full values. -->
               <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
               @if (surveillance) { <td class="text-nowrap">{{ s['AssessmentDate'] }}</td> }
-              <td>@if (modeOf(s); as m) { <span class="chip is-info">{{ m }}</span> }</td>
+              <td>@if (modeOf(s); as m) { <span class="chip is-info">{{ modeName(m) }}</span> }</td>
               <td class="stack">
                 <div><span class="muted">{{ s['SiteAssessorId'] }}</span> <strong>{{ s['SaAssessorName'] }}</strong></div>
                 @if (surveillance) {
@@ -92,23 +93,23 @@ import { ToastService } from '../toast';
                 }
               </td>
               <td>
-                @if (s['SiteAssessorId']) { <span class="chip is-good">Allotted</span> }
-                @else if (s['ReasonForRejection']) { <span class="chip is-bad">Rejected</span> }
-                @else { <span class="chip is-warn">Waiting</span> }
+                @if (s['SiteAssessorId']) { <span class="chip is-good">{{ 'Allotted' | t: 'staff.saAllotment.status.allotted.chip' }}</span> }
+                @else if (s['ReasonForRejection']) { <span class="chip is-bad">{{ 'Rejected' | t: 'staff.saAllotment.status.rejected.chip' }}</span> }
+                @else { <span class="chip is-warn">{{ 'Waiting' | t: 'staff.saAllotment.status.waiting.chip' }}</span> }
               </td>
               <td class="text-end text-nowrap">
                 @if (s['SiteAssessorId']) {
-                  <button type="button" class="btn sa-act re-allot" (click)="open(s)">Re-allot</button>
+                  <button type="button" class="btn sa-act re-allot" (click)="open(s)">{{ 'Re-allot' | t: 'staff.saAllotment.reallotButton' }}</button>
                 } @else if (!s['ReasonForRejection']) {
-                  <button type="button" class="btn btn-primary sa-act" (click)="open(s)">Accept</button>
+                  <button type="button" class="btn btn-primary sa-act" (click)="open(s)">{{ 'Accept' | t: 'staff.saAllotment.acceptButton' }}</button>
                 }
-                <a class="btn btn-outline-primary sa-act sa-view" [routerLink]="detailsLink(s)">View details</a>
-                <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" />
+                <a class="btn btn-outline-primary sa-act sa-view" [routerLink]="detailsLink(s)">{{ 'View details' | t: 'staff.saAllotment.viewDetailsButton' }}</a>
+                <zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.saAllotment.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" />
               </td>
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">{{ busy() ? 'Loading…' : 'No Data' }}</div></td>
+              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.saAllotment.loading.text') : ('No Data' | t: 'staff.saAllotment.empty') }}</div></td>
             </tr>
           }
         </tbody>
@@ -130,7 +131,7 @@ import { ToastService } from '../toast';
       <div class="loadingdiv" role="status" aria-live="polite">
         <div class="text-center text-white">
           <div class="spinner-border text-light"></div>
-          <div><small>Please wait ...</small></div>
+          <div><small>{{ 'Please wait ...' | t: 'staff.saAllotment.wait.text' }}</small></div>
         </div>
       </div>
     }
@@ -179,11 +180,12 @@ export class SaAllotmentPage {
   protected readonly form = signal<Row | null>(null);
   protected readonly rejectFor = signal<Row | null>(null);
 
-  protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments (Site)' : 'Allot SA Assessments';
-  protected readonly crumbs = staffCrumbs({ label: this.pageTitle });
-  protected readonly subtitle = this.surveillance
-    ? 'Allot the surveillance assessments to your assessors with the date and the meeting link, or re-allot them.'
-    : 'Allot the site assessments to your assessors with the date and the mode, or re-allot them.';
+  protected readonly pageTitle = computed(() => this.surveillance
+    ? t('staff.saAllotment.surveillance.title', 'Allot Surveillance Assessments (Site)') : t('staff.saAllotment.title', 'Allot SA Assessments'));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.pageTitle() }));
+  protected readonly subtitle = computed(() => this.surveillance
+    ? t('staff.saAllotment.surveillance.sub', 'Allot the surveillance assessments to your assessors with the date and the meeting link, or re-allot them.')
+    : t('staff.saAllotment.sub', 'Allot the site assessments to your assessors with the date and the mode, or re-allot them.'));
 
   /** Allotted, rejected or waiting (the status chip of the row). */
   private stageOf(r: Row): string {
@@ -207,14 +209,19 @@ export class SaAllotmentPage {
     return m === 'Remote Assessment' ? 'Remote' : m === 'Onsite Assessment' ? 'Onsite' : '';
   }
 
+  /** The wording of a mode code (modeOf). */
+  protected modeName(m: string): string {
+    return m === 'Onsite' ? t('staff.saAllotment.mode.onsite.chip', 'Onsite') : m === 'Remote' ? t('staff.saAllotment.mode.remote.chip', 'Remote') : m;
+  }
+
   protected readonly counts = computed<ListCount[]>(() => {
     const rows = this.units();
     const by = (k: string) => rows.filter((r) => this.stageOf(r) === k).length;
     return [
-      { key: 'all', label: 'All units', value: rows.length },
-      { key: 'waiting', label: 'Waiting for allotment', value: by('waiting'), tone: 'warn' },
-      { key: 'allotted', label: 'Allotted', value: by('allotted'), tone: 'good' },
-      { key: 'rejected', label: 'Rejected', value: by('rejected'), tone: 'bad' },
+      { key: 'all', label: t('staff.saAllotment.count.all.label', 'All units'), value: rows.length },
+      { key: 'waiting', label: t('staff.saAllotment.count.waiting.label', 'Waiting for allotment'), value: by('waiting'), tone: 'warn' },
+      { key: 'allotted', label: t('staff.saAllotment.count.allotted.label', 'Allotted'), value: by('allotted'), tone: 'good' },
+      { key: 'rejected', label: t('staff.saAllotment.count.rejected.label', 'Rejected'), value: by('rejected'), tone: 'bad' },
     ];
   });
 
@@ -222,9 +229,9 @@ export class SaAllotmentPage {
   protected readonly modeChips = computed<FilterChip[]>(() => {
     const rows = this.units();
     return [
-      { key: '', label: 'All', count: rows.length },
-      { key: 'Onsite', label: 'Onsite', count: rows.filter((r) => this.modeOf(r) === 'Onsite').length },
-      { key: 'Remote', label: 'Remote', count: rows.filter((r) => this.modeOf(r) === 'Remote').length },
+      { key: '', label: t('staff.saAllotment.mode.all.chip', 'All'), count: rows.length },
+      { key: 'Onsite', label: this.modeName('Onsite'), count: rows.filter((r) => this.modeOf(r) === 'Onsite').length },
+      { key: 'Remote', label: this.modeName('Remote'), count: rows.filter((r) => this.modeOf(r) === 'Remote').length },
     ];
   });
 
@@ -235,8 +242,11 @@ export class SaAllotmentPage {
 
   /** The row menu: the details, the profile, and Reject (before a site assessor is allotted, once). */
   protected menu(s: Row): RowMenuItem[] {
-    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
-    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: 'Reject', danger: true });
+    const items: RowMenuItem[] = [
+      { key: 'details', label: t('staff.saAllotment.menu.details.label', 'View details'), icon: 'eye' },
+      { key: 'profile', label: t('staff.saAllotment.menu.profile.label', 'View MSME profile'), icon: 'people' },
+    ];
+    if (!s['SiteAssessorId'] && !s['ReasonForRejection']) items.push({ key: 'reject', label: t('staff.saAllotment.menu.reject.label', 'Reject'), danger: true });
     return items;
   }
 
@@ -261,7 +271,7 @@ export class SaAllotmentPage {
     try {
       await firstValueFrom(this.api.reject(this.str(s['ZedId']), this.str(s['Certification']), reason));
       this.rejectFor.set(null);
-      this.toast.success(`${s['ZedId']} rejected`, null);
+      this.toast.success(t('staff.saAllotment.toast.rejected', '{zedId} rejected', { zedId: s['ZedId'] }), null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;
@@ -307,7 +317,8 @@ export class SaAllotmentPage {
     try {
       await firstValueFrom(this.api.allot(choice.request));
       this.form.set(null);
-      this.toast.success(`${unit['ZedId']} allotted`, choice.assessorName ? `To ${choice.assessorName}.` : null);
+      this.toast.success(t('staff.saAllotment.toast.allotted', '{zedId} allotted', { zedId: unit['ZedId'] }),
+        choice.assessorName ? t('staff.saAllotment.toast.allottedTo', 'To {name}.', { name: choice.assessorName }) : null);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
       return;

@@ -16,6 +16,7 @@ import {
 } from './expenditure.api';
 import { InvoiceReviewDialog } from './invoice-review';
 import { TaxDetailsCard } from './tax-details';
+import { TextPipe, t } from '../../content/page-text';
 
 /** The upload pop-up's fields. */
 interface Upload { month: MyMonth; invoiceNo: string; invoiceDate: string; invoiceAmount: number | null; file: File | null }
@@ -38,7 +39,7 @@ export const MAX_PDF_BYTES = 5 * 1024 * 1024;
  */
 @Component({
   selector: 'zed-staff-my-invoices',
-  imports: [FormsModule, PageHead, ChipFilter, ListCounts, RowMenu, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard],
+  imports: [FormsModule, PageHead, ChipFilter, ListCounts, RowMenu, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard, TextPipe],
   templateUrl: './my-invoices.html',
   styleUrl: './exp-dialog.scss',
   styles: `
@@ -66,7 +67,7 @@ export class MyInvoicesPage {
   private readonly excel = inject(TableExport);
   private readonly toast = inject(ToastService);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Expenditure' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.myInvoices.crumb', 'Expenditure') }));
   protected readonly money = rupees;
   protected readonly date = shownDate;
   protected readonly tone = statusTone;
@@ -95,26 +96,30 @@ export class MyInvoicesPage {
   protected readonly filtering = computed(() => !!(this.level() || this.from() || this.to()));
 
   protected readonly levelChips = computed<FilterChip[]>(() => [
-    { key: '', label: 'All levels' },
+    { key: '', label: t('staff.myInvoices.filter.allLevels', 'All levels') },
     ...(this.summary()?.levels ?? []).map((l) => ({ key: l.code, label: l.name })),
   ]);
 
   protected readonly counts = computed<ListCount[]>(() => {
     const c = this.summary()?.cards;
     if (!c) return [];
-    const list: ListCount[] = [{ label: 'Cases in POs', value: c.poCases }];
-    if (this.consultant()) list.push({ label: 'Milestones counted', value: c.milestones, tone: 'good' });
+    const list: ListCount[] = [{ label: t('staff.myInvoices.count.poCases', 'Cases in POs'), value: c.poCases }];
+    if (this.consultant()) list.push({ label: t('staff.myInvoices.count.milestones', 'Milestones counted'), value: c.milestones, tone: 'good' });
     else
       list.push(
-        { label: 'Completed', value: c.completed, tone: 'good' },
-        { label: 'Rejected after assessment', value: c.rejected, tone: 'bad' },
-        { label: 'Surveillance visits', value: c.surveillance, tone: 'warn' },
+        { label: t('staff.myInvoices.count.completed', 'Completed'), value: c.completed, tone: 'good' },
+        { label: t('staff.myInvoices.count.rejected', 'Rejected after assessment'), value: c.rejected, tone: 'bad' },
+        { label: t('staff.myInvoices.count.surveillance', 'Surveillance visits'), value: c.surveillance, tone: 'warn' },
       );
+    const exGst = t('staff.myInvoices.count.exGstNote', 'excl. GST');
     list.push(
-      { label: 'Payable', value: rupeesShort(c.payable), sub: 'excl. GST' },
-      { label: 'Invoiced', value: rupeesShort(c.invoiced ?? 0), tone: 'info', sub: 'excl. GST' },
-      { label: 'Approved', value: rupeesShort(c.approved), tone: 'good', sub: 'excl. GST' },
-      { label: 'Outstanding', value: rupeesShort(c.outstanding ?? 0), tone: (c.outstanding ?? 0) > 0 ? 'warn' : undefined, sub: 'not invoiced' },
+      { label: t('staff.myInvoices.count.payable', 'Payable'), value: rupeesShort(c.payable), sub: exGst },
+      { label: t('staff.myInvoices.count.invoiced', 'Invoiced'), value: rupeesShort(c.invoiced ?? 0), tone: 'info', sub: exGst },
+      { label: t('staff.myInvoices.count.approved', 'Approved'), value: rupeesShort(c.approved), tone: 'good', sub: exGst },
+      {
+        label: t('staff.myInvoices.count.outstanding', 'Outstanding'), value: rupeesShort(c.outstanding ?? 0), tone: (c.outstanding ?? 0) > 0 ? 'warn' : undefined,
+        sub: t('staff.myInvoices.count.outstandingNote', 'not invoiced'),
+      },
     );
     return list;
   });
@@ -202,15 +207,25 @@ export class MyInvoicesPage {
   }
 
   protected breakdown(m: MyMonth): string {
-    if (this.consultant()) return `${m.milestones} milestone${m.milestones === 1 ? '' : 's'}`;
-    return `${m.completed} completed · ${m.rejected} rejected · ${m.surveillance} surveillance`;
+    if (this.consultant()) {
+      return m.milestones === 1
+        ? t('staff.myInvoices.month.milestone', '{count} milestone', { count: m.milestones })
+        : t('staff.myInvoices.month.milestones', '{count} milestones', { count: m.milestones });
+    }
+    return t('staff.myInvoices.month.breakdownText', '{completed} completed · {rejected} rejected · {surveillance} surveillance',
+      { completed: m.completed, rejected: m.rejected, surveillance: m.surveillance });
+  }
+
+  /** "12 cases" under the PO. */
+  protected casesText(n: number): string {
+    return n === 1 ? t('staff.myInvoices.row.case', '{count} case', { count: n }) : t('staff.myInvoices.row.cases', '{count} cases', { count: n });
   }
 
   /** The row menu of a month with an invoice. */
-  protected readonly menu: RowMenuItem[] = [
-    { key: 'view', label: 'View Invoice', icon: 'eye' },
-    { key: 'pdf', label: 'Open Invoice PDF', icon: 'file' },
-  ];
+  protected readonly menu = computed<RowMenuItem[]>(() => [
+    { key: 'view', label: t('staff.myInvoices.menu.view', 'View Invoice'), icon: 'eye' },
+    { key: 'pdf', label: t('staff.myInvoices.menu.pdf', 'Open Invoice PDF'), icon: 'file' },
+  ]);
 
   protected picked(m: MyMonth, key: string): void {
     if (!m.invoice) return;
@@ -235,9 +250,9 @@ export class MyInvoicesPage {
   protected async send(): Promise<void> {
     const u = this.upload();
     if (!u) return;
-    if (!u.file) return this.formError.set('Please choose the invoice PDF.');
-    if (u.file.size > MAX_PDF_BYTES) return this.formError.set('The PDF is larger than 5 MB.');
-    if (!/\.pdf$/i.test(u.file.name)) return this.formError.set('Please upload the invoice as a PDF.');
+    if (!u.file) return this.formError.set(t('staff.myInvoices.upload.fileError', 'Please choose the invoice PDF.'));
+    if (u.file.size > MAX_PDF_BYTES) return this.formError.set(t('staff.myInvoices.upload.sizeError', 'The PDF is larger than 5 MB.'));
+    if (!/\.pdf$/i.test(u.file.name)) return this.formError.set(t('staff.myInvoices.upload.typeError', 'Please upload the invoice as a PDF.'));
     const form = new FormData();
     form.append('month', u.month.month);
     form.append('invoiceNo', u.invoiceNo.trim());
@@ -262,7 +277,7 @@ export class MyInvoicesPage {
     try {
       openBlob(await firstValueFrom(this.api.invoicePdf(id)));
     } catch (e) {
-      this.toast.error('The PDF could not be opened', apiErrorMessage(e));
+      this.toast.error(t('staff.myInvoices.toast.pdfFailed', 'The PDF could not be opened'), apiErrorMessage(e));
     }
   }
 
@@ -271,7 +286,11 @@ export class MyInvoicesPage {
   private casesSheet(cases: ExpenditureCase[]): ExportSheet {
     return {
       name: 'Cases',
-      columns: ['ZED ID', 'Unit', 'State', 'Level', 'Case', 'Counted on', 'Rate (₹, excl. GST)', 'Amount (₹, excl. GST)'],
+      columns: [
+        t('staff.myInvoices.export.cases.zedId', 'ZED ID'), t('staff.myInvoices.export.cases.unit', 'Unit'), t('staff.myInvoices.export.cases.state', 'State'),
+        t('staff.myInvoices.export.cases.level', 'Level'), t('staff.myInvoices.export.cases.case', 'Case'), t('staff.myInvoices.export.cases.countedOn', 'Counted on'),
+        t('staff.myInvoices.export.cases.rate', 'Rate (₹, excl. GST)'), t('staff.myInvoices.export.cases.amount', 'Amount (₹, excl. GST)'),
+      ],
       rows: cases.map((c) => [c.zedId, c.unitName, c.state, c.level, caseText(c), c.countedOn, c.rate, c.rate ?? 0]),
     };
   }
@@ -279,8 +298,16 @@ export class MyInvoicesPage {
   private monthsSheet(months: MyMonth[]): ExportSheet {
     return {
       name: 'Months',
-      columns: ['Month', this.consultant() ? 'Milestones' : 'Completed', 'Rejected', 'Surveillance', 'Cases', 'Amount excl. GST (₹)', 'GST %', 'GST (₹)',
-        'Total incl. GST (₹)', 'Invoice', 'Invoice date', 'Invoice amount (₹)', 'Status', 'Remarks'],
+      columns: [
+        t('staff.myInvoices.export.months.month', 'Month'),
+        this.consultant() ? t('staff.myInvoices.export.milestones', 'Milestones') : t('staff.myInvoices.export.completed', 'Completed'),
+        t('staff.myInvoices.export.rejected', 'Rejected'), t('staff.myInvoices.export.surveillance', 'Surveillance'),
+        t('staff.myInvoices.export.months.cases', 'Cases'), t('staff.myInvoices.export.months.amount', 'Amount excl. GST (₹)'),
+        t('staff.myInvoices.export.months.gstPercent', 'GST %'), t('staff.myInvoices.export.months.gst', 'GST (₹)'),
+        t('staff.myInvoices.export.months.total', 'Total incl. GST (₹)'), t('staff.myInvoices.export.months.invoice', 'Invoice'),
+        t('staff.myInvoices.export.months.invoiceDate', 'Invoice date'), t('staff.myInvoices.export.months.invoiceAmount', 'Invoice amount (₹)'),
+        t('staff.myInvoices.export.months.status', 'Status'), t('staff.myInvoices.export.months.remarks', 'Remarks'),
+      ],
       rows: months.map((m) => [m.label, this.consultant() ? m.milestones : m.completed, m.rejected, m.surveillance, m.cases, m.amount, m.gstPercent,
         m.gstAmount, m.total, m.invoice?.invoiceNo, m.invoice?.invoiceDate, m.invoice?.invoiceAmount, this.status(m), m.invoice?.remarks]),
     };
@@ -288,7 +315,7 @@ export class MyInvoicesPage {
 
   /** "Not uploaded", "Month in progress", or the invoice's status. */
   protected status(m: MyMonth): string {
-    return m.invoice?.status ?? (m.ended ? 'Not uploaded' : 'Month in progress');
+    return m.invoice?.status ?? (m.ended ? t('staff.myInvoices.month.notUploaded', 'Not uploaded') : t('staff.myInvoices.month.inProgress', 'Month in progress'));
   }
 
   /** The month's cases (every level) with their dates, rates and amounts, and the month's figures. */
@@ -298,34 +325,61 @@ export class MyInvoicesPage {
       const cases = await firstValueFrom(this.api.cases({ partyId: this.partyId(), from, to }));
       await this.excel.xlsx(`expenditure-${this.partyId()}-${m.month}`, [this.casesSheet(cases), this.monthsSheet([m])]);
     } catch (e) {
-      this.toast.error('Export failed', apiErrorMessage(e));
+      this.toast.error(t('staff.myInvoices.toast.exportFailed', 'Export failed'), apiErrorMessage(e));
     }
   }
 
   /** The filtered period: every case, the levels' figures, the POs and the months. */
   protected async exportAll(): Promise<void> {
     const consultant = this.consultant();
+    const level = t('staff.myInvoices.export.level', 'Level');
+    const casesInPo = t('staff.myInvoices.export.casesInPo', 'Cases in PO');
+    const balance = t('staff.myInvoices.export.balance', 'Balance');
+    const noPo = t('staff.expenditure.po.noPoLabel', 'No PO');
     try {
       const cases = await firstValueFrom(this.api.cases(this.filter()));
       await this.excel.xlsx(`expenditure-${this.partyId()}`, [
         this.casesSheet(cases),
         {
           name: 'Levels',
-          columns: ['Level', 'PO', 'Cases in PO', ...(consultant ? ['Milestones'] : ['Completed', 'Rejected', 'Surveillance']), 'Balance', 'Payable (₹)',
-            'Invoiced (₹)', 'Outstanding (₹)'],
-          rows: this.rows().map((r) => [r.levelName, r.poLabel ?? 'No PO', r.poCases, ...(consultant ? [r.milestones] : [r.completed, r.rejected, r.surveillance]),
+          columns: [
+            level, t('staff.myInvoices.export.levels.po', 'PO'), casesInPo,
+            ...(consultant ? [t('staff.myInvoices.export.milestones', 'Milestones')]
+              : [t('staff.myInvoices.export.completed', 'Completed'), t('staff.myInvoices.export.rejected', 'Rejected'), t('staff.myInvoices.export.surveillance', 'Surveillance')]),
+            balance, t('staff.myInvoices.export.levels.payable', 'Payable (₹)'), t('staff.myInvoices.export.levels.invoiced', 'Invoiced (₹)'),
+            t('staff.myInvoices.export.levels.outstanding', 'Outstanding (₹)'),
+          ],
+          rows: this.rows().map((r) => [r.levelName, r.poLabel ?? noPo, r.poCases, ...(consultant ? [r.milestones] : [r.completed, r.rejected, r.surveillance]),
             r.poState === 'NoPo' ? null : r.balance, r.payable, r.invoiced, r.outstanding]),
         },
         {
           name: 'Purchase orders',
-          columns: ['Level', 'PO number', 'PO date', 'Cases in PO', 'Used', 'In progress', 'Balance', 'Use %', 'Allotment'],
+          columns: [
+            level, t('staff.myInvoices.export.po.number', 'PO number'), t('staff.myInvoices.export.po.date', 'PO date'), casesInPo,
+            t('staff.myInvoices.export.po.used', 'Used'), t('staff.myInvoices.export.po.inProgress', 'In progress'), balance,
+            t('staff.myInvoices.export.po.usePercent', 'Use %'), t('staff.myInvoices.export.po.allotment', 'Allotment'),
+          ],
           rows: this.poLevels().flatMap((l) => l.pos.map((p) => [l.name, p.poNumber, p.poDate, p.cases, l.used, l.inProgress, l.left, l.percent, this.pill(l).text])),
         },
         this.monthsSheet(this.months()),
       ]);
     } catch (e) {
-      this.toast.error('Export failed', apiErrorMessage(e));
+      this.toast.error(t('staff.myInvoices.toast.exportFailed', 'Export failed'), apiErrorMessage(e));
     }
+  }
+
+  /** The page head's sub-line: the agency's name and ID. */
+  protected headSub(): string {
+    const d = this.data();
+    return d ? t('staff.myInvoices.sub', '{name} · {id}', { name: d.partyName, id: d.partyId }) : '';
+  }
+
+  /** The upload pop-up's line under the title. */
+  protected portalLine(m: MyMonth): string {
+    const total = rupees(m.total);
+    return m.cases === 1
+      ? t('staff.myInvoices.upload.portalCase', 'Portal: {count} case, {total} incl. GST', { count: m.cases, total })
+      : t('staff.myInvoices.upload.portalCases', 'Portal: {count} cases, {total} incl. GST', { count: m.cases, total });
   }
 }
 

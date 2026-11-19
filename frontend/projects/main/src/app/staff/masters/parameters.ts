@@ -10,6 +10,7 @@ import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Which parameters the list shows (the buttons beside the search box). */
 type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors' | 'disabled';
@@ -25,46 +26,48 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
  */
 @Component({
   selector: 'zed-staff-parameters',
-  imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent, PortalSwitchComponent],
+  imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent, PortalSwitchComponent, TextPipe],
   template: `
     <!-- 2026-11-08: the Admin edits Surveillance's questionnaire from here too. -->
-    <zed-portal-switch [portals]="questionnairePortals" title="Questionnaire of" />
+    <zed-portal-switch [portals]="questionnairePortals" [title]="'Questionnaire of' | t: 'staff.parameters.portalSwitch.label'" />
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Parameters ({{ levelName() }})</h3>
-        <p class="page-sub">The {{ levelName() }} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again{{ onMain ? ' and whether consultancy uses it' : '' }}. Requirements opens its questions.</p>
+        <h3 class="registration-title">{{ 'Parameters ({level})' | t: 'staff.parameters.title' : { level: levelName() } }}</h3>
+        <p class="page-sub">{{ onMain
+          ? ('The {level} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again and whether consultancy uses it. Requirements opens its questions.' | t: 'staff.parameters.main.sub' : { level: levelName() })
+          : ('The {level} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again. Requirements opens its questions.' | t: 'staff.parameters.sub' : { level: levelName() }) }}</p>
       </div>
       <div class="page-actions">
-        <span class="xl-group"><span class="xl-group-label">Parameters</span>
-          <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="levelName() + ' parameters'"
+        <span class="xl-group"><span class="xl-group-label">{{ 'Parameters' | t: 'staff.parameters.excel.parameters.label' }}</span>
+          <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="'{level} parameters' | t: 'staff.parameters.excel.parameters.title' : { level: levelName() }"
                            [fileName]="'parameters-' + sectionType().toLowerCase()" (applied)="load(true)" /></span>
         <!-- 2026-11-13: the requirements of every parameter of the level in one sheet (a Parameter column first). -->
-        <span class="xl-group xl-group-all"><span class="xl-group-label">Requirements of all parameters</span>
-          <zed-excel-tools [api]="'/api/staff/questionnaire/' + sectionType() + '/all-requirements'" [title]="'Requirements of all ' + levelName() + ' parameters'"
+        <span class="xl-group xl-group-all"><span class="xl-group-label">{{ 'Requirements of all parameters' | t: 'staff.parameters.excel.requirements.label' }}</span>
+          <zed-excel-tools [api]="'/api/staff/questionnaire/' + sectionType() + '/all-requirements'" [title]="'Requirements of all {level} parameters' | t: 'staff.parameters.excel.requirements.title' : { level: levelName() }"
                            [fileName]="'requirements-' + sectionType().toLowerCase() + '-all-parameters'" /></span>
-        <button type="button" class="btn btn-primary" (click)="openAdd()">+ Add parameter</button>
+        <button type="button" class="btn btn-primary" (click)="openAdd()">{{ '+ Add parameter' | t: 'staff.parameters.add.button' }}</button>
       </div>
     </div>
 
     @if (levels().length) {
-      <nav class="level-tabs" aria-label="Certification level">
+      <nav class="level-tabs" [attr.aria-label]="'Certification level' | t: 'staff.parameters.levels.aria'">
         @for (l of levels(); track l.code) {
           <button type="button" class="level-tab" [class.active]="isLevel(l.code)" [attr.aria-current]="isLevel(l.code) ? 'page' : null" (click)="pickLevel(l.code)">
             {{ l.name }}
-            @if (!l.isEnabled) { <span class="tab-note">Not open to MSMEs yet</span> }
+            @if (!l.isEnabled) { <span class="tab-note">{{ 'Not open to MSMEs yet' | t: 'staff.parameters.levels.notOpen.label' }}</span> }
           </button>
         }
       </nav>
     }
 
     <div class="param-stats">
-      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Parameters</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().surveillance }}</span><span class="stat-label">Assessed again in surveillance</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Parameters' | t: 'staff.parameters.count.total' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().surveillance }}</span><span class="stat-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.count.surveillance' }}</span></div>
       @if (onMain) {
-        <div class="stat"><span class="stat-value">{{ stats().consultancy }}</span><span class="stat-label">Used in consultancy</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().consultancy }}</span><span class="stat-label">{{ 'Used in consultancy' | t: 'staff.parameters.count.consultancy' }}</span></div>
       }
-      <div class="stat"><span class="stat-value">{{ stats().sectorSpecific }}</span><span class="stat-label">Limited to NIC sectors</span></div>
-      <div class="stat stat-off" data-disabled-count><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">Disabled (left out of new applications)</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().sectorSpecific }}</span><span class="stat-label">{{ 'Limited to NIC sectors' | t: 'staff.parameters.count.sectors' }}</span></div>
+      <div class="stat stat-off" data-disabled-count><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">{{ 'Disabled (left out of new applications)' | t: 'staff.parameters.count.disabled' }}</span></div>
     </div>
 
     @if (error()) {
@@ -76,10 +79,11 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
 
     <div class="zed-card list-card">
       <div class="list-toolbar">
-        <input type="search" class="form-control search" placeholder="Search code, name or description" aria-label="Search parameters"
+        <input type="search" class="form-control search" [placeholder]="'Search code, name or description' | t: 'staff.parameters.search.placeholder'"
+               [attr.aria-label]="'Search parameters' | t: 'staff.parameters.search.aria'"
                [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
-        <div class="seg" role="group" aria-label="Show">
-          @for (f of filters; track f.key) {
+        <div class="seg" role="group" [attr.aria-label]="'Show' | t: 'staff.parameters.filter.aria'">
+          @for (f of filters(); track f.key) {
             <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="setFilter(f.key)">{{ f.label }}</button>
           }
         </div>
@@ -97,53 +101,54 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
           </colgroup>
           <thead>
             <tr>
-              <th class="text-center">Code</th>
-              <th>Parameter</th>
-              <th>NIC Sectors</th>
-              <th class="text-center">Surveillance</th>
-              @if (onMain) { <th class="text-center">Consultancy</th> }
-              <th class="text-center">Actions</th>
+              <th class="text-center">{{ 'Code' | t: 'staff.parameters.column.code' }}</th>
+              <th>{{ 'Parameter' | t: 'staff.parameters.column.parameter' }}</th>
+              <th>{{ 'NIC Sectors' | t: 'staff.parameters.column.sectors' }}</th>
+              <th class="text-center">{{ 'Surveillance' | t: 'staff.parameters.column.surveillance' }}</th>
+              @if (onMain) { <th class="text-center">{{ 'Consultancy' | t: 'staff.parameters.column.consultancy' }}</th> }
+              <th class="text-center">{{ 'Actions' | t: 'staff.parameters.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
             @for (s of pager.page(); track s.id) {
               <tr [class.row-off]="s.disabled">
-                <td class="text-center code-cell" data-label="Code"><span class="code-badge">{{ s.sectionCode }}</span></td>
-                <td data-label="Parameter">
-                  <div class="param-name">{{ s.sectionName }} @if (s.disabled) { <span class="off-badge" title="Left out of new applications; the ones already paid keep it">Disabled</span> }</div>
+                <td class="text-center code-cell" [attr.data-label]="'Code' | t: 'staff.parameters.column.code'"><span class="code-badge">{{ s.sectionCode }}</span></td>
+                <td [attr.data-label]="'Parameter' | t: 'staff.parameters.column.parameter'">
+                  <div class="param-name">{{ s.sectionName }} @if (s.disabled) { <span class="off-badge" [title]="'Left out of new applications; the ones already paid keep it' | t: 'staff.parameters.row.disabled.tooltip'">{{ 'Disabled' | t: 'staff.parameters.row.disabled.label' }}</span> }</div>
                   @if (s.description) {
                     <pre [class.clamp-2]="!expanded().has(s.id)" [title]="s.description">{{ s.description }}</pre>
                     @if (isLong(s.description)) {
-                      <button type="button" class="btn btn-link btn-sm p-0 more" (click)="toggle(s.id)">{{ expanded().has(s.id) ? 'Show less' : 'Show more' }}</button>
+                      <button type="button" class="btn btn-link btn-sm p-0 more" (click)="toggle(s.id)">{{ expanded().has(s.id) ? ('Show less' | t: 'staff.parameters.row.less.button') : ('Show more' | t: 'staff.parameters.row.more.button') }}</button>
                     }
                   }
                 </td>
-                <td data-label="NIC Sectors">
+                <td [attr.data-label]="'NIC Sectors' | t: 'staff.parameters.column.sectors'">
                   @if (s.nicSectors?.length) {
                     @for (c of s.nicSectors; track c) { <span class="zed-chip" [title]="sectorName(c)">{{ c }}</span> }
                   } @else {
-                    <span class="muted all-sectors">All sectors</span>
+                    <span class="muted all-sectors">{{ 'All sectors' | t: 'staff.parameters.row.allSectors.label' }}</span>
                   }
                 </td>
-                <td class="text-center" data-label="Surveillance">
-                  <span class="status-badge" [class.is-success]="s.inSurveillance" [class.is-inactive]="!s.inSurveillance">{{ s.inSurveillance ? 'Yes' : 'No' }}</span>
+                <td class="text-center" [attr.data-label]="'Surveillance' | t: 'staff.parameters.column.surveillance'">
+                  <span class="status-badge" [class.is-success]="s.inSurveillance" [class.is-inactive]="!s.inSurveillance">{{ s.inSurveillance ? ('Yes' | t: 'staff.parameters.row.yes.label') : ('No' | t: 'staff.parameters.row.no.label') }}</span>
                 </td>
                 @if (onMain) {
-                  <td class="text-center" data-label="Consultancy">
-                    <span class="status-badge consultancy-badge" [class.is-success]="s.inConsultancy !== false" [class.is-inactive]="s.inConsultancy === false">{{ s.inConsultancy === false ? 'No' : 'Yes' }}</span>
+                  <td class="text-center" [attr.data-label]="'Consultancy' | t: 'staff.parameters.column.consultancy'">
+                    <span class="status-badge consultancy-badge" [class.is-success]="s.inConsultancy !== false" [class.is-inactive]="s.inConsultancy === false">{{ s.inConsultancy === false ? ('No' | t: 'staff.parameters.row.no.label') : ('Yes' | t: 'staff.parameters.row.yes.label') }}</span>
                   </td>
                 }
-                <td data-label="Actions">
+                <td [attr.data-label]="'Actions' | t: 'staff.parameters.column.actions'">
                   <div class="row-actions justify-content-center">
-                    <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
-                    <a class="btn btn-primary" [href]="requirementsUrl(s)">Requirements</a>
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(s)">{{ 'Edit' | t: 'staff.parameters.row.edit.button' }}</button>
+                    <a class="btn btn-primary" [href]="requirementsUrl(s)">{{ 'Requirements' | t: 'staff.parameters.row.requirements.link' }}</a>
                     <button type="button" class="btn btn-toggle-off" [class.btn-outline-danger]="!s.disabled" [class.btn-outline-success]="s.disabled" [disabled]="toggling() === s.id"
-                            [attr.aria-label]="(s.disabled ? 'Enable ' : 'Disable ') + s.sectionCode" (click)="toggleDisabled(s)">{{ s.disabled ? 'Enable' : 'Disable' }}</button>
+                            [attr.aria-label]="s.disabled ? ('Enable {code}' | t: 'staff.parameters.row.enable.aria' : { code: s.sectionCode }) : ('Disable {code}' | t: 'staff.parameters.row.disable.aria' : { code: s.sectionCode })"
+                            (click)="toggleDisabled(s)">{{ s.disabled ? ('Enable' | t: 'staff.parameters.row.enable.button') : ('Disable' | t: 'staff.parameters.row.disable.button') }}</button>
                   </div>
                 </td>
               </tr>
             } @empty {
-              <tr class="empty-row"><td [attr.colspan]="onMain ? 6 : 5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
+              <tr class="empty-row"><td [attr.colspan]="onMain ? 6 : 5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? ('No parameter matches the search' | t: 'staff.parameters.noMatch.empty') : ('No Data' | t: 'staff.parameters.empty') }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -157,50 +162,50 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="add-parameter-title">Add Parameter ({{ levelName() }})</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="add-parameter-title">{{ 'Add Parameter ({level})' | t: 'staff.parameters.addDialog.title' : { level: levelName() } }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.parameters.dialog.close.aria'" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form class="add-form" (ngSubmit)="add()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <label for="sectionCode">Parameter Code<span class="req">*</span></label>
+                  <label for="sectionCode">{{ 'Parameter Code' | t: 'staff.parameters.form.code.label' }}<span class="req">*</span></label>
                   <div>
                     <!-- 2026-11-13: a number only (the legacy procedures sort parameters by CAST(SectionCode AS int)). -->
-                    <input id="sectionCode" name="sectionCode" class="form-control" maxlength="9" inputmode="numeric" placeholder="e.g. 1" [(ngModel)]="code" />
-                    @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
-                    @else if (submitted() && !codeIsNumber()) { <span class="help-block">The parameter code must be a number, e.g. 1.</span> }
+                    <input id="sectionCode" name="sectionCode" class="form-control" maxlength="9" inputmode="numeric" [placeholder]="'e.g. 1' | t: 'staff.parameters.form.code.placeholder'" [(ngModel)]="code" />
+                    @if (submitted() && !code.trim()) { <span class="help-block">{{ 'Parameter Code required.' | t: 'staff.parameters.form.code.error' }}</span> }
+                    @else if (submitted() && !codeIsNumber()) { <span class="help-block">{{ 'The parameter code must be a number, e.g. 1.' | t: 'staff.parameters.form.code.number.error' }}</span> }
                   </div>
-                  <label for="sectionName">Parameter Name<span class="req">*</span></label>
+                  <label for="sectionName">{{ 'Parameter Name' | t: 'staff.parameters.form.name.label' }}<span class="req">*</span></label>
                   <div>
                     <input id="sectionName" name="sectionName" class="form-control" maxlength="200" [(ngModel)]="name" />
-                    @if (submitted() && !name.trim()) { <span class="help-block">Parameter Name required.</span> }
+                    @if (submitted() && !name.trim()) { <span class="help-block">{{ 'Parameter Name required.' | t: 'staff.parameters.form.name.error' }}</span> }
                   </div>
-                  <label for="description" class="top">Description</label>
+                  <label for="description" class="top">{{ 'Description' | t: 'staff.parameters.form.description.label' }}</label>
                   <textarea id="description" name="description" rows="4" class="form-control" maxlength="1990" [(ngModel)]="description"></textarea>
-                  <label for="nicSectors" class="top">NIC Sectors</label>
+                  <label for="nicSectors" class="top">{{ 'NIC Sectors' | t: 'staff.parameters.form.sectors.label' }}</label>
                   <div>
-                    <zed-multi-select inputId="nicSectors" label="NIC Sectors" [options]="sectorOptions()" [(value)]="nicSectors" />
-                    <small class="muted d-block mt-1">None chosen: the parameter applies to every sector.</small>
+                    <zed-multi-select inputId="nicSectors" [label]="'NIC Sectors' | t: 'staff.parameters.form.sectors.label'" [options]="sectorOptions()" [(value)]="nicSectors" />
+                    <small class="muted d-block mt-1">{{ 'None chosen: the parameter applies to every sector.' | t: 'staff.parameters.addDialog.sectors.note' }}</small>
                   </div>
-                  <span class="label-like">Surveillance</span>
+                  <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
                   <div class="form-check">
                     <input id="inSurveillance" name="inSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="inSurveillance" />
-                    <label for="inSurveillance" class="form-check-label">Assessed again in surveillance</label>
+                    <label for="inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
                   </div>
                   @if (onMain) {
-                    <span class="label-like">Consultancy</span>
+                    <span class="label-like">{{ 'Consultancy' | t: 'staff.parameters.form.consultancy.label' }}</span>
                     <div class="form-check">
                       <input id="inConsultancy" name="inConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="inConsultancy" />
-                      <label for="inConsultancy" class="form-check-label">Used in consultancy (handholding)</label>
+                      <label for="inConsultancy" class="form-check-label">{{ 'Used in consultancy (handholding)' | t: 'staff.parameters.form.consultancy.tick.label' }}</label>
                     </div>
                   }
                 </div>
                 @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(false)">{{ 'Cancel' | t: 'staff.parameters.dialog.cancel.button' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Save' | t: 'staff.parameters.dialog.save.button' }}</button>
               </div>
             </form>
           </div>
@@ -215,40 +220,40 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="edit-parameter-title">Edit Parameter {{ e.code }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="edit-parameter-title">{{ 'Edit Parameter {code}' | t: 'staff.parameters.editDialog.title' : { code: e.code } }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.parameters.dialog.close.aria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="update()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <label for="edit-name">Parameter Name<span class="req">*</span></label>
+                  <label for="edit-name">{{ 'Parameter Name' | t: 'staff.parameters.form.name.label' }}<span class="req">*</span></label>
                   <input id="edit-name" name="editName" class="form-control" maxlength="200" [(ngModel)]="e.sectionName" />
-                  <label for="edit-description" class="top">Description</label>
+                  <label for="edit-description" class="top">{{ 'Description' | t: 'staff.parameters.form.description.label' }}</label>
                   <textarea id="edit-description" name="editDescription" rows="5" class="form-control" maxlength="1990" [(ngModel)]="e.description"></textarea>
-                  <label for="edit-nicSectors" class="top">NIC Sectors</label>
+                  <label for="edit-nicSectors" class="top">{{ 'NIC Sectors' | t: 'staff.parameters.form.sectors.label' }}</label>
                   <div>
-                    <zed-multi-select inputId="edit-nicSectors" label="NIC Sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" />
-                    <small class="muted d-block mt-1">None chosen: every sector.</small>
+                    <zed-multi-select inputId="edit-nicSectors" [label]="'NIC Sectors' | t: 'staff.parameters.form.sectors.label'" [options]="sectorOptions()" [(value)]="e.nicSectors" />
+                    <small class="muted d-block mt-1">{{ 'None chosen: every sector.' | t: 'staff.parameters.editDialog.sectors.note' }}</small>
                   </div>
-                  <span class="label-like">Surveillance</span>
+                  <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
                   <div class="form-check">
                     <input id="edit-inSurveillance" name="editInSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="e.inSurveillance" />
-                    <label for="edit-inSurveillance" class="form-check-label">Assessed again in surveillance</label>
+                    <label for="edit-inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
                   </div>
                   @if (onMain) {
-                    <span class="label-like">Consultancy</span>
+                    <span class="label-like">{{ 'Consultancy' | t: 'staff.parameters.form.consultancy.label' }}</span>
                     <div class="form-check">
                       <input id="edit-inConsultancy" name="editInConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="e.inConsultancy" />
-                      <label for="edit-inConsultancy" class="form-check-label">Used in consultancy (handholding)</label>
+                      <label for="edit-inConsultancy" class="form-check-label">{{ 'Used in consultancy (handholding)' | t: 'staff.parameters.form.consultancy.tick.label' }}</label>
                     </div>
                   }
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.parameters.dialog.cancel.button' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Save' | t: 'staff.parameters.dialog.save.button' }}</button>
               </div>
             </form>
           </div>
@@ -333,14 +338,14 @@ export class ParametersPage {
   protected nicSectors: string[] = [];
   /** Every parameter of the level; the pager holds those the filter lets through. */
   private readonly rows = signal<Parameter[]>([]);
-  protected readonly filters: readonly { key: ParameterFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'surveillance', label: 'In surveillance' },
-    { key: 'notSurveillance', label: 'Not in surveillance' },
-    ...(PORTAL_SYSTEM === 'main' ? [{ key: 'notConsultancy' as const, label: 'Not in consultancy' }] : []),
-    { key: 'sectors', label: 'Sector-specific' },
-    { key: 'disabled', label: 'Disabled' },
-  ];
+  protected readonly filters = computed((): readonly { key: ParameterFilter; label: string }[] => [
+    { key: 'all', label: t('staff.parameters.filter.all', 'All') },
+    { key: 'surveillance', label: t('staff.parameters.filter.surveillance', 'In surveillance') },
+    { key: 'notSurveillance', label: t('staff.parameters.filter.notSurveillance', 'Not in surveillance') },
+    ...(PORTAL_SYSTEM === 'main' ? [{ key: 'notConsultancy' as const, label: t('staff.parameters.filter.notConsultancy', 'Not in consultancy') }] : []),
+    { key: 'sectors', label: t('staff.parameters.filter.sectors', 'Sector-specific') },
+    { key: 'disabled', label: t('staff.parameters.filter.disabled', 'Disabled') },
+  ]);
   protected readonly filter = signal<ParameterFilter>('all');
   protected readonly stats = computed(() => {
     const rows = this.rows();
@@ -471,7 +476,7 @@ export class ParametersPage {
     this.addError.set('');
     this.success.set('');
     if (!this.code.trim() || !this.name.trim() || !this.codeIsNumber()) {
-      this.addError.set('Please enter valid data.');
+      this.addError.set(t('staff.parameters.add.invalid.error', 'Please enter valid data.'));
       return;
     }
     this.saving.set(true);
@@ -514,7 +519,7 @@ export class ParametersPage {
     const e = this.editing();
     if (!e) return;
     if (!e.sectionName.trim()) {
-      this.editError.set('Enter the valid data.');
+      this.editError.set(t('staff.parameters.edit.invalid.error', 'Enter the valid data.'));
       return;
     }
     this.saving.set(true);

@@ -6,6 +6,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CollapseCard } from '../collapse-card';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /** A mail server as the API shows it: never the password, only whether one is saved. */
 export interface SmtpServerView {
@@ -69,31 +70,31 @@ interface ServerForm {
  */
 @Component({
   selector: 'zed-staff-mail-servers',
-  imports: [FormsModule, CollapseCard, NgTemplateOutlet],
+  imports: [FormsModule, CollapseCard, NgTemplateOutlet, TextPipe],
   template: `
     @if (info(); as s) {
-      <zed-collapse-card class="mail-servers" title="Mail servers" [summary]="summary()" [(open)]="open">
-        <p class="intro">The SMTP server each group of mails is sent with. Which one a module uses:</p>
-        <ol class="chain" aria-label="Which mail server a module uses">
-          <li>Its own server</li>
-          <li>else <b>Default</b></li>
-          <li>else the server's settings file</li>
+      <zed-collapse-card class="mail-servers" [title]="'Mail servers' | t: 'staff.mailServers.title'" [summary]="summary()" [(open)]="open">
+        <p class="intro">{{ 'The SMTP server each group of mails is sent with. Which one a module uses:' | t: 'staff.mailServers.intro' }}</p>
+        <ol class="chain" [attr.aria-label]="'Which mail server a module uses' | t: 'staff.mailServers.chain.aria'">
+          <li>{{ 'Its own server' | t: 'staff.mailServers.chain.own' }}</li>
+          <li>{{ 'else' | t: 'staff.mailServers.chain.else' }} <b>{{ 'Default' | t: 'staff.mailServers.chain.default' }}</b></li>
+          <li>{{ "else the server's settings file" | t: 'staff.mailServers.chain.file' }}</li>
         </ol>
         @if (s.pickupDirectory) {
           <div class="alert alert-warning mb-2" role="alert">
-            Mails are not sent on this server: they are written as files to the folder {{ s.pickupDirectory }} (Email:PickupDirectory in the server's settings file).
+            {{ "Mails are not sent on this server: they are written as files to the folder {folder} (Email:PickupDirectory in the server's settings file)." | t: 'staff.mailServers.pickupNote' : { folder: s.pickupDirectory } }}
           </div>
         }
         @if (s.redirectAllTo) {
           <div class="alert alert-info mb-2" role="note">
             @if (s.allowedRecipientDomains) {
-              On this server mails reach only addresses in {{ s.allowedRecipientDomains }}; a mail with nobody there goes to {{ s.redirectAllTo }}.
+              {{ 'On this server mails reach only addresses in {domains}; a mail with nobody there goes to {address}.' | t: 'staff.mailServers.redirectDomainsNote' : { domains: s.allowedRecipientDomains, address: s.redirectAllTo } }}
             } @else {
-              On this server every mail goes to {{ s.redirectAllTo }} instead of its recipients (Email:RedirectAllTo in the server's settings file).
+              {{ "On this server every mail goes to {address} instead of its recipients (Email:RedirectAllTo in the server's settings file)." | t: 'staff.mailServers.redirectNote' : { address: s.redirectAllTo } }}
             }
           </div>
         } @else if (s.allowedRecipientDomains) {
-          <div class="alert alert-info mb-2" role="note">On this server mails reach only addresses in {{ s.allowedRecipientDomains }}.</div>
+          <div class="alert alert-info mb-2" role="note">{{ 'On this server mails reach only addresses in {domains}.' | t: 'staff.mailServers.domainsNote' : { domains: s.allowedRecipientDomains } }}</div>
         }
         <div #messageBox>
           @if (message(); as m) {
@@ -102,42 +103,43 @@ interface ServerForm {
         </div>
 
         @if (defaultModule(); as d) {
-          <section class="default-panel" [attr.data-module]="d.key" aria-label="Default mail server">
+          <section class="default-panel" [attr.data-module]="d.key" [attr.aria-label]="'Default mail server' | t: 'staff.mailServers.default.aria'">
             <div class="dp-icon" aria-hidden="true">✉</div>
             <div class="dp-main">
-              <div class="dp-title">{{ d.label }} mail server</div>
+              <div class="dp-title">{{ '{module} mail server' | t: 'staff.mailServers.default.title' : { module: d.label } }}</div>
               <small class="muted d-block">{{ d.help }}</small>
               <div class="server dp-server">
                 @if (used(d); as u) {
                   <div class="hp">{{ u.host }}:{{ u.port }}</div>
-                  <small class="muted">From {{ u.from || '(none)' }}@if (u.userName) { · sign-in {{ u.userName }} }</small>
-                  <span class="tls">{{ u.startTls ? 'STARTTLS' : 'SSL / plain' }}</span>
+                  <small class="muted">@if (u.userName) { {{ 'From {from} · sign-in {name}' | t: 'staff.mailServers.server.fromSignIn' : { from: u.from || ('(none)' | t: 'staff.mailServers.server.fromNone'), name: u.userName } }} }
+                  @else { {{ 'From {from}' | t: 'staff.mailServers.server.from' : { from: u.from || ('(none)' | t: 'staff.mailServers.server.fromNone') } }} }</small>
+                  <span class="tls">{{ u.startTls ? ('STARTTLS' | t: 'staff.mailServers.server.startTls') : ('SSL / plain' | t: 'staff.mailServers.server.sslPlain') }}</span>
                 } @else {
-                  <span class="status-badge is-rejected">No mail server</span>
+                  <span class="status-badge is-rejected">{{ 'No mail server' | t: 'staff.mailServers.server.none' }}</span>
                 }
               </div>
             </div>
             <div class="dp-side">
               <div class="uses">
                 @switch (d.uses) {
-                  @case ('Module') { <span class="status-badge is-active">Own server</span> }
-                  @case ('ServerFile') { <span class="status-badge is-pending">Server file</span> }
-                  @case ('ServerFileDefault') { <span class="status-badge is-pending">Server file (Default)</span> }
-                  @default { <span class="status-badge is-rejected">Not set</span> }
+                  @case ('Module') { <span class="status-badge is-active">{{ 'Own server' | t: 'staff.mailServers.uses.own' }}</span> }
+                  @case ('ServerFile') { <span class="status-badge is-pending">{{ 'Server file' | t: 'staff.mailServers.uses.file' }}</span> }
+                  @case ('ServerFileDefault') { <span class="status-badge is-pending">{{ 'Server file (Default)' | t: 'staff.mailServers.uses.fileDefault' }}</span> }
+                  @default { <span class="status-badge is-rejected">{{ 'Not set' | t: 'staff.mailServers.uses.notSet' }}</span> }
                 }
                 @if (d.saved; as v) {
-                  @if (v.userName && !v.passwordSet) { <div><span class="status-badge is-rejected">no password</span></div> }
+                  @if (v.userName && !v.passwordSet) { <div><span class="status-badge is-rejected">{{ 'no password' | t: 'staff.mailServers.uses.noPassword' }}</span></div> }
                 }
                 @if (used(d); as u) {
                   @if (signInNeeds(u)) {
-                    <div><span class="status-badge is-rejected" title="This mail service only accepts the full mailbox address as the sign-in name">check sign-in name</span></div>
+                    <div><span class="status-badge is-rejected" [title]="'This mail service only accepts the full mailbox address as the sign-in name' | t: 'staff.mailServers.uses.checkSignInTooltip'">{{ 'check sign-in name' | t: 'staff.mailServers.uses.checkSignIn' }}</span></div>
                   }
                 }
               </div>
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-outline-primary" (click)="edit(d)">{{ d.saved ? 'Edit' : 'Set' }}</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="edit(d)">{{ d.saved ? ('Edit' | t: 'staff.mailServers.editButton') : ('Set' | t: 'staff.mailServers.setButton') }}</button>
                 @if (d.saved) {
-                  <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="clear(d)">Clear</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="clear(d)">{{ 'Clear' | t: 'staff.mailServers.default.clearButton' }}</button>
                 }
               </div>
             </div>
@@ -148,55 +150,56 @@ interface ServerForm {
         }
 
         <div class="mods-head">
-          <span class="mods-title">Modules</span>
-          <small class="muted">{{ ownCount() }} with their own server · the others use Default</small>
+          <span class="mods-title">{{ 'Modules' | t: 'staff.mailServers.modules.title' }}</span>
+          <small class="muted">{{ '{count} with their own server · the others use Default' | t: 'staff.mailServers.modules.sub' : { count: ownCount() } }}</small>
         </div>
         <div class="table-responsive">
           <table class="table table-zed mods mb-2">
             <thead>
-              <tr><th>Module</th><th>Mail server used</th><th>Uses</th><th class="text-center">Actions</th></tr>
+              <tr><th>{{ 'Module' | t: 'staff.mailServers.column.module' }}</th><th>{{ 'Mail server used' | t: 'staff.mailServers.column.server' }}</th><th>{{ 'Uses' | t: 'staff.mailServers.column.uses' }}</th><th class="text-center">{{ 'Actions' | t: 'staff.mailServers.column.actions' }}</th></tr>
             </thead>
             <tbody>
               @for (m of modules(); track m.key) {
                 <tr [attr.data-module]="m.key" [class.own]="m.uses === 'Module'">
-                  <td data-label="Module">
+                  <td [attr.data-label]="'Module' | t: 'staff.mailServers.column.module'">
                     <div class="fw-semibold">{{ m.label }}</div>
                     <small class="muted">{{ m.help }}</small>
                   </td>
-                  <td class="server" data-label="Mail server used">
+                  <td class="server" [attr.data-label]="'Mail server used' | t: 'staff.mailServers.column.server'">
                     @if (used(m); as u) {
-                      <div class="hp">{{ u.host }}:{{ u.port }} <span class="tls">{{ u.startTls ? 'STARTTLS' : 'SSL / plain' }}</span></div>
+                      <div class="hp">{{ u.host }}:{{ u.port }} <span class="tls">{{ u.startTls ? ('STARTTLS' | t: 'staff.mailServers.server.startTls') : ('SSL / plain' | t: 'staff.mailServers.server.sslPlain') }}</span></div>
                       @if (m.uses === 'Module' || m.uses === 'ServerFile') {
-                        <small class="muted">From {{ u.from || '(none)' }}@if (u.userName) { · sign-in {{ u.userName }} }</small>
+                        <small class="muted">@if (u.userName) { {{ 'From {from} · sign-in {name}' | t: 'staff.mailServers.server.fromSignIn' : { from: u.from || ('(none)' | t: 'staff.mailServers.server.fromNone'), name: u.userName } }} }
+                        @else { {{ 'From {from}' | t: 'staff.mailServers.server.from' : { from: u.from || ('(none)' | t: 'staff.mailServers.server.fromNone') } }} }</small>
                       } @else {
-                        <small class="muted inherit">same as Default</small>
+                        <small class="muted inherit">{{ 'same as Default' | t: 'staff.mailServers.server.sameAsDefault' }}</small>
                       }
                     } @else {
-                      <span class="status-badge is-rejected">No mail server</span>
+                      <span class="status-badge is-rejected">{{ 'No mail server' | t: 'staff.mailServers.server.none' }}</span>
                     }
                   </td>
-                  <td class="uses" data-label="Uses">
+                  <td class="uses" [attr.data-label]="'Uses' | t: 'staff.mailServers.column.uses'">
                     @switch (m.uses) {
-                      @case ('Module') { <span class="status-badge is-active">Own server</span> }
-                      @case ('Default') { <span class="status-badge is-info">Default</span> }
-                      @case ('ServerFile') { <span class="status-badge is-pending">Server file</span> }
-                      @case ('ServerFileDefault') { <span class="status-badge is-pending">Server file (Default)</span> }
-                      @default { <span class="status-badge is-rejected">Not set</span> }
+                      @case ('Module') { <span class="status-badge is-active">{{ 'Own server' | t: 'staff.mailServers.uses.own' }}</span> }
+                      @case ('Default') { <span class="status-badge is-info">{{ 'Default' | t: 'staff.mailServers.uses.default' }}</span> }
+                      @case ('ServerFile') { <span class="status-badge is-pending">{{ 'Server file' | t: 'staff.mailServers.uses.file' }}</span> }
+                      @case ('ServerFileDefault') { <span class="status-badge is-pending">{{ 'Server file (Default)' | t: 'staff.mailServers.uses.fileDefault' }}</span> }
+                      @default { <span class="status-badge is-rejected">{{ 'Not set' | t: 'staff.mailServers.uses.notSet' }}</span> }
                     }
                     @if (m.saved; as v) {
-                      @if (v.userName && !v.passwordSet) { <div><span class="status-badge is-rejected">no password</span></div> }
+                      @if (v.userName && !v.passwordSet) { <div><span class="status-badge is-rejected">{{ 'no password' | t: 'staff.mailServers.uses.noPassword' }}</span></div> }
                     }
                     @if (used(m); as u) {
                       @if (signInNeeds(u)) {
-                        <div><span class="status-badge is-rejected" title="This mail service only accepts the full mailbox address as the sign-in name">check sign-in name</span></div>
+                        <div><span class="status-badge is-rejected" [title]="'This mail service only accepts the full mailbox address as the sign-in name' | t: 'staff.mailServers.uses.checkSignInTooltip'">{{ 'check sign-in name' | t: 'staff.mailServers.uses.checkSignIn' }}</span></div>
                       }
                     }
                   </td>
                   <td class="actions">
                     <div class="row-actions justify-content-center">
-                      <button type="button" class="btn btn-sm btn-outline-primary" (click)="edit(m)">{{ m.saved ? 'Edit' : 'Set' }}</button>
+                      <button type="button" class="btn btn-sm btn-outline-primary" (click)="edit(m)">{{ m.saved ? ('Edit' | t: 'staff.mailServers.editButton') : ('Set' | t: 'staff.mailServers.setButton') }}</button>
                       @if (m.saved) {
-                        <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="clear(m)">Use Default</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="clear(m)">{{ 'Use Default' | t: 'staff.mailServers.useDefaultButton' }}</button>
                       }
                     </div>
                   </td>
@@ -212,25 +215,25 @@ interface ServerForm {
         </div>
 
         <section class="test-panel" aria-labelledby="testTitle">
-          <div class="tp-title" id="testTitle">Test a mail server</div>
-          <small class="muted d-block mb-2">The mail goes out at once through the module's server; a refusal shows the mail server's own message.</small>
+          <div class="tp-title" id="testTitle">{{ 'Test a mail server' | t: 'staff.mailServers.test.title' }}</div>
+          <small class="muted d-block mb-2">{{ "The mail goes out at once through the module's server; a refusal shows the mail server's own message." | t: 'staff.mailServers.test.sub' }}</small>
           <form class="test-mail" (ngSubmit)="sendTest()" novalidate>
-            <label for="testModule">Send a test mail of</label>
+            <label for="testModule">{{ 'Send a test mail of' | t: 'staff.mailServers.test.moduleLabel' }}</label>
             <select id="testModule" name="testModule" class="form-select" [ngModel]="testModule()" (ngModelChange)="testModule.set($event)">
               @for (m of s.modules; track m.key) { <option [value]="m.key">{{ m.label }}</option> }
             </select>
-            <label for="testTo">to</label>
+            <label for="testTo">{{ 'to' | t: 'staff.mailServers.test.toLabel' }}</label>
             <input id="testTo" name="testTo" type="email" class="form-control" [class.is-invalid]="testInvalid()" maxlength="254" autocomplete="off" placeholder="name@example.com"
                    [ngModel]="testTo()" (ngModelChange)="testTo.set($event)" />
             <button type="submit" class="btn btn-primary" [disabled]="testing() || !testTo().trim() || testInvalid()">
-              {{ testing() ? 'Sending…' : 'Send test mail' }}
+              {{ testing() ? ('Sending…' | t: 'staff.mailServers.test.sending') : ('Send test mail' | t: 'staff.mailServers.test.sendButton') }}
             </button>
           </form>
           @if (testInvalid()) {
-            <small class="help-block">Please enter one valid e-mail address.</small>
+            <small class="help-block">{{ 'Please enter one valid e-mail address.' | t: 'staff.mailServers.test.invalidError' }}</small>
           }
-          @if (testResult(); as t) {
-            <div class="alert mt-2 mb-0" [class.alert-success]="t.ok" [class.alert-danger]="!t.ok" role="status">{{ t.text }}</div>
+          @if (testResult(); as r) {
+            <div class="alert mt-2 mb-0" [class.alert-success]="r.ok" [class.alert-danger]="!r.ok" role="status">{{ r.text }}</div>
           }
         </section>
       </zed-collapse-card>
@@ -238,54 +241,54 @@ interface ServerForm {
 
     <ng-template #serverForm let-m>
       <form class="server-form" (ngSubmit)="save(m)" novalidate autocomplete="off">
-        <h6>{{ m.label }}: mail server</h6>
+        <h6>{{ '{module}: mail server' | t: 'staff.mailServers.form.title' : { module: m.label } }}</h6>
         <div class="form-grid">
-          <label for="smtpHost">Server (host)<span class="req">*</span></label>
+          <label for="smtpHost">{{ 'Server (host)' | t: 'staff.mailServers.form.hostLabel' }}<span class="req">*</span></label>
           <div class="host-port">
-            <input id="smtpHost" name="smtpHost" class="form-control" [class.is-invalid]="formError()?.field === 'host'" maxlength="255" placeholder="e.g. smtp.office365.com"
+            <input id="smtpHost" name="smtpHost" class="form-control" [class.is-invalid]="formError()?.field === 'host'" maxlength="255" [placeholder]="'e.g. smtp.office365.com' | t: 'staff.mailServers.form.hostPlaceholder'"
                    [ngModel]="form().host" (ngModelChange)="set('host', $event)" />
-            <input id="smtpPort" name="smtpPort" class="form-control port" [class.is-invalid]="formError()?.field === 'port'" type="number" min="1" max="65535" aria-label="Port"
+            <input id="smtpPort" name="smtpPort" class="form-control port" [class.is-invalid]="formError()?.field === 'port'" type="number" min="1" max="65535" [attr.aria-label]="'Port' | t: 'staff.mailServers.form.portAria'"
                    [ngModel]="form().port" (ngModelChange)="set('port', +$event)" />
           </div>
-          <label class="top" for="smtpTls">Secure connection</label>
+          <label class="top" for="smtpTls">{{ 'Secure connection' | t: 'staff.mailServers.form.tlsLabel' }}</label>
           <div class="form-check">
             <input id="smtpTls" name="smtpTls" class="form-check-input" type="checkbox"
                    [ngModel]="form().startTls" (ngModelChange)="set('startTls', $event)" />
-            <label class="form-check-label" for="smtpTls">STARTTLS (usual on port 587). Off: SSL on port 465, or as the server offers.</label>
+            <label class="form-check-label" for="smtpTls">{{ 'STARTTLS (usual on port 587). Off: SSL on port 465, or as the server offers.' | t: 'staff.mailServers.form.tlsCheck' }}</label>
           </div>
-          <label for="smtpFrom">From<span class="req">*</span></label>
-          <input id="smtpFrom" name="smtpFrom" class="form-control" [class.is-invalid]="formError()?.field === 'from'" maxlength="320" placeholder="ZED <noreply@example.org>"
+          <label for="smtpFrom">{{ 'From' | t: 'staff.mailServers.form.fromLabel' }}<span class="req">*</span></label>
+          <input id="smtpFrom" name="smtpFrom" class="form-control" [class.is-invalid]="formError()?.field === 'from'" maxlength="320" [placeholder]="'ZED <noreply@example.org>' | t: 'staff.mailServers.form.fromPlaceholder'"
                  [ngModel]="form().from" (ngModelChange)="set('from', $event)" />
-          <label class="top" for="smtpUser">Sign-in name</label>
+          <label class="top" for="smtpUser">{{ 'Sign-in name' | t: 'staff.mailServers.form.userLabel' }}</label>
           <div>
             <input id="smtpUser" name="smtpUser" class="form-control" [class.is-invalid]="formError()?.field === 'userName'" maxlength="320" autocomplete="off"
-                   placeholder="Usually the mailbox address; empty: no sign-in"
+                   [placeholder]="'Usually the mailbox address; empty: no sign-in' | t: 'staff.mailServers.form.userPlaceholder'"
                    [ngModel]="form().userName" (ngModelChange)="set('userName', $event)" />
             @if (signInNeeds(form())) {
-              <small class="help-block">This mail service only accepts the full mailbox address as the sign-in name, e.g. {{ addressHint() }}.</small>
+              <small class="help-block">{{ 'This mail service only accepts the full mailbox address as the sign-in name, e.g. {address}.' | t: 'staff.mailServers.form.signInHint' : { address: addressHint() } }}</small>
             }
           </div>
-          <label class="top" for="smtpPassword">Password</label>
+          <label class="top" for="smtpPassword">{{ 'Password' | t: 'staff.mailServers.form.passwordLabel' }}</label>
           <div>
             <input id="smtpPassword" name="smtpPassword" class="form-control" [class.is-invalid]="formError()?.field === 'password'" type="password" maxlength="256" autocomplete="new-password"
-                   [placeholder]="m.saved?.passwordSet ? 'Saved. Leave empty to keep it' : ''"
+                   [placeholder]="m.saved?.passwordSet ? ('Saved. Leave empty to keep it' | t: 'staff.mailServers.form.passwordPlaceholder') : ''"
                    [disabled]="form().clearPassword" [ngModel]="form().password" (ngModelChange)="set('password', $event)" />
             @if (m.saved?.passwordSet) {
               <div class="form-check mt-1">
                 <input id="smtpClear" name="smtpClear" class="form-check-input" type="checkbox"
                        [ngModel]="form().clearPassword" (ngModelChange)="set('clearPassword', $event)" />
-                <label class="form-check-label" for="smtpClear">Remove the saved password</label>
+                <label class="form-check-label" for="smtpClear">{{ 'Remove the saved password' | t: 'staff.mailServers.form.clearPasswordCheck' }}</label>
               </div>
             }
-            <small class="muted d-block mt-1">Stored encrypted for this server; never shown again.</small>
+            <small class="muted d-block mt-1">{{ 'Stored encrypted for this server; never shown again.' | t: 'staff.mailServers.form.passwordNote' }}</small>
           </div>
         </div>
         @if (formError(); as e) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ e.text }}</div>
         }
         <div class="form-actions">
-          <button type="button" class="btn btn-default" (click)="cancel()">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          <button type="button" class="btn btn-default" (click)="cancel()">{{ 'Cancel' | t: 'staff.mailServers.form.cancelButton' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save' | t: 'staff.mailServers.form.saveButton' }}</button>
         </div>
       </form>
     </ng-template>
@@ -387,8 +390,11 @@ export class MailServersCard {
     const modules = this.info()?.modules ?? [];
     const own = modules.filter((m) => m.uses === 'Module').length;
     const none = modules.filter((m) => m.uses === 'None').length;
-    const parts = [`${modules.length} modules`, own === 1 ? '1 with its own server' : `${own} with their own server`];
-    if (none) parts.push(`${none} without a mail server`);
+    const parts = [
+      t('staff.mailServers.summary.modules', '{count} modules', { count: modules.length }),
+      own === 1 ? t('staff.mailServers.summary.ownOne', '1 with its own server') : t('staff.mailServers.summary.own', '{count} with their own server', { count: own }),
+    ];
+    if (none) parts.push(t('staff.mailServers.summary.none', '{count} without a mail server', { count: none }));
     return parts.join(' · ');
   });
 
@@ -416,7 +422,7 @@ export class MailServersCard {
   protected addressHint(): string {
     const from = this.form().from.trim();
     const inner = (/<([^>]+)>/.exec(from)?.[1] ?? from).trim();
-    return EMAIL_PATTERN.test(inner) ? inner : 'name@example.org';
+    return EMAIL_PATTERN.test(inner) ? inner : t('staff.mailServers.form.addressExample', 'name@example.org');
   }
 
   protected cancel(): void {
@@ -428,16 +434,16 @@ export class MailServersCard {
   private check(f: ServerForm, m: MailModuleView): { field: keyof ServerForm | null; text: string } | null {
     const host = f.host.trim();
     const from = f.from.trim();
-    if (!host) return { field: 'host', text: 'Please enter the mail server (host name).' };
-    if (/\s|\//.test(host)) return { field: 'host', text: 'Enter the host name only, e.g. smtp.office365.com.' };
-    if (!Number.isInteger(f.port) || f.port < 1 || f.port > 65535) return { field: 'port', text: 'The port must be a whole number between 1 and 65535.' };
-    if (!from) return { field: 'from', text: 'Please enter the From address.' };
+    if (!host) return { field: 'host', text: t('staff.mailServers.error.hostMissing', 'Please enter the mail server (host name).') };
+    if (/\s|\//.test(host)) return { field: 'host', text: t('staff.mailServers.error.hostInvalid', 'Enter the host name only, e.g. smtp.office365.com.') };
+    if (!Number.isInteger(f.port) || f.port < 1 || f.port > 65535) return { field: 'port', text: t('staff.mailServers.error.port', 'The port must be a whole number between 1 and 65535.') };
+    if (!from) return { field: 'from', text: t('staff.mailServers.error.fromMissing', 'Please enter the From address.') };
     const inner = /^[^<>]*<\s*([^<>\s]+)\s*>$/.exec(from)?.[1] ?? from;
-    if (!EMAIL_PATTERN.test(inner)) return { field: 'from', text: `'${from}' is not a valid From address (e.g. ZED <noreply@example.org> or noreply@example.org).` };
-    if (signInNeedsAddress(host, f.userName)) return { field: 'userName', text: `This mail service only accepts the full mailbox address as the sign-in name, e.g. ${this.addressHint()}.` };
+    if (!EMAIL_PATTERN.test(inner)) return { field: 'from', text: t('staff.mailServers.error.fromInvalid', "'{from}' is not a valid From address (e.g. ZED <noreply@example.org> or noreply@example.org).", { from }) };
+    if (signInNeedsAddress(host, f.userName)) return { field: 'userName', text: t('staff.mailServers.form.signInHint', 'This mail service only accepts the full mailbox address as the sign-in name, e.g. {address}.', { address: this.addressHint() }) };
     const keepsPassword = !!m.saved?.passwordSet && !f.clearPassword;
     if (f.userName.trim() && !f.password && !keepsPassword)
-      return { field: 'password', text: 'Please enter the password of this sign-in name (or leave the sign-in name empty for a server without sign-in).' };
+      return { field: 'password', text: t('staff.mailServers.error.passwordMissing', 'Please enter the password of this sign-in name (or leave the sign-in name empty for a server without sign-in).') };
     return null;
   }
 
@@ -485,8 +491,13 @@ export class MailServersCard {
   }
 
   protected async clear(m: MailModuleView): Promise<void> {
-    const then = m.key === 'Default' ? "the server's settings file" : 'Default';
-    if (!(await this.confirms.ask({ title: 'Remove the Mail Server?', message: `The mails of ${m.label} will use ${then}.`, confirmLabel: 'Remove', danger: true }))) return;
+    const message = m.key === 'Default'
+      ? t('staff.mailServers.removeConfirm.messageFile', "The mails of {module} will use the server's settings file.", { module: m.label })
+      : t('staff.mailServers.removeConfirm.messageDefault', 'The mails of {module} will use Default.', { module: m.label });
+    if (!(await this.confirms.ask({
+      title: t('staff.mailServers.removeConfirm.title', 'Remove the Mail Server?'), message,
+      confirmLabel: t('staff.mailServers.removeConfirm.button', 'Remove'), danger: true,
+    }))) return;
     this.busy.set(true);
     this.message.set(null);
     try {

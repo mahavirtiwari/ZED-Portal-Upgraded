@@ -6,6 +6,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ALL_PORTALS, PortalSwitchComponent } from '../admin-portal';
 import { itemId } from './submission-checklists';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 export type Severity = 'Minor' | 'Major' | 'Critical';
 
@@ -30,11 +31,14 @@ export interface ObservationReasonsResponse {
 export const REASON_LIMITS = { reasons: 40, text: 150 } as const;
 
 /** What each severity does (fixed; QualityObservations.Points / Blocking). */
-export const SEVERITY_NOTES: Record<Severity, string> = {
-  Minor: '1 point',
-  Major: '3 points, holds the final submit',
-  Critical: '5 points, holds the final submit',
-};
+export function severityNote(s: Severity): string {
+  switch (s) {
+    case 'Minor': return t('staff.observationReasons.severity.minorNote', '1 point');
+    case 'Major': return t('staff.observationReasons.severity.majorNote', '3 points, holds the final submit');
+    case 'Critical': return t('staff.observationReasons.severity.criticalNote', '5 points, holds the final submit');
+    default: return '';
+  }
+}
 
 interface Editing {
   reason: ObservationReasonDef | null;
@@ -51,17 +55,17 @@ interface Editing {
  */
 @Component({
   selector: 'zed-staff-observation-reasons',
-  imports: [FormsModule, PortalSwitchComponent],
+  imports: [FormsModule, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Observation reasons</h3>
-        <p class="page-sub">The reasons the operation admins pick for a quality observation{{ data()?.handholding ? ' on a handholding milestone' : '' }}, each with its severity.</p>
+        <h3 class="registration-title">{{ 'Observation reasons' | t: 'staff.observationReasons.title' }}</h3>
+        <p class="page-sub">{{ data()?.handholding ? ('The reasons the operation admins pick for a quality observation on a handholding milestone, each with its severity.' | t: 'staff.observationReasons.subHandholding') : ('The reasons the operation admins pick for a quality observation, each with its severity.' | t: 'staff.observationReasons.sub') }}</p>
       </div>
       @if (data(); as d) {
         <div class="page-actions">
-          <button type="button" class="btn btn-default" [disabled]="!d.customised || busy()" (click)="resetAll()">Reset to standard reasons</button>
-          <button type="button" class="btn btn-primary" [disabled]="d.reasons.length >= limits.reasons || busy()" (click)="add()">Add reason</button>
+          <button type="button" class="btn btn-default" [disabled]="!d.customised || busy()" (click)="resetAll()">{{ 'Reset to standard reasons' | t: 'staff.observationReasons.resetButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="d.reasons.length >= limits.reasons || busy()" (click)="add()">{{ 'Add reason' | t: 'staff.observationReasons.addButton' }}</button>
         </div>
       }
     </div>
@@ -87,10 +91,10 @@ interface Editing {
           <thead>
             <tr>
               <th class="text-center">#</th>
-              <th>Reason</th>
-              <th>Severity</th>
-              <th class="text-end">Used</th>
-              <th class="text-end">Action</th>
+              <th>{{ 'Reason' | t: 'staff.observationReasons.column.reason' }}</th>
+              <th>{{ 'Severity' | t: 'staff.observationReasons.column.severity' }}</th>
+              <th class="text-end">{{ 'Used' | t: 'staff.observationReasons.column.used' }}</th>
+              <th class="text-end">{{ 'Action' | t: 'staff.observationReasons.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -102,14 +106,14 @@ interface Editing {
                 <td class="text-end num-cell">{{ used(r) }}</td>
                 <td>
                   <div class="st-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move up" aria-label="Move up" [disabled]="n === 0 || busy()" (click)="move(n, -1)">↑</button>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-move" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(n, 1)">↓</button>
-                    <label class="st-switch" [class.off]="!r.active" [title]="r.active ? 'Switch this reason off' : 'Switch this reason on'">
-                      <input type="checkbox" role="switch" [checked]="r.active" [disabled]="busy()" [attr.aria-label]="(r.active ? 'Switch off ' : 'Switch on ') + r.text"
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move up' | t: 'staff.observationReasons.row.moveUpTooltip'" [attr.aria-label]="'Move up' | t: 'staff.observationReasons.row.moveUpTooltip'" [disabled]="n === 0 || busy()" (click)="move(n, -1)">↑</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-move" [title]="'Move down' | t: 'staff.observationReasons.row.moveDownTooltip'" [attr.aria-label]="'Move down' | t: 'staff.observationReasons.row.moveDownTooltip'" [disabled]="last || busy()" (click)="move(n, 1)">↓</button>
+                    <label class="st-switch" [class.off]="!r.active" [title]="r.active ? ('Switch this reason off' | t: 'staff.observationReasons.row.offTooltip') : ('Switch this reason on' | t: 'staff.observationReasons.row.onTooltip')">
+                      <input type="checkbox" role="switch" [checked]="r.active" [disabled]="busy()" [attr.aria-label]="r.active ? ('Switch off {reason}' | t: 'staff.observationReasons.row.offAria' : { reason: r.text }) : ('Switch on {reason}' | t: 'staff.observationReasons.row.onAria' : { reason: r.text })"
                         (click)="$event.preventDefault(); toggle(n)" />
-                      <span class="st-track" aria-hidden="true"></span>{{ r.active ? 'On' : 'Off' }}
+                      <span class="st-track" aria-hidden="true"></span>{{ r.active ? ('On' | t: 'staff.observationReasons.row.on') : ('Off' | t: 'staff.observationReasons.row.off') }}
                     </label>
-                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(r)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm st-edit" [disabled]="busy()" (click)="edit(r)">{{ 'Edit' | t: 'staff.observationReasons.row.editButton' }}</button>
                   </div>
                 </td>
               </tr>
@@ -119,11 +123,11 @@ interface Editing {
       </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
-        @if (!d.customised) { <span class="standard-note">Standard reasons (not changed yet).</span> }
-        A reason already used can be renamed or switched off; the observations raised keep the wording and severity they were raised with.
+        @if (!d.customised) { <span class="standard-note">{{ 'Standard reasons (not changed yet).' | t: 'staff.observationReasons.standardNote' }}</span> }
+        {{ 'A reason already used can be renamed or switched off; the observations raised keep the wording and severity they were raised with.' | t: 'staff.observationReasons.note' }}
       </p>
     } @else if (!busy()) {
-      <div class="no-data">The observation reasons could not be loaded</div>
+      <div class="no-data">{{ 'The observation reasons could not be loaded' | t: 'staff.observationReasons.loadError' }}</div>
     }
 
     @if (editing(); as e) {
@@ -132,17 +136,17 @@ interface Editing {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-start gap-3">
-                <h3 class="registration-title m-0" id="reasonTitle">{{ e.reason ? 'Edit reason' : 'Add reason' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="reasonTitle">{{ e.reason ? ('Edit reason' | t: 'staff.observationReasons.dialog.editTitle') : ('Add reason' | t: 'staff.observationReasons.dialog.addTitle') }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.observationReasons.dialog.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               @let p = check(e);
-              <label class="form-label" for="reasonText">Reason<span class="req">*</span></label>
-              <input type="text" class="form-control" id="reasonText" [maxlength]="limits.text" placeholder="e.g. Evidence not checked properly" [class.is-invalid]="p" [(ngModel)]="e.text" />
+              <label class="form-label" for="reasonText">{{ 'Reason' | t: 'staff.observationReasons.dialog.reason.label' }}<span class="req">*</span></label>
+              <input type="text" class="form-control" id="reasonText" [maxlength]="limits.text" [placeholder]="'e.g. Evidence not checked properly' | t: 'staff.observationReasons.dialog.reason.placeholder'" [class.is-invalid]="p" [(ngModel)]="e.text" />
               @if (p) { <small class="invalid">{{ p }}</small> }
-              <span class="form-label d-block mt-3">Severity<span class="req">*</span></span>
-              <div class="seg" role="group" aria-label="Severity">
+              <span class="form-label d-block mt-3">{{ 'Severity' | t: 'staff.observationReasons.dialog.severity.label' }}<span class="req">*</span></span>
+              <div class="seg" role="group" [attr.aria-label]="'Severity' | t: 'staff.observationReasons.dialog.severity.label'">
                 @for (s of data()?.severities ?? []; track s) {
                   <button type="button" [class.active]="e.severity === s" [attr.aria-pressed]="e.severity === s" [attr.data-severity]="s"
                     (click)="editing.set({ ...e, severity: s })">{{ s }}</button>
@@ -151,13 +155,13 @@ interface Editing {
               <small class="text-muted d-block mt-1">{{ note(e.severity) }}</small>
               <label class="check-line mt-3" for="reasonActive">
                 <input class="form-check-input" type="checkbox" id="reasonActive" [(ngModel)]="e.active" />
-                <span>In use</span>
+                <span>{{ 'In use' | t: 'staff.observationReasons.dialog.active.label' }}</span>
               </label>
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.observationReasons.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.observationReasons.dialog.saveButton' }}</button>
             </div>
           </div>
         </div>
@@ -243,7 +247,7 @@ export class ObservationReasonsPage {
   }
 
   protected note(s: Severity): string {
-    return SEVERITY_NOTES[s] ?? '';
+    return severityNote(s);
   }
 
   protected used(r: ObservationReasonDef): number {
@@ -265,10 +269,10 @@ export class ObservationReasonsPage {
   /** The server's rules (ObservationReasons.Problem) for the reason's wording; null when fine. */
   protected check(e: Editing): string | null {
     const text = e.text.trim();
-    if (!text) return this.tried() ? 'Enter the reason.' : null;
-    if (text.length > REASON_LIMITS.text) return `At most ${REASON_LIMITS.text} characters.`;
+    if (!text) return this.tried() ? t('staff.observationReasons.dialog.error.empty', 'Enter the reason.') : null;
+    if (text.length > REASON_LIMITS.text) return t('staff.observationReasons.dialog.error.long', 'At most {count} characters.', { count: REASON_LIMITS.text });
     const others = (this.data()?.reasons ?? []).filter((r) => r.id !== e.reason?.id);
-    if (others.some((r) => r.text.trim().toLowerCase() === text.toLowerCase())) return 'Another reason has this wording.';
+    if (others.some((r) => r.text.trim().toLowerCase() === text.toLowerCase())) return t('staff.observationReasons.dialog.error.duplicate', 'Another reason has this wording.');
     return null;
   }
 
@@ -305,7 +309,9 @@ export class ObservationReasonsPage {
     const r = reasons[index];
     if (!r) return Promise.resolve();
     if (r.active && !(await this.confirms.ask({
-      title: 'Switch the Reason Off?', message: `"${r.text}" is no longer offered for new observations.`, confirmLabel: 'Switch Off', danger: true,
+      title: t('staff.observationReasons.offDialog.title', 'Switch the Reason Off?'),
+      message: t('staff.observationReasons.offDialog.message', '"{reason}" is no longer offered for new observations.', { reason: r.text }),
+      confirmLabel: t('staff.observationReasons.offDialog.confirmButton', 'Switch Off'), danger: true,
     }))) return;
     r.active = !r.active;
     return this.change(() => this.http.put<MessageResponse>(ObservationReasonsPage.url, { reasons }));
@@ -321,7 +327,9 @@ export class ObservationReasonsPage {
 
   protected async resetAll(): Promise<void> {
     if (!(await this.confirms.ask({
-      title: 'Reset to the Standard Reasons?', message: 'The reasons added or changed here are removed.', confirmLabel: 'Reset', danger: true,
+      title: t('staff.observationReasons.resetDialog.title', 'Reset to the Standard Reasons?'),
+      message: t('staff.observationReasons.resetDialog.message', 'The reasons added or changed here are removed.'),
+      confirmLabel: t('staff.observationReasons.resetDialog.confirmButton', 'Reset'), danger: true,
     }))) return;
     return this.change(() => this.http.delete<MessageResponse>(ObservationReasonsPage.url));
   }

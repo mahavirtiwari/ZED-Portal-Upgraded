@@ -8,6 +8,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { AuthService as QoAuth } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { ReviewActionsBar, ReviewRemarksDialog, RemarksTarget } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
 import { AppFormValuesPanel } from './app-form-values';
@@ -35,24 +36,32 @@ import { DaAllotmentBanner } from './da-allotment-banner';
 /**
  * 2026-11-17 (the user's staff design 14): the tab bar's names. 2026-11-18 (the new staff-14 series): five tabs: the NC 1 … NC 5
  * tabs became one "Non-conformances" tab with a round switcher inside (tab ids 4..8 still name the round shown).
+ * 2026-11-19: Admin-editable page wording (Texts → Page wording), so worked out when shown.
  */
-export const TAB_LABELS: Record<number, string> = { 1: 'Assessment overview', 2: 'Basic information', 9: 'ESG compliance', 3: 'Parameters', 4: 'Non-conformances' };
+export function tabLabel(id: number): string {
+  switch (id) {
+    case 1: return t('staff.daDetails.tab.overview.label', 'Assessment overview');
+    case 2: return t('staff.daDetails.tab.basic.label', 'Basic information');
+    case 9: return t('staff.daDetails.tab.esg.label', 'ESG compliance');
+    case 3: return t('staff.daDetails.tab.params.label', 'Parameters');
+    case 4: return t('staff.daDetails.tab.nc.label', 'Non-conformances');
+    default: return '';
+  }
+}
 
 /** The basic information items of the unit's form (1 to 11; staff-14d numbers them so). */
 export const BASIC_ITEMS = 11;
 
-/** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
-export const TAB_TITLES: Record<number, string> = {
-  1: 'Assessment Summary',
-  2: 'Basic Information',
-  3: 'Parameters',
-  4: 'Non-Conformance(s) 1',
-  5: 'Non-Conformance(s) 2',
-  6: 'Non-Conformance(s) 3',
-  7: 'Non-Conformance(s) 4',
-  8: 'Non-Conformance(s) 5',
-  9: 'Esg Compliance',
-};
+/** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5 (the heading above a tab). */
+export function tabTitle(id: number): string {
+  switch (id) {
+    case 1: return t('staff.daDetails.tabTitle.overview.title', 'Assessment Summary');
+    case 2: return t('staff.daDetails.tabTitle.basic.title', 'Basic Information');
+    case 3: return t('staff.daDetails.tabTitle.params.title', 'Parameters');
+    case 9: return t('staff.daDetails.tabTitle.esg.title', 'Esg Compliance');
+    default: return id >= 4 && id <= 8 ? t('staff.daDetails.tabTitle.nc.title', 'Non-Conformance(s) {round}', { round: id - 3 }) : '';
+  }
+}
 
 /** Surveillance's DaDetails.cshtml numbers the tabs in their order: ESG 3, parameters 4, NC n at n + 4. */
 const SURVEILLANCE_TAB_NUMBERS: Record<number, number> = { 1: 1, 2: 2, 9: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9 };
@@ -78,7 +87,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean; sub
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon, DaAllotmentBanner],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon, DaAllotmentBanner, TextPipe],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES, UNIT_VIEW_STYLES],
   styleUrls: ['./da-details.css', './da-details.params.css', './da-details.basic.css', './da-details.nc.css'],
@@ -95,8 +104,8 @@ export class DaDetailsPage {
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;
-  protected readonly tabTitles = TAB_TITLES;
-  protected readonly tabLabels = TAB_LABELS;
+  protected readonly tabTitle = tabTitle;
+  protected readonly tabLabel = tabLabel;
   protected readonly tabNumber = (id: number) => (this.surveillanceSystem ? SURVEILLANCE_TAB_NUMBERS[id] ?? id : id);
 
   protected readonly data = signal<DaDetails | null>(null);
@@ -140,12 +149,12 @@ export class DaDetailsPage {
   /** 2026-11-14 (frame A): "Pump Engineers · Bronze" (the ZED ID until the unit is loaded). */
   protected readonly headTitle = computed(() => {
     const d = this.data();
-    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || 'Assessment details';
+    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || t('staff.daDetails.head.fallbackTitle', 'Assessment details');
     return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
   });
   protected readonly headCrumbs = computed(() => staffCrumbs(
-    { label: 'Desktop verification', link: '/staff/assessment/da-verification' },
-    { label: text(this.msme(), 'ZedId') || this.data()?.zedId || 'Unit' },
+    { label: t('staff.daDetails.crumb.verification', 'Desktop verification'), link: '/staff/assessment/da-verification' },
+    { label: text(this.msme(), 'ZedId') || this.data()?.zedId || t('staff.daDetails.crumb.unit', 'Unit') },
   ));
   /** 2026-11-17 (design 14): the result beside the title, the stage tracker and the NC rounds, from the record's columns. */
   protected readonly result = computed(() => unitResult(this.msme()));
@@ -209,19 +218,19 @@ export class DaDetailsPage {
     // 2026-11-18 (staff-14a): four to a row; the agency and assessor by name with the ID beside it; the level with its medal.
     const named = (id: string, name: string): SummaryFact['value'] => v(name) || v(id);
     const facts: SummaryFact[] = [
-      { label: 'ZED ID', value: v('ZedId') },
-      { label: 'Unit name', value: v('PUnitName') },
-      { label: 'Udyam registration', value: v('UdyogAadharNo') },
-      { label: 'Level', value: v('Certification'), medal: true },
-      { label: 'Document submission', value: v('BasicInfoStatus') },
-      { label: 'Verification allocated', value: v('DocVerifiAllot') },
-      { label: 'Completed', value: v('CompletedOn') },
-      { label: 'Mode', value: 'Desktop' },
+      { label: t('staff.daDetails.summary.zedId.label', 'ZED ID'), value: v('ZedId') },
+      { label: t('staff.daDetails.summary.unitName.label', 'Unit name'), value: v('PUnitName') },
+      { label: t('staff.daDetails.summary.udyam.label', 'Udyam registration'), value: v('UdyogAadharNo') },
+      { label: t('staff.daDetails.summary.level.label', 'Level'), value: v('Certification'), medal: true },
+      { label: t('staff.daDetails.summary.submission.label', 'Document submission'), value: v('BasicInfoStatus') },
+      { label: t('staff.daDetails.summary.allocated.label', 'Verification allocated'), value: v('DocVerifiAllot') },
+      { label: t('staff.daDetails.summary.completed.label', 'Completed'), value: v('CompletedOn') },
+      { label: t('staff.daDetails.summary.mode.label', 'Mode'), value: t('staff.daDetails.summary.modeDesktop.text', 'Desktop') },
     ];
     if (!this.isQc()) {
       facts.push(
-        { label: 'Assessment agency', value: named('CertificationBodyUserId', 'AgencyName'), sub: v('AgencyName') ? v('CertificationBodyUserId') : '' },
-        { label: 'Desktop assessor', value: named('DesktopAssessorId', 'DesktopAssessorName'), sub: v('DesktopAssessorName') ? v('DesktopAssessorId') : '' },
+        { label: t('staff.daDetails.summary.agency.label', 'Assessment agency'), value: named('CertificationBodyUserId', 'AgencyName'), sub: v('AgencyName') ? v('CertificationBodyUserId') : '' },
+        { label: t('staff.daDetails.summary.assessor.label', 'Desktop assessor'), value: named('DesktopAssessorId', 'DesktopAssessorName'), sub: v('DesktopAssessorName') ? v('DesktopAssessorId') : '' },
       );
     }
     return facts;
@@ -231,7 +240,7 @@ export class DaDetailsPage {
 
   /** "Desktop · Assessor One · Mahavir Agency" at the right end of the tab bar. */
   protected readonly metaLine = computed(() =>
-    ['Desktop', text(this.msme(), 'DesktopAssessorName'), text(this.msme(), 'AgencyName')].filter(Boolean).join(' · '));
+    [t('staff.daDetails.tab.metaDesktop.label', 'Desktop'), text(this.msme(), 'DesktopAssessorName'), text(this.msme(), 'AgencyName')].filter(Boolean).join(' · '));
   /** ZED ID history is the Admin's and the dashboard logins' screen (staff route guard: 7, 10, 11, 17). */
   protected readonly historyLink = computed(() => [7, 10, 11, 17].includes(this.qoAuth.currentUser()?.roleId ?? 0));
   protected readonly basicItems = BASIC_ITEMS;
@@ -249,18 +258,47 @@ export class DaDetailsPage {
     const req = (rows: Row[]) => rows.map((r) => `Requirement|${text(r, 'Id')}`);
     if (this.tab() === 3) {
       const s = this.activeSection();
-      return { label: 'This parameter', keys: s ? req(this.requirementsOf(s, d.requirements)) : [] };
+      return { label: t('staff.daDetails.rail.chip.parameter', 'This parameter'), keys: s ? req(this.requirementsOf(s, d.requirements)) : [] };
     }
     if (this.ncTab()) {
       const keys = new Set(this.tracker().map((i) => i.key));
-      return { label: 'This tab', keys: req(d.requirements.filter((r) => keys.has(`${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}`))) };
+      return { label: t('staff.daDetails.rail.chip.tab', 'This tab'), keys: req(d.requirements.filter((r) => keys.has(`${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}`))) };
     }
-    return { label: 'This tab', keys: this.tab() === 1 ? ['Overall|'] : [] };
+    return { label: t('staff.daDetails.rail.chip.tab', 'This tab'), keys: this.tab() === 1 ? ['Overall|'] : [] };
   });
   /** The non-conformance tracker of the overview and the "By requirement" view (staff-14a, staff-14c). */
   protected readonly tracker = computed(() => ncTracker(this.data()));
   protected readonly trackerOpen = computed(() => this.tracker().filter((i) => i.outcome !== 'accepted').length);
-  protected readonly stateLabel: Record<RoundState, string> = { accepted: 'Accepted', rejected: 'Not accepted', open: 'Open', none: 'Not needed' };
+  /** An item's state in a round, as shown. */
+  protected stateLabel(state: RoundState): string {
+    switch (state) {
+      case 'accepted': return t('staff.daDetails.state.accepted.label', 'Accepted');
+      case 'rejected': return t('staff.daDetails.state.rejected.label', 'Not accepted');
+      case 'open': return t('staff.daDetails.state.open.label', 'Open');
+      default: return t('staff.daDetails.state.none.label', 'Not needed');
+    }
+  }
+
+  /** The state of an NC round in the overview's tracker (the code value stays for the chip's colour). */
+  protected ncStateText(state: string | null): string {
+    switch (state) {
+      case 'Open': return t('staff.daDetails.tracker.state.open.chip', 'Open');
+      case 'Replied': return t('staff.daDetails.tracker.state.replied.chip', 'Replied');
+      default: return t('staff.daDetails.tracker.state.closed.chip', 'Closed');
+    }
+  }
+
+  /** A parameter / requirement / checkpoint chip as shown (the code value stays in data-v). */
+  protected chipText(value: ParameterChip): string {
+    switch (value) {
+      case 'Yes': return t('staff.daDetails.status.yes.chip', 'Yes');
+      case 'No': return t('staff.daDetails.status.no.chip', 'No');
+      case 'Partial': return t('staff.daDetails.status.partial.chip', 'Partial');
+      case 'Pending': return t('staff.daDetails.status.pending.chip', 'Pending');
+      case 'Exempt': return t('staff.daDetails.status.exempt.chip', 'Exempt');
+      default: return value;
+    }
+  }
 
   /** The Non-conformances tab: its view and, in "By requirement", the round filter (0 all) and the cards opened. */
   protected readonly ncView = signal<'req' | 'round'>('req');
@@ -481,7 +519,7 @@ export class DaDetailsPage {
     const same = (x: Row) => text(x, 'SectionCode') === text(r, 'SectionCode') && text(x, 'RequirementCode') === text(r, 'RequirementCode');
     const desk = d.requirements.find(same);
     const out: ThreadMessage[] = [
-      message('assessor', 'NC1 raised', {
+      message('assessor', t('staff.daDetails.thread.raised.label', 'NC1 raised'), {
         text: text(desk, 'AssessorRemarks'),
         conformance: text(desk, 'Conformance'),
         all: this.evidencesOf(r, d.evidences).map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl'), opened: true })),
@@ -492,19 +530,19 @@ export class DaDetailsPage {
     for (const k of rounds) {
       const group = rows.filter((e) => num(e, 'NcCount') === k);
       const first = (column: string) => group.map((e) => text(e, column)).find(Boolean) ?? '';
-      out.push(message('msme', `NC${k}`, {
+      out.push(message('msme', t('staff.daDetails.thread.round.label', 'NC{round}', { round: k }), {
         date: first('SyncedDate'),
         text: first('RequirementMsmeRemarks'),
         all: group.map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl'), opened: flag(e, 'Opened'), row: e })),
       }));
       const current = k === nc;
-      out.push(message('assessor', `NC${k}`, {
+      out.push(message('assessor', t('staff.daDetails.thread.round.label', 'NC{round}', { round: k }), {
         text: (current && text(r, 'AssessorRemarks')) || first('RequirementRemarks'),
         conformance: (current && text(r, 'Conformance')) || first('Conformance'),
       }));
     }
     if (!rounds.includes(nc) && text(r, 'Conformance')) {
-      out.push(message('assessor', `NC${nc}`, { text: text(r, 'AssessorRemarks'), conformance: text(r, 'Conformance') }));
+      out.push(message('assessor', t('staff.daDetails.thread.round.label', 'NC{round}', { round: nc }), { text: text(r, 'AssessorRemarks'), conformance: text(r, 'Conformance') }));
     }
     return out.filter(hasContent);
   }
@@ -579,8 +617,8 @@ export class DaDetailsPage {
     const e = this.conformanceEdit();
     const d = this.data();
     if (!e || !d) return;
-    if (!e.conformance) return this.modalError.set('Please select the conformance.');
-    if (e.conformance === 'No' && !e.remarks.trim()) return this.modalError.set('Please enter remarks.');
+    if (!e.conformance) return this.modalError.set(t('staff.daDetails.conformance.chooseError', 'Please select the conformance.'));
+    if (e.conformance === 'No' && !e.remarks.trim()) return this.modalError.set(t('staff.daDetails.remarksError', 'Please enter remarks.'));
     await this.save(this.api.conformance(d.zedId, d.certification, e.requirement['Id'], e.conformance, e.remarks.trim()), () => this.conformanceEdit.set(null));
   }
 
@@ -622,7 +660,7 @@ export class DaDetailsPage {
     const ok = files.length <= MAX_FILES && files.every((f) => f.size > 0 && f.size <= MAX_FILE_BYTES && (f.type === 'application/pdf' || f.type.startsWith('image/')));
     if (!ok) {
       (event.target as HTMLInputElement).value = '';
-      this.modalError.set('Please upload valid document (PDF / JPG), less than 2 MB each.');
+      this.modalError.set(t('staff.daDetails.evidence.filesError', 'Please upload valid document (PDF / JPG), less than 2 MB each.'));
       this.evidenceEdit.set({ ...e, files: [] });
       return;
     }
@@ -634,10 +672,10 @@ export class DaDetailsPage {
     const e = this.evidenceEdit();
     const d = this.data();
     if (!e || !d) return;
-    if (!e.verified) return this.modalError.set('Please select whether the evidence is verified.');
-    if (e.verified === 'Yes' && !e.source.trim()) return this.modalError.set('Please enter the source of validation.');
-    if (e.verified === 'Yes' && e.files.length === 0) return this.modalError.set('Please upload valid pdf document.');
-    if (e.verified === 'No' && !e.remarks.trim()) return this.modalError.set('Please enter remarks.');
+    if (!e.verified) return this.modalError.set(t('staff.daDetails.evidence.verifiedError', 'Please select whether the evidence is verified.'));
+    if (e.verified === 'Yes' && !e.source.trim()) return this.modalError.set(t('staff.daDetails.evidence.sourceError', 'Please enter the source of validation.'));
+    if (e.verified === 'Yes' && e.files.length === 0) return this.modalError.set(t('staff.daDetails.evidence.noFileError', 'Please upload valid pdf document.'));
+    if (e.verified === 'No' && !e.remarks.trim()) return this.modalError.set(t('staff.daDetails.remarksError', 'Please enter remarks.'));
     await this.save(
       this.api.validateEvidence(d.zedId, d.certification, e.evidence['Id'], e.verified, e.source.trim(), e.remarks.trim(), e.files),
       () => this.evidenceEdit.set(null),
@@ -667,7 +705,7 @@ export class DaDetailsPage {
     try {
       const check = await firstValueFrom(this.api.checkFinalSubmit(d.zedId, d.certification));
       if (!check.allowed) {
-        this.notice.set({ ok: false, text: check.message ?? 'Please complete the assessment before final submit.' });
+        this.notice.set({ ok: false, text: check.message ?? t('staff.daDetails.finalSubmit.incompleteError', 'Please complete the assessment before final submit.') });
         return;
       }
       this.modalError.set('');
@@ -683,7 +721,7 @@ export class DaDetailsPage {
     const e = this.finalSubmitEdit();
     const d = this.data();
     if (!e || !d || !this.canFinalSubmit(e)) return;
-    if (!e.remarks.trim()) return this.modalError.set('Please enter assessor final remarks.');
+    if (!e.remarks.trim()) return this.modalError.set(t('staff.daDetails.finalSubmit.remarksError', 'Please enter assessor final remarks.'));
     await this.save(this.api.finalSubmit(d.zedId, d.certification, e.remarks.trim(), e.ticked), () => this.finalSubmitEdit.set(null));
   }
 
@@ -731,11 +769,11 @@ export class DaDetailsPage {
 
   private validation(e: ValidationEdit): boolean {
     if (!e.verified) {
-      this.modalError.set('This is required.');
+      this.modalError.set(t('staff.daDetails.validation.requiredError', 'This is required.'));
       return false;
     }
     if (e.verified === 'No' && !e.remarks.trim()) {
-      this.modalError.set('Please enter remarks.');
+      this.modalError.set(t('staff.daDetails.remarksError', 'Please enter remarks.'));
       return false;
     }
     return true;
@@ -747,7 +785,7 @@ export class DaDetailsPage {
     try {
       await firstValueFrom(call);
       close();
-      this.notice.set({ ok: true, text: 'Data Updated' });
+      this.notice.set({ ok: true, text: t('staff.daDetails.toast.updated', 'Data Updated') });
       await this.reload();
     } catch (err) {
       this.modalError.set(apiErrorMessage(err));
@@ -765,7 +803,7 @@ export class DaDetailsPage {
     this.error.set('');
     if (!isZedId(zedId) || !level) {
       this.data.set(null);
-      this.error.set('Invalid request.');
+      this.error.set(t('staff.daDetails.invalidError', 'Invalid request.'));
       return;
     }
     this.loading.set(true);
@@ -779,7 +817,7 @@ export class DaDetailsPage {
       this.data.set(null);
       this.error.set(
         err instanceof HttpErrorResponse && err.status === 404
-          ? 'Assessment details are not available, or this assessment is not allotted to you.'
+          ? t('staff.daDetails.notFoundError', 'Assessment details are not available, or this assessment is not allotted to you.')
           : apiErrorMessage(err),
       );
     } finally {

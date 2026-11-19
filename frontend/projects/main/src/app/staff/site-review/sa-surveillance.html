@@ -8,37 +8,37 @@
       <div class="table-responsive">
         <table class="table table-zed kv">
           <tbody>
-            <tr><th>ZEDID</th><td>{{ t(main(), 'ZedId') }}</td></tr>
-            <tr><th>Unit Name</th><td>{{ t(main(), 'PUnitName') }}</td></tr>
-            <tr><th>Udyam Registration Number</th><td>{{ t(main(), 'UdyogAadharNo') }}</td></tr>
-            <tr><th>Unit Address</th><td>{{ t(main(), 'PlantAddress') }}</td></tr>
-            <tr><th>Certification</th><td>{{ t(main(), 'Certification') }}</td></tr>
-            <tr><th>Mode of Assessment</th><td>{{ t(main(), 'ModeOfAssessment') }}</td></tr>
+            <tr><th>{{ 'ZEDID' | t: 'staff.saDetails.surveillance.overview.zedId.label' }}</th><td>{{ t(main(), 'ZedId') }}</td></tr>
+            <tr><th>{{ 'Unit Name' | t: 'staff.saDetails.surveillance.overview.unitName.label' }}</th><td>{{ t(main(), 'PUnitName') }}</td></tr>
+            <tr><th>{{ 'Udyam Registration Number' | t: 'staff.saDetails.surveillance.overview.udyam.label' }}</th><td>{{ t(main(), 'UdyogAadharNo') }}</td></tr>
+            <tr><th>{{ 'Unit Address' | t: 'staff.saDetails.surveillance.overview.address.label' }}</th><td>{{ t(main(), 'PlantAddress') }}</td></tr>
+            <tr><th>{{ 'Certification' | t: 'staff.saDetails.surveillance.overview.certification.label' }}</th><td>{{ t(main(), 'Certification') }}</td></tr>
+            <tr><th>{{ 'Mode of Assessment' | t: 'staff.saDetails.surveillance.overview.mode.label' }}</th><td>{{ t(main(), 'ModeOfAssessment') }}</td></tr>
             @if (admin()) {
-              <tr><th>Site Assessment Date</th><td>{{ t(main(), 'AssessmentDate') }}</td></tr>
+              <tr><th>{{ 'Site Assessment Date' | t: 'staff.saDetails.surveillance.overview.saDate.label' }}</th><td>{{ t(main(), 'AssessmentDate') }}</td></tr>
             }
-            <tr><th>Certification Date</th><td>{{ t(main(), 'CompletedOn') }}</td></tr>
+            <tr><th>{{ 'Certification Date' | t: 'staff.saDetails.surveillance.overview.certDate.label' }}</th><td>{{ t(main(), 'CompletedOn') }}</td></tr>
             @if (admin()) {
-              <tr><th>Agency Name</th><td>{{ t(main(), 'CertificationBodyUserId') }} - {{ t(main(), 'AgencyName') }}</td></tr>
+              <tr><th>{{ 'Agency Name' | t: 'staff.saDetails.surveillance.overview.agency.label' }}</th><td>{{ t(main(), 'CertificationBodyUserId') }} - {{ t(main(), 'AgencyName') }}</td></tr>
             }
-            <tr><th>Surveillance Assessment Date</th><td>{{ t(sur(), 'AssessmentDate') }}</td></tr>
-            <tr><th>Mode of Assessment</th><td>Remote Assessment</td></tr>
+            <tr><th>{{ 'Surveillance Assessment Date' | t: 'staff.saDetails.surveillance.overview.surveillanceDate.label' }}</th><td>{{ t(sur(), 'AssessmentDate') }}</td></tr>
+            <tr><th>{{ 'Mode of Assessment' | t: 'staff.saDetails.surveillance.overview.mode.label' }}</th><td>{{ 'Remote Assessment' | t: 'staff.saDetails.surveillance.overview.remoteMode.text' }}</td></tr>
             @for (i of [1, 2, 3, 4, 5]; track i) {
               @if (t(sur(), 'Nc' + i + 'Raised')) {
-                <tr><th>Surveillance Non-Conformance {{ i }} Raised On</th><td>{{ t(sur(), 'Nc' + i + 'Raised') }}</td></tr>
+                <tr><th>{{ 'Surveillance Non-Conformance {round} Raised On' | t: 'staff.saDetails.surveillance.overview.ncRaised.label' : { round: i } }}</th><td>{{ t(sur(), 'Nc' + i + 'Raised') }}</td></tr>
               }
               @if (t(sur(), 'Nc' + i + 'Submitted')) {
-                <tr><th>Surveillance Non-Conformance {{ i }} Submitted On</th><td>{{ t(sur(), 'Nc' + i + 'Submitted') }}</td></tr>
+                <tr><th>{{ 'Surveillance Non-Conformance {round} Submitted On' | t: 'staff.saDetails.surveillance.overview.ncSubmitted.label' : { round: i } }}</th><td>{{ t(sur(), 'Nc' + i + 'Submitted') }}</td></tr>
               }
             }
-            <tr><th>Surveillance Assessment Completed On</th><td>{{ t(sur(), 'CompletedOn') }}</td></tr>
-            <tr><th>Surveillance Agency Name</th><td>{{ t(sur(), 'CertificationBodyUserId') }} - {{ t(sur(), 'AgencyName') }}</td></tr>
-            <tr><th>Surveillance Assessor Name</th><td>{{ t(sur(), 'SiteAssessorId') }} - {{ t(sur(), 'SiteAssessorName') }}</td></tr>
+            <tr><th>{{ 'Surveillance Assessment Completed On' | t: 'staff.saDetails.surveillance.overview.completed.label' }}</th><td>{{ t(sur(), 'CompletedOn') }}</td></tr>
+            <tr><th>{{ 'Surveillance Agency Name' | t: 'staff.saDetails.surveillance.overview.surveillanceAgency.label' }}</th><td>{{ t(sur(), 'CertificationBodyUserId') }} - {{ t(sur(), 'AgencyName') }}</td></tr>
+            <tr><th>{{ 'Surveillance Assessor Name' | t: 'staff.saDetails.surveillance.overview.surveillanceAssessor.label' }}</th><td>{{ t(sur(), 'SiteAssessorId') }} - {{ t(sur(), 'SiteAssessorName') }}</td></tr>
             <tr>
-              <th>Meeting link</th>
+              <th>{{ 'Meeting link' | t: 'staff.saDetails.surveillance.overview.meetingLink.label' }}</th>
               <td colspan="2">
                 @if (d.surveillance?.meetingLink; as link) {
-                  <a class="btn btn-primary btn-sm" [href]="link" target="_blank" rel="noopener noreferrer">Click here to Join</a>
+                  <a class="btn btn-primary btn-sm" [href]="link" target="_blank" rel="noopener noreferrer">{{ 'Click here to Join' | t: 'staff.saDetails.surveillance.overview.joinButton' }}</a>
                 }
               </td>
             </tr>
@@ -46,19 +46,19 @@
         </table>
       </div>
       <div class="locations">
-        <p class="sub-heading">Location</p>
-        @for (loc of [{ title: 'Site Assessment', row: mainLocation(), lat: 'SaLatitude', lng: 'SaLongitude', always: true }, { title: 'Surveillance Assessment', row: d.location, lat: 'SurLatitude', lng: 'SurLongitude', always: false }]; track loc.title) {
+        <p class="sub-heading">{{ 'Location' | t: 'staff.saDetails.surveillance.location.heading' }}</p>
+        @for (loc of [{ id: 'site', row: mainLocation(), lat: 'SaLatitude', lng: 'SaLongitude', always: true }, { id: 'surveillance', row: d.location, lat: 'SurLatitude', lng: 'SurLongitude', always: false }]; track loc.id) {
           @if (loc.always || t(loc.row, loc.lat)) {
             <div class="zed-card">
               <div class="card-head">
-                <h4>{{ loc.title }}</h4>
+                <h4>{{ loc.always ? ('Site Assessment' | t: 'staff.saDetails.surveillance.location.site.heading') : ('Surveillance Assessment' | t: 'staff.saDetails.surveillance.location.surveillance.heading') }}</h4>
                 @if (mapUrl(loc.row?.[loc.lat], loc.row?.[loc.lng]); as href) {
-                  <a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener noreferrer">Click here to view map</a>
+                  <a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener noreferrer">{{ 'Click here to view map' | t: 'staff.saDetails.surveillance.location.mapButton' }}</a>
                 }
               </div>
               <dl class="coords">
-                <dt>Latitude</dt><dd>{{ t(loc.row, loc.lat) }}</dd>
-                <dt>Longitude</dt><dd>{{ t(loc.row, loc.lng) }}</dd>
+                <dt>{{ 'Latitude' | t: 'staff.saDetails.surveillance.location.latitude.label' }}</dt><dd>{{ t(loc.row, loc.lat) }}</dd>
+                <dt>{{ 'Longitude' | t: 'staff.saDetails.surveillance.location.longitude.label' }}</dt><dd>{{ t(loc.row, loc.lng) }}</dd>
               </dl>
             </div>
           }
@@ -98,7 +98,7 @@
 }
 
 <!-- ================================================= opening / closing meeting -->
-@for (m of [{ id: 3, blocks: openMeetings(), label: 'ASSESSOR REMARK', photo: 'Opening Meeting Photo:' }, { id: 7, blocks: closeMeetings(), label: 'SITE ASSESSOR REMARK', photo: 'Closing Meeting Photo:' }]; track m.id) {
+@for (m of [{ id: 3, blocks: openMeetings() }, { id: 7, blocks: closeMeetings() }]; track m.id) {
   @if (tab() === m.id) {
     <div class="tab-pane fade show active" role="tabpanel">
       @for (b of m.blocks; track b.key) {
@@ -116,23 +116,23 @@
                   <tr>
                     <td>
                       @if (m.id === 7 && b.surveillance) {
-                        <p class="sub-heading">Meeting Recording Link</p>
+                        <p class="sub-heading">{{ 'Meeting Recording Link' | t: 'staff.saDetails.surveillance.meeting.recording.heading' }}</p>
                         @for (l of d.surveillance?.recordingLinks ?? []; track l.url) {
-                          <p><a [href]="l.url" target="_blank" rel="noopener noreferrer" class="recording-link">View Recording {{ $index + 1 }}</a></p>
+                          <p><a [href]="l.url" target="_blank" rel="noopener noreferrer" class="recording-link">{{ 'View Recording {number}' | t: 'staff.saDetails.surveillance.meeting.recordingLink' : { number: $index + 1 } }}</a></p>
                         }
                         <hr />
                       }
-                      <p class="sub-heading">{{ m.label }}</p>
+                      <p class="sub-heading">{{ m.id === 3 ? ('ASSESSOR REMARK' | t: 'staff.saDetails.surveillance.meeting.open.remark.heading') : ('SITE ASSESSOR REMARK' | t: 'staff.saDetails.surveillance.meeting.close.remark.heading') }}</p>
                       <p>{{ b.value?.comments }}</p>
                       @if (b.surveillance && review().editRemarks && b.value) {
-                        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="edit('meeting', b.value.id, b.value.comments)" />
+                        <input type="button" [value]="'Edit Remarks' | t: 'staff.saDetails.surveillance.editRemarksButton'" class="btn btn-outline-primary btn-sm" (click)="edit('meeting', b.value.id, b.value.comments)" />
                       }
                     </td>
                     <td>
                       <div class="evidence-img bg-grey">
-                        <p class="sub-heading">{{ m.photo }}</p>
+                        <p class="sub-heading">{{ m.id === 3 ? ('Opening Meeting Photo:' | t: 'staff.saDetails.surveillance.meeting.open.photo.label') : ('Closing Meeting Photo:' | t: 'staff.saDetails.surveillance.meeting.close.photo.label') }}</p>
                         @for (pp of b.value?.photos ?? []; track $index) {
-                          @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="Meeting" /></button> }
+                          @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" [alt]="'Meeting' | t: 'staff.saDetails.surveillance.meeting.photo.alt'" /></button> }
                         }
                       </div>
                     </td>
@@ -141,7 +141,7 @@
               </table>
             </div>
             <div class="col-sm-12">
-              <p class="sub-heading">PARTICIPANTS</p>
+              <p class="sub-heading">{{ 'PARTICIPANTS' | t: 'staff.saDetails.surveillance.meeting.participants.heading' }}</p>
               @for (p of b.value?.participants ?? []; track $index) {
                 <div class="panel panel-default panel-white m-0 mb-4">
                   <div class="panel-body"><p class="sub-heading">{{ $index + 1 }}. {{ t(p, 'Name') }}</p><small>{{ t(p, 'Designation') }}</small></div>
@@ -161,35 +161,35 @@
     <div class="table-responsive">
       <div>
         <table class="table table-bordered table-zed">
-          <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 24%">Description</th><th>Responses</th></tr></thead>
+          <thead><tr><th class="text-center" style="width: 60px">{{ 'S.No' | t: 'staff.saDetails.surveillance.basic.column.serial' }}</th><th style="width: 24%">{{ 'Description' | t: 'staff.saDetails.surveillance.basic.column.description' }}</th><th>{{ 'Responses' | t: 'staff.saDetails.surveillance.basic.column.responses' }}</th></tr></thead>
           <tbody>
-            @for (q of [{ label: 'Selfies', onsite: o?.saSelfies ?? [], surveillance: d.saSelfies, fixedName: 'Assessor Selfie' }, { label: 'Site Exterior Photos', onsite: o?.saSiteExterior ?? [], surveillance: d.saSiteExterior, fixedName: '' }]; track q.label) {
+            @for (q of [{ id: 'selfies', onsite: o?.saSelfies ?? [], surveillance: d.saSelfies, selfie: true }, { id: 'exterior', onsite: o?.saSiteExterior ?? [], surveillance: d.saSiteExterior, selfie: false }]; track q.id) {
               <tr>
                 <td class="text-center">1</td>
-                <td>{{ q.label }}</td>
+                <td>{{ q.selfie ? ('Selfies' | t: 'staff.saDetails.surveillance.basic.selfies.label') : ('Site Exterior Photos' | t: 'staff.saDetails.surveillance.basic.exterior.label') }}</td>
                 <td>
                   <table class="table table-zed inner">
                     <tbody>
                       @if (admin()) {
                         <tr class="site-assessment">
-                          <td><strong>SA</strong></td>
+                          <td><strong>{{ 'SA' | t: 'staff.saDetails.surveillance.basic.sa.label' }}</strong></td>
                           <td>
                             @for (pp of q.onsite; track $index) {
                               <div class="row-data">
-                                <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ q.fixedName || pp.name }}</span></div>
-                                <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">View</button>
+                                <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ q.selfie ? ('Assessor Selfie' | t: 'staff.saDetails.surveillance.basic.selfie.label') : pp.name }}</span></div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">{{ 'View' | t: 'staff.saDetails.surveillance.basic.viewButton' }}</button>
                               </div>
                             }
                           </td>
                         </tr>
                       }
                       <tr class="surveillance-assessment">
-                        <td><strong>SURVEILLANCE</strong></td>
+                        <td><strong>{{ 'SURVEILLANCE' | t: 'staff.saDetails.surveillance.basic.surveillance.label' }}</strong></td>
                         <td>
                           @for (pp of q.surveillance; track $index) {
                             <div class="row-data">
                               <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ pp.name }}</span></div>
-                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">View</button>
+                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">{{ 'View' | t: 'staff.saDetails.surveillance.basic.viewButton' }}</button>
                             </div>
                           }
                         </td>
@@ -221,7 +221,7 @@
           <div class="photo-grid tour">
             @for (pp of b.value; track $index) {
               <div class="evidence-img">
-                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="Site tour" /></button> }
+                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" [alt]="'Site tour' | t: 'staff.saDetails.surveillance.tour.photo.alt'" /></button> }
                 <p class="sub-heading">{{ pp.name }}</p>
               </div>
             }
@@ -238,7 +238,7 @@
     @let cur = pn.active();
     <div class="zp-layout">
       <nav class="zp-nav" aria-labelledby="svParamNavTitle">
-        <div class="zp-nav-head" id="svParamNavTitle">Parameters · {{ pn.complete() }} of {{ sections().length }} complete</div>
+        <div class="zp-nav-head" id="svParamNavTitle">{{ 'Parameters · {done} of {total} complete' | t: 'staff.saDetails.surveillance.params.nav.heading' : { done: pn.complete(), total: sections().length } }}</div>
         <div class="zp-nav-list">
           @for (s of sections(); track $index) {
             @let st = pn.chip(s);
@@ -247,10 +247,10 @@
               <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
               <span class="zp-nav-body">
                 <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                <span class="zp-nav-meta">{{ pn.exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                <span class="zp-nav-meta">{{ pn.exempted(s) ? ('Exempted' | t: 'staff.saDetails.surveillance.params.nav.exempted.label') : ('{done} of {total} requirements' | t: 'staff.saDetails.surveillance.params.nav.reqDone.label' : { done: pg.done, total: pg.total }) }}</span>
                 <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
               </span>
-              <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+              <span class="zp-chip" [attr.data-v]="st">{{ chipText(st) }}</span>
             </button>
           }
         </div>
@@ -266,21 +266,21 @@
                 <h5>{{ t(s, 'SectionName') }}</h5>
                 @if (t(s, 'iButton')) {
                   <span class="zp-info" tabindex="0">
-                    <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                    <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'staff.saDetails.surveillance.params.infoAria'">i</span>
                     <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
                   </span>
                 }
-                @if (pn.exempted(s)) { <span class="zp-tag">Exempted</span> }
+                @if (pn.exempted(s)) { <span class="zp-tag">{{ 'Exempted' | t: 'staff.saDetails.surveillance.params.head.exempted.chip' }}</span> }
               </div>
               <div class="zp-head-status">
-                <span class="zp-label">Conformance</span>
-                <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                <span class="zp-label">{{ 'Conformance' | t: 'staff.saDetails.surveillance.params.head.conformance.label' }}</span>
+                <span class="zp-chip" [attr.data-v]="sst">{{ chipText(sst) }}</span>
               </div>
             </div>
 
             @if (t(s, 'IsAssessmentExcempted')) {
               <div class="zp-section-note">
-                <span>Exempted from Remote/Site Assessment</span>
+                <span>{{ 'Exempted from Remote/Site Assessment' | t: 'staff.saDetails.surveillance.params.exempt.label' }}</span>
                 <span class="zp-chip" [attr.data-v]="t(s, 'IsAssessmentExcempted')">{{ t(s, 'IsAssessmentExcempted') }}</span>
               </div>
             }
@@ -291,14 +291,14 @@
               <article class="zp-req" [attr.data-requirement]="t(r, 'RequirementId')" [attr.data-v]="rst">
                 <div class="zp-req-title">
                   <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
-                  <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                  <span class="zp-req-text">{{ t(r, 'RequirementName') || ('Requirement' | t: 'staff.saDetails.surveillance.params.req.fallback.label') }}</span>
                   <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [compact]="true" />
-                  <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                  <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ chipText(rst) }}</span>
                 </div>
 
                 <div class="zp-req-body">
                   <div class="zp-block zp-checkpoints">
-                    <div class="zp-block-head">Checkpoints</div>
+                    <div class="zp-block-head">{{ 'Checkpoints' | t: 'staff.saDetails.surveillance.params.checkpoints.heading' }}</div>
                     @for (op of optionsOf(r); track $index) {
                       <div class="zp-cp">
                         <div class="zp-cp-text">
@@ -310,14 +310,14 @@
                         <div class="zp-cp-answer"></div>
                       </div>
                     } @empty {
-                      <div class="zp-block-empty">No checkpoints.</div>
+                      <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'staff.saDetails.surveillance.params.checkpoints.empty' }}</div>
                     }
                   </div>
 
                   @if (admin() && o) {
                     <!-- MasterAdmin: the site assessment of the original certification. -->
                     <div class="zp-block onsite-result">
-                      <div class="zp-block-head">Site assessment (original certification)</div>
+                      <div class="zp-block-head">{{ 'Site assessment (original certification)' | t: 'staff.saDetails.surveillance.params.original.heading' }}</div>
                       @if (!pn.exempted(s)) {
                         @if (photosOf(r).length) {
                           <div class="zp-block-body zp-photos">
@@ -325,44 +325,44 @@
                               <div class="zp-photo">
                                 @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="" /></button> }
                                 <span>{{ pp.name }}</span>
-                                <span class="zp-muted">Generated at {{ pp.createdDate }}</span>
+                                <span class="zp-muted">{{ 'Generated at {date}' | t: 'staff.saDetails.surveillance.params.photo.generated.text' : { date: pp.createdDate } }}</span>
                               </div>
                             }
                           </div>
                         }
                         <div class="zp-foot">
                           <div class="zp-conf">
-                            <div class="zp-label">Conformance</div>
+                            <div class="zp-label">{{ 'Conformance' | t: 'staff.saDetails.surveillance.params.original.conformance.label' }}</div>
                             <div class="zp-row">
-                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.saDetails.surveillance.params.notGiven.chip' }}</span> }
                             </div>
                           </div>
                           <div class="zp-remarks">
-                            <div class="zp-label">Assessor remarks @if (t(r, 'SaUpdatedDate')) { <span class="zp-muted">· {{ t(r, 'SaUpdatedDate') }}</span> }</div>
+                            <div class="zp-label">{{ 'Assessor remarks' | t: 'staff.saDetails.surveillance.params.original.remarks.label' }} @if (t(r, 'SaUpdatedDate')) { <span class="zp-muted">· {{ t(r, 'SaUpdatedDate') }}</span> }</div>
                             <div class="zp-row"><span style="white-space: pre-line">{{ t(r, 'SaAssessorRemarks') || '—' }}</span></div>
                           </div>
                         </div>
                       } @else {
-                        <div class="zp-block-empty">Exempted from Remote/Site Assessment</div>
+                        <div class="zp-block-empty">{{ 'Exempted from Remote/Site Assessment' | t: 'staff.saDetails.surveillance.params.exempt.label' }}</div>
                       }
                     </div>
                   }
 
                   @if (sv) {
                     <div class="zp-block zp-sv-photos">
-                      <div class="zp-block-head">Surveillance photos</div>
+                      <div class="zp-block-head">{{ 'Surveillance photos' | t: 'staff.saDetails.surveillance.params.photos.heading' }}</div>
                       @if (photosOf(sv).length) {
                         <div class="zp-block-body zp-photos">
                           @for (pp of photosOf(sv); track $index) {
                             <div class="zp-photo">
                               @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="" /></button> }
                               <span>{{ pp.name }}</span>
-                              <span class="zp-muted">Generated at {{ pp.createdDate }}</span>
+                              <span class="zp-muted">{{ 'Generated at {date}' | t: 'staff.saDetails.surveillance.params.photo.generated.text' : { date: pp.createdDate } }}</span>
                             </div>
                           }
                         </div>
                       } @else {
-                        <div class="zp-block-empty">No photos.</div>
+                        <div class="zp-block-empty">{{ 'No photos.' | t: 'staff.saDetails.surveillance.params.photos.empty' }}</div>
                       }
                     </div>
                   }
@@ -371,17 +371,17 @@
                 @if (sv) {
                   <div class="zp-foot surveillance-result">
                     <div class="zp-conf">
-                      <div class="zp-label">Surveillance conformance</div>
+                      <div class="zp-label">{{ 'Surveillance conformance' | t: 'staff.saDetails.surveillance.params.conformance.label' }}</div>
                       <div class="zp-row">
-                        @if (t(sv, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(sv, 'SaConformance')">{{ t(sv, 'SaConformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                        @if (t(sv, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(sv, 'SaConformance')">{{ t(sv, 'SaConformance') }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.saDetails.surveillance.params.notGiven.chip' }}</span> }
                       </div>
                     </div>
                     <div class="zp-remarks">
-                      <div class="zp-label">Surveillance assessor remarks @if (t(sv, 'SaUpdatedDate')) { <span class="zp-muted">· {{ t(sv, 'SaUpdatedDate') }}</span> }</div>
+                      <div class="zp-label">{{ 'Surveillance assessor remarks' | t: 'staff.saDetails.surveillance.params.remarks.label' }} @if (t(sv, 'SaUpdatedDate')) { <span class="zp-muted">· {{ t(sv, 'SaUpdatedDate') }}</span> }</div>
                       <div class="zp-row">
                         <span style="white-space: pre-line">{{ t(sv, 'SaAssessorRemarks') || '—' }}</span>
                         @if (review().editRemarks) {
-                          <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm zp-btn" (click)="edit('requirement', sv['Id'], t(sv, 'SaAssessorRemarks'))" />
+                          <input type="button" [value]="'Edit Remarks' | t: 'staff.saDetails.surveillance.editRemarksButton'" class="btn btn-outline-primary btn-sm zp-btn" (click)="edit('requirement', sv['Id'], t(sv, 'SaAssessorRemarks'))" />
                         }
                       </div>
                     </div>
@@ -389,11 +389,11 @@
                 }
               </article>
             } @empty {
-              <p class="zp-muted">No requirements in this parameter.</p>
+              <p class="zp-muted">{{ 'No requirements in this parameter.' | t: 'staff.saDetails.surveillance.params.req.empty' }}</p>
             }
           </div>
         } @else {
-          <p class="zp-muted">No parameters.</p>
+          <p class="zp-muted">{{ 'No parameters.' | t: 'staff.saDetails.surveillance.params.empty' }}</p>
         }
       </div>
     </div>
@@ -403,7 +403,7 @@
     }
     <div class="submit-bar">
       @if (review().editRemarks) {
-        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="edit('summary', 0, t(sur(), 'SaAssessorRemarks'))" />
+        <input type="button" [value]="'Edit Remarks' | t: 'staff.saDetails.surveillance.editRemarksButton'" class="btn btn-outline-primary btn-sm" (click)="edit('summary', 0, t(sur(), 'SaAssessorRemarks'))" />
       }
       <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="site" [actions]="review()" (done)="done.emit($event)" />
     </div>

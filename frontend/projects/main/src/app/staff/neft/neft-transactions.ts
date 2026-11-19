@@ -14,6 +14,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { ToastService } from '../toast';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { AdminPortalService, NEFT_PORTALS, PORTAL_API_BASE, PortalSwitchComponent, neftPortals } from '../admin-portal';
+import { TextPipe, t } from '../../content/page-text';
 
 interface ApprovalForm {
   transaction: NeftTransaction;
@@ -23,14 +24,17 @@ interface ApprovalForm {
   submitted: boolean;
 }
 
-const TITLES: Record<NeftList, string> = {
-  new: 'New Transactions',
-  approved: 'Approved Transactions',
-  rejected: 'Rejected Transactions',
-};
-
-/** Consultancy's titles (ZEDCS_CONSULTANCY Frontend/Neft). */
-const CONSULTANCY_TITLES: Record<NeftList, string> = { ...TITLES, approved: 'Approved Transaction' };
+/** The page's title by list (consultancy's approved list keeps its own: ZEDCS_CONSULTANCY Frontend/Neft). */
+function titleOf(list: NeftList, consultancy: boolean): string {
+  switch (list) {
+    case 'approved':
+      return consultancy ? t('staff.neft.approved.consultancy.title', 'Approved Transaction') : t('staff.neft.approved.title', 'Approved Transactions');
+    case 'rejected':
+      return t('staff.neft.rejected.title', 'Rejected Transactions');
+    default:
+      return t('staff.neft.new.title', 'New Transactions');
+  }
+}
 
 /** Local date as yyyy-MM-dd (the max of the date picker: no payment date in the future). */
 function today(): string {
@@ -48,7 +52,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, PortalSwitchComponent, PageHead, ListCounts, RowMenu],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, PortalSwitchComponent, PageHead, ListCounts, RowMenu, TextPipe],
   host: { class: 'list-v2 d-block' },
   templateUrl: './neft-transactions.html',
   styles: `
@@ -78,7 +82,9 @@ export class NeftTransactionsPage {
   protected readonly neftAdmin = !!this.myNeftPortals?.includes('consultancy');
   protected readonly allStates = !!inject(AuthService).currentUser()?.isNeftAdmin;
   protected readonly neftPortals = this.myNeftPortals ?? NEFT_PORTALS;
-  protected readonly neftLabels = { main: 'Financial Assistance', consultancy: 'Technology Upgradation' };
+  protected readonly neftLabels = computed(() => ({
+    main: t('staff.neft.portalSwitch.main.label', 'Financial Assistance'), consultancy: t('staff.neft.portalSwitch.consultancy.label', 'Technology Upgradation'),
+  }));
   protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy' || (this.neftAdmin && this.portals.effective(this.neftPortals) === 'consultancy');
 
   protected tuLink(t: NeftTransaction): string[] {
@@ -94,26 +100,32 @@ export class NeftTransactionsPage {
   private readonly api = inject(NeftApi);
   private readonly tu = inject(TuApi);
   private readonly toast = inject(ToastService);
-  protected readonly reportMenu: RowMenuItem[] = [{ key: 'report', label: 'Visit report', icon: 'download' }];
+  protected readonly reportMenu = computed((): RowMenuItem[] => [{ key: 'report', label: t('staff.neft.menu.report', 'Visit report'), icon: 'download' }]);
 
   protected openReport(t: NeftTransaction): void {
     window.open(this.reportLink(t), '_blank', 'noopener');
   }
 
   protected readonly list: NeftList = (inject(ActivatedRoute).snapshot.data['list'] as NeftList) ?? 'new';
-  protected readonly title = (this.consultancy ? CONSULTANCY_TITLES : TITLES)[this.list] ?? TITLES.new;
+  protected readonly title = computed(() => titleOf(this.list, this.consultancy));
+  /** The line under the title: what is reimbursed, and whose (every state for the NEFT Admin). */
+  protected readonly subtitle = computed(() => this.consultancy
+    ? (this.allStates ? t('staff.neft.consultancy.allStates.sub', 'Technology upgradation reimbursements of the units of every state, paid by NEFT.')
+      : t('staff.neft.consultancy.sub', 'Technology upgradation reimbursements of the units in your area, paid by NEFT.'))
+    : (this.allStates ? t('staff.neft.allStates.sub', 'Financial assistance reimbursements of the units of every state, paid by NEFT.')
+      : t('staff.neft.sub', 'Financial assistance reimbursements of the units in your area, paid by NEFT.')));
   protected readonly maxDate = today();
-  protected readonly crumbs = staffCrumbs({ label: this.title });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
   /** The consultancy's new list has two states (to approve, approved): tiles that filter it. */
   protected readonly filterable = this.consultancy && this.list === 'new';
   protected readonly stage = signal<string | null>(null);
   protected readonly counts = computed<ListCount[]>(() => {
     const rows = this.transactions();
-    if (!this.filterable) return [{ label: this.title, value: rows.length, tone: this.list === 'rejected' ? 'bad' : this.list === 'approved' ? 'good' : 'warn' }];
+    if (!this.filterable) return [{ label: this.title(), value: rows.length, tone: this.list === 'rejected' ? 'bad' : this.list === 'approved' ? 'good' : 'warn' }];
     return [
-      { key: 'all', label: 'Transactions', value: rows.length },
-      { key: '4', label: 'To approve', value: rows.filter((t) => t.VerificationStatus === 4).length, tone: 'warn' },
-      { key: '6', label: 'Approved', value: rows.filter((t) => t.VerificationStatus === 6).length, tone: 'good' },
+      { key: 'all', label: t('staff.neft.count.all', 'Transactions'), value: rows.length },
+      { key: '4', label: t('staff.neft.count.toApprove', 'To approve'), value: rows.filter((x) => x.VerificationStatus === 4).length, tone: 'warn' },
+      { key: '6', label: t('staff.neft.count.approved', 'Approved'), value: rows.filter((x) => x.VerificationStatus === 6).length, tone: 'good' },
     ];
   });
 
@@ -182,11 +194,11 @@ export class NeftTransactionsPage {
     if (!f) return;
     this.update({ submitted: true });
     if (!f.date || !f.referenceNo.trim() || !String(f.amount).trim()) {
-      this.formError.set('Please enter all the required details.');
+      this.formError.set(t('staff.neft.approve.required.error', 'Please enter all the required details.'));
       return;
     }
     if (f.date > this.maxDate) {
-      this.formError.set('The date of receipt of payment cannot be in the future.');
+      this.formError.set(t('staff.neft.approve.future.error', 'The date of receipt of payment cannot be in the future.'));
       return;
     }
     this.saving.set(true);
@@ -201,7 +213,7 @@ export class NeftTransactionsPage {
         }),
       );
       this.form.set(null);
-      this.toast.success(r.message || 'Transaction Approved.', f.transaction.ZedId);
+      this.toast.success(r.message || t('staff.neft.approve.toast', 'Transaction Approved.'), f.transaction.ZedId);
       // Approved rows leave the "new" list (VerificationStatus 6).
       this.transactions.update((rows) => rows.filter((x) => x.TransactionId !== f.transaction.TransactionId));
     } catch (err) {

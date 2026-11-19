@@ -14,6 +14,7 @@ import { staffProfileLink } from '../msme-profile/msme-profile';
 import { PagerComponent, ServerPager } from '../pager';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
 import { dashboardSetting } from '../admin-portal';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -23,7 +24,7 @@ import { dashboardSetting } from '../admin-portal';
 @Component({
   selector: 'zed-staff-registered-msme',
   providers: [dashboardSystemProvider(['registered-msme'])],
-  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
+  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
   templateUrl: './registered-msme.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -52,7 +53,11 @@ export class RegisteredMsmePage {
   protected readonly main = PORTAL_SYSTEM === 'main';
   protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
   protected readonly surveillance = PORTAL_SYSTEM === 'surveillance';
-  protected readonly agencyLabel = PORTAL_LABELS.agency;
+  /** The agency's name on this portal (the Admin's wording, read where shown). */
+  protected get agencyLabel(): string {
+    return PORTAL_LABELS.agency;
+  }
+  /** The API's searchBy values; searchText() gives the wording shown. */
   protected readonly searchFields = ['Zed Id', 'Udyam Number', 'Unit Name'];
   /** As the old pages: main and surveillance up to 1000 per page, consultancy up to 100. */
   protected readonly pageSizes = PORTAL_SYSTEM === 'consultancy' ? [10, 20, 50, 100] : [10, 20, 50, 100, 200, 1000];
@@ -109,6 +114,16 @@ export class RegisteredMsmePage {
   protected doSearch(): void {
     this.pager.reset();
     void this.load();
+  }
+
+  /** A searchBy value as shown. */
+  protected searchText(field: string): string {
+    switch (field) {
+      case 'Zed Id': return t('staff.registeredMsme.searchBy.zedId', 'Zed Id');
+      case 'Udyam Number': return t('staff.registeredMsme.searchBy.udyam', 'Udyam Number');
+      case 'Unit Name': return t('staff.registeredMsme.searchBy.unitName', 'Unit Name');
+      default: return field;
+    }
   }
 
   protected status(row: Row): number {

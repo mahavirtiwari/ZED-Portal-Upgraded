@@ -1,9 +1,10 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../../branding';
 import { ContactPage } from '../contact/contact';
 import { PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * Frame of the public pages (registration, Contact ZED), as Views/Shared/_LayoutHome.cshtml drew it: the logo header,
@@ -14,27 +15,27 @@ import { PageHead } from '../shared/page-head';
  */
 @Component({
   selector: 'zed-public-layout',
-  imports: [RouterLink, PageHead],
+  imports: [RouterLink, PageHead, TextPipe],
   host: { class: 'zed-legacy zed-msme d-block' },
   template: `
     <div class="main-container">
       <header class="zed-header" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" />}
-            <a routerLink="/msme/login"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.layout.ministryLogoAlt'" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.layout.ministryLogoAlt'" />}
+            <a routerLink="/msme/login"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" [alt]="'ZED' | t: 'public.layout.zedLogoAlt'" /></a>
           </div>
         </div>
       </header>
 
-      <nav class="pub-nav" id="main_navbar" aria-label="Public menu">
+      <nav class="pub-nav" id="main_navbar" [attr.aria-label]="'Public menu' | t: 'public.layout.menu.aria'">
         <div class="container pub-nav-in">
-          <span class="pub-portal">ZED Certification</span>
+          <span class="pub-portal">{{ 'ZED Certification' | t: 'public.layout.menu.portalLabel' }}</span>
           <ul class="pub-links">
-            <li><a routerLink="/msme/login">Back to Login</a></li>
+            <li><a routerLink="/msme/login">{{ 'Back to Login' | t: 'public.layout.menu.loginLink' }}</a></li>
             <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
             @if (links.url('contact'); as u) {
-              <li><a [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
+              <li><a [href]="u" target="_blank" rel="noopener">{{ 'Contact ZED' | t: 'public.layout.menu.contactLink' }}</a></li>
             }
           </ul>
         </div>
@@ -43,7 +44,7 @@ import { PageHead } from '../shared/page-head';
       <div class="public-content">
         @if (head()) {
         <div class="container">
-          <zed-page-head [crumbs]="[{ label: 'Login', link: '/msme/login' }, { label: title() }]" [title]="title()" />
+          <zed-page-head [crumbs]="[{ label: ('Login' | t: 'public.layout.crumb.login'), link: '/msme/login' }, { label: name() }]" [title]="name()" />
         </div>
         }
         <ng-content />
@@ -51,14 +52,14 @@ import { PageHead } from '../shared/page-head';
 
       <footer class="pub-footer">
         <div class="container pf">
-          <small>ZED © {{ year }} All Rights Reserved</small>
-          <nav class="pf-links" aria-label="Footer">
-            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a><span aria-hidden="true">·</span> }
-            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a><span aria-hidden="true">·</span> }
-            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a><span aria-hidden="true">·</span> }
-            <a routerLink="/msme/login">Login</a>
+          <small>{{ 'ZED © {year} All Rights Reserved' | t: 'public.layout.footer.copyrightText' : { year } }}</small>
+          <nav class="pf-links" [attr.aria-label]="'Footer' | t: 'public.layout.footer.aria'">
+            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'public.layout.footer.guidelinesLink' }}</a><span aria-hidden="true">·</span> }
+            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'public.layout.footer.privacyLink' }}</a><span aria-hidden="true">·</span> }
+            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'public.layout.footer.termsLink' }}</a><span aria-hidden="true">·</span> }
+            <a routerLink="/msme/login">{{ 'Login' | t: 'public.layout.footer.loginLink' }}</a>
           </nav>
-          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
+          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'public.layout.footer.qciLogoAlt'" height="32" />
         </div>
       </footer>
     </div>
@@ -98,7 +99,9 @@ export class PublicLayout {
   /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
   protected readonly brand = inject(BrandingService);
   /** The page name (old ViewBag title: "Registration", "Contact ZED"), now the page title under the breadcrumb. */
-  readonly title = input('Home');
+  /** Unset: the standard "Home" (Admin-editable). */
+  readonly title = input<string>();
+  protected readonly name = computed(() => this.title() || t('public.layout.homeTitle', 'Home'));
   /** False when the page draws its own breadcrumb and title (Contact ZED). */
   readonly head = input(true);
   protected readonly year = new Date().getFullYear();

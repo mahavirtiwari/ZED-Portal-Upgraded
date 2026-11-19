@@ -1,4 +1,5 @@
 import { ContentService } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -39,8 +40,8 @@ export function initialsOf(name: string | null | undefined): string {
 /** The stored assessor / user type as people read it (BronzeAssessor → Bronze Assessor). */
 export function assessorTypeLabel(type: string | null | undefined): string {
   switch (type) {
-    case 'BronzeAssessor': return 'Bronze Assessor';
-    case 'TechnicalExpert': return 'Technical Expert';
+    case 'BronzeAssessor': return t('staff.assessors.type.bronzeAssessor', 'Bronze Assessor');
+    case 'TechnicalExpert': return t('staff.assessors.type.technicalExpert', 'Technical Expert');
     default: return type ?? '';
   }
 }
@@ -93,26 +94,36 @@ export function assessorBlockNote(content: ContentService, consultancy: boolean)
  * (`assessorOpenAssessments`; "not known" when the count could not be read) and a required reason (kept in the history and
  * e-mailed; the server always sends the mail).
  */
-export function assessorBlockAsk(name: string, userId: string, open: number | null, note: string, consultancy: boolean, reAllots: string): ConfirmAsk {
-  const word = consultancy ? 'consultant' : 'assessor';
-  const work = consultancy ? 'case' : 'assessment';
-  const openLine = open === null
-    ? `Open ${work}s allotted to this ${word}: not known.`
-    : open === 0
-      ? `No ${work} allotted to this ${word} is open.`
-      : `${open} ${work}${open === 1 ? '' : 's'} allotted to this ${word} ${open === 1 ? 'is' : 'are'} still open. ${reAllots.charAt(0).toUpperCase() + reAllots.slice(1)} will need to re-allot ${open === 1 ? 'it' : 'them'}.`;
+export function assessorBlockAsk(name: string, userId: string, open: number | null, note: string, consultancy: boolean, reAllotBy: string | null): ConfirmAsk {
+  // Whole sentences for assessor / consultant and one / many (plural forms differ); the re-allot sentence is the second one.
+  // `reAllotBy`: the agency word ("agency", "organisation") of whoever re-allots, null when it is the reader ("You").
+  const reAllot = open === 1
+    ? (reAllotBy === null ? t('staff.assessors.block.reAllotYouIt', 'You will need to re-allot it.') : t('staff.assessors.block.reAllotIt', 'The {agency} will need to re-allot it.', { agency: reAllotBy }))
+    : (reAllotBy === null ? t('staff.assessors.block.reAllotYouThem', 'You will need to re-allot them.') : t('staff.assessors.block.reAllotThem', 'The {agency} will need to re-allot them.', { agency: reAllotBy }));
+  const openLine = consultancy
+    ? (open === null ? t('staff.assessors.block.consultant.openUnknown', 'Open cases allotted to this consultant: not known.')
+      : open === 0 ? t('staff.assessors.block.consultant.openNone', 'No case allotted to this consultant is open.')
+      : (open === 1 ? t('staff.assessors.block.consultant.openOne', '{count} case allotted to this consultant is still open.', { count: open })
+        : t('staff.assessors.block.consultant.openMany', '{count} cases allotted to this consultant are still open.', { count: open })) + ' ' + reAllot)
+    : (open === null ? t('staff.assessors.block.assessor.openUnknown', 'Open assessments allotted to this assessor: not known.')
+      : open === 0 ? t('staff.assessors.block.assessor.openNone', 'No assessment allotted to this assessor is open.')
+      : (open === 1 ? t('staff.assessors.block.assessor.openOne', '{count} assessment allotted to this assessor is still open.', { count: open })
+        : t('staff.assessors.block.assessor.openMany', '{count} assessments allotted to this assessor are still open.', { count: open })) + ' ' + reAllot);
   // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-03: a lock tile, the ID under the title, the effects
   // as red bullets.
   return {
-    title: `Block ${name || userId}?`,
+    title: t('staff.assessors.block.title', 'Block {name}?', { name: name || userId }),
     subtitle: userId,
     icon: 'lock',
-    points: [note, openLine, `Nothing is deleted; the reason is kept in the history and e-mailed to the ${word}.`].filter(Boolean),
-    confirmLabel: `Block ${word}`,
+    points: [note, openLine, consultancy
+      ? t('staff.assessors.block.consultant.point3', 'Nothing is deleted; the reason is kept in the history and e-mailed to the consultant.')
+      : t('staff.assessors.block.assessor.point3', 'Nothing is deleted; the reason is kept in the history and e-mailed to the assessor.')].filter(Boolean),
+    confirmLabel: consultancy ? t('staff.assessors.block.consultant.confirmButton', 'Block consultant') : t('staff.assessors.block.assessor.confirmButton', 'Block assessor'),
     danger: true,
     reason: {
-      label: 'Reason for blocking', placeholder: 'Shown in the history and e-mailed', maxLength: 2000,
-      requiredMessage: 'Please enter the reason for blocking.',
+      label: t('staff.assessors.block.reasonLabel', 'Reason for blocking'),
+      placeholder: t('staff.assessors.block.reasonPlaceholder', 'Shown in the history and e-mailed'), maxLength: 2000,
+      requiredMessage: t('staff.assessors.block.reasonRequired', 'Please enter the reason for blocking.'),
     },
   };
 }
@@ -128,37 +139,37 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 @Component({
   selector: 'zed-staff-assessor-list',
   imports: [
-    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts,
+    FormsModule, RouterLink, PagerComponent, DatePipe, PageHead, ReasonDialog, ListCounts, ChipFilter, RowMenu, ConfirmDialog, UserHistoryPanel, PhoneChip, LevelCounts, TextPipe,
   ],
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="noun + (agencyId ? ' of ' + agencyId : '')" />
+    <zed-page-head [crumbs]="crumbs()" [title]="agencyId ? ('{noun} of {agency}' | t: 'staff.assessors.titleOfAgency' : { noun: noun(), agency: agencyId }) : noun()" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
-    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="noun + ' by status'" (pick)="setStatus($any($event.key))" />
+    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="'{noun} by status' | t: 'staff.assessors.countsLabel' : { noun: noun() }" (pick)="setStatus($any($event.key))" />
 
     <div class="zed-card as-bar">
       <label class="as-search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-        <input type="search" class="form-control" maxlength="50" placeholder="Search ID, name, mobile, e-mail or agency" aria-label="Search assessors"
+        <input type="search" class="form-control" maxlength="50" [placeholder]="'Search ID, name, mobile, e-mail or agency' | t: 'staff.assessors.search.placeholder'" [attr.aria-label]="'Search assessors' | t: 'staff.assessors.search.aria'"
                [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
       </label>
       @if (!consultancy) {
-        <select class="form-select as-select" aria-label="Sector type" [ngModel]="sector()" (ngModelChange)="setSector($event)">
-          <option value="">All sector types</option>
+        <select class="form-select as-select" [attr.aria-label]="'Sector type' | t: 'staff.assessors.filter.sector'" [ngModel]="sector()" (ngModelChange)="setSector($event)">
+          <option value="">{{ 'All sector types' | t: 'staff.assessors.filter.allSectors' }}</option>
           @for (s of sectorOptions(); track s.value) { <option [value]="s.value">{{ s.label }} ({{ s.count }})</option> }
         </select>
       }
       @if (agencies().length > 1) {
         <select class="form-select as-select as-agency" [attr.aria-label]="labels.agency" [ngModel]="agency()" (ngModelChange)="setAgency($event)">
-          <option value="">All {{ labels.agencies.toLowerCase() }}</option>
+          <option value="">{{ 'All {agencies}' | t: 'staff.assessors.filter.allAgencies' : { agencies: labels.agencies.toLowerCase() } }}</option>
           @for (a of agencies(); track a.id) { <option [value]="a.id">{{ a.name }} ({{ a.count }})</option> }
         </select>
       }
-      <span class="as-showing">{{ pager.total() }} of {{ rows().length }} {{ noun.toLowerCase() }}</span>
+      <span class="as-showing">{{ '{shown} of {total} {noun}' | t: 'staff.assessors.showing' : { shown: pager.total(), total: rows().length, noun: noun().toLowerCase() } }}</span>
       @if (!consultancy && types().length > 1) {
-        <zed-chip-filter class="as-types" label="Type" [chips]="typeChips()" [value]="level()" (valueChange)="setLevel($event)" />
+        <zed-chip-filter class="as-types" [label]="'Type' | t: 'staff.assessors.filter.type'" [chips]="typeChips()" [value]="level()" (valueChange)="setLevel($event)" />
       }
     </div>
 
@@ -169,21 +180,21 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
             <tr>
               @if (consultancy) {
                 <!-- ZEDCS_CONSULTANCY Frontend/User/AssessorList.cshtml -->
-                <th class="text-center" style="width: 56px">S.No</th>
-                <th>Consultant Details</th>
-                <th>Consultant Organisation Details</th>
-                <th class="text-center">No. Of Consulting Completed</th>
-                <th class="text-center">Status</th>
-                <th class="text-end">Action(s)</th>
+                <th class="text-center" style="width: 56px">{{ 'S.No' | t: 'staff.assessors.column.sno' }}</th>
+                <th>{{ 'Consultant Details' | t: 'staff.assessors.column.consultant' }}</th>
+                <th>{{ 'Consultant Organisation Details' | t: 'staff.assessors.column.organisation' }}</th>
+                <th class="text-center">{{ 'No. Of Consulting Completed' | t: 'staff.assessors.column.completed' }}</th>
+                <th class="text-center">{{ 'Status' | t: 'staff.assessors.column.status' }}</th>
+                <th class="text-end">{{ 'Action(s)' | t: 'staff.assessors.column.consultancyActions' }}</th>
               } @else {
-                <th class="c-who">Assessor</th>
-                <th class="c-lv">Levels and modes</th>
-                <th class="c-alloc">Allocated</th>
-                <th class="c-sec">Sector</th>
-                <th class="c-con">Contact</th>
-                <th class="c-ag">Agency</th>
-                <th class="text-center c-st">Status</th>
-                <th class="text-end c-act">Actions</th>
+                <th class="c-who">{{ 'Assessor' | t: 'staff.assessors.column.assessor' }}</th>
+                <th class="c-lv">{{ 'Levels and modes' | t: 'staff.assessors.column.levels' }}</th>
+                <th class="c-alloc">{{ 'Allocated' | t: 'staff.assessors.column.allocated' }}</th>
+                <th class="c-sec">{{ 'Sector' | t: 'staff.assessors.column.sector' }}</th>
+                <th class="c-con">{{ 'Contact' | t: 'staff.assessors.column.contact' }}</th>
+                <th class="c-ag">{{ 'Agency' | t: 'staff.assessors.column.agency' }}</th>
+                <th class="text-center c-st">{{ 'Status' | t: 'staff.assessors.column.status' }}</th>
+                <th class="text-end c-act">{{ 'Actions' | t: 'staff.assessors.column.actions' }}</th>
               }
             </tr>
           </thead>
@@ -198,13 +209,13 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                   </div>
                   @if (consultancy) {
                     <div class="as-contact as-under">
-                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
+                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : ('Mobile not saved' | t: 'staff.assessors.row.noMobile') }}</span>
                       @if (s.Email) { <span class="as-sub" [title]="s.Email">{{ email(s.Email) }}</span> }
                     </div>
                   }
                 </td>
                 @if (!consultancy) {
-                  <td class="as-levels" data-label="Levels and modes">
+                  <td class="as-levels" [attr.data-label]="'Levels and modes' | t: 'staff.assessors.column.levels'">
                     @let m = medals(s.Assessments);
                     @if (m.items.length) {
                       <span class="lv-row" role="img" [attr.aria-label]="m.aria">
@@ -216,18 +227,18 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                     }
                   </td>
                   <!-- 2026-11-18 (the user): assessments allocated per certification level (desktop, lead or co-assessor). -->
-                  <td data-label="Allocated"><zed-level-counts [counts]="s.LevelCounts" [label]="'Assessments allocated to ' + (s.UserName || s.UserId)" /></td>
-                  <td data-label="Sector"><span class="as-pill" [class.is-none]="!s.SectorActivity">{{ s.SectorActivity || 'Not set' }}</span></td>
+                  <td [attr.data-label]="'Allocated' | t: 'staff.assessors.column.allocated'"><zed-level-counts [counts]="s.LevelCounts" [label]="'Assessments allocated to {name}' | t: 'staff.assessors.row.allocatedAria' : { name: s.UserName || s.UserId }" /></td>
+                  <td [attr.data-label]="'Sector' | t: 'staff.assessors.column.sector'"><span class="as-pill" [class.is-none]="!s.SectorActivity">{{ s.SectorActivity || ('Not set' | t: 'staff.assessors.row.sectorNotSet') }}</span></td>
                   <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the flex column on an inner div; a flex td is
                        no table cell, so the browser merged Contact and Agency and every later column moved one header left. -->
-                  <td class="as-contact-td" data-label="Contact">
+                  <td class="as-contact-td" [attr.data-label]="'Contact' | t: 'staff.assessors.column.contact'">
                     <div class="as-contact">
-                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : 'Mobile not saved' }}</span>
+                      <span [class.no-mobile]="!s.MobileNo">{{ s.MobileNo ? mobile(s.MobileNo) : ('Mobile not saved' | t: 'staff.assessors.row.noMobile') }}</span>
                       @if (s.Email) { <span class="as-sub" [title]="s.Email">{{ email(s.Email) }}</span> }
                     </div>
                   </td>
                 }
-                <td class="as-agency-td" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">
+                <td class="as-agency-td" [attr.data-label]="consultancy ? ('Consultant Organisation' | t: 'staff.assessors.row.organisationLabel') : labels.agency">
                   <div class="as-agency">
                     <span class="as-agency-name">{{ s.AgencyUserName }}</span>
                     <span class="as-id">{{ s.AgencyUserId }}</span>
@@ -235,11 +246,11 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 </td>
                 @if (consultancy) {
                   <!-- The live page prints 0 for each milestone (no count is read). -->
-                  <td class="text-center as-milestones" data-label="No. Of Consulting Completed">
-                    <div>Milestone 1: <strong>0</strong></div><div>Milestone 2: <strong>0</strong></div><div>Milestone 3: <strong>0</strong></div>
+                  <td class="text-center as-milestones" [attr.data-label]="'No. Of Consulting Completed' | t: 'staff.assessors.column.completed'">
+                    <div>{{ 'Milestone 1:' | t: 'staff.assessors.row.milestone1' }} <strong>0</strong></div><div>{{ 'Milestone 2:' | t: 'staff.assessors.row.milestone2' }} <strong>0</strong></div><div>{{ 'Milestone 3:' | t: 'staff.assessors.row.milestone3' }} <strong>0</strong></div>
                   </td>
                 }
-                <td class="text-center as-status" data-label="Status">
+                <td class="text-center as-status" [attr.data-label]="'Status' | t: 'staff.assessors.column.status'">
                   <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
                   <!-- 2026-11-18: the registered phone of the app (one phone per user), for the Admin and the Master Admin. -->
                   @if (showsPhone) { <zed-phone-chip class="as-phone" [phone]="phoneOf(s)" /> }
@@ -252,8 +263,8 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 </td>
                 <td class="as-actions text-end">
                   <div class="as-btns">
-                    <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
-                    <zed-row-menu [items]="menuOf(s)" [label]="'More actions for ' + (s.UserName || s.UserId)" (picked)="pick($event, s)" />
+                    <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">{{ 'View' | t: 'staff.assessors.row.viewButton' }}</a>
+                    <zed-row-menu [items]="menuOf(s)" [label]="'More actions for {name}' | t: 'staff.assessors.row.menuAria' : { name: s.UserName || s.UserId }" (picked)="pick($event, s)" />
                   </div>
                 </td>
               </tr>
@@ -262,11 +273,11 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 <td [attr.colspan]="consultancy ? 6 : 8" style="padding: 0">
                   @if (rows().length) {
                     <div class="no-data">
-                      No {{ consultancy ? 'consultant' : labels.assessor.toLowerCase() }} matches the filters.
-                      <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all</button>
+                      {{ consultancy ? ('No consultant matches the filters.' | t: 'staff.assessors.noMatchConsultant') : ('No {assessor} matches the filters.' | t: 'staff.assessors.noMatch' : { assessor: labels.assessor.toLowerCase() }) }}
+                      <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all' | t: 'staff.assessors.showAllButton' }}</button>
                     </div>
                   } @else {
-                    <div class="no-data">No Data Entered</div>
+                    <div class="no-data">{{ 'No Data Entered' | t: 'staff.assessors.empty' }}</div>
                   }
                 </td>
               </tr>
@@ -294,7 +305,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                         [fileName]="'history-' + h.row.UserId" (closed)="historyFor.set(null)" />
     }
     @if (loading()) {
-      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+      <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.assessors.loading' }}</span></div>
     }
   `,
   styles: `
@@ -373,8 +384,8 @@ export class AssessorListPage {
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly labels = LABELS[this.system];
-  protected readonly noun = this.consultancy ? 'Consultants' : this.labels.assessors;
-  protected readonly crumbs = staffCrumbs({ label: this.noun });
+  protected readonly noun = computed(() => (this.consultancy ? t('staff.assessors.consultantsNoun', 'Consultants') : this.labels.assessors));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.noun() }));
   private readonly api = inject(UsersApi);
   private readonly toast = inject(ToastService);
   private readonly content = inject(ContentService);
@@ -408,20 +419,20 @@ export class AssessorListPage {
   protected readonly mobile = plain;
   protected readonly email = plain;
 
-  private readonly word = this.consultancy ? 'consultant' : 'assessor';
-  protected readonly menuActive: RowMenuItem[] = [
-    { key: 'reset', label: 'Send reset link', icon: 'mail' },
-    { key: 'history', label: 'View history', icon: 'history' },
-    { key: 'block', label: 'Block ' + this.word, icon: 'lock', danger: true },
-  ];
-  protected readonly menuBlocked: RowMenuItem[] = [
-    { key: 'history', label: 'View history', icon: 'history' },
-    { key: 'unblock', label: 'Unblock ' + this.word, icon: 'unlock' },
-  ];
+  private readonly word = computed(() => (this.consultancy ? t('staff.assessors.word.consultant', 'consultant') : t('staff.assessors.word.assessor', 'assessor')));
+  protected readonly menuActive = computed<RowMenuItem[]>(() => [
+    { key: 'reset', label: t('staff.assessors.menu.reset', 'Send reset link'), icon: 'mail' },
+    { key: 'history', label: t('staff.assessors.menu.history', 'View history'), icon: 'history' },
+    { key: 'block', label: t('staff.assessors.menu.block', 'Block {word}', { word: this.word() }), icon: 'lock', danger: true },
+  ]);
+  protected readonly menuBlocked = computed<RowMenuItem[]>(() => [
+    { key: 'history', label: t('staff.assessors.menu.history', 'View history'), icon: 'history' },
+    { key: 'unblock', label: t('staff.assessors.menu.unblock', 'Unblock {word}', { word: this.word() }), icon: 'unlock' },
+  ]);
   /** 2026-11-18: "Release mobile" for a user with a registered phone (Admin and Master Admin; the API refuses others). */
-  private readonly releaseItem: RowMenuItem = { key: 'release', label: 'Release mobile', icon: 'refresh' };
-  private readonly menuActivePhone: RowMenuItem[] = [...this.menuActive.slice(0, 2), this.releaseItem, ...this.menuActive.slice(2)];
-  private readonly menuBlockedPhone: RowMenuItem[] = [...this.menuBlocked, this.releaseItem];
+  private readonly releaseItem = computed<RowMenuItem>(() => ({ key: 'release', label: t('staff.assessors.menu.release', 'Release mobile'), icon: 'refresh' }));
+  private readonly menuActivePhone = computed(() => [...this.menuActive().slice(0, 2), this.releaseItem(), ...this.menuActive().slice(2)]);
+  private readonly menuBlockedPhone = computed(() => [...this.menuBlocked(), this.releaseItem()]);
   protected readonly showsPhone = canSeeAssessorMobile(inject(AuthService).currentUser()?.roleId);
   private readonly http = inject(HttpClient);
   /** The registered phones of this portal's app, by user id (upper case). */
@@ -434,16 +445,16 @@ export class AssessorListPage {
 
   protected menuOf(s: AssessorRow): RowMenuItem[] {
     const phone = this.showsPhone && hasPhone(this.phoneOf(s));
-    return s.IsActive ? (phone ? this.menuActivePhone : this.menuActive) : phone ? this.menuBlockedPhone : this.menuBlocked;
+    return s.IsActive ? (phone ? this.menuActivePhone() : this.menuActive()) : phone ? this.menuBlockedPhone() : this.menuBlocked();
   }
 
   protected readonly tiles = computed<ListCount[]>(() => {
     const rows = this.rows();
     const active = rows.filter((r) => r.IsActive).length;
     return [
-      { key: 'all', label: 'All ' + this.noun.toLowerCase(), value: rows.length },
-      { key: 'active', label: 'Active', value: active, tone: 'good' },
-      { key: 'blocked', label: 'Blocked', value: rows.length - active, tone: 'bad' },
+      { key: 'all', label: t('staff.assessors.count.all', 'All {noun}', { noun: this.noun().toLowerCase() }), value: rows.length },
+      { key: 'active', label: t('staff.assessors.count.active', 'Active'), value: active, tone: 'good' },
+      { key: 'blocked', label: t('staff.assessors.count.blocked', 'Blocked'), value: rows.length - active, tone: 'bad' },
     ];
   });
 
@@ -456,8 +467,8 @@ export class AssessorListPage {
       .map(([value, count]) => ({ value, label: assessorTypeLabel(value), count }));
   });
   protected readonly typeChips = computed<FilterChip[]>(() => [
-    { key: '', label: 'All types', count: this.rows().length },
-    ...this.types().map((t) => ({ key: t.value, label: t.label, count: t.count })),
+    { key: '', label: t('staff.assessors.chip.allTypes', 'All types'), count: this.rows().length },
+    ...this.types().map((x) => ({ key: x.value, label: x.label, count: x.count })),
   ]);
 
   protected readonly sectorOptions = computed(() => {
@@ -466,7 +477,7 @@ export class AssessorListPage {
       value: a.value, label: a.label, count: rows.filter((r) => r.SectorActivity === a.value).length,
     }));
     const none = rows.filter((r) => !r.SectorActivity).length;
-    if (none) options.push({ value: 'none', label: 'Not set', count: none });
+    if (none) options.push({ value: 'none', label: t('staff.assessors.filter.sectorNotSet', 'Not set'), count: none });
     return options;
   });
 
@@ -534,11 +545,11 @@ export class AssessorListPage {
     if (this.busy()) return;
     this.dialogError.set('');
     switch (key) {
-      case 'reset': this.resetFor.set({ row: s, ask: resetLinkAsk(s.UserName, s.UserId, s.Email, this.consultancy ? 'Consultant' : this.labels.assessor) }); break;
+      case 'reset': this.resetFor.set({ row: s, ask: resetLinkAsk(s.UserName, s.UserId, s.Email, this.consultancy ? t('staff.assessors.reset.consultant', 'Consultant') : this.labels.assessor) }); break;
       case 'block': void this.openBlock(s); break;
       case 'unblock': this.reasonAsk.set({ action: 'unblock', userId: s.UserId, userName: s.UserName ?? null }); break;
       case 'history': void this.openHistory(s); break;
-      case 'release': this.releaseFor.set({ row: s, ask: releaseMobileAsk(s.UserName, s.UserId, this.phoneOf(s)?.model, this.word) }); break;
+      case 'release': this.releaseFor.set({ row: s, ask: releaseMobileAsk(s.UserName, s.UserId, this.phoneOf(s)?.model, this.word()) }); break;
     }
   }
 
@@ -554,7 +565,7 @@ export class AssessorListPage {
   /** Releases the user's registered phone with the reason; the next sign-in registers the new phone. */
   protected async releaseMobile(s: AssessorRow, reason: string): Promise<void> {
     await this.act(releasePhone(this.http, s.UserId, reason), (m) => {
-      this.toast.success('Mobile released', m);
+      this.toast.success(t('staff.assessors.toast.released', 'Mobile released'), m);
       void this.loadPhones();
       return false;
     });
@@ -573,7 +584,7 @@ export class AssessorListPage {
   /** E-mails the assessor a link to set a new password. */
   protected async sendReset(s: AssessorRow): Promise<void> {
     await this.act(this.api.passwordReset('assessors', s.UserId), (m) => {
-      this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(m, s.Email));
+      this.toast.success(t('staff.assessors.toast.resetSent', 'Reset link sent'), t('staff.assessors.toast.resetTo', 'E-mailed to {to}', { to: sentTo(m, s.Email) }));
       return false;
     });
   }
@@ -590,20 +601,20 @@ export class AssessorListPage {
     } finally {
       this.busy.set(false);
     }
-    const reAllots = 'the ' + (this.consultancy ? 'organisation' : this.labels.agency.toLowerCase());
-    this.blockFor.set({ row: s, ask: assessorBlockAsk(s.UserName, s.UserId, open, assessorBlockNote(this.content, this.consultancy), this.consultancy, reAllots) });
+    const reAllotBy = this.consultancy ? t('staff.assessors.block.organisationWord', 'organisation') : this.labels.agency.toLowerCase();
+    this.blockFor.set({ row: s, ask: assessorBlockAsk(s.UserName, s.UserId, open, assessorBlockNote(this.content, this.consultancy), this.consultancy, reAllotBy) });
   }
 
   protected async block(s: AssessorRow, reason: string): Promise<void> {
     await this.act(this.api.block('assessors', s.UserId, reason), (m) => {
-      this.toast.success(`${this.consultancy ? 'Consultant' : this.labels.assessor} blocked`, m);
+      this.toast.success(t('staff.assessors.toast.blocked', '{who} blocked', { who: this.consultancy ? t('staff.assessors.toast.consultant', 'Consultant') : this.labels.assessor }), m);
       return true;
     });
   }
 
   protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
     await this.act(this.api.unblock('assessors', r.userId, reason), (m) => {
-      this.toast.success(`${this.consultancy ? 'Consultant' : this.labels.assessor} unblocked`, m);
+      this.toast.success(t('staff.assessors.toast.unblocked', '{who} unblocked', { who: this.consultancy ? t('staff.assessors.toast.consultant', 'Consultant') : this.labels.assessor }), m);
       return true;
     });
   }
@@ -612,7 +623,7 @@ export class AssessorListPage {
     this.historyFor.set({ row: s, items: null, error: '' });
     try {
       const entries = await firstValueFrom(this.api.assessorHistory(s.UserId));
-      if (this.historyFor()?.row === s) this.historyFor.set({ row: s, items: blockHistoryItems(entries, this.consultancy ? 'organisation' : 'agency'), error: '' });
+      if (this.historyFor()?.row === s) this.historyFor.set({ row: s, items: blockHistoryItems(entries, this.consultancy ? t('staff.assessors.history.organisationWord', 'organisation') : t('staff.assessors.history.agencyWord', 'agency')), error: '' });
     } catch (err) {
       if (this.historyFor()?.row === s) this.historyFor.set({ row: s, items: [], error: apiErrorMessage(err) });
     }

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { EMAIL_PATTERN, MailServersCard } from './mail-servers';
+import { TextPipe, t } from '../../content/page-text';
 
 interface EmailSettingItem {
   key: string;
@@ -26,12 +27,12 @@ interface EmailSettingItem {
  */
 @Component({
   selector: 'zed-staff-email-settings',
-  imports: [FormsModule, MailServersCard, PortalSwitchComponent],
+  imports: [FormsModule, MailServersCard, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Email Settings</h3>
-        <p class="page-sub">The mail servers this portal sends with, and the office mailboxes its mails go to.</p>
+        <h3 class="registration-title">{{ 'Email Settings' | t: 'staff.emailSettings.title' }}</h3>
+        <p class="page-sub">{{ 'The mail servers this portal sends with, and the office mailboxes its mails go to.' | t: 'staff.emailSettings.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
@@ -44,18 +45,19 @@ interface EmailSettingItem {
       <form class="addresses zed-card" (ngSubmit)="save()" novalidate>
         <div class="mb-head">
           <div>
-            <h4 class="section-title">Office mailboxes</h4>
-            <p class="muted m-0">One address, or several separated by commas or semicolons. Leave a box empty to use the server's configured address.</p>
+            <h4 class="section-title">{{ 'Office mailboxes' | t: 'staff.emailSettings.mailboxes.title' }}</h4>
+            <p class="muted m-0">{{ "One address, or several separated by commas or semicolons. Leave a box empty to use the server's configured address." | t: 'staff.emailSettings.mailboxes.note' }}</p>
           </div>
           <div class="mb-count" [class.warn]="missingCount()">
-            <strong>{{ setCount(items()) }}</strong> of {{ items().length }} set here
-            @if (missingCount()) { <small>{{ missingCount() }} with no address</small> }
+            @let cp = countParts(items().length);
+            @if (cp.length > 1) { {{ cp[0] }}<strong>{{ setCount(items()) }}</strong>{{ cp[1] }} } @else { {{ cp[0] }} }
+            @if (missingCount()) { <small>{{ '{count} with no address' | t: 'staff.emailSettings.mailboxes.missing' : { count: missingCount() } }}</small> }
           </div>
         </div>
         @for (group of groups(); track group.title) {
           @if (group.items.length) {
             <section class="mb-group" [attr.aria-label]="group.title">
-              <h5 class="group-title">{{ group.title }} <span class="group-count">{{ setCount(group.items) }} of {{ group.items.length }} set here</span></h5>
+              <h5 class="group-title">{{ group.title }} <span class="group-count">{{ '{set} of {total} set here' | t: 'staff.emailSettings.group.count' : { set: setCount(group.items), total: group.items.length } }}</span></h5>
               @for (item of group.items; track item.key) {
                 <div class="mb-row" [class.has-problem]="!!problems()[item.key]">
                   <div class="mb-label">
@@ -65,19 +67,19 @@ interface EmailSettingItem {
                   <div class="mb-field">
                     <input type="text" class="form-control" maxlength="400" autocomplete="off" [id]="item.key" [name]="item.key"
                            [class.is-invalid]="!!problems()[item.key]"
-                           [placeholder]="item.default ? 'Configured: ' + item.default : 'Not configured'"
+                           [placeholder]="item.default ? ('Configured: {address}' | t: 'staff.emailSettings.row.configuredPlaceholder' : { address: item.default }) : ('Not configured' | t: 'staff.emailSettings.row.notConfiguredPlaceholder')"
                            [ngModel]="values()[item.key]" (ngModelChange)="patch(item.key, $event)" />
                     @if (problems()[item.key]; as p) {
                       <small class="help-block">{{ p }}</small>
                     }
                     <div class="mb-uses">
                       @switch (uses(item)) {
-                        @case ('own') { <span class="uses-dot own"></span> Set here: {{ recipients(values()[item.key]) }} }
-                        @case ('configured') { <span class="uses-dot"></span> Uses the configured {{ item.default }} }
-                        @default { <span class="uses-dot none"></span> No address: nothing is sent to this mailbox }
+                        @case ('own') { <span class="uses-dot own"></span> {{ 'Set here: {addresses}' | t: 'staff.emailSettings.row.usesOwn' : { addresses: recipients(values()[item.key]) } }} }
+                        @case ('configured') { <span class="uses-dot"></span> {{ 'Uses the configured {address}' | t: 'staff.emailSettings.row.usesConfigured' : { address: item.default } }} }
+                        @default { <span class="uses-dot none"></span> {{ 'No address: nothing is sent to this mailbox' | t: 'staff.emailSettings.row.usesNone' }} }
                       }
                       @if (uses(item) === 'own' && item.default) {
-                        <button type="button" class="btn btn-link p-0 use-configured" (click)="patch(item.key, '')">Use configured</button>
+                        <button type="button" class="btn btn-link p-0 use-configured" (click)="patch(item.key, '')">{{ 'Use configured' | t: 'staff.emailSettings.row.useConfiguredButton' }}</button>
                       }
                     </div>
                   </div>
@@ -90,8 +92,8 @@ interface EmailSettingItem {
           <div class="alert mt-3 mb-0" [class.alert-success]="m.ok" [class.alert-danger]="!m.ok" [attr.role]="m.ok ? 'status' : 'alert'">{{ m.text }}</div>
         }
         <div class="form-actions save-bar" [class.is-dirty]="changed()">
-          @if (changed()) { <span class="unsaved">Unsaved changes</span> } @else { <span class="muted me-auto">All changes saved.</span> }
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || !changed()">Save</button>
+          @if (changed()) { <span class="unsaved">{{ 'Unsaved changes' | t: 'staff.emailSettings.unsaved' }}</span> } @else { <span class="muted me-auto">{{ 'All changes saved.' | t: 'staff.emailSettings.allSaved' }}</span> }
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || !changed()">{{ 'Save' | t: 'staff.emailSettings.saveButton' }}</button>
         </div>
       </form>
     }
@@ -147,8 +149,8 @@ export class EmailSettingsPage {
   /** The result of Save, shown next to the button. */
   protected readonly formMessage = signal<{ ok: boolean; text: string } | null>(null);
   protected readonly groups = computed(() => [
-    { title: 'Portal mails', items: this.items().filter((i) => !i.database) },
-    { title: 'Database mails', items: this.items().filter((i) => i.database) },
+    { title: t('staff.emailSettings.group.portalTitle', 'Portal mails'), items: this.items().filter((i) => !i.database) },
+    { title: t('staff.emailSettings.group.databaseTitle', 'Database mails'), items: this.items().filter((i) => i.database) },
   ]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -170,6 +172,11 @@ export class EmailSettingsPage {
     return (value ?? '').split(/[,;]/).map((p) => p.trim()).filter((p) => p).join(', ');
   }
 
+  /** "{set} of {total} set here" around the bold number: the text before and after {set} (one part if the Admin left it out). */
+  protected countParts(total: number): string[] {
+    return t('staff.emailSettings.mailboxes.count', '{set} of {total} set here', { total }).split('{set}');
+  }
+
   protected setCount(items: EmailSettingItem[]): number {
     return items.filter((i) => (this.values()[i.key] ?? '').trim()).length;
   }
@@ -183,10 +190,10 @@ export class EmailSettingsPage {
   /** The problem of one box, or ''. */
   private static problem(value: string): string {
     const parts = value.split(/[,;]/).map((p) => p.trim()).filter((p) => p);
-    if (parts.length > 10) return 'Please enter at most 10 addresses.';
+    if (parts.length > 10) return t('staff.emailSettings.error.tooMany', 'Please enter at most 10 addresses.');
     const bad = parts.find((p) => p.length > 254 || !EMAIL_PATTERN.test(p));
-    if (bad) return `'${bad}' is not a valid e-mail address.`;
-    if (parts.join('; ').length > 400) return 'The addresses are too long.';
+    if (bad) return t('staff.emailSettings.error.invalid', "'{address}' is not a valid e-mail address.", { address: bad });
+    if (parts.join('; ').length > 400) return t('staff.emailSettings.error.tooLong', 'The addresses are too long.');
     return '';
   }
 
@@ -200,7 +207,7 @@ export class EmailSettingsPage {
     this.problems.set(problems);
     const bad = this.items().filter((i) => problems[i.key]);
     if (bad.length) {
-      this.formMessage.set({ ok: false, text: `Please correct ${bad.map((i) => i.label).join(', ')}.` });
+      this.formMessage.set({ ok: false, text: t('staff.emailSettings.error.correct', 'Please correct {names}.', { names: bad.map((i) => i.label).join(', ') }) });
       return;
     }
     this.busy.set(true);

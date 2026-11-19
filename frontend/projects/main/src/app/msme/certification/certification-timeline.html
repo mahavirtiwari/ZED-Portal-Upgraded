@@ -3,8 +3,8 @@
     <span class="tl-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg>
     </span>
-    <h3 id="tlTitle">Application timeline</h3>
-    <span class="tl-order">Newest first</span>
+    <h3 id="tlTitle">{{ 'Application timeline' | t: 'msme.certification.timeline.title' }}</h3>
+    <span class="tl-order">{{ 'Newest first' | t: 'msme.certification.timeline.orderNote' }}</span>
   </div>
 
   @if (items().length) {
@@ -16,7 +16,7 @@
             <span class="tl-dot" aria-hidden="true"></span>
             <div class="tl-body">
               <p class="tl-title">{{ it.entry.title }}</p>
-              <span class="tl-who">{{ it.entry.who }}</span>
+              <span class="tl-who">{{ it.entry.who === 'YOU' ? ('YOU' | t: 'msme.certification.timeline.youChip') : ('ZED' | t: 'msme.certification.timeline.zedChip') }}</span>
               @if (it.entry.note) { <span class="tl-note">{{ it.entry.note }}</span> }
             </div>
           </li>
@@ -27,23 +27,24 @@
             <span class="tl-dot" aria-hidden="true"></span>
             <div class="tl-body nc-box">
               <div class="nc-head">
-                <p class="tl-title">Non-conformances</p>
-                <span class="nc-chip">{{ nc.rounds.length }} RAISED · {{ nc.closed ? nc.rounds.length + ' CLOSED' : nc.responded + ' RESPONDED' }}</span>
-                @if (nc.finalClosure) { <span class="nc-final">Final closure date {{ nc.finalClosure }}</span> }
+                <p class="tl-title">{{ 'Non-conformances' | t: 'msme.certification.timeline.ncTitle' }}</p>
+                <span class="nc-chip">{{ nc.closed ? ('{raised} RAISED · {closed} CLOSED' | t: 'msme.certification.timeline.ncClosedChip' : { raised: nc.rounds.length, closed: nc.rounds.length })
+                  : ('{raised} RAISED · {responded} RESPONDED' | t: 'msme.certification.timeline.ncRespondedChip' : { raised: nc.rounds.length, responded: nc.responded }) }}</span>
+                @if (nc.finalClosure) { <span class="nc-final">{{ 'Final closure date {date}' | t: 'msme.certification.timeline.finalClosureText' : { date: nc.finalClosure } }}</span> }
               </div>
               @for (r of nc.rounds; track r.round) {
                 <div class="nc-row">
-                  <b>NC {{ r.round }}</b>
+                  <b>{{ 'NC {round}' | t: 'msme.certification.timeline.ncRound' : { round: r.round } }}</b>
                   <span class="nc-trail">
-                    Raised by ZED · {{ when(r.raised) }}
-                    @if (r.submitted) { → You responded · {{ when(r.submitted) }} } @else { → <em>Awaiting your response</em> }
-                    @if (r.closed) { → Closed }
+                    {{ 'Raised by ZED · {date}' | t: 'msme.certification.timeline.raisedText' : { date: when(r.raised) } }}
+                    @if (r.submitted) { → {{ 'You responded · {date}' | t: 'msme.certification.timeline.respondedText' : { date: when(r.submitted) } }} } @else { → <em>{{ 'Awaiting your response' | t: 'msme.certification.timeline.awaitingText' }}</em> }
+                    @if (r.closed) { → {{ 'Closed' | t: 'msme.certification.timeline.closedText' }} }
                   </span>
                   @if (r.submitted) {
-                    <svg class="nc-ok" viewBox="0 0 24 24" role="img" aria-label="Responded"><circle cx="12" cy="12" r="10" /><path d="M7.5 12.5l3 3 6-6" /></svg>
+                    <svg class="nc-ok" viewBox="0 0 24 24" role="img" [attr.aria-label]="'Responded' | t: 'msme.certification.timeline.respondedAria'"><circle cx="12" cy="12" r="10" /><path d="M7.5 12.5l3 3 6-6" /></svg>
                   }
                   @if (ncRoute(); as route) {
-                    <a class="nc-view" [routerLink]="route" [attr.aria-label]="'View non-conformance round ' + r.round">View <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></a>
+                    <a class="nc-view" [routerLink]="route" [attr.aria-label]="'View non-conformance round {round}' | t: 'msme.certification.timeline.viewAria' : { round: r.round }">{{ 'View' | t: 'msme.certification.timeline.viewLink' }} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></a>
                   }
                 </div>
               }
@@ -53,6 +54,6 @@
       }
     </ol>
   } @else {
-    <p class="tl-empty">Nothing has happened on this application yet.</p>
+    <p class="tl-empty">{{ 'Nothing has happened on this application yet.' | t: 'msme.certification.timeline.empty' }}</p>
   }
 </section>

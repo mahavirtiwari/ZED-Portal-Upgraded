@@ -6,12 +6,13 @@ import { AuthService, CurrentUser, MessageResponse, Recaptcha, apiErrorMessage }
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { LoginShell } from '../login-shell/login-shell';
-import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from '../../session-expiry';
+import { EXPIRED_PARAM, RETURN_PARAM, returnUrl, sessionExpiredMessage } from '../../session-expiry';
+import { TextPipe, t } from '../../content/page-text';
 
 /** MSME login and forgot-password. Port of Views/Msme/Login.cshtml. */
 @Component({
   selector: 'zed-msme-login',
-  imports: [FormsModule, RouterLink, Recaptcha, LoginShell, ContentTextComponent],
+  imports: [FormsModule, RouterLink, Recaptcha, LoginShell, ContentTextComponent, TextPipe],
   templateUrl: './login.html',
   styleUrl: './login.scss',
 })
@@ -30,7 +31,9 @@ export class LoginPage {
   protected readonly success = signal('');
   protected readonly showPassword = signal(false);
   protected readonly expired = signal(this.query.has(EXPIRED_PARAM));
-  protected readonly expiredMessage = SESSION_EXPIRED_MESSAGE;
+  protected get expiredMessage(): string {
+    return sessionExpiredMessage();
+  }
 
   protected userId = '';
   protected password = '';
@@ -86,11 +89,11 @@ export class LoginPage {
     this.success.set('');
     this.expired.set(false);
     if (!this.userId.trim() || !this.password) {
-      this.error.set('Please enter your ZED ID and password.');
+      this.error.set(t('public.msmeLogin.missingError', 'Please enter your ZED ID and password.'));
       return;
     }
     if (!this.captchaToken) {
-      this.error.set('Please complete the verification.');
+      this.error.set(t('public.msmeLogin.captchaError', 'Please complete the verification.'));
       return;
     }
     this.busy.set(true);
@@ -117,11 +120,11 @@ export class LoginPage {
     this.error.set('');
     this.success.set('');
     if (!this.findValue.trim()) {
-      this.error.set(`Please enter ${this.findMode().label.toLowerCase()}.`);
+      this.error.set(this.findMode().missing);
       return;
     }
     if (!this.captchaToken) {
-      this.error.set('Please complete the verification.');
+      this.error.set(t('public.msmeLogin.captchaError', 'Please complete the verification.'));
       return;
     }
     this.busy.set(true);
@@ -171,8 +174,30 @@ interface FoundUnit {
   zedId: string;
 }
 
-const FIND_MODES: ReadonlyArray<{ key: FindBy; title: string; label: string; placeholder: string; hint: string }> = [
-  { key: 'zedid', title: 'ZED ID', label: 'Your ZED ID', placeholder: 'ZEDM000123', hint: 'The unit with this ZED ID is shown next.' },
-  { key: 'pan', title: 'PAN', label: 'PAN of the enterprise', placeholder: 'ABCDE1234F', hint: 'The units registered with this PAN are listed next.' },
-  { key: 'email', title: 'E-mail', label: 'Registered e-mail address', placeholder: 'name@example.com', hint: 'The units registered with this e-mail are listed next.' },
+/** The ways to find the account; the wording through getters, so that the Admin's shows once it has arrived. */
+const FIND_MODES: ReadonlyArray<{ key: FindBy; readonly title: string; readonly label: string; readonly placeholder: string; readonly hint: string; readonly missing: string }> = [
+  {
+    key: 'zedid',
+    get title() { return t('public.msmeLogin.forgot.zedId.option', 'ZED ID'); },
+    get label() { return t('public.msmeLogin.forgot.zedId.label', 'Your ZED ID'); },
+    get placeholder() { return t('public.msmeLogin.forgot.zedId.placeholder', 'ZEDM000123'); },
+    get hint() { return t('public.msmeLogin.forgot.zedId.note', 'The unit with this ZED ID is shown next.'); },
+    get missing() { return t('public.msmeLogin.forgot.zedId.error', 'Please enter your zed id.'); },
+  },
+  {
+    key: 'pan',
+    get title() { return t('public.msmeLogin.forgot.pan.option', 'PAN'); },
+    get label() { return t('public.msmeLogin.forgot.pan.label', 'PAN of the enterprise'); },
+    get placeholder() { return t('public.msmeLogin.forgot.pan.placeholder', 'ABCDE1234F'); },
+    get hint() { return t('public.msmeLogin.forgot.pan.note', 'The units registered with this PAN are listed next.'); },
+    get missing() { return t('public.msmeLogin.forgot.pan.error', 'Please enter pan of the enterprise.'); },
+  },
+  {
+    key: 'email',
+    get title() { return t('public.msmeLogin.forgot.email.option', 'E-mail'); },
+    get label() { return t('public.msmeLogin.forgot.email.label', 'Registered e-mail address'); },
+    get placeholder() { return t('public.msmeLogin.forgot.email.placeholder', 'name@example.com'); },
+    get hint() { return t('public.msmeLogin.forgot.email.note', 'The units registered with this e-mail are listed next.'); },
+    get missing() { return t('public.msmeLogin.forgot.email.error', 'Please enter registered e-mail address.'); },
+  },
 ];

@@ -7,6 +7,7 @@ import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { ExpenditureApi, PoChange, PoItem, PoLevel, PoView, poPill, shownDate } from './expenditure.api';
 import { TaxDetailsCard } from './tax-details';
+import { TextPipe, t } from '../../content/page-text';
 
 type Form =
   | { kind: 'add'; level: string; poNumber: string; poDate: string; cases: number | null }
@@ -21,7 +22,7 @@ type Form =
  */
 @Component({
   selector: 'zed-po-card',
-  imports: [FormsModule, TaxDetailsCard],
+  imports: [FormsModule, TaxDetailsCard, TextPipe],
   styleUrl: './exp-dialog.scss',
   styles: `
     :host { display: block; margin-bottom: 16px; }
@@ -40,11 +41,11 @@ type Form =
     <div class="zed-card po-card">
       <div class="po-head">
         <span class="xd-ico" aria-hidden="true">PO</span>
-        <h3>{{ view()?.partyName ?? partyName() }} · purchase orders</h3>
+        <h3>{{ '{party} · purchase orders' | t: 'staff.expenditure.po.title' : { party: view()?.partyName ?? partyName() } }}</h3>
         <div class="po-acts">
-          <button type="button" class="btn btn-default btn-sm" (click)="openHistory()">History</button>
-          <button type="button" class="btn btn-default btn-sm" [disabled]="!view()?.levels?.length" (click)="export()">Export</button>
-          @if (view()?.canEdit) { <button type="button" class="btn btn-outline-primary btn-sm" (click)="startAdd()">+ Add PO</button> }
+          <button type="button" class="btn btn-default btn-sm" (click)="openHistory()">{{ 'History' | t: 'staff.expenditure.po.historyButton' }}</button>
+          <button type="button" class="btn btn-default btn-sm" [disabled]="!view()?.levels?.length" (click)="export()">{{ 'Export' | t: 'staff.expenditure.po.exportButton' }}</button>
+          @if (view()?.canEdit) { <button type="button" class="btn btn-outline-primary btn-sm" (click)="startAdd()">{{ '+ Add PO' | t: 'staff.expenditure.po.addButton' }}</button> }
         </div>
       </div>
       @if (error()) { <div class="alert alert-danger m-3" role="alert">{{ error() }}</div> }
@@ -54,7 +55,7 @@ type Form =
       }
       <div class="table-responsive">
         <table class="table table-zed mb-0">
-          <thead><tr><th>Level</th><th>PO number</th><th>PO date</th><th class="num">Cases in PO</th><th class="num">Used</th><th>Use</th><th>Allotment</th><th></th></tr></thead>
+          <thead><tr><th>{{ 'Level' | t: 'staff.expenditure.po.column.level' }}</th><th>{{ 'PO number' | t: 'staff.expenditure.po.column.number' }}</th><th>{{ 'PO date' | t: 'staff.expenditure.po.column.date' }}</th><th class="num">{{ 'Cases in PO' | t: 'staff.expenditure.po.column.cases' }}</th><th class="num">{{ 'Used' | t: 'staff.expenditure.po.column.used' }}</th><th>{{ 'Use' | t: 'staff.expenditure.po.column.use' }}</th><th>{{ 'Allotment' | t: 'staff.expenditure.po.column.allotment' }}</th><th></th></tr></thead>
           <tbody>
             @for (l of view()?.levels ?? []; track l.level) {
               @let pp = pill(l);
@@ -63,26 +64,25 @@ type Form =
                 <td>@for (p of l.pos; track p.id) { <span class="d-block">{{ p.poNumber }}</span> }</td>
                 <td>@for (p of l.pos; track p.id) { <span class="d-block">{{ date(p.poDate) }}</span> }</td>
                 <td class="num">{{ l.cases }}</td>
-                <td class="num">{{ l.used }}@if (l.inProgress) { <span class="po-sub">+{{ l.inProgress }} in progress</span> }</td>
+                <td class="num">{{ l.used }}@if (l.inProgress) { <span class="po-sub">{{ '+{count} in progress' | t: 'staff.expenditure.po.inProgressText' : { count: l.inProgress } }}</span> }</td>
                 <td><span class="bar" aria-hidden="true"><i [class.low]="l.state === 'Low'" [class.stop]="l.state === 'Stopped'" [style.width.%]="l.percent"></i></span>{{ l.percent }}%</td>
                 <td><span class="status-badge" [class]="pp.tone">{{ pp.text }}</span></td>
                 <td class="num">
                   @if (view()?.canEdit) {
                     @if (l.state === 'Stopped' || l.state === 'Low') {
-                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="startReopen(l)">Reopen</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="startReopen(l)">{{ 'Reopen' | t: 'staff.expenditure.po.reopenButton' }}</button>
                     }
-                    <button type="button" class="btn btn-default btn-sm ms-1" (click)="startEdit(l, l.pos[l.pos.length - 1])">Edit</button>
+                    <button type="button" class="btn btn-default btn-sm ms-1" (click)="startEdit(l, l.pos[l.pos.length - 1])">{{ 'Edit' | t: 'staff.expenditure.po.editButton' }}</button>
                   }
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8"><div class="no-data">{{ loading() ? 'Loading…' : 'No purchase order yet: allotment has no limit until one is added.' }}</div></td></tr>
+              <tr><td colspan="8"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.expenditure.po.loadingText') : ('No purchase order yet: allotment has no limit until one is added.' | t: 'staff.expenditure.po.empty') }}</div></td></tr>
             }
           </tbody>
         </table>
       </div>
-      <p class="po-note">When the cases in a PO are used up (completed, rejected after assessment, or in progress), allotment to this
-        {{ word() }} for that level stops and says why. <b>Reopen</b> asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.</p>
+      <p class="po-note">{{ 'When the cases in a PO are used up (completed, rejected after assessment, or in progress), allotment to this {word} for that level stops and says why. Reopen asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.' | t: 'staff.expenditure.po.note' : { word: word() } }}</p>
     </div>
 
     @if (form(); as f) {
@@ -90,14 +90,14 @@ type Form =
       <form class="xd" role="dialog" aria-modal="true" aria-labelledby="po-title" (ngSubmit)="save()">
         <div class="xd-head">
           <span class="xd-ico" aria-hidden="true">PO</span>
-          <div><h3 id="po-title">{{ f.kind === 'add' ? 'Add purchase order' : f.kind === 'edit' ? 'Edit purchase order' : 'Reopen allotment' }}</h3>
+          <div><h3 id="po-title">{{ f.kind === 'add' ? ('Add purchase order' | t: 'staff.expenditure.po.form.addTitle') : f.kind === 'edit' ? ('Edit purchase order' | t: 'staff.expenditure.po.form.editTitle') : ('Reopen allotment' | t: 'staff.expenditure.po.form.reopenTitle') }}</h3>
             <small>{{ view()?.partyName }}</small></div>
-          <button type="button" class="xd-x" aria-label="Close" (click)="form.set(null)">×</button>
+          <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.expenditure.po.closeAria'" (click)="form.set(null)">×</button>
         </div>
         <div class="xd-body">
           @if (formError()) { <div class="alert alert-danger xd-err" role="alert">{{ formError() }}</div> }
           @if (f.kind === 'add') {
-            <label class="xd-field"><span>Level</span>
+            <label class="xd-field"><span>{{ 'Level' | t: 'staff.expenditure.po.form.levelLabel' }}</span>
               <select class="form-select" name="level" [(ngModel)]="f.level">
                 @for (o of view()?.levelOptions ?? []; track o.code) { <option [value]="o.code">{{ o.name }}</option> }
               </select></label>
@@ -105,27 +105,27 @@ type Form =
             <p><b>{{ levelName(f.level) }}</b></p>
           }
           @if (f.kind === 'reopen') {
-            <label class="xd-field"><span>Reason</span><textarea class="form-control" rows="2" maxlength="1000" name="reason" [(ngModel)]="f.reason"></textarea></label>
-            <div class="xd-field" role="radiogroup" aria-label="How to reopen">
-              <label class="me-3"><input type="radio" name="mode" value="extra" [(ngModel)]="f.mode" /> Extra cases (PO amendment)</label>
-              <label><input type="radio" name="mode" value="new" [(ngModel)]="f.mode" /> A new PO</label>
+            <label class="xd-field"><span>{{ 'Reason' | t: 'staff.expenditure.po.form.reasonLabel' }}</span><textarea class="form-control" rows="2" maxlength="1000" name="reason" [(ngModel)]="f.reason"></textarea></label>
+            <div class="xd-field" role="radiogroup" [attr.aria-label]="'How to reopen' | t: 'staff.expenditure.po.form.modeAria'">
+              <label class="me-3"><input type="radio" name="mode" value="extra" [(ngModel)]="f.mode" /> {{ 'Extra cases (PO amendment)' | t: 'staff.expenditure.po.form.modeExtra' }}</label>
+              <label><input type="radio" name="mode" value="new" [(ngModel)]="f.mode" /> {{ 'A new PO' | t: 'staff.expenditure.po.form.modeNew' }}</label>
             </div>
             @if (f.mode === 'extra') {
-              <label class="xd-field"><span>Extra cases</span><input type="number" min="1" class="form-control" name="extra" [(ngModel)]="f.extraCases" /></label>
+              <label class="xd-field"><span>{{ 'Extra cases' | t: 'staff.expenditure.po.form.extraLabel' }}</span><input type="number" min="1" class="form-control" name="extra" [(ngModel)]="f.extraCases" /></label>
             }
           }
           @if (f.kind !== 'reopen' || f.mode === 'new') {
-            <label class="xd-field"><span>PO number</span><input class="form-control" maxlength="100" name="poNumber" [(ngModel)]="f.poNumber" /></label>
-            <label class="xd-field"><span>PO date</span><input type="date" class="form-control" name="poDate" [(ngModel)]="f.poDate" /></label>
-            <label class="xd-field"><span>Cases in PO</span><input type="number" min="1" class="form-control" name="cases" [(ngModel)]="f.cases" /></label>
+            <label class="xd-field"><span>{{ 'PO number' | t: 'staff.expenditure.po.form.numberLabel' }}</span><input class="form-control" maxlength="100" name="poNumber" [(ngModel)]="f.poNumber" /></label>
+            <label class="xd-field"><span>{{ 'PO date' | t: 'staff.expenditure.po.form.dateLabel' }}</span><input type="date" class="form-control" name="poDate" [(ngModel)]="f.poDate" /></label>
+            <label class="xd-field"><span>{{ 'Cases in PO' | t: 'staff.expenditure.po.form.casesLabel' }}</span><input type="number" min="1" class="form-control" name="cases" [(ngModel)]="f.cases" /></label>
           }
           @if (f.kind === 'edit') {
-            <label class="xd-field"><span>Reason (optional)</span><input class="form-control" maxlength="1000" name="reason" [(ngModel)]="f.reason" /></label>
+            <label class="xd-field"><span>{{ 'Reason (optional)' | t: 'staff.expenditure.po.form.reasonOptionalLabel' }}</span><input class="form-control" maxlength="1000" name="reason" [(ngModel)]="f.reason" /></label>
           }
         </div>
         <div class="xd-foot">
-          <button type="button" class="btn btn-default" (click)="form.set(null)">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ f.kind === 'reopen' ? 'Reopen' : 'Save' }}</button>
+          <button type="button" class="btn btn-default" (click)="form.set(null)">{{ 'Cancel' | t: 'staff.expenditure.po.form.cancelButton' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ f.kind === 'reopen' ? ('Reopen' | t: 'staff.expenditure.po.form.reopenButton') : ('Save' | t: 'staff.expenditure.po.form.saveButton') }}</button>
         </div>
       </form>
     }
@@ -134,21 +134,21 @@ type Form =
       <div class="xd-back" (click)="history.set(null)"></div>
       <div class="xd" role="dialog" aria-modal="true" aria-labelledby="poh-title">
         <div class="xd-head"><span class="xd-ico" aria-hidden="true">⟲</span>
-          <div><h3 id="poh-title">Purchase order history</h3><small>{{ view()?.partyName }}</small></div>
-          <button type="button" class="xd-x" aria-label="Close" (click)="history.set(null)">×</button></div>
+          <div><h3 id="poh-title">{{ 'Purchase order history' | t: 'staff.expenditure.po.history.title' }}</h3><small>{{ view()?.partyName }}</small></div>
+          <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.expenditure.po.closeAria'" (click)="history.set(null)">×</button></div>
         <div class="xd-body">
           <table class="table table-zed">
-            <thead><tr><th>When</th><th>Level</th><th>Change</th><th class="num">Cases</th><th>By</th></tr></thead>
+            <thead><tr><th>{{ 'When' | t: 'staff.expenditure.po.history.column.when' }}</th><th>{{ 'Level' | t: 'staff.expenditure.po.history.column.level' }}</th><th>{{ 'Change' | t: 'staff.expenditure.po.history.column.change' }}</th><th class="num">{{ 'Cases' | t: 'staff.expenditure.po.history.column.cases' }}</th><th>{{ 'By' | t: 'staff.expenditure.po.history.column.by' }}</th></tr></thead>
             <tbody>
               @for (c of h; track c.id) {
                 <tr><td>{{ date(c.on) }}</td><td>{{ c.levelName }}</td>
-                  <td>{{ changeText(c) }}@if (c.reason) { <span class="po-sub">Reason: {{ c.reason }}</span> }@if (c.details) { <span class="po-sub">{{ c.details }}</span> }</td>
+                  <td>{{ changeText(c) }}@if (c.reason) { <span class="po-sub">{{ 'Reason: {reason}' | t: 'staff.expenditure.po.history.reasonText' : { reason: c.reason } }}</span> }@if (c.details) { <span class="po-sub">{{ c.details }}</span> }</td>
                   <td class="num">{{ c.casesBefore ?? '—' }} → {{ c.casesAfter ?? '—' }}</td><td>{{ c.by || '—' }}</td></tr>
-              } @empty { <tr><td colspan="5"><div class="no-data">No change yet.</div></td></tr> }
+              } @empty { <tr><td colspan="5"><div class="no-data">{{ 'No change yet.' | t: 'staff.expenditure.po.history.empty' }}</div></td></tr> }
             </tbody>
           </table>
         </div>
-        <div class="xd-foot"><button type="button" class="btn btn-default" (click)="history.set(null)">Close</button></div>
+        <div class="xd-foot"><button type="button" class="btn btn-default" (click)="history.set(null)">{{ 'Close' | t: 'staff.expenditure.po.history.closeButton' }}</button></div>
       </div>
     }
   `,
@@ -249,12 +249,18 @@ export class PoCard {
     try {
       this.history.set(await firstValueFrom(this.api.poHistory(this.partyId(), this.portal())));
     } catch (e) {
-      this.toast.error('History could not be loaded', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditure.po.toast.historyFailed', 'History could not be loaded'), apiErrorMessage(e));
     }
   }
 
   protected changeText(c: PoChange): string {
-    return { Added: 'PO added', Edited: 'PO edited', Amended: 'Reopened: extra cases', NewPo: 'Reopened: new PO' }[c.type] ?? c.type;
+    switch (c.type) {
+      case 'Added': return t('staff.expenditure.po.change.added', 'PO added');
+      case 'Edited': return t('staff.expenditure.po.change.edited', 'PO edited');
+      case 'Amended': return t('staff.expenditure.po.change.amended', 'Reopened: extra cases');
+      case 'NewPo': return t('staff.expenditure.po.change.newPo', 'Reopened: new PO');
+      default: return c.type;
+    }
   }
 
   protected async export(): Promise<void> {
@@ -263,12 +269,18 @@ export class PoCard {
     try {
       await this.excel.xlsx(`purchase-orders-${v.partyId}`, [{
         name: 'Purchase orders',
-        columns: ['Level', 'PO number', 'PO date', 'Cases in PO', 'Used', 'In progress', 'Left', 'Use %', 'Allotment'],
+        columns: [
+          t('staff.expenditure.po.export.column.level', 'Level'), t('staff.expenditure.po.export.column.number', 'PO number'),
+          t('staff.expenditure.po.export.column.date', 'PO date'), t('staff.expenditure.po.export.column.cases', 'Cases in PO'),
+          t('staff.expenditure.po.export.column.used', 'Used'), t('staff.expenditure.po.export.column.inProgress', 'In progress'),
+          t('staff.expenditure.po.export.column.left', 'Left'), t('staff.expenditure.po.export.column.usePercent', 'Use %'),
+          t('staff.expenditure.po.export.column.allotment', 'Allotment'),
+        ],
         rows: v.levels.map((l) => [l.name, l.pos.map((p) => p.poNumber).join(', '), l.pos.map((p) => p.poDate).join(', '), l.cases, l.used, l.inProgress,
           l.left, l.percent, poPill(l.state, l.left).text]),
       }]);
     } catch (e) {
-      this.toast.error('Export failed', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditure.po.toast.exportFailed', 'Export failed'), apiErrorMessage(e));
     }
   }
 }

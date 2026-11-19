@@ -2,8 +2,8 @@
 <div class="container cd-page">
   @if (type()) {
     <zed-page-head [crumbs]="crumbs()" [title]="heading()">
-      <a class="btn btn-ph" [routerLink]="backLink()"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-      <button type="button" class="btn btn-ph" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+      <a class="btn btn-ph" [routerLink]="backLink()"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back' | t: 'msme.certification.backButton' }}</a>
+      <button type="button" class="btn btn-ph" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.certification.refreshButton' }}</button>
     </zed-page-head>
   }
 
@@ -11,28 +11,28 @@
     <div class="alert alert-danger" role="alert">
       {{ error() }}
       @if (type()) {
-        <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+        <button type="button" class="btn btn-link" (click)="refresh()">{{ 'Try again' | t: 'msme.certification.retryButton' }}</button>
       }
-      <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
+      <a class="btn btn-link" routerLink="/msme/dashboard">{{ 'Back to dashboard' | t: 'msme.certification.dashboardButton' }}</a>
     </div>
   }
 
   @if (data()) {
     @let m = msme();
-    <section class="cd-hero" aria-label="Your unit">
+    <section class="cd-hero" [attr.aria-label]="'Your unit' | t: 'msme.certification.unitAria'">
       <img class="cd-badge" [src]="logo()" [alt]="levelTitle()" />
       <div class="cd-unit">
         <h3>{{ m['EnterpriseName'] }}</h3>
         <div class="cd-chips">
           @if (statusChip(); as chip) {
-            <span class="chip chip-status" [class.chip-done]="chip !== 'IN PROGRESS'">@if (chip !== 'IN PROGRESS') {<span aria-hidden="true">✓ </span>}{{ chip }}</span>
+            <span class="chip chip-status" [class.chip-done]="chip.done">@if (chip.done) {<span aria-hidden="true">✓ </span>}{{ chip.label }}</span>
           }
           @if (size()) { <span class="chip chip-size">{{ size().toUpperCase() }}</span> }
         </div>
         <p class="cd-ids">
           @if (basic()['UdyogAadharNo']) { <span>{{ basic()['UdyogAadharNo'] }}</span> }
-          @if (m['ZedId']) { <span>ZED ID {{ m['ZedId'] }}</span> }
-          @if (plant()) { <span>Plant: {{ plant() }}</span> }
+          @if (m['ZedId']) { <span>{{ 'ZED ID {zedId}' | t: 'msme.certification.zedIdText' : { zedId: m['ZedId'] } }}</span> }
+          @if (plant()) { <span>{{ 'Plant: {plant}' | t: 'msme.certification.plantText' : { plant: plant() } }}</span> }
         </p>
       </div>
       @if (facts().length) {
@@ -47,7 +47,7 @@
           @if (certificateAction(); as a) {
             <a class="btn btn-primary cd-btn" [href]="a.href" target="_blank" rel="noopener">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-              {{ a.label.replace(' (PDF)', '') }}
+              {{ a.short ?? a.label }}
             </a>
           }
           @if (reportAction(); as a) {
@@ -59,16 +59,17 @@
 
     @if (showAppBanner()) {
       <div class="cd-app" role="note">
-        <p>Please download the <strong>ZED MSME Mobile Application</strong> to proceed to the next step, i.e. Basic Information and Document Upload</p>
+        @let appLine = appBannerLine();
+        <p>{{ appLine.before }}<strong>{{ appLine.bold }}</strong>{{ appLine.after }}</p>
         <div class="cd-app-badges">
-          @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>}
-          @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
-          <img src="/Images/qrcode.png" width="72" alt="QR code for the ZED MSME app" />
+          @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" [alt]="'Download on the App Store' | t: 'msme.certification.app.storeAlt'" width="110" /></a>}
+          @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" [alt]="'Get it on Google Play' | t: 'msme.certification.app.playAlt'" width="110" /></a>}
+          <img src="/Images/qrcode.png" width="72" [alt]="'QR code for the ZED MSME app' | t: 'msme.certification.app.qrAlt'" />
         </div>
       </div>
     }
 
-    <zed-step-tracker class="cd-track" [steps]="progress().steps" [current]="progress().current" label="Certification progress" />
+    <zed-step-tracker class="cd-track" [steps]="progress().steps" [current]="progress().current" [label]="'Certification progress' | t: 'msme.certification.trackerAria'" />
 
     <div class="cd-grid">
       <zed-certification-timeline [items]="timeline()" [ncRoute]="ncRoute()" />
@@ -76,7 +77,7 @@
       <aside class="cd-rail">
         @if (next(); as n) {
           <section class="rail-next" aria-labelledby="nextTitle">
-            <p class="rail-kicker">YOUR NEXT STEP</p>
+            <p class="rail-kicker">{{ 'YOUR NEXT STEP' | t: 'msme.certification.next.kicker' }}</p>
             <h3 id="nextTitle">{{ n.title }}</h3>
             <p class="rail-text">{{ n.text }}</p>
             @if (n.label && n.route) {
@@ -89,27 +90,27 @@
 
         @if (further(); as f) {
           <section class="rail-card" aria-labelledby="furtherTitle">
-            <h3 id="furtherTitle" class="rail-head">Go further: {{ levelLabel(f.level) }}</h3>
+            <h3 id="furtherTitle" class="rail-head">{{ 'Go further: {level}' | t: 'msme.certification.further.title' : { level: levelLabel(f.level) } }}</h3>
             <div class="rail-further">
               <img [src]="furtherLogo()" alt="" />
               <div>
                 @if (f.fee !== null) {
                   @if (f.fee > 0) {
-                    <b>Your fee {{ rupees(f.fee) }}</b><small>incl. GST, after subsidy</small>
+                    <b>{{ 'Your fee {fee}' | t: 'msme.certification.further.feeText' : { fee: rupees(f.fee) } }}</b><small>{{ 'incl. GST, after subsidy' | t: 'msme.certification.further.feeNote' }}</small>
                   } @else {
-                    <b>Your fee: Nil</b><small>fully subsidised</small>
+                    <b>{{ 'Your fee: Nil' | t: 'msme.certification.further.nilText' }}</b><small>{{ 'fully subsidised' | t: 'msme.certification.further.nilNote' }}</small>
                   }
                 } @else {
-                  <b>{{ levelLabel(f.level) }} certification</b>
+                  <b>{{ '{level} certification' | t: 'msme.certification.further.levelText' : { level: levelLabel(f.level) } }}</b>
                 }
               </div>
-              <a class="btn btn-outline-primary cd-btn cd-btn-apply" routerLink="/msme/dashboard" [queryParams]="{ apply: f.level }" [attr.aria-label]="'Apply for ' + levelLabel(f.level)">Apply <ng-container *ngTemplateOutlet="arrow" /></a>
+              <a class="btn btn-outline-primary cd-btn cd-btn-apply" routerLink="/msme/dashboard" [queryParams]="{ apply: f.level }" [attr.aria-label]="'Apply for {level}' | t: 'msme.certification.further.applyAria' : { level: levelLabel(f.level) }">{{ 'Apply' | t: 'msme.certification.further.applyButton' }} <ng-container *ngTemplateOutlet="arrow" /></a>
             </div>
           </section>
         }
 
         <section class="rail-card" aria-labelledby="actionsTitle">
-          <h3 id="actionsTitle" class="rail-head">Quick actions</h3>
+          <h3 id="actionsTitle" class="rail-head">{{ 'Quick actions' | t: 'msme.certification.actions.title' }}</h3>
           <ul class="qa">
             @for (a of actions(); track $index) {
               <li class="qa-row" [class.qa-off]="!a.enabled" [class.qa-danger]="a.danger">
@@ -133,11 +134,11 @@
                 } @else if (a.route || a.href !== undefined) {
                   <span class="qa-link" aria-disabled="true"><ng-container *ngTemplateOutlet="body" /></span>
                 } @else {
-                  <span class="qa-link"><ng-container *ngTemplateOutlet="body" /><small class="soon-note" title="This page is being moved to the new portal.">Available soon</small></span>
+                  <span class="qa-link"><ng-container *ngTemplateOutlet="body" /><small class="soon-note" [title]="'This page is being moved to the new portal.' | t: 'msme.certification.action.soonTooltip'">{{ 'Available soon' | t: 'msme.certification.action.soonNote' }}</small></span>
                 }
               </li>
             } @empty {
-              <li class="qa-none">No actions at this step.</li>
+              <li class="qa-none">{{ 'No actions at this step.' | t: 'msme.certification.actions.empty' }}</li>
             }
           </ul>
         </section>
@@ -155,8 +156,8 @@
     <div class="loadingimage">
       <div class="loader"></div>
       <div class="text-center">
-        <small>Please wait ...</small><br />
-        <small>It may take upto 60 seconds</small>
+        <small>{{ 'Please wait ...' | t: 'msme.certification.waitText' }}</small><br />
+        <small>{{ 'It may take upto 60 seconds' | t: 'msme.certification.waitNote' }}</small>
       </div>
     </div>
   </div>

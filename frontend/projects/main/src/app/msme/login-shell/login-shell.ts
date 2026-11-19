@@ -4,6 +4,7 @@ import { BrandingService } from '../../branding';
 import { PublicLevels, levelLogo } from '../shared/levels';
 import { ContentTextComponent } from '../../content/content-text';
 import { ApnaengeBanner } from './apnaenge-banner';
+import { TextPipe } from '../../content/page-text';
 
 /** The live portal's banner (Banner_20220428033601.png, resized); no longer shown on the login pages since 2026-11-14. */
 /** 2026-11-17 (the design): the bar colour of each level by code. */
@@ -35,19 +36,19 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
  */
 @Component({
   selector: 'zed-login-shell',
-  imports: [ContentTextComponent, ApnaengeBanner],
+  imports: [ContentTextComponent, ApnaengeBanner, TextPipe],
   host: { class: 'zed-login d-block' },
   template: `
     <div class="ml-page">
       <div class="ml-cols">
-        <aside class="ml-hero" aria-label="About ZED certification">
+        <aside class="ml-hero" [attr.aria-label]="'About ZED certification' | t: 'public.msmeLogin.hero.aria'">
           <div class="ml-logos">
             @if (links.url('ministry'); as u) {
-              <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', '/Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" /></a>
+              <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.msmeLogin.hero.ministryLogoAlt'" class="ml-ministry" /></a>
             } @else {
-              <img [src]="brand.logo('login-left', '/Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" />
+              <img [src]="brand.logo('login-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.msmeLogin.hero.ministryLogoAlt'" class="ml-ministry" />
             }
-            <img class="ml-zed" [src]="brand.logo('login-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" />
+            <img class="ml-zed" [src]="brand.logo('login-right', '/Images/header/zed-logo.png?ui=1')" [alt]="'ZED' | t: 'public.msmeLogin.hero.zedLogoAlt'" />
           </div>
           <div class="ml-hero-body">
             <div class="ml-blk">
@@ -106,7 +107,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
             @if (links.url('contact'); as c) {
               <a class="ml-help" [href]="c" target="_blank" rel="noopener">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" /></svg>
-                Need help?
+                {{ 'Need help?' | t: 'public.msmeLogin.helpLink' }}
               </a>
             }
           </div>
@@ -117,7 +118,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
         </main>
       </div>
       <footer class="ml-footer">
-        <small>© {{ year }} Ministry of MSME, Government of India</small>
+        <small>{{ '© {year} Ministry of MSME, Government of India' | t: 'public.msmeLogin.footer.copyrightText' : { year } }}</small>
       </footer>
     </div>
   `,

@@ -1,17 +1,18 @@
 <!-- 2026-11-17 (approved staff redesign, "same look"): the page head, the status lists as clickable tiles with their counts, the
      search, the list with one main button, View details and a row menu (profile, Reject), the reason in the confirmation pop-up. -->
-<zed-page-head [crumbs]="crumbs" title="Technology upgradation" [subtitle]="subtitle()">
-  <button type="button" class="btn btn-ph" (click)="load(status())">Refresh</button>
+<!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.tuSubmissions.*). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Technology upgradation' | t: 'staff.tuSubmissions.title'" [subtitle]="subtitle()">
+  <button type="button" class="btn btn-ph" (click)="load(status())">{{ 'Refresh' | t: 'staff.tuSubmissions.refreshButton' }}</button>
 </zed-page-head>
 <!-- No tab bar for the MSME-DFO officer, as on the old page. -->
 @if (!isDfo()) {
-  <zed-list-counts [counts]="tiles()" [selected]="'' + status()" label="Application status" (pick)="load(+($event.key ?? status()))" />
+  <zed-list-counts [counts]="tiles()" [selected]="'' + status()" [label]="'Application status' | t: 'staff.tuSubmissions.countsLabel'" (pick)="load(+($event.key ?? status()))" />
 }
 
 <div class="zed-card tu-filters">
-  <input type="search" id="tu-sub-search" class="form-control tu-q" maxlength="50" placeholder="Search ZED ID, unit, CO or consultant"
-         aria-label="Search ZED ID, unit, CO or consultant" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-  @if (!isDfo() && status() === landing) { <span class="tu-hint">Choose a status above to list its applications.</span> }
+  <input type="search" id="tu-sub-search" class="form-control tu-q" maxlength="50" [placeholder]="'Search ZED ID, unit, CO or consultant' | t: 'staff.tuSubmissions.search.placeholder'"
+         [attr.aria-label]="'Search ZED ID, unit, CO or consultant' | t: 'staff.tuSubmissions.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  @if (!isDfo() && status() === landing) { <span class="tu-hint">{{ 'Choose a status above to list its applications.' | t: 'staff.tuSubmissions.landingNote' }}</span> }
 </div>
 
 @if (error()) {
@@ -22,20 +23,20 @@
   <table class="table table-zed">
     <thead>
       <tr>
-        <th>Unit</th>
-        <th>Certification level</th>
+        <th>{{ 'Unit' | t: 'staff.tuSubmissions.column.unit' }}</th>
+        <th>{{ 'Certification level' | t: 'staff.tuSubmissions.column.level' }}</th>
         @if (showStatus()) {
-          <th>Status</th>
+          <th>{{ 'Status' | t: 'staff.tuSubmissions.column.status' }}</th>
         }
-        <th>CO</th>
+        <th>{{ 'CO' | t: 'staff.tuSubmissions.column.co' }}</th>
         @if (!isDfo()) {
-          <th>Consultant</th>
+          <th>{{ 'Consultant' | t: 'staff.tuSubmissions.column.consultant' }}</th>
         }
-        <th>Verification date</th>
+        <th>{{ 'Verification date' | t: 'staff.tuSubmissions.column.verified' }}</th>
         @if (showReason()) {
-          <th>Reason for rejection</th>
+          <th>{{ 'Reason for rejection' | t: 'staff.tuSubmissions.column.reason' }}</th>
         }
-        <th class="text-end">Actions</th>
+        <th class="text-end">{{ 'Actions' | t: 'staff.tuSubmissions.column.actions' }}</th>
       </tr>
     </thead>
     <tbody>
@@ -53,13 +54,13 @@
               @if (isAdmin()) {
                 <div class="badges">
                   @if (s.CertificationBodyUserId && !s.FinancialAssessorId && !s.ReasonForRejection) {
-                    <span class="chip is-info">Alloted to CO</span>
+                    <span class="chip is-info">{{ 'Alloted to CO' | t: 'staff.tuSubmissions.row.status.co' }}</span>
                   }
                   @if (s.FinancialAssessorId) {
-                    <span class="chip is-good">Alloted to Consultant</span>
+                    <span class="chip is-good">{{ 'Alloted to Consultant' | t: 'staff.tuSubmissions.row.status.consultant' }}</span>
                   }
                   @if (s.ReasonForRejection) {
-                    <span class="chip is-bad">Rejected</span>
+                    <span class="chip is-bad">{{ 'Rejected' | t: 'staff.tuSubmissions.row.status.rejected' }}</span>
                   }
                 </div>
               }
@@ -75,36 +76,36 @@
               @if (reason(s); as r) {
                 <div [class.clamp-3]="!expanded().has(s.Id)" [title]="r">{{ r }}</div>
                 @if (r.length > 160) {
-                  <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(s.Id)">{{ expanded().has(s.Id) ? 'less' : 'more' }}</button>
+                  <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(s.Id)">{{ expanded().has(s.Id) ? ('less' | t: 'staff.tuSubmissions.row.lessButton') : ('more' | t: 'staff.tuSubmissions.row.moreButton') }}</button>
                 }
               }
             </td>
           }
           <td class="actions text-end text-nowrap" [class.late]="!!s.TimeDuration">
             @if (canAllot(s)) {
-              <button type="button" class="btn btn-primary tu-act" (click)="openAllot(s)">Allot</button>
+              <button type="button" class="btn btn-primary tu-act" (click)="openAllot(s)">{{ 'Allot' | t: 'staff.tuSubmissions.row.allotButton' }}</button>
             }
             @if (canReAllot(s)) {
-              <button type="button" class="btn tu-act re-allot" (click)="openAllot(s)">Re-allot</button>
+              <button type="button" class="btn tu-act re-allot" (click)="openAllot(s)">{{ 'Re-allot' | t: 'staff.tuSubmissions.row.reallotButton' }}</button>
             }
             @if (canRespond(s)) {
-              <button type="button" class="btn btn-primary tu-act" (click)="openAccept(s)">Accept</button>
+              <button type="button" class="btn btn-primary tu-act" (click)="openAccept(s)">{{ 'Accept' | t: 'staff.tuSubmissions.row.acceptButton' }}</button>
             }
             @if (canReAllotDfo(s)) {
-              <button type="button" class="btn tu-act re-allot" (click)="openAccept(s)">Re-allot</button>
+              <button type="button" class="btn tu-act re-allot" (click)="openAccept(s)">{{ 'Re-allot' | t: 'staff.tuSubmissions.row.reallotButton' }}</button>
             }
             @if (canOpen(s)) {
               <a class="btn btn-outline-primary tu-act" [routerLink]="['/staff/consultancy/technology/verification', s.ZedId, s.CertificationType]">
-                {{ isDfo() ? 'View' : 'View details' }}
+                {{ isDfo() ? ('View' | t: 'staff.tuSubmissions.row.viewButton') : ('View details' | t: 'staff.tuSubmissions.row.detailsButton') }}
               </a>
             }
             @if (menu(s); as items) {
-              @if (items.length) { <zed-row-menu [items]="items" [label]="'More actions for ' + s.ZedId" (picked)="act(s, $event)" /> }
+              @if (items.length) { <zed-row-menu [items]="items" [label]="'More actions for {zedId}' | t: 'staff.tuSubmissions.row.menuAria' : { zedId: s.ZedId }" (picked)="act(s, $event)" /> }
             }
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td></tr>
+        <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.tuSubmissions.list.loadingText') : ('No Data' | t: 'staff.tuSubmissions.list.empty') }}</div></td></tr>
       }
     </tbody>
   </table>
@@ -122,26 +123,26 @@
         <div class="modal-content tu-pop">
           <div class="modal-header justify-content-between">
             <div>
-              <h3 class="tu-pop-title" id="tuDialogTitle">{{ d.kind === 'allot' ? 'Allot to a Consultant Organisation' : 'Accept unit' }}</h3>
+              <h3 class="tu-pop-title" id="tuDialogTitle">{{ d.kind === 'allot' ? ('Allot to a Consultant Organisation' | t: 'staff.tuSubmissions.dialog.allotTitle') : ('Accept unit' | t: 'staff.tuSubmissions.dialog.acceptTitle') }}</h3>
               <p class="tu-pop-sub">{{ d.row.ZedId }} · {{ d.row.PUnitName }} · {{ d.row.CertificationType }}</p>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.tuSubmissions.dialog.closeAria'" (click)="close()"></button>
           </div>
           <div class="modal-body">
             @if (dialogError()) {
               <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
             }
-            <label class="form-label" for="tuChoice">{{ d.kind === 'allot' ? 'Consultant Organisation' : 'Consultant/Expert' }}<span class="req">*</span></label>
+            <label class="form-label" for="tuChoice">{{ d.kind === 'allot' ? ('Consultant Organisation' | t: 'staff.tuSubmissions.dialog.coLabel') : ('Consultant/Expert' | t: 'staff.tuSubmissions.dialog.consultantLabel') }}<span class="req">*</span></label>
             <select id="tuChoice" class="form-select" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
-              <option value="">{{ d.kind === 'allot' ? '--Select Organisation--' : '--Select--' }}</option>
+              <option value="">{{ d.kind === 'allot' ? ('--Select Organisation--' | t: 'staff.tuSubmissions.dialog.coOption') : ('--Select--' | t: 'staff.tuSubmissions.dialog.consultantOption') }}</option>
               @for (o of d.options; track o.userId) {
                 <option [value]="o.userId">{{ o.userName }}</option>
               }
             </select>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
-            <button type="button" class="btn btn-primary tu-ok" [disabled]="saving()" (click)="confirm()">{{ d.kind === 'allot' ? 'Allot' : 'Accept' }}</button>
+            <button type="button" class="btn btn-light" (click)="close()">{{ 'Cancel' | t: 'staff.tuSubmissions.dialog.cancelButton' }}</button>
+            <button type="button" class="btn btn-primary tu-ok" [disabled]="saving()" (click)="confirm()">{{ d.kind === 'allot' ? ('Allot' | t: 'staff.tuSubmissions.dialog.allotButton') : ('Accept' | t: 'staff.tuSubmissions.dialog.acceptButton') }}</button>
           </div>
         </div>
       </div>

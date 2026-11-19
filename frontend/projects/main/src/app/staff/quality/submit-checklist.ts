@@ -1,5 +1,6 @@
 import { Component, computed, input, model } from '@angular/core';
 import { ChecklistItem } from './quality.api';
+import { TextPipe } from '../../content/page-text';
 
 /** Whether every item asked is ticked (true when nothing is asked). */
 export function allTicked(items: readonly ChecklistItem[], ticked: readonly string[]): boolean {
@@ -13,10 +14,11 @@ export function allTicked(items: readonly ChecklistItem[], ticked: readonly stri
  */
 @Component({
   selector: 'zed-submit-checklist',
+  imports: [TextPipe],
   template: `
     @if (items().length) {
       <div class="sc" data-submit-checklist>
-        <p class="sc-hint">Tick every item to submit. Your ticks are recorded with this submission.</p>
+        <p class="sc-hint">{{ 'Tick every item to submit. Your ticks are recorded with this submission.' | t: 'staff.submissionChecklist.note' }}</p>
         @for (i of items(); track i.id) {
           <label class="sc-item">
             <input type="checkbox" class="form-check-input" [attr.data-check]="i.id" [checked]="ticked().includes(i.id)"
@@ -24,7 +26,7 @@ export function allTicked(items: readonly ChecklistItem[], ticked: readonly stri
             <span>{{ i.text }}</span>
           </label>
         }
-        <small class="sc-count" data-checklist-count>{{ count() }} of {{ items().length }} ticked</small>
+        <small class="sc-count" data-checklist-count>{{ '{ticked} of {total} ticked' | t: 'staff.submissionChecklist.ticked.label' : { ticked: count(), total: items().length } }}</small>
       </div>
     }
   `,

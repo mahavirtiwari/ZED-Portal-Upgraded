@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { TextPipe } from '../../content/page-text';
 
 type Row = Record<string, unknown>;
 
@@ -14,16 +15,17 @@ export interface Fact {
  */
 @Component({
   selector: 'zed-unit-facts',
+  imports: [TextPipe],
   host: { class: 'd-block' },
   template: `
     <div class="uf">
       <div class="uf-unit">
-        <span class="uf-label">Unit</span>
+        <span class="uf-label">{{ 'Unit' | t: 'common.unitFacts.unitLabel' }}</span>
         <b>{{ msme()['EnterpriseName'] }}</b>
         @if (msme()['PUnitName']) { <small>{{ msme()['PUnitName'] }}</small> }
       </div>
-      <div><span class="uf-label">UDYAM</span><b>{{ udyam() || '—' }}</b></div>
-      <div><span class="uf-label">ZED ID</span><b>{{ msme()['ZedId'] }}</b></div>
+      <div><span class="uf-label">{{ 'UDYAM' | t: 'common.unitFacts.udyamLabel' }}</span><b>{{ udyam() || '—' }}</b></div>
+      <div><span class="uf-label">{{ 'ZED ID' | t: 'common.unitFacts.zedIdLabel' }}</span><b>{{ msme()['ZedId'] }}</b></div>
       @for (f of extra(); track f.label) {
         @if (f.value !== null && f.value !== undefined && f.value !== '') { <div><span class="uf-label">{{ f.label }}</span><b>{{ f.value }}</b></div> }
       }

@@ -5,32 +5,33 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { levelLogo, levelName } from '../shared/levels';
-import { Crumb, PageHead } from '../shared/page-head';
+import { PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
 import { ProfileApi, ProfileDashboard, ProfileRow, UdyamActivity } from './profile.api';
 import { PROFILE_PAGE_SECTIONS, ProfileSection, ProfileShell } from './profile-shell';
 
 /** One row of the Udyam details: label and the column it shows. */
 interface InfoRow {
-  label: string;
+  readonly label: string;
   source: 'msme' | 'basicInfo';
   field: string;
 }
 
 /** The Udyam details beyond the six of the Enterprise card, under "Show all details". */
 const MORE_INFO: InfoRow[] = [
-  { label: 'Organisation Type', source: 'basicInfo', field: 'OrganisationTypeName' },
-  { label: 'Social Category', source: 'basicInfo', field: 'SocialCategoryName' },
-  { label: 'Gender', source: 'basicInfo', field: 'Gender' },
-  { label: 'E-mail (Udyam)', source: 'basicInfo', field: 'EmailId' },
-  { label: 'Physically Handicapped', source: 'basicInfo', field: 'PH' },
-  { label: 'Pincode', source: 'basicInfo', field: 'Pincode' },
-  { label: 'Major Activity', source: 'basicInfo', field: 'MajorActivityName' },
-  { label: 'Incorporation Date', source: 'msme', field: 'IncorporationDate' },
-  { label: 'Whether Production Commenced', source: 'msme', field: 'WhetherProdCommenced' },
-  { label: 'Commencement Date', source: 'basicInfo', field: 'CommmenceDate' },
-  { label: 'Total Employee', source: 'basicInfo', field: 'TotalEmp' },
-  { label: 'DIC Name', source: 'basicInfo', field: 'DicName' },
-  { label: 'Applied Date', source: 'basicInfo', field: 'AppliedDate' },
+  { get label() { return t('msme.profile.more.organisationTypeLabel', 'Organisation Type'); }, source: 'basicInfo', field: 'OrganisationTypeName' },
+  { get label() { return t('msme.profile.more.socialCategoryLabel', 'Social Category'); }, source: 'basicInfo', field: 'SocialCategoryName' },
+  { get label() { return t('msme.profile.more.genderLabel', 'Gender'); }, source: 'basicInfo', field: 'Gender' },
+  { get label() { return t('msme.profile.more.udyamEmailLabel', 'E-mail (Udyam)'); }, source: 'basicInfo', field: 'EmailId' },
+  { get label() { return t('msme.profile.more.physicallyHandicappedLabel', 'Physically Handicapped'); }, source: 'basicInfo', field: 'PH' },
+  { get label() { return t('msme.profile.more.pincodeLabel', 'Pincode'); }, source: 'basicInfo', field: 'Pincode' },
+  { get label() { return t('msme.profile.more.majorActivityLabel', 'Major Activity'); }, source: 'basicInfo', field: 'MajorActivityName' },
+  { get label() { return t('msme.profile.more.incorporationDateLabel', 'Incorporation Date'); }, source: 'msme', field: 'IncorporationDate' },
+  { get label() { return t('msme.profile.more.productionCommencedLabel', 'Whether Production Commenced'); }, source: 'msme', field: 'WhetherProdCommenced' },
+  { get label() { return t('msme.profile.more.commencementDateLabel', 'Commencement Date'); }, source: 'basicInfo', field: 'CommmenceDate' },
+  { get label() { return t('msme.profile.more.totalEmployeeLabel', 'Total Employee'); }, source: 'basicInfo', field: 'TotalEmp' },
+  { get label() { return t('msme.profile.more.dicNameLabel', 'DIC Name'); }, source: 'basicInfo', field: 'DicName' },
+  { get label() { return t('msme.profile.more.appliedDateLabel', 'Applied Date'); }, source: 'basicInfo', field: 'AppliedDate' },
 ];
 
 /** One step of the NIC hierarchy: the code (2, 4 or 5 digits; none for the major activity) and its description. */
@@ -83,13 +84,13 @@ export interface CompletenessFacts {
 }
 
 /** The hint for each missing fact, in the order they are suggested (the ones the applicant can do here first). */
-const COMPLETENESS_HINTS: readonly { key: keyof CompletenessFacts; hint: string }[] = [
-  { key: 'email', hint: 'Verify a registered e-mail under Contact' },
-  { key: 'activity', hint: 'Set the unit activity (NIC) under Units / plants' },
-  { key: 'unit', hint: 'Your unit / plant is not on record yet' },
-  { key: 'mobile', hint: 'Add your mobile number on the Udyam portal' },
-  { key: 'pan', hint: 'Add your PAN on the Udyam portal' },
-  { key: 'address', hint: 'Add your registered address on the Udyam portal' },
+const COMPLETENESS_HINTS: readonly { key: keyof CompletenessFacts; readonly hint: string }[] = [
+  { key: 'email', get hint() { return t('msme.profile.completeness.emailNote', 'Verify a registered e-mail under Contact'); } },
+  { key: 'activity', get hint() { return t('msme.profile.completeness.activityNote', 'Set the unit activity (NIC) under Units / plants'); } },
+  { key: 'unit', get hint() { return t('msme.profile.completeness.unitNote', 'Your unit / plant is not on record yet'); } },
+  { key: 'mobile', get hint() { return t('msme.profile.completeness.mobileNote', 'Add your mobile number on the Udyam portal'); } },
+  { key: 'pan', get hint() { return t('msme.profile.completeness.panNote', 'Add your PAN on the Udyam portal'); } },
+  { key: 'address', get hint() { return t('msme.profile.completeness.addressNote', 'Add your registered address on the Udyam portal'); } },
 ];
 
 /**
@@ -101,9 +102,13 @@ const COMPLETENESS_HINTS: readonly { key: keyof CompletenessFacts; hint: string 
 export function profileCompleteness(facts: CompletenessFacts): { percent: number; hint: string } {
   const missing = COMPLETENESS_HINTS.filter((h) => !facts[h.key]);
   const percent = Math.floor(((COMPLETENESS_HINTS.length - missing.length) / COMPLETENESS_HINTS.length) * 100);
-  if (!missing.length) return { percent, hint: 'All your profile details are in place.' };
+  if (!missing.length) return { percent, hint: t('msme.profile.completeness.completeNote', 'All your profile details are in place.') };
   const more = missing.length - 1;
-  return { percent, hint: more ? `${missing[0].hint}; ${more} more detail${more === 1 ? '' : 's'} missing.` : `${missing[0].hint} to reach 100%.` };
+  const hint = missing[0].hint;
+  if (!more) return { percent, hint: t('msme.profile.completeness.lastNote', '{hint} to reach 100%.', { hint }) };
+  return { percent, hint: more === 1
+    ? t('msme.profile.completeness.moreNote', '{hint}; {count} more detail missing.', { hint, count: more })
+    : t('msme.profile.completeness.moreManyNote', '{hint}; {count} more details missing.', { hint, count: more }) };
 }
 
 /** Status meaning "certified" per level (as the dashboard): 6 for Bronze, 16 for the others. */
@@ -121,7 +126,7 @@ const certifiedStatus = (code: string): number => (code === 'Bronze' ? 6 : 16);
 @Component({
   selector: 'zed-msme-profile',
   host: { class: 'd-block' },
-  imports: [AlertDialog, FormsModule, RouterLink, PageHead, ProfileShell],
+  imports: [AlertDialog, FormsModule, RouterLink, PageHead, ProfileShell, TextPipe],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
@@ -129,7 +134,7 @@ export class ProfilePage {
   private readonly api = inject(ProfileApi);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly crumbs: Crumb[] = [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile' }];
+  protected readonly crumbs = computed(() => [{ label: t('msme.profile.crumb.home', 'Home'), link: '/msme/dashboard' }, { label: t('msme.profile.crumb.profile', 'Profile') }]);
   /** The section highlighted in the menu (the last one picked). */
   protected readonly active = signal<ProfileSection>('enterprise');
 
@@ -248,7 +253,7 @@ export class ProfilePage {
   protected async sendEmailOtp(): Promise<void> {
     const email = this.newEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 100) {
-      this.alert.set(errorAlert('Please enter a valid e-mail address.'));
+      this.alert.set(errorAlert(t('msme.profile.emailChange.invalidEmailError', 'Please enter a valid e-mail address.')));
       return;
     }
     const res = await this.call(this.api.sendEmailOtp(email));
@@ -260,14 +265,14 @@ export class ProfilePage {
 
   protected async verifyEmailOtp(): Promise<void> {
     if (!/^[0-9]{6}$/.test(this.emailOtp.trim())) {
-      this.alert.set(errorAlert('Please enter the 6-digit OTP.'));
+      this.alert.set(errorAlert(t('msme.profile.emailChange.invalidOtpError', 'Please enter the 6-digit OTP.')));
       return;
     }
     const res = await this.call(this.api.verifyEmailOtp(this.emailOtp.trim()));
     if (!res) return;
     this.registeredEmail.set(res.email);
     this.emailStep.set('idle');
-    this.alert.set(successAlert('Your registered e-mail has been changed.'));
+    this.alert.set(successAlert(t('msme.profile.emailChange.toast.changed', 'Your registered e-mail has been changed.')));
   }
 
   protected async editActivity(): Promise<void> {
@@ -288,7 +293,7 @@ export class ProfilePage {
     if (!res) return;
     this.editMode.set(false);
     await this.load();
-    this.alert.set(successAlert('Activity updated successfully.'));
+    this.alert.set(successAlert(t('msme.profile.activity.toast.updated', 'Activity updated successfully.')));
   }
 
   private async load(): Promise<void> {

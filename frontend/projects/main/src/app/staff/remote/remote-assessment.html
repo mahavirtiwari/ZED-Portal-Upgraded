@@ -1,30 +1,30 @@
 <!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the meeting card above the tabs (pills).
      2026-11-17 (approved staff redesign): "Home > list > ZED ID" crumbs and the light head buttons. -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-ph" (click)="goBack()">Back</button>
+  <button type="button" class="btn btn-ph" (click)="goBack()">{{ 'Back' | t: 'staff.remote.backButton' }}</button>
   @if (meetingMode()) {
-    <button type="button" class="btn btn-ph refresh" (click)="refresh()">Refresh</button>
-    <a class="btn btn-outline-primary assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">View report</a>
+    <button type="button" class="btn btn-ph refresh" (click)="refresh()">{{ 'Refresh' | t: 'staff.remote.refreshButton' }}</button>
+    <a class="btn btn-outline-primary assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">{{ 'View report' | t: 'staff.remote.reportButton' }}</a>
   } @else {
-    <button type="button" class="btn btn-ph refresh-link" (click)="refresh()">Refresh</button>
+    <button type="button" class="btn btn-ph refresh-link" (click)="refresh()">{{ 'Refresh' | t: 'staff.remote.refreshButton' }}</button>
   }
 </zed-page-head>
 @if (data()) {
   <zed-unit-facts [msme]="factsRow()" [udyam]="t(msme(), 'UdyogAadharNo')"
-                  [extra]="[{ label: meetingMode() ? 'Surveillance date' : 'Assessment date', value: t(msme(), 'AssessmentDate') }, { label: 'Mode', value: modeLabel() }]" />
+                  [extra]="factsExtra()" />
 }
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">
     {{ error() }}
-    <a class="btn btn-link" routerLink="/staff/remote-assessments">Back to the list</a>
+    <a class="btn btn-link" routerLink="/staff/remote-assessments">{{ 'Back to the list' | t: 'staff.remote.listLink' }}</a>
   </div>
 }
 @if (notice(); as nt) {
   <div class="alert alert-dismissible" [class.alert-success]="nt.ok" [class.alert-danger]="!nt.ok" role="status">
     {{ nt.text }}
-    @if (!data() && !error()) { <a class="btn btn-link back-to-list" routerLink="/staff/remote-assessments">Back to the list</a> }
-    <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+    @if (!data() && !error()) { <a class="btn btn-link back-to-list" routerLink="/staff/remote-assessments">{{ 'Back to the list' | t: 'staff.remote.listLink' }}</a> }
+    <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="notice.set(null)"></button>
   </div>
 }
 
@@ -33,29 +33,29 @@
     <!-- The meeting card: the agency's meeting link (remote assessments and meeting-link surveillance). -->
     <div class="meet-card" role="status" id="remoteMeeting">
       @if (d.meetingLink) {
-        <span>This {{ meetingMode() ? 'surveillance' : 'assessment' }} is held on the agency's meeting link.</span>
-        <a class="btn btn-primary btn-sm join-meeting top-join" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">Join meeting</a>
+        <span>{{ meetingMode() ? ("This surveillance is held on the agency's meeting link." | t: 'staff.remote.meet.surveillance.text') : ("This assessment is held on the agency's meeting link." | t: 'staff.remote.meet.text') }}</span>
+        <a class="btn btn-primary btn-sm join-meeting top-join" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">{{ 'Join meeting' | t: 'staff.remote.meet.joinButton' }}</a>
       } @else {
-        <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
+        <span class="no-meeting-link">{{ 'No meeting link has been given for this assessment. Please contact the agency.' | t: 'staff.remote.meet.noLink.text' }}</span>
       }
     </div>
   }
   @if (d.nc; as nc) {
     <div class="alert" [class.alert-warning]="!nc.submitted" [class.alert-info]="nc.submitted" role="status" id="ncState">
-      @if (!nc.submitted) { NC {{ nc.round }} has been raised to the MSME. Its answers will show on the NC {{ nc.round }} tab once the MSME submits them. }
-      @else if (d.permissions.canAssess) { The MSME has submitted its answers to NC {{ nc.round }}. Review them on the NC {{ nc.round }} tab, then final submit. }
-      @else { The MSME has submitted its answers to NC {{ nc.round }}; the lead assessor reviews them. }
+      @if (!nc.submitted) { {{ 'NC {round} has been raised to the MSME. Its answers will show on the NC {round} tab once the MSME submits them.' | t: 'staff.remote.ncState.raised.text' : { round: nc.round } }} }
+      @else if (d.permissions.canAssess) { {{ 'The MSME has submitted its answers to NC {round}. Review them on the NC {round} tab, then final submit.' | t: 'staff.remote.ncState.review.text' : { round: nc.round } }} }
+      @else { {{ 'The MSME has submitted its answers to NC {round}; the lead assessor reviews them.' | t: 'staff.remote.ncState.submitted.text' : { round: nc.round } }} }
     </div>
   } @else if (!d.permissions.canAssess) {
     <div class="alert alert-info" role="status">
-      @if (!d.permissions.isLeadAssessor) { Only the lead assessor can carry out this remote assessment; you can view it. }
-      @else { This remote assessment is not open; it is shown read-only. }
+      @if (!d.permissions.isLeadAssessor) { {{ 'Only the lead assessor can carry out this remote assessment; you can view it.' | t: 'staff.remote.readOnly.notLead.text' }} }
+      @else { {{ 'This remote assessment is not open; it is shown read-only.' | t: 'staff.remote.readOnly.closed.text' }} }
     </div>
   }
 
   @if (d.onsiteReview && !d.nc) {
     <div class="alert alert-info" role="status" id="onsiteReview">
-      Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.
+      {{ 'Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.' | t: 'staff.remote.onsiteReview.text' }}
     </div>
   }
   <div class="row g-3">
@@ -78,7 +78,7 @@
         </div>
         <!-- ===================================================== surveillance: instructions -->
         @if (tab() === 'instructions') {
-          <h4 class="section-title">Instructions for Completing the Silver/Gold Surveillance Process</h4>
+          <h4 class="section-title">{{ 'Instructions for Completing the Silver/Gold Surveillance Process' | t: 'staff.remote.instructions.heading' }}</h4>
           <div class="table-responsive">
             <table class="table table-bordered">
               <tbody>
@@ -98,20 +98,20 @@
               <div class="table-responsive">
                 <table class="table table-zed table-bordered kv">
                   <tbody>
-                    <tr><th>ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
-                    <tr><th>Unit Name</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
-                    <tr><th>UDYAM Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
-                    <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
-                    <tr><th>Surveillance Assessment Allocation Date</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
-                    <tr><th>Surveillance Assessment Date</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
-                    <tr><th>Surveillance Assessor Name</th><td>{{ t(msme(), 'SiteAssessorId') }} - {{ t(msme(), 'SiteAssessorName') }}</td></tr>
+                    <tr><th>{{ 'ZED ID' | t: 'staff.remote.overview.zedId.label' }}</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
+                    <tr><th>{{ 'Unit Name' | t: 'staff.remote.overview.unitName.label' }}</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
+                    <tr><th>{{ 'UDYAM Number' | t: 'staff.remote.overview.udyam.label' }}</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
+                    <tr><th>{{ 'Unit Address' | t: 'staff.remote.overview.address.label' }}</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
+                    <tr><th>{{ 'Surveillance Assessment Allocation Date' | t: 'staff.remote.overview.allocationDate.label' }}</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
+                    <tr><th>{{ 'Surveillance Assessment Date' | t: 'staff.remote.overview.surveillanceDate.label' }}</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
+                    <tr><th>{{ 'Surveillance Assessor Name' | t: 'staff.remote.overview.assessor.label' }}</th><td>{{ t(msme(), 'SiteAssessorId') }} - {{ t(msme(), 'SiteAssessorName') }}</td></tr>
                     <tr>
-                      <th>Meeting link</th>
+                      <th>{{ 'Meeting link' | t: 'staff.remote.overview.meetingLink.label' }}</th>
                       <td colspan="2">
                         @if (d.meetingLink) {
-                          <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">Click here to Join</a>
+                          <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer" (click)="joined()">{{ 'Click here to Join' | t: 'staff.remote.overview.joinButton' }}</a>
                         } @else {
-                          <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
+                          <span class="no-meeting-link">{{ 'No meeting link has been given for this assessment. Please contact the agency.' | t: 'staff.remote.meet.noLink.text' }}</span>
                         }
                       </td>
                     </tr>
@@ -119,19 +119,19 @@
                 </table>
               </div>
               <div>
-                <p class="sub-heading">Location</p>
+                <p class="sub-heading">{{ 'Location' | t: 'staff.remote.location.heading' }}</p>
                 <div class="locations">
                   @for (loc of locations(); track loc.title) {
                     <div class="zed-card">
                       <div class="card-head">
                         <p class="sub-heading mb-0">{{ loc.title }}</p>
                         @if (loc.href) {
-                          <a class="btn btn-outline-primary btn-sm view-map" [href]="loc.href" target="_blank" rel="noopener noreferrer">Click here to view map</a>
+                          <a class="btn btn-outline-primary btn-sm view-map" [href]="loc.href" target="_blank" rel="noopener noreferrer">{{ 'Click here to view map' | t: 'staff.remote.location.mapButton' }}</a>
                         }
                       </div>
                       <dl class="coords">
-                        <dt>Latitude</dt><dd>{{ loc.lat }}</dd>
-                        <dt>Longitude</dt><dd>{{ loc.lng }}</dd>
+                        <dt>{{ 'Latitude' | t: 'staff.remote.location.latitude.label' }}</dt><dd>{{ loc.lat }}</dd>
+                        <dt>{{ 'Longitude' | t: 'staff.remote.location.longitude.label' }}</dt><dd>{{ loc.lng }}</dd>
                       </dl>
                     </div>
                   }
@@ -143,22 +143,22 @@
               <div class="table-responsive">
                 <table class="table table-zed table-bordered kv">
                   <tbody>
-                    <tr><th>ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
-                    <tr><th>Unit Name</th><td>{{ t(msme(), 'EnterpriseName') }}</td></tr>
-                    <tr><th>UDYAM Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
-                    <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
-                    <tr><th>Document Verification Allocation Date</th><td>{{ t(msme(), 'DaAllocationDate') }}</td></tr>
-                    <tr><th>Document Verification Date</th><td>{{ t(msme(), 'DaVerificationDate') }}</td></tr>
-                    <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
+                    <tr><th>{{ 'ZED ID' | t: 'staff.remote.overview.zedId.label' }}</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
+                    <tr><th>{{ 'Unit Name' | t: 'staff.remote.overview.unitName.label' }}</th><td>{{ t(msme(), 'EnterpriseName') }}</td></tr>
+                    <tr><th>{{ 'UDYAM Number' | t: 'staff.remote.overview.udyam.label' }}</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
+                    <tr><th>{{ 'Unit Address' | t: 'staff.remote.overview.address.label' }}</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
+                    <tr><th>{{ 'Document Verification Allocation Date' | t: 'staff.remote.overview.daAllocation.label' }}</th><td>{{ t(msme(), 'DaAllocationDate') }}</td></tr>
+                    <tr><th>{{ 'Document Verification Date' | t: 'staff.remote.overview.daDate.label' }}</th><td>{{ t(msme(), 'DaVerificationDate') }}</td></tr>
+                    <tr><th>{{ 'Desktop Assessor Name' | t: 'staff.remote.overview.desktopAssessor.label' }}</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
                   </tbody>
                 </table>
               </div>
               <div class="zed-card">
-                <div class="card-head"><h4>Location</h4></div>
+                <div class="card-head"><h4>{{ 'Location' | t: 'staff.remote.location.heading' }}</h4></div>
                 @if (mapUrl()) {
-                  <a class="btn btn-outline-primary btn-sm map-link" [href]="mapUrl()" target="_blank" rel="noopener noreferrer">Open the unit's location in Google Maps</a>
+                  <a class="btn btn-outline-primary btn-sm map-link" [href]="mapUrl()" target="_blank" rel="noopener noreferrer">{{ "Open the unit's location in Google Maps" | t: 'staff.remote.location.googleLink' }}</a>
                 } @else {
-                  <p class="muted mb-0">No location recorded.</p>
+                  <p class="muted mb-0">{{ 'No location recorded.' | t: 'staff.remote.location.empty' }}</p>
                 }
               </div>
             </div>
@@ -170,13 +170,13 @@
           @if ((kind === 'open' && tab() === 'openMeeting') || (kind === 'close' && tab() === 'closeMeeting')) {
             @let m = kind === 'open' ? d.openMeeting : d.closeMeeting;
             @if (!m) {
-              <p>No {{ kind === 'open' ? 'opening' : 'closing' }} meeting has been set up for this assessment.</p>
+              <p>{{ kind === 'open' ? ('No opening meeting has been set up for this assessment.' | t: 'staff.remote.meeting.open.empty') : ('No closing meeting has been set up for this assessment.' | t: 'staff.remote.meeting.close.empty') }}</p>
             } @else {
               <div class="row">
                 <div class="col-sm-8">
-                  <p class="sub-heading">Meeting Participants:</p>
+                  <p class="sub-heading">{{ 'Meeting Participants:' | t: 'staff.remote.meeting.participants.heading' }}</p>
                   <table class="table table-bordered table-zed participants">
-                    <thead><tr><th class="text-center">S.No</th><th>Name</th><th>Designation</th><th></th></tr></thead>
+                    <thead><tr><th class="text-center">{{ 'S.No' | t: 'staff.remote.meeting.column.serial' }}</th><th>{{ 'Name' | t: 'staff.remote.meeting.column.name' }}</th><th>{{ 'Designation' | t: 'staff.remote.meeting.column.designation' }}</th><th></th></tr></thead>
                     <tbody>
                       @for (p of m.participants; track $index) {
                         <tr><td class="text-center">{{ $index + 1 }}</td><td>{{ t(p, 'Name') }}</td><td>{{ t(p, 'Designation') }}</td><td></td></tr>
@@ -184,52 +184,52 @@
                       @if (canAssess()) {
                         <tr>
                           <td class="text-center"></td>
-                          <td><input class="form-control" [name]="kind + 'Name'" maxlength="200" aria-label="Participant name" [(ngModel)]="participant[kind].name" /></td>
-                          <td><input class="form-control" [name]="kind + 'Designation'" maxlength="200" aria-label="Participant designation" [(ngModel)]="participant[kind].designation" /></td>
-                          <td><button type="button" class="btn btn-primary add-participant" [disabled]="busy()" (click)="addParticipant(m, kind === 'open' ? 'open' : 'close')">Add</button></td>
+                          <td><input class="form-control" [name]="kind + 'Name'" maxlength="200" [attr.aria-label]="'Participant name' | t: 'staff.remote.meeting.nameAria'" [(ngModel)]="participant[kind].name" /></td>
+                          <td><input class="form-control" [name]="kind + 'Designation'" maxlength="200" [attr.aria-label]="'Participant designation' | t: 'staff.remote.meeting.designationAria'" [(ngModel)]="participant[kind].designation" /></td>
+                          <td><button type="button" class="btn btn-primary add-participant" [disabled]="busy()" (click)="addParticipant(m, kind === 'open' ? 'open' : 'close')">{{ 'Add' | t: 'staff.remote.meeting.addButton' }}</button></td>
                         </tr>
                       }
                     </tbody>
                   </table>
                 </div>
                 <div class="col-sm-4">
-                  <p class="sub-heading">{{ kind === 'open' ? 'Opening' : 'Closing' }} Meeting Photo:</p>
+                  <p class="sub-heading">{{ kind === 'open' ? ('Opening Meeting Photo:' | t: 'staff.remote.meeting.open.photo.label') : ('Closing Meeting Photo:' | t: 'staff.remote.meeting.close.photo.label') }}</p>
                   @for (pp of m.photos; track pp.id) {
                     <div class="evidence-img">
-                      @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" alt="Meeting photo" /></button> }
-                      @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" aria-label="Remove photo" (click)="removePhoto(pp)">&times;</button> }
+                      @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" [alt]="'Meeting photo' | t: 'staff.remote.meeting.photo.alt'" /></button> }
+                      @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" [attr.aria-label]="'Remove photo' | t: 'staff.remote.photo.removeAria'" (click)="removePhoto(pp)">&times;</button> }
                     </div>
                   }
                   @if (canAssess() && !m.photos.length) {
                     @if (meetingMode()) {
                       <label class="btn btn-primary btn-sm upload-meeting">
-                        Upload Photo
-                        <input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? 'Opening meeting photo' : 'Closing meeting photo'"
+                        {{ 'Upload Photo' | t: 'staff.remote.photo.uploadButton' }}
+                        <input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? ('Opening meeting photo' | t: 'staff.remote.meeting.open.photoAria') : ('Closing meeting photo' | t: 'staff.remote.meeting.close.photoAria')"
                                (change)="uploadPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, $any($event.target))" />
                       </label>
                     } @else {
-                      <label class="btn btn-primary capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? 'Opening meeting photo' : 'Closing meeting photo'" (change)="pickPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true, $any($event.target))" /></label>
+                      <label class="btn btn-primary capture">{{ 'Upload Photo' | t: 'staff.remote.photo.uploadButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? ('Opening meeting photo' | t: 'staff.remote.meeting.open.photoAria') : ('Closing meeting photo' | t: 'staff.remote.meeting.close.photoAria')" (change)="pickPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true, $any($event.target))" /></label>
                     }
                   }
                 </div>
                 <div class="col-sm-12 mt-2">
-                  <strong>Meeting Comments: </strong> {{ m.comments }}
+                  <strong>{{ 'Meeting Comments:' | t: 'staff.remote.meeting.comments.label' }} </strong> {{ m.comments }}
                   @if (canAssess()) {
-                    <button type="button" class="btn btn-outline-primary btn-sm ms-2" (click)="openMeetingComments(m)">{{ m.comments ? 'Edit' : 'Enter Comments' }}</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm ms-2" (click)="openMeetingComments(m)">{{ m.comments ? ('Edit' | t: 'staff.remote.editButton') : ('Enter Comments' | t: 'staff.remote.meeting.commentsButton') }}</button>
                   }
                 </div>
                 @if (meetingMode() && kind === 'close') {
                   <div class="col-sm-12 mt-3 recording-links">
-                    <p class="sub-heading">Meeting Recording Link:</p>
+                    <p class="sub-heading">{{ 'Meeting Recording Link:' | t: 'staff.remote.recording.heading' }}</p>
                     @for (l of d.recordingLinks ?? []; track l.id; let i = $index) {
-                      <p class="mb-1"><a class="btn btn-outline-primary btn-sm" [href]="l.url" target="_blank" rel="noopener noreferrer">View Recording Link {{ i + 1 }}</a></p>
+                      <p class="mb-1"><a class="btn btn-outline-primary btn-sm" [href]="l.url" target="_blank" rel="noopener noreferrer">{{ 'View Recording Link {number}' | t: 'staff.remote.recording.viewLink' : { number: i + 1 } }}</a></p>
                     } @empty {
-                      <p class="mb-1">No recording link yet.</p>
+                      <p class="mb-1">{{ 'No recording link yet.' | t: 'staff.remote.recording.empty' }}</p>
                     }
                     @if (canAssess() && (d.recordingLinks?.length ?? 0) < maxRecordingLinks) {
                       <div class="d-flex gap-2 mt-2">
-                        <input class="form-control" name="recordingLink" maxlength="2000" placeholder="https://..." aria-label="Recording link" [(ngModel)]="recordingLink" />
-                        <button type="button" class="btn btn-primary add-recording" [disabled]="busy()" (click)="addRecordingLink(m)">Add Recording Link</button>
+                        <input class="form-control" name="recordingLink" maxlength="2000" [placeholder]="'https://...' | t: 'staff.remote.recording.placeholder'" [attr.aria-label]="'Recording link' | t: 'staff.remote.recording.aria'" [(ngModel)]="recordingLink" />
+                        <button type="button" class="btn btn-primary add-recording" [disabled]="busy()" (click)="addRecordingLink(m)">{{ 'Add Recording Link' | t: 'staff.remote.recording.addButton' }}</button>
                       </div>
                     }
                   </div>
@@ -246,38 +246,38 @@
           <zed-same-pan [zedId]="zedId" />
           <div class="table-responsive">
           <table class="table table-bordered table-zed basic-info">
-            <thead><tr><th class="text-center">S.No</th><th>Description</th><th>Responses</th></tr></thead>
+            <thead><tr><th class="text-center">{{ 'S.No' | t: 'staff.remote.basic.column.serial' }}</th><th>{{ 'Description' | t: 'staff.remote.basic.column.description' }}</th><th>{{ 'Responses' | t: 'staff.remote.basic.column.responses' }}</th></tr></thead>
             <tbody>
               <tr>
                 <td class="text-center">1</td>
-                <td>MSME Representative Selfie</td>
+                <td>{{ 'MSME Representative Selfie' | t: 'staff.remote.basic.selfie.label' }}</td>
                 <td>
                   <table class="table table-bordered mb-0">
                     <tbody>
                       <tr>
-                        <td class="text-center" style="width: 100px">DA</td>
+                        <td class="text-center" style="width: 100px">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td>
                         <td>
                           @for (p of daSelfies(); track t(p, 'Id')) {
-                            @if (t(p, 'Url')) { <button type="button" class="btn btn-link p-0 evidence-img" (click)="preview.set(t(p, 'Url'))"><img [src]="t(p, 'Url')" alt="Selfie" height="60" /></button> }
+                            @if (t(p, 'Url')) { <button type="button" class="btn btn-link p-0 evidence-img" (click)="preview.set(t(p, 'Url'))"><img [src]="t(p, 'Url')" [alt]="'Selfie' | t: 'staff.remote.basic.selfie.alt'" height="60" /></button> }
                           }
                         </td>
                       </tr>
                       <tr>
-                        <td class="text-center">REMOTE</td>
+                        <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                         <td>
                           @for (s of d.selfies; track $index) {
                             <div class="evidence-img">
-                              @if (s.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(s.url)"><img [src]="s.url" alt="Remote selfie" /></button> }
+                              @if (s.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(s.url)"><img [src]="s.url" [alt]="'Remote selfie' | t: 'staff.remote.basic.remoteSelfie.alt'" /></button> }
                               @if (s.representativeName || !meetingMode()) {
-                                <p class="sub-heading"><strong>Name:</strong> {{ s.representativeName }}</p>
-                                <p class="sub-heading"><strong>Designation:</strong> {{ s.designation }}</p>
+                                <p class="sub-heading"><strong>{{ 'Name:' | t: 'staff.remote.basic.selfie.name.label' }}</strong> {{ s.representativeName }}</p>
+                                <p class="sub-heading"><strong>{{ 'Designation:' | t: 'staff.remote.basic.selfie.designation.label' }}</strong> {{ s.designation }}</p>
                               }
                             </div>
                           }
                           @if (meetingMode() && canAssess()) {
                             <label class="btn btn-primary btn-sm upload-selfie">
-                              Upload Selfie on Site
-                              <input type="file" class="d-none" accept="image/jpeg" aria-label="Selfie on site" (change)="uploadPhoto('Selfie', null, $any($event.target))" />
+                              {{ 'Upload Selfie on Site' | t: 'staff.remote.basic.selfie.uploadButton' }}
+                              <input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Selfie on site' | t: 'staff.remote.basic.selfie.uploadAria'" (change)="uploadPhoto('Selfie', null, $any($event.target))" />
                             </label>
                           }
                         </td>
@@ -288,46 +288,46 @@
               </tr>
               <tr>
                 <td class="text-center">1</td>
-                <td>Site Exterior Photos</td>
+                <td>{{ 'Site Exterior Photos' | t: 'staff.remote.basic.exterior.label' }}</td>
                 <td>
                   <table class="table table-bordered mb-0">
                     <tbody>
                       <tr>
-                        <td class="text-center" style="width: 100px">DA</td>
+                        <td class="text-center" style="width: 100px">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td>
                         <td>
                           @for (p of daSiteExterior(); track t(p, 'Id'); let i = $index) {
                             <div class="evidence-img">
-                              @if (t(p, 'Url')) { <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'Url'))"><img [src]="t(p, 'Url')" alt="Site exterior" height="60" /></button> }
-                              <p class="sub-heading">Site Exterior Photo {{ i + 1 }}</p>
+                              @if (t(p, 'Url')) { <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'Url'))"><img [src]="t(p, 'Url')" [alt]="'Site exterior' | t: 'staff.remote.exterior.alt'" height="60" /></button> }
+                              <p class="sub-heading">{{ 'Site Exterior Photo {number}' | t: 'staff.remote.exterior.photo.label' : { number: i + 1 } }}</p>
                             </div>
                           }
                         </td>
                         <td>
-                          <div><span class="muted">Verified:</span> {{ t(daSiteExterior()[0], 'IsVerified') }}</div>
-                          <div><span class="muted">Remarks:</span> {{ t(daSiteExterior()[0], 'AssessorRemarks') }}</div>
+                          <div><span class="muted">{{ 'Verified:' | t: 'staff.remote.basic.verified.label' }}</span> {{ t(daSiteExterior()[0], 'IsVerified') }}</div>
+                          <div><span class="muted">{{ 'Remarks:' | t: 'staff.remote.basic.remarks.label' }}</span> {{ t(daSiteExterior()[0], 'AssessorRemarks') }}</div>
                         </td>
                       </tr>
                       <tr>
-                        <td class="text-center">REMOTE</td>
+                        <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                         <td>
                           @for (pp of d.siteExteriorPhotos; track pp.id) {
                             <div class="evidence-img">
-                              @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" alt="Site exterior" /></button> }
+                              @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" [alt]="'Site exterior' | t: 'staff.remote.exterior.alt'" /></button> }
                               <p class="sub-heading">
                                 {{ pp.name }}
-                                @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" aria-label="Remove photo" (click)="removePhoto(pp)">&times;</button> }
+                                @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" [attr.aria-label]="'Remove photo' | t: 'staff.remote.photo.removeAria'" (click)="removePhoto(pp)">&times;</button> }
                               </p>
                             </div>
                           }
                           @if (canAssess() && !meetingMode() && d.siteExteriorPhotos.length < 2) {
-                            <label class="btn btn-primary btn-sm capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Site exterior photo" (change)="pickPhoto('SiteExterior', null, 'Site Exterior Photo', false, $any($event.target))" /></label>
+                            <label class="btn btn-primary btn-sm capture">{{ 'Upload Photo' | t: 'staff.remote.photo.uploadButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Site exterior photo' | t: 'staff.remote.basic.exterior.uploadAria'" (change)="pickPhoto('SiteExterior', null, 'Site Exterior Photo', false, $any($event.target))" /></label>
                           }
                         </td>
                         <td>
-                          <div><span class="muted">Verified:</span> {{ t(msme(), 'IsSaVerified') }}</div>
-                          <div><span class="muted">Remarks:</span> {{ t(msme(), 'SaAssessorRemarks') }}</div>
+                          <div><span class="muted">{{ 'Verified:' | t: 'staff.remote.basic.verified.label' }}</span> {{ t(msme(), 'IsSaVerified') }}</div>
+                          <div><span class="muted">{{ 'Remarks:' | t: 'staff.remote.basic.remarks.label' }}</span> {{ t(msme(), 'SaAssessorRemarks') }}</div>
                           @if (canAssess()) {
-                            <button type="button" class="btn btn-outline-primary btn-sm validate-exterior" (click)="openSiteExterior()">{{ t(msme(), 'IsSaVerified') ? 'Edit' : 'Validate' }}</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm validate-exterior" (click)="openSiteExterior()">{{ t(msme(), 'IsSaVerified') ? ('Edit' | t: 'staff.remote.editButton') : ('Validate' | t: 'staff.remote.validateButton') }}</button>
                           }
                         </td>
                       </tr>
@@ -341,13 +341,13 @@
                 <td>
                   <table class="table table-bordered table-striped mb-0">
                     <tbody>
-                      <tr><td class="text-center" style="width: 100px">DA</td><td>{{ t(msme(), basicInfo[0].da) }}</td></tr>
+                      <tr><td class="text-center" style="width: 100px">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td><td>{{ t(msme(), basicInfo[0].da) }}</td></tr>
                       <tr>
-                        <td class="text-center">REMOTE</td>
+                        <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                         <td>
                           {{ t(msme(), basicInfo[0].sa) }}
                           @if (canAssess()) {
-                            <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(basicInfo[0])">{{ t(msme(), basicInfo[0].sa) ? 'Edit' : 'Capture' }}</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(basicInfo[0])">{{ t(msme(), basicInfo[0].sa) ? ('Edit' | t: 'staff.remote.editButton') : ('Capture' | t: 'staff.remote.captureButton') }}</button>
                           }
                         </td>
                       </tr>
@@ -357,54 +357,54 @@
               </tr>
               <tr>
                 <td class="text-center">2</td>
-                <td>Product manufactured</td>
+                <td>{{ 'Product manufactured' | t: 'staff.remote.basic.products.label' }}</td>
                 <td>
                   <table class="table table-bordered table-striped mb-0 products">
                     <tbody>
                       @for (p of d.products; track t(p, 'Id'); let i = $index) {
                         <tr>
-                          <th colspan="3">{{ i + 1 }}. {{ t(p, 'ProductName') }} <span class="float-end">Exported: {{ t(p, 'Exported') }}</span></th>
+                          <th colspan="3">{{ i + 1 }}. {{ t(p, 'ProductName') }} <span class="float-end">{{ 'Exported: {value}' | t: 'staff.remote.basic.exported.label' : { value: t(p, 'Exported') } }}</span></th>
                         </tr>
                         <tr>
-                          <td class="text-center">DA</td>
+                          <td class="text-center">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td>
                           <td>
                             @if (t(p, 'PhotoUrl')) {
-                              <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'PhotoUrl'))"><img [src]="t(p, 'PhotoUrl')" alt="Product photo" height="50" /></button><br />
+                              <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'PhotoUrl'))"><img [src]="t(p, 'PhotoUrl')" [alt]="'Product photo' | t: 'staff.remote.product.photo.alt'" height="50" /></button><br />
                             }
                             <!-- As the old page: the PDF icon turns blue once the description was opened (SaveTimestamp). -->
                             @if (t(p, 'DescriptionKind') === 'pdf') {
                               <a class="product-description" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener">
-                                <span class="pdf-chip" [class.opened]="descriptionOpened(p)"><span class="pdf-tag">PDF</span>Product description</span>
+                                <span class="pdf-chip" [class.opened]="descriptionOpened(p)"><span class="pdf-tag">PDF</span>{{ 'Product description' | t: 'staff.remote.product.descriptionLink' }}</span>
                               </a>
                             } @else if (t(p, 'DescriptionKind') === 'image') {
-                              <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'DescriptionUrl'))"><img [src]="t(p, 'DescriptionUrl')" alt="Product description" height="60" /></button>
+                              <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'DescriptionUrl'))"><img [src]="t(p, 'DescriptionUrl')" [alt]="'Product description' | t: 'staff.remote.product.description.alt'" height="60" /></button>
                             }
                           </td>
                           <td>
-                            @if (t(p, 'IsVerified')) { <strong>Conformance:</strong> {{ t(p, 'IsVerified') }}<br /><strong>Assessor Remark:</strong><br />{{ t(p, 'AssessorRemarks') }} }
+                            @if (t(p, 'IsVerified')) { <strong>{{ 'Conformance:' | t: 'staff.remote.product.conformance.label' }}</strong> {{ t(p, 'IsVerified') }}<br /><strong>{{ 'Assessor Remark:' | t: 'staff.remote.product.remark.label' }}</strong><br />{{ t(p, 'AssessorRemarks') }} }
                           </td>
                         </tr>
                         <tr>
-                          <td class="text-center">REMOTE</td>
+                          <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                           <td>
                             @for (pp of photosOf(p); track pp.id) {
                               <div>
-                                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" alt="Product photo" height="50" /></button> }
-                                @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" aria-label="Remove photo" (click)="removePhoto(pp)">&times;</button> }
+                                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" [alt]="'Product photo' | t: 'staff.remote.product.photo.alt'" height="50" /></button> }
+                                @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" [attr.aria-label]="'Remove photo' | t: 'staff.remote.photo.removeAria'" (click)="removePhoto(pp)">&times;</button> }
                                 <br /><small>{{ pp.name }}</small>
                               </div>
                             }
                             @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Photo').length) {
-                              <label class="btn btn-primary btn-sm capture">Upload Product Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Product photo" (change)="pickPhoto('ProductPhoto', id(p), 'Product Photo', true, $any($event.target))" /></label>
+                              <label class="btn btn-primary btn-sm capture">{{ 'Upload Product Photo' | t: 'staff.remote.product.uploadPhotoButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Product photo' | t: 'staff.remote.product.photoAria'" (change)="pickPhoto('ProductPhoto', id(p), 'Product Photo', true, $any($event.target))" /></label>
                             }
                             @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Description Photo').length) {
-                              <label class="btn btn-primary btn-sm capture">Upload Description Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Product description photo" (change)="pickPhoto('ProductDescriptionPhoto', id(p), 'Product Description Photo', true, $any($event.target))" /></label>
+                              <label class="btn btn-primary btn-sm capture">{{ 'Upload Description Photo' | t: 'staff.remote.product.uploadDescriptionButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Product description photo' | t: 'staff.remote.product.descriptionAria'" (change)="pickPhoto('ProductDescriptionPhoto', id(p), 'Product Description Photo', true, $any($event.target))" /></label>
                             }
                           </td>
                           <td>
-                            @if (t(p, 'IsSaVerified')) { <strong>Verified:</strong> {{ t(p, 'IsSaVerified') }}<br /><strong>Assessor Remark:</strong><br />{{ t(p, 'SaAssessorRemarks') }}<br /> }
+                            @if (t(p, 'IsSaVerified')) { <strong>{{ 'Verified:' | t: 'staff.remote.product.verified.label' }}</strong> {{ t(p, 'IsSaVerified') }}<br /><strong>{{ 'Assessor Remark:' | t: 'staff.remote.product.remark.label' }}</strong><br />{{ t(p, 'SaAssessorRemarks') }}<br /> }
                             @if (canAssess()) {
-                              <button type="button" class="btn btn-outline-primary btn-sm validate-product" (click)="openProduct(p)">{{ t(p, 'IsSaVerified') ? 'Edit' : 'Validate' }}</button>
+                              <button type="button" class="btn btn-outline-primary btn-sm validate-product" (click)="openProduct(p)">{{ t(p, 'IsSaVerified') ? ('Edit' | t: 'staff.remote.editButton') : ('Validate' | t: 'staff.remote.validateButton') }}</button>
                             }
                           </td>
                         </tr>
@@ -420,12 +420,12 @@
                   <td>
                     <table class="table table-bordered table-striped mb-0">
                       <tbody>
-                        <tr><td class="text-center" style="width: 100px">DA</td><td>{{ t(msme(), b.da) }}</td></tr>
+                        <tr><td class="text-center" style="width: 100px">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td><td>{{ t(msme(), b.da) }}</td></tr>
                         <tr>
-                          <td class="text-center">REMOTE</td>
+                          <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                           <td>
                             {{ t(msme(), b.sa) }}
-                            @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(b)">{{ t(msme(), b.sa) ? 'Edit' : 'Capture' }}</button> }
+                            @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(b)">{{ t(msme(), b.sa) ? ('Edit' | t: 'staff.remote.editButton') : ('Capture' | t: 'staff.remote.captureButton') }}</button> }
                           </td>
                         </tr>
                       </tbody>
@@ -435,16 +435,16 @@
               }
               <tr>
                 <td class="text-center">5</td>
-                <td>Whether Raw Material is Imported?</td>
+                <td>{{ 'Whether Raw Material is Imported?' | t: 'staff.remote.basic.rawMaterialImported.label' }}</td>
                 <td>{{ t(msme(), 'RawMaterialImported') }}</td>
               </tr>
               @if (t(msme(), 'RawMaterialImported') === 'Yes') {
                 <tr>
                   <td class="text-center"></td>
-                  <td>Raw Materials</td>
+                  <td>{{ 'Raw Materials' | t: 'staff.remote.basic.rawMaterials.label' }}</td>
                   <td>
                     <table class="table table-striped mb-0">
-                      <thead><tr><th>Raw Material Name</th><th>% of Raw Material Imported</th><th>Name of Country</th></tr></thead>
+                      <thead><tr><th>{{ 'Raw Material Name' | t: 'staff.remote.basic.rawMaterials.column.name' }}</th><th>{{ '% of Raw Material Imported' | t: 'staff.remote.basic.rawMaterials.column.percent' }}</th><th>{{ 'Name of Country' | t: 'staff.remote.basic.rawMaterials.column.country' }}</th></tr></thead>
                       <tbody>
                         @for (r of d.rawMaterials; track $index) {
                           <tr><td>{{ t(r, 'RawMaterialName') }}</td><td>{{ t(r, 'Percentage') }}</td><td>{{ t(r, 'CountryName') }}</td></tr>
@@ -461,12 +461,12 @@
                   <td>
                     <table class="table table-bordered table-striped mb-0">
                       <tbody>
-                        <tr><td class="text-center" style="width: 100px">DA</td><td>{{ t(msme(), b.da) }}</td></tr>
+                        <tr><td class="text-center" style="width: 100px">{{ 'DA' | t: 'staff.remote.basic.da.label' }}</td><td>{{ t(msme(), b.da) }}</td></tr>
                         <tr>
-                          <td class="text-center">REMOTE</td>
+                          <td class="text-center">{{ 'REMOTE' | t: 'staff.remote.basic.remote.label' }}</td>
                           <td>
                             {{ t(msme(), b.sa) }}
-                            @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(b)">{{ t(msme(), b.sa) ? 'Edit' : 'Capture' }}</button> }
+                            @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 edit-basic" (click)="openBasicInfo(b)">{{ t(msme(), b.sa) ? ('Edit' | t: 'staff.remote.editButton') : ('Capture' | t: 'staff.remote.captureButton') }}</button> }
                           </td>
                         </tr>
                       </tbody>
@@ -482,19 +482,19 @@
         <!-- ===================================================== site tour -->
         @if (tab() === 'siteTour') {
           @if (canAssess() && !meetingMode() && d.siteTourPhotos.length < 20) {
-            <label class="btn btn-primary capture mb-3">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Site tour photo" (change)="pickPhoto('SiteTour', null, 'Site Tour', false, $any($event.target))" /></label>
+            <label class="btn btn-primary capture mb-3">{{ 'Upload Photo' | t: 'staff.remote.photo.uploadButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Site tour photo' | t: 'staff.remote.tour.uploadAria'" (change)="pickPhoto('SiteTour', null, 'Site Tour', false, $any($event.target))" /></label>
           }
           <div class="photo-grid tour">
             @for (pp of d.siteTourPhotos; track pp.id) {
               <div class="evidence-img">
-                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" alt="Site tour photo" /></button> }
+                @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" [alt]="'Site tour photo' | t: 'staff.remote.tour.photo.alt'" /></button> }
                 <p class="sub-heading">
                   {{ pp.name }}
-                  @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" aria-label="Remove photo" (click)="removePhoto(pp)">&times;</button> }
+                  @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0" [attr.aria-label]="'Remove photo' | t: 'staff.remote.photo.removeAria'" (click)="removePhoto(pp)">&times;</button> }
                 </p>
               </div>
             } @empty {
-              <p>No site tour photos yet.</p>
+              <p>{{ 'No site tour photos yet.' | t: 'staff.remote.tour.empty' }}</p>
             }
           </div>
         }
@@ -506,33 +506,33 @@
             @if (attendanceOf(who).length) {
               <div class="table-responsive">
                 <table class="table table-zed">
-                  <thead><tr><th>Day</th><th>Date</th><th>Punch-In</th><th>Punch-Out</th><th>No. of Hours</th></tr></thead>
+                  <thead><tr><th>{{ 'Day' | t: 'staff.remote.attendance.column.day' }}</th><th>{{ 'Date' | t: 'staff.remote.attendance.column.date' }}</th><th>{{ 'Punch-In' | t: 'staff.remote.attendance.column.punchIn' }}</th><th>{{ 'Punch-Out' | t: 'staff.remote.attendance.column.punchOut' }}</th><th>{{ 'No. of Hours' | t: 'staff.remote.attendance.column.hours' }}</th></tr></thead>
                   <tbody>
                     @for (a of attendanceOf(who); track $index) {
                       <tr data-attendance-row>
-                        <td>Day {{ a['RowNumber'] }}</td>
+                        <td>{{ 'Day {number}' | t: 'staff.remote.attendance.day.label' : { number: a['RowNumber'] } }}</td>
                         <td>{{ a['TimeStamps'] }}</td>
                         <td>
-                          {{ a['LoginTime'] || 'Not punched in' }}
-                          @if (a['LoginPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LoginPhotoUrl']))"><img [src]="a['LoginPhotoUrl']" alt="Punch-in selfie" width="44" height="44" /></button> }
-                          @if (placeUrl(a['LoginLocation'])) { <a class="ms-1" [href]="placeUrl(a['LoginLocation'])" target="_blank" rel="noopener">Map</a> }
+                          {{ a['LoginTime'] || ('Not punched in' | t: 'staff.remote.attendance.notIn.text') }}
+                          @if (a['LoginPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LoginPhotoUrl']))"><img [src]="a['LoginPhotoUrl']" [alt]="'Punch-in selfie' | t: 'staff.remote.attendance.inSelfie.alt'" width="44" height="44" /></button> }
+                          @if (placeUrl(a['LoginLocation'])) { <a class="ms-1" [href]="placeUrl(a['LoginLocation'])" target="_blank" rel="noopener">{{ 'Map' | t: 'staff.remote.attendance.mapLink' }}</a> }
                         </td>
                         <td>
-                          {{ a['LogoutTime'] || 'Not punched out' }}
-                          @if (a['LogoutPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LogoutPhotoUrl']))"><img [src]="a['LogoutPhotoUrl']" alt="Punch-out selfie" width="44" height="44" /></button> }
-                          @if (placeUrl(a['LogoutLocation'])) { <a class="ms-1" [href]="placeUrl(a['LogoutLocation'])" target="_blank" rel="noopener">Map</a> }
+                          {{ a['LogoutTime'] || ('Not punched out' | t: 'staff.remote.attendance.notOut.text') }}
+                          @if (a['LogoutPhotoUrl']) { <button type="button" class="btn btn-link p-0 ms-1" (click)="preview.set($any(a['LogoutPhotoUrl']))"><img [src]="a['LogoutPhotoUrl']" [alt]="'Punch-out selfie' | t: 'staff.remote.attendance.outSelfie.alt'" width="44" height="44" /></button> }
+                          @if (placeUrl(a['LogoutLocation'])) { <a class="ms-1" [href]="placeUrl(a['LogoutLocation'])" target="_blank" rel="noopener">{{ 'Map' | t: 'staff.remote.attendance.mapLink' }}</a> }
                         </td>
-                        <td>{{ a['NoOfHours'] ? a['NoOfHours'] + ' h ' + a['NoOfMinutes'] + ' m' : a['NoOfMinutes'] ? a['NoOfMinutes'] + ' m' : '-' }}</td>
+                        <td>{{ a['NoOfHours'] ? ('{hours} h {minutes} m' | t: 'staff.remote.attendance.hoursMinutes.text' : { hours: a['NoOfHours'], minutes: a['NoOfMinutes'] }) : a['NoOfMinutes'] ? ('{minutes} m' | t: 'staff.remote.attendance.minutes.text' : { minutes: a['NoOfMinutes'] }) : '-' }}</td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
             } @else {
-              <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
+              <p class="text-muted" data-attendance-empty>{{ 'No attendance recorded yet.' | t: 'staff.remote.attendance.empty' }}</p>
             }
           } @empty {
-            <p class="text-muted" data-attendance-empty>No attendance recorded yet.</p>
+            <p class="text-muted" data-attendance-empty>{{ 'No attendance recorded yet.' | t: 'staff.remote.attendance.empty' }}</p>
           }
         }
 
@@ -541,7 +541,7 @@
           @let cur = pn.active();
           <div class="zp-layout mt-3">
             <nav class="zp-nav" aria-labelledby="raParamNavTitle">
-              <div class="zp-nav-head" id="raParamNavTitle">Parameters · {{ pn.complete() }} of {{ d.sections.length }} complete</div>
+              <div class="zp-nav-head" id="raParamNavTitle">{{ 'Parameters · {done} of {total} complete' | t: 'staff.remote.params.nav.heading' : { done: pn.complete(), total: d.sections.length } }}</div>
               <div class="zp-nav-list">
                 @for (s of d.sections; track t(s, 'Id')) {
                   @let st = pn.chip(s);
@@ -550,10 +550,10 @@
                     <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                      <span class="zp-nav-meta">{{ pn.exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-nav-meta">{{ pn.exempted(s) ? ('Exempted' | t: 'staff.remote.params.nav.exempted.label') : ('{done} of {total} requirements' | t: 'staff.remote.params.nav.reqDone.label' : { done: pg.done, total: pg.total }) }}</span>
                       <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
                     </span>
-                    <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                    <span class="zp-chip" [attr.data-v]="st">{{ chipText(st) }}</span>
                   </button>
                 }
               </div>
@@ -569,24 +569,24 @@
                       <h5>{{ t(s, 'SectionName') }}</h5>
                       @if (t(s, 'iButton')) {
                         <span class="zp-info" tabindex="0">
-                          <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                          <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'staff.remote.params.infoAria'">i</span>
                           <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
                         </span>
                       }
-                      @if (pn.exempted(s)) { <span class="zp-tag">Exempted from Assessment</span> }
+                      @if (pn.exempted(s)) { <span class="zp-tag">{{ 'Exempted from Assessment' | t: 'staff.remote.params.head.exempted.chip' }}</span> }
                     </div>
                     <div class="zp-head-status">
-                      <span class="zp-label">Conformance</span>
-                      <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                      <span class="zp-label">{{ 'Conformance' | t: 'staff.remote.params.head.conformance.label' }}</span>
+                      <span class="zp-chip" [attr.data-v]="sst">{{ chipText(sst) }}</span>
                     </div>
                   </div>
 
                   @if (!pn.exempted(s)) {
                     <div class="zp-block zp-ofi mb-3">
-                      <div class="zp-block-head">OFI comments</div>
+                      <div class="zp-block-head">{{ 'OFI comments' | t: 'staff.remote.params.ofi.heading' }}</div>
                       <div class="zp-block-body zp-row">
                         <span>{{ t(s, 'OfiComments') || '—' }}</span>
-                        @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn edit-ofi" (click)="openOfi(s)">{{ t(s, 'OfiComments') ? 'Edit' : 'Capture' }}</button> }
+                        @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn edit-ofi" (click)="openOfi(s)">{{ t(s, 'OfiComments') ? ('Edit' | t: 'staff.remote.editButton') : ('Capture' | t: 'staff.remote.captureButton') }}</button> }
                       </div>
                     </div>
                   }
@@ -596,14 +596,14 @@
                     <article class="zp-req requirement" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
                       <div class="zp-req-title">
                         <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
-                        <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                        <span class="zp-req-text">{{ t(r, 'RequirementName') || ('Requirement' | t: 'staff.remote.params.req.fallback.label') }}</span>
                         <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
-                        <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                        <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ chipText(rst) }}</span>
                       </div>
 
                       <div class="zp-req-body">
                         <div class="zp-block zp-checkpoints">
-                          <div class="zp-block-head">Checkpoints</div>
+                          <div class="zp-block-head">{{ 'Checkpoints' | t: 'staff.remote.params.checkpoints.heading' }}</div>
                           @for (o of optionsOf(r); track $index) {
                             @let a = answersOf(r, o);
                             <div class="zp-cp">
@@ -614,68 +614,68 @@
                                 }
                               </div>
                               <div class="zp-cp-answer">
-                                @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" title="Desktop assessment">DA: {{ a.desktop }}</span> }
-                                @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
+                                @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" [title]="'Desktop assessment' | t: 'staff.remote.checkpoint.desktop.tooltip'">{{ 'DA: {value}' | t: 'staff.remote.checkpoint.desktop.label' : { value: a.desktop } }}</span> }
+                                @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" [title]="'Site assessment' | t: 'staff.remote.checkpoint.site.tooltip'">{{ 'SA: {value}' | t: 'staff.remote.checkpoint.site.label' : { value: a.site } }}</span> }
                               </div>
                             </div>
                           } @empty {
-                            <div class="zp-block-empty">No checkpoints.</div>
+                            <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'staff.remote.params.checkpoints.empty' }}</div>
                           }
                         </div>
 
                         <div class="zp-block zp-evidences">
-                          <div class="zp-block-head">Evidences (desktop assessment)</div>
+                          <div class="zp-block-head">{{ 'Evidences (desktop assessment)' | t: 'staff.remote.params.evidences.heading' }}</div>
                           @if (evidencesOf(r).length) {
                             <table class="zp-ev-table">
-                              <thead><tr><th>Document</th><th>Verified</th></tr></thead>
+                              <thead><tr><th>{{ 'Document' | t: 'staff.remote.params.evidences.column.document' }}</th><th>{{ 'Verified' | t: 'staff.remote.params.evidences.column.verified' }}</th></tr></thead>
                               <tbody>
                                 @for (e of evidencesOf(r); track t(e, 'Id')) {
                                   <tr class="zp-ev-row">
-                                    <td class="zp-ev-doc" data-label="Document">
+                                    <td class="zp-ev-doc" [attr.data-label]="'Document' | t: 'staff.remote.params.evidences.column.document'">
                                       @if (t(e, 'FileUrl')) {
-                                        <a class="pdf-link evidence-file" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span></a>
+                                        <a class="pdf-link evidence-file" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || ('View PDF' | t: 'staff.remote.viewPdfLink') }}</span></a>
                                       } @else {
                                         {{ t(e, 'EvidenceName') }}
                                       }
-                                      @if (t(e, 'AssessorRemarks')) { <div class="zp-ev-remarks">Remarks: {{ t(e, 'AssessorRemarks') }}</div> }
+                                      @if (t(e, 'AssessorRemarks')) { <div class="zp-ev-remarks">{{ 'Remarks: {value}' | t: 'staff.remote.params.evidences.remarks.label' : { value: t(e, 'AssessorRemarks') } }}</div> }
                                     </td>
-                                    <td class="zp-ev-verified" data-label="Verified">
-                                      @if (t(e, 'IsVerified')) { <span class="zp-chip" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span> } @else { <span class="zp-chip">Not checked</span> }
+                                    <td class="zp-ev-verified" [attr.data-label]="'Verified' | t: 'staff.remote.params.evidences.column.verified'">
+                                      @if (t(e, 'IsVerified')) { <span class="zp-chip" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span> } @else { <span class="zp-chip">{{ 'Not checked' | t: 'staff.remote.params.evidences.notChecked.chip' }}</span> }
                                     </td>
                                   </tr>
                                 }
                               </tbody>
                             </table>
                           } @else {
-                            <div class="zp-block-empty">No Document Uploaded</div>
+                            <div class="zp-block-empty">{{ 'No Document Uploaded' | t: 'staff.remote.params.evidences.empty' }}</div>
                           }
                         </div>
 
                         @if (!pn.exempted(s)) {
                           <div class="zp-block zp-site-photos">
-                            <div class="zp-block-head">Photos (remote / site assessment)</div>
+                            <div class="zp-block-head">{{ 'Photos (remote / site assessment)' | t: 'staff.remote.params.photos.heading' }}</div>
                             <div class="zp-block-body">
                               @if (photosOf(r).length) {
                                 <div class="zp-photos">
                                   @for (pp of photosOf(r); track pp.id) {
                                     <div class="zp-photo">
-                                      @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" alt="Evidence photo" /></button> }
+                                      @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(pp.url)"><img [src]="pp.url" [alt]="'Evidence photo' | t: 'staff.remote.params.photo.alt'" /></button> }
                                       <span>
                                         {{ pp.name }}
-                                        @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0 ms-1" aria-label="Remove photo" (click)="removePhoto(pp)">&times;</button> }
+                                        @if (pp.deletable) { <button type="button" class="btn btn-link text-danger p-0 ms-1" [attr.aria-label]="'Remove photo' | t: 'staff.remote.photo.removeAria'" (click)="removePhoto(pp)">&times;</button> }
                                       </span>
                                     </div>
                                   }
                                 </div>
                               } @else {
-                                <span class="zp-muted">No photos.</span>
+                                <span class="zp-muted">{{ 'No photos.' | t: 'staff.remote.params.photos.empty' }}</span>
                               }
                               @if (canAssess() && photosOf(r).length < 5) {
                                 <div class="zp-row mt-2">
                                   @if (!meetingMode()) {
-                                    <label class="btn btn-primary btn-sm zp-btn capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Evidence photo" (change)="pickPhoto('Requirement', id(r), 'Evidence Photo', false, $any($event.target))" /></label>
+                                    <label class="btn btn-primary btn-sm zp-btn capture">{{ 'Upload Photo' | t: 'staff.remote.photo.uploadButton' }}<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="'Evidence photo' | t: 'staff.remote.params.photo.uploadAria'" (change)="pickPhoto('Requirement', id(r), 'Evidence Photo', false, $any($event.target))" /></label>
                                   }
-                                  <button type="button" class="btn btn-outline-primary btn-sm zp-btn from-tour" (click)="fromTourFor.set(id(r))">From Site Tour</button>
+                                  <button type="button" class="btn btn-outline-primary btn-sm zp-btn from-tour" (click)="fromTourFor.set(id(r))">{{ 'From Site Tour' | t: 'staff.remote.params.fromTourButton' }}</button>
                                 </div>
                               }
                             </div>
@@ -685,46 +685,46 @@
 
                       <div class="zp-foot">
                         <div class="zp-conf zp-da">
-                          <div class="zp-label">Desktop conformance</div>
+                          <div class="zp-label">{{ 'Desktop conformance' | t: 'staff.remote.params.desktopConformance.label' }}</div>
                           <div class="zp-row">
-                            @if (t(r, 'Conformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'Conformance')">{{ t(r, 'Conformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                            @if (t(r, 'Conformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'Conformance')">{{ t(r, 'Conformance') }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.remote.params.notGiven.chip' }}</span> }
                           </div>
                         </div>
                         <div class="zp-remarks zp-da">
-                          <div class="zp-label">Desktop assessor remarks</div>
+                          <div class="zp-label">{{ 'Desktop assessor remarks' | t: 'staff.remote.params.desktopRemarks.label' }}</div>
                           <div class="zp-row"><span>{{ t(r, 'AssessorRemarks') || '—' }}</span></div>
                         </div>
                         @if (!pn.exempted(s)) {
                           <div class="zp-conf zp-sa">
-                            <div class="zp-label">Remote conformance</div>
+                            <div class="zp-label">{{ 'Remote conformance' | t: 'staff.remote.params.remoteConformance.label' }}</div>
                             <div class="zp-row">
-                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
-                              @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn validate-requirement" (click)="openConformance(r)">{{ t(r, 'SaConformance') ? 'Edit' : 'Validate' }}</button> }
+                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.remote.params.notGiven.chip' }}</span> }
+                              @if (canAssess()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn validate-requirement" (click)="openConformance(r)">{{ t(r, 'SaConformance') ? ('Edit' | t: 'staff.remote.editButton') : ('Validate' | t: 'staff.remote.validateButton') }}</button> }
                             </div>
                           </div>
                           <div class="zp-remarks zp-sa">
-                            <div class="zp-label">Remote assessor remarks</div>
+                            <div class="zp-label">{{ 'Remote assessor remarks' | t: 'staff.remote.params.remoteRemarks.label' }}</div>
                             <div class="zp-row"><span>{{ t(r, 'SaAssessorRemarks') || '—' }}</span></div>
                           </div>
                         }
                       </div>
                     </article>
                   } @empty {
-                    <p class="zp-muted">No requirements in this parameter.</p>
+                    <p class="zp-muted">{{ 'No requirements in this parameter.' | t: 'staff.remote.params.req.empty' }}</p>
                   }
                 </div>
               } @else {
-                <p class="zp-muted">No parameters.</p>
+                <p class="zp-muted">{{ 'No parameters.' | t: 'staff.remote.params.empty' }}</p>
               }
             </div>
           </div>
           <div class="mt-3">
-            @if (t(msme(), 'AssessorRemarks')) { <div><strong>DA Remarks:</strong> {{ t(msme(), 'AssessorRemarks') }}</div> }
-            @if (t(msme(), 'SaAssessorRemarks')) { <div><strong>SA Remarks:</strong> {{ t(msme(), 'SaAssessorRemarks') }}</div> }
+            @if (t(msme(), 'AssessorRemarks')) { <div><strong>{{ 'DA Remarks:' | t: 'staff.remote.params.daRemarks.label' }}</strong> {{ t(msme(), 'AssessorRemarks') }}</div> }
+            @if (t(msme(), 'SaAssessorRemarks')) { <div><strong>{{ 'SA Remarks:' | t: 'staff.remote.params.saRemarks.label' }}</strong> {{ t(msme(), 'SaAssessorRemarks') }}</div> }
           </div>
           @if (canAssess()) {
             <div class="submit-bar">
-              <button type="button" class="btn btn-primary btn-md final-submit" [disabled]="busy()" (click)="openFinalSubmit()">Final Submit</button>
+              <button type="button" class="btn btn-primary btn-md final-submit" [disabled]="busy()" (click)="openFinalSubmit()">{{ 'Final Submit' | t: 'staff.remote.finalSubmitButton' }}</button>
             </div>
           }
         }
@@ -733,34 +733,34 @@
         @if (tab() === 'nc' && d.nc; as nc) {
           @let rd = ncRound();
           @if (!nc.submitted) {
-            <p class="text-muted nc-waiting">Waiting for the MSME's answers to NC {{ nc.round }}.</p>
+            <p class="text-muted nc-waiting">{{ "Waiting for the MSME's answers to NC {round}." | t: 'staff.remote.nc.waiting.text' : { round: nc.round } }}</p>
           } @else if (!rd) {
-            <p class="text-muted">The answers of NC {{ nc.round }} could not be loaded. Please refresh.</p>
+            <p class="text-muted">{{ 'The answers of NC {round} could not be loaded. Please refresh.' | t: 'staff.remote.nc.loadError' : { round: nc.round } }}</p>
           } @else {
             <zed-form-checks kind="remote" [zedId]="zedId" [certification]="certification" />
             @if (rd.products.length) {
-              <h5 class="nc-heading">Products</h5>
+              <h5 class="nc-heading">{{ 'Products' | t: 'staff.remote.nc.products.heading' }}</h5>
               <div class="table-responsive">
                 <table class="table table-bordered table-zed nc-products">
                   <thead>
-                    <tr><th>Product Name</th><th class="text-center">Product Photo</th><th class="text-center">Product Description</th><th>MSME Remarks</th><th>Verified</th><th>Assessor Remarks</th></tr>
+                    <tr><th>{{ 'Product Name' | t: 'staff.remote.nc.products.column.name' }}</th><th class="text-center">{{ 'Product Photo' | t: 'staff.remote.nc.products.column.photo' }}</th><th class="text-center">{{ 'Product Description' | t: 'staff.remote.nc.products.column.description' }}</th><th>{{ 'MSME Remarks' | t: 'staff.remote.nc.products.column.msmeRemarks' }}</th><th>{{ 'Verified' | t: 'staff.remote.nc.products.column.verified' }}</th><th>{{ 'Assessor Remarks' | t: 'staff.remote.nc.products.column.assessorRemarks' }}</th></tr>
                   </thead>
                   <tbody>
                     @for (p of rd.products; track p.id) {
                       <tr>
                         <td>{{ p.productName }}</td>
-                        <td class="text-center">@if (p.photoUrl) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.photoUrl)"><img [src]="p.photoUrl" height="60" alt="Product photo" /></button> }</td>
+                        <td class="text-center">@if (p.photoUrl) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.photoUrl)"><img [src]="p.photoUrl" height="60" [alt]="'Product photo' | t: 'staff.remote.product.photo.alt'" /></button> }</td>
                         <td class="text-center">
                           @if (p.descriptionKind === 'pdf') {
-                            <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Product description</span></a>
+                            <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ 'Product description' | t: 'staff.remote.product.descriptionLink' }}</span></a>
                           } @else if (p.descriptionKind === 'image') {
-                            <button type="button" class="btn btn-link p-0" (click)="preview.set(p.descriptionUrl)"><img [src]="p.descriptionUrl" height="60" alt="Product description" /></button>
+                            <button type="button" class="btn btn-link p-0" (click)="preview.set(p.descriptionUrl)"><img [src]="p.descriptionUrl" height="60" [alt]="'Product description' | t: 'staff.remote.product.description.alt'" /></button>
                           }
                         </td>
                         <td>{{ p.msmeRemarks }}</td>
                         <td>
                           {{ p.isSaVerified }}
-                          @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-product" (click)="openNcProduct(p)">{{ p.isSaVerified ? 'Edit' : 'Validate' }}</button> }
+                          @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-product" (click)="openNcProduct(p)">{{ p.isSaVerified ? ('Edit' | t: 'staff.remote.editButton') : ('Validate' | t: 'staff.remote.validateButton') }}</button> }
                         </td>
                         <td>{{ p.saAssessorRemarks }}</td>
                       </tr>
@@ -771,23 +771,23 @@
             }
 
             @if (rd.photos.length) {
-              <h5 class="nc-heading">Site Exterior Photos</h5>
+              <h5 class="nc-heading">{{ 'Site Exterior Photos' | t: 'staff.remote.nc.exterior.heading' }}</h5>
               <div class="d-flex flex-wrap gap-3 align-items-end mb-2">
                 @for (p of rd.photos; track $index) {
-                  @if (p.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.url)"><img [src]="p.url" height="100" alt="Site exterior" /></button> }
+                  @if (p.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.url)"><img [src]="p.url" height="100" [alt]="'Site exterior' | t: 'staff.remote.exterior.alt'" /></button> }
                 }
               </div>
               <div class="mb-3">
-                <strong>Verified:</strong> {{ rd.photos[0].isVerified }}
-                @if (rd.photos[0].assessorRemarks) { <br /><strong>Assessor Remarks:</strong> {{ rd.photos[0].assessorRemarks }} }
-                @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-site" (click)="openNcSiteExterior()">{{ rd.photos[0].isVerified ? 'Edit' : 'Validate' }}</button> }
+                <strong>{{ 'Verified:' | t: 'staff.remote.nc.exterior.verified.label' }}</strong> {{ rd.photos[0].isVerified }}
+                @if (rd.photos[0].assessorRemarks) { <br /><strong>{{ 'Assessor Remarks:' | t: 'staff.remote.nc.exterior.remarks.label' }}</strong> {{ rd.photos[0].assessorRemarks }} }
+                @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-site" (click)="openNcSiteExterior()">{{ rd.photos[0].isVerified ? ('Edit' | t: 'staff.remote.editButton') : ('Validate' | t: 'staff.remote.validateButton') }}</button> }
               </div>
             }
 
             @let rcur = rn.active();
             <div class="zp-layout zp-round mt-3">
               <nav class="zp-nav" aria-labelledby="raNcNavTitle">
-                <div class="zp-nav-head" id="raNcNavTitle">NC {{ nc.round }} · {{ rn.complete() }} of {{ ncSections().length }} closed</div>
+                <div class="zp-nav-head" id="raNcNavTitle">{{ 'NC {round} · {done} of {total} closed' | t: 'staff.remote.nc.nav.heading' : { round: nc.round, done: rn.complete(), total: ncSections().length } }}</div>
                 <div class="zp-nav-list">
                   @for (s of ncSections(); track t(s, 'Id')) {
                     @let st = rn.chip(s);
@@ -796,10 +796,10 @@
                       <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                       <span class="zp-nav-body">
                         <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                        <span class="zp-nav-meta">{{ pg.done }} of {{ pg.total }} requirements</span>
+                        <span class="zp-nav-meta">{{ '{done} of {total} requirements' | t: 'staff.remote.params.nav.reqDone.label' : { done: pg.done, total: pg.total } }}</span>
                         <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pg.percent"></span></span>
                       </span>
-                      <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                      <span class="zp-chip" [attr.data-v]="st">{{ chipText(st) }}</span>
                     </button>
                   }
                 </div>
@@ -815,8 +815,8 @@
                         <h5>{{ t(s, 'SectionName') }}</h5>
                       </div>
                       <div class="zp-head-status">
-                        <span class="zp-label">Conformance</span>
-                        <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                        <span class="zp-label">{{ 'Conformance' | t: 'staff.remote.params.head.conformance.label' }}</span>
+                        <span class="zp-chip" [attr.data-v]="sst">{{ chipText(sst) }}</span>
                       </div>
                     </div>
 
@@ -826,14 +826,14 @@
                       <article class="zp-req nc-requirement" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
                         <div class="zp-req-title">
                           <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
-                          <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                          <span class="zp-req-text">{{ t(r, 'RequirementName') || ('Requirement' | t: 'staff.remote.params.req.fallback.label') }}</span>
                           <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
-                          <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                          <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ chipText(rst) }}</span>
                         </div>
 
                         <div class="zp-req-body">
                           <div class="zp-block zp-checkpoints">
-                            <div class="zp-block-head">Checkpoints</div>
+                            <div class="zp-block-head">{{ 'Checkpoints' | t: 'staff.remote.params.checkpoints.heading' }}</div>
                             @for (o of ncOptionsOf(r); track $index) {
                               @let a = answersOf(r, o);
                               <div class="zp-cp">
@@ -844,36 +844,36 @@
                                   }
                                 </div>
                                 <div class="zp-cp-answer">
-                                  @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
+                                  @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" [title]="'Site assessment' | t: 'staff.remote.checkpoint.site.tooltip'">{{ 'SA: {value}' | t: 'staff.remote.checkpoint.site.label' : { value: a.site } }}</span> }
                                 </div>
                               </div>
                             } @empty {
-                              <div class="zp-block-empty">No checkpoints.</div>
+                              <div class="zp-block-empty">{{ 'No checkpoints.' | t: 'staff.remote.params.checkpoints.empty' }}</div>
                             }
                           </div>
 
                           <div class="zp-chat">
-                            <div class="zp-block-head">Non-conformance conversation</div>
+                            <div class="zp-block-head">{{ 'Non-conformance conversation' | t: 'staff.remote.nc.conversation.heading' }}</div>
                             <div class="zp-chat-list">
                               @for (m of ncThread(r); track $index) {
                                 <div class="zp-msg" [class.from-msme]="m.from === 'msme'" [attr.data-from]="m.from">
                                   <span class="zp-av" aria-hidden="true">{{ m.from === 'msme' ? 'MS' : 'AS' }}</span>
                                   <div class="zp-msg-body">
-                                    <div class="zp-msg-meta">{{ m.from === 'msme' ? 'Applicant' : 'Assessor' }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
+                                    <div class="zp-msg-meta">{{ m.from === 'msme' ? ('Applicant' | t: 'staff.remote.nc.conversation.applicant.label') : ('Assessor' | t: 'staff.remote.nc.conversation.assessor.label') }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
                                     <div class="zp-bubble">
                                       @if (m.text) { <div class="zp-msg-text">{{ m.text }}</div> }
-                                      @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">Conformance: {{ m.conformance }}</span></div> }
+                                      @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">{{ 'Conformance: {value}' | t: 'staff.remote.thread.conformance.label' : { value: m.conformance } }}</span></div> }
                                       @if (m.pictures.length) {
                                         <div class="zp-pics">
                                           @for (p of m.pictures; track $index) {
-                                            <button type="button" class="zp-pic" [attr.aria-label]="'View ' + (p.name || 'picture')" (click)="preview.set(p.url)"><img [src]="p.url" [alt]="p.name || 'Picture'" /></button>
+                                            <button type="button" class="zp-pic" [attr.aria-label]="p.name ? ('View {name}' | t: 'staff.remote.thread.viewAria' : { name: p.name }) : ('View picture' | t: 'staff.remote.thread.viewPictureAria')" (click)="preview.set(p.url)"><img [src]="p.url" [alt]="p.name || ('Picture' | t: 'staff.remote.thread.picture.alt')" /></button>
                                           }
                                         </div>
                                       }
                                       @if (m.files.length) {
                                         <div class="zp-files">
                                           @for (fl of m.files; track $index) {
-                                            <a class="pdf-link nc-evidence" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || 'View PDF' }}</span></a>
+                                            <a class="pdf-link nc-evidence" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || ('View PDF' | t: 'staff.remote.viewPdfLink') }}</span></a>
                                           }
                                         </div>
                                       }
@@ -881,7 +881,7 @@
                                   </div>
                                 </div>
                               } @empty {
-                                <div class="zp-muted">No messages yet.</div>
+                                <div class="zp-muted">{{ 'No messages yet.' | t: 'staff.remote.thread.empty' }}</div>
                               }
                             </div>
                           </div>
@@ -889,15 +889,15 @@
 
                         <div class="zp-foot">
                           <div class="zp-conf">
-                            <div class="zp-label">NC {{ nc.round }} conformance</div>
+                            <div class="zp-label">{{ 'NC {round} conformance' | t: 'staff.remote.nc.conformance.label' : { round: nc.round } }}</div>
                             <div class="zp-row">
-                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
-                              @if (cp.total) { <small class="zp-muted">Checkpoints: Yes {{ cp.yes }} · Partial {{ cp.partial }} · No {{ cp.no }}</small> }
-                              @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn nc-validate-requirement" (click)="openConformance(r)">{{ t(r, 'SaConformance') ? 'Edit' : (cp.total ? 'Answer' : 'Validate') }}</button> }
+                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">{{ 'Not given' | t: 'staff.remote.params.notGiven.chip' }}</span> }
+                              @if (cp.total) { <small class="zp-muted">{{ 'Checkpoints: Yes {yes} · Partial {partial} · No {no}' | t: 'staff.remote.nc.checkpoints.text' : { yes: cp.yes, partial: cp.partial, no: cp.no } }}</small> }
+                              @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm zp-btn nc-validate-requirement" (click)="openConformance(r)">{{ t(r, 'SaConformance') ? ('Edit' | t: 'staff.remote.editButton') : (cp.total ? ('Answer' | t: 'staff.remote.answerButton') : ('Validate' | t: 'staff.remote.validateButton')) }}</button> }
                             </div>
                           </div>
                           <div class="zp-remarks">
-                            <div class="zp-label">Assessor remarks</div>
+                            <div class="zp-label">{{ 'Assessor remarks' | t: 'staff.remote.nc.remarks.label' }}</div>
                             <div class="zp-row"><span>{{ t(r, 'SaAssessorRemarks') || '—' }}</span></div>
                           </div>
                         </div>
@@ -905,14 +905,14 @@
                     }
                   </div>
                 } @else {
-                  <p class="zp-muted">No non-conformance in this round.</p>
+                  <p class="zp-muted">{{ 'No non-conformance in this round.' | t: 'staff.remote.nc.empty' }}</p>
                 }
               </div>
             </div>
 
             @if (canAssessNc()) {
               <div class="submit-bar">
-                <button type="button" class="btn btn-primary btn-md final-submit nc-final-submit" [disabled]="busy()" (click)="openFinalSubmit()">Final Submit</button>
+                <button type="button" class="btn btn-primary btn-md final-submit nc-final-submit" [disabled]="busy()" (click)="openFinalSubmit()">{{ 'Final Submit' | t: 'staff.remote.finalSubmitButton' }}</button>
               </div>
             }
           }
@@ -930,18 +930,18 @@
       <div class="modal-content">
         <form (ngSubmit)="saveCapture()" novalidate>
           <div class="modal-header justify-content-between">
-            <h5 class="modal-title" id="captureTitle">Image</h5>
-            <button type="button" class="btn-close" aria-label="Close" (click)="capture.set(null)"></button>
+            <h5 class="modal-title" id="captureTitle">{{ 'Image' | t: 'staff.remote.capture.title' }}</h5>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="capture.set(null)"></button>
           </div>
           <div class="modal-body text-center">
-            <img [src]="c.image" class="img-fluid" alt="Chosen photo" />
-            <input class="form-control mt-2 mx-auto photo-name" name="photoName" maxlength="50" placeholder="Photo Name" aria-label="Photo name"
+            <img [src]="c.image" class="img-fluid" [alt]="'Chosen photo' | t: 'staff.remote.capture.photo.alt'" />
+            <input class="form-control mt-2 mx-auto photo-name" name="photoName" maxlength="50" [placeholder]="'Photo Name' | t: 'staff.remote.capture.name.placeholder'" [attr.aria-label]="'Photo name' | t: 'staff.remote.capture.nameAria'"
                    [disabled]="c.fixedName" [(ngModel)]="c.name" />
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="Cancel" (click)="capture.set(null)" />
-            <input type="submit" class="btn btn-primary" value="OK" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.remote.cancelButton'" (click)="capture.set(null)" />
+            <input type="submit" class="btn btn-primary" [value]="'OK' | t: 'staff.remote.capture.okButton'" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -962,18 +962,18 @@
         <form (ngSubmit)="saveChoice()" novalidate>
           <div class="modal-header justify-content-between">
             <h5 class="modal-title" id="choiceTitle">{{ c.title }}</h5>
-            <button type="button" class="btn-close" aria-label="Close" (click)="choice.set(null)"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="choice.set(null)"></button>
           </div>
           <div class="modal-body">
             <div class="row mb-3">
-              <span class="col-sm-4">{{ c.kind === 'conformance' ? 'Conformance' : 'Verified' }}</span>
+              <span class="col-sm-4">{{ c.kind === 'conformance' ? ('Conformance' | t: 'staff.remote.choice.conformance.label') : ('Verified' | t: 'staff.remote.choice.verified.label') }}</span>
               <div class="col-sm-8">
-                <label class="radio-label"><input type="radio" class="option-input yes radio" name="choice" value="Yes" [(ngModel)]="c.value" /> Yes&nbsp;</label>
-                <label class="radio-label"><input type="radio" class="option-input no radio" name="choice" value="No" [(ngModel)]="c.value" /> No</label>
+                <label class="radio-label"><input type="radio" class="option-input yes radio" name="choice" value="Yes" [(ngModel)]="c.value" /> {{ 'Yes' | t: 'staff.remote.choice.yes.label' }}&nbsp;</label>
+                <label class="radio-label"><input type="radio" class="option-input no radio" name="choice" value="No" [(ngModel)]="c.value" /> {{ 'No' | t: 'staff.remote.choice.no.label' }}</label>
               </div>
             </div>
             <div class="row">
-              <label class="col-sm-4" for="choiceRemarks">Remarks</label>
+              <label class="col-sm-4" for="choiceRemarks">{{ 'Remarks' | t: 'staff.remote.choice.remarks.label' }}</label>
               <div class="col-sm-8">
                 <textarea id="choiceRemarks" name="remarks" class="form-control" [maxLength]="c.max" rows="4" [(ngModel)]="c.remarks"></textarea>
               </div>
@@ -981,8 +981,8 @@
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="Cancel" (click)="choice.set(null)" />
-            <input type="submit" class="btn btn-primary" value="Submit" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.remote.cancelButton'" (click)="choice.set(null)" />
+            <input type="submit" class="btn btn-primary" [value]="'Submit' | t: 'staff.remote.choice.submitButton'" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -998,25 +998,25 @@
         <form (ngSubmit)="saveText()" novalidate>
           <div class="modal-header justify-content-between">
             <h5 class="modal-title" id="textTitle">{{ e.title }}</h5>
-            <button type="button" class="btn-close" aria-label="Close" (click)="textEdit.set(null)"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="textEdit.set(null)"></button>
           </div>
           <div class="modal-body">
             @if (e.yesNo) {
-              <select class="form-select" name="textValue" aria-label="Response" [(ngModel)]="e.value">
+              <select class="form-select" name="textValue" [attr.aria-label]="'Response' | t: 'staff.remote.text.responseAria'" [(ngModel)]="e.value">
                 <option value=""></option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
+                <option value="Yes">{{ 'Yes' | t: 'staff.remote.text.yes.label' }}</option>
+                <option value="No">{{ 'No' | t: 'staff.remote.text.no.label' }}</option>
               </select>
             } @else if (e.kind === 'basicInfo') {
-              <input class="form-control" name="textValue" maxlength="2000" aria-label="Response" [(ngModel)]="e.value" />
+              <input class="form-control" name="textValue" maxlength="2000" [attr.aria-label]="'Response' | t: 'staff.remote.text.responseAria'" [(ngModel)]="e.value" />
             } @else {
-              <textarea class="form-control" name="textValue" maxlength="2000" rows="4" aria-label="Comments" [(ngModel)]="e.value"></textarea>
+              <textarea class="form-control" name="textValue" maxlength="2000" rows="4" [attr.aria-label]="'Comments' | t: 'staff.remote.text.commentsAria'" [(ngModel)]="e.value"></textarea>
             }
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
           </div>
           <div class="modal-footer">
-            <input type="button" class="btn btn-default" value="Cancel" (click)="textEdit.set(null)" />
-            <input type="submit" class="btn btn-primary" value="Update" [disabled]="busy()" />
+            <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.remote.cancelButton'" (click)="textEdit.set(null)" />
+            <input type="submit" class="btn btn-primary" [value]="'Update' | t: 'staff.remote.text.updateButton'" [disabled]="busy()" />
           </div>
         </form>
       </div>
@@ -1030,20 +1030,20 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header justify-content-between">
-          <h5 class="modal-title" id="tourTitle">Site Tour Photos</h5>
-          <button type="button" class="btn-close" aria-label="Close" (click)="fromTourFor.set(null)"></button>
+          <h5 class="modal-title" id="tourTitle">{{ 'Site Tour Photos' | t: 'staff.remote.tourPick.title' }}</h5>
+          <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="fromTourFor.set(null)"></button>
         </div>
         <div class="modal-body">
           <table class="table">
             <tbody>
               @for (pp of data()?.siteTourPhotos ?? []; track pp.id) {
                 <tr>
-                  <td>@if (pp.url) { <img [src]="pp.url" height="50" alt="Site tour photo" /> }</td>
+                  <td>@if (pp.url) { <img [src]="pp.url" height="50" [alt]="'Site tour photo' | t: 'staff.remote.tour.photo.alt'" /> }</td>
                   <td><small>{{ pp.name }}</small></td>
-                  <td><button type="button" class="btn btn-primary btn-sm select-tour" [disabled]="busy()" (click)="useTourPhoto(pp)">Select</button></td>
+                  <td><button type="button" class="btn btn-primary btn-sm select-tour" [disabled]="busy()" (click)="useTourPhoto(pp)">{{ 'Select' | t: 'staff.remote.tourPick.selectButton' }}</button></td>
                 </tr>
               } @empty {
-                <tr><td>No site tour photos yet.</td></tr>
+                <tr><td>{{ 'No site tour photos yet.' | t: 'staff.remote.tour.empty' }}</td></tr>
               }
             </tbody>
           </table>
@@ -1060,26 +1060,26 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header justify-content-between">
-          <h5 class="modal-title" id="finalTitle">Confirm Final Submit</h5>
-          <button type="button" class="btn-close" aria-label="Close" (click)="finalSubmit.set(null)"></button>
+          <h5 class="modal-title" id="finalTitle">{{ 'Confirm Final Submit' | t: 'staff.remote.finalSubmit.title' }}</h5>
+          <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.remote.closeAria'" (click)="finalSubmit.set(null)"></button>
         </div>
         <div class="modal-body">
           @if (f.check.raisesNc) {
-            <div class="alert alert-warning" role="status">Non-conformance(s) will be raised for this unit.</div>
+            <div class="alert alert-warning" role="status">{{ 'Non-conformance(s) will be raised for this unit.' | t: 'staff.remote.finalSubmit.ncWarning.text' }}</div>
           }
           @if (ncProducts().length) {
             <table class="table table-zed table-bordered">
-              <thead><tr><th>Product Name</th><th>Product Photo</th><th>Product Description Photo</th><th>Assessor Remarks</th></tr></thead>
+              <thead><tr><th>{{ 'Product Name' | t: 'staff.remote.finalSubmit.column.product' }}</th><th>{{ 'Product Photo' | t: 'staff.remote.finalSubmit.column.photo' }}</th><th>{{ 'Product Description Photo' | t: 'staff.remote.finalSubmit.column.description' }}</th><th>{{ 'Assessor Remarks' | t: 'staff.remote.finalSubmit.column.remarks' }}</th></tr></thead>
               <tbody>
                 @for (p of ncProducts(); track t(p, 'Id')) {
                   <tr>
                     <td>{{ t(p, 'ProductName') }}</td>
-                    <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" alt="Product photo" height="60" /> }</td>
+                    <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" [alt]="'Product photo' | t: 'staff.remote.product.photo.alt'" height="60" /> }</td>
                     <td>
                       @if (t(p, 'DescriptionKind') === 'pdf') {
-                        <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Product description</span></a>
+                        <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ 'Product description' | t: 'staff.remote.product.descriptionLink' }}</span></a>
                       } @else if (t(p, 'DescriptionKind') === 'image') {
-                        <img [src]="t(p, 'DescriptionUrl')" alt="Product description" height="60" />
+                        <img [src]="t(p, 'DescriptionUrl')" [alt]="'Product description' | t: 'staff.remote.product.description.alt'" height="60" />
                       }
                     </td>
                     <!-- The site assessor's remarks that raise the NC (the old pop-up showed the desktop AssessorRemarks here). -->
@@ -1091,7 +1091,7 @@
           }
           @if (ncRoundProducts().length) {
             <table class="table table-zed table-bordered">
-              <thead><tr><th>Product Name</th><th>Assessor Remarks</th></tr></thead>
+              <thead><tr><th>{{ 'Product Name' | t: 'staff.remote.finalSubmit.column.product' }}</th><th>{{ 'Assessor Remarks' | t: 'staff.remote.finalSubmit.column.remarks' }}</th></tr></thead>
               <tbody>
                 @for (p of ncRoundProducts(); track p.id) { <tr><td>{{ p.productName }}</td><td>{{ p.saAssessorRemarks }}</td></tr> }
               </tbody>
@@ -1099,7 +1099,7 @@
           }
           @if (ncRequirements().length) {
             <table class="table table-zed table-bordered">
-              <thead><tr><th class="text-center">Code</th><th>Requirement</th><th>Assessor Remark</th></tr></thead>
+              <thead><tr><th class="text-center">{{ 'Code' | t: 'staff.remote.finalSubmit.column.code' }}</th><th>{{ 'Requirement' | t: 'staff.remote.finalSubmit.column.requirement' }}</th><th>{{ 'Assessor Remark' | t: 'staff.remote.finalSubmit.column.remark' }}</th></tr></thead>
               <tbody>
                 @for (r of ncRequirements(); track t(r, 'Id')) {
                   <tr>
@@ -1109,8 +1109,8 @@
                         <div>
                           {{ t(o, 'OptionName') }}
                           @let a = answersOf(r, o);
-                          @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" title="Desktop assessment">DA: {{ a.desktop }}</span> }
-                          @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
+                          @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" [title]="'Desktop assessment' | t: 'staff.remote.checkpoint.desktop.tooltip'">{{ 'DA: {value}' | t: 'staff.remote.checkpoint.desktop.label' : { value: a.desktop } }}</span> }
+                          @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" [title]="'Site assessment' | t: 'staff.remote.checkpoint.site.tooltip'">{{ 'SA: {value}' | t: 'staff.remote.checkpoint.site.label' : { value: a.site } }}</span> }
                           <ul>
                             @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                           </ul>
@@ -1123,7 +1123,7 @@
               </tbody>
             </table>
           }
-          <label class="form-label" for="finalComments">Comments<span class="req">*</span></label>
+          <label class="form-label" for="finalComments">{{ 'Comments' | t: 'staff.remote.finalSubmit.comments.label' }}<span class="req">*</span></label>
           <textarea id="finalComments" name="finalComments" class="form-control" maxlength="2000" rows="4" [(ngModel)]="f.comments"></textarea>
           <div class="form-check mt-2">
             <input type="checkbox" class="form-check-input" id="finalConfirm" name="finalConfirm" [(ngModel)]="f.confirmed" />
@@ -1136,8 +1136,8 @@
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>
         <div class="modal-footer">
-          <input type="button" class="btn btn-default" value="Cancel" (click)="finalSubmit.set(null)" />
-          <input type="button" class="btn btn-primary submit" value="Submit" [disabled]="!canSubmit(f) || busy()" (click)="submit()" />
+          <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.remote.cancelButton'" (click)="finalSubmit.set(null)" />
+          <input type="button" class="btn btn-primary submit" [value]="'Submit' | t: 'staff.remote.finalSubmit.submitButton'" [disabled]="!canSubmit(f) || busy()" (click)="submit()" />
         </div>
       </div>
     </div>
@@ -1146,11 +1146,11 @@
 }
 
 @if (preview(); as src) {
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image">
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" [attr.aria-label]="'Image' | t: 'staff.remote.preview.aria'">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-body text-center"><img [src]="src" class="img-fluid" alt="Preview" /></div>
-        <div class="modal-footer"><input type="button" class="btn btn-default" value="OK" (click)="preview.set(null)" /></div>
+        <div class="modal-body text-center"><img [src]="src" class="img-fluid" [alt]="'Preview' | t: 'staff.remote.preview.alt'" /></div>
+        <div class="modal-footer"><input type="button" class="btn btn-default" [value]="'OK' | t: 'staff.remote.preview.okButton'" (click)="preview.set(null)" /></div>
       </div>
     </div>
   </div>
@@ -1158,12 +1158,12 @@
 }
 
 @if (photoToRemove()) {
-  <zed-confirm-dialog [ask]="{ title: 'Remove this photo?', message: 'The photo is deleted from this assessment.', confirmLabel: 'Remove', danger: true }"
+  <zed-confirm-dialog [ask]="removeAsk()"
                       (confirmed)="confirmRemovePhoto()" (cancel)="photoToRemove.set(null)" />
 }
 
 @if (loading()) {
   <div class="loadingdiv" role="status" aria-live="polite">
-    <div class="text-center text-white"><div class="spinner-border text-light"></div><div><small>Please wait ...</small></div></div>
+    <div class="text-center text-white"><div class="spinner-border text-light"></div><div><small>{{ 'Please wait ...' | t: 'staff.remote.wait.text' }}</small></div></div>
   </div>
 }

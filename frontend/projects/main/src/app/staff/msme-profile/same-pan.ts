@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe } from '../../content/page-text';
 
 /** 2026-11-18 (the user: "ZED ID is not required to show"): the unit name and its complete address, no ZED ID. */
 export interface SamePanUnit {
@@ -31,21 +32,22 @@ export interface SamePanResponse {
  */
 @Component({
   selector: 'zed-same-pan',
+  imports: [TextPipe],
   template: `
     @if (data(); as d) {
       @if (d.others.length) {
         <div class="sp-strip" role="status" data-same-pan>
           <svg class="sp-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg>
           <div class="sp-text">
-            <b>Same PAN: {{ d.others.length === 1 ? '1 other ZED unit is' : d.others.length + ' other ZED units are' }} registered with PAN {{ d.pan }}</b>
-            <span>Check that this is a different plant before you accept the application.</span>
+            <b>{{ d.others.length === 1 ? ('Same PAN: 1 other ZED unit is registered with PAN {pan}' | t: 'staff.samePan.strip.one' : { pan: d.pan }) : ('Same PAN: {count} other ZED units are registered with PAN {pan}' | t: 'staff.samePan.strip.many' : { count: d.others.length, pan: d.pan }) }}</b>
+            <span>{{ 'Check that this is a different plant before you accept the application.' | t: 'staff.samePan.strip.note' }}</span>
             <ul class="sp-list">
               @for (u of d.others; track $index) {
                 <li><b>{{ u.unitName || '—' }}</b><span>{{ u.address || '—' }}</span></li>
               }
             </ul>
           </div>
-          <button type="button" class="btn btn-link btn-sm p-0 sp-view" (click)="open.set(true)">View units</button>
+          <button type="button" class="btn btn-link btn-sm p-0 sp-view" (click)="open.set(true)">{{ 'View units' | t: 'staff.samePan.viewButton' }}</button>
         </div>
         @if (open()) {
           <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="same-pan-title" (click)="open.set(false)">
@@ -53,16 +55,16 @@ export interface SamePanResponse {
               <div class="modal-content">
                 <div class="modal-header">
                   <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                    <h3 class="registration-title m-0" id="same-pan-title">Other ZED units with the same PAN</h3>
-                    <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="open.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                    <h3 class="registration-title m-0" id="same-pan-title">{{ 'Other ZED units with the same PAN' | t: 'staff.samePan.dialog.title' }}</h3>
+                    <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.samePan.dialog.closeAria'" (click)="open.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
                   </div>
                 </div>
                 <div class="modal-body">
-                  <p class="sp-intro">For tracing repeat registrations (PAN {{ d.pan }}).
-                    @if (d.this; as me) { This unit: {{ me.unitName }}, {{ me.address }} }</p>
+                  <p class="sp-intro">{{ 'For tracing repeat registrations (PAN {pan}).' | t: 'staff.samePan.dialog.intro' : { pan: d.pan } }}
+                    @if (d.this; as me) { {{ 'This unit: {name}, {address}' | t: 'staff.samePan.dialog.thisUnit' : { name: me.unitName, address: me.address } }} }</p>
                   <div class="table-responsive">
                     <table class="table table-bordered table-zed mb-0" data-same-pan-list>
-                      <thead><tr><th>Unit name</th><th>Complete address</th></tr></thead>
+                      <thead><tr><th>{{ 'Unit name' | t: 'staff.samePan.dialog.column.unitName' }}</th><th>{{ 'Complete address' | t: 'staff.samePan.dialog.column.address' }}</th></tr></thead>
                       <tbody>
                         @for (u of d.others; track $index) {
                           <tr><td>{{ u.unitName || '—' }}</td><td class="sp-addr">{{ u.address || '—' }}</td></tr>
@@ -71,7 +73,7 @@ export interface SamePanResponse {
                     </table>
                   </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-default" (click)="open.set(false)">Close</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-default" (click)="open.set(false)">{{ 'Close' | t: 'staff.samePan.dialog.closeButton' }}</button></div>
               </div>
             </div>
           </div>

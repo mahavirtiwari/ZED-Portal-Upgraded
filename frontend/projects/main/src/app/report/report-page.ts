@@ -6,13 +6,22 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { withApiBase } from '../api-base';
 import { REPORT_KINDS, ReportKind, ReportPage, ReportTarget, reportApiUrl, reportLinkApiUrl } from './report.api';
+import { TextPipe, t } from '../content/page-text';
 
 /** Opens the browser's print dialog (replaced in tests). */
 export const PRINT_PAGE = new InjectionToken<() => void>('PRINT_PAGE', { providedIn: 'root', factory: () => () => window.print() });
 
 interface Chip { id: string; label: string }
 
-const MILESTONE_NAMES = ['BDSR / HAP', 'Progress review 1', 'Progress review 2'];
+/** A handholding milestone's name (the report page's toolbar). */
+function milestoneName(n: number): string {
+  switch (n) {
+    case 1: return t('common.report.milestone1Name', 'BDSR / HAP');
+    case 2: return t('common.report.milestone2Name', 'Progress review 1');
+    case 3: return t('common.report.milestone3Name', 'Progress review 2');
+    default: return '';
+  }
+}
 
 /**
  * A ZED report as a page (2026-11-15, docs/designs/reports-html.html): the assessment, surveillance or handholding milestone
@@ -37,7 +46,7 @@ export const zedTitle = (name: string | null | undefined): string => {
 
 @Component({
   selector: 'zed-report-page',
-  imports: [NgTemplateOutlet, UpperCasePipe],
+  imports: [NgTemplateOutlet, UpperCasePipe, TextPipe],
   templateUrl: './report-page.html',
 })
 export class ReportPageView implements OnInit {
@@ -50,8 +59,8 @@ export class ReportPageView implements OnInit {
   readonly zedId = input('', { transform: orEmpty });
   readonly record = input('', { transform: orEmpty });
   readonly milestone = input('', { transform: orEmpty });
-  /** /report/link?t=… */
-  readonly t = input('', { transform: orEmpty });
+  /** /report/link?t=… (the query parameter t). */
+  readonly token = input('', { alias: 't', transform: orEmpty });
 
   private readonly http = inject(HttpClient);
   private readonly title = inject(Title);
@@ -65,12 +74,18 @@ export class ReportPageView implements OnInit {
 
   protected readonly toolbarTitle = computed(() => {
     const r = this.report();
-    if (!r) return 'ZED Report';
+    if (!r) return t('common.report.title', 'ZED Report');
     if (r.kind === 'milestone') {
       const n = r.milestone?.number ?? 0;
-      return `Handholding Report · Milestone ${n}${MILESTONE_NAMES[n - 1] ? ` (${MILESTONE_NAMES[n - 1]})` : ''}`;
+      const name = milestoneName(n);
+      return name
+        ? t('common.report.milestoneNamedTitle', 'Handholding Report · Milestone {no} ({name})', { no: n, name })
+        : t('common.report.milestoneTitle', 'Handholding Report · Milestone {no}', { no: n });
     }
-    return `${r.kind === 'surveillance' ? 'Surveillance Report' : 'Assessment Report'} · ${zedTitle(r.levelName)}`;
+    const level = zedTitle(r.levelName);
+    return r.kind === 'surveillance'
+      ? t('common.report.surveillanceTitle', 'Surveillance Report · {level}', { level })
+      : t('common.report.assessmentTitle', 'Assessment Report · {level}', { level });
   });
 
   /** The section chips of the toolbar; each scrolls to its sheet. */
@@ -80,21 +95,22 @@ export class ReportPageView implements OnInit {
     if (r.kind === 'milestone') {
       const m = r.milestone;
       return [
-        { id: 'rp-cover', label: 'Cover' },
-        { id: 'rp-overview', label: 'Overview' },
-        ...(m && (m.gaps.length || m.progress) ? [{ id: 'rp-plan', label: m.number === 1 ? 'Gaps and plan' : 'Progress' }] : []),
-        { id: 'rp-unit', label: 'Unit details' },
-        ...(m?.meetings.length ? [{ id: 'rp-meetings', label: 'Meetings' }] : []),
-        { id: 'rp-way', label: 'Way forward' },
+        { id: 'rp-cover', label: t('common.report.chip.cover', 'Cover') },
+        { id: 'rp-overview', label: t('common.report.chip.overview', 'Overview') },
+        ...(m && (m.gaps.length || m.progress)
+          ? [{ id: 'rp-plan', label: m.number === 1 ? t('common.report.chip.gapsPlan', 'Gaps and plan') : t('common.report.chip.progress', 'Progress') }] : []),
+        { id: 'rp-unit', label: t('common.report.chip.unit', 'Unit details') },
+        ...(m?.meetings.length ? [{ id: 'rp-meetings', label: t('common.report.chip.meetings', 'Meetings') }] : []),
+        { id: 'rp-way', label: t('common.report.chip.way', 'Way forward') },
       ];
     }
     return [
-      { id: 'rp-cover', label: 'Cover' },
-      { id: 'rp-summary', label: 'Summary' },
-      { id: 'rp-unit', label: 'Unit details' },
-      ...(r.findings.length ? [{ id: 'rp-findings', label: 'Findings' }] : []),
-      ...(r.ncRounds.length ? [{ id: 'rp-nc', label: 'Non-conformances' }] : []),
-      { id: 'rp-way', label: 'Way forward' },
+      { id: 'rp-cover', label: t('common.report.chip.cover', 'Cover') },
+      { id: 'rp-summary', label: t('common.report.chip.summary', 'Summary') },
+      { id: 'rp-unit', label: t('common.report.chip.unit', 'Unit details') },
+      ...(r.findings.length ? [{ id: 'rp-findings', label: t('common.report.chip.findings', 'Findings') }] : []),
+      ...(r.ncRounds.length ? [{ id: 'rp-nc', label: t('common.report.chip.nc', 'Non-conformances') }] : []),
+      { id: 'rp-way', label: t('common.report.chip.way', 'Way forward') },
     ];
   });
 
@@ -169,11 +185,11 @@ export class ReportPageView implements OnInit {
   }
 
   private async load(): Promise<void> {
-    const token = this.t().trim();
+    const token = this.token().trim();
     const target = token ? null : this.target();
     if (!token && !target) {
       this.loading.set(false);
-      this.error.set('This report address is not valid.');
+      this.error.set(t('common.report.addressError', 'This report address is not valid.'));
       return;
     }
     try {
@@ -184,8 +200,8 @@ export class ReportPageView implements OnInit {
       this.error.set(
         err instanceof HttpErrorResponse && err.status === 404
           ? token
-            ? 'This report link has expired or is not valid. Please open the report again from the app.'
-            : 'This report is not available.'
+            ? t('common.report.linkExpiredError', 'This report link has expired or is not valid. Please open the report again from the app.')
+            : t('common.report.notAvailableError', 'This report is not available.')
           : apiErrorMessage(err),
       );
     } finally {

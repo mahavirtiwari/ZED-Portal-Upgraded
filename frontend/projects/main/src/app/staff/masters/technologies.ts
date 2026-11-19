@@ -7,6 +7,7 @@ import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { MastersApi, Technology } from './masters.api';
 import { ConfirmService } from '../confirm-dialog';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Which technologies the list shows (the buttons beside the search box). */
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -19,24 +20,24 @@ type StatusFilter = 'all' | 'active' | 'inactive';
  */
 @Component({
   selector: 'zed-staff-technologies',
-  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Technologies</h3>
-        <p class="page-sub">Technologies the MSMEs can choose under Technology Upgradation, with their NIC sectors and categories.</p>
+        <h3 class="registration-title">{{ 'Technologies' | t: 'staff.technologies.title' }}</h3>
+        <p class="page-sub">{{ 'Technologies the MSMEs can choose under Technology Upgradation, with their NIC sectors and categories.' | t: 'staff.technologies.sub' }}</p>
       </div>
       <div class="page-actions">
-        <zed-excel-tools api="/api/staff/masters/technologies" title="Technologies" fileName="technologies" (applied)="load()" />
-        <a routerLink="/staff/masters/technologies/new" class="btn btn-primary">+ Add New Technology</a>
+        <zed-excel-tools api="/api/staff/masters/technologies" [title]="'Technologies' | t: 'staff.technologies.excel.title'" fileName="technologies" (applied)="load()" />
+        <a routerLink="/staff/masters/technologies/new" class="btn btn-primary">{{ '+ Add New Technology' | t: 'staff.technologies.add.button' }}</a>
       </div>
     </div>
 
     <div class="tech-stats">
-      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Technologies</span></div>
-      <div class="stat stat-on"><span class="stat-value">{{ stats().active }}</span><span class="stat-label">Active (MSMEs can choose them)</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().inactive }}</span><span class="stat-label">Inactive</span></div>
-      <div class="stat"><span class="stat-value">{{ categoryChips().length }}</span><span class="stat-label">Categories in use</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Technologies' | t: 'staff.technologies.count.total' }}</span></div>
+      <div class="stat stat-on"><span class="stat-value">{{ stats().active }}</span><span class="stat-label">{{ 'Active (MSMEs can choose them)' | t: 'staff.technologies.count.active' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().inactive }}</span><span class="stat-label">{{ 'Inactive' | t: 'staff.technologies.count.inactive' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ categoryChips().length }}</span><span class="stat-label">{{ 'Categories in use' | t: 'staff.technologies.count.categories' }}</span></div>
     </div>
 
     @if (error()) {
@@ -48,21 +49,22 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 
     <div class="zed-card list-card">
       <div class="list-toolbar">
-        <input type="search" class="form-control search" placeholder="Search code, name, sector or category" aria-label="Search technologies"
+        <input type="search" class="form-control search" [placeholder]="'Search code, name, sector or category' | t: 'staff.technologies.search.placeholder'"
+               [attr.aria-label]="'Search technologies' | t: 'staff.technologies.search.aria'"
                [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
         @if (categoryChips().length) {
           <label class="cat-filter">
-            <span class="cat-label">Category</span>
-            <select class="form-select" aria-label="Category" [ngModel]="category()" (ngModelChange)="setCategory($event)">
-              <option value="">All categories</option>
+            <span class="cat-label">{{ 'Category' | t: 'staff.technologies.category.label' }}</span>
+            <select class="form-select" [attr.aria-label]="'Category' | t: 'staff.technologies.category.label'" [ngModel]="category()" (ngModelChange)="setCategory($event)">
+              <option value="">{{ 'All categories' | t: 'staff.technologies.category.all.option' }}</option>
               @for (c of categoryChips(); track c.name) {
                 <option [value]="c.name">{{ c.name }} ({{ c.count }})</option>
               }
             </select>
           </label>
         }
-        <div class="seg" role="group" aria-label="Status">
-          @for (f of filters; track f.key) {
+        <div class="seg" role="group" [attr.aria-label]="'Status' | t: 'staff.technologies.filter.aria'">
+          @for (f of filters(); track f.key) {
             <button type="button" [class.active]="status() === f.key" [attr.aria-pressed]="status() === f.key" (click)="setStatus(f.key)">{{ f.label }}</button>
           }
         </div>
@@ -80,51 +82,51 @@ type StatusFilter = 'all' | 'active' | 'inactive';
           </colgroup>
           <thead>
             <tr>
-              <th class="text-center">Code</th>
-              <th>Technology</th>
-              <th>NIC Sectors</th>
-              <th>Categories</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th class="text-center">{{ 'Code' | t: 'staff.technologies.column.code' }}</th>
+              <th>{{ 'Technology' | t: 'staff.technologies.column.technology' }}</th>
+              <th>{{ 'NIC Sectors' | t: 'staff.technologies.column.sectors' }}</th>
+              <th>{{ 'Categories' | t: 'staff.technologies.column.categories' }}</th>
+              <th>{{ 'Status' | t: 'staff.technologies.column.status' }}</th>
+              <th>{{ 'Actions' | t: 'staff.technologies.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
-            @for (t of pager.page(); track t.id) {
-              <tr [class.is-off]="!t.isActive">
-                <td class="text-center code-cell" data-label="Code"><span class="code-badge">{{ t.technologyCode }}</span></td>
-                <td class="description" data-label="Technology">
-                  <div class="tech-name">{{ t.technologyName }}</div>
-                  @if (t.description) {
-                    <div class="tech-desc" [class.clamp-3]="!expanded().has(t.id)" [title]="t.description">{{ t.description }}</div>
-                    @if (t.description.length > 160) {
-                      <button type="button" class="btn btn-link btn-sm p-0 more" (click)="toggle(t.id)">{{ expanded().has(t.id) ? 'less' : 'more' }}</button>
+            @for (tech of pager.page(); track tech.id) {
+              <tr [class.is-off]="!tech.isActive">
+                <td class="text-center code-cell" [attr.data-label]="'Code' | t: 'staff.technologies.column.code'"><span class="code-badge">{{ tech.technologyCode }}</span></td>
+                <td class="description" [attr.data-label]="'Technology' | t: 'staff.technologies.column.technology'">
+                  <div class="tech-name">{{ tech.technologyName }}</div>
+                  @if (tech.description) {
+                    <div class="tech-desc" [class.clamp-3]="!expanded().has(tech.id)" [title]="tech.description">{{ tech.description }}</div>
+                    @if (tech.description.length > 160) {
+                      <button type="button" class="btn btn-link btn-sm p-0 more" (click)="toggle(tech.id)">{{ expanded().has(tech.id) ? ('less' | t: 'staff.technologies.row.less.button') : ('more' | t: 'staff.technologies.row.more.button') }}</button>
                     }
                   } @else {
-                    <div class="tech-desc muted">No description</div>
+                    <div class="tech-desc muted">{{ 'No description' | t: 'staff.technologies.row.noDescription.text' }}</div>
                   }
                 </td>
-                <td data-label="NIC Sectors">
-                  @for (s of t.sectors; track $index) { <span class="zed-chip" [title]="s">{{ s }}</span> } @empty { <span class="muted">—</span> }
+                <td [attr.data-label]="'NIC Sectors' | t: 'staff.technologies.column.sectors'">
+                  @for (s of tech.sectors; track $index) { <span class="zed-chip" [title]="s">{{ s }}</span> } @empty { <span class="muted">—</span> }
                 </td>
-                <td data-label="Categories">
-                  @for (c of t.categories; track $index) { <span class="zed-chip cat" [title]="c">{{ c }}</span> } @empty { <span class="muted">—</span> }
+                <td [attr.data-label]="'Categories' | t: 'staff.technologies.column.categories'">
+                  @for (c of tech.categories; track $index) { <span class="zed-chip cat" [title]="c">{{ c }}</span> } @empty { <span class="muted">—</span> }
                 </td>
-                <td class="status-cell" data-label="Status"><span class="status-badge" [class.is-active]="t.isActive" [class.is-inactive]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span></td>
-                <td class="actions-cell" data-label="Actions">
+                <td class="status-cell" [attr.data-label]="'Status' | t: 'staff.technologies.column.status'"><span class="status-badge" [class.is-active]="tech.isActive" [class.is-inactive]="!tech.isActive">{{ tech.isActive ? ('Active' | t: 'staff.technologies.row.active.status') : ('Inactive' | t: 'staff.technologies.row.inactive.status') }}</span></td>
+                <td class="actions-cell" [attr.data-label]="'Actions' | t: 'staff.technologies.column.actions'">
                   <div class="row-actions">
-                    <a class="btn btn-outline-primary" [routerLink]="['/staff/masters/technologies', t.id]">Edit</a>
-                    @if (t.isActive) {
-                      <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="setActive(t, false)">Deactivate</button>
+                    <a class="btn btn-outline-primary" [routerLink]="['/staff/masters/technologies', tech.id]">{{ 'Edit' | t: 'staff.technologies.row.edit.link' }}</a>
+                    @if (tech.isActive) {
+                      <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="setActive(tech, false)">{{ 'Deactivate' | t: 'staff.technologies.row.deactivate.button' }}</button>
                     } @else {
-                      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="setActive(t, true)">Activate</button>
+                      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="setActive(tech, true)">{{ 'Activate' | t: 'staff.technologies.row.activate.button' }}</button>
                     }
                   </div>
                 </td>
               </tr>
             } @empty {
               <tr class="empty-row"><td colspan="6" style="padding: 0"><div class="no-data">
-                @if (pager.search() || status() !== 'all' || category()) { No technology matches the search or filter. }
-                @else { No technologies yet. Add one with + Add New Technology. }
+                @if (pager.search() || status() !== 'all' || category()) { {{ 'No technology matches the search or filter.' | t: 'staff.technologies.noMatch.empty' }} }
+                @else { {{ 'No technologies yet. Add one with + Add New Technology.' | t: 'staff.technologies.empty' }} }
               </div></td></tr>
             }
           </tbody>
@@ -188,11 +190,11 @@ export class TechnologiesPage {
 
   /** Every technology; the pager holds those the status and category filters let through. */
   private readonly rows = signal<Technology[]>([]);
-  protected readonly filters: readonly { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'active', label: 'Active' },
-    { key: 'inactive', label: 'Inactive' },
-  ];
+  protected readonly filters = computed((): readonly { key: StatusFilter; label: string }[] => [
+    { key: 'all', label: t('staff.technologies.filter.all', 'All') },
+    { key: 'active', label: t('staff.technologies.filter.active', 'Active') },
+    { key: 'inactive', label: t('staff.technologies.filter.inactive', 'Inactive') },
+  ]);
   protected readonly status = signal<StatusFilter>('all');
   /** The category chip picked ('' = all). */
   protected readonly category = signal('');
@@ -253,15 +255,18 @@ export class TechnologiesPage {
     });
   }
 
-  protected async setActive(t: Technology, active: boolean): Promise<void> {
+  protected async setActive(tech: Technology, active: boolean): Promise<void> {
     if (!active && !(await this.confirms.ask({
-      title: 'Deactivate the Technology?', message: `${t.technologyName || 'This technology'} is no longer offered to MSMEs.`, confirmLabel: 'Deactivate', danger: true,
+      title: t('staff.technologies.deactivate.title', 'Deactivate the Technology?'),
+      message: tech.technologyName ? t('staff.technologies.deactivate.message', '{name} is no longer offered to MSMEs.', { name: tech.technologyName })
+        : t('staff.technologies.deactivate.unnamed.message', 'This technology is no longer offered to MSMEs.'),
+      confirmLabel: t('staff.technologies.deactivate.button', 'Deactivate'), danger: true,
     }))) return;
     this.saving.set(true);
     this.error.set('');
     this.success.set('');
     try {
-      this.success.set((await firstValueFrom(this.api.setTechnologyActive(t.id, active))).message);
+      this.success.set((await firstValueFrom(this.api.setTechnologyActive(tech.id, active))).message);
       await this.load();
     } catch (err) {
       this.error.set(apiErrorMessage(err));

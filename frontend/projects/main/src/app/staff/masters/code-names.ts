@@ -7,27 +7,40 @@ import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { AdminPortal, AdminPortalService } from '../admin-portal';
 import { CodeName, CodeNameKind, MastersApi, SECTOR_ACTIVITIES, SectorActivity } from './masters.api';
+import { TextPipe, t } from '../../content/page-text';
 
-const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
-  sectors: { title: 'Sectors', one: 'Sector', sub: 'NIC sectors used to classify the MSMEs and the technologies.' },
-  categories: { title: 'Categories', one: 'Category', sub: 'Categories the technologies are grouped under.' },
-};
+/** The page's words for the list (read in templates / computed, so the Admin's wording shows). */
+function labelsOf(kind: CodeNameKind): { title: string; one: string; sub: string } {
+  return kind === 'categories'
+    ? { title: t('staff.sectorsAndCategories.categories.title', 'Categories'), one: t('staff.sectorsAndCategories.categories.one.label', 'Category'),
+        sub: t('staff.sectorsAndCategories.categories.sub', 'Categories the technologies are grouped under.') }
+    : { title: t('staff.sectorsAndCategories.sectors.title', 'Sectors'), one: t('staff.sectorsAndCategories.sectors.one.label', 'Sector'),
+        sub: t('staff.sectorsAndCategories.sectors.sub', 'NIC sectors used to classify the MSMEs and the technologies.') };
+}
+
+/** A sector type as shown (the code value stays 'Manufacturing' / 'Services'). */
+function activityLabel(a: SectorActivity | string): string {
+  return a === 'Services' ? t('staff.sectorsAndCategories.activity.services.label', 'Services')
+    : a === 'Manufacturing' ? t('staff.sectorsAndCategories.activity.manufacturing.label', 'Manufacturing') : a;
+}
 
 /** The one-line explanation of each sector type on its choice card. */
-const ACTIVITY_NOTES: Record<SectorActivity, string> = {
-  Manufacturing: 'Makes or processes goods',
-  Services: 'Provides services',
-};
+function activityNote(a: SectorActivity): string {
+  return a === 'Services' ? t('staff.sectorsAndCategories.activity.services.note', 'Provides services')
+    : t('staff.sectorsAndCategories.activity.manufacturing.note', 'Makes or processes goods');
+}
+
+/** A portal's name as shown. */
+function portalName(p: OtherPortal): string {
+  return p === 'consultancy' ? t('staff.sectorsAndCategories.portal.consultancy.label', 'Consultancy') : t('staff.sectorsAndCategories.portal.surveillance.label', 'Surveillance');
+}
 
 /** Which sectors the list shows (the buttons beside the search box). */
 type SectorFilter = 'all' | SectorActivity | 'unset';
 
 /** V4 one Admin: the portals whose sector list the main Admin keeps the same as main's. */
 type OtherPortal = Exclude<AdminPortal, 'main'>;
-const OTHER_PORTALS: readonly { key: OtherPortal; name: string }[] = [
-  { key: 'consultancy', name: 'Consultancy' },
-  { key: 'surveillance', name: 'Surveillance' },
-];
+const OTHER_PORTALS: readonly { key: OtherPortal }[] = [{ key: 'consultancy' }, { key: 'surveillance' }];
 
 /** A sector on another portal: the same as main's, different (name or type), missing, or not known (portal not reached). */
 type PortalState = 'same' | 'differs' | 'missing' | 'unknown';
@@ -50,26 +63,26 @@ interface OtherList {
  */
 @Component({
   selector: 'zed-staff-code-names',
-  imports: [FormsModule, PagerComponent, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, ExcelToolsComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">{{ labels.title }}</h3>
-        <p class="page-sub">{{ labels.sub }}</p>
+        <h3 class="registration-title">{{ labels().title }}</h3>
+        <p class="page-sub">{{ labels().sub }}</p>
       </div>
       <div class="page-actions">
-        <zed-excel-tools [api]="'/api/staff/masters/' + kind" [title]="labels.title" [fileName]="kind" (applied)="load(true)" />
-        <button type="button" class="btn btn-primary" (click)="openAdd()">+ Add {{ labels.one.toLowerCase() }}</button>
+        <zed-excel-tools [api]="'/api/staff/masters/' + kind" [title]="labels().title" [fileName]="kind" (applied)="load(true)" />
+        <button type="button" class="btn btn-primary" (click)="openAdd()">{{ '+ Add {word}' | t: 'staff.sectorsAndCategories.add.button' : { word: labels().one.toLowerCase() } }}</button>
       </div>
     </div>
 
     @if (isSectors) {
       <div class="cn-stats">
-        <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Sectors</span></div>
-        <div class="stat"><span class="stat-value">{{ stats().manufacturing }}</span><span class="stat-label">Manufacturing</span></div>
-        <div class="stat"><span class="stat-value">{{ stats().services }}</span><span class="stat-label">Services</span></div>
-        <div class="stat" [class.stat-warn]="stats().unset > 0"><span class="stat-value">{{ stats().unset }}</span><span class="stat-label">Type not set</span></div>
-        <div class="stat stat-off"><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">Disabled</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Sectors' | t: 'staff.sectorsAndCategories.count.sectors' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().manufacturing }}</span><span class="stat-label">{{ 'Manufacturing' | t: 'staff.sectorsAndCategories.count.manufacturing' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().services }}</span><span class="stat-label">{{ 'Services' | t: 'staff.sectorsAndCategories.count.services' }}</span></div>
+        <div class="stat" [class.stat-warn]="stats().unset > 0"><span class="stat-value">{{ stats().unset }}</span><span class="stat-label">{{ 'Type not set' | t: 'staff.sectorsAndCategories.count.unset' }}</span></div>
+        <div class="stat stat-off"><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">{{ 'Disabled' | t: 'staff.sectorsAndCategories.count.disabled' }}</span></div>
       </div>
     }
 
@@ -78,17 +91,18 @@ interface OtherList {
     }
     @if (syncing()) {
       @for (o of otherPortals; track o.key) {
-        @if (others()[o.key].error; as e) { <div class="alert alert-warning" role="status">{{ o.name }} portal: {{ e }}</div> }
+        @if (others()[o.key].error; as e) { <div class="alert alert-warning" role="status">{{ '{portal} portal: {error}' | t: 'staff.sectorsAndCategories.sync.portalError.message' : { portal: portalName(o.key), error: e } }}</div> }
       }
       @if (outOfStep() > 0) {
         <div class="alert alert-info sync-bar" role="status">
-          <span><strong>{{ outOfStep() }}</strong> {{ outOfStep() === 1 ? 'sector is' : 'sectors are' }} missing or different on the other portals.</span>
-          <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="syncAll()">Make all portals the same</button>
+          <span>{{ outOfStep() === 1 ? ('{count} sector is missing or different on the other portals.' | t: 'staff.sectorsAndCategories.sync.outOfStep.one.message' : { count: outOfStep() })
+            : ('{count} sectors are missing or different on the other portals.' | t: 'staff.sectorsAndCategories.sync.outOfStep.many.message' : { count: outOfStep() }) }}</span>
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="syncAll()">{{ 'Make all portals the same' | t: 'staff.sectorsAndCategories.sync.button' }}</button>
         </div>
       }
       @for (o of otherPortals; track o.key) {
         @if (onlyOn(o.key); as only) {
-          @if (only.length) { <p class="only-on">Only on the {{ o.name }} portal (kept there): {{ only.join(', ') }}</p> }
+          @if (only.length) { <p class="only-on">{{ 'Only on the {portal} portal (kept there): {codes}' | t: 'staff.sectorsAndCategories.sync.onlyOn.note' : { portal: portalName(o.key), codes: only.join(', ') } }}</p> }
         }
       }
     }
@@ -98,59 +112,62 @@ interface OtherList {
 
     <div class="zed-card list-card">
       <div class="list-toolbar">
-        <input type="search" class="form-control search" placeholder="Search code or name" [attr.aria-label]="'Search ' + labels.title.toLowerCase()"
+        <input type="search" class="form-control search" [placeholder]="'Search code or name' | t: 'staff.sectorsAndCategories.search.placeholder'"
+               [attr.aria-label]="'Search {list}' | t: 'staff.sectorsAndCategories.search.aria' : { list: labels().title.toLowerCase() }"
                [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
         @if (isSectors) {
-          <div class="seg" role="group" aria-label="Sector type">
+          <div class="seg" role="group" [attr.aria-label]="'Sector type' | t: 'staff.sectorsAndCategories.filter.aria'">
             @for (f of filters(); track f.key) {
               <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="setFilter(f.key)">{{ f.label }}</button>
             }
           </div>
         } @else {
-          <span class="zed-chip">{{ rows().length }} {{ rows().length === 1 ? labels.one.toLowerCase() : labels.title.toLowerCase() }}</span>
+          <span class="zed-chip">{{ rows().length === 1 ? ('{count} {one}' | t: 'staff.sectorsAndCategories.total.one.chip' : { count: rows().length, one: labels().one.toLowerCase() })
+            : ('{count} {many}' | t: 'staff.sectorsAndCategories.total.many.chip' : { count: rows().length, many: labels().title.toLowerCase() }) }}</span>
         }
       </div>
       <div class="table-responsive">
         <table class="table table-zed cn-table">
           <thead>
             <tr>
-              <th class="text-center" style="width: 140px">{{ labels.one }} Code</th>
-              <th>{{ labels.one }} Name</th>
-              @if (isSectors) { <th style="width: 170px">Sector Type</th> }
-              @if (syncing()) { <th style="width: 210px">Other portals</th> }
-              <th class="text-center" [style.width.px]="isSectors ? 220 : 140">Actions</th>
+              <th class="text-center" style="width: 140px">{{ '{word} Code' | t: 'staff.sectorsAndCategories.column.code' : { word: labels().one } }}</th>
+              <th>{{ '{word} Name' | t: 'staff.sectorsAndCategories.column.name' : { word: labels().one } }}</th>
+              @if (isSectors) { <th style="width: 170px">{{ 'Sector Type' | t: 'staff.sectorsAndCategories.column.type' }}</th> }
+              @if (syncing()) { <th style="width: 210px">{{ 'Other portals' | t: 'staff.sectorsAndCategories.column.portals' }}</th> }
+              <th class="text-center" [style.width.px]="isSectors ? 220 : 140">{{ 'Actions' | t: 'staff.sectorsAndCategories.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
             @for (s of pager.page(); track s.id) {
               <tr [class.row-off]="s.disabled">
                 <td class="text-center code-cell"><span class="code-badge">{{ s.code }}</span></td>
-                <td class="name-cell"><strong>{{ s.name }}</strong>@if (s.disabled) { <span class="off-badge">Disabled</span> }</td>
+                <td class="name-cell"><strong>{{ s.name }}</strong>@if (s.disabled) { <span class="off-badge">{{ 'Disabled' | t: 'staff.sectorsAndCategories.row.disabled.label' }}</span> }</td>
                 @if (isSectors) {
                   <td class="type-cell">
-                    @if (s.activity) { <span class="activity-badge" [class.services]="s.activity === 'Services'">{{ s.activity }}</span> }
-                    @else { <span class="activity-badge unset">Not set</span> }
+                    @if (s.activity) { <span class="activity-badge" [class.services]="s.activity === 'Services'">{{ activityLabel(s.activity) }}</span> }
+                    @else { <span class="activity-badge unset">{{ 'Not set' | t: 'staff.sectorsAndCategories.row.unset.label' }}</span> }
                   </td>
                 }
                 @if (syncing()) {
                   <td class="portals-cell">
                     @for (o of otherPortals; track o.key) {
                       @switch (stateOf(s, o.key)) {
-                        @case ('same') { <span class="pchip ok">{{ o.name }} ✓</span> }
-                        @case ('differs') { <span class="pchip warn" title="Different name or type there">{{ o.name }}: differs</span> }
-                        @case ('missing') { <span class="pchip miss">{{ o.name }}: missing</span> }
-                        @default { <span class="pchip">{{ o.name }}: ?</span> }
+                        @case ('same') { <span class="pchip ok">{{ '{portal} ✓' | t: 'staff.sectorsAndCategories.portalState.same.label' : { portal: portalName(o.key) } }}</span> }
+                        @case ('differs') { <span class="pchip warn" [title]="'Different name or type there' | t: 'staff.sectorsAndCategories.portalState.differs.tooltip'">{{ '{portal}: differs' | t: 'staff.sectorsAndCategories.portalState.differs.label' : { portal: portalName(o.key) } }}</span> }
+                        @case ('missing') { <span class="pchip miss">{{ '{portal}: missing' | t: 'staff.sectorsAndCategories.portalState.missing.label' : { portal: portalName(o.key) } }}</span> }
+                        @default { <span class="pchip">{{ '{portal}: ?' | t: 'staff.sectorsAndCategories.portalState.unknown.label' : { portal: portalName(o.key) } }}</span> }
                       }
                     }
                   </td>
                 }
                 <td class="actions-cell">
                   <div class="row-actions justify-content-center">
-                    <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Edit ' + s.code" (click)="edit(s)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Edit {code}' | t: 'staff.sectorsAndCategories.row.edit.aria' : { code: s.code }" (click)="edit(s)">{{ 'Edit' | t: 'staff.sectorsAndCategories.row.edit.button' }}</button>
                     @if (isSectors) {
                       <!-- 2026-11-16 (approved): a disabled sector leaves the pick-lists; units and records keep it. -->
                       <button type="button" class="btn" [class.btn-outline-danger]="!s.disabled" [class.btn-outline-success]="s.disabled" [disabled]="saving()"
-                              [attr.aria-label]="(s.disabled ? 'Enable ' : 'Disable ') + s.code" (click)="toggleDisabled(s)">{{ s.disabled ? 'Enable' : 'Disable' }}</button>
+                              [attr.aria-label]="s.disabled ? ('Enable {code}' | t: 'staff.sectorsAndCategories.row.enable.aria' : { code: s.code }) : ('Disable {code}' | t: 'staff.sectorsAndCategories.row.disable.aria' : { code: s.code })"
+                              (click)="toggleDisabled(s)">{{ s.disabled ? ('Enable' | t: 'staff.sectorsAndCategories.row.enable.button') : ('Disable' | t: 'staff.sectorsAndCategories.row.disable.button') }}</button>
                     }
                   </div>
                 </td>
@@ -170,42 +187,42 @@ interface OtherList {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="add-title">Add {{ labels.one }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="add-title">{{ 'Add {word}' | t: 'staff.sectorsAndCategories.addDialog.title' : { word: labels().one } }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.sectorsAndCategories.dialog.close.aria'" (click)="adding.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form class="add-form" (ngSubmit)="add()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <label for="code">{{ labels.one }} Code<span class="req">*</span></label>
+                  <label for="code">{{ '{word} Code' | t: 'staff.sectorsAndCategories.form.code.label' : { word: labels().one } }}<span class="req">*</span></label>
                   <div>
                     <input id="code" name="code" class="form-control code-input" maxlength="50" [(ngModel)]="code" />
-                    @if (submitted() && !code.trim()) { <span class="help-block">{{ labels.one }} Code required.</span> }
-                    @else { <small class="muted d-block mt-1">The code cannot be changed later.</small> }
+                    @if (submitted() && !code.trim()) { <span class="help-block">{{ '{word} Code required.' | t: 'staff.sectorsAndCategories.form.code.error' : { word: labels().one } }}</span> }
+                    @else { <small class="muted d-block mt-1">{{ 'The code cannot be changed later.' | t: 'staff.sectorsAndCategories.form.code.note' }}</small> }
                   </div>
-                  <label for="name">{{ labels.one }} Name<span class="req">*</span></label>
+                  <label for="name">{{ '{word} Name' | t: 'staff.sectorsAndCategories.form.name.label' : { word: labels().one } }}<span class="req">*</span></label>
                   <div>
                     <input id="name" name="name" class="form-control" maxlength="200" [(ngModel)]="name" />
-                    @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
+                    @if (submitted() && !name.trim()) { <span class="help-block">{{ '{word} Name required.' | t: 'staff.sectorsAndCategories.form.name.error' : { word: labels().one } }}</span> }
                   </div>
                   @if (isSectors) {
-                    <span class="label-like top" id="activity-label">Sector Type<span class="req">*</span></span>
+                    <span class="label-like top" id="activity-label">{{ 'Sector Type' | t: 'staff.sectorsAndCategories.form.type.label' }}<span class="req">*</span></span>
                     <div>
                       <div class="activity-choice" role="radiogroup" aria-labelledby="activity-label">
                         @for (a of activities; track a) {
                           <label class="choice-card" [class.active]="activity === a"><input type="radio" class="form-check-input" name="activity" [value]="a" [(ngModel)]="activity" />
-                            <span><strong>{{ a }}</strong> <small class="muted d-block">{{ notes[a] }}</small></span></label>
+                            <span><strong>{{ activityLabel(a) }}</strong> <small class="muted d-block">{{ activityNote(a) }}</small></span></label>
                         }
                       </div>
-                      @if (submitted() && !activity) { <span class="help-block">Please select Manufacturing or Services.</span> }
+                      @if (submitted() && !activity) { <span class="help-block">{{ 'Please select Manufacturing or Services.' | t: 'staff.sectorsAndCategories.form.type.error' }}</span> }
                     </div>
                   }
                 </div>
                 @if (addError()) { <span class="help-block d-block mt-2" role="alert">{{ addError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+                <button type="button" class="btn btn-default" (click)="adding.set(false)">{{ 'Cancel' | t: 'staff.sectorsAndCategories.dialog.cancel.button' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Save' | t: 'staff.sectorsAndCategories.dialog.save.button' }}</button>
               </div>
             </form>
           </div>
@@ -220,23 +237,23 @@ interface OtherList {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="edit-title">Edit {{ labels.one }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="edit-title">{{ 'Edit {word}' | t: 'staff.sectorsAndCategories.editDialog.title' : { word: labels().one } }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.sectorsAndCategories.dialog.close.aria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="update()" novalidate>
               <div class="modal-body">
                 <div class="form-grid">
-                  <span class="label-like">{{ labels.one }} Code</span>
-                  <span><span class="code-badge">{{ e.code }}</span> <small class="muted ms-1">Cannot be changed</small></span>
-                  <label for="edit-name">{{ labels.one }} Name<span class="req">*</span></label>
+                  <span class="label-like">{{ '{word} Code' | t: 'staff.sectorsAndCategories.form.code.label' : { word: labels().one } }}</span>
+                  <span><span class="code-badge">{{ e.code }}</span> <small class="muted ms-1">{{ 'Cannot be changed' | t: 'staff.sectorsAndCategories.editDialog.code.note' }}</small></span>
+                  <label for="edit-name">{{ '{word} Name' | t: 'staff.sectorsAndCategories.form.name.label' : { word: labels().one } }}<span class="req">*</span></label>
                   <input id="edit-name" name="editName" class="form-control" maxlength="200" [(ngModel)]="e.name" />
                   @if (isSectors) {
-                    <span class="label-like top" id="edit-activity-label">Sector Type<span class="req">*</span></span>
+                    <span class="label-like top" id="edit-activity-label">{{ 'Sector Type' | t: 'staff.sectorsAndCategories.form.type.label' }}<span class="req">*</span></span>
                     <div class="activity-choice" role="radiogroup" aria-labelledby="edit-activity-label">
                       @for (a of activities; track a) {
                         <label class="choice-card" [class.active]="e.activity === a"><input type="radio" class="form-check-input" name="editActivity" [value]="a" [(ngModel)]="e.activity" />
-                          <span><strong>{{ a }}</strong> <small class="muted d-block">{{ notes[a] }}</small></span></label>
+                          <span><strong>{{ activityLabel(a) }}</strong> <small class="muted d-block">{{ activityNote(a) }}</small></span></label>
                       }
                     </div>
                   }
@@ -244,8 +261,8 @@ interface OtherList {
                 @if (editError()) { <span class="help-block d-block mt-2" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.sectorsAndCategories.dialog.cancel.button' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Save' | t: 'staff.sectorsAndCategories.dialog.save.button' }}</button>
               </div>
             </form>
           </div>
@@ -331,10 +348,12 @@ export class CodeNamesPage {
   private readonly portals = inject(AdminPortalService);
 
   protected readonly kind: CodeNameKind = inject(ActivatedRoute).snapshot.data['kind'] === 'categories' ? 'categories' : 'sectors';
-  protected readonly labels = LABELS[this.kind];
+  protected readonly labels = computed(() => labelsOf(this.kind));
   protected readonly isSectors = this.kind === 'sectors';
   protected readonly activities = SECTOR_ACTIVITIES;
-  protected readonly notes = ACTIVITY_NOTES;
+  protected readonly activityLabel = activityLabel;
+  protected readonly activityNote = activityNote;
+  protected readonly portalName = portalName;
   /** Every row; the pager holds those the sector type filter lets through. */
   protected readonly rows = signal<CodeName[]>([]);
   protected readonly filter = signal<SectorFilter>('all');
@@ -350,8 +369,9 @@ export class CodeNamesPage {
   });
   /** "Not set" is offered only while some sector has no type. */
   protected readonly filters = computed(() => {
-    const list: { key: SectorFilter; label: string }[] = [{ key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a, label: a }))];
-    if (this.stats().unset || this.filter() === 'unset') list.push({ key: 'unset', label: 'Not set' });
+    const list: { key: SectorFilter; label: string }[] = [{ key: 'all', label: t('staff.sectorsAndCategories.filter.all', 'All') },
+      ...SECTOR_ACTIVITIES.map((a) => ({ key: a, label: activityLabel(a) }))];
+    if (this.stats().unset || this.filter() === 'unset') list.push({ key: 'unset', label: t('staff.sectorsAndCategories.filter.unset', 'Not set') });
     return list;
   });
   protected readonly pager = new ClientPager<CodeName>(10);
@@ -380,8 +400,10 @@ export class CodeNamesPage {
   }
 
   protected emptyText(): string {
-    if (this.pager.search() || this.filter() !== 'all') return 'No ' + this.labels.one.toLowerCase() + ' matches the search';
-    return this.rows().length ? 'No Data' : 'No ' + this.labels.title.toLowerCase() + ' yet. Use + Add ' + this.labels.one + ' to add the first one.';
+    const l = this.labels();
+    if (this.pager.search() || this.filter() !== 'all') return t('staff.sectorsAndCategories.noMatch.empty', 'No {word} matches the search', { word: l.one.toLowerCase() });
+    return this.rows().length ? t('staff.sectorsAndCategories.noData.empty', 'No Data')
+      : t('staff.sectorsAndCategories.empty', 'No {list} yet. Use + Add {word} to add the first one.', { list: l.title.toLowerCase(), word: l.one });
   }
 
   protected setFilter(f: SectorFilter): void {
@@ -446,7 +468,7 @@ export class CodeNamesPage {
     const failed: string[] = [];
     for (const o of OTHER_PORTALS) {
       if (!this.others()[o.key].rows) {
-        failed.push(`${o.name}: not reached`);
+        failed.push(t('staff.sectorsAndCategories.sync.notReached.error', '{portal}: not reached', { portal: portalName(o.key) }));
         continue;
       }
       let there = this.find(o.key, code);
@@ -460,7 +482,7 @@ export class CodeNamesPage {
           if (there && !!there.disabled !== disabled) await firstValueFrom(this.api.setSectorDisabled(there.id, disabled, o.key));
         }
       } catch (err) {
-        failed.push(`${o.name}: ${apiErrorMessage(err)}`);
+        failed.push(t('staff.sectorsAndCategories.sync.failed.error', '{portal}: {error}', { portal: portalName(o.key), error: apiErrorMessage(err) }));
       }
     }
     return failed;
@@ -485,7 +507,8 @@ export class CodeNamesPage {
 
   private withOthers(message: string, failed: string[]): string {
     if (!this.syncing()) return message;
-    return failed.length ? `${message} Not saved on every portal: ${failed.join('; ')}` : `${message} Saved on all three portals.`;
+    return failed.length ? t('staff.sectorsAndCategories.sync.partly.message', '{message} Not saved on every portal: {failed}', { message, failed: failed.join('; ') })
+      : t('staff.sectorsAndCategories.sync.allSaved.message', '{message} Saved on all three portals.', { message });
   }
 
   /** Adds or corrects, on the other portals, every sector of main's list that is missing or different there. */
@@ -499,7 +522,7 @@ export class CodeNamesPage {
       for (const row of this.rows()) {
         if (!OTHER_PORTALS.some((o) => ['differs', 'missing'].includes(this.stateOf(row, o.key)))) continue;
         if (!row.activity) {
-          failed.push(`${row.code}: set its type here first`);
+          failed.push(t('staff.sectorsAndCategories.sync.noType.error', '{code}: set its type here first', { code: row.code }));
           continue;
         }
         const f = await this.pushToOthers(row.code, row.name.trim(), row.activity, !!row.disabled);
@@ -507,8 +530,8 @@ export class CodeNamesPage {
         else done++;
       }
       await this.loadOthers();
-      if (failed.length) this.error.set(`${done} sector(s) made the same; not done: ${failed.join('; ')}`);
-      else this.success.set(`${done} sector(s) made the same on all three portals.`);
+      if (failed.length) this.error.set(t('staff.sectorsAndCategories.syncAll.partly.error', '{count} sector(s) made the same; not done: {failed}', { count: done, failed: failed.join('; ') }));
+      else this.success.set(t('staff.sectorsAndCategories.syncAll.done.toast', '{count} sector(s) made the same on all three portals.', { count: done }));
     } finally {
       this.saving.set(false);
     }
@@ -528,7 +551,7 @@ export class CodeNamesPage {
     this.addError.set('');
     this.success.set('');
     if (!this.code.trim() || !this.name.trim() || (this.isSectors && !this.activity)) {
-      this.addError.set('Please enter valid data.');
+      this.addError.set(t('staff.sectorsAndCategories.add.invalid.error', 'Please enter valid data.'));
       return;
     }
     this.saving.set(true);
@@ -557,11 +580,11 @@ export class CodeNamesPage {
     const e = this.editing();
     if (!e) return;
     if (!e.name.trim()) {
-      this.editError.set('Enter the valid data.');
+      this.editError.set(t('staff.sectorsAndCategories.edit.invalid.error', 'Enter the valid data.'));
       return;
     }
     if (this.isSectors && !e.activity) {
-      this.editError.set('Please select Manufacturing or Services.');
+      this.editError.set(t('staff.sectorsAndCategories.form.type.error', 'Please select Manufacturing or Services.'));
       return;
     }
     this.saving.set(true);

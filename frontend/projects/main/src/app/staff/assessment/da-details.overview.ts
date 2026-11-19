@@ -1,3 +1,4 @@
+import { t } from '../../content/page-text';
 import { num, text } from './assessment-shared';
 import { DaDetails, NcRound, Row } from './assessment.api';
 
@@ -74,14 +75,18 @@ export function ncTracker(d: DaDetails | null): TrackItem[] {
     const any = desk ?? d.ncRounds.flatMap((rd) => rd.requirements).find((r) => keyOf(r) === key) ?? {};
     const section = d.sections.find((s) => text(s, 'SectionCode') === text(any, 'SectionCode'));
     const name = text(any, 'RequirementName');
-    const t = track(d, rounds, 'requirement', key, name ? `${key} ${name}` : key,
-      `Parameter ${text(any, 'SectionCode')}${section ? ' · ' + text(section, 'SectionName') : ''}`, (rd) => {
-        const r = rd.requirements.find((x) => keyOf(x) === key);
-        return { raised: !!r, decision: text(r, 'Conformance'), row: r ?? null };
-      });
-    if (t) items.push(t);
+    const code = text(any, 'SectionCode');
+    const group = section
+      ? t('staff.daDetails.tracker.item.parameterNamed.label', 'Parameter {code} · {name}', { code, name: text(section, 'SectionName') })
+      : t('staff.daDetails.tracker.item.parameter.label', 'Parameter {code}', { code });
+    const item = track(d, rounds, 'requirement', key, name ? `${key} ${name}` : key, group, (rd) => {
+      const r = rd.requirements.find((x) => keyOf(x) === key);
+      return { raised: !!r, decision: text(r, 'Conformance'), row: r ?? null };
+    });
+    if (item) items.push(item);
   }
-  const photo = track(d, rounds, 'photo', 'photos', 'Site exterior photos', 'Basic information', (rd) => {
+  const photo = track(d, rounds, 'photo', 'photos', t('staff.daDetails.tracker.item.photos.label', 'Site exterior photos'),
+    t('staff.daDetails.tracker.item.basicGroup.label', 'Basic information'), (rd) => {
     const p = rd.photos.find((x) => text(x, 'PhotoType') === 'SiteExteriorPhotos');
     return { raised: !!p, decision: text(p, 'IsVerified') };
   });
@@ -89,11 +94,12 @@ export function ncTracker(d: DaDetails | null): TrackItem[] {
   const products = [...new Set(d.ncRounds.flatMap((rd) => rd.products.map((p) => text(p, 'ProductParentId') || text(p, 'ProductName'))))];
   for (const id of products) {
     const any = d.ncRounds.flatMap((rd) => rd.products).find((p) => (text(p, 'ProductParentId') || text(p, 'ProductName')) === id) ?? {};
-    const t = track(d, rounds, 'product', 'product-' + id, `Product: ${text(any, 'ProductName')}`, 'Basic information · Product manufactured', (rd) => {
-      const p = rd.products.find((x) => (text(x, 'ProductParentId') || text(x, 'ProductName')) === id);
-      return { raised: !!p, decision: text(p, 'IsVerified') };
-    });
-    if (t) items.push(t);
+    const item = track(d, rounds, 'product', 'product-' + id, t('staff.daDetails.tracker.item.product.label', 'Product: {name}', { name: text(any, 'ProductName') }),
+      t('staff.daDetails.tracker.item.productGroup.label', 'Basic information · Product manufactured'), (rd) => {
+        const p = rd.products.find((x) => (text(x, 'ProductParentId') || text(x, 'ProductName')) === id);
+        return { raised: !!p, decision: text(p, 'IsVerified') };
+      });
+    if (item) items.push(item);
   }
   return items;
 }

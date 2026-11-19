@@ -1,4 +1,5 @@
 import { Component, ElementRef, afterRenderEffect, input, output, viewChild } from '@angular/core';
+import { TextPipe } from '../../content/page-text';
 
 export type AlertKind = 'error' | 'success';
 
@@ -24,6 +25,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'zed-alert-dialog',
+  imports: [TextPipe],
   template: `
     @if (message(); as m) {
       <div class="swal-overlay" (click)="close()" (keydown)="onKey($event)">
@@ -39,9 +41,9 @@ let nextId = 0;
               <span class="swal-icon--success__line swal-icon--success__line--tip"></span>
             </div>
           }
-          <div class="swal-title" [id]="id + '-title'">{{ m.title ?? (m.kind === 'error' ? 'Error!' : 'Success!') }}</div>
+          <div class="swal-title" [id]="id + '-title'">{{ m.title ?? (m.kind === 'error' ? ('Error!' | t: 'common.alert.errorTitle') : ('Success!' | t: 'common.alert.successTitle')) }}</div>
           <div class="swal-text" [id]="id + '-text'">{{ m.text }}</div>
-          <div class="swal-footer"><button #ok type="button" class="swal-button" (click)="close()">OK</button></div>
+          <div class="swal-footer"><button #ok type="button" class="swal-button" (click)="close()">{{ 'OK' | t: 'common.alert.okButton' }}</button></div>
         </div>
       </div>
     }

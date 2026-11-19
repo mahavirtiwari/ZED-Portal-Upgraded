@@ -6,6 +6,7 @@ import { Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ListCount, ListCounts } from '../list-counts';
@@ -89,27 +90,27 @@ const API = '/api/staff/sub-users';
  */
 @Component({
   selector: 'zed-staff-sub-users',
-  imports: [FormsModule, DatePipe, IndianTimePipe, NgTemplateOutlet, PagerComponent, ListSearchComponent, MultiSelect, PageHead, ListCounts, RowMenu, ConfirmDialog],
+  imports: [FormsModule, DatePipe, IndianTimePipe, NgTemplateOutlet, PagerComponent, ListSearchComponent, MultiSelect, PageHead, ListCounts, RowMenu, ConfirmDialog, TextPipe],
   template: `
-    <zed-page-head [crumbs]="crumbs()" [title]="accountType() + 's'"
-                   subtitle="They sign in with their own User ID and work as your login on the screens you give them. Their work is recorded under your login.">
-      <button type="button" class="btn btn-primary" [disabled]="!options().length" (click)="add()">+ Add {{ accountType() }}</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="typePlural()"
+                   [subtitle]="'They sign in with their own User ID and work as your login on the screens you give them. Their work is recorded under your login.' | t: 'staff.subUsers.subtitle'">
+      <button type="button" class="btn btn-primary" [disabled]="!options().length" (click)="add()">{{ '+ Add {type}' | t: 'staff.subUsers.addButton' : { type: accountType() } }}</button>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    <zed-list-counts [counts]="tiles()" [selected]="status()" label="Logins by status" (pick)="pickStatus($event.key)" />
+    <zed-list-counts [counts]="tiles()" [selected]="status()" [label]="'Logins by status' | t: 'staff.subUsers.countsLabel'" (pick)="pickStatus($event.key)" />
     <div class="zed-card su-toolbar">
-      <zed-list-search [(value)]="search" placeholder="Search users" inputId="sub-users-search" [found]="view.total()" />
-      <span class="muted su-showing">{{ view.total() }} of {{ users().length }} logins{{ status() === 'all' ? '' : ' · ' + status() + ' only' }}</span>
+      <zed-list-search [(value)]="search" [placeholder]="'Search users' | t: 'staff.subUsers.search.placeholder'" inputId="sub-users-search" [found]="view.total()" />
+      <span class="muted su-showing">{{ showingText() }}</span>
     </div>
     <div class="zed-card su-list">
       <div class="table-responsive">
         <table class="table table-zed su-table">
           <thead>
             <tr>
-              <th>User</th><th>Contact</th><th>Screens</th><th>Scope</th><th>Last login</th>
-              <th class="text-center" style="width: 110px">Status</th><th class="text-end" style="width: 120px">Actions</th>
+              <th>{{ 'User' | t: 'staff.subUsers.column.user' }}</th><th>{{ 'Contact' | t: 'staff.subUsers.column.contact' }}</th><th>{{ 'Screens' | t: 'staff.subUsers.column.screens' }}</th><th>{{ 'Scope' | t: 'staff.subUsers.column.scope' }}</th><th>{{ 'Last login' | t: 'staff.subUsers.column.lastLogin' }}</th>
+              <th class="text-center" style="width: 110px">{{ 'Status' | t: 'staff.subUsers.column.status' }}</th><th class="text-end" style="width: 120px">{{ 'Actions' | t: 'staff.subUsers.column.actions' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -126,31 +127,31 @@ const API = '/api/staff/sub-users';
                   </div>
                 </td>
                 <!-- 2026-11-18 (the user): the mobile and e-mail in full (never masked); a long e-mail is cut with "…" and its tooltip. -->
-                <td class="su-contact" data-label="Contact">
-                  @if (u.mobileNo) { <span>{{ mobileOf(u) }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
+                <td class="su-contact" [attr.data-label]="'Contact' | t: 'staff.subUsers.column.contact'">
+                  @if (u.mobileNo) { <span>{{ mobileOf(u) }}</span> } @else { <span class="no-mobile">{{ 'Mobile not saved' | t: 'staff.subUsers.row.noMobile' }}</span> }
                   @if (u.email) { <span class="su-mail" [title]="u.email">{{ mailOf(u) }}</span> }
                 </td>
-                <td class="su-screens" data-label="Screens">
+                <td class="su-screens" [attr.data-label]="'Screens' | t: 'staff.subUsers.column.screens'">
                   @if (hasAll(u)) {
-                    <span class="zed-chip su-chip-all">All {{ options().length }} screens</span>
+                    <span class="zed-chip su-chip-all">{{ 'All {count} screens' | t: 'staff.subUsers.row.allScreens' : { count: options().length } }}</span>
                   } @else {
                     @for (p of u.permissions.slice(0, 4); track p) { <span class="zed-chip">{{ label(p) }}</span> }
                     @if (u.permissions.length > 4) {
-                      <span class="zed-chip su-chip-more" [title]="moreLabels(u)">+{{ u.permissions.length - 4 }} more</span>
+                      <span class="zed-chip su-chip-more" [title]="moreLabels(u)">{{ '+{count} more' | t: 'staff.subUsers.row.moreScreens' : { count: u.permissions.length - 4 } }}</span>
                     }
                   }
-                  @if (!u.permissions.length) { <span class="su-mail">No screens</span> }
+                  @if (!u.permissions.length) { <span class="su-mail">{{ 'No screens' | t: 'staff.subUsers.row.noScreens' }}</span> }
                 </td>
-                <td class="su-scope" data-label="Scope"><span class="su-scope-pill" data-scope>{{ scopeText(u) }}</span></td>
-                <td class="su-login" data-label="Last Login">
-                  @if (u.lastLoginAt) { {{ u.lastLoginAt | indianTime }} } @else { <span class="su-never">Never signed in</span> }
-                  <small class="d-block muted">Added {{ u.createdAt | date: 'dd-MM-yyyy' }}</small>
+                <td class="su-scope" [attr.data-label]="'Scope' | t: 'staff.subUsers.column.scope'"><span class="su-scope-pill" data-scope>{{ scopeText(u) }}</span></td>
+                <td class="su-login" [attr.data-label]="'Last Login' | t: 'staff.subUsers.row.lastLoginLabel'">
+                  @if (u.lastLoginAt) { {{ u.lastLoginAt | indianTime }} } @else { <span class="su-never">{{ 'Never signed in' | t: 'staff.subUsers.row.never' }}</span> }
+                  <small class="d-block muted">{{ 'Added {date}' | t: 'staff.subUsers.row.added' : { date: u.createdAt | date: 'dd-MM-yyyy' } }}</small>
                 </td>
                 <td class="text-center su-status-cell"><ng-container *ngTemplateOutlet="badge; context: { $implicit: u }" /></td>
                 <td class="text-end su-actions-cell">
                   <div class="su-actions">
-                    <button type="button" class="btn btn-outline-primary" (click)="edit(u)">Edit</button>
-                    <zed-row-menu [items]="menuOf(u)" [label]="'More actions for ' + u.userName" (picked)="picked(u, $event)" />
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(u)">{{ 'Edit' | t: 'staff.subUsers.row.editButton' }}</button>
+                    <zed-row-menu [items]="menuOf(u)" [label]="'More actions for {name}' | t: 'staff.subUsers.row.menuAria' : { name: u.userName }" (picked)="picked(u, $event)" />
                   </div>
                 </td>
               </tr>
@@ -160,12 +161,12 @@ const API = '/api/staff/sub-users';
                   <td colspan="7" style="padding: 0">
                     <div class="no-data su-empty">
                       @if (users().length) {
-                        No login matches the filters.
-                        <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all logins</button>
+                        {{ 'No login matches the filters.' | t: 'staff.subUsers.noMatch' }}
+                        <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all logins' | t: 'staff.subUsers.showAllButton' }}</button>
                       } @else {
-                        No {{ accountType().toLowerCase() }}s yet.
+                        {{ 'No {types} yet.' | t: 'staff.subUsers.empty' : { types: typePlural().toLowerCase() } }}
                         @if (options().length) {
-                          <button type="button" class="btn btn-link p-0 ms-1" (click)="add()">Add the first {{ accountType().toLowerCase() }}</button>
+                          <button type="button" class="btn btn-link p-0 ms-1" (click)="add()">{{ 'Add the first {type}' | t: 'staff.subUsers.emptyAddButton' : { type: accountType().toLowerCase() } }}</button>
                         }
                       }
                     </div>
@@ -194,55 +195,55 @@ const API = '/api/staff/sub-users';
             <div class="su-head">
               <span class="su-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg></span>
               <div>
-                <h3 class="m-0" id="sub-user-title">{{ editing() ? 'Edit ' + editing() : 'Add ' + accountType() }}</h3>
-                <small class="su-sub">{{ editing() ? f.userName : 'The User ID is generated and the login details are e-mailed to the user.' }}</small>
+                <h3 class="m-0" id="sub-user-title">{{ editing() ? ('Edit {id}' | t: 'staff.subUsers.form.editTitle' : { id: editing() }) : ('Add {type}' | t: 'staff.subUsers.form.addTitle' : { type: accountType() }) }}</h3>
+                <small class="su-sub">{{ editing() ? f.userName : ('The User ID is generated and the login details are e-mailed to the user.' | t: 'staff.subUsers.form.addSub') }}</small>
               </div>
-              <button type="button" class="su-x" aria-label="Close" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
+              <button type="button" class="su-x" [attr.aria-label]="'Close' | t: 'staff.subUsers.form.closeAria'" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
             </div>
             <form class="su-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body su-body">
                 <div class="su-col">
                   <div class="su-field">
-                    <label for="sub-name">Name<span class="req">*</span></label>
-                    <input class="form-control" id="sub-name" name="userName" maxlength="100" placeholder="Full name" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                    <label for="sub-name">{{ 'Name' | t: 'staff.subUsers.form.nameLabel' }}<span class="req">*</span></label>
+                    <input class="form-control" id="sub-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.subUsers.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
                   </div>
                   <div class="su-field">
-                    <label for="sub-email">E-mail<span class="req">*</span></label>
-                    <input class="form-control" id="sub-email" name="email" type="email" maxlength="100" placeholder="name@organisation.in" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                    <label for="sub-email">{{ 'E-mail' | t: 'staff.subUsers.form.emailLabel' }}<span class="req">*</span></label>
+                    <input class="form-control" id="sub-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.subUsers.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
                   </div>
                   <div class="su-field">
-                    <label for="sub-mobile">Mobile number</label>
-                    <input class="form-control" id="sub-mobile" name="mobileNo" maxlength="10" inputmode="numeric" placeholder="10 digits (optional)" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                    <label for="sub-mobile">{{ 'Mobile number' | t: 'staff.subUsers.form.mobileLabel' }}</label>
+                    <input class="form-control" id="sub-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits (optional)' | t: 'staff.subUsers.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
                   </div>
                   <!-- 2026-11-16 (approved): the states (and, for an operation admin, the assessment agencies) it may see. -->
-                  <h4 class="su-section">Scope</h4>
+                  <h4 class="su-section">{{ 'Scope' | t: 'staff.subUsers.form.scopeTitle' }}</h4>
                   <div class="su-field" data-scope-states>
-                    <label class="su-label" for="sub-states">States <small>· none selected = every state</small></label>
-                    <zed-multi-select variant="dropdown" label="States" inputId="sub-states" allText="every state" [options]="stateOptions()" [value]="f.states"
+                    <label class="su-label" for="sub-states">{{ 'States' | t: 'staff.subUsers.form.statesLabel' }} <small>· {{ 'none selected = every state' | t: 'staff.subUsers.form.statesNote' }}</small></label>
+                    <zed-multi-select variant="dropdown" [label]="'States' | t: 'staff.subUsers.form.statesLabel'" inputId="sub-states" [allText]="'every state' | t: 'staff.subUsers.form.statesAll'" [options]="stateOptions()" [value]="f.states"
                                       (valueChange)="patch('states', $event)" />
                   </div>
                   @if (agencyOptions(); as ag) {
                     <div class="su-field" data-scope-agencies>
-                      <label class="su-label" for="sub-agencies">Assessment agencies <small>· none selected = every agency</small></label>
-                      <zed-multi-select variant="dropdown" label="Assessment agencies" inputId="sub-agencies" allText="every agency" [options]="ag" [value]="f.agencies"
+                      <label class="su-label" for="sub-agencies">{{ 'Assessment agencies' | t: 'staff.subUsers.form.agenciesLabel' }} <small>· {{ 'none selected = every agency' | t: 'staff.subUsers.form.agenciesNote' }}</small></label>
+                      <zed-multi-select variant="dropdown" [label]="'Assessment agencies' | t: 'staff.subUsers.form.agenciesLabel'" inputId="sub-agencies" [allText]="'every agency' | t: 'staff.subUsers.form.agenciesAll'" [options]="ag" [value]="f.agencies"
                                         (valueChange)="patch('agencies', $event)" />
                     </div>
                   }
                   <p class="su-hint">{{ scopeNote() }}</p>
                   @if (editing()) {
-                    <h4 class="su-section">Access</h4>
+                    <h4 class="su-section">{{ 'Access' | t: 'staff.subUsers.form.accessTitle' }}</h4>
                     <label class="toggle-card form-switch" [class.active]="f.isActive" for="sub-active">
                       <input class="form-check-input" type="checkbox" role="switch" id="sub-active" name="isActive" [checked]="f.isActive" (change)="patch('isActive', !f.isActive)" />
-                      <span><strong>Active</strong><small class="muted d-block">Switch off to block this login; it can no longer sign in.</small></span>
+                      <span><strong>{{ 'Active' | t: 'staff.subUsers.form.activeLabel' }}</strong><small class="muted d-block">{{ 'Switch off to block this login; it can no longer sign in.' | t: 'staff.subUsers.form.activeNote' }}</small></span>
                     </label>
                   }
                 </div>
                 <div class="su-col">
                   <div class="su-screens-head">
-                    <h4 id="sub-screens">Screens<span class="req">*</span> <small class="su-given">{{ f.permissions.length }} of {{ options().length }} given</small></h4>
+                    <h4 id="sub-screens">{{ 'Screens' | t: 'staff.subUsers.form.screensTitle' }}<span class="req">*</span> <small class="su-given">{{ '{count} of {total} given' | t: 'staff.subUsers.form.screensGiven' : { count: f.permissions.length, total: options().length } }}</small></h4>
                     <span class="su-bulk">
-                      <button type="button" class="btn btn-link p-0" (click)="patch('permissions', allKeys())">Select all</button> ·
-                      <button type="button" class="btn btn-link p-0" (click)="patch('permissions', [])">Clear</button>
+                      <button type="button" class="btn btn-link p-0" (click)="patch('permissions', allKeys())">{{ 'Select all' | t: 'staff.subUsers.form.selectAllButton' }}</button> ·
+                      <button type="button" class="btn btn-link p-0" (click)="patch('permissions', [])">{{ 'Clear' | t: 'staff.subUsers.form.clearButton' }}</button>
                     </span>
                   </div>
                   <div class="su-perms" role="group" aria-labelledby="sub-screens">
@@ -254,15 +255,15 @@ const API = '/api/staff/sub-users';
                       </label>
                     }
                   </div>
-                  <p class="su-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg><span>Work done by {{ whoWord() }} is recorded under your login. You can change the screens or block the login at any time.</span></p>
+                  <p class="su-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg><span>{{ 'Work done by {who} is recorded under your login. You can change the screens or block the login at any time.' | t: 'staff.subUsers.form.note' : { who: whoWord() } }}</span></p>
                   @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
                 </div>
               </div>
               <div class="modal-footer su-foot">
-                <span class="su-foot-note">Fields marked <span class="req">*</span> are required.</span>
+                <span class="su-foot-note">{{ 'Fields marked * are required.' | t: 'staff.subUsers.form.requiredNote' }}</span>
                 <span class="su-foot-actions">
-                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'Save changes' : 'Add ' + accountType().toLowerCase() }}</button>
+                  <button type="button" class="btn btn-default" (click)="close()">{{ 'Cancel' | t: 'staff.subUsers.form.cancelButton' }}</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? ('Save changes' | t: 'staff.subUsers.form.saveButton') : ('Add {type}' | t: 'staff.subUsers.form.addButton' : { type: accountType().toLowerCase() }) }}</button>
                 </span>
               </div>
             </form>
@@ -341,17 +342,22 @@ export class SubUsersPage {
   private readonly toast = inject(ToastService);
 
   protected readonly accountType = signal('Sub-User');
-  protected readonly crumbs = computed(() => staffCrumbs({ label: this.accountType() + 's' }));
+  /** "Operation Admins", "Sub-Users": the server's account type made plural (the Admin can change the wording). */
+  protected readonly typePlural = computed(() => t('staff.subUsers.typePlural', '{type}s', { type: this.accountType() }));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.typePlural() }));
   /** "an operation admin", "a sub-user" (the pop-up's note). */
-  protected readonly whoWord = computed(() => (/^[aeiou]/i.test(this.accountType()) ? 'an ' : 'a ') + this.accountType().toLowerCase());
+  protected readonly whoWord = computed(() => {
+    const type = this.accountType().toLowerCase();
+    return /^[aeiou]/i.test(type) ? t('staff.subUsers.whoAn', 'an {type}', { type }) : t('staff.subUsers.whoA', 'a {type}', { type });
+  });
   protected readonly options = signal<PermissionOption[]>([]);
   protected readonly stateOptions = signal<MultiSelectOption[]>([]);
   /** Master Admin only: null for an agency's sub-users. */
   protected readonly agencyOptions = signal<MultiSelectOption[] | null>(null);
   protected readonly scopeNote = computed(() =>
     this.agencyOptions()
-      ? 'The operation admin sees only the units whose plant is in these states and the applications these agencies assess, on every screen given.'
-      : "The sub-user sees only your units whose plant is in these states, on every screen given.");
+      ? t('staff.subUsers.form.scopeNoteOperation', 'The operation admin sees only the units whose plant is in these states and the applications these agencies assess, on every screen given.')
+      : t('staff.subUsers.form.scopeNote', 'The sub-user sees only your units whose plant is in these states, on every screen given.'));
   protected readonly users = signal<SubUser[]>([]);
   /** The tile chosen above the list. */
   protected readonly status = signal<'all' | LoginStatus>('all');
@@ -361,11 +367,21 @@ export class SubUsersPage {
   protected readonly tiles = computed<ListCount[]>(() => {
     const count = (s: LoginStatus) => this.users().filter((u) => this.statusOf(u) === s).length;
     return [
-      { key: 'all', label: 'All logins', value: this.users().length },
-      { key: 'active', label: 'Active', value: count('active'), tone: 'good' },
-      { key: 'locked', label: 'Locked', value: count('locked'), tone: 'warn' },
-      { key: 'blocked', label: 'Blocked', value: count('blocked'), tone: 'bad' },
+      { key: 'all', label: t('staff.subUsers.count.all', 'All logins'), value: this.users().length },
+      { key: 'active', label: t('staff.subUsers.count.active', 'Active'), value: count('active'), tone: 'good' },
+      { key: 'locked', label: t('staff.subUsers.count.locked', 'Locked'), value: count('locked'), tone: 'warn' },
+      { key: 'blocked', label: t('staff.subUsers.count.blocked', 'Blocked'), value: count('blocked'), tone: 'bad' },
     ];
+  });
+  /** "3 of 5 logins", "1 of 5 logins · locked only". */
+  protected readonly showingText = computed(() => {
+    const v = { shown: this.view.total(), total: this.users().length };
+    switch (this.status()) {
+      case 'active': return t('staff.subUsers.showingActive', '{shown} of {total} logins · active only', v);
+      case 'locked': return t('staff.subUsers.showingLocked', '{shown} of {total} logins · locked only', v);
+      case 'blocked': return t('staff.subUsers.showingBlocked', '{shown} of {total} logins · blocked only', v);
+      default: return t('staff.subUsers.showing', '{shown} of {total} logins', v);
+    }
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() =>
@@ -383,7 +399,7 @@ export class SubUsersPage {
   constructor() {
     // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the tab names the page ("ZED | Operation Admins").
     const title = inject(Title);
-    effect(() => title.setTitle(`ZED | ${this.accountType()}s`));
+    effect(() => title.setTitle(`ZED | ${this.typePlural()}`));
     void this.load();
   }
 
@@ -410,7 +426,7 @@ export class SubUsersPage {
   }
 
   protected statusLabel(u: SubUser): string {
-    return u.isActive ? (u.locked ? 'Locked' : 'Active') : 'Blocked';
+    return u.isActive ? (u.locked ? t('staff.subUsers.status.locked', 'Locked') : t('staff.subUsers.status.active', 'Active')) : t('staff.subUsers.status.blocked', 'Blocked');
   }
 
   protected mobileOf(u: SubUser): string {
@@ -444,40 +460,40 @@ export class SubUsersPage {
   protected menuOf(u: SubUser): RowMenuItem[] {
     return [
       this.statusOf(u) === 'locked'
-        ? { key: 'reset', label: 'Unlock (send new password)', icon: 'unlock' }
-        : { key: 'reset', label: 'Send new password', icon: 'mail' },
-      u.isActive ? { key: 'block', label: 'Block login', icon: 'lock', danger: true } : { key: 'unblock', label: 'Unblock login', icon: 'refresh' },
+        ? { key: 'reset', label: t('staff.subUsers.menu.unlock', 'Unlock (send new password)'), icon: 'unlock' }
+        : { key: 'reset', label: t('staff.subUsers.menu.reset', 'Send new password'), icon: 'mail' },
+      u.isActive ? { key: 'block', label: t('staff.subUsers.menu.block', 'Block login'), icon: 'lock', danger: true }
+        : { key: 'unblock', label: t('staff.subUsers.menu.unblock', 'Unblock login'), icon: 'refresh' },
     ];
   }
 
   protected picked(u: SubUser, key: string): void {
-    const name = `${u.userName} (${u.userId})`;
-    const to = plain(u.email) || 'the registered e-mail address';
+    const v = { name: u.userName, id: u.userId, email: plain(u.email) || t('staff.subUsers.toast.sentToFallback', 'the registered e-mail address') };
     let ask: ConfirmAsk;
     if (key === 'reset' && this.statusOf(u) === 'locked') {
       ask = {
-        title: `Unlock ${u.userName}?`,
-        message: `The lock is lifted at once and ${name} gets a new password by e-mail at ${to}. The current password stops working.`,
-        confirmLabel: 'Unlock and send password',
+        title: t('staff.subUsers.unlock.title', 'Unlock {name}?', v),
+        message: t('staff.subUsers.unlock.message', 'The lock is lifted at once and {name} ({id}) gets a new password by e-mail at {email}. The current password stops working.', v),
+        confirmLabel: t('staff.subUsers.unlock.confirmButton', 'Unlock and send password'),
       };
     } else if (key === 'reset') {
       ask = {
-        title: 'Send a new password?',
-        message: `${name} gets a new password by e-mail at ${to}. The current password stops working at once.`,
-        confirmLabel: 'Send new password',
+        title: t('staff.subUsers.reset.title', 'Send a new password?'),
+        message: t('staff.subUsers.reset.message', '{name} ({id}) gets a new password by e-mail at {email}. The current password stops working at once.', v),
+        confirmLabel: t('staff.subUsers.reset.confirmButton', 'Send new password'),
       };
     } else if (key === 'block') {
       ask = {
-        title: `Block ${u.userName}?`,
-        message: `${name} cannot sign in until you unblock the login. Its screens and scope are kept; nothing is deleted.`,
-        confirmLabel: 'Block login',
+        title: t('staff.subUsers.block.title', 'Block {name}?', v),
+        message: t('staff.subUsers.block.message', '{name} ({id}) cannot sign in until you unblock the login. Its screens and scope are kept; nothing is deleted.', v),
+        confirmLabel: t('staff.subUsers.block.confirmButton', 'Block login'),
         danger: true,
       };
     } else if (key === 'unblock') {
       ask = {
-        title: `Unblock ${u.userName}?`,
-        message: `${name} can sign in again with the current password, on the same screens.`,
-        confirmLabel: 'Unblock login',
+        title: t('staff.subUsers.unblock.title', 'Unblock {name}?', v),
+        message: t('staff.subUsers.unblock.message', '{name} ({id}) can sign in again with the current password, on the same screens.', v),
+        confirmLabel: t('staff.subUsers.unblock.confirmButton', 'Unblock login'),
       };
     } else {
       return;
@@ -495,15 +511,17 @@ export class SubUsersPage {
     try {
       if (p.key === 'reset') {
         await firstValueFrom(this.http.post<MessageResponse>(`${API}/${id}/reset-password`, null));
-        this.toast.success(this.statusOf(u) === 'locked' ? 'Login unlocked' : 'New password sent', 'New password e-mailed to ' + (plain(u.email) || 'the registered e-mail address'));
+        this.toast.success(this.statusOf(u) === 'locked' ? t('staff.subUsers.toast.unlocked', 'Login unlocked') : t('staff.subUsers.toast.passwordSent', 'New password sent'),
+          t('staff.subUsers.toast.sentTo', 'New password e-mailed to {to}', { to: plain(u.email) || t('staff.subUsers.toast.sentToFallback', 'the registered e-mail address') }));
       } else {
         const body: SubUserForm = {
           userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: p.key === 'unblock',
           states: [...(u.states ?? [])], agencies: [...(u.agencies ?? [])],
         };
         await firstValueFrom(this.http.put<MessageResponse>(`${API}/${id}`, body));
-        this.toast.success(p.key === 'block' ? 'Login blocked' : 'Login unblocked',
-          `${u.userName} (${u.userId}) ${p.key === 'block' ? 'can no longer sign in' : 'can sign in again'}.`);
+        const v = { name: u.userName, id: u.userId };
+        if (p.key === 'block') this.toast.success(t('staff.subUsers.toast.blocked', 'Login blocked'), t('staff.subUsers.toast.blockedText', '{name} ({id}) can no longer sign in.', v));
+        else this.toast.success(t('staff.subUsers.toast.unblocked', 'Login unblocked'), t('staff.subUsers.toast.unblockedText', '{name} ({id}) can sign in again.', v));
       }
       this.pending.set(null);
       await this.load();
@@ -533,9 +551,11 @@ export class SubUsersPage {
   protected scopeText(u: SubUser): string {
     const s = u.states?.length ?? 0;
     const a = u.agencies?.length ?? 0;
-    const states = s === 0 ? 'All states' : s === 1 ? this.stateName(u.states![0]) : `${s} states`;
+    const states = s === 0 ? t('staff.subUsers.row.allStates', 'All states') : s === 1 ? this.stateName(u.states![0]) : t('staff.subUsers.row.statesCount', '{count} states', { count: s });
     if (!this.agencyOptions()) return states;
-    return `${states} · ${a === 0 ? 'all agencies' : a === 1 ? '1 agency' : a + ' agencies'}`;
+    const agencies = a === 0 ? t('staff.subUsers.row.allAgencies', 'all agencies') : a === 1 ? t('staff.subUsers.row.agencyCount', '{count} agency', { count: a })
+      : t('staff.subUsers.row.agenciesCount', '{count} agencies', { count: a });
+    return `${states} · ${agencies}`;
   }
 
   private stateName(code: string): string {
@@ -567,7 +587,8 @@ export class SubUsersPage {
     try {
       const r = await firstValueFrom(id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, f) : this.http.post<MessageResponse>(API, f));
       this.close();
-      this.toast.success(`${this.accountType()} ${id ? 'updated' : 'added'}`, r.message);
+      this.toast.success(id ? t('staff.subUsers.toast.updated', '{type} updated', { type: this.accountType() })
+        : t('staff.subUsers.toast.added', '{type} added', { type: this.accountType() }), r.message);
       await this.load();
     } catch (err) {
       this.formError.set(apiErrorMessage(err));

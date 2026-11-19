@@ -1,3 +1,4 @@
+import { t } from '../../content/page-text';
 import { ConfirmAsk } from '../confirm-dialog';
 
 /**
@@ -24,25 +25,26 @@ export function plain(value: string | null | undefined): string {
  * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as popup-04: a mail tile, "The user chooses the new
  * password." under the title, a card of the user (initials, name, "Assessor · ID", the e-mail, ACTIVE) and two ticks.
  */
-export function resetLinkAsk(name: string | null | undefined, userId: string, email: string | null | undefined, role = 'User'): ConfirmAsk {
+export function resetLinkAsk(name: string | null | undefined, userId: string, email: string | null | undefined, role?: string): ConfirmAsk {
   return {
-    title: 'Send password reset link?',
-    subtitle: 'The user chooses the new password.',
+    title: t('staff.userLists.resetPopup.title', 'Send password reset link?'),
+    subtitle: t('staff.userLists.resetPopup.subtitle', 'The user chooses the new password.'),
     icon: 'mail',
     person: {
       name: name || userId,
       initials: initialsOf(name || userId),
-      line: `${role} · ${userId}`,
-      email: plain(email) || 'The registered e-mail address',
-      status: 'Active',
+      line: t('staff.userLists.resetPopup.personLine', '{role} · {id}', { role: role ?? t('staff.userLists.resetPopup.roleUser', 'User'), id: userId }),
+      email: plain(email) || t('staff.userLists.resetPopup.noEmail', 'The registered e-mail address'),
+      status: t('staff.userLists.resetPopup.statusActive', 'Active'),
     },
-    points: ['The link works once, for a short time.', 'A newer link replaces any link sent earlier.'],
+    points: [t('staff.userLists.resetPopup.point1', 'The link works once, for a short time.'),
+      t('staff.userLists.resetPopup.point2', 'A newer link replaces any link sent earlier.')],
     pointStyle: 'tick',
-    confirmLabel: 'Send link',
+    confirmLabel: t('staff.userLists.resetPopup.confirmButton', 'Send link'),
   };
 }
 
 /** The address of a "link sent" answer ("… (meena@zed.test)."), else the list's address. */
 export function sentTo(message: string, fallback: string | null | undefined): string {
-  return /\(([^()]*@[^()]*)\)/.exec(message)?.[1] ?? (plain(fallback) || 'the registered e-mail address');
+  return /\(([^()]*@[^()]*)\)/.exec(message)?.[1] ?? (plain(fallback) || t('staff.userLists.toast.sentToFallback', 'the registered e-mail address'));
 }

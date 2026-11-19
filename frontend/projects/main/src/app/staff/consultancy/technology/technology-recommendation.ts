@@ -8,6 +8,7 @@ import { ToastService } from '../../toast';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
+import { TextPipe, t } from '../../../content/page-text';
 import { RecommendationPage, TuApi } from './tu.api';
 
 /**
@@ -16,10 +17,12 @@ import { RecommendationPage, TuApi } from './tu.api';
  * the master admin see the recommendation. A fixed counter shows "Selected: n/10"; while the lead consultant cannot
  * recommend (PreviousRecomInProgress and the other reasons the API gives) the list stays visible and the reason
  * replaces PROCEED. Route: /staff/consultancy/technology/:zedId/:level
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.techRecommendation.*) or the
+ * standard one here and in the template; the note and the pledge stay HTML texts (zed-text).
  */
 @Component({
   selector: 'zed-staff-technology-recommendation',
-  imports: [FormsModule, NgTemplateOutlet, ContentTextComponent, PageHead],
+  imports: [FormsModule, NgTemplateOutlet, ContentTextComponent, PageHead, TextPipe],
   templateUrl: './technology-recommendation.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -39,7 +42,8 @@ export class TechnologyRecommendationPage {
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
   protected readonly level = this.route.snapshot.paramMap.get('level') ?? '';
   /** 2026-11-17 (approved staff redesign): opened from Consultancy Completed. */
-  protected readonly crumbs = staffCrumbs({ label: 'Consultancy Completed', link: '/staff/assessment/completed' }, { label: this.zedId });
+  protected readonly crumbs = computed(() =>
+    staffCrumbs({ label: t('staff.techRecommendation.crumb', 'Consultancy Completed'), link: '/staff/assessment/completed' }, { label: this.zedId }));
   private readonly toast = inject(ToastService);
 
   protected readonly page = signal<RecommendationPage | null>(null);

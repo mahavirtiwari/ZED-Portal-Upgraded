@@ -1,4 +1,5 @@
 import { EntryFile, EntryState, FormDefinition, FormField } from './entry.api';
+import { t } from '../../content/page-text';
 
 /** A photo slot of the form: a saved file, or a file chosen on this page. */
 export interface PhotoSlot {
@@ -122,12 +123,12 @@ export function missing(def: FormDefinition, form: FormValues): string | null {
     if (!isShown(f, form)) continue;
     if (f.type === 'rows') {
       const rows = (form.rows[f.key] ?? []).filter((r) => Object.values(r).some(isFilled));
-      if (f.required && rows.length === 0) return `Please fill in: ${f.label}.`;
+      if (f.required && rows.length === 0) return t('msme.entry.basic.missingError', 'Please fill in: {field}.', { field: f.label });
       for (const c of f.columns ?? []) {
-        if (c.required && rows.some((r) => !isFilled(r[c.key]))) return `Please fill in ${c.label} for every entry of ${f.label}.`;
+        if (c.required && rows.some((r) => !isFilled(r[c.key]))) return t('msme.entry.basic.missingCellError', 'Please fill in {column} for every entry of {field}.', { column: c.label, field: f.label });
       }
     } else if (f.required && !isFilled(form.values[f.key])) {
-      return `Please fill in: ${f.label}.`;
+      return t('msme.entry.basic.missingError', 'Please fill in: {field}.', { field: f.label });
     }
   }
   return null;

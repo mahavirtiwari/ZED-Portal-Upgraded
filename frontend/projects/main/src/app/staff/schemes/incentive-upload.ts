@@ -3,6 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { SkippedRow } from './incentives.api';
 import { PageHead } from '../../msme/shared/page-head';
 import { StepTracker, TrackerStep } from '../../msme/shared/step-tracker';
@@ -65,36 +66,38 @@ export interface IncentiveApplied {
  * step, the template button with its download icon; the check results 900px wide with a white head (icon tile, 32px close), the
  * three tiles, the errors table in its card and a divided footer. The rows with errors download as .xlsx (to correct and upload
  * again).</p>
+ * <p>2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.incentiveUpload.*) or the standard
+ * one here; the workbook's column names (and the Row / Problems columns of the download, read back on upload) stay as they are.</p>
  */
 @Component({
   selector: 'zed-staff-incentive-upload',
-  imports: [DatePipe, DecimalPipe, PageHead, StepTracker, PagerComponent],
+  imports: [DatePipe, DecimalPipe, PageHead, StepTracker, PagerComponent, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" title="Incentives Upload" subtitle="Upload the API incentives workbook; every row is checked before anything is saved.">
+    <zed-page-head [crumbs]="crumbs()" [title]="'Incentives Upload' | t: 'staff.incentiveUpload.title'" [subtitle]="'Upload the API incentives workbook; every row is checked before anything is saved.' | t: 'staff.incentiveUpload.sub'">
       <a class="btn btn-outline-primary" href="/api/staff/schemes/incentives/template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download template</a>
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{{ 'Download template' | t: 'staff.incentiveUpload.templateButton' }}</a>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
     }
     <div class="iu-grid">
       <div class="iu-main">
-        <zed-step-tracker [steps]="steps()" [current]="step()" label="Upload steps" />
+        <zed-step-tracker [steps]="steps()" [current]="step()" [label]="'Upload steps' | t: 'staff.incentiveUpload.steps.label'" />
         @if (!saved()) {
           <div class="zed-card iu-card">
             <label class="iu-drop" for="incFile" [class.over]="dragging()" (dragover)="over($event)" (dragleave)="dragging.set(false)" (drop)="drop($event)">
               <input id="incFile" type="file" class="visually-hidden" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="pick($event)" />
               <span class="iu-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13" /></svg></span>
               @if (file(); as f) {
-                <b>{{ f.name }}</b><small>{{ f.size / 1024 | number: '1.0-0' }} KB · choose another file or drop it here</small>
+                <b>{{ f.name }}</b><small>{{ '{size} KB · choose another file or drop it here' | t: 'staff.incentiveUpload.drop.chosenNote' : { size: (f.size / 1024 | number: '1.0-0') } }}</small>
               } @else {
-                <b>Drag the Excel workbook here, or browse</b><small>.xlsx only · up to 5,000 rows · 5 MB</small>
+                <b>{{ 'Drag the Excel workbook here, or browse' | t: 'staff.incentiveUpload.drop.title' }}</b><small>{{ '.xlsx only · up to 5,000 rows · 5 MB' | t: 'staff.incentiveUpload.drop.note' }}</small>
               }
             </label>
             <div class="iu-foot">
-              <span class="sub">Nothing is saved until you confirm the check results.</span>
-              <button type="button" class="btn btn-primary" [disabled]="busy() || !file()" (click)="check()">{{ busy() ? 'Checking…' : 'Upload and check' }}</button>
+              <span class="sub">{{ 'Nothing is saved until you confirm the check results.' | t: 'staff.incentiveUpload.checkNote' }}</span>
+              <button type="button" class="btn btn-primary" [disabled]="busy() || !file()" (click)="check()">{{ busy() ? ('Checking…' | t: 'staff.incentiveUpload.checkingButton') : ('Upload and check' | t: 'staff.incentiveUpload.checkButton') }}</button>
             </div>
           </div>
         } @else {
@@ -103,10 +106,10 @@ export interface IncentiveApplied {
             <div class="alert mb-3" [class.alert-success]="s.inserted" [class.alert-info]="!s.inserted" role="status"><strong>{{ s.message }}</strong></div>
             @if (skippedRows().length) {
               <div id="skippedRows">
-                <p class="mb-2">These rows were uploaded before (same unit, application, approval, incentive, date and amount) and were not saved again:</p>
+                <p class="mb-2">{{ 'These rows were uploaded before (same unit, application, approval, incentive, date and amount) and were not saved again:' | t: 'staff.incentiveUpload.skipped.note' }}</p>
                 <div class="table-responsive mb-3">
                   <table class="table table-zed table-sm">
-                    <thead><tr><th>Row</th><th>Udyam No</th><th>First uploaded</th></tr></thead>
+                    <thead><tr><th>{{ 'Row' | t: 'staff.incentiveUpload.skipped.column.row' }}</th><th>{{ 'Udyam No' | t: 'staff.incentiveUpload.skipped.column.udyam' }}</th><th>{{ 'First uploaded' | t: 'staff.incentiveUpload.skipped.column.firstUploaded' }}</th></tr></thead>
                     <tbody>
                       @for (s of skippedRows(); track s.row) {
                         <tr><td>{{ s.row }}</td><td>{{ s.udyamNo }}</td><td>{{ s.uploadedOn ? (s.uploadedOn | date: 'dd-MM-yyyy') : '' }}</td></tr>
@@ -119,7 +122,7 @@ export interface IncentiveApplied {
             @if (s.rows.length) {
               <div class="table-responsive uploaded mb-3">
                 <table class="table table-zed table-sm">
-                  <thead><tr><th>S.No</th>@for (c of columns; track c) { <th>{{ c }}</th> }</tr></thead>
+                  <thead><tr><th>{{ 'S.No' | t: 'staff.incentiveUpload.saved.column.serial' }}</th>@for (c of columns; track c) { <th>{{ c }}</th> }</tr></thead>
                   <tbody>
                     @for (r of s.rows; track $index) {
                       <tr><td>{{ $index + 1 }}</td>@for (c of columns; track c) { <td>{{ show(c, r[c]) }}</td> }</tr>
@@ -128,23 +131,23 @@ export interface IncentiveApplied {
                 </table>
               </div>
             }
-            <button type="button" class="btn btn-default" (click)="reset()">Upload another file</button>
+            <button type="button" class="btn btn-default" (click)="reset()">{{ 'Upload another file' | t: 'staff.incentiveUpload.saved.againButton' }}</button>
           </div>
         }
         <section class="zed-card iu-box" aria-labelledby="iu-cols-h">
-          <h3 class="iu-h" id="iu-cols-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg></span>Columns the workbook must have</h3>
+          <h3 class="iu-h" id="iu-cols-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg></span>{{ 'Columns the workbook must have' | t: 'staff.incentiveUpload.columns.title' }}</h3>
           <div class="iu-body">
             <div class="iu-cols">@for (c of columns; track c) { <span>{{ c }}</span> }</div>
-            <p class="sub mb-0">Dates as dd-mm-yyyy or Excel dates.</p>
+            <p class="sub mb-0">{{ 'Dates as dd-mm-yyyy or Excel dates.' | t: 'staff.incentiveUpload.columns.note' }}</p>
           </div>
         </section>
       </div>
       <aside class="zed-card iu-box iu-side" aria-labelledby="iu-tips-h">
-        <h3 class="iu-h" id="iu-tips-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" /></svg></span>Before you upload</h3>
+        <h3 class="iu-h" id="iu-tips-h"><span class="iu-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4" /></svg></span>{{ 'Before you upload' | t: 'staff.incentiveUpload.tips.title' }}</h3>
         <ul class="iu-body iu-tips">
-          <li>Use the latest template; column names must match exactly.</li>
-          <li>One incentive per row, with the unit's Udyam number.</li>
-          <li>Amounts as numbers, without commas or the rupee sign.</li>
+          <li>{{ 'Use the latest template; column names must match exactly.' | t: 'staff.incentiveUpload.tips.point1' }}</li>
+          <li>{{ "One incentive per row, with the unit's Udyam number." | t: 'staff.incentiveUpload.tips.point2' }}</li>
+          <li>{{ 'Amounts as numbers, without commas or the rupee sign.' | t: 'staff.incentiveUpload.tips.point3' }}</li>
         </ul>
       </aside>
     </div>
@@ -155,30 +158,30 @@ export interface IncentiveApplied {
           <div class="modal-content iu-pop">
             <div class="iu-pop-head">
               <span class="iu-tile iu-tile-lg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" /></svg></span>
-              <div class="iu-pop-t"><h3 class="m-0" id="iuTitle">Check results</h3><small>{{ c.fileName }} · uploaded {{ checkedAt() | date: 'dd MMM yyyy, HH:mm' }}</small></div>
-              <button type="button" class="iu-x" aria-label="Close" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+              <div class="iu-pop-t"><h3 class="m-0" id="iuTitle">{{ 'Check results' | t: 'staff.incentiveUpload.result.title' }}</h3><small>{{ '{file} · uploaded {date}' | t: 'staff.incentiveUpload.result.fileNote' : { file: c.fileName, date: (checkedAt() | date: 'dd MMM yyyy, HH:mm') } }}</small></div>
+              <button type="button" class="iu-x" [attr.aria-label]="'Close' | t: 'staff.incentiveUpload.result.closeAria'" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
             </div>
             <div class="modal-body">
               <div class="iu-tiles">
-                <div><b>{{ c.total | number }}</b>&ngsp;<span>Rows read</span></div>
-                <div class="ok"><b>{{ c.valid | number }}</b>&ngsp;<span>Ready to save</span></div>
-                <div class="bad"><b>{{ c.invalid | number }}</b>&ngsp;<span>Rows with errors</span></div>
+                <div><b>{{ c.total | number }}</b>&ngsp;<span>{{ 'Rows read' | t: 'staff.incentiveUpload.result.tile.readLabel' }}</span></div>
+                <div class="ok"><b>{{ c.valid | number }}</b>&ngsp;<span>{{ 'Ready to save' | t: 'staff.incentiveUpload.result.tile.validLabel' }}</span></div>
+                <div class="bad"><b>{{ c.invalid | number }}</b>&ngsp;<span>{{ 'Rows with errors' | t: 'staff.incentiveUpload.result.tile.invalidLabel' }}</span></div>
               </div>
               @if (c.alreadyUploaded) {
-                <p class="sub" id="alreadyUploaded">{{ c.alreadyUploaded | number }} row(s) were uploaded before and will be skipped.</p>
+                <p class="sub" id="alreadyUploaded">{{ '{count} row(s) were uploaded before and will be skipped.' | t: 'staff.incentiveUpload.result.alreadyNote' : { count: (c.alreadyUploaded | number) } }}</p>
               }
               @if (c.errors.length) {
                 <div class="iu-errhead">
-                  <span>Rows with errors</span>
-                  <button type="button" class="btn btn-link p-0" (click)="downloadRejected()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download the {{ c.invalid | number }} rows (.xlsx)</button>
+                  <span>{{ 'Rows with errors' | t: 'staff.incentiveUpload.result.errors.title' }}</span>
+                  <button type="button" class="btn btn-link p-0" (click)="downloadRejected()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{{ 'Download the {count} rows (.xlsx)' | t: 'staff.incentiveUpload.result.errors.downloadButton' : { count: (c.invalid | number) } }}</button>
                 </div>
                 <div class="list-card iu-errs">
                   <div class="table-responsive">
                     <table class="table table-zed">
-                      <thead><tr><th>Row</th><th>Column</th><th>Value</th><th>Problem</th></tr></thead>
+                      <thead><tr><th>{{ 'Row' | t: 'staff.incentiveUpload.result.errors.column.row' }}</th><th>{{ 'Column' | t: 'staff.incentiveUpload.result.errors.column.column' }}</th><th>{{ 'Value' | t: 'staff.incentiveUpload.result.errors.column.value' }}</th><th>{{ 'Problem' | t: 'staff.incentiveUpload.result.errors.column.problem' }}</th></tr></thead>
                       <tbody>
                         @for (e of errorsView.page(); track $index) {
-                          <tr><td><b>{{ e.row || '' }}</b></td><td>{{ e.column || 'Whole row' }}</td><td class="sub">{{ e.value ?? 'blank' }}</td><td>{{ e.message }}</td></tr>
+                          <tr><td><b>{{ e.row || '' }}</b></td><td>{{ e.column || ('Whole row' | t: 'staff.incentiveUpload.result.errors.wholeRow') }}</td><td class="sub">{{ e.value ?? ('blank' | t: 'staff.incentiveUpload.result.errors.blank') }}</td><td>{{ e.message }}</td></tr>
                         }
                       </tbody>
                     </table>
@@ -186,17 +189,17 @@ export interface IncentiveApplied {
                   <zed-pager [pager]="errorsView" />
                 </div>
                 @if (c.errorCount > c.errors.length) {
-                  <p class="sub mt-2">The first {{ c.errors.length | number }} of {{ c.errorCount | number }} errors are listed; the download has every rejected row.</p>
+                  <p class="sub mt-2">{{ 'The first {shown} of {total} errors are listed; the download has every rejected row.' | t: 'staff.incentiveUpload.result.errors.moreNote' : { shown: (c.errors.length | number), total: (c.errorCount | number) } }}</p>
                 }
               }
               @if (applyError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ applyError() }}</div> }
             </div>
             <div class="iu-pop-foot">
-              <span class="sub">Nothing is saved until you confirm.</span>
+              <span class="sub">{{ 'Nothing is saved until you confirm.' | t: 'staff.incentiveUpload.result.note' }}</span>
               <div class="d-flex gap-2">
-                <button type="button" class="btn btn-default" (click)="cancel()">Cancel upload</button>
+                <button type="button" class="btn btn-default" (click)="cancel()">{{ 'Cancel upload' | t: 'staff.incentiveUpload.result.cancelButton' }}</button>
                 <button type="button" class="btn btn-primary" [disabled]="busy() || !c.valid" (click)="apply()">
-                  {{ busy() ? 'Saving…' : 'Save ' + (c.valid | number) + ' row' + (c.valid === 1 ? '' : 's') }}</button>
+                  {{ busy() ? ('Saving…' | t: 'staff.incentiveUpload.result.savingButton') : c.valid === 1 ? ('Save {count} row' | t: 'staff.incentiveUpload.result.saveRowButton' : { count: (c.valid | number) }) : ('Save {count} rows' | t: 'staff.incentiveUpload.result.saveRowsButton' : { count: (c.valid | number) }) }}</button>
               </div>
             </div>
           </div>
@@ -276,15 +279,18 @@ export class IncentiveUploadPage {
   private readonly exporter = inject(TableExport);
   private readonly toast = inject(ToastService);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Upload API Incentives' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.incentiveUpload.crumb', 'Upload API Incentives') }));
   protected readonly columns = COLUMNS;
   /** 2026-11-18: "You are here" under the current step (staff-17). */
   protected readonly steps = computed<TrackerStep[]>(() => {
     const now = this.step();
     return [
-      { label: 'Choose the workbook', note: now === 0 ? 'You are here' : 'The .xlsx file' },
-      { label: 'Check every row', note: now === 1 ? 'You are here' : 'Errors listed by row' },
-      { label: 'Save', note: now === 3 ? 'Saved' : 'Only valid rows' },
+      { label: t('staff.incentiveUpload.step.chooseLabel', 'Choose the workbook'),
+        note: now === 0 ? t('staff.incentiveUpload.step.hereNote', 'You are here') : t('staff.incentiveUpload.step.chooseNote', 'The .xlsx file') },
+      { label: t('staff.incentiveUpload.step.checkLabel', 'Check every row'),
+        note: now === 1 ? t('staff.incentiveUpload.step.hereNote', 'You are here') : t('staff.incentiveUpload.step.checkNote', 'Errors listed by row') },
+      { label: t('staff.incentiveUpload.step.saveLabel', 'Save'),
+        note: now === 3 ? t('staff.incentiveUpload.step.savedNote', 'Saved') : t('staff.incentiveUpload.step.saveNote', 'Only valid rows') },
     ];
   });
   protected readonly file = signal<File | null>(null);
@@ -319,7 +325,7 @@ export class IncentiveUploadPage {
   private choose(f: File | null): void {
     this.error.set('');
     if (f && (!/\.xlsx$/i.test(f.name) || f.size > MAX_INCENTIVE_FILE_BYTES)) {
-      this.error.set('Upload valid excel file (accepted format: .xlsx, up to 5 MB).');
+      this.error.set(t('staff.incentiveUpload.fileError', 'Upload valid excel file (accepted format: .xlsx, up to 5 MB).'));
       this.file.set(null);
       return;
     }
@@ -330,7 +336,7 @@ export class IncentiveUploadPage {
   protected async check(): Promise<void> {
     const f = this.file();
     if (!f) {
-      this.error.set('Please choose the incentives Excel file.');
+      this.error.set(t('staff.incentiveUpload.noFileError', 'Please choose the incentives Excel file.'));
       return;
     }
     this.busy.set(true);
@@ -357,7 +363,7 @@ export class IncentiveUploadPage {
       const r = await firstValueFrom(this.http.post<IncentiveApplied>(INCENTIVE_APPLY_API, this.form(f)));
       this.result.set(null);
       this.saved.set({ ...r, rows: r.rows ?? [] });
-      if (r.inserted) this.toast.success('Incentives saved', r.message);
+      if (r.inserted) this.toast.success(t('staff.incentiveUpload.toast.saved', 'Incentives saved'), r.message);
     } catch (err) {
       this.applyError.set(apiErrorMessage(err));
     } finally {

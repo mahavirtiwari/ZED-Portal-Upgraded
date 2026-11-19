@@ -1,5 +1,6 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TextPipe, t } from '../../content/page-text';
 
 /** The sections of the applicant's profile: four on the profile page, two pages of their own. */
 export type ProfileSection = 'enterprise' | 'contact' | 'units' | 'activity' | 'security' | 'history';
@@ -24,12 +25,12 @@ interface MenuItem {
  */
 @Component({
   selector: 'zed-profile-shell',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   host: { class: 'd-block' },
   template: `
     <div class="ps">
       <div class="ps-side">
-        <nav class="ps-nav" aria-label="Profile sections">
+        <nav class="ps-nav" [attr.aria-label]="'Profile sections' | t: 'msme.profile.menu.aria'">
           <ul>
             @for (i of items(); track i.id) {
               <li>
@@ -94,12 +95,14 @@ export class ProfileShell {
     const u = this.units();
     const c = this.changes();
     return [
-      { id: 'enterprise', label: 'Enterprise', note: 'From Udyam' },
-      { id: 'contact', label: 'Contact', note: 'E-mail & mobile' },
-      { id: 'units', label: 'Units / plants', note: u ? `${u} unit${u === 1 ? '' : 's'}` : '' },
-      { id: 'activity', label: 'Unit activity (NIC)', note: '' },
-      { id: 'security', label: 'Account & security', note: 'Password', link: '/msme/change-password' },
-      { id: 'history', label: 'Edit history', note: c === null ? '' : `${c} change${c === 1 ? '' : 's'}`, link: '/msme/edit-history' },
+      { id: 'enterprise', label: t('msme.profile.menu.enterpriseLabel', 'Enterprise'), note: t('msme.profile.menu.enterpriseNote', 'From Udyam') },
+      { id: 'contact', label: t('msme.profile.menu.contactLabel', 'Contact'), note: t('msme.profile.menu.contactNote', 'E-mail & mobile') },
+      { id: 'units', label: t('msme.profile.menu.unitsLabel', 'Units / plants'),
+        note: !u ? '' : u === 1 ? t('msme.profile.menu.unitNote', '{count} unit', { count: u }) : t('msme.profile.menu.unitsNote', '{count} units', { count: u }) },
+      { id: 'activity', label: t('msme.profile.menu.activityLabel', 'Unit activity (NIC)'), note: '' },
+      { id: 'security', label: t('msme.profile.menu.securityLabel', 'Account & security'), note: t('msme.profile.menu.securityNote', 'Password'), link: '/msme/change-password' },
+      { id: 'history', label: t('msme.profile.menu.historyLabel', 'Edit history'),
+        note: c === null ? '' : c === 1 ? t('msme.profile.menu.changeNote', '{count} change', { count: c }) : t('msme.profile.menu.changesNote', '{count} changes', { count: c }), link: '/msme/edit-history' },
     ];
   });
 }

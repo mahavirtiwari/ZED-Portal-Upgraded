@@ -13,7 +13,7 @@ import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveReq
 import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
-import { ParameterNav } from '../../msme/shared/parameter-status';
+import { ParameterChip, ParameterNav } from '../../msme/shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
@@ -24,6 +24,7 @@ import { QualityObservationsPanel } from '../quality/quality-observations-panel'
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
+import { TextPipe, t } from '../../content/page-text';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -59,39 +60,40 @@ export interface MapLocation { title: string; lat: string; lng: string; href: st
 
 export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting' | 'attendance' | 'nc';
 
-export const TABS: { id: RemoteTab; no: number; title: string }[] = [
-  { id: 'overview', no: 1, title: 'Assessment Overview' },
-  { id: 'openMeeting', no: 3, title: 'Opening Meeting' },
-  { id: 'basicInfo', no: 4, title: 'Basic Info' },
-  { id: 'siteTour', no: 2, title: 'Site Tour' },
-  { id: 'parameters', no: 5, title: 'Parameters' },
-  { id: 'closeMeeting', no: 6, title: 'Closing Meeting' },
-  { id: 'attendance', no: 7, title: 'Attendance' },
+// The tab titles and row labels are getters: they read the Admin's wording (Administration → Texts → Page wording) when shown.
+export const TABS: { id: RemoteTab; no: number; readonly title: string }[] = [
+  { id: 'overview', no: 1, get title() { return t('staff.remote.tab.overview.title', 'Assessment Overview'); } },
+  { id: 'openMeeting', no: 3, get title() { return t('staff.remote.tab.openMeeting.title', 'Opening Meeting'); } },
+  { id: 'basicInfo', no: 4, get title() { return t('staff.remote.tab.basicInfo.title', 'Basic Info'); } },
+  { id: 'siteTour', no: 2, get title() { return t('staff.remote.tab.siteTour.title', 'Site Tour'); } },
+  { id: 'parameters', no: 5, get title() { return t('staff.remote.tab.parameters.title', 'Parameters'); } },
+  { id: 'closeMeeting', no: 6, get title() { return t('staff.remote.tab.closeMeeting.title', 'Closing Meeting'); } },
+  { id: 'attendance', no: 7, get title() { return t('staff.remote.tab.attendance.title', 'Attendance'); } },
 ];
 
 /** Surveillance (that portal's Remote/Index.cshtml): an Instructions tab first, the site tour as "Assessment Evidence". */
-export const SURVEILLANCE_TABS: { id: RemoteTab; no: number; title: string }[] = [
-  { id: 'instructions', no: 1, title: 'Instructions' },
-  { id: 'overview', no: 2, title: 'Assessment Overview' },
-  { id: 'openMeeting', no: 3, title: 'Opening Meeting' },
-  { id: 'basicInfo', no: 4, title: 'Basic Info' },
-  { id: 'siteTour', no: 5, title: 'Assessment Evidence' },
-  { id: 'parameters', no: 6, title: 'Parameters' },
-  { id: 'closeMeeting', no: 7, title: 'Closing Meeting' },
-  { id: 'attendance', no: 8, title: 'Attendance' },
+export const SURVEILLANCE_TABS: { id: RemoteTab; no: number; readonly title: string }[] = [
+  { id: 'instructions', no: 1, get title() { return t('staff.remote.tab.instructions.title', 'Instructions'); } },
+  { id: 'overview', no: 2, get title() { return t('staff.remote.tab.overview.title', 'Assessment Overview'); } },
+  { id: 'openMeeting', no: 3, get title() { return t('staff.remote.tab.openMeeting.title', 'Opening Meeting'); } },
+  { id: 'basicInfo', no: 4, get title() { return t('staff.remote.tab.basicInfo.title', 'Basic Info'); } },
+  { id: 'siteTour', no: 5, get title() { return t('staff.remote.tab.evidence.title', 'Assessment Evidence'); } },
+  { id: 'parameters', no: 6, get title() { return t('staff.remote.tab.parameters.title', 'Parameters'); } },
+  { id: 'closeMeeting', no: 7, get title() { return t('staff.remote.tab.closeMeeting.title', 'Closing Meeting'); } },
+  { id: 'attendance', no: 8, get title() { return t('staff.remote.tab.attendance.title', 'Attendance'); } },
 ];
 
 /** Basic Info rows: DA answer column, remote answer column, Yes/No choice. */
-export const BASIC_INFO: { label: string; da: string; sa: string; yesNo: boolean }[] = [
-  { label: 'Whether 3rd Party Financial Audits are conducted?', da: 'AuditsConducted', sa: 'SaAuditsConducted', yesNo: true },
-  { label: 'Key Domestic Customers', da: 'DomesticCustomers', sa: 'SaDomesticCustomers', yesNo: false },
-  { label: 'Key International Customers', da: 'InternationalCustomers', sa: 'SaInternationalCustomers', yesNo: false },
-  { label: 'Processed Outsourced, if any?', da: 'OutsourcedProcesses', sa: 'SaOutsourcedProcesses', yesNo: false },
-  { label: 'Energy Source(s) Used', da: 'EnergySources', sa: 'SaEnergySources', yesNo: false },
-  { label: 'Manufacturing Capacity Units', da: 'ManufacturingCapacityUnits', sa: 'SaManufacturingCapacityUnits', yesNo: false },
-  { label: 'Manufacturing Capacity Value', da: 'ManufacturingCapacityValue', sa: 'SaManufacturingCapacityValue', yesNo: false },
-  { label: 'Monthly Utilization Units', da: 'MonthlyUtilizationUnits', sa: 'SaMonthlyUtilizationUnits', yesNo: false },
-  { label: 'Monthly Utilization Value', da: 'MonthlyUtilizationValue', sa: 'SaMonthlyUtilizationValue', yesNo: false },
+export const BASIC_INFO: { readonly label: string; da: string; sa: string; yesNo: boolean }[] = [
+  { get label() { return t('staff.remote.basic.audits.label', 'Whether 3rd Party Financial Audits are conducted?'); }, da: 'AuditsConducted', sa: 'SaAuditsConducted', yesNo: true },
+  { get label() { return t('staff.remote.basic.domesticCustomers.label', 'Key Domestic Customers'); }, da: 'DomesticCustomers', sa: 'SaDomesticCustomers', yesNo: false },
+  { get label() { return t('staff.remote.basic.internationalCustomers.label', 'Key International Customers'); }, da: 'InternationalCustomers', sa: 'SaInternationalCustomers', yesNo: false },
+  { get label() { return t('staff.remote.basic.outsourced.label', 'Processed Outsourced, if any?'); }, da: 'OutsourcedProcesses', sa: 'SaOutsourcedProcesses', yesNo: false },
+  { get label() { return t('staff.remote.basic.energySources.label', 'Energy Source(s) Used'); }, da: 'EnergySources', sa: 'SaEnergySources', yesNo: false },
+  { get label() { return t('staff.remote.basic.capacityUnits.label', 'Manufacturing Capacity Units'); }, da: 'ManufacturingCapacityUnits', sa: 'SaManufacturingCapacityUnits', yesNo: false },
+  { get label() { return t('staff.remote.basic.capacityValue.label', 'Manufacturing Capacity Value'); }, da: 'ManufacturingCapacityValue', sa: 'SaManufacturingCapacityValue', yesNo: false },
+  { get label() { return t('staff.remote.basic.utilizationUnits.label', 'Monthly Utilization Units'); }, da: 'MonthlyUtilizationUnits', sa: 'SaMonthlyUtilizationUnits', yesNo: false },
+  { get label() { return t('staff.remote.basic.utilizationValue.label', 'Monthly Utilization Value'); }, da: 'MonthlyUtilizationValue', sa: 'SaMonthlyUtilizationValue', yesNo: false },
 ];
 
 interface Capture { target: PhotoTarget; targetId: number | null; image: string; name: string; fixedName: boolean }
@@ -118,7 +120,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog],
+  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog, TextPipe],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -137,12 +139,12 @@ export class RemoteAssessmentPage {
   protected readonly n = num;
   /** The Instructions tab of the surveillance page (Admin → Texts): one row per item. */
   protected readonly instructions = computed(() => {
-    const t = this.content.text('staff.surveillance.remote.instructions');
+    const block = this.content.text('staff.surveillance.remote.instructions');
     // {{Validity}}, {{SurveillanceAssessments}} and {{Level}}: the unit's level settings (Administration → Certification
     // Levels); {{SurveillanceFee}}: its surveillance fee (Admin → Master → Payments).
     const d = this.data();
-    return t?.enabled
-      ? textParts(fillText(t.html, {
+    return block?.enabled
+      ? textParts(fillText(block.html, {
         Validity: validityText(d?.validityMonths ?? 36),
         SurveillanceAssessments: surveillancesText(d?.surveillanceCount ?? 2),
         Level: d?.levelName || d?.certification || this.certification,
@@ -168,7 +170,7 @@ export class RemoteAssessmentPage {
     })));
 
   protected observe(r: Record<string, unknown>): void {
-    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+    this.qoTarget.set(this.qoTargets().find((x) => x.id === String(r['Id'] ?? '')) ?? null);
   }
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
@@ -247,10 +249,12 @@ export class RemoteAssessmentPage {
   protected readonly headTitle = computed(() => {
     const m = this.msme();
     const unit = text(m, this.meetingMode() ? 'PUnitName' : 'EnterpriseName') || text(m, 'PUnitName') || text(m, 'ZedId') || this.zedId;
-    return `${unit} · ${this.certification}${this.meetingMode() ? ' surveillance' : ''}`;
+    return this.meetingMode() ? t('staff.remote.head.surveillanceTitle', '{unit} · {level} surveillance', { unit, level: this.certification })
+      : `${unit} · ${this.certification}`;
   });
   protected readonly headCrumbs = computed(() => staffCrumbs(
-    { label: this.meetingMode() ? 'Surveillance assessments (site)' : 'Remote and onsite assessments', link: '/staff/remote-assessments' },
+    { label: this.meetingMode() ? t('staff.remoteAssessments.surveillance.title', 'Surveillance assessments (site)')
+      : t('staff.remoteAssessments.title', 'Remote and onsite assessments'), link: '/staff/remote-assessments' },
     { label: text(this.msme(), 'ZedId') || this.zedId },
   ));
   /** 2026-11-17 (approved staff redesign): the photo whose removal is being confirmed (the confirmation pop-up, not window.confirm). */
@@ -263,9 +267,23 @@ export class RemoteAssessmentPage {
   protected readonly modeLabel = computed(() => {
     const d = this.data();
     if (!d) return '';
-    if (d.onsiteReview) return 'Onsite';
-    return this.meetingMode() || d.meetingLink ? 'Remote' : 'Onsite';
+    const onsite = t('staff.remote.mode.onsite.label', 'Onsite');
+    if (d.onsiteReview) return onsite;
+    return this.meetingMode() || d.meetingLink ? t('staff.remote.mode.remote.label', 'Remote') : onsite;
   });
+  /** The facts strip's date and mode. */
+  protected readonly factsExtra = computed(() => [
+    { label: this.meetingMode() ? t('staff.remote.facts.surveillanceDate.label', 'Surveillance date') : t('staff.remote.facts.assessmentDate.label', 'Assessment date'),
+      value: text(this.msme(), 'AssessmentDate') },
+    { label: t('staff.remote.facts.mode.label', 'Mode'), value: this.modeLabel() },
+  ]);
+  /** The photo removal confirmation. */
+  protected readonly removeAsk = computed(() => ({
+    title: t('staff.remote.removePhoto.title', 'Remove this photo?'),
+    message: t('staff.remote.removePhoto.message', 'The photo is deleted from this assessment.'),
+    confirmLabel: t('staff.remote.removePhoto.confirmButton', 'Remove'),
+    danger: true,
+  }));
   private readonly location = inject(Location);
   protected goBack(): void {
     this.location.back();
@@ -275,7 +293,7 @@ export class RemoteAssessmentPage {
   protected readonly tabs = computed(() => {
     const base = this.meetingMode() ? SURVEILLANCE_TABS : TABS;
     const nc = this.nc();
-    return nc ? [...base, { id: 'nc' as RemoteTab, no: base.length + 1, title: `NC ${nc.round}` }] : base;
+    return nc ? [...base, { id: 'nc' as RemoteTab, no: base.length + 1, title: t('staff.remote.tab.nc.title', 'NC {round}', { round: nc.round }) }] : base;
   });
   protected readonly currentTab = computed(() => this.tabs().find((x) => x.id === this.tab()) ?? this.tabs()[0]);
   protected readonly daSelfies = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'Selfie'));
@@ -289,8 +307,8 @@ export class RemoteAssessmentPage {
     const rows = [this.data()?.location ?? {}, this.msme()];
     const value = (column: string) => rows.map((r) => text(r, column)).find((v) => v) ?? '';
     const box = (title: string, lat: string, lng: string): MapLocation => ({ title, lat: value(lat), lng: value(lng), href: mapUrl(value(lat), value(lng)) });
-    const site = box('Site Assessment', 'ZedSaLatitude', 'ZedSaLongitude');
-    const surveillance = box('Surveillance Assessment', 'SurLatitude', 'SurLongitude');
+    const site = box(t('staff.remote.location.site.heading', 'Site Assessment'), 'ZedSaLatitude', 'ZedSaLongitude');
+    const surveillance = box(t('staff.remote.location.surveillance.heading', 'Surveillance Assessment'), 'SurLatitude', 'SurLongitude');
     return surveillance.lat ? [site, surveillance] : [site];
   });
   /**
@@ -397,6 +415,18 @@ export class RemoteAssessmentPage {
     return (this.data()?.sections ?? []).find((s) => text(s, 'SectionCode') === text(r, 'SectionCode'));
   }
 
+  /** A parameter / requirement chip as shown (the code value stays in data-v). */
+  protected chipText(value: ParameterChip): string {
+    switch (value) {
+      case 'Yes': return t('staff.remote.status.yes.chip', 'Yes');
+      case 'No': return t('staff.remote.status.no.chip', 'No');
+      case 'Partial': return t('staff.remote.status.partial.chip', 'Partial');
+      case 'Pending': return t('staff.remote.status.pending.chip', 'Pending');
+      case 'Exempt': return t('staff.remote.status.exempt.chip', 'Exempt');
+      default: return value;
+    }
+  }
+
   // ------------------------------------------------------------------ NC round
 
   private static same(a: Row, b: Row, ...columns: string[]): boolean {
@@ -421,10 +451,11 @@ export class RemoteAssessmentPage {
 
   /** NC tab: the requirement's conversation: the remark that raised the NC, the unit's reply (comments, files), the verdict. */
   protected ncThread(r: Row): ThreadMessage[] {
-    const round = `NC ${this.nc()?.round ?? ''}`.trim();
+    const n = this.nc()?.round ?? '';
+    const round = t('staff.remote.thread.round.label', 'NC {round}', { round: n }).trim();
     const files = this.ncEvidencesOf(r);
     return [
-      message('assessor', round + ' raised', { text: text(r, 'PreviousAssessorRemarks') }),
+      message('assessor', t('staff.remote.thread.raised.label', 'NC {round} raised', { round: n }), { text: text(r, 'PreviousAssessorRemarks') }),
       message('msme', round, {
         date: files.map((e) => text(e, 'SyncedDate')).find(Boolean) ?? '',
         text: text(r, 'MsmeComments'),
@@ -443,13 +474,13 @@ export class RemoteAssessmentPage {
 
   protected openNcProduct(p: SaNcProduct): void {
     this.modalError.set('');
-    this.choice.set({ kind: 'product', id: p.id, title: p.productName ?? 'Product', value: p.isSaVerified ?? '', remarks: p.saAssessorRemarks ?? '', max: 1000 });
+    this.choice.set({ kind: 'product', id: p.id, title: p.productName ?? t('staff.remote.choice.product.title', 'Product'), value: p.isSaVerified ?? '', remarks: p.saAssessorRemarks ?? '', max: 1000 });
   }
 
   protected openNcSiteExterior(): void {
     this.modalError.set('');
     const first = this.ncRound()?.photos?.[0];
-    this.choice.set({ kind: 'siteExterior', id: null, title: 'Site Exterior Photos', value: first?.isVerified ?? '', remarks: first?.assessorRemarks ?? '', max: 1000 });
+    this.choice.set({ kind: 'siteExterior', id: null, title: t('staff.remote.choice.siteExterior.title', 'Site Exterior Photos'), value: first?.isVerified ?? '', remarks: first?.assessorRemarks ?? '', max: 1000 });
   }
 
   /** The product description PDF was opened (ProductDescOpenedTime, or on this page): the icon turns blue. */
@@ -482,7 +513,7 @@ export class RemoteAssessmentPage {
     input.value = '';
     if (!file) return;
     if (!isJpegUpTo5Mb(file)) {
-      this.notice.set({ ok: false, text: 'Please upload a JPEG photo of at most 5 MB.' });
+      this.notice.set({ ok: false, text: t('staff.remote.photo.typeError', 'Please upload a JPEG photo of at most 5 MB.') });
       return;
     }
     this.modalError.set('');
@@ -493,7 +524,7 @@ export class RemoteAssessmentPage {
     const c = this.capture();
     if (!c) return;
     if (!c.name.trim()) {
-      this.modalError.set('Please enter Photo Name.');
+      this.modalError.set(t('staff.remote.photo.nameError', 'Please enter Photo Name.'));
       return;
     }
     await this.run(
@@ -509,7 +540,7 @@ export class RemoteAssessmentPage {
     input.value = '';
     if (!file) return;
     if (!isJpegUpTo5Mb(file)) {
-      this.notice.set({ ok: false, text: 'Please upload a JPEG photo of at most 5 MB.' });
+      this.notice.set({ ok: false, text: t('staff.remote.photo.typeError', 'Please upload a JPEG photo of at most 5 MB.') });
       return;
     }
     const image = await readAsDataUrl(file);
@@ -520,7 +551,7 @@ export class RemoteAssessmentPage {
   protected async addRecordingLink(meeting: Meeting): Promise<void> {
     const link = this.recordingLink.trim();
     if (!/^https?:\/\/\S+$/i.test(link)) {
-      this.notice.set({ ok: false, text: 'Please enter a valid recording link (starting with https:// or http://).' });
+      this.notice.set({ ok: false, text: t('staff.remote.recording.linkError', 'Please enter a valid recording link (starting with https:// or http://).') });
       return;
     }
     const ok = await this.run(this.api.addRecordingLink(this.zedId, this.certification, meeting.id, link), () => undefined, false);
@@ -557,7 +588,7 @@ export class RemoteAssessmentPage {
       this.checkpointEdit.set({ id: this.id(r), checkpoints, title: `${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}` });
       return;
     }
-    this.choice.set({ kind: 'conformance', id: this.id(r), title: 'Conformance', value: text(r, 'SaConformance'), remarks: text(r, 'SaAssessorRemarks'), max: 2000 });
+    this.choice.set({ kind: 'conformance', id: this.id(r), title: t('staff.remote.choice.conformance.title', 'Conformance'), value: text(r, 'SaConformance'), remarks: text(r, 'SaAssessorRemarks'), max: 2000 });
   }
 
   protected async saveCheckpoints(body: CheckpointSaveRequest): Promise<void> {
@@ -580,18 +611,18 @@ export class RemoteAssessmentPage {
   protected openSiteExterior(): void {
     this.modalError.set('');
     const m = this.msme();
-    this.choice.set({ kind: 'siteExterior', id: null, title: 'Site Exterior Photos', value: text(m, 'IsSaVerified'), remarks: text(m, 'SaAssessorRemarks'), max: 1000 });
+    this.choice.set({ kind: 'siteExterior', id: null, title: t('staff.remote.choice.siteExterior.title', 'Site Exterior Photos'), value: text(m, 'IsSaVerified'), remarks: text(m, 'SaAssessorRemarks'), max: 1000 });
   }
 
   protected async saveChoice(): Promise<void> {
     const c = this.choice();
     if (!c) return;
     if (c.value !== 'Yes' && c.value !== 'No') {
-      this.modalError.set('This is required.');
+      this.modalError.set(t('staff.remote.requiredError', 'This is required.'));
       return;
     }
     if (c.value === 'No' && !c.remarks.trim()) {
-      this.modalError.set('Please enter remarks.');
+      this.modalError.set(t('staff.remote.choice.remarksError', 'Please enter remarks.'));
       return;
     }
     const call =
@@ -610,19 +641,19 @@ export class RemoteAssessmentPage {
 
   protected openOfi(section: Row): void {
     this.modalError.set('');
-    this.textEdit.set({ kind: 'ofi', id: this.id(section), column: '', title: 'OFI Comments', value: text(section, 'OfiComments'), yesNo: false });
+    this.textEdit.set({ kind: 'ofi', id: this.id(section), column: '', title: t('staff.remote.text.ofi.title', 'OFI Comments'), value: text(section, 'OfiComments'), yesNo: false });
   }
 
   protected openMeetingComments(meeting: Meeting): void {
     this.modalError.set('');
-    this.textEdit.set({ kind: 'meeting', id: meeting.id, column: '', title: 'Meeting Comments', value: meeting.comments ?? '', yesNo: false });
+    this.textEdit.set({ kind: 'meeting', id: meeting.id, column: '', title: t('staff.remote.text.meeting.title', 'Meeting Comments'), value: meeting.comments ?? '', yesNo: false });
   }
 
   protected async saveText(): Promise<void> {
     const e = this.textEdit();
     if (!e) return;
     if (!e.value.trim()) {
-      this.modalError.set('This is required.');
+      this.modalError.set(t('staff.remote.requiredError', 'This is required.'));
       return;
     }
     const call =
@@ -637,7 +668,7 @@ export class RemoteAssessmentPage {
   protected async addParticipant(meeting: Meeting, key: 'open' | 'close'): Promise<void> {
     const p = this.participant[key];
     if (!p.name.trim() || !p.designation.trim()) {
-      this.notice.set({ ok: false, text: "Please enter the participant's name and designation." });
+      this.notice.set({ ok: false, text: t('staff.remote.participant.error', "Please enter the participant's name and designation.") });
       return;
     }
     const ok = await this.run(this.api.addParticipant(this.zedId, this.certification, meeting.id, p.name.trim(), p.designation.trim()), () => undefined, false);
@@ -655,7 +686,7 @@ export class RemoteAssessmentPage {
     try {
       const check = await firstValueFrom(this.api.checkFinalSubmit(this.zedId, this.certification));
       if (!check.allowed) {
-        this.notice.set({ ok: false, text: check.message ?? 'Please complete the assessment before final submit.' });
+        this.notice.set({ ok: false, text: check.message ?? t('staff.remote.finalSubmit.incompleteError', 'Please complete the assessment before final submit.') });
         return;
       }
       this.modalError.set('');
@@ -671,10 +702,10 @@ export class RemoteAssessmentPage {
     const f = this.finalSubmit();
     if (!f || !this.canSubmit(f)) return;
     if (!f.comments.trim()) {
-      this.modalError.set('Please enter comments.');
+      this.modalError.set(t('staff.remote.finalSubmit.commentsError', 'Please enter comments.'));
       return;
     }
-    let message = 'Assessment submitted.';
+    let message = t('staff.remote.finalSubmit.done.message', 'Assessment submitted.');
     const ok = await this.run(
       this.api.finalSubmit(this.zedId, this.certification, f.comments.trim(), f.ticked).pipe(tap((r) => (message = r.message || message))),
       () => this.finalSubmit.set(null),

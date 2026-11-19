@@ -83,6 +83,8 @@ public static partial class PageTextCatalogue
     [GeneratedRegex(@"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​  ]")] private static partial Regex ControlChars();
     [GeneratedRegex(@"[ \t ]+")] private static partial Regex Spaces();
     [GeneratedRegex(@"\n{3,}")] private static partial Regex BlankLines();
-    [GeneratedRegex(@"<\s*/?\s*[A-Za-z!]")] private static partial Regex Tag();
+    // A real tag (<b>, </p>, <a href="…">, <br/>, <!-- … -->), not an address in angle brackets ("ZED <noreply@example.org>")
+    // or a comparison ("< 2MB"); the wording is always shown as plain text anyway.
+    [GeneratedRegex(@"<!--|<\s*/?\s*[A-Za-z][A-Za-z0-9-]*(?:\s+[^<>@]*)?\s*/?>")] private static partial Regex Tag();
     [GeneratedRegex(@"\{([A-Za-z][A-Za-z0-9_]*)\}")] private static partial Regex Placeholder();
 }

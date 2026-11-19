@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { AuthService } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ChecklistRecord, SubmissionChecklistApi } from './quality.api';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-17 (approved): the submission checklists ticked with an assessment's (milestone's) submissions, on its review pages:
@@ -11,18 +12,25 @@ import { ChecklistRecord, SubmissionChecklistApi } from './quality.api';
  */
 @Component({
   selector: 'zed-checklist-records',
-  imports: [DatePipe],
+  imports: [DatePipe, TextPipe],
   template: `
     @if (records().length) {
       <section class="cr" data-checklist-records>
         @for (r of records(); track r.id) {
           <div class="cr-row" [attr.data-record]="r.id">
             <button type="button" class="cr-head" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
+              <!-- One wording per line (with or without the stage and the time); the checklist's title is the Admin's. -->
               <span>
-                <b>{{ r.title }}</b>{{ r.stage ? ' (' + r.stage + ')' : '' }} confirmed by {{ r.byName || r.role }}{{ r.byName && r.role ? ', ' + r.role : '' }}
-                @if (r.at) { on {{ r.at | date: 'd MMM y, HH:mm' }} }
+                @if (r.at) {
+                  {{ r.stage ? ('{title} ({stage}) confirmed by {who} on {at}' | t: 'staff.submissionChecklist.record.stageAt.label' : { title: r.title, stage: r.stage, who: who(r), at: (r.at | date: 'd MMM y, HH:mm') })
+                    : ('{title} confirmed by {who} on {at}' | t: 'staff.submissionChecklist.record.at.label' : { title: r.title, who: who(r), at: (r.at | date: 'd MMM y, HH:mm') }) }}
+                } @else {
+                  {{ r.stage ? ('{title} ({stage}) confirmed by {who}' | t: 'staff.submissionChecklist.record.stage.label' : { title: r.title, stage: r.stage, who: who(r) })
+                    : ('{title} confirmed by {who}' | t: 'staff.submissionChecklist.record.label' : { title: r.title, who: who(r) }) }}
+                }
               </span>
-              <span class="cr-count">{{ r.items.length }} item{{ r.items.length === 1 ? '' : 's' }} {{ open() === r.id ? '▴' : '▾' }}</span>
+              <span class="cr-count">{{ r.items.length === 1 ? ('{count} item' | t: 'staff.submissionChecklist.record.item.label' : { count: 1 })
+                : ('{count} items' | t: 'staff.submissionChecklist.record.items.label' : { count: r.items.length }) }} {{ open() === r.id ? '▴' : '▾' }}</span>
             </button>
             @if (open() === r.id) {
               <ol class="cr-items">@for (i of r.items; track $index) { <li>{{ i }}</li> }</ol>
@@ -56,6 +64,11 @@ export class ChecklistRecords {
   protected readonly open = signal<number | null>(null);
   /** There is something to show (2026-11-17: the details pages give the right rail its column only then). */
   readonly shown = computed(() => this.records().length > 0);
+
+  /** Who confirmed: the name and role ("R Sharma, Lead assessor"), or whichever is known. */
+  protected who(r: ChecklistRecord): string {
+    return r.byName && r.role ? t('staff.submissionChecklist.record.who.label', '{name}, {role}', { name: r.byName, role: r.role }) : (r.byName || r.role || '');
+  }
 
   constructor() {
     effect(() => {

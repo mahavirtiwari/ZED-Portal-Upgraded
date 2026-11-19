@@ -1,6 +1,7 @@
 import { Component, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { TextPipe } from '../../content/page-text';
 import type { PaymentBilling } from './payment-step';
 
 /** One line of the right rail's facts ("Milestone", "Milestone 2"). */
@@ -26,34 +27,34 @@ export interface PayRail {
  */
 @Component({
   selector: 'zed-pay-disclaimer',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TextPipe],
   host: { class: 'd-block' },
   template: `
     <div class="pd-cols">
       <section class="pd-card disclaimer-sec" aria-labelledby="pdTitle">
         <header class="pd-head">
           <span class="pd-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg></span>
-          <h3 id="pdTitle">{{ step() === 'disclaimer' ? 'Disclaimer / declaration' : 'Instructions' }}</h3>
+          <h3 id="pdTitle">{{ step() === 'disclaimer' ? ('Disclaimer / declaration' | t: 'msme.payment.disclaimer.title') : ('Instructions' | t: 'msme.payment.disclaimer.instructionsTitle') }}</h3>
         </header>
         <div class="pd-body"><ng-content /></div>
         <div class="pd-bar">
           @if (step() === 'disclaimer') {
             <label class="pd-consent">
               <input type="checkbox" name="consent" [ngModel]="consent()" (ngModelChange)="consent.set($event)" />
-              <span>I have read and understood the disclaimer and accept it on behalf of {{ unitName() || 'my unit' }}.</span>
+              <span>@if (unitName(); as unit) { {{ 'I have read and understood the disclaimer and accept it on behalf of {unit}.' | t: 'msme.payment.disclaimer.consentText' : { unit } }} } @else { {{ 'I have read and understood the disclaimer and accept it on behalf of my unit.' | t: 'msme.payment.disclaimer.consentNoNameText' }} }</span>
             </label>
           }
           <div class="pd-actions">
-            <a class="btn pd-soft" [routerLink]="backLink()" [queryParams]="backQuery()">← {{ backLabel() }}</a>
-            <button type="button" class="btn btn-primary pd-go" [disabled]="busy() || (step() === 'disclaimer' && !consent())" (click)="accept.emit()">Accept &amp; proceed →</button>
-            <span class="pd-free">Nothing is charged at this step.</span>
+            <a class="btn pd-soft" [routerLink]="backLink()" [queryParams]="backQuery()">← {{ backLabel() ?? ('Back to dashboard' | t: 'msme.payment.disclaimer.backButton') }}</a>
+            <button type="button" class="btn btn-primary pd-go" [disabled]="busy() || (step() === 'disclaimer' && !consent())" (click)="accept.emit()">{{ 'Accept & proceed →' | t: 'msme.payment.disclaimer.acceptButton' }}</button>
+            <span class="pd-free">{{ 'Nothing is charged at this step.' | t: 'msme.payment.disclaimer.freeNote' }}</span>
           </div>
         </div>
       </section>
 
       <aside class="pd-rail">
         <section class="pd-card" aria-labelledby="pdPaying">
-          <h3 class="pd-rh" id="pdPaying">You are paying for</h3>
+          <h3 class="pd-rh" id="pdPaying">{{ 'You are paying for' | t: 'msme.payment.disclaimer.payingTitle' }}</h3>
           @let r = rail();
           <div class="pd-level">
             <img [src]="r.logo" alt="" />
@@ -64,12 +65,12 @@ export interface PayRail {
           </dl>
         </section>
         <section class="pd-card" aria-labelledby="pdKey">
-          <h3 class="pd-rh" id="pdKey">Key points at a glance</h3>
+          <h3 class="pd-rh" id="pdKey">{{ 'Key points at a glance' | t: 'msme.payment.disclaimer.keyPointsTitle' }}</h3>
           <ul class="pd-keys">
-            <li><span class="k-warn" aria-hidden="true">!</span>The fee is non-refundable, non-adjustable and non-transferable.</li>
-            <li><span aria-hidden="true">★</span>The Joining Reward works once: once used, it cannot be used again.</li>
-            <li><span aria-hidden="true">₹</span>Subsidy is already applied; you pay only the beneficiary contribution.</li>
-            <li><span aria-hidden="true">◷</span>Late documents or responses can forfeit the amount paid.</li>
+            <li><span class="k-warn" aria-hidden="true">!</span>{{ 'The fee is non-refundable, non-adjustable and non-transferable.' | t: 'msme.payment.disclaimer.point1' }}</li>
+            <li><span aria-hidden="true">★</span>{{ 'The Joining Reward works once: once used, it cannot be used again.' | t: 'msme.payment.disclaimer.point2' }}</li>
+            <li><span aria-hidden="true">₹</span>{{ 'Subsidy is already applied; you pay only the beneficiary contribution.' | t: 'msme.payment.disclaimer.point3' }}</li>
+            <li><span aria-hidden="true">◷</span>{{ 'Late documents or responses can forfeit the amount paid.' | t: 'msme.payment.disclaimer.point4' }}</li>
           </ul>
         </section>
       </aside>
@@ -133,7 +134,8 @@ export class PayDisclaimer {
   readonly busy = input(false);
   readonly backLink = input<string | unknown[]>('/msme/dashboard');
   readonly backQuery = input<Record<string, unknown> | null>(null);
-  readonly backLabel = input('Back to dashboard');
+  /** The back link's wording (the caller's, through t()); "Back to dashboard" when not given. */
+  readonly backLabel = input<string | null>(null);
   readonly accept = output<void>();
 
   /** The explicit consent to the disclaimer. */
@@ -143,9 +145,9 @@ export class PayDisclaimer {
 /** The billing details card of the fee step and the "<unit> · <ZED ID>" line, from the unit's registration (api/msme/profile). */
 export function billingOf(row: Record<string, string | number | null> | null | undefined): PaymentBilling | null {
   if (!row) return null;
-  const t = (k: string) => String(row[k] ?? '').trim();
-  const address = [t('PUnitName'), t('PAddress'), t('PDistrictName'), [t('PStateName'), t('PPin')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const b: PaymentBilling = { name: t('EnterpriseName') || null, address: address || null, zedId: t('ZedId') || null,
-    unit: [t('EnterpriseName'), t('ZedId')].filter(Boolean).join(' · ') || null };
+  const v = (k: string) => String(row[k] ?? '').trim();
+  const address = [v('PUnitName'), v('PAddress'), v('PDistrictName'), [v('PStateName'), v('PPin')].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const b: PaymentBilling = { name: v('EnterpriseName') || null, address: address || null, zedId: v('ZedId') || null,
+    unit: [v('EnterpriseName'), v('ZedId')].filter(Boolean).join(' · ') || null };
   return b.name || b.address || b.zedId ? b : null;
 }

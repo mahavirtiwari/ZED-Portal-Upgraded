@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { t } from '../../content/page-text';
 
 /** One step of a tracker: its name and the line under it (e.g. a date, or "You are here"). */
 export interface TrackerStep {
@@ -15,7 +16,7 @@ export interface TrackerStep {
   selector: 'zed-step-tracker',
   host: { class: 'd-block' },
   template: `
-    <ol class="st" [attr.aria-label]="label()">
+    <ol class="st" [attr.aria-label]="name()">
       @for (s of steps(); track $index; let i = $index) {
         <li class="st-step" [class.st-done]="i < current()" [class.st-now]="i === current()" [attr.aria-current]="i === current() ? 'step' : null">
           <span class="st-dot" aria-hidden="true">
@@ -57,6 +58,8 @@ export class StepTracker {
   readonly steps = input.required<TrackerStep[]>();
   /** The 0-based current step (steps before it are done). */
   readonly current = input(0);
-  readonly label = input('Progress');
+  /** Unset: the standard "Progress" (Admin-editable). */
+  readonly label = input<string>();
+  protected readonly name = computed(() => this.label() || t('common.stepTracker.aria', 'Progress'));
   protected readonly count = computed(() => this.steps().length);
 }

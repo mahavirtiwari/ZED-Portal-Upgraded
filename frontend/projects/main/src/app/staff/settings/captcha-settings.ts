@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { CaptchaMode, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 
 interface CaptchaSettings {
   mode: CaptchaMode;
@@ -19,12 +20,12 @@ interface CaptchaSettings {
  */
 @Component({
   selector: 'zed-staff-captcha-settings',
-  imports: [FormsModule, PortalSwitchComponent],
+  imports: [FormsModule, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Captcha Settings</h3>
-        <p class="page-sub">The captcha of the login, registration, Contact ZED and "Forgot password?" pages of this portal.</p>
+        <h3 class="registration-title">{{ 'Captcha Settings' | t: 'staff.captcha.title' }}</h3>
+        <p class="page-sub">{{ 'The captcha of the login, registration, Contact ZED and "Forgot password?" pages of this portal.' | t: 'staff.captcha.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
@@ -39,19 +40,19 @@ interface CaptchaSettings {
       <div class="cap-status" [class.off]="saved() === 'off'" role="status">
         <span class="cap-shield" aria-hidden="true">{{ saved() === 'off' ? '!' : '✓' }}</span>
         <div>
-          <strong>{{ saved() === 'off' ? 'No captcha on the forms' : 'Forms protected by ' + (saved() === 'google' ? 'Google reCAPTCHA' : "the portal's own captcha") }}</strong>
-          <small class="d-block">{{ saved() === 'off' ? 'Anyone, or any program, can submit them without a check.' : 'A visitor proves they are a person before a form is sent.' }}</small>
+          <strong>{{ saved() === 'off' ? ('No captcha on the forms' | t: 'staff.captcha.status.off') : saved() === 'google' ? ('Forms protected by Google reCAPTCHA' | t: 'staff.captcha.status.google') : ("Forms protected by the portal's own captcha" | t: 'staff.captcha.status.text') }}</strong>
+          <small class="d-block">{{ saved() === 'off' ? ('Anyone, or any program, can submit them without a check.' | t: 'staff.captcha.status.offNote') : ('A visitor proves they are a person before a form is sent.' | t: 'staff.captcha.status.onNote') }}</small>
         </div>
       </div>
 
       <form class="zed-card" (ngSubmit)="save()" novalidate>
-        <h5 class="card-title">Captcha on this portal's forms</h5>
-        <div class="where" aria-label="Where it applies">
-          @for (f of forms; track f) { <span class="where-chip">{{ f }}</span> }
-          <span class="where-chip not">Not the MSME mobile app</span>
+        <h5 class="card-title">{{ "Captcha on this portal's forms" | t: 'staff.captcha.card.title' }}</h5>
+        <div class="where" [attr.aria-label]="'Where it applies' | t: 'staff.captcha.where.aria'">
+          @for (f of forms(); track f) { <span class="where-chip">{{ f }}</span> }
+          <span class="where-chip not">{{ 'Not the MSME mobile app' | t: 'staff.captcha.where.notApp' }}</span>
         </div>
-        <div class="captcha-options" role="radiogroup" aria-label="Captcha">
-          @for (o of options; track o.mode) {
+        <div class="captcha-options" role="radiogroup" [attr.aria-label]="'Captcha' | t: 'staff.captcha.options.aria'">
+          @for (o of options(); track o.mode) {
             @if (o.mode !== 'google' || googleAvailable() || saved() === 'google') {
               <label class="captcha-option" [class.is-on]="mode() === o.mode" [class.is-disabled]="o.mode === 'google' && !googleAvailable()" [for]="'captcha-' + o.mode">
                 <span class="opt-head">
@@ -59,16 +60,16 @@ interface CaptchaSettings {
                          [disabled]="o.mode === 'google' && !googleAvailable()" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
                   <span class="captcha-title">
                     {{ o.title }}
-                    @if (saved() === o.mode) { <span class="status-badge is-active cap-current">Current</span> }
+                    @if (saved() === o.mode) { <span class="status-badge is-active cap-current">{{ 'Current' | t: 'staff.captcha.option.current' }}</span> }
                   </span>
                 </span>
                 <span class="captcha-help">{{ o.help }}</span>
-                @if (o.mode === 'off') { <span class="captcha-help warn">Not recommended: the forms are open to automated sign-ups and spam.</span> }
+                @if (o.mode === 'off') { <span class="captcha-help warn">{{ 'Not recommended: the forms are open to automated sign-ups and spam.' | t: 'staff.captcha.option.offWarning' }}</span> }
                 @if (o.mode === 'google' && !googleAvailable()) {
-                  <span class="captcha-help text-danger">The reCAPTCHA keys are not set on the server.</span>
+                  <span class="captcha-help text-danger">{{ 'The reCAPTCHA keys are not set on the server.' | t: 'staff.captcha.option.googleMissing' }}</span>
                 }
                 <span class="mock" aria-hidden="true">
-                  <span class="mock-title">Login form</span>
+                  <span class="mock-title">{{ 'Login form' | t: 'staff.captcha.mock.title' }}</span>
                   <span class="mock-input"></span>
                   <span class="mock-input"></span>
                   @switch (o.mode) {
@@ -76,22 +77,22 @@ interface CaptchaSettings {
                       <span class="mock-captcha"><span class="captcha-sample">x7Kp2Q</span><span class="mock-input small-input"></span></span>
                     }
                     @case ('google') {
-                      <span class="mock-recaptcha"><i></i> I'm not a robot <b>reCAPTCHA</b></span>
+                      <span class="mock-recaptcha"><i></i> {{ "I'm not a robot" | t: 'staff.captcha.mock.robot' }} <b>reCAPTCHA</b></span>
                     }
                   }
-                  <span class="mock-button">Login</span>
+                  <span class="mock-button">{{ 'Login' | t: 'staff.captcha.mock.loginButton' }}</span>
                 </span>
               </label>
             }
           }
         </div>
         @if (!googleAvailable() && saved() !== 'google') {
-          <small class="text-muted d-block mt-3">Google reCAPTCHA ("I'm not a robot") is offered here once its keys are set in the server's settings file.</small>
+          <small class="text-muted d-block mt-3">{{ googleNote() }}</small>
         }
-        <small class="text-muted d-block mt-1">Applies to new page loads within half a minute. The MSME mobile app keeps its own captcha.</small>
+        <small class="text-muted d-block mt-1">{{ 'Applies to new page loads within half a minute. The MSME mobile app keeps its own captcha.' | t: 'staff.captcha.applyNote' }}</small>
         <div class="form-actions save-row" [class.is-dirty]="mode() !== saved()">
-          @if (mode() !== saved()) { <span class="unsaved me-auto">Not saved yet. {{ titleOf(saved()) }} → {{ titleOf(mode()) }}</span> }
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || mode() === saved()">Save</button>
+          @if (mode() !== saved()) { <span class="unsaved me-auto">{{ 'Not saved yet. {from} → {to}' | t: 'staff.captcha.unsaved' : { from: titleOf(saved()), to: titleOf(mode()) } }}</span> }
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || mode() === saved()">{{ 'Save' | t: 'staff.captcha.saveButton' }}</button>
         </div>
       </form>
     }
@@ -152,13 +153,17 @@ export class CaptchaSettingsPage {
   protected readonly mode = signal<CaptchaMode>('off');
   /** The mode on the server (the "Current" badge; Save only after a change). */
   protected readonly saved = signal<CaptchaMode>('off');
-  protected readonly options: { mode: CaptchaMode; title: string; help: string }[] = [
-    { mode: 'text', title: 'Captcha on', help: 'The portal\'s own captcha: 6 letters and digits to type in.' },
-    { mode: 'off', title: 'Captcha off', help: 'No captcha on these forms.' },
-    { mode: 'google', title: 'Google reCAPTCHA', help: 'The "I\'m not a robot" box of Google, with the keys set on the server.' },
-  ];
+  protected readonly options = computed<{ mode: CaptchaMode; title: string; help: string }[]>(() => [
+    { mode: 'text', title: t('staff.captcha.option.text.title', 'Captcha on'), help: t('staff.captcha.option.text.help', 'The portal\'s own captcha: 6 letters and digits to type in.') },
+    { mode: 'off', title: t('staff.captcha.option.off.title', 'Captcha off'), help: t('staff.captcha.option.off.help', 'No captcha on these forms.') },
+    { mode: 'google', title: t('staff.captcha.option.google.title', 'Google reCAPTCHA'),
+      help: t('staff.captcha.option.google.help', 'The "I\'m not a robot" box of Google, with the keys set on the server.') },
+  ]);
   /** The forms the captcha is on (the chips). */
-  protected readonly forms = ['Login', 'Registration', 'Contact ZED', 'Forgot password'];
+  protected readonly forms = computed(() => [t('staff.captcha.form.login', 'Login'), t('staff.captcha.form.registration', 'Registration'),
+    t('staff.captcha.form.contact', 'Contact ZED'), t('staff.captcha.form.forgotPassword', 'Forgot password')]);
+  protected readonly googleNote = computed(() =>
+    t('staff.captcha.googleNote', 'Google reCAPTCHA ("I\'m not a robot") is offered here once its keys are set in the server\'s settings file.'));
   protected readonly googleAvailable = signal(false);
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
@@ -170,7 +175,7 @@ export class CaptchaSettingsPage {
   }
 
   protected titleOf(mode: CaptchaMode): string {
-    return this.options.find((o) => o.mode === mode)?.title ?? mode;
+    return this.options().find((o) => o.mode === mode)?.title ?? mode;
   }
 
   protected async save(): Promise<void> {

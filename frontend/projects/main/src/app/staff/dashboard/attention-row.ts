@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { ATTENTION_ROLES, AttentionService } from '../attention';
+import { TextPipe } from '../../content/page-text';
 
 /**
  * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-00's order for a Master Admin: allotment, overdue NC
@@ -28,11 +29,11 @@ const ICONS: Record<string, string> = {
  */
 @Component({
   selector: 'zed-attention-row',
-  imports: [RouterLink],
+  imports: [RouterLink, TextPipe],
   template: `
     @if (items().length) {
       <section class="at no-export" aria-labelledby="at-h">
-        <h2 class="at-h" id="at-h">Needs your attention</h2>
+        <h2 class="at-h" id="at-h">{{ 'Needs your attention' | t: 'staff.dashboard.attention.heading' }}</h2>
         <div class="at-grid">
           @for (i of items(); track i.key) {
             <a class="at-item" [routerLink]="i.link" [queryParams]="i.query" [class.is-zero]="!i.count" [attr.data-key]="i.key">

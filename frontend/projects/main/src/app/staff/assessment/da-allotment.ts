@@ -13,6 +13,7 @@ import { RowMenu, RowMenuItem } from '../row-menu';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { AllotAssessorDialog, AllotChoice, agencyRejectAsk, assessorsForUnit } from './da-allot-actions';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 type Stage = 'pending' | 'allotted' | 'rejected';
 
@@ -31,22 +32,22 @@ type Stage = 'pending' | 'allotted' | 'rejected';
  */
 @Component({
   selector: 'zed-staff-da-allotment',
-  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog, AllotAssessorDialog],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts, RowMenu, ConfirmDialog, AllotAssessorDialog, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="pageTitle" [subtitle]="subtitle">
-      <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+    <zed-page-head [crumbs]="crumbs()" [title]="pageTitle()" [subtitle]="subtitle()">
+      <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.daAllotment.refreshButton' }}</button>
     </zed-page-head>
-    <zed-list-counts [counts]="counts()" [selected]="stage()" label="Units by status" (pick)="pickStage($event.key)" />
+    <zed-list-counts [counts]="counts()" [selected]="stage()" [label]="'Units by status' | t: 'staff.daAllotment.countsLabel'" (pick)="pickStage($event.key)" />
 
     <div class="zed-card da-filters">
-      <input type="search" id="da-allot-search" class="form-control da-q" maxlength="50" placeholder="Search ZED ID, unit, SPOC or assessor"
-             aria-label="Search ZED ID, unit, SPOC or assessor" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      <input type="search" id="da-allot-search" class="form-control da-q" maxlength="50" [placeholder]="'Search ZED ID, unit, SPOC or assessor' | t: 'staff.daAllotment.search.placeholder'"
+             [attr.aria-label]="'Search ZED ID, unit, SPOC or assessor' | t: 'staff.daAllotment.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
       @if (surveillance) {
         <!-- That portal's DaAllotment.cshtml: an "Enter ZED ID" search box, applied on Search / Enter. -->
         <div class="input-group da-zed">
-          <input type="text" class="form-control" placeholder="Enter ZED ID" aria-label="Enter ZED ID" maxlength="50" [(ngModel)]="zedIdText" (keyup.enter)="searchZedId()" />
-          <button type="button" class="btn btn-primary search-zed" aria-label="Search" (click)="searchZedId()"><i class="fa fa-search"></i></button>
+          <input type="text" class="form-control" [placeholder]="'Enter ZED ID' | t: 'staff.daAllotment.zedId.placeholder'" [attr.aria-label]="'Enter ZED ID' | t: 'staff.daAllotment.zedId.placeholder'" maxlength="50" [(ngModel)]="zedIdText" (keyup.enter)="searchZedId()" />
+          <button type="button" class="btn btn-primary search-zed" [attr.aria-label]="'Search' | t: 'staff.daAllotment.zedId.searchAria'" (click)="searchZedId()"><i class="fa fa-search"></i></button>
         </div>
       }
     </div>
@@ -58,54 +59,54 @@ type Stage = 'pending' | 'allotted' | 'rejected';
       <table class="table table-zed">
         <thead>
           <tr>
-            <th>Unit</th>
-            <th>Level</th>
-            <th>Unit SPOC</th>
-            <th>Assessor</th>
-            <th>Status</th>
-            <th>Reason for rejection</th>
-            <th class="text-end">Actions</th>
+            <th>{{ 'Unit' | t: 'staff.daAllotment.column.unit' }}</th>
+            <th>{{ 'Level' | t: 'staff.daAllotment.column.level' }}</th>
+            <th>{{ 'Unit SPOC' | t: 'staff.daAllotment.column.spoc' }}</th>
+            <th>{{ 'Assessor' | t: 'staff.daAllotment.column.assessor' }}</th>
+            <th>{{ 'Status' | t: 'staff.daAllotment.column.status' }}</th>
+            <th>{{ 'Reason for rejection' | t: 'staff.daAllotment.column.reason' }}</th>
+            <th class="text-end">{{ 'Actions' | t: 'staff.daAllotment.column.actions' }}</th>
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track key(s)) {
-            <tr [class.da-flag]="!!t(s, 'DesktopReasonForRejection')">
+            <tr [class.da-flag]="!!col(s, 'DesktopReasonForRejection')">
               <td class="unit unit-cell">
-                <b>{{ t(s, 'PUnitName') }}</b>
-                <span class="dash-text-clr da-id">{{ t(s, 'ZedId') }}</span>
-                <small class="da-addr" [title]="t(s, 'UnitAddress')">{{ t(s, 'UnitAddress') }}</small>
+                <b>{{ col(s, 'PUnitName') }}</b>
+                <span class="dash-text-clr da-id">{{ col(s, 'ZedId') }}</span>
+                <small class="da-addr" [title]="col(s, 'UnitAddress')">{{ col(s, 'UnitAddress') }}</small>
               </td>
-              <td><span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
-              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ t(s, 'UnitSpocEmailId') }}</span></td>
-              <td>{{ t(s, 'DaAssessorName') }}<span class="sub">{{ t(s, 'DesktopAssessorId') }}</span></td>
+              <td><span [class]="'lv-tag lv-' + col(s, 'Certification').toLowerCase()">{{ col(s, 'Certification') }}</span></td>
+              <td><b>{{ col(s, 'UnitSpocName') }}</b><span class="sub">{{ col(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ col(s, 'UnitSpocEmailId') }}</span></td>
+              <td>{{ col(s, 'DaAssessorName') }}<span class="sub">{{ col(s, 'DesktopAssessorId') }}</span></td>
               <td>
-                @if (t(s, 'DesktopReasonForRejection')) { <span class="chip is-bad">Assessor rejected</span> }
-                @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
-                  <span class="chip is-info">Allotted to assessor</span>
+                @if (col(s, 'DesktopReasonForRejection')) { <span class="chip is-bad">{{ 'Assessor rejected' | t: 'staff.daAllotment.row.chip.rejected' }}</span> }
+                @if (!col(s, 'DesktopReasonForRejection') && col(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
+                  <span class="chip is-info">{{ 'Allotted to assessor' | t: 'staff.daAllotment.row.chip.allotted' }}</span>
                 }
-                @if (!t(s, 'DesktopAssessorId')) { <span class="chip is-warn">Allotment Pending</span> }
+                @if (!col(s, 'DesktopAssessorId')) { <span class="chip is-warn">{{ 'Allotment Pending' | t: 'staff.daAllotment.row.chip.pending' }}</span> }
               </td>
               <td class="reason">
-                @if (t(s, 'DesktopReasonForRejection'); as reason) {
+                @if (col(s, 'DesktopReasonForRejection'); as reason) {
                   <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
                   @if (reason.length > 120) {
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? ('less' | t: 'staff.daAllotment.row.lessButton') : ('more' | t: 'staff.daAllotment.row.moreButton') }}</button>
                   }
                 }
               </td>
               <td class="text-end text-nowrap">
-                @if (!t(s, 'DesktopAssessorId') && !t(s, 'ReasonForRejection')) {
-                  <button type="button" class="btn btn-primary da-act" (click)="openAllot(s)">Accept</button>
+                @if (!col(s, 'DesktopAssessorId') && !col(s, 'ReasonForRejection')) {
+                  <button type="button" class="btn btn-primary da-act" (click)="openAllot(s)">{{ 'Accept' | t: 'staff.daAllotment.row.acceptButton' }}</button>
                 }
                 @if (canReallot(s)) {
-                  <button type="button" class="btn da-act re-allot" (click)="openAllot(s)">Re-allot</button>
+                  <button type="button" class="btn da-act re-allot" (click)="openAllot(s)">{{ 'Re-allot' | t: 'staff.daAllotment.row.reallotButton' }}</button>
                 }
-                <a class="btn btn-outline-primary da-act da-view" [routerLink]="detailsLink(s)">View details</a>
-                <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" />
+                <a class="btn btn-outline-primary da-act da-view" [routerLink]="detailsLink(s)">{{ 'View details' | t: 'staff.daAllotment.row.detailsButton' }}</a>
+                <zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.daAllotment.row.menuAria' : { zedId: col(s, 'ZedId') }" (picked)="act(s, $event)" />
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td></tr>
+            <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.daAllotment.loading.text') : ('No Data' | t: 'staff.daAllotment.empty') }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -143,16 +144,17 @@ export class DaAllotmentPage {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   protected readonly legacy = useLegacyPortal();
-  protected readonly t = text;
+  protected readonly col = text;
   protected readonly f = flag;
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
-  protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments';
-  protected readonly crumbs = staffCrumbs({ label: this.pageTitle });
-  protected readonly subtitle = this.surveillance
-    ? 'Allot the surveillance assessments to your assessors, re-allot them or reject them.'
-    : 'Allot the units to your desktop assessors, re-allot the ones an assessor rejected, or reject them.';
+  protected readonly pageTitle = computed(() => this.surveillance ? t('staff.daAllotment.surveillanceTitle', 'Allot Surveillance Assessments')
+    : t('staff.daAllotment.title', 'Allot DA Assessments'));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.pageTitle() }));
+  protected readonly subtitle = computed(() => this.surveillance
+    ? t('staff.daAllotment.surveillance.sub', 'Allot the surveillance assessments to your assessors, re-allot them or reject them.')
+    : t('staff.daAllotment.sub', 'Allot the units to your desktop assessors, re-allot the ones an assessor rejected, or reject them.'));
   /** The tile chosen (null: every unit). */
   protected readonly stage = signal<Stage | null>(null);
   private readonly stageOf = (r: Row): Stage =>
@@ -162,9 +164,9 @@ export class DaAllotmentPage {
     const rows = this.rows();
     const n = (s: Stage) => rows.filter((r) => this.stageOf(r) === s).length;
     return [
-      { key: 'pending', label: 'Allotment pending', value: n('pending'), tone: 'warn' },
-      { key: 'allotted', label: 'Allotted to an assessor', value: n('allotted'), tone: 'good' },
-      { key: 'rejected', label: 'Rejected by the assessor', value: n('rejected'), tone: 'bad' },
+      { key: 'pending', label: t('staff.daAllotment.count.pendingLabel', 'Allotment pending'), value: n('pending'), tone: 'warn' },
+      { key: 'allotted', label: t('staff.daAllotment.count.allottedLabel', 'Allotted to an assessor'), value: n('allotted'), tone: 'good' },
+      { key: 'rejected', label: t('staff.daAllotment.count.rejectedLabel', 'Rejected by the assessor'), value: n('rejected'), tone: 'bad' },
     ];
   });
   /** Surveillance: the ZED ID searched for (applied on Search / Enter, as the old page reloaded the list then). */
@@ -235,8 +237,9 @@ export class DaAllotmentPage {
 
   /** The row menu: the details, the profile, and Reject (as the old REJECT button: before allotment or after the assessor rejected). */
   protected menu(s: Row): RowMenuItem[] {
-    const items: RowMenuItem[] = [{ key: 'details', label: 'View details', icon: 'eye' }, { key: 'profile', label: 'View MSME profile', icon: 'people' }];
-    if (!text(s, 'DesktopAssessorId') || text(s, 'DesktopReasonForRejection')) items.push({ key: 'reject', label: 'Reject', danger: true });
+    const items: RowMenuItem[] = [{ key: 'details', label: t('staff.daAllotment.menu.detailsLabel', 'View details'), icon: 'eye' },
+      { key: 'profile', label: t('staff.daAllotment.menu.profileLabel', 'View MSME profile'), icon: 'people' }];
+    if (!text(s, 'DesktopAssessorId') || text(s, 'DesktopReasonForRejection')) items.push({ key: 'reject', label: t('staff.daAllotment.menu.rejectLabel', 'Reject'), danger: true });
     return items;
   }
 
@@ -271,7 +274,8 @@ export class DaAllotmentPage {
     await this.run(
       () => this.api.allotToAssessor(text(s, 'ZedId'), text(s, 'Certification'), choice.assessorId),
       () => this.allotFor.set(null),
-      `${text(s, 'ZedId')} allotted`, `To ${choice.assessorName}.`,
+      t('staff.daAllotment.toast.allotted', '{zedId} allotted', { zedId: text(s, 'ZedId') }),
+      t('staff.daAllotment.toast.allottedTo', 'To {name}.', { name: choice.assessorName }),
     );
   }
 
@@ -281,7 +285,7 @@ export class DaAllotmentPage {
     await this.run(
       () => this.api.agencyReject(text(s, 'ZedId'), text(s, 'Certification'), reason),
       () => this.rejectFor.set(null),
-      `${text(s, 'ZedId')} rejected`, null,
+      t('staff.daAllotment.toast.rejected', '{zedId} rejected', { zedId: text(s, 'ZedId') }), null,
     );
   }
 

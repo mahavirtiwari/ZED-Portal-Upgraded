@@ -7,6 +7,7 @@ import { MultiSelect, MultiSelectOption } from './multi-select';
 import { AgencyRequest, CodeName, District, OrgPartner, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
@@ -48,7 +49,7 @@ function emptyAgency(): AgencyRequest {
  */
 @Component({
   selector: 'zed-staff-agency-form',
-  imports: [FormsModule, RouterLink, MultiSelect, PageHead],
+  imports: [FormsModule, RouterLink, MultiSelect, PageHead, TextPipe],
   templateUrl: './agency-form.html',
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-02 values. */
@@ -132,19 +133,24 @@ export class AgencyFormPage {
   protected readonly isEdit = !!this.userId;
   protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
   protected readonly labels = PORTAL_LABELS;
-  protected readonly word = this.consultancy ? 'organisation' : 'agency';
-  protected readonly title = this.isEdit ? `Update ${PORTAL_LABELS.agency} Details` : `Add ${PORTAL_LABELS.agency}`;
-  protected readonly crumbs = staffCrumbs({ label: PORTAL_LABELS.agencies, link: '/staff/users/agencies' }, { label: this.userId ?? 'Add' });
-  protected readonly subtitle = this.isEdit
-    ? `Details, categories and applicable states of the ${PORTAL_LABELS.agency.toLowerCase()}.`
-    : 'The login ID is generated and the login details are e-mailed to the SPOC.';
+  protected readonly word = computed(() => (this.consultancy ? t('staff.agencyForm.word.organisation', 'organisation') : t('staff.agencyForm.word.agency', 'agency')));
+  protected readonly title = computed(() => (this.isEdit ? t('staff.agencyForm.editTitle', 'Update {agency} Details', { agency: PORTAL_LABELS.agency })
+    : t('staff.agencyForm.addTitle', 'Add {agency}', { agency: PORTAL_LABELS.agency })));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: PORTAL_LABELS.agencies, link: '/staff/users/agencies' },
+    { label: this.userId ?? t('staff.agencyForm.crumb.add', 'Add') }));
+  protected readonly subtitle = computed(() => (this.isEdit
+    ? t('staff.agencyForm.editSubtitle', 'Details, categories and applicable states of the {agency}.', { agency: PORTAL_LABELS.agency.toLowerCase() })
+    : t('staff.agencyForm.addSubtitle', 'The login ID is generated and the login details are e-mailed to the SPOC.')));
   /** The right rail: what happens on submit / update. */
-  protected readonly railPoints = this.isEdit
-    ? ['Changes apply as soon as you update.', 'The SPOC e-mail address is where login details and messages go.',
-       'Block, unblock and reset links are on the list (⋮ menu).', 'Levels are switched in Agency Level Allocation.']
-    : [`A login ID is generated for the ${this.consultancy ? 'organisation' : 'agency'}.`, 'The login details are e-mailed to the SPOC.',
-       `The ${this.consultancy ? 'organisation' : 'agency'} can then add its ${PORTAL_LABELS.assessors.toLowerCase()}.`,
-       ...(this.consultancy ? [] : ['Levels are switched on in Agency Level Allocation.'])];
+  protected readonly railPoints = computed(() => (this.isEdit
+    ? [t('staff.agencyForm.rail.update.point1', 'Changes apply as soon as you update.'),
+       t('staff.agencyForm.rail.update.point2', 'The SPOC e-mail address is where login details and messages go.'),
+       t('staff.agencyForm.rail.update.point3', 'Block, unblock and reset links are on the list (⋮ menu).'),
+       t('staff.agencyForm.rail.update.point4', 'Levels are switched in Agency Level Allocation.')]
+    : [t('staff.agencyForm.rail.submit.point1', 'A login ID is generated for the {word}.', { word: this.word() }),
+       t('staff.agencyForm.rail.submit.point2', 'The login details are e-mailed to the SPOC.'),
+       t('staff.agencyForm.rail.submit.point3', 'The {word} can then add its {assessors}.', { word: this.word(), assessors: PORTAL_LABELS.assessors.toLowerCase() }),
+       ...(this.consultancy ? [] : [t('staff.agencyForm.rail.submit.point4', 'Levels are switched on in Agency Level Allocation.')])]));
   /** 2026-11-18 (staff-02): the line icons of the section heads and "On submit" (person, mail, people, shield). */
   protected readonly icon = {
     building: 'M3 21h18 M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16 M9 7h2 M13 7h2 M9 11h2 M13 11h2 M9 15h2 M13 15h2',
@@ -165,11 +171,11 @@ export class AgencyFormPage {
   protected model: AgencyRequest = emptyAgency();
   /** Manufacturing / Services / Both; a Master Admin limited to one category is offered that one only (migration 0057). */
   protected activities = SECTOR_ACTIVITIES;
-  protected readonly activityHelp: Record<SectorActivity, string> = {
-    Manufacturing: 'Manufacturing MSMEs only.',
-    Services: 'Service MSMEs only.',
-    Both: 'Manufacturing and service MSMEs.',
-  };
+  protected readonly activityHelp = computed<Record<SectorActivity, string>>(() => ({
+    Manufacturing: t('staff.agencyForm.cover.manufacturingTooltip', 'Manufacturing MSMEs only.'),
+    Services: t('staff.agencyForm.cover.servicesTooltip', 'Service MSMEs only.'),
+    Both: t('staff.agencyForm.cover.bothTooltip', 'Manufacturing and service MSMEs.'),
+  }));
   protected readonly states = signal<MultiSelectOption[]>([]);
   protected readonly sectors = signal<MultiSelectOption[]>([]);
   protected readonly partners = signal<OrgPartner[]>([]);
@@ -282,14 +288,15 @@ export class AgencyFormPage {
   protected sections(): FormSection[] {
     const m = this.model;
     const list: FormSection[] = [
-      { id: 'sec-org', label: this.consultancy ? 'Organisation' : 'Agency', hint: 'Name, address, GSTIN',
+      { id: 'sec-org', label: this.consultancy ? t('staff.agencyForm.nav.organisation', 'Organisation') : t('staff.agencyForm.nav.agency', 'Agency'),
+        hint: t('staff.agencyForm.nav.orgHint', 'Name, address, GSTIN'),
         done: !!m.userName.trim() && !!m.address.trim() && PIN.test(m.pinCode.trim()) && this.gstOk() },
-      { id: 'sec-spoc', label: 'SPOC contact', hint: 'Login and messages go here',
+      { id: 'sec-spoc', label: t('staff.agencyForm.nav.spoc', 'SPOC contact'), hint: t('staff.agencyForm.nav.spocHint', 'Login and messages go here'),
         done: !!m.spocName.trim() && EMAIL.test(m.emailId.trim()) && MOBILE.test(m.mobileNo.trim()) },
-      { id: 'sec-cover', label: 'Coverage', hint: 'States, sectors, category',
+      { id: 'sec-cover', label: t('staff.agencyForm.nav.cover', 'Coverage'), hint: t('staff.agencyForm.nav.coverHint', 'States, sectors, category'),
         done: (m.desktopVerification || m.siteVerification || m.financialVerification) && (this.consultancy || !!m.sectorActivity) },
     ];
-    if (this.isEdit) list.push({ id: 'sec-login', label: 'Login', hint: 'User ID, status', done: true });
+    if (this.isEdit) list.push({ id: 'sec-login', label: t('staff.agencyForm.nav.login', 'Login'), hint: t('staff.agencyForm.nav.loginHint', 'User ID, status'), done: true });
     return list;
   }
 
@@ -306,8 +313,9 @@ export class AgencyFormPage {
     const list = this.sections();
     const next = list.find((s) => !s.done);
     return next
-      ? `${this.doneCount()} of ${list.length} sections complete. Finish ${next.label} to create the ${this.word}.`
-      : `All ${list.length} sections complete. Create the ${this.word}.`;
+      ? t('staff.agencyForm.save.progress', '{done} of {total} sections complete. Finish {section} to create the {word}.',
+        { done: this.doneCount(), total: list.length, section: next.label, word: this.word() })
+      : t('staff.agencyForm.save.progressDone', 'All {total} sections complete. Create the {word}.', { total: list.length, word: this.word() });
   }
 
   protected goTo(id: string): void {
@@ -322,12 +330,20 @@ export class AgencyFormPage {
   /** A field's message: its format as soon as something is typed, "required" after a submit. */
   protected fieldError(field: 'pinCode' | 'gstNumber' | 'emailId' | 'mobileNo'): string {
     const v = (this.model[field] ?? '').trim();
-    if (!v) return this.submitted() && field !== 'gstNumber' ? { pinCode: 'This is required.', emailId: 'Email required.', mobileNo: 'Mobile No required.' }[field] : '';
+    if (!v) {
+      if (!this.submitted()) return '';
+      switch (field) {
+        case 'pinCode': return t('staff.agencyForm.requiredError', 'This is required.');
+        case 'emailId': return t('staff.agencyForm.error.emailRequired', 'Email required.');
+        case 'mobileNo': return t('staff.agencyForm.error.mobileRequired', 'Mobile No required.');
+        default: return '';
+      }
+    }
     switch (field) {
-      case 'pinCode': return PIN.test(v) ? '' : 'Enter the 6 digit PIN code.';
-      case 'gstNumber': return this.gstOk() ? '' : 'Letters and digits only, up to 20.';
-      case 'emailId': return EMAIL.test(v) ? '' : 'Enter a valid e-mail address.';
-      case 'mobileNo': return MOBILE.test(v) ? '' : 'Enter the 10 digit mobile number.';
+      case 'pinCode': return PIN.test(v) ? '' : t('staff.agencyForm.error.pin', 'Enter the 6 digit PIN code.');
+      case 'gstNumber': return this.gstOk() ? '' : t('staff.agencyForm.error.gst', 'Letters and digits only, up to 20.');
+      case 'emailId': return EMAIL.test(v) ? '' : t('staff.agencyForm.error.email', 'Enter a valid e-mail address.');
+      case 'mobileNo': return MOBILE.test(v) ? '' : t('staff.agencyForm.error.mobile', 'Enter the 10 digit mobile number.');
     }
   }
 
@@ -341,15 +357,15 @@ export class AgencyFormPage {
     const m = this.model;
     if ([m.userName, m.spocName, m.emailId, m.mobileNo, m.address, m.pinCode].some((v) => !v.trim()) ||
         (['pinCode', 'gstNumber', 'emailId', 'mobileNo'] as const).some((f) => this.fieldError(f))) {
-      this.error.set('Please enter valid data.');
+      this.error.set(t('staff.agencyForm.error.invalid', 'Please enter valid data.'));
       return;
     }
     if (!m.desktopVerification && !m.siteVerification && !m.financialVerification) {
-      this.error.set('Please select atleast one verification.');
+      this.error.set(t('staff.agencyForm.error.noCategory', 'Please select atleast one verification.'));
       return;
     }
     if (!this.consultancy && !m.sectorActivity) {
-      this.error.set('Please select whether the agency assesses Manufacturing, Services or Both.');
+      this.error.set(t('staff.agencyForm.error.noSectorType', 'Please select whether the agency assesses Manufacturing, Services or Both.'));
       return;
     }
     const body: AgencyRequest = this.consultancy
@@ -358,7 +374,7 @@ export class AgencyFormPage {
     this.saving.set(true);
     try {
       if (this.userId) {
-        this.toast.success(`${m.userName} updated`, (await firstValueFrom(this.api.updateAgency(this.userId, body))).message);
+        this.toast.success(t('staff.agencyForm.toast.updated', '{name} updated', { name: m.userName }), (await firstValueFrom(this.api.updateAgency(this.userId, body))).message);
         this.dirty.set(false);
       } else {
         const r = await firstValueFrom(this.api.createAgency(body));

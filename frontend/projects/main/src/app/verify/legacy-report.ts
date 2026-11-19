@@ -4,6 +4,7 @@ import { AuthService } from '@zed/shared';
 import { PORTAL_API_BASE } from '../staff/admin-portal';
 import { HANDHOLDING_LEVEL_CODES, canonicalLevelCode } from '../msme/shared/levels';
 import { reportRoute } from '../report/report.api';
+import { TextPipe, t } from '../content/page-text';
 
 /** Leaves the Angular app for a file address (replaced in tests). */
 export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', {
@@ -33,12 +34,13 @@ export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
  */
 @Component({
   selector: 'zed-legacy-report',
+  imports: [TextPipe],
   template: `
     <div class="container mt-5 text-center">
       @if (message()) {
         <div class="alert alert-danger" role="alert">{{ message() }}</div>
       } @else {
-        <p>Opening the assessment report ...</p>
+        <p>{{ 'Opening the assessment report ...' | t: 'public.legacyReport.loadingText' }}</p>
       }
     </div>
   `,
@@ -69,7 +71,7 @@ export class LegacyReportRedirect implements OnInit {
     const milestone = String(this.milestone() ?? '').trim();
     const milestoneOk = system !== 'consultancy' || (/^[1-3]$/.test(milestone) && level !== 'Bronze');
     if (!level || !/^[A-Za-z0-9_]{1,50}$/.test(id) || !milestoneOk) {
-      this.message.set('This report link is not valid.');
+      this.message.set(t('public.legacyReport.invalidError', 'This report link is not valid.'));
       return;
     }
     await this.auth.ensureLoaded().catch(() => undefined);
@@ -82,7 +84,7 @@ export class LegacyReportRedirect implements OnInit {
     const msme = user.roleId === MSME_ROLE;
     if (system === 'consultancy') {
       if (msme && !own) {
-        this.message.set('This report link is not valid.');
+        this.message.set(t('public.legacyReport.invalidError', 'This report link is not valid.'));
         return;
       }
       // Staff: the consultancy portal's page (main's staff API knows only main's report).
@@ -100,7 +102,7 @@ export class LegacyReportRedirect implements OnInit {
     }
     if (msme) {
       if (!own) {
-        this.message.set('This report link is not valid.');
+        this.message.set(t('public.legacyReport.invalidError', 'This report link is not valid.'));
         return;
       }
       await this.router.navigateByUrl(reportRoute({ kind, level }), { replaceUrl: true });

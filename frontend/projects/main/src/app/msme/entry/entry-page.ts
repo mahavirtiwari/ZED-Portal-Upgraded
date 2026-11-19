@@ -10,6 +10,13 @@ import { CellValue, FormValues, emptyRow, initialValues, isShown, missing, sorte
 import { EntryApi, EntryEvidence, EntryNc, EntryState, FormField, isWebEntryLevel } from './entry.api';
 import { RequirementVideo } from '../shared/requirement-video';
 import { Crumb, PageHead } from '../shared/page-head';
+import { TextPipe, t } from '../../content/page-text';
+
+/** A wording with one {name} where an element goes (a link, a badge): the text before and after it. */
+function around(text: string, name: string): readonly [string, string] {
+  const [before, ...after] = text.split(`{${name}}`);
+  return [before, after.join('')];
+}
 
 type Tab = 'basic' | 'documents' | 'nc' | 'submit';
 
@@ -24,7 +31,7 @@ const MAX_ROWS = 20;
  */
 @Component({
   selector: 'zed-msme-entry',
-  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent, RequirementVideo, PageHead],
+  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent, RequirementVideo, PageHead, TextPipe],
   templateUrl: './entry-page.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
@@ -89,10 +96,16 @@ export class EntryPage implements OnInit {
   protected readonly loading = signal(true);
   /** Home › Dashboard › <level> certification › Basic information. */
   protected readonly crumbs = computed<Crumb[]>(() => [
-    { label: 'Home', link: '/msme/dashboard' },
-    { label: `${levelName(this.certification())} certification`, link: ['/msme/certification', this.certification()] },
-    { label: 'Basic information' },
+    { label: t('msme.entry.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.entry.crumb.level', '{level} certification', { level: levelName(this.certification()) }), link: ['/msme/certification', this.certification()] },
+    { label: t('msme.entry.crumb.basic', 'Basic information') },
   ]);
+  /** The lines around their link / bold words / badge ({link}, {app}, {badge} in the wording). */
+  protected readonly submittedLine = computed(() => around(t('msme.entry.submitted.text',
+    'Your basic information and documents have been submitted. The assessment agency will review them; you can follow the progress under {link}.'), 'link'));
+  protected readonly appOnlyLine = computed(() => around(t('msme.entry.appOnly.text',
+    'Basic information, documents and NC answers are entered in the {app}. Here you can see what has been uploaded.'), 'app'));
+  protected readonly requiredLine = computed(() => around(t('msme.entry.documents.requiredNote', 'Documents marked {badge} are needed for the final submit.'), 'badge'));
   protected readonly loadError = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly alert = signal<AlertMessage | null>(null);
@@ -149,7 +162,7 @@ export class EntryPage implements OnInit {
 
   protected async load(): Promise<void> {
     if (!isWebEntryLevel(this.certification())) {
-      this.loadError.set('Details of this certification are entered in the ZED MSME app; see View Details.');
+      this.loadError.set(t('msme.entry.error.appOnly', 'Details of this certification are entered in the ZED MSME app; see View Details.'));
       this.loading.set(false);
       return;
     }
@@ -309,7 +322,7 @@ export class EntryPage implements OnInit {
     const photo = this.ncFilesFor(`p-${id}-photo`)[0];
     const label = this.ncFilesFor(`p-${id}-label`)[0];
     if (!photo || !label) {
-      this.alert.set(errorAlert('Please choose the product photo and the product label/description.'));
+      this.alert.set(errorAlert(t('msme.entry.nc.products.missingError', 'Please choose the product photo and the product label/description.')));
       return Promise.resolve();
     }
     return this.answer([`p-${id}-photo`, `p-${id}-label`, `p-${id}`], (level) => this.api.ncProduct(level, id, photo, label, this.remark(`p-${id}`)));

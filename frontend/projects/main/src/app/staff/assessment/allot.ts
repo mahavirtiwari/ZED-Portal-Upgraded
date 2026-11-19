@@ -15,6 +15,7 @@ import { ChipFilter } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ToastService } from '../toast';
 import { AttentionService } from '../attention';
+import { TextPipe, t } from '../../content/page-text';
 
 // ---------------------------------------------------------------- dates (shared with the results and monitoring pages)
 
@@ -51,7 +52,8 @@ export function shortDate(value: unknown): string {
 
 /** "6 days", "1 day", "Today". */
 export function dayCount(n: number): string {
-  return n === 0 ? 'Today' : `${n} ${n === 1 ? 'day' : 'days'}`;
+  return n === 0 ? t('staff.allot.waiting.todayLabel', 'Today')
+    : n === 1 ? t('staff.allot.waiting.dayLabel', '{count} day', { count: n }) : t('staff.allot.waiting.daysLabel', '{count} days', { count: n });
 }
 
 /** District and state of the unit ("Pune, Maharashtra"); the full address when the portal's rows have no district / state. */
@@ -102,7 +104,7 @@ export const BULK_LIMIT = 100;
  */
 @Component({
   selector: 'zed-allot-dialog',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allotTitle">
       <div class="modal-dialog modal-dialog-centered ad">
@@ -110,78 +112,78 @@ export const BULK_LIMIT = 100;
           <div class="modal-header ad-head">
             <span class="ad-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1M16 3.5a4 4 0 0 1 0 7.5M22 21v-1a6 6 0 0 0-4-5.6" /></svg></span>
             <div class="ad-title">
-              <h2 id="allotTitle">{{ title }}</h2>
+              <h2 id="allotTitle">{{ title() }}</h2>
               @if (one(); as u) {
-                <p>{{ t(u, 'ZedId') }} · {{ t(u, 'PUnitName') }}@if (place(u)) { · {{ place(u) }} }</p>
+                <p>{{ col(u, 'ZedId') }} · {{ col(u, 'PUnitName') }}@if (place(u)) { · {{ place(u) }} }</p>
               } @else {
-                <p>{{ units().length }} units selected</p>
+                <p>{{ '{count} units selected' | t: 'staff.allot.dialog.selected.text' : { count: units().length } }}</p>
               }
             </div>
-            <button type="button" class="ad-x" aria-label="Close" (click)="closed.emit()">
+            <button type="button" class="ad-x" [attr.aria-label]="'Close' | t: 'staff.allot.dialog.closeAria'" (click)="closed.emit()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
 
           @if (results(); as r) {
             <div class="modal-body">
-              <p class="ad-sum"><b>{{ count(r, true) }}</b> allotted · <b>{{ count(r, false) }}</b> not allotted</p>
+              <p class="ad-sum">{{ '{count} allotted' | t: 'staff.allot.dialog.allotted.text' : { count: count(r, true) } }} · {{ '{count} not allotted' | t: 'staff.allot.dialog.notAllotted.text' : { count: count(r, false) } }}</p>
               <ul class="ad-res">
                 @for (x of r; track x.zedId + x.certification) {
-                  <li [class.no]="!x.allotted"><b>{{ x.zedId }}</b> {{ x.certification }}<small>{{ x.allotted ? 'Allotted' : x.message }}</small></li>
+                  <li [class.no]="!x.allotted"><b>{{ x.zedId }}</b> {{ x.certification }}<small>{{ x.allotted ? ('Allotted' | t: 'staff.allot.dialog.resultAllottedLabel') : x.message }}</small></li>
                 }
               </ul>
             </div>
-            <div class="modal-footer ad-foot"><button type="button" class="btn btn-primary" (click)="closed.emit()">Close</button></div>
+            <div class="modal-footer ad-foot"><button type="button" class="btn btn-primary" (click)="closed.emit()">{{ 'Close' | t: 'staff.allot.dialog.closeButton' }}</button></div>
           } @else {
             <div class="modal-body ad-body">
               <div class="ad-pick">
-                <label class="form-label" for="adSearch">{{ chooseLabel }}</label>
+                <label class="form-label" for="adSearch">{{ chooseLabel() }}</label>
                 <div class="ad-q">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-                  <input id="adSearch" type="search" class="form-control" maxlength="60" autocomplete="off" [placeholder]="'Search ' + party + ' name or ID'"
+                  <input id="adSearch" type="search" class="form-control" maxlength="60" autocomplete="off" [placeholder]="consultancy ? ('Search CO name or ID' | t: 'staff.allot.dialog.searchCoPlaceholder') : ('Search agency name or ID' | t: 'staff.allot.dialog.searchAgencyPlaceholder')"
                          [ngModel]="q()" (ngModelChange)="q.set($event)" />
                 </div>
-                <div class="ad-list" role="radiogroup" [attr.aria-label]="chooseLabel">
+                <div class="ad-list" role="radiogroup" [attr.aria-label]="chooseLabel()">
                   @for (a of shown(); track a.userId) {
                     <label class="ad-opt" [class.on]="choice() === a.userId" [attr.title]="a.poMessage">
                       <input type="radio" name="adAgency" [value]="a.userId" [checked]="choice() === a.userId" [disabled]="a.stopped && !a.takes" (change)="choice.set(a.userId)" />
                       <span class="ad-name"><b>{{ a.userName }}</b><small>{{ a.userId }}</small></span>
-                      @if (one() && t(one()!, 'PStateName')) { <span class="chip is-good">Covers {{ t(one()!, 'PStateName') }}</span> }
-                      @if (a.stopped) { <span class="chip is-bad">PO used up — allotment stopped</span> }
-                      @else if (a.poLeft !== null && a.poLeft <= 10) { <span class="chip is-warn">PO: {{ a.poLeft }} left</span> }
+                      @if (one() && col(one()!, 'PStateName')) { <span class="chip is-good">{{ 'Covers {state}' | t: 'staff.allot.dialog.chip.covers' : { state: col(one()!, 'PStateName') } }}</span> }
+                      @if (a.stopped) { <span class="chip is-bad">{{ 'PO used up — allotment stopped' | t: 'staff.allot.dialog.chip.poStopped' }}</span> }
+                      @else if (a.poLeft !== null && a.poLeft <= 10) { <span class="chip is-warn">{{ 'PO: {count} left' | t: 'staff.allot.dialog.chip.poLeft' : { count: a.poLeft } }}</span> }
                       @if (units().length > 1) {
-                        <span class="chip" [class.is-good]="a.takes === units().length" [class.is-warn]="a.takes < units().length">May take {{ a.takes }} of {{ units().length }}</span>
+                        <span class="chip" [class.is-good]="a.takes === units().length" [class.is-warn]="a.takes < units().length">{{ 'May take {count} of {total}' | t: 'staff.allot.dialog.chip.mayTake' : { count: a.takes, total: units().length } }}</span>
                       }
                     </label>
                   } @empty {
-                    <p class="muted ad-none">{{ loading() ? 'Loading…' : 'No ' + party + ' may take ' + (units().length > 1 ? 'these units.' : 'this unit.') }}</p>
+                    <p class="muted ad-none">{{ loading() ? ('Loading…' | t: 'staff.allot.dialog.loading.text') : noneText() }}</p>
                   }
                 </div>
               </div>
               <aside class="ad-side">
                 @if (one(); as u) {
-                  <h3>Unit</h3>
+                  <h3>{{ 'Unit' | t: 'staff.allot.dialog.unitHeading' }}</h3>
                   <dl>
-                    <dt>Level</dt><dd>{{ levelName(t(u, 'Certification')) }}@if (consultancy) { · Milestone {{ t(u, 'NcCount') }} }</dd>
-                    @if (t(u, 'EnterpriseTypee')) { <dt>MSME size</dt><dd>{{ t(u, 'EnterpriseTypee') }}</dd> }
-                    @if (paid(u)) { <dt>Paid on</dt><dd>{{ paid(u) }}</dd><dt>Waiting</dt><dd class="warn">{{ waiting(u) }}</dd> }
-                    @if (t(u, 'UnitSpocName')) {
-                      <dt>SPOC</dt><dd>{{ t(u, 'UnitSpocName') }}<small>{{ t(u, 'UnitSpocMobileNo') }}</small><small>{{ t(u, 'UnitSpocEmailId') }}</small></dd>
+                    <dt>{{ 'Level' | t: 'staff.allot.dialog.levelLabel' }}</dt><dd>{{ levelName(col(u, 'Certification')) }}@if (consultancy) { · {{ 'Milestone {milestone}' | t: 'staff.allot.dialog.milestoneLabel' : { milestone: col(u, 'NcCount') } }} }</dd>
+                    @if (col(u, 'EnterpriseTypee')) { <dt>{{ 'MSME size' | t: 'staff.allot.dialog.sizeLabel' }}</dt><dd>{{ col(u, 'EnterpriseTypee') }}</dd> }
+                    @if (paid(u)) { <dt>{{ 'Paid on' | t: 'staff.allot.dialog.paidOnLabel' }}</dt><dd>{{ paid(u) }}</dd><dt>{{ 'Waiting' | t: 'staff.allot.dialog.waitingLabel' }}</dt><dd class="warn">{{ waiting(u) }}</dd> }
+                    @if (col(u, 'UnitSpocName')) {
+                      <dt>{{ 'SPOC' | t: 'staff.allot.dialog.spocLabel' }}</dt><dd>{{ col(u, 'UnitSpocName') }}<small>{{ col(u, 'UnitSpocMobileNo') }}</small><small>{{ col(u, 'UnitSpocEmailId') }}</small></dd>
                     }
                   </dl>
                 } @else {
-                  <h3>Units</h3>
+                  <h3>{{ 'Units' | t: 'staff.allot.dialog.unitsHeading' }}</h3>
                   <ul class="ad-units">
-                    @for (u of units(); track t(u, 'ZedId') + t(u, 'Certification')) { <li><b>{{ t(u, 'ZedId') }}</b> {{ levelName(t(u, 'Certification')) }}<small>{{ t(u, 'PUnitName') }}</small></li> }
+                    @for (u of units(); track col(u, 'ZedId') + col(u, 'Certification')) { <li><b>{{ col(u, 'ZedId') }}</b> {{ levelName(col(u, 'Certification')) }}<small>{{ col(u, 'PUnitName') }}</small></li> }
                   </ul>
                 }
               </aside>
             </div>
             @if (error()) { <div class="alert alert-danger mx-3" role="alert">{{ error() }}</div> }
             <div class="modal-footer ad-foot">
-              <small class="muted">The {{ party }} SPOC is told by e-mail.</small>
-              <button type="button" class="btn btn-light ad-cancel" (click)="closed.emit()">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy() || loading()" (click)="allot()">Allot to {{ party }}</button>
+              <small class="muted">{{ consultancy ? ('The CO SPOC is told by e-mail.' | t: 'staff.allot.dialog.coMailNote') : ('The agency SPOC is told by e-mail.' | t: 'staff.allot.dialog.agencyMailNote') }}</small>
+              <button type="button" class="btn btn-light ad-cancel" (click)="closed.emit()">{{ 'Cancel' | t: 'staff.allot.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy() || loading()" (click)="allot()">{{ consultancy ? ('Allot to CO' | t: 'staff.allot.dialog.allotCoButton') : ('Allot to agency' | t: 'staff.allot.dialog.allotAgencyButton') }}</button>
             </div>
           }
         </div>
@@ -248,10 +250,17 @@ export class AllotDialog {
   private readonly toast = inject(ToastService);
   protected readonly consultancy = inject(ASSESSMENT_SYSTEM) === 'consultancy';
   private readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
-  protected readonly party = this.consultancy ? 'CO' : 'agency';
-  protected readonly title = this.consultancy ? 'Allot consultancy' : this.surveillance ? 'Allot surveillance' : 'Allot assessment';
-  protected readonly chooseLabel = this.consultancy ? 'Choose the consultant organisation' : 'Choose the assessment agency';
-  protected readonly t = text;
+  protected readonly title = computed(() => this.consultancy ? t('staff.allot.dialog.consultancyTitle', 'Allot consultancy')
+    : this.surveillance ? t('staff.allot.dialog.surveillanceTitle', 'Allot surveillance') : t('staff.allot.dialog.title', 'Allot assessment'));
+  protected readonly chooseLabel = computed(() => this.consultancy ? t('staff.allot.dialog.chooseCoLabel', 'Choose the consultant organisation')
+    : t('staff.allot.dialog.chooseAgencyLabel', 'Choose the assessment agency'));
+  /** No agency may take the unit(s). */
+  protected readonly noneText = computed(() => {
+    const many = this.units().length > 1;
+    if (this.consultancy) return many ? t('staff.allot.dialog.empty.noCoMany', 'No CO may take these units.') : t('staff.allot.dialog.empty.noCo', 'No CO may take this unit.');
+    return many ? t('staff.allot.dialog.empty.noAgencyMany', 'No agency may take these units.') : t('staff.allot.dialog.empty.noAgency', 'No agency may take this unit.');
+  });
+  protected readonly col = text;
   protected readonly place = place;
   protected readonly levelName = levelName;
 
@@ -323,7 +332,7 @@ export class AllotDialog {
   protected async allot(): Promise<void> {
     const agency = this.agencies().find((a) => a.userId === this.choice());
     if (!agency) {
-      this.error.set('Please select valid data.');
+      this.error.set(t('staff.allot.dialog.selectError', 'Please select valid data.'));
       return;
     }
     const units = this.units();
@@ -333,7 +342,7 @@ export class AllotDialog {
       if (units.length === 1) {
         const u = units[0];
         await firstValueFrom(this.api.allotToAgency(text(u, 'ZedId'), text(u, 'Certification'), agency.userId));
-        this.toast.success(`${text(u, 'ZedId')} allotted`, `To ${agency.userName}.`);
+        this.toast.success(t('staff.allot.toast.allotted', '{zedId} allotted', { zedId: text(u, 'ZedId') }), t('staff.allot.toast.allottedTo', 'To {name}.', { name: agency.userName }));
         this.changed.emit(1);
         this.closed.emit();
         return;
@@ -344,7 +353,7 @@ export class AllotDialog {
       }));
       if (res.allotted > 0) this.changed.emit(res.allotted);
       if (res.refused === 0) {
-        this.toast.success(`${res.allotted} units allotted`, `To ${agency.userName}.`);
+        this.toast.success(t('staff.allot.toast.bulkAllotted', '{count} units allotted', { count: res.allotted }), t('staff.allot.toast.allottedTo', 'To {name}.', { name: agency.userName }));
         this.closed.emit();
       } else {
         this.results.set(res.results);
@@ -378,51 +387,51 @@ type Tab = 'allot' | 'reallot';
  */
 @Component({
   selector: 'zed-staff-allot',
-  imports: [FormsModule, PagerComponent, PageHead, ChipFilter, RowMenu, AllotDialog, LevelMedal],
+  imports: [FormsModule, PagerComponent, PageHead, ChipFilter, RowMenu, AllotDialog, LevelMedal, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle" />
+    <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()" />
 
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
     <div class="al-tabs">
-      <zed-chip-filter label="Show" [chips]="chips()" [value]="tab()" (valueChange)="setTab($any($event))" />
-      <button type="button" class="btn btn-link al-sort" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? 'Newest first' : 'Oldest first' }}</button>
+      <zed-chip-filter [label]="'Show' | t: 'staff.allot.filter.show'" [chips]="chips()" [value]="tab()" (valueChange)="setTab($any($event))" />
+      <button type="button" class="btn btn-link al-sort" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? ('Newest first' | t: 'staff.allot.sort.newestButton') : ('Oldest first' | t: 'staff.allot.sort.oldestButton') }}</button>
     </div>
 
     <div class="zed-card al-filters">
       <div class="al-q">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-        <input type="search" id="allotSearch" class="form-control" maxlength="50" placeholder="Search ZED ID, unit or SPOC" aria-label="Search ZED ID, unit or SPOC"
+        <input type="search" id="allotSearch" class="form-control" maxlength="50" [placeholder]="'Search ZED ID, unit or SPOC' | t: 'staff.allot.search.placeholder'" [attr.aria-label]="'Search ZED ID, unit or SPOC' | t: 'staff.allot.search.placeholder'"
                [ngModel]="search()" (ngModelChange)="search.set($event)" />
       </div>
-      <select class="form-select" id="allotState" aria-label="State" [(ngModel)]="filter.state" (ngModelChange)="load()">
-        <option value="">All states</option>
+      <select class="form-select" id="allotState" [attr.aria-label]="'State' | t: 'staff.allot.filter.stateAria'" [(ngModel)]="filter.state" (ngModelChange)="load()">
+        <option value="">{{ 'All states' | t: 'staff.allot.filter.allStatesLabel' }}</option>
         @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
       </select>
-      <select class="form-select" id="allotLevel" [attr.aria-label]="consultancy ? 'Desired Certification' : 'Certification Level'" [(ngModel)]="filter.certification" (ngModelChange)="load()">
-        <option value="">All levels</option>
+      <select class="form-select" id="allotLevel" [attr.aria-label]="consultancy ? ('Desired Certification' | t: 'staff.allot.filter.desiredLevelAria') : ('Certification Level' | t: 'staff.allot.filter.levelAria')" [(ngModel)]="filter.certification" (ngModelChange)="load()">
+        <option value="">{{ 'All levels' | t: 'staff.allot.filter.allLevelsLabel' }}</option>
         @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
       </select>
-      <select class="form-select" id="allotSize" aria-label="MSME Size" [(ngModel)]="filter.size" (ngModelChange)="load()">
-        <option value="">All sizes</option>
-        <option value="Micro">Micro</option>
-        <option value="Small">Small</option>
-        <option value="Medium">Medium</option>
+      <select class="form-select" id="allotSize" [attr.aria-label]="'MSME Size' | t: 'staff.allot.filter.sizeAria'" [(ngModel)]="filter.size" (ngModelChange)="load()">
+        <option value="">{{ 'All sizes' | t: 'staff.allot.filter.allSizesLabel' }}</option>
+        <option value="Micro">{{ 'Micro' | t: 'staff.allot.filter.microLabel' }}</option>
+        <option value="Small">{{ 'Small' | t: 'staff.allot.filter.smallLabel' }}</option>
+        <option value="Medium">{{ 'Medium' | t: 'staff.allot.filter.mediumLabel' }}</option>
       </select>
-      <select class="form-select" id="allotGender" aria-label="Gender" [(ngModel)]="filter.gender" (ngModelChange)="load()">
-        <option value="">All genders</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-        <option value="Others">Others</option>
+      <select class="form-select" id="allotGender" [attr.aria-label]="'Gender' | t: 'staff.allot.filter.genderAria'" [(ngModel)]="filter.gender" (ngModelChange)="load()">
+        <option value="">{{ 'All genders' | t: 'staff.allot.filter.allGendersLabel' }}</option>
+        <option value="male">{{ 'Male' | t: 'staff.allot.filter.maleLabel' }}</option>
+        <option value="female">{{ 'Female' | t: 'staff.allot.filter.femaleLabel' }}</option>
+        <option value="Others">{{ 'Others' | t: 'staff.allot.filter.othersLabel' }}</option>
       </select>
     </div>
 
     @if (picked().length) {
-      <div class="al-bar" role="region" aria-label="Selected units">
-        <b>{{ picked().length }} {{ picked().length === 1 ? 'unit' : 'units' }} selected</b>
-        <button type="button" class="btn al-go" (click)="openAllot(picked())">Allot {{ picked().length }} {{ picked().length === 1 ? 'unit' : 'units' }}</button>
-        <button type="button" class="btn btn-link al-clear" (click)="clearSelection()">Clear selection</button>
+      <div class="al-bar" role="region" [attr.aria-label]="'Selected units' | t: 'staff.allot.selection.aria'">
+        <b>{{ picked().length === 1 ? ('{count} unit selected' | t: 'staff.allot.selection.one.text' : { count: 1 }) : ('{count} units selected' | t: 'staff.allot.selection.many.text' : { count: picked().length }) }}</b>
+        <button type="button" class="btn al-go" (click)="openAllot(picked())">{{ picked().length === 1 ? ('Allot {count} unit' | t: 'staff.allot.selection.allotOneButton' : { count: 1 }) : ('Allot {count} units' | t: 'staff.allot.selection.allotManyButton' : { count: picked().length }) }}</button>
+        <button type="button" class="btn btn-link al-clear" (click)="clearSelection()">{{ 'Clear selection' | t: 'staff.allot.selection.clearButton' }}</button>
       </div>
     }
 
@@ -431,62 +440,62 @@ type Tab = 'allot' | 'reallot';
         <table class="table table-zed">
           <thead>
             <tr>
-              <th class="al-ck"><input type="checkbox" class="form-check-input" aria-label="Select the units of this page" [checked]="allOnPage()" (change)="selectPage($any($event.target).checked)" /></th>
-              <th>Unit</th>
-              <th>{{ consultancy ? 'Level / Milestone' : surveillance ? 'Level / Surveillance No' : 'Level' }}</th>
-              <th>Size</th>
-              <th>Paid on</th>
-              <th>Waiting</th>
-              <th>{{ tab() === 'allot' ? 'Status' : (consultancy ? 'CO' : 'Agency') }}</th>
-              @if (tab() === 'reallot') { <th>Reason for rejection</th> }
-              <th class="text-end">Action</th>
+              <th class="al-ck"><input type="checkbox" class="form-check-input" [attr.aria-label]="'Select the units of this page' | t: 'staff.allot.selectPageAria'" [checked]="allOnPage()" (change)="selectPage($any($event.target).checked)" /></th>
+              <th>{{ 'Unit' | t: 'staff.allot.column.unit' }}</th>
+              <th>{{ consultancy ? ('Level / Milestone' | t: 'staff.allot.column.levelMilestone') : surveillance ? ('Level / Surveillance No' | t: 'staff.allot.column.levelSurveillance') : ('Level' | t: 'staff.allot.column.level') }}</th>
+              <th>{{ 'Size' | t: 'staff.allot.column.size' }}</th>
+              <th>{{ 'Paid on' | t: 'staff.allot.column.paidOn' }}</th>
+              <th>{{ 'Waiting' | t: 'staff.allot.column.waiting' }}</th>
+              <th>{{ tab() === 'allot' ? ('Status' | t: 'staff.allot.column.status') : consultancy ? ('CO' | t: 'staff.allot.column.co') : ('Agency' | t: 'staff.allot.column.agency') }}</th>
+              @if (tab() === 'reallot') { <th>{{ 'Reason for rejection' | t: 'staff.allot.column.reason' }}</th> }
+              <th class="text-end">{{ 'Action' | t: 'staff.allot.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
             @for (s of view.page(); track key(s)) {
-              <tr [class.al-on]="isPicked(s)" [class.al-flag]="!!t(s, 'ReasonForRejection') || !!t(s, 'TimeDuration')">
-                <td class="al-ck"><input type="checkbox" class="form-check-input" [attr.aria-label]="'Select ' + t(s, 'ZedId')" [checked]="isPicked(s)" (change)="toggle(s)" /></td>
+              <tr [class.al-on]="isPicked(s)" [class.al-flag]="!!col(s, 'ReasonForRejection') || !!col(s, 'TimeDuration')">
+                <td class="al-ck"><input type="checkbox" class="form-check-input" [attr.aria-label]="'Select {zedId}' | t: 'staff.allot.row.selectAria' : { zedId: col(s, 'ZedId') }" [checked]="isPicked(s)" (change)="toggle(s)" /></td>
                 <td class="unit-cell">
-                  <b>{{ t(s, 'PUnitName') }}</b>
-                  <span class="dash-text-clr al-id">{{ t(s, 'ZedId') }}</span>
-                  <small class="al-addr" [title]="t(s, 'UnitAddress')">{{ place(s) }}</small>
-                  @if (main && t(s, 'UdyamStatus') === 'Duplicate') { <span class="chip is-warn">Duplicate Udyam</span> }
+                  <b>{{ col(s, 'PUnitName') }}</b>
+                  <span class="dash-text-clr al-id">{{ col(s, 'ZedId') }}</span>
+                  <small class="al-addr" [title]="col(s, 'UnitAddress')">{{ place(s) }}</small>
+                  @if (main && col(s, 'UdyamStatus') === 'Duplicate') { <span class="chip is-warn">{{ 'Duplicate Udyam' | t: 'staff.allot.row.chip.duplicate' }}</span> }
                 </td>
                 <td>
-                  <zed-level-medal [level]="t(s, 'Certification')" />
-                  @if (consultancy) { <small class="sub">Milestone {{ t(s, 'NcCount') }}</small> }
-                  @if (surveillance) { <small class="sub">{{ t(s, 'SurveillanceNo') }}</small> }
+                  <zed-level-medal [level]="col(s, 'Certification')" />
+                  @if (consultancy) { <small class="sub">{{ 'Milestone {milestone}' | t: 'staff.allot.row.milestoneLabel' : { milestone: col(s, 'NcCount') } }}</small> }
+                  @if (surveillance) { <small class="sub">{{ col(s, 'SurveillanceNo') }}</small> }
                 </td>
-                <td>{{ t(s, 'EnterpriseTypee') }}</td>
+                <td>{{ col(s, 'EnterpriseTypee') }}</td>
                 <td class="text-nowrap">{{ paidOn(s) }}</td>
                 <td>@if (waitDays(s); as w) { <span class="chip" [class.is-warn]="w.days >= 5 && w.days < 10" [class.is-bad]="w.days >= 10">{{ w.label }}</span> }</td>
                 @if (tab() === 'allot') {
                   <td><span class="status-badge" [class]="'status-badge ' + status(s).cls">{{ status(s).label }}</span></td>
                 } @else {
                   <td>
-                    <b>{{ t(s, 'AgencyName') }}</b><small class="sub">{{ t(s, 'CertificationBodyUserId') }}</small>
+                    <b>{{ col(s, 'AgencyName') }}</b><small class="sub">{{ col(s, 'CertificationBodyUserId') }}</small>
                     <span class="status-badge" [class]="'status-badge ' + status(s).cls">{{ status(s).label }}</span>
-                    @if (t(s, 'TimeDuration')) { <span class="chip is-warn">No answer in 72 hours</span> }
-                    @if (surveillance && t(s, 'CertificationBodyUserId') && t(s, 'AutoAllocationDate')) {
-                      <small class="sub">Auto Alloted on: {{ t(s, 'AutoAllocationDate') }}</small>
+                    @if (col(s, 'TimeDuration')) { <span class="chip is-warn">{{ 'No answer in 72 hours' | t: 'staff.allot.row.chip.noAnswer' }}</span> }
+                    @if (surveillance && col(s, 'CertificationBodyUserId') && col(s, 'AutoAllocationDate')) {
+                      <small class="sub">{{ 'Auto Alloted on: {date}' | t: 'staff.allot.row.autoAllottedLabel' : { date: col(s, 'AutoAllocationDate') } }}</small>
                     }
                   </td>
                   <td class="al-reason">
-                    @if (t(s, 'ReasonForRejection'); as reason) {
+                    @if (col(s, 'ReasonForRejection'); as reason) {
                       <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
                       @if (reason.length > 120) {
-                        <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
+                        <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? ('less' | t: 'staff.allot.row.lessButton') : ('more' | t: 'staff.allot.row.moreButton') }}</button>
                       }
                     }
                   </td>
                 }
                 <td class="text-end text-nowrap">
-                  <button type="button" class="btn btn-primary al-act" [class.re-allot]="reAllot(s)" (click)="openAllot([s])">{{ reAllot(s) ? 'Re-allot' : 'Allot' }}</button>
-                  <zed-row-menu [items]="menu(s)" [label]="'More actions for ' + t(s, 'ZedId')" (picked)="act(s, $event)" />
+                  <button type="button" class="btn btn-primary al-act" [class.re-allot]="reAllot(s)" (click)="openAllot([s])">{{ reAllot(s) ? ('Re-allot' | t: 'staff.allot.row.reallotButton') : ('Allot' | t: 'staff.allot.row.allotButton') }}</button>
+                  <zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.allot.row.menuAria' : { zedId: col(s, 'ZedId') }" (picked)="act(s, $event)" />
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : tab() === 'allot' ? 'No unit is waiting for allotment.' : 'No unit to re-allot.' }}</div></td></tr>
+              <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.allot.loading.text') : tab() === 'allot' ? ('No unit is waiting for allotment.' | t: 'staff.allot.empty.allot') : ('No unit to re-allot.' | t: 'staff.allot.empty.reallot') }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -533,21 +542,24 @@ export class AllotPage {
   private readonly attention = inject(AttentionService);
   protected readonly legacy = useLegacyPortal();
   protected readonly states = STATES;
-  protected readonly t = text;
+  protected readonly col = text;
   protected readonly n = num;
   protected readonly place = place;
   private readonly system = inject(ASSESSMENT_SYSTEM);
   protected readonly main = this.system === 'main';
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
-  protected readonly title = this.consultancy ? 'Allot Consultancy' : this.surveillance ? 'Allot Surveillance' : 'Allot Assessment';
-  protected readonly crumbs = staffCrumbs({ label: this.title });
-  protected readonly subtitle = this.consultancy
-    ? 'Allot the paid milestones of the MSMEs to Consultant Organisations, or re-allot them.'
-    : this.surveillance ? 'Allot the surveillance assessments to assessment agencies, or re-allot the rejected and overdue ones.'
-    : 'Allot units to assessment agencies, or re-allot the rejected and overdue ones.';
+  protected readonly title = computed(() => this.consultancy ? t('staff.allot.consultancyTitle', 'Allot Consultancy')
+    : this.surveillance ? t('staff.allot.surveillanceTitle', 'Allot Surveillance') : t('staff.allot.title', 'Allot Assessment'));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: this.title() }));
+  protected readonly subtitle = computed(() => this.consultancy
+    ? t('staff.allot.consultancy.sub', 'Allot the paid milestones of the MSMEs to Consultant Organisations, or re-allot them.')
+    : this.surveillance ? t('staff.allot.surveillance.sub', 'Allot the surveillance assessments to assessment agencies, or re-allot the rejected and overdue ones.')
+    : t('staff.allot.sub', 'Allot units to assessment agencies, or re-allot the rejected and overdue ones.'));
   /** Who the record is allotted to, in the status column. */
-  protected readonly party = this.consultancy ? 'CO' : 'Agency';
+  private party(): string {
+    return this.consultancy ? t('staff.allot.status.coWordLabel', 'CO') : t('staff.allot.status.agencyWordLabel', 'Agency');
+  }
   /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
   protected readonly levels = computed(() => (this.consultancy ? [...HANDHOLDING_LEVEL_CODES] : levelCodes()));
   protected readonly levelName = levelName;
@@ -569,8 +581,8 @@ export class AllotPage {
   /** As the procedure's ALLOT / RE-ALLOT: re-allot once an agency was given the record. */
   private readonly hasAgency = (s: Row) => !!text(s, 'CertificationBodyUserId');
   protected readonly chips = computed(() => [
-    { key: 'allot', label: 'To allot', count: this.rows().filter((r) => !this.hasAgency(r)).length },
-    { key: 'reallot', label: 'To re-allot', count: this.rows().filter(this.hasAgency).length },
+    { key: 'allot', label: t('staff.allot.chip.allot', 'To allot'), count: this.rows().filter((r) => !this.hasAgency(r)).length },
+    { key: 'reallot', label: t('staff.allot.chip.reallot', 'To re-allot'), count: this.rows().filter(this.hasAgency).length },
   ]);
   /** The tab's rows matching the search box (any value, as the old search), by payment date (no date last). */
   protected readonly shown = computed(() => {
@@ -671,16 +683,17 @@ export class AllotPage {
   }
 
   protected status(s: Row): { label: string; cls: string } {
-    if (!text(s, 'CertificationBodyUserId')) return { label: 'Allotment Pending', cls: 'is-pending' };
-    if (text(s, 'DesktopAssessorId')) return { label: `${this.party} Accepted`, cls: 'is-success' };
-    if (text(s, 'ReasonForRejection')) return { label: `${this.party} Rejected`, cls: 'is-rejected' };
-    return { label: `Allocated to ${this.party}`, cls: 'is-info' };
+    if (!text(s, 'CertificationBodyUserId')) return { label: t('staff.allot.status.pendingLabel', 'Allotment Pending'), cls: 'is-pending' };
+    const party = this.party();
+    if (text(s, 'DesktopAssessorId')) return { label: t('staff.allot.status.acceptedLabel', '{party} Accepted', { party }), cls: 'is-success' };
+    if (text(s, 'ReasonForRejection')) return { label: t('staff.allot.status.rejectedLabel', '{party} Rejected', { party }), cls: 'is-rejected' };
+    return { label: t('staff.allot.status.allocatedLabel', 'Allocated to {party}', { party }), cls: 'is-info' };
   }
 
   protected menu(s: Row): RowMenuItem[] {
-    const items: RowMenuItem[] = [{ key: 'profile', label: 'View MSME profile', icon: 'people' }];
+    const items: RowMenuItem[] = [{ key: 'profile', label: t('staff.allot.menu.profileLabel', 'View MSME profile'), icon: 'people' }];
     // Only main's old page linked the assessment details from here.
-    if (this.main) items.push({ key: 'details', label: 'Assessment details', icon: 'eye' });
+    if (this.main) items.push({ key: 'details', label: t('staff.allot.menu.detailsLabel', 'Assessment details'), icon: 'eye' });
     return items;
   }
 

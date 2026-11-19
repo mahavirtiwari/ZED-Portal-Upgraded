@@ -14,7 +14,8 @@ import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
 import { SaSurveillanceTab, SurveillanceRemarks } from './sa-surveillance';
 import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
-import { ParameterNav } from '../../msme/shared/parameter-status';
+import { ParameterChip, ParameterNav } from '../../msme/shared/parameter-status';
+import { TextPipe, t } from '../../content/page-text';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { ChecklistRecords } from '../quality/checklist-records';
@@ -25,21 +26,19 @@ import { staffCrumbs } from '../staff-crumbs';
 import { UNIT_VIEW_STYLES, idName, ncLines, siteStage, unitResult } from '../assessment/da-details.layout';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
-export const SA_TAB_TITLES: Record<number, string> = {
-  1: 'Assessment Overview',
-  2: 'Assessment Plan',
-  3: 'Opening Meeting',
-  4: 'Basic Information',
-  5: 'Site Tour',
-  6: 'Parameters',
-  7: 'Closing Meeting',
-  8: 'NC 1',
-  9: 'NC 2',
-  10: 'NC 3',
-  11: 'NC 4',
-  12: 'NC 5',
-  13: 'Attendance',
-};
+export function saTabTitle(id: number): string {
+  switch (id) {
+    case 1: return t('staff.saDetails.tabTitle.overview.title', 'Assessment Overview');
+    case 2: return t('staff.saDetails.tabTitle.plan.title', 'Assessment Plan');
+    case 3: return t('staff.saDetails.tabTitle.openMeeting.title', 'Opening Meeting');
+    case 4: return t('staff.saDetails.tabTitle.basic.title', 'Basic Information');
+    case 5: return t('staff.saDetails.tabTitle.tour.title', 'Site Tour');
+    case 6: return t('staff.saDetails.tabTitle.params.title', 'Parameters');
+    case 7: return t('staff.saDetails.tabTitle.closeMeeting.title', 'Closing Meeting');
+    case 13: return t('staff.saDetails.tabTitle.attendance.title', 'Attendance');
+    default: return id >= 8 && id <= 12 ? t('staff.saDetails.tabTitle.nc.title', 'NC {round}', { round: id - 7 }) : '';
+  }
+}
 
 /**
  * Staff review page of a Silver/Gold site assessment. Port of Views/Assessment/SaDetails.cshtml: read-only
@@ -54,7 +53,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits, PageHead, StepTracker],
+  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits, PageHead, StepTracker, TextPipe],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES, UNIT_VIEW_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
@@ -69,7 +68,7 @@ export class SaDetailsPage {
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;
-  protected readonly tabTitles = SA_TAB_TITLES;
+  protected readonly tabTitle = saTabTitle;
 
   protected readonly data = signal<SaDetails | null>(null);
 
@@ -87,7 +86,7 @@ export class SaDetailsPage {
     })));
 
   protected observe(r: Record<string, unknown>): void {
-    this.qoTarget.set(this.qoTargets().find((t) => t.id === String(r['Id'] ?? '')) ?? null);
+    this.qoTarget.set(this.qoTargets().find((x) => x.id === String(r['Id'] ?? '')) ?? null);
   }
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -108,10 +107,10 @@ export class SaDetailsPage {
   // three columns, the NC rounds in one card and the quality observations in the right rail.
   protected readonly headTitle = computed(() => {
     const d = this.data();
-    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || 'Assessment details';
+    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || t('staff.saDetails.head.fallbackTitle', 'Assessment details');
     return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
   });
-  protected readonly headCrumbs = computed(() => staffCrumbs({ label: text(this.msme(), 'ZedId') || this.data()?.zedId || this.zedId() || 'Unit' }));
+  protected readonly headCrumbs = computed(() => staffCrumbs({ label: text(this.msme(), 'ZedId') || this.data()?.zedId || this.zedId() || t('staff.saDetails.crumb.unit', 'Unit') }));
   protected readonly result = computed(() => unitResult(this.msme()));
   protected readonly stage = computed(() => siteStage(this.msme()));
   protected readonly ncList = computed(() => ncLines(this.msme()));
@@ -120,24 +119,24 @@ export class SaDetailsPage {
     const m = this.msme();
     const v = (c: string) => text(m, c);
     const facts = [
-      { label: 'ZED ID', value: v('ZedId') },
-      { label: 'Unit name', value: v('PUnitName') },
-      { label: 'Udyam registration', value: v('UdyogAadharNo') },
-      { label: 'Level', value: v('Certification') },
-      { label: 'Mode of assessment', value: v('ModeOfAssessment') },
-      { label: 'Site assessment date', value: v('AssessmentDate') },
-      { label: 'Document submission', value: v('BasicInfoStatus') },
-      { label: 'Verification allocated', value: v('DocVerifiAllot') },
-      { label: 'Desktop verification completed', value: v('DesktopVerificationCompleted') },
-      { label: 'Site assessment completed', value: v('CompletedOn') },
+      { label: t('staff.saDetails.fact.zedId.label', 'ZED ID'), value: v('ZedId') },
+      { label: t('staff.saDetails.fact.unitName.label', 'Unit name'), value: v('PUnitName') },
+      { label: t('staff.saDetails.fact.udyam.label', 'Udyam registration'), value: v('UdyogAadharNo') },
+      { label: t('staff.saDetails.fact.level.label', 'Level'), value: v('Certification') },
+      { label: t('staff.saDetails.fact.mode.label', 'Mode of assessment'), value: v('ModeOfAssessment') },
+      { label: t('staff.saDetails.fact.saDate.label', 'Site assessment date'), value: v('AssessmentDate') },
+      { label: t('staff.saDetails.fact.submission.label', 'Document submission'), value: v('BasicInfoStatus') },
+      { label: t('staff.saDetails.fact.allocated.label', 'Verification allocated'), value: v('DocVerifiAllot') },
+      { label: t('staff.saDetails.fact.desktopCompleted.label', 'Desktop verification completed'), value: v('DesktopVerificationCompleted') },
+      { label: t('staff.saDetails.fact.siteCompleted.label', 'Site assessment completed'), value: v('CompletedOn') },
     ];
     if (!this.isQc()) {
       facts.push(
-        { label: 'Assessment agency', value: idName(m, 'CertificationBodyUserId', 'AgencyName') },
-        { label: 'Desktop assessor', value: idName(m, 'DesktopAssessorId', 'DesktopAssessorName') },
-        { label: 'Site assessor', value: idName(m, 'SiteAssessorId', 'SiteAssessorName') },
+        { label: t('staff.saDetails.fact.agency.label', 'Assessment agency'), value: idName(m, 'CertificationBodyUserId', 'AgencyName') },
+        { label: t('staff.saDetails.fact.desktopAssessor.label', 'Desktop assessor'), value: idName(m, 'DesktopAssessorId', 'DesktopAssessorName') },
+        { label: t('staff.saDetails.fact.siteAssessor.label', 'Site assessor'), value: idName(m, 'SiteAssessorId', 'SiteAssessorName') },
       );
-      if (v('CoAssessorId')) facts.push({ label: 'Co-assessor', value: idName(m, 'CoAssessorId', 'CoAssessorName') });
+      if (v('CoAssessorId')) facts.push({ label: t('staff.saDetails.fact.coAssessor.label', 'Co-assessor'), value: idName(m, 'CoAssessorId', 'CoAssessorName') });
     }
     return facts;
   });
@@ -229,18 +228,18 @@ export class SaDetailsPage {
       if (!rk) continue;
       // The surveillance page showed no site assessment photos in the NC rounds.
       const photos = k === 1 && !this.surveillance ? this.evidencePhotosOf(r).filter((p) => !!p.url).map((p) => ({ name: p.name ?? '', url: p.url ?? '' })) : [];
-      out.push(message('assessor', `NC${k} raised`, { text: text(rk, 'PreviousAssessorRemarks'), pictures: photos }));
+      out.push(message('assessor', t('staff.saDetails.thread.raised.label', 'NC{round} raised', { round: k }), { text: text(rk, 'PreviousAssessorRemarks'), pictures: photos }));
       const group = rows.filter((e) => {
         const c = num(e, 'NcCount');
         return c === k || (k === nc && (c < 1 || c > nc));
       });
-      out.push(message('msme', `NC${k}`, {
+      out.push(message('msme', t('staff.saDetails.thread.round.label', 'NC{round}', { round: k }), {
         date: group.map((e) => text(e, 'SyncedDate')).find(Boolean) ?? '',
         text: text(rk, 'MsmeComments'),
         all: group.map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl') })),
       }));
     }
-    if (text(r, 'SaConformance')) out.push(message('assessor', `NC${nc}`, { text: text(r, 'SaAssessorRemarks'), conformance: text(r, 'SaConformance') }));
+    if (text(r, 'SaConformance')) out.push(message('assessor', t('staff.saDetails.thread.round.label', 'NC{round}', { round: nc }), { text: text(r, 'SaAssessorRemarks'), conformance: text(r, 'SaConformance') }));
     return out.filter(hasContent);
   }
 
@@ -272,6 +271,42 @@ export class SaDetailsPage {
 
   protected openImage(src: string | null | undefined): void {
     if (src) this.preview.set(src);
+  }
+
+  /** The state of an NC round in the overview (the code value stays for the chip's colour). */
+  protected ncStateText(state: string | null): string {
+    switch (state) {
+      case 'Open': return t('staff.saDetails.nc.state.open.chip', 'Open');
+      case 'Replied': return t('staff.saDetails.nc.state.replied.chip', 'Replied');
+      case 'Closed': return t('staff.saDetails.nc.state.closed.chip', 'Closed');
+      default: return state ?? '';
+    }
+  }
+
+  /** The Basic information rows 3 to 9 (DA and SA answers side by side). */
+  protected infoLabel(no: number): string {
+    switch (no) {
+      case 3: return t('staff.saDetails.basic.domesticCustomers.label', 'Key Domestic Customers');
+      case 4: return t('staff.saDetails.basic.internationalCustomers.label', 'Key International Customers');
+      case 5: return t('staff.saDetails.basic.rawMaterialImported.label', 'Whether Raw Material is Imported?');
+      case 6: return t('staff.saDetails.basic.outsourced.label', 'Processed Outsourced, if any?');
+      case 7: return t('staff.saDetails.basic.energySources.label', 'Energy Source(s) Used');
+      case 8: return t('staff.saDetails.basic.capacity.label', 'monthly Manufacturing Capacity');
+      case 9: return t('staff.saDetails.basic.utilization.label', 'Monthly Utilization');
+      default: return '';
+    }
+  }
+
+  /** A parameter / requirement chip as shown (the code value stays in data-v). */
+  protected chipText(value: ParameterChip): string {
+    switch (value) {
+      case 'Yes': return t('staff.saDetails.status.yes.chip', 'Yes');
+      case 'No': return t('staff.saDetails.status.no.chip', 'No');
+      case 'Partial': return t('staff.saDetails.status.partial.chip', 'Partial');
+      case 'Pending': return t('staff.saDetails.status.pending.chip', 'Pending');
+      case 'Exempt': return t('staff.saDetails.status.exempt.chip', 'Exempt');
+      default: return value;
+    }
   }
 
   // ------------------------------------------------------------------ agency / master-admin review
@@ -337,7 +372,7 @@ export class SaDetailsPage {
     this.error.set('');
     if (!isZedId(zedId) || !level) {
       this.data.set(null);
-      this.error.set('Invalid request.');
+      this.error.set(t('staff.saDetails.invalidError', 'Invalid request.'));
       return;
     }
     this.loading.set(true);
@@ -355,7 +390,7 @@ export class SaDetailsPage {
       this.data.set(null);
       this.error.set(
         err instanceof HttpErrorResponse && err.status === 404
-          ? 'Assessment details are not available, or this assessment is not allotted to you.'
+          ? t('staff.saDetails.notFoundError', 'Assessment details are not available, or this assessment is not allotted to you.')
           : apiErrorMessage(err),
       );
     } finally {

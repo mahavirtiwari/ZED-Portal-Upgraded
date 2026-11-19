@@ -1,4 +1,5 @@
 import { Component, computed, input, signal } from '@angular/core';
+import { TextPipe, t } from '../../content/page-text';
 
 /** One mark: a label, its value and, for categorical charts, its colour (slot of CHART_COLORS or a level colour). */
 export interface ChartItem {
@@ -28,12 +29,13 @@ const percent = (value: number, total: number) => (total ? `${((value / total) *
  */
 @Component({
   selector: 'zed-column-chart',
+  imports: [TextPipe],
   template: `
     <div class="cc" role="img" [attr.aria-label]="ariaLabel()">
       <div class="cc-plot" [style.--cols]="items().length || 1">
         @for (it of items(); track it.label; let i = $index) {
           <div class="cc-col" (mouseenter)="hover.set(i)" (mouseleave)="hover.set(-1)" (focus)="hover.set(i)" (blur)="hover.set(-1)" tabindex="0"
-               [attr.aria-label]="it.label + ': ' + format(it.value)">
+               [attr.aria-label]="'{label}: {value}' | t: 'staff.dashboard.chart.itemAria' : { label: it.label, value: format(it.value) }">
             <span class="cc-value">{{ compact() ? short(it.value) : format(it.value) }}</span>
             <span class="cc-bar" [style.height.%]="height(it.value)" [style.background]="it.color || color()" [class.is-dim]="hover() >= 0 && hover() !== i"></span>
             @if (hover() === i) {
@@ -105,13 +107,14 @@ export function wholePercent(value: number, total: number): string {
  */
 @Component({
   selector: 'zed-stacked-bar',
+  imports: [TextPipe],
   template: `
     <div class="sb">
       @if (heading()) { <div class="sb-head">{{ heading() }}</div> }
       @if (sum()) {
         <div class="sb-bar" role="img" [attr.aria-label]="describe()">
           @for (it of items(); track it.label) {
-            @if (it.value) { <span [style.width.%]="(it.value / sum()) * 100" [style.background]="it.color" [title]="it.label + ': ' + format(it.value)"></span> }
+            @if (it.value) { <span [style.width.%]="(it.value / sum()) * 100" [style.background]="it.color" [title]="'{label}: {value}' | t: 'staff.dashboard.chart.itemAria' : { label: it.label, value: format(it.value) }"></span> }
           }
         </div>
         <ul class="sb-legend">
@@ -120,7 +123,7 @@ export function wholePercent(value: number, total: number): string {
           }
         </ul>
       } @else {
-        <div class="sb-empty">No data</div>
+        <div class="sb-empty">{{ 'No data' | t: 'staff.dashboard.chart.empty' }}</div>
       }
     </div>
   `,
@@ -145,7 +148,8 @@ export class StackedBar {
     return wholePercent(v, this.sum());
   }
   protected describe(): string {
-    return `${this.heading()}: ` + this.items().map((i) => `${i.label} ${this.share(i.value)}`).join(', ');
+    const parts = this.items().map((i) => t('staff.dashboard.chart.partAria', '{label} {value}', { label: i.label, value: this.share(i.value) })).join(', ');
+    return t('staff.dashboard.chart.barAria', '{heading}: {parts}', { heading: this.heading(), parts });
   }
 }
 
@@ -160,34 +164,35 @@ export type RankSort = 'high' | 'low' | 'name';
  */
 @Component({
   selector: 'zed-rank-list',
+  imports: [TextPipe],
   template: `
     <div class="rk">
       <div class="rk-head">
         <span class="rk-title">{{ heading() }}</span>
         @if (all()) {
           <label class="rk-sort">
-            <span class="visually-hidden">Sort {{ heading() }}</span>
+            <span class="visually-hidden">{{ 'Sort {list}' | t: 'staff.dashboard.chart.rank.sortLabel' : { list: heading() } }}</span>
             <select [value]="sort()" (change)="sort.set($any($event.target).value)">
-              <option value="high">Highest first</option>
-              <option value="low">Lowest first</option>
-              <option value="name">A to Z</option>
+              <option value="high">{{ 'Highest first' | t: 'staff.dashboard.chart.rank.sortHigh' }}</option>
+              <option value="low">{{ 'Lowest first' | t: 'staff.dashboard.chart.rank.sortLow' }}</option>
+              <option value="name">{{ 'A to Z' | t: 'staff.dashboard.chart.rank.sortName' }}</option>
             </select>
           </label>
         }
         @if (sorted().length > limit()) {
-          <button type="button" class="rk-more no-export" [attr.aria-expanded]="all()" (click)="toggle()">{{ all() ? 'Show Top ' + limit() : 'View All' }}</button>
+          <button type="button" class="rk-more no-export" [attr.aria-expanded]="all()" (click)="toggle()">{{ all() ? ('Show Top {count}' | t: 'staff.dashboard.chart.rank.showTopButton' : { count: limit() }) : ('View All' | t: 'staff.dashboard.chart.rank.viewAllButton') }}</button>
         }
       </div>
       <ol class="rk-list">
         @for (it of shown(); track it.label) {
-          <li [title]="it.label + ': ' + format(it.value) + ' ' + valueHeading().toLowerCase()">
+          <li [title]="'{label}: {value} {units}' | t: 'staff.dashboard.chart.rank.rowTooltip' : { label: it.label, value: format(it.value), units: units().toLowerCase() }">
             <span class="rk-rank">{{ it.rank }}</span>
             <span class="rk-label">{{ it.label }}</span>
             <span class="rk-value">{{ format(it.value) }}</span>
             <span class="rk-track"><span class="rk-bar" [style.width.%]="width(it.value)"></span></span>
           </li>
         } @empty {
-          <li class="rk-empty">No data</li>
+          <li class="rk-empty">{{ 'No data' | t: 'staff.dashboard.chart.empty' }}</li>
         }
       </ol>
     </div>
@@ -212,7 +217,11 @@ export class RankList {
   readonly items = input.required<ChartItem[]>();
   readonly heading = input('');
   /** What the numbers count (the rows' tooltip). */
-  readonly valueHeading = input('Units');
+  readonly valueHeading = input('');
+  /** What the numbers count: valueHeading, else "Units". */
+  protected units(): string {
+    return this.valueHeading() || t('staff.dashboard.chart.rank.unitsLabel', 'Units');
+  }
   /** Rows before "View all". */
   readonly limit = input(5);
   protected readonly sort = signal<RankSort>('high');
@@ -352,6 +361,7 @@ export class GroupedColumnChart {
     return formatCount(v);
   }
   protected describe(it: TrendPoint): string {
-    return `${it.tip || it.label}: ` + it.values.map((v, i) => `${this.series()[i]} ${formatCount(v)}`).join(', ');
+    const parts = it.values.map((v, i) => t('staff.dashboard.chart.partAria', '{label} {value}', { label: this.series()[i], value: formatCount(v) })).join(', ');
+    return t('staff.dashboard.chart.barAria', '{heading}: {parts}', { heading: it.tip || it.label, parts });
   }
 }

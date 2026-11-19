@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import { TextPipe, t } from '../../content/page-text';
 import { ListCount } from '../list-counts';
 
 /**
@@ -17,7 +18,10 @@ export interface LevelCount {
 
 /** "Bronze: 12 allocated · 4 in progress · 7 completed · 1 rejected" (rejected only when there are some). */
 export function levelCountTip(c: LevelCount): string {
-  return `${c.name}: ${c.allotted} allocated · ${c.inProgress} in progress · ${c.completed} completed` + (c.rejected ? ` · ${c.rejected} rejected` : '');
+  const v = { level: c.name, allotted: c.allotted, inProgress: c.inProgress, completed: c.completed, rejected: c.rejected };
+  return c.rejected
+    ? t('staff.userLists.levelCounts.tipRejected', '{level}: {allotted} allocated · {inProgress} in progress · {completed} completed · {rejected} rejected', v)
+    : t('staff.userLists.levelCounts.tip', '{level}: {allotted} allocated · {inProgress} in progress · {completed} completed', v);
 }
 
 /** The medal colour of a level (Bronze, Silver, Gold, ZED-X; any other level the teal of the added levels). */
@@ -30,9 +34,9 @@ export function levelKey(code: string): string {
 export function levelCountTiles(list: readonly LevelCount[] | null | undefined): ListCount[] {
   return (list ?? []).map((c) => ({
     key: 'lv-' + c.code,
-    label: `${c.name} Allocated`,
+    label: t('staff.userLists.levelCounts.tile.label', '{level} Allocated', { level: c.name }),
     value: c.allotted,
-    sub: `${c.inProgress} in progress · ${c.completed} completed`,
+    sub: t('staff.userLists.levelCounts.tile.sub', '{inProgress} in progress · {completed} completed', { inProgress: c.inProgress, completed: c.completed }),
   }));
 }
 
@@ -43,9 +47,10 @@ export function levelCountTiles(list: readonly LevelCount[] | null | undefined):
  */
 @Component({
   selector: 'zed-level-counts',
+  imports: [TextPipe],
   template: `
     @if (counts(); as list) {
-      <span class="lcs" role="list" [attr.aria-label]="label()">
+      <span class="lcs" role="list" [attr.aria-label]="label() || ('Allocated per level' | t: 'staff.userLists.levelCounts.aria')">
         @for (c of list; track c.code) {
           <span role="listitem" [class]="'lcs-chip' + (c.allotted ? '' : ' is-zero')" [attr.data-level]="c.code" [title]="tip(c)" [attr.aria-label]="tip(c)">
             <span [class]="'lcs-dot lcs-' + key(c.code)" aria-hidden="true"></span>{{ c.name }}&ngsp;<b>{{ c.allotted }}</b>
@@ -53,7 +58,7 @@ export function levelCountTiles(list: readonly LevelCount[] | null | undefined):
         }
       </span>
     } @else {
-      <span class="lcs-none" title="The allocations could not be counted">—</span>
+      <span class="lcs-none" [title]="'The allocations could not be counted' | t: 'staff.userLists.levelCounts.noneTooltip'">—</span>
     }
   `,
   styles: `
@@ -74,7 +79,8 @@ export function levelCountTiles(list: readonly LevelCount[] | null | undefined):
 export class LevelCounts {
   /** The row's counts (every enabled level, the server's order); null / undefined: not counted. */
   readonly counts = input<readonly LevelCount[] | null | undefined>(null);
-  readonly label = input('Allocated per level');
+  /** The list's aria-label; empty: the standard "Allocated per level" (Admin → Texts → Page wording). */
+  readonly label = input('');
 
   protected readonly tip = levelCountTip;
   protected readonly key = levelKey;

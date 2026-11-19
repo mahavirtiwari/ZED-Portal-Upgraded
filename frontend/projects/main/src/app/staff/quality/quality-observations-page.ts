@@ -14,6 +14,7 @@ import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { QualityObservationItem } from './quality-observation-item';
 import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi } from './quality.api';
+import { TextPipe, t } from '../../content/page-text';
 
 /**
  * 2026-11-16 (approved): Quality observations. The Master Admin and its operation admins: the dashboard (open / replied /
@@ -33,41 +34,43 @@ import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi 
  */
 @Component({
   selector: 'zed-staff-quality-observations',
-  imports: [FormsModule, QualityObservationItem, PageHead, ChipFilter],
+  imports: [FormsModule, QualityObservationItem, PageHead, ChipFilter, TextPipe],
   template: `
-    <zed-page-head [crumbs]="crumbs" title="Quality Observations" [subtitle]="master() ? words.masterSub : words.agencySub">
+    <zed-page-head [crumbs]="crumbs()" [title]="'Quality Observations' | t: 'staff.quality.title'" [subtitle]="master() ? words().masterSub : words().agencySub">
       @if (master() && tab() === 'dashboard' && dash()) {
         <button type="button" class="btn btn-outline-primary qo-csv" (click)="exportCsv(dash()!)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> Download ranking (CSV)
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> {{ 'Download ranking (CSV)' | t: 'staff.quality.csv.button' }}
         </button>
       }
     </zed-page-head>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
     <div class="qo-filters" data-qo-filters>
-      <label class="visually-hidden" for="qo-days">Period</label>
+      <label class="visually-hidden" for="qo-days">{{ 'Period' | t: 'staff.quality.period.label' }}</label>
       <select id="qo-days" class="form-select qo-period" [ngModel]="period()" (ngModelChange)="setPeriod($event)">
-        <option [ngValue]="30">Last 30 days</option>
-        <option [ngValue]="90">Last 3 months</option>
-        <option [ngValue]="365">Last year</option>
-        <option [ngValue]="3650">All time</option>
-        <option ngValue="custom">Custom range…</option>
+        <option [ngValue]="30">{{ 'Last 30 days' | t: 'staff.quality.period.days30.option' }}</option>
+        <option [ngValue]="90">{{ 'Last 3 months' | t: 'staff.quality.period.months3.option' }}</option>
+        <option [ngValue]="365">{{ 'Last year' | t: 'staff.quality.period.year.option' }}</option>
+        <option [ngValue]="3650">{{ 'All time' | t: 'staff.quality.period.all.option' }}</option>
+        <option ngValue="custom">{{ 'Custom range…' | t: 'staff.quality.period.custom.option' }}</option>
       </select>
       @if (period() === 'custom') {
-        <input id="qo-from" type="date" class="form-control qo-date" aria-label="From" title="From (dd-mm-yyyy)" [max]="to() || today" [ngModel]="from()" (ngModelChange)="setDate('from', $event)" />
-        <span class="qo-to" aria-hidden="true">to</span>
-        <input id="qo-to" type="date" class="form-control qo-date" aria-label="To" title="To (dd-mm-yyyy)" [min]="from()" [max]="today" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" />
+        <input id="qo-from" type="date" class="form-control qo-date" [attr.aria-label]="'From' | t: 'staff.quality.period.from.aria'" [title]="'From (dd-mm-yyyy)' | t: 'staff.quality.period.from.tooltip'"
+               [max]="to() || today" [ngModel]="from()" (ngModelChange)="setDate('from', $event)" />
+        <span class="qo-to" aria-hidden="true">{{ 'to' | t: 'staff.quality.period.to.label' }}</span>
+        <input id="qo-to" type="date" class="form-control qo-date" [attr.aria-label]="'To' | t: 'staff.quality.period.to.aria'" [title]="'To (dd-mm-yyyy)' | t: 'staff.quality.period.to.tooltip'"
+               [min]="from()" [max]="today" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" />
       }
-      <label class="visually-hidden" for="qo-level">Certification level</label>
+      <label class="visually-hidden" for="qo-level">{{ 'Certification level' | t: 'staff.quality.level.label' }}</label>
       <select id="qo-level" class="form-select qo-level" [ngModel]="level()" (ngModelChange)="level.set($event); load()">
-        <option value="">All levels</option>
+        <option value="">{{ 'All levels' | t: 'staff.quality.level.all.option' }}</option>
         @for (l of levels(); track l.value) { <option [value]="l.value">{{ l.label }}</option> }
       </select>
-      @if (filtered()) { <button type="button" class="btn btn-link qo-reset" (click)="clearAll()">Clear All</button> }
+      @if (filtered()) { <button type="button" class="btn btn-link qo-reset" (click)="clearAll()">{{ 'Clear All' | t: 'staff.quality.clear.button' }}</button> }
       @if (master()) {
-        <div class="qo-seg" role="tablist" aria-label="View">
-          <button type="button" role="tab" [attr.aria-selected]="tab() === 'dashboard'" [class.on]="tab() === 'dashboard'" (click)="tab.set('dashboard')">Dashboard</button>
-          <button type="button" role="tab" [attr.aria-selected]="tab() === 'list'" [class.on]="tab() === 'list'" (click)="tab.set('list')">Observations</button>
+        <div class="qo-seg" role="tablist" [attr.aria-label]="'View' | t: 'staff.quality.view.aria'">
+          <button type="button" role="tab" [attr.aria-selected]="tab() === 'dashboard'" [class.on]="tab() === 'dashboard'" (click)="tab.set('dashboard')">{{ 'Dashboard' | t: 'staff.quality.view.dashboard.tab' }}</button>
+          <button type="button" role="tab" [attr.aria-selected]="tab() === 'list'" [class.on]="tab() === 'list'" (click)="tab.set('list')">{{ 'Observations' | t: 'staff.quality.view.list.tab' }}</button>
         </div>
       }
     </div>
@@ -76,21 +79,23 @@ import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi 
     @if (master() && tab() === 'dashboard') {
       @if (dash(); as d) {
         <div class="qo-tiles" data-qo-tiles>
-          <div class="qo-tile"><b>{{ d.total }}</b><span>Observations</span></div>
-          <div class="qo-tile" [class.warn]="d.open > 0"><b>{{ d.open }}</b><span>Open</span></div>
-          <div class="qo-tile"><b>{{ d.responded }}</b><span>Replied</span></div>
-          <div class="qo-tile ok"><b>{{ d.closed }}</b><span>Closed</span></div>
-          <div class="qo-tile"><b>{{ hours(d.avgReplyHours) }}</b><span>Avg. time to reply</span></div>
-          <div class="qo-tile"><b>{{ hours(d.avgCloseHours) }}</b><span>Avg. time to close</span></div>
+          <div class="qo-tile"><b>{{ d.total }}</b><span>{{ 'Observations' | t: 'staff.quality.count.total' }}</span></div>
+          <div class="qo-tile" [class.warn]="d.open > 0"><b>{{ d.open }}</b><span>{{ 'Open' | t: 'staff.quality.count.open' }}</span></div>
+          <div class="qo-tile"><b>{{ d.responded }}</b><span>{{ 'Replied' | t: 'staff.quality.count.replied' }}</span></div>
+          <div class="qo-tile ok"><b>{{ d.closed }}</b><span>{{ 'Closed' | t: 'staff.quality.count.closed' }}</span></div>
+          <div class="qo-tile"><b>{{ hours(d.avgReplyHours) }}</b><span>{{ 'Avg. time to reply' | t: 'staff.quality.count.replyTime' }}</span></div>
+          <div class="qo-tile"><b>{{ hours(d.avgCloseHours) }}</b><span>{{ 'Avg. time to close' | t: 'staff.quality.count.closeTime' }}</span></div>
         </div>
         <div class="qo-grid">
           <div class="qo-main">
-            @for (block of [{ title: words.agencies, rows: d.agencies }, { title: words.assessors, rows: d.assessors }]; track block.title) {
-              <h4 class="qo-h">{{ block.title }} · ranking</h4>
+            @for (block of [{ title: words().agencies, rows: d.agencies }, { title: words().assessors, rows: d.assessors }]; track block.title) {
+              <h4 class="qo-h">{{ '{list} · ranking' | t: 'staff.quality.ranking.title' : { list: block.title } }}</h4>
               <div class="table-responsive qo-card">
                 <table class="table table-zed qo-rank" [attr.data-qo-rank]="block.title">
-                  <thead><tr><th>Rank</th><th>Name</th><th class="text-center">{{ words.units }}</th><th class="text-center">Open</th><th class="text-center">Closed</th>
-                    <th class="text-center">Minor / Major / Critical</th><th class="text-center">Reopened</th><th class="text-center">Score</th></tr></thead>
+                  <thead><tr><th>{{ 'Rank' | t: 'staff.quality.ranking.column.rank' }}</th><th>{{ 'Name' | t: 'staff.quality.ranking.column.name' }}</th><th class="text-center">{{ words().units }}</th>
+                    <th class="text-center">{{ 'Open' | t: 'staff.quality.ranking.column.open' }}</th><th class="text-center">{{ 'Closed' | t: 'staff.quality.ranking.column.closed' }}</th>
+                    <th class="text-center">{{ 'Minor / Major / Critical' | t: 'staff.quality.ranking.column.severity' }}</th><th class="text-center">{{ 'Reopened' | t: 'staff.quality.ranking.column.reopened' }}</th>
+                    <th class="text-center">{{ 'Score' | t: 'staff.quality.ranking.column.score' }}</th></tr></thead>
                   <tbody>
                     @for (s of block.rows; track s.userId) {
                       <tr>
@@ -101,10 +106,10 @@ import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi 
                         <td class="text-center">{{ s.closed }}</td>
                         <td class="text-center">{{ s.minor }} / {{ s.major }} / {{ s.critical }}</td>
                         <td class="text-center">{{ s.reopens }}</td>
-                        <td class="text-center qo-big" [title]="'Avg. reply ' + hours(s.avgReplyHours) + ' · avg. close ' + hours(s.avgCloseHours)"><b>{{ score(s.score) }}</b></td>
+                        <td class="text-center qo-big" [title]="'Avg. reply {reply} · avg. close {close}' | t: 'staff.quality.ranking.score.tooltip' : { reply: hours(s.avgReplyHours), close: hours(s.avgCloseHours) }"><b>{{ score(s.score) }}</b></td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="8" class="text-center muted">No observations in this period.</td></tr>
+                      <tr><td colspan="8" class="text-center muted">{{ 'No observations in this period.' | t: 'staff.quality.ranking.empty' }}</td></tr>
                     }
                   </tbody>
                 </table>
@@ -115,12 +120,12 @@ import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi 
             @if (d.categories.length) {
               <section class="qo-card qo-box" aria-labelledby="qo-cat-h" data-qo-categories>
                 <div class="qo-box-h"><span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
-                  <h4 id="qo-cat-h">By category</h4></div>
+                  <h4 id="qo-cat-h">{{ 'By category' | t: 'staff.quality.categories.title' }}</h4></div>
                 <ul class="qo-cats">
                   @for (c of d.categories; track c.category) {
                     <li>
-                      <div class="qo-cat-t"><span>{{ c.category }}</span><small>{{ c.total }} · {{ c.major }} major / critical</small></div>
-                      <div class="qo-bar" role="img" [attr.aria-label]="c.total + ' observations, ' + c.major + ' major or critical'">
+                      <div class="qo-cat-t"><span>{{ c.category }}</span><small>{{ '{total} · {major} major / critical' | t: 'staff.quality.categories.count.label' : { total: c.total, major: c.major } }}</small></div>
+                      <div class="qo-bar" role="img" [attr.aria-label]="'{total} observations, {major} major or critical' | t: 'staff.quality.categories.bar.aria' : { total: c.total, major: c.major }">
                         <span class="qo-bar-all" [style.width.%]="share(c.total, maxCategory(d))">
                           <span class="qo-bar-major" [style.width.%]="share(c.major, c.total)"></span>
                         </span>
@@ -132,20 +137,20 @@ import { QoDashboard, QoFilter, QoObservation, QoStanding, QoStatus, QualityApi 
             }
             <section class="qo-card qo-box" aria-labelledby="qo-score-h" data-qo-score>
               <div class="qo-box-h"><span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg></span>
-                <h4 id="qo-score-h">How the score works</h4></div>
-              <p class="qo-score">Points per {{ words.unit }} with an observation: minor 1, major 3, critical 5. A lower score ranks higher, then the faster reply.</p>
+                <h4 id="qo-score-h">{{ 'How the score works' | t: 'staff.quality.score.title' }}</h4></div>
+              <p class="qo-score">{{ 'Points per {unit} with an observation: minor 1, major 3, critical 5. A lower score ranks higher, then the faster reply.' | t: 'staff.quality.score.text' : { unit: words().unit } }}</p>
             </section>
           </aside>
         </div>
       }
     } @else {
       <div class="qo-filters">
-        <zed-chip-filter label="Status" [chips]="statusChips()" [value]="status()" (valueChange)="status.set($any($event))" />
+        <zed-chip-filter [label]="'Status' | t: 'staff.quality.status.label'" [chips]="statusChips()" [value]="status()" (valueChange)="status.set($any($event))" />
       </div>
       @for (o of shown(); track o.id) {
         <zed-qo-item [item]="o" [showUnit]="true" [canRespond]="!master()" [canClose]="canClose()" (changed)="changed($event)" />
       } @empty {
-        <p class="muted">No observations.</p>
+        <p class="muted">{{ 'No observations.' | t: 'staff.quality.list.empty' }}</p>
       }
     }
   `,
@@ -204,23 +209,30 @@ export class QualityObservationsPage {
   private readonly exporter = inject(TableExport);
   private readonly toast = inject(ToastService);
   private readonly attention = inject(AttentionService);
-  protected readonly crumbs = staffCrumbs({ label: 'Quality Observations' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.quality.crumb', 'Quality Observations') }));
   /** Handholding (consultancy portal) names consultants and consultant organisations; surveillance, surveillances. */
-  private readonly consultancy = inject(ASSESSMENT_SYSTEM) === 'consultancy';
-  protected readonly words = (() => {
-    const system = inject(ASSESSMENT_SYSTEM);
-    if (system === 'consultancy') return {
-      agencies: 'Consultant organisations', assessors: 'Consultants', units: 'Milestones', unit: 'milestone',
-      masterSub: "Observations of the ZED team on the handholding milestones, the consultant organisations' replies, and how each organisation and consultant ranks.",
-      agencySub: 'Observations of the ZED team on your handholding milestones. Please reply to each; a major or critical one holds the final submit until you reply.',
+  private readonly system = inject(ASSESSMENT_SYSTEM);
+  private readonly consultancy = this.system === 'consultancy';
+  protected readonly words = computed(() => {
+    if (this.system === 'consultancy') return {
+      agencies: t('staff.quality.consultancy.agencies.label', 'Consultant organisations'), assessors: t('staff.quality.consultancy.assessors.label', 'Consultants'),
+      units: t('staff.quality.consultancy.units.column', 'Milestones'), unit: t('staff.quality.consultancy.unit.label', 'milestone'),
+      masterSub: t('staff.quality.consultancy.master.sub', "Observations of the ZED team on the handholding milestones, the consultant organisations' replies, and how each organisation and consultant ranks."),
+      agencySub: t('staff.quality.consultancy.agency.sub', 'Observations of the ZED team on your handholding milestones. Please reply to each; a major or critical one holds the final submit until you reply.'),
     };
-    const what = system === 'surveillance' ? 'surveillance' : 'assessment';
+    const agencies = t('staff.quality.agencies.label', 'Assessment agencies');
+    const assessors = t('staff.quality.assessors.label', 'Assessors');
+    if (this.system === 'surveillance') return {
+      agencies, assessors, units: t('staff.quality.surveillance.units.column', 'Surveillances'), unit: t('staff.quality.surveillance.unit.label', 'surveillance'),
+      masterSub: t('staff.quality.surveillance.master.sub', "Observations of the ZED team on the surveillances, the agencies' replies, and how each agency and assessor ranks."),
+      agencySub: t('staff.quality.surveillance.agency.sub', 'Observations of the ZED team on your surveillances. Please reply to each; a major or critical one holds the final submit until you reply.'),
+    };
     return {
-      agencies: 'Assessment agencies', assessors: 'Assessors', units: system === 'surveillance' ? 'Surveillances' : 'Assessments', unit: what,
-      masterSub: `Observations of the ZED team on the ${what}s, the agencies' replies, and how each agency and assessor ranks.`,
-      agencySub: `Observations of the ZED team on your ${what}s. Please reply to each; a major or critical one holds the final submit until you reply.`,
+      agencies, assessors, units: t('staff.quality.units.column', 'Assessments'), unit: t('staff.quality.unit.label', 'assessment'),
+      masterSub: t('staff.quality.master.sub', "Observations of the ZED team on the assessments, the agencies' replies, and how each agency and assessor ranks."),
+      agencySub: t('staff.quality.agency.sub', 'Observations of the ZED team on your assessments. Please reply to each; a major or critical one holds the final submit until you reply.'),
     };
-  })();
+  });
 
   protected readonly master = computed(() => this.auth.currentUser()?.roleId === 7);
   protected readonly tab = signal<'dashboard' | 'list'>('dashboard');
@@ -239,8 +251,8 @@ export class QualityObservationsPage {
   protected readonly rangeError = computed(() => {
     if (this.period() !== 'custom') return '';
     const [from, to] = [this.from(), this.to()];
-    if ((from && from > this.today) || (to && to > this.today)) return 'The dates cannot be after today.';
-    return from && to && to < from ? 'The To date cannot be before the From date.' : '';
+    if ((from && from > this.today) || (to && to > this.today)) return t('staff.quality.period.future.error', 'The dates cannot be after today.');
+    return from && to && to < from ? t('staff.quality.period.order.error', 'The To date cannot be before the From date.') : '';
   });
   private loads = 0;
   protected readonly status = signal<QoStatus | ''>('');
@@ -252,10 +264,10 @@ export class QualityObservationsPage {
   protected readonly statusChips = computed<FilterChip[]>(() => {
     const by = (s: QoStatus) => this.items().filter((o) => o.status === s).length;
     return [
-      { key: '', label: 'All', count: this.items().length },
-      { key: 'Open', label: 'Open', count: by('Open') },
-      { key: 'Responded', label: 'Replied', count: by('Responded') },
-      { key: 'Closed', label: 'Closed', count: by('Closed') },
+      { key: '', label: t('staff.quality.chip.all', 'All'), count: this.items().length },
+      { key: 'Open', label: t('staff.quality.chip.open', 'Open'), count: by('Open') },
+      { key: 'Responded', label: t('staff.quality.chip.replied', 'Replied'), count: by('Responded') },
+      { key: 'Closed', label: t('staff.quality.chip.closed', 'Closed'), count: by('Closed') },
     ];
   });
 
@@ -278,7 +290,7 @@ export class QualityObservationsPage {
 
   protected hours(h: number | null): string {
     if (h == null) return '—';
-    return h >= 48 ? `${Math.round((h / 24) * 10) / 10} days` : `${h} h`;
+    return h >= 48 ? t('staff.quality.time.days.label', '{count} days', { count: Math.round((h / 24) * 10) / 10 }) : t('staff.quality.time.hours.label', '{count} h', { count: h });
   }
 
   /** Width of a bar, in % of the whole (0 when the whole is 0). */

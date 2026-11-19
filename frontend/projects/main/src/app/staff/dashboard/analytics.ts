@@ -10,8 +10,8 @@ import { KeyedSheet, sharePercent } from './dashboard-export';
 import { PortalSystem } from '../../portal-system';
 import { levelCodes, levelName } from '../../msme/shared/levels';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { TextPipe, t } from '../../content/page-text';
 
-const GENDER_LABELS: Record<string, string> = { male: 'Male', female: 'Female', others: 'Others' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
@@ -25,31 +25,90 @@ interface AnalyticsWords {
   /** Registered, completed, Bronze, Silver, Gold and (main only) ZED-X. */
   kpis: string[];
   certifications: readonly string[];
-  /** The certification filter's caption and the "Date of" choice for the completion date. */
+  /** The certification filter's caption. */
   certLabel: string;
-  completedDate: string;
   /** The trend's second series, and the ranking's value heading when the dates are completion dates. */
   completed: string;
   completedShort: string;
+  /** The date basis switch's completion choice ("By certification date"). */
+  basisCompleted: string;
+  /** The date range's caption when the dates are completion dates ("Certified between"). */
+  rangeCompleted: string;
+  /** The rankings' export column when the dates are completion dates ("Certified units"). */
+  unitsCompleted: string;
+  /** The trend chart's description, by month and by year. */
+  trendMonthAria: string;
+  trendYearAria: string;
 }
 
-export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
-  main: {
-    kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified', 'ZED-X certified'],
-    // 2026-11-08: ZED-X too (the figures count its certifications); the page lists every level (levelCodes()).
-    certifications: [...CERTIFICATIONS, 'ZEDX'], certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
-  },
-  consultancy: {
-    kpis: ['Registered units', 'Handholding completed', 'Applications', 'Silver applications', 'Gold applications', 'ZED-X applications'],
-    certifications: ['Silver', 'Gold', 'ZEDX'], certLabel: 'Level', completedDate: 'Handholding completion', completed: 'Handholding completed',
-    completedShort: 'Completed',
-  },
-  surveillance: {
-    kpis: ['Registered units', 'Surveillance completed', 'Bronze completed', 'Silver completed', 'Gold completed'],
-    certifications: CERTIFICATIONS, certLabel: 'Certification', completedDate: 'Surveillance completion', completed: 'Surveillance completed',
-    completedShort: 'Completed',
-  },
-};
+/**
+ * 2026-11-19 ("All page wording"): each portal's words, the Admin's (Texts → Page wording) or the standard ones written
+ * here; read them where they are shown (a getter / computed). The certification codes stay code values.
+ */
+export function analyticsWords(system: PortalSystem): AnalyticsWords {
+  switch (system) {
+    case 'consultancy':
+      return {
+        kpis: [
+          t('staff.dashboard.analytics.kpi.registeredLabel', 'Registered units'),
+          t('staff.dashboard.analytics.consultancy.kpi.completedLabel', 'Handholding completed'),
+          t('staff.dashboard.analytics.consultancy.kpi.applicationsLabel', 'Applications'),
+          t('staff.dashboard.analytics.consultancy.kpi.silverLabel', 'Silver applications'),
+          t('staff.dashboard.analytics.consultancy.kpi.goldLabel', 'Gold applications'),
+          t('staff.dashboard.analytics.consultancy.kpi.zedxLabel', 'ZED-X applications'),
+        ],
+        certifications: ['Silver', 'Gold', 'ZEDX'],
+        certLabel: t('staff.dashboard.analytics.consultancy.levelLabel', 'Level'),
+        completed: t('staff.dashboard.analytics.consultancy.completedLabel', 'Handholding completed'),
+        completedShort: t('staff.dashboard.analytics.consultancy.completedShortLabel', 'Completed'),
+        basisCompleted: t('staff.dashboard.analytics.consultancy.basisCompletedLabel', 'By handholding completion date'),
+        rangeCompleted: t('staff.dashboard.analytics.consultancy.rangeCompletedLabel', 'Completed between'),
+        unitsCompleted: t('staff.dashboard.analytics.consultancy.export.column.unitsCompleted', 'Completed units'),
+        trendMonthAria: t('staff.dashboard.analytics.consultancy.trendMonthAria', 'Registrations and handholding completed by month'),
+        trendYearAria: t('staff.dashboard.analytics.consultancy.trendYearAria', 'Registrations and handholding completed by year'),
+      };
+    case 'surveillance':
+      return {
+        kpis: [
+          t('staff.dashboard.analytics.kpi.registeredLabel', 'Registered units'),
+          t('staff.dashboard.analytics.surveillance.kpi.completedLabel', 'Surveillance completed'),
+          t('staff.dashboard.analytics.surveillance.kpi.bronzeLabel', 'Bronze completed'),
+          t('staff.dashboard.analytics.surveillance.kpi.silverLabel', 'Silver completed'),
+          t('staff.dashboard.analytics.surveillance.kpi.goldLabel', 'Gold completed'),
+        ],
+        certifications: CERTIFICATIONS,
+        certLabel: t('staff.dashboard.analytics.certificationLabel', 'Certification'),
+        completed: t('staff.dashboard.analytics.surveillance.completedLabel', 'Surveillance completed'),
+        completedShort: t('staff.dashboard.analytics.surveillance.completedShortLabel', 'Completed'),
+        basisCompleted: t('staff.dashboard.analytics.surveillance.basisCompletedLabel', 'By surveillance completion date'),
+        rangeCompleted: t('staff.dashboard.analytics.surveillance.rangeCompletedLabel', 'Completed between'),
+        unitsCompleted: t('staff.dashboard.analytics.surveillance.export.column.unitsCompleted', 'Completed units'),
+        trendMonthAria: t('staff.dashboard.analytics.surveillance.trendMonthAria', 'Registrations and surveillance completed by month'),
+        trendYearAria: t('staff.dashboard.analytics.surveillance.trendYearAria', 'Registrations and surveillance completed by year'),
+      };
+    default:
+      return {
+        kpis: [
+          t('staff.dashboard.analytics.kpi.registeredLabel', 'Registered units'),
+          t('staff.dashboard.analytics.kpi.certifiedLabel', 'Certified units'),
+          t('staff.dashboard.analytics.kpi.bronzeLabel', 'Bronze certified'),
+          t('staff.dashboard.analytics.kpi.silverLabel', 'Silver certified'),
+          t('staff.dashboard.analytics.kpi.goldLabel', 'Gold certified'),
+          t('staff.dashboard.analytics.kpi.zedxLabel', 'ZED-X certified'),
+        ],
+        // 2026-11-08: ZED-X too (the figures count its certifications); the page lists every level (levelCodes()).
+        certifications: [...CERTIFICATIONS, 'ZEDX'],
+        certLabel: t('staff.dashboard.analytics.certificationLabel', 'Certification'),
+        completed: t('staff.dashboard.analytics.certifiedLabel', 'Certified'),
+        completedShort: t('staff.dashboard.analytics.certifiedShortLabel', 'Certified'),
+        basisCompleted: t('staff.dashboard.analytics.basisCompletedLabel', 'By certification date'),
+        rangeCompleted: t('staff.dashboard.analytics.rangeCompletedLabel', 'Certified between'),
+        unitsCompleted: t('staff.dashboard.analytics.export.column.unitsCompleted', 'Certified units'),
+        trendMonthAria: t('staff.dashboard.analytics.trendMonthAria', 'Registrations and certified by month'),
+        trendYearAria: t('staff.dashboard.analytics.trendYearAria', 'Registrations and certified by year'),
+      };
+  }
+}
 
 /** "Who is registering": the parts of each bar in a fixed order of shades (the API sorts by count); beyond four: grey. */
 // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-00's shades for the splits and the trend.
@@ -59,7 +118,7 @@ const GENDER_COLORS: Record<string, string> = { male: '#24666b', female: '#e39a7
 const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
 
 /**
- * Staff dashboard figures (all three portals, worded by ANALYTICS_WORDS): the ministry's Power BI "ZED Dashboard" and "ZED
+ * Staff dashboard figures (all three portals, worded by analyticsWords()): the ministry's Power BI "ZED Dashboard" and "ZED
  * Certification" pages in one view, from api/staff/dashboard/analytics. The page shows the date basis, the Updated time,
  * Refresh and Export in its head through views, view(), setView(), data() and load().
  * 2026-11-17 (approved staff redesign): filters in one row in a card with Clear all; six headline tiles with this month's
@@ -74,90 +133,90 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
  */
 @Component({
   selector: 'zed-staff-analytics',
-  imports: [FormsModule, GroupedColumnChart, RankList, StackedBar],
+  imports: [FormsModule, GroupedColumnChart, RankList, StackedBar, TextPipe],
   template: `
-    <section class="an" [class.is-busy]="loading()" aria-label="ZED figures">
+    <section class="an" [class.is-busy]="loading()" [attr.aria-label]="'ZED figures' | t: 'staff.dashboard.analytics.aria'">
       <div class="an-box">
         <div class="filter-bar an-filters">
           <div class="filter">
-            <label class="form-label" for="an-state">State</label>
+            <label class="form-label" for="an-state">{{ 'State' | t: 'staff.dashboard.analytics.filter.stateLabel' }}</label>
             <select id="an-state" class="form-select" [disabled]="!!data()?.boundState" [ngModel]="filter().state ?? ''" (ngModelChange)="set('state', $event)">
-              <option value="">All</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
               @for (s of states; track s) { <option [value]="s">{{ s }}</option> }
             </select>
           </div>
           <div class="filter">
-            <label class="form-label" for="an-district">District</label>
+            <label class="form-label" for="an-district">{{ 'District' | t: 'staff.dashboard.analytics.filter.districtLabel' }}</label>
             <select id="an-district" class="form-select" [disabled]="!filter().state" [ngModel]="filter().district ?? ''" (ngModelChange)="set('district', $event)">
-              <option value="">{{ filter().state ? 'All' : 'Pick a state' }}</option>
+              <option value="">{{ filter().state ? ('All' | t: 'staff.dashboard.analytics.filter.all') : ('Pick a state' | t: 'staff.dashboard.analytics.filter.pickState') }}</option>
               @for (d of data()?.districtOptions ?? []; track d) { <option [value]="d">{{ d }}</option> }
             </select>
           </div>
           <div class="filter">
             <label class="form-label" for="an-cert">{{ words.certLabel }}</label>
             <select id="an-cert" class="form-select" [ngModel]="filter().certification ?? ''" (ngModelChange)="set('certification', $event)">
-              <option value="">All</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
               @for (c of certifications(); track c) { <option [value]="c">{{ levelName(c) }}</option> }
             </select>
           </div>
           <div class="filter an-range">
-            <span class="form-label" id="an-range-label">{{ view() === 'registered' ? 'Registered' : words.completedShort }} between</span>
+            <span class="form-label" id="an-range-label">{{ view() === 'registered' ? ('Registered between' | t: 'staff.dashboard.analytics.filter.rangeRegisteredLabel') : words.rangeCompleted }}</span>
             <div class="an-range-inputs" role="group" aria-labelledby="an-range-label">
-              <input id="an-from" type="date" class="form-control" aria-label="From" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)" />
-              <span class="an-range-to">to</span>
-              <input id="an-to" type="date" class="form-control" aria-label="To" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
+              <input id="an-from" type="date" class="form-control" [attr.aria-label]="'From' | t: 'staff.dashboard.analytics.filter.fromAria'" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)" />
+              <span class="an-range-to">{{ 'to' | t: 'staff.dashboard.analytics.filter.toText' }}</span>
+              <input id="an-to" type="date" class="form-control" [attr.aria-label]="'To' | t: 'staff.dashboard.analytics.filter.toAria'" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
             </div>
           </div>
           <div class="an-more-btn no-export">
             <button type="button" class="btn an-more-toggle" [attr.aria-expanded]="moreOpen()" aria-controls="an-more" (click)="moreOpen.set(!moreOpen())">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
-              More Filters{{ moreCount() ? ' (' + moreCount() + ')' : '' }}
+              {{ moreCount() ? ('More Filters ({count})' | t: 'staff.dashboard.analytics.moreFiltersCountButton' : { count: moreCount() }) : ('More Filters' | t: 'staff.dashboard.analytics.moreFiltersButton') }}
             </button>
           </div>
           <div class="an-clear no-export">
-            <button type="button" class="btn btn-link dash-reset" [disabled]="!filtered()" (click)="reset()">Clear All</button>
+            <button type="button" class="btn btn-link dash-reset" [disabled]="!filtered()" (click)="reset()">{{ 'Clear All' | t: 'staff.dashboard.analytics.clearAllButton' }}</button>
           </div>
         </div>
         <div class="filter-bar an-filters an-more" id="an-more" [hidden]="!moreOpen()">
           <div class="filter">
-            <label class="form-label" for="an-gender">Gender</label>
+            <label class="form-label" for="an-gender">{{ 'Gender' | t: 'staff.dashboard.analytics.filter.genderLabel' }}</label>
             <select id="an-gender" class="form-select" [ngModel]="filter().gender ?? ''" (ngModelChange)="set('gender', $event)">
-              <option value="">All</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="OTHERS">Others</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
+              <option value="male">{{ 'Male' | t: 'staff.dashboard.analytics.gender.male' }}</option>
+              <option value="female">{{ 'Female' | t: 'staff.dashboard.analytics.gender.female' }}</option>
+              <option value="OTHERS">{{ 'Others' | t: 'staff.dashboard.analytics.gender.others' }}</option>
             </select>
           </div>
           <div class="filter">
-            <label class="form-label" for="an-size">MSME size</label>
+            <label class="form-label" for="an-size">{{ 'MSME size' | t: 'staff.dashboard.analytics.filter.sizeLabel' }}</label>
             <select id="an-size" class="form-select" [ngModel]="filter().size ?? ''" (ngModelChange)="set('size', $event)">
-              <option value="">All</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
               @for (s of sizes; track s) { <option [value]="s">{{ s }}</option> }
             </select>
           </div>
           <div class="filter">
-            <label class="form-label" for="an-social">Social category</label>
+            <label class="form-label" for="an-social">{{ 'Social category' | t: 'staff.dashboard.analytics.filter.socialLabel' }}</label>
             <select id="an-social" class="form-select" [ngModel]="filter().socialCategory ?? ''" (ngModelChange)="set('socialCategory', $event)">
-              <option value="">All</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
               @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
             </select>
           </div>
           <!-- 2026-11-16 (approved): Manufacturing / Services; fixed for a login limited to one sector. -->
           <div class="filter">
-            <label class="form-label" for="an-sector">Sector</label>
+            <label class="form-label" for="an-sector">{{ 'Sector' | t: 'staff.dashboard.analytics.filter.sectorLabel' }}</label>
             <select id="an-sector" class="form-select" [disabled]="!!data()?.boundSector" [ngModel]="filter().sector ?? ''" (ngModelChange)="set('sector', $event)">
-              <option value="">All</option>
-              <option value="Manufacturing">Manufacturing</option>
-              <option value="Services">Services</option>
+              <option value="">{{ 'All' | t: 'staff.dashboard.analytics.filter.all' }}</option>
+              <option value="Manufacturing">{{ 'Manufacturing' | t: 'staff.dashboard.analytics.sector.manufacturing' }}</option>
+              <option value="Services">{{ 'Services' | t: 'staff.dashboard.analytics.sector.services' }}</option>
             </select>
           </div>
         </div>
         @if (chips().length) {
-          <div class="an-chips" aria-label="Filters set">
+          <div class="an-chips" [attr.aria-label]="'Filters set' | t: 'staff.dashboard.analytics.chipsAria'">
             @for (c of chips(); track c.key) {
               <span class="an-chip">{{ c.label }}
                 @if ((c.key !== 'state' || !data()?.boundState) && (c.key !== 'sector' || !data()?.boundSector)) {
-                  <button type="button" class="no-export" [attr.aria-label]="'Remove ' + c.label" (click)="set(c.key, '')">×</button>
+                  <button type="button" class="no-export" [attr.aria-label]="'Remove {filter}' | t: 'staff.dashboard.analytics.chip.removeAria' : { filter: c.label }" (click)="set(c.key, '')">×</button>
                 }
               </span>
             }
@@ -166,7 +225,7 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
       </div>
 
       @if (error()) {
-        <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">Try Again</button></div>
+        <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">{{ 'Try Again' | t: 'staff.dashboard.analytics.tryAgainButton' }}</button></div>
       }
 
       @if (data()) {
@@ -185,7 +244,7 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
 
       <!-- The page's status cards: the user's applications, with the filters. -->
       <div class="an-status" data-export="levels" [class.is-hidden]="!data()">
-        <h5 class="an-h">Applications under your charge</h5>
+        <h5 class="an-h">{{ 'Applications under your charge' | t: 'staff.dashboard.analytics.status.heading' }}</h5>
         <ng-content />
       </div>
 
@@ -194,41 +253,41 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
           <div class="an-card an-trend" data-export="trend">
             <div class="an-card-head">
               <span class="an-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" /></svg></span>
-              <h5>{{ yearly() ? 'Year-wise trend' : 'Monthly trend · last 12 months' }}</h5>
+              <h5>{{ yearly() ? ('Year-wise trend' | t: 'staff.dashboard.analytics.trend.yearTitle') : ('Monthly trend · last 12 months' | t: 'staff.dashboard.analytics.trend.monthTitle') }}</h5>
               <ul class="an-legend">
-                @for (s of trendSeries; track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
+                @for (s of trendSeries(); track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
               </ul>
               <!-- The approved Monthly / Yearly switch (not in staff-00): small, after the legend. -->
-              <div class="an-period no-export" role="group" aria-label="Trend by">
-                <button type="button" [class.on]="!yearly()" [attr.aria-pressed]="!yearly()" (click)="yearly.set(false)">Monthly</button>
-                <button type="button" [class.on]="yearly()" [attr.aria-pressed]="yearly()" (click)="yearly.set(true)">Yearly</button>
+              <div class="an-period no-export" role="group" [attr.aria-label]="'Trend by' | t: 'staff.dashboard.analytics.trend.periodAria'">
+                <button type="button" [class.on]="!yearly()" [attr.aria-pressed]="!yearly()" (click)="yearly.set(false)">{{ 'Monthly' | t: 'staff.dashboard.analytics.trend.monthlyButton' }}</button>
+                <button type="button" [class.on]="yearly()" [attr.aria-pressed]="yearly()" (click)="yearly.set(true)">{{ 'Yearly' | t: 'staff.dashboard.analytics.trend.yearlyButton' }}</button>
               </div>
             </div>
             @if (trend().length) {
-              <zed-grouped-column-chart [items]="trend()" [series]="trendSeries" [colors]="trendColors" [legend]="false"
-                [ariaLabel]="'Registrations and ' + words.completed.toLowerCase() + ' by ' + (yearly() ? 'year' : 'month')" />
-            } @else { <div class="no-data">No data in this range</div> }
+              <zed-grouped-column-chart [items]="trend()" [series]="trendSeries()" [colors]="trendColors" [legend]="false"
+                [ariaLabel]="yearly() ? words.trendYearAria : words.trendMonthAria" />
+            } @else { <div class="no-data">{{ 'No data in this range' | t: 'staff.dashboard.analytics.trend.empty' }}</div> }
           </div>
           <div class="an-card an-who" data-export="who">
             <div class="an-card-head">
               <span class="an-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 19v-1a4 4 0 0 0-3-3.9" /></svg></span>
-              <h5>Who is registering</h5>
+              <h5>{{ 'Who is registering' | t: 'staff.dashboard.analytics.who.title' }}</h5>
             </div>
             <div class="an-splits">
-              <zed-stacked-bar heading="MSME size" [items]="categorical(d.sizes)" />
-              <zed-stacked-bar heading="Gender" [items]="genders()" />
-              <zed-stacked-bar heading="Social category" [items]="categorical(d.socialCategories)" />
+              <zed-stacked-bar [heading]="'MSME size' | t: 'staff.dashboard.analytics.who.sizeHeading'" [items]="categorical(d.sizes)" />
+              <zed-stacked-bar [heading]="'Gender' | t: 'staff.dashboard.analytics.who.genderHeading'" [items]="genders()" />
+              <zed-stacked-bar [heading]="'Social category' | t: 'staff.dashboard.analytics.who.socialHeading'" [items]="categorical(d.socialCategories)" />
             </div>
           </div>
         </div>
 
         <div class="an-ranks" data-export="tables">
-          <zed-rank-list heading="Top states" [valueHeading]="unitWord()" [items]="ranked(d.states)" />
-          <zed-rank-list heading="Top districts" [valueHeading]="unitWord()" [items]="ranked(d.districts)" />
-          <zed-rank-list heading="Top sectors (two-digit activity)" [valueHeading]="unitWord()" [items]="ranked(d.activities, true)" />
+          <zed-rank-list [heading]="'Top states' | t: 'staff.dashboard.analytics.rank.statesHeading'" [valueHeading]="unitWord()" [items]="ranked(d.states)" />
+          <zed-rank-list [heading]="'Top districts' | t: 'staff.dashboard.analytics.rank.districtsHeading'" [valueHeading]="unitWord()" [items]="ranked(d.districts)" />
+          <zed-rank-list [heading]="'Top sectors (two-digit activity)' | t: 'staff.dashboard.analytics.rank.sectorsHeading'" [valueHeading]="unitWord()" [items]="ranked(d.activities, true)" />
         </div>
       } @else if (loading()) {
-        <div class="an-loading" role="status">Loading the figures…</div>
+        <div class="an-loading" role="status">{{ 'Loading the figures…' | t: 'staff.dashboard.analytics.loadingText' }}</div>
       }
     </section>
   `,
@@ -291,7 +350,10 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
   private readonly system = inject(STAFF_SYSTEM);
-  readonly words = ANALYTICS_WORDS[this.system];
+  /** The portal's words (the Admin's or the standard ones). */
+  get words(): AnalyticsWords {
+    return analyticsWords(this.system);
+  }
   /**
    * The views (date bases, in the page's head) of the user: a Dashboard Admin those the Admin ticked on this portal
    * (2026-11-07; the server checks them too), everybody else both.
@@ -319,9 +381,13 @@ export class StaffAnalytics {
   /** The filters that are set, as removable chips. */
   readonly chips = computed(() => {
     const f = this.filter();
-    const names: [FilterKey, string][] = [['state', 'State'], ['district', 'District'], ['certification', this.words.certLabel], ['gender', 'Gender'],
-      ['size', 'Size'], ['socialCategory', 'Social category'], ['sector', 'Sector'], ['from', 'From'], ['to', 'To']];
-    return names.filter(([k]) => !!f[k]).map(([key, name]) => ({ key, label: `${name}: ${this.shown(key, f[key]!)}` }));
+    const names: [FilterKey, string][] = [
+      ['state', t('staff.dashboard.analytics.chip.state', 'State')], ['district', t('staff.dashboard.analytics.chip.district', 'District')],
+      ['certification', this.words.certLabel], ['gender', t('staff.dashboard.analytics.chip.gender', 'Gender')],
+      ['size', t('staff.dashboard.analytics.chip.size', 'Size')], ['socialCategory', t('staff.dashboard.analytics.chip.social', 'Social category')],
+      ['sector', t('staff.dashboard.analytics.chip.sector', 'Sector')], ['from', t('staff.dashboard.analytics.chip.from', 'From')],
+      ['to', t('staff.dashboard.analytics.chip.to', 'To')]];
+    return names.filter(([k]) => !!f[k]).map(([key, name]) => ({ key, label: filterText(name, this.shown(key, f[key]!)) }));
   });
   protected readonly filter = signal<Omit<AnalyticsFilter, 'view'>>({});
   /** Read by the page (Updated time in its head). */
@@ -337,7 +403,7 @@ export class StaffAnalytics {
   private request = 0;
 
   readonly filtered = computed(() => this.view() !== 'registered' || Object.values(this.filter()).some((v) => !!v));
-  protected readonly unitWord = computed(() => (this.view() === 'certified' ? this.words.completedShort : 'Registered'));
+  protected readonly unitWord = computed(() => (this.view() === 'certified' ? this.words.completedShort : t('staff.dashboard.analytics.registeredLabel', 'Registered')));
 
   /** The last month of the trend when it is this month (the range reaches today): this month's registrations and completions. */
   private readonly thisMonth = computed(() => {
@@ -349,30 +415,30 @@ export class StaffAnalytics {
 
   /** Registered and completed units (with this month's), then each level (Consultancy: all applications, then the levels). */
   readonly kpis = computed(() => {
-    const t = this.data()?.totals;
-    if (!t) return [];
+    const tot = this.data()?.totals;
+    if (!tot) return [];
     const k = this.words.kpis;
     const m = this.thisMonth();
     // This month's figure, right on the label line: "+312 this month" (registered), "+1,042" (completed).
     const tile = (label: string, n: number, color: string, month?: number) => {
       const plus = month === undefined ? null : `+${formatCount(month)}`;
       return {
-        label, n, value: formatCount(n), color, month: month ?? null, tip: plus ? `${plus} this month` : null,
-        note: plus && label === k[0] ? `${plus} this month` : plus && label === k[1] ? plus : null,
+        label, n, value: formatCount(n), color, month: month ?? null, tip: plus ? thisMonth(plus) : null,
+        note: plus && label === k[0] ? thisMonth(plus) : plus && label === k[1] ? plus : null,
       };
     };
     return [
-      tile(k[0], t.registered, '#24666b', m?.registered),
-      tile(k[1], t.certified, '#2f9e58', m?.certified),
-      tile(k[2], t.bronze, this.words.certifications.includes('Bronze') ? LEVEL_COLORS['Bronze'] : '#6250d6'),
-      tile(k[3], t.silver, LEVEL_COLORS['Silver']),
-      tile(k[4], t.gold, LEVEL_COLORS['Gold']),
-      ...(k[5] ? [tile(k[5], t.zedx ?? 0, '#3c8f99')] : []),
+      tile(k[0], tot.registered, '#24666b', m?.registered),
+      tile(k[1], tot.certified, '#2f9e58', m?.certified),
+      tile(k[2], tot.bronze, this.words.certifications.includes('Bronze') ? LEVEL_COLORS['Bronze'] : '#6250d6'),
+      tile(k[3], tot.silver, LEVEL_COLORS['Silver']),
+      tile(k[4], tot.gold, LEVEL_COLORS['Gold']),
+      ...(k[5] ? [tile(k[5], tot.zedx ?? 0, '#3c8f99')] : []),
     ];
   });
 
   /** The trend's two series: registrations and completions, each counted by its own date. */
-  protected readonly trendSeries = ['Registered', this.words.completed];
+  protected readonly trendSeries = computed(() => [t('staff.dashboard.analytics.registeredLabel', 'Registered'), this.words.completed]);
   protected readonly trendColors = TREND_COLORS;
 
   /**
@@ -414,7 +480,7 @@ export class StaffAnalytics {
 
   /** The date basis as the head's switch says it. */
   basisLabel(view: AnalyticsView = this.view()): string {
-    return view === 'registered' ? 'By registration date' : `By ${this.words.completedDate.toLowerCase()} date`;
+    return view === 'registered' ? t('staff.dashboard.analytics.basisRegisteredLabel', 'By registration date') : this.words.basisCompleted;
   }
 
   /** What the date range applies to: the registration or the certification date. */
@@ -475,7 +541,8 @@ export class StaffAnalytics {
   exportFilters(): string[] {
     const f = this.filter();
     return [
-      this.basisLabel(), `State: ${f.state || 'All'}`, `${this.words.certLabel}: ${f.certification ? levelName(f.certification) : 'All'}`,
+      this.basisLabel(), filterText(t('staff.dashboard.analytics.chip.state', 'State'), f.state || allText()),
+      filterText(this.words.certLabel, f.certification ? levelName(f.certification) : allText()),
       ...this.chips().filter((c) => c.key !== 'state' && c.key !== 'certification').map((c) => c.label),
     ];
   }
@@ -484,29 +551,40 @@ export class StaffAnalytics {
   filterSheet(): KeyedSheet {
     const f = this.filter();
     const at = this.data()?.generatedAt;
-    const keys: [FilterKey, string][] = [['state', 'State'], ['district', 'District'], ['certification', this.words.certLabel], ['gender', 'Gender'],
-      ['size', 'MSME size'], ['socialCategory', 'Social category'], ['sector', 'Sector'], ['from', 'From'], ['to', 'To']];
+    const keys: [FilterKey, string][] = [
+      ['state', t('staff.dashboard.analytics.chip.state', 'State')], ['district', t('staff.dashboard.analytics.chip.district', 'District')],
+      ['certification', this.words.certLabel], ['gender', t('staff.dashboard.analytics.chip.gender', 'Gender')],
+      ['size', t('staff.dashboard.analytics.export.sizeLabel', 'MSME size')], ['socialCategory', t('staff.dashboard.analytics.chip.social', 'Social category')],
+      ['sector', t('staff.dashboard.analytics.chip.sector', 'Sector')], ['from', t('staff.dashboard.analytics.chip.from', 'From')],
+      ['to', t('staff.dashboard.analytics.chip.to', 'To')]];
     return {
-      name: 'Filters', keys: 1, columns: ['Filter', 'Value'], rows: [
-        ['Count by', this.basisLabel()],
-        ...keys.map(([k, name]) => [name, f[k] ? this.shown(k, f[k]!) : k === 'from' || k === 'to' ? '' : 'All']),
-        ['Updated', at ? formatDate(at, 'dd-MM-yyyy HH:mm', 'en-US') : ''],
+      name: 'Filters', keys: 1,
+      columns: [t('staff.dashboard.analytics.export.column.filter', 'Filter'), t('staff.dashboard.analytics.export.column.value', 'Value')], rows: [
+        [t('staff.dashboard.analytics.export.countByLabel', 'Count by'), this.basisLabel()],
+        ...keys.map(([k, name]) => [name, f[k] ? this.shown(k, f[k]!) : k === 'from' || k === 'to' ? '' : allText()]),
+        [t('staff.dashboard.analytics.export.updatedLabel', 'Updated'), at ? formatDate(at, 'dd-MM-yyyy HH:mm', 'en-US') : ''],
       ],
     };
   }
 
   /** The headline tiles: the count, and this month's when the trend gives it. */
   headlineSheet(): KeyedSheet {
-    return { name: 'Headline numbers', keys: 1, columns: ['Figure', 'Count', 'This month'], rows: this.kpis().map((k) => [k.label, k.n, k.month]) };
+    const columns = [
+      t('staff.dashboard.analytics.export.column.figure', 'Figure'), t('staff.dashboard.analytics.export.column.count', 'Count'),
+      t('staff.dashboard.analytics.export.column.thisMonth', 'This month'),
+    ];
+    return { name: 'Headline numbers', keys: 1, columns, rows: this.kpis().map((k) => [k.label, k.n, k.month]) };
   }
 
   /** The monthly and the yearly trend. */
   trendSheets(): KeyedSheet[] {
     const d = this.data();
-    const columns = (first: string) => [first, 'Registered', this.words.completed];
+    const columns = (first: string) => [first, ...this.trendSeries()];
     return [
-      { name: 'Monthly trend', keys: 1, columns: columns('Month'), rows: (d?.months ?? []).map((m) => [monthLabel(m.period, true), m.registered, m.certified]) },
-      { name: 'Yearly trend', keys: 1, columns: columns('Year'), rows: (d?.years ?? []).map((y) => [y.period, y.registered, y.certified]) },
+      { name: 'Monthly trend', keys: 1, columns: columns(t('staff.dashboard.analytics.export.column.month', 'Month')),
+        rows: (d?.months ?? []).map((m) => [monthLabel(m.period, true), m.registered, m.certified]) },
+      { name: 'Yearly trend', keys: 1, columns: columns(t('staff.dashboard.analytics.export.column.year', 'Year')),
+        rows: (d?.years ?? []).map((y) => [y.period, y.registered, y.certified]) },
     ];
   }
 
@@ -518,21 +596,30 @@ export class StaffAnalytics {
       return items.map((i) => [name, label(i.label), i.total, sharePercent(i.total, total)]);
     };
     return {
-      name: 'Who is registering', keys: 2, columns: ['Category', 'Group', 'Units', 'Share (%)'],
-      rows: [...part('MSME size', d?.sizes ?? []), ...part('Gender', d?.genders ?? [], genderLabel), ...part('Social category', d?.socialCategories ?? [])],
+      name: 'Who is registering', keys: 2,
+      columns: [
+        t('staff.dashboard.analytics.export.column.category', 'Category'), t('staff.dashboard.analytics.export.column.group', 'Group'),
+        t('staff.dashboard.analytics.export.column.units', 'Units'), t('staff.dashboard.analytics.export.column.sharePercent', 'Share (%)'),
+      ],
+      rows: [
+        ...part(t('staff.dashboard.analytics.export.sizeLabel', 'MSME size'), d?.sizes ?? []),
+        ...part(t('staff.dashboard.analytics.chip.gender', 'Gender'), d?.genders ?? [], genderLabel),
+        ...part(t('staff.dashboard.analytics.chip.social', 'Social category'), d?.socialCategories ?? []),
+      ],
     };
   }
 
   /** Every state, district and two-digit activity, ranked by count. */
   tableSheets(): KeyedSheet[] {
     const d = this.data();
-    const units = `${this.unitWord()} units`;
+    const units = this.view() === 'certified' ? this.words.unitsCompleted : t('staff.dashboard.analytics.kpi.registeredLabel', 'Registered units');
     const table = (name: string, heading: string, items: CountItem[]): KeyedSheet => ({
-      name, keys: 2, columns: ['Rank', heading, units],
+      name, keys: 2, columns: [t('staff.dashboard.analytics.export.column.rank', 'Rank'), heading, units],
       rows: [...items].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label)).map((i, n) => [n + 1, i.label, i.total]),
     });
-    return [table('States', 'State', d?.states ?? []), table('Districts', 'District', d?.districts ?? []),
-      table('Sectors', 'Sector (two-digit activity)', d?.activities ?? [])];
+    return [table('States', t('staff.dashboard.analytics.chip.state', 'State'), d?.states ?? []),
+      table('Districts', t('staff.dashboard.analytics.chip.district', 'District'), d?.districts ?? []),
+      table('Sectors', t('staff.dashboard.analytics.export.column.sector', 'Sector (two-digit activity)'), d?.activities ?? [])];
   }
 
   /** A filter's value as people read it (Gender: "Male", a level: its name). */
@@ -548,7 +635,27 @@ export function activityLabel(v: string): string {
 }
 
 function genderLabel(v: string): string {
-  return GENDER_LABELS[v.toLowerCase()] ?? v;
+  switch (v.toLowerCase()) {
+    case 'male': return t('staff.dashboard.analytics.gender.male', 'Male');
+    case 'female': return t('staff.dashboard.analytics.gender.female', 'Female');
+    case 'others': return t('staff.dashboard.analytics.gender.others', 'Others');
+    default: return v;
+  }
+}
+
+/** A filter with its value: "State: GUJARAT" (chips, the export pop-up). */
+function filterText(name: string, value: string): string {
+  return t('staff.dashboard.analytics.chip.text', '{name}: {value}', { name, value });
+}
+
+/** A filter that is not set. */
+function allText(): string {
+  return t('staff.dashboard.analytics.filter.all', 'All');
+}
+
+/** "+312 this month". */
+function thisMonth(plus: string): string {
+  return t('staff.dashboard.analytics.kpi.thisMonthNote', '{count} this month', { count: plus });
 }
 
 /** "2025-12" -> "Dec 25" (chart) or "Dec 2025" (export). */

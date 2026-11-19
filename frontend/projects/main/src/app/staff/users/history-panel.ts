@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, ElementRef, HostListener, afterNextRender, inject, input, output } from '@angular/core';
+import { TextPipe, t } from '../../content/page-text';
 import { TableExport } from '../table-export';
 import { BlockHistoryEntry } from './users.api';
 
@@ -14,10 +15,14 @@ export interface HistoryItem {
 }
 
 /** The block / unblock entries as panel lines (latest first, as the server sends them). */
-export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyWord = 'agency'): HistoryItem[] {
-  const role = (r: number | null) => (r === 7 ? ' (Master Admin)' : r === 2 ? ` (${agencyWord})` : r === 1 ? ' (Admin)' : '');
+export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyWord?: string): HistoryItem[] {
+  const by = (name: string, r: number | null) =>
+    r === 7 ? t('staff.userLists.history.byMasterAdmin', 'By {name} (Master Admin)', { name })
+    : r === 2 ? t('staff.userLists.history.byAgency', 'By {name} ({word})', { name, word: agencyWord ?? t('staff.userLists.history.agencyWord', 'agency') })
+    : r === 1 ? t('staff.userLists.history.byAdmin', 'By {name} (Admin)', { name })
+    : t('staff.userLists.history.by', 'By {name}', { name });
   return entries.map((e) => {
-    const parts = [e.actionBy ? `By ${e.actionBy}${role(e.actionByRole)}` : '', e.reason ? `Reason: ${e.reason}` : ''].filter(Boolean);
+    const parts = [e.actionBy ? by(e.actionBy, e.actionByRole) : '', e.reason ? t('staff.userLists.history.reason', 'Reason: {reason}', { reason: e.reason }) : ''].filter(Boolean);
     return { kind: 'status', title: e.action, detail: parts.join(' · '), at: e.actionDate, tone: e.action === 'Blocked' ? 'bad' : 'good' };
   });
 }
@@ -33,22 +38,22 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
  */
 @Component({
   selector: 'zed-user-history',
-  imports: [DatePipe],
+  imports: [DatePipe, TextPipe],
   template: `
     <div class="hp-back" (click)="closed.emit()"></div>
     <aside class="hp" role="dialog" aria-modal="true" aria-labelledby="hp-title">
       <header class="hp-head">
         <div>
-          <h3 id="hp-title">History</h3>
+          <h3 id="hp-title">{{ 'History' | t: 'staff.userLists.history.title' }}</h3>
           <small>{{ subtitle() }}</small>
         </div>
-        <button type="button" class="hp-x" aria-label="Close history" (click)="closed.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
+        <button type="button" class="hp-x" [attr.aria-label]="'Close history' | t: 'staff.userLists.history.closeAria'" (click)="closed.emit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
       </header>
       <div class="hp-body">
         @if (error()) {
           <div class="alert alert-danger" role="alert">{{ error() }}</div>
         } @else if (items() === null) {
-          <p class="hp-none" role="status">Loading…</p>
+          <p class="hp-none" role="status">{{ 'Loading…' | t: 'staff.userLists.history.loading' }}</p>
         } @else {
           <ol class="hp-list">
             @for (e of items(); track $index) {
@@ -58,15 +63,15 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
                 @if (e.at) { <small>{{ e.at | date: 'dd MMM yyyy, HH:mm' }}</small> }
               </li>
             } @empty {
-              <li class="hp-none">No block or unblock recorded yet.</li>
+              <li class="hp-none">{{ 'No block or unblock recorded yet.' | t: 'staff.userLists.history.empty' }}</li>
             }
           </ol>
-          <p class="hp-note">Blocks and unblocks are recorded with their reason. Allotments, reset links and profile edits are not kept in this history.</p>
+          <p class="hp-note">{{ 'Blocks and unblocks are recorded with their reason. Allotments, reset links and profile edits are not kept in this history.' | t: 'staff.userLists.history.note' }}</p>
         }
       </div>
       <div class="hp-foot">
-        <button type="button" class="btn btn-outline-primary hp-csv" [disabled]="!items()?.length" (click)="download()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3" /></svg>Download (CSV)</button>
-        <button type="button" class="btn btn-default hp-close" (click)="closed.emit()">Close</button>
+        <button type="button" class="btn btn-outline-primary hp-csv" [disabled]="!items()?.length" (click)="download()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3" /></svg>{{ 'Download (CSV)' | t: 'staff.userLists.history.downloadButton' }}</button>
+        <button type="button" class="btn btn-default hp-close" (click)="closed.emit()">{{ 'Close' | t: 'staff.userLists.history.closeButton' }}</button>
       </div>
     </aside>
   `,
@@ -122,6 +127,11 @@ export class UserHistoryPanel {
 
   protected download(): void {
     const rows = (this.items() ?? []).map((e) => [e.at ?? '', e.title, e.detail]);
-    this.exporter.csv(this.fileName(), { name: 'History', columns: ['Date', 'Event', 'Details'], rows });
+    this.exporter.csv(this.fileName(), {
+      name: t('staff.userLists.history.csv.sheet', 'History'),
+      columns: [t('staff.userLists.history.csv.column.date', 'Date'), t('staff.userLists.history.csv.column.event', 'Event'),
+        t('staff.userLists.history.csv.column.details', 'Details')],
+      rows,
+    });
   }
 }

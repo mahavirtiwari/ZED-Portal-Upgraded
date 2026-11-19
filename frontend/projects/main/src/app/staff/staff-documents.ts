@@ -8,6 +8,7 @@ import { DashboardPortalSwitchComponent } from './dashboard-portal-switch';
 import { PageHead } from '../msme/shared/page-head';
 import { staffCrumbs } from './staff-crumbs';
 import { ChipFilter, FilterChip } from './chip-filter';
+import { TextPipe, t } from '../content/page-text';
 
 export interface StaffDocument {
   id: number;
@@ -39,21 +40,21 @@ const VIDEO_URL = /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|\.(mp4|web
  */
 @Component({
   selector: 'zed-staff-role-documents',
-  imports: [FormsModule, DatePipe, DashboardPortalSwitchComponent, PageHead, ChipFilter],
+  imports: [FormsModule, DatePipe, DashboardPortalSwitchComponent, PageHead, ChipFilter, TextPipe],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['documents']" />
-    <zed-page-head [crumbs]="crumbs" title="Documents" subtitle="Guidelines, documents and videos shared with you by the ZED team." />
+    <zed-page-head [crumbs]="crumbs()" [title]="'Documents' | t: 'staff.documents.title'" [subtitle]="'Guidelines, documents and videos shared with you by the ZED team.' | t: 'staff.documents.sub'" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     <div class="sd-bar">
       <label class="sd-q">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-        <input class="form-control" type="search" placeholder="Search documents" aria-label="Search documents" maxlength="100"
+        <input class="form-control" type="search" [placeholder]="'Search documents' | t: 'staff.documents.search.placeholder'" [attr.aria-label]="'Search documents' | t: 'staff.documents.search.placeholder'" maxlength="100"
                [ngModel]="search()" (ngModelChange)="search.set($event)" />
       </label>
-      <zed-chip-filter class="sd-chips" label="Type" [chips]="chips()" [value]="type()" (valueChange)="type.set($any($event))" />
+      <zed-chip-filter class="sd-chips" [label]="'Type' | t: 'staff.documents.type.label'" [chips]="chips()" [value]="type()" (valueChange)="type.set($any($event))" />
     </div>
     <div class="sd-list">
       @for (d of shown(); track d.id) {
@@ -66,26 +67,26 @@ const VIDEO_URL = /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|\.(mp4|web
           </div>
           <span class="sd-meta">
             @switch (k) {
-              @case ('video') { Video }
-              @case ('link') { Opens in a new tab }
-              @default { {{ badge(d) }}@if (d.createdDate) { · Added {{ d.createdDate | date: 'dd MMM yyyy' }}} }
+              @case ('video') { {{ 'Video' | t: 'staff.documents.meta.video' }} }
+              @case ('link') { {{ 'Opens in a new tab' | t: 'staff.documents.meta.link' }} }
+              @default { {{ badge(d) }}@if (d.createdDate) { · {{ 'Added {date}' | t: 'staff.documents.meta.added' : { date: d.createdDate | date: 'dd MMM yyyy' } }}} }
             }
           </span>
           @if (k !== 'file') {
             <a class="btn sd-btn" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">
               @if (k === 'video') {
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l13 8-13 8V4z" /></svg>Watch
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4l13 8-13 8V4z" /></svg>{{ 'Watch' | t: 'staff.documents.watchButton' }}
               } @else {
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>Open
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>{{ 'Open' | t: 'staff.documents.openButton' }}
               }
             </a>
           } @else if (d.downloadUrl) {
             <a class="btn sd-btn" [href]="d.downloadUrl" target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>Download</a>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{{ 'Download' | t: 'staff.documents.downloadButton' }}</a>
           }
         </div>
       } @empty {
-        @if (loaded()) { <div class="no-data">{{ documents().length ? 'Nothing matches the search.' : 'No documents have been shared with you yet.' }}</div> }
+        @if (loaded()) { <div class="no-data">{{ documents().length ? ('Nothing matches the search.' | t: 'staff.documents.noMatch.empty') : ('No documents have been shared with you yet.' | t: 'staff.documents.empty') }}</div> }
       }
     </div>
   `,
@@ -121,7 +122,7 @@ const VIDEO_URL = /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|\.(mp4|web
 export class StaffRoleDocumentsPage {
   private readonly http = inject(HttpClient);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Documents' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.documents.crumb', 'Documents') }));
   protected readonly documents = signal<StaffDocument[]>([]);
   protected readonly search = signal('');
   protected readonly type = signal<DocType>('all');
@@ -134,15 +135,15 @@ export class StaffRoleDocumentsPage {
     const list = this.matching();
     const count = (k: DocKind) => list.filter((d) => this.kindOf(d) === k).length;
     return [
-      { key: 'all', label: 'All', count: list.length },
-      { key: 'file', label: 'Files', count: count('file') },
-      { key: 'video', label: 'Videos', count: count('video') },
-      { key: 'link', label: 'Links', count: count('link') },
+      { key: 'all', label: t('staff.documents.chip.all', 'All'), count: list.length },
+      { key: 'file', label: t('staff.documents.chip.files', 'Files'), count: count('file') },
+      { key: 'video', label: t('staff.documents.chip.videos', 'Videos'), count: count('video') },
+      { key: 'link', label: t('staff.documents.chip.links', 'Links'), count: count('link') },
     ];
   });
   protected readonly shown = computed(() => {
-    const t = this.type();
-    return this.matching().filter((d) => t === 'all' || this.kindOf(d) === t);
+    const type = this.type();
+    return this.matching().filter((d) => type === 'all' || this.kindOf(d) === type);
   });
 
   /** A file, a video (a video site or file) or a link (any other page). */
@@ -154,9 +155,9 @@ export class StaffRoleDocumentsPage {
   /** The badge: the file's type from its name ("PDF", "DOCX"), "Video" or "Link"; "File" when the name has no type. */
   protected badge(d: StaffDocument): string {
     const k = this.kindOf(d);
-    if (k !== 'file') return k === 'video' ? 'Video' : 'Link';
+    if (k !== 'file') return k === 'video' ? t('staff.documents.badge.video', 'Video') : t('staff.documents.badge.link', 'Link');
     const ext = /\.([a-z0-9]{2,5})$/i.exec((d.fileName ?? '').trim())?.[1];
-    return ext ? ext.toUpperCase() : 'File';
+    return ext ? ext.toUpperCase() : t('staff.documents.badge.file', 'File');
   }
   protected readonly loaded = signal(false);
   protected readonly error = signal('');

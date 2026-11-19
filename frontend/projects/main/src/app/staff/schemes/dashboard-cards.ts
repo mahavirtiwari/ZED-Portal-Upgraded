@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { BuiltInCard, BuiltInCardForm, DashboardIncentive, INCENTIVE_GROUPS, IncentivesApi, groupOfType } from './incentives.api';
-import { GROUP_CARD } from './incentive-master';
+import { TextPipe, t } from '../../content/page-text';
+import { BuiltInCard, BuiltInCardForm, DashboardIncentive, INCENTIVE_GROUPS, IncentivesApi, groupOfType, groupText } from './incentives.api';
 
 /** The pictures of the built-in cards on the MSME dashboard. */
 export const BUILT_IN_CARD_IMAGES: Record<string, string> = {
@@ -14,17 +14,17 @@ export const BUILT_IN_CARD_IMAGES: Record<string, string> = {
   TECHNOLOGY_UPGRADATION: '/Images/Dashboard/technology.png',
 };
 
-/** What each built-in card's button does (the portal's own, not editable here). */
-const BUILT_IN_ACTION: Record<string, string> = {
-  JOINING_REWARD: 'Avail / View opens the joining reward of the unit.',
-  FINANCIAL_ASSISTANCE: 'Avail opens the Financial Assistance application once the unit is eligible.',
-  HANDHOLDING: 'Avail / View opens Handholding Support once the unit is certified.',
-  TECHNOLOGY_UPGRADATION: 'Avail / View opens Technology Upgradation once the unit is eligible.',
+/** What each built-in card's button does (the portal's own, not editable here; the wording is page wording). */
+const BUILT_IN_ACTION: Record<string, () => string> = {
+  JOINING_REWARD: () => t('staff.dashboardCards.action.joiningReward', 'Avail / View opens the joining reward of the unit.'),
+  FINANCIAL_ASSISTANCE: () => t('staff.dashboardCards.action.financialAssistance', 'Avail opens the Financial Assistance application once the unit is eligible.'),
+  HANDHOLDING: () => t('staff.dashboardCards.action.handholding', 'Avail / View opens Handholding Support once the unit is certified.'),
+  TECHNOLOGY_UPGRADATION: () => t('staff.dashboardCards.action.technologyUpgradation', 'Avail / View opens Technology Upgradation once the unit is eligible.'),
 };
 
-/** The stakeholder cards that always close "My Incentives" (their lists are the incentive pages). */
+/** The stakeholder cards that always close "My Incentives" (their lists are the incentive pages); the title is read when shown. */
 const STAKEHOLDER_CARDS = INCENTIVE_GROUPS.map((g) => ({
-  key: g.key, title: GROUP_CARD[g.key],
+  key: g.key,
   image: { ministry: '/Images/Dashboard/dash-msme.PNG', state: '/Images/Dashboard/stateUts.png', financial: '/Images/Dashboard/financial-Institution.png', others: '/Images/Dashboard/incentive.png' }[g.key],
 }));
 
@@ -41,17 +41,18 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
  * groups whose "Where it appears" is Main dashboard (edited on their own page). V4 layout: the counts, then the cards in
  * their dashboard order drawn as MSMEs see them, each with its Show / Hide and Edit; a level filter on the incentive
  * cards, the fixed stakeholder cards at the end, and the Edit pop-up beside a live preview of the card.
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.dashboardCards.*) or the standard one here.
  */
 @Component({
   selector: 'zed-staff-dashboard-cards',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Main Dashboard Cards</h3>
-        <p class="page-sub">The cards of "My Incentives" on every MSME's dashboard, in their order.</p>
+        <h3 class="registration-title">{{ 'Main Dashboard Cards' | t: 'staff.dashboardCards.title' }}</h3>
+        <p class="page-sub">{{ subLine() }}</p>
       </div>
-      <a class="btn btn-primary" routerLink="/staff/incentives/ministry/new">+ Create New Incentive</a>
+      <a class="btn btn-primary" routerLink="/staff/incentives/ministry/new">{{ '+ Create New Incentive' | t: 'staff.dashboardCards.createButton' }}</a>
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -62,31 +63,31 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
 
     @if (cards(); as c) {
       <div class="dc-stats">
-        <div class="stat" title="Including the 4 stakeholder cards"><span class="stat-value">{{ stats().seen }}</span><span class="stat-label">Cards MSMEs see</span></div>
-        <div class="stat"><span class="stat-value">{{ shownBuiltIn() }}<small>/{{ c.builtIn.length }}</small></span><span class="stat-label">Built-in cards shown</span></div>
-        <div class="stat"><span class="stat-value">{{ stats().activeIncentives }}<small>/{{ c.incentives.length }}</small></span><span class="stat-label">Incentive cards active</span></div>
-        <div class="stat" [class.stat-warn]="stats().off > 0"><span class="stat-value">{{ stats().off }}</span><span class="stat-label">Hidden or inactive</span></div>
+        <div class="stat" [title]="'Including the 4 stakeholder cards' | t: 'staff.dashboardCards.stat.seenTooltip'"><span class="stat-value">{{ stats().seen }}</span><span class="stat-label">{{ 'Cards MSMEs see' | t: 'staff.dashboardCards.stat.seenLabel' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ shownBuiltIn() }}<small>/{{ c.builtIn.length }}</small></span><span class="stat-label">{{ 'Built-in cards shown' | t: 'staff.dashboardCards.stat.builtInLabel' }}</span></div>
+        <div class="stat"><span class="stat-value">{{ stats().activeIncentives }}<small>/{{ c.incentives.length }}</small></span><span class="stat-label">{{ 'Incentive cards active' | t: 'staff.dashboardCards.stat.activeLabel' }}</span></div>
+        <div class="stat" [class.stat-warn]="stats().off > 0"><span class="stat-value">{{ stats().off }}</span><span class="stat-label">{{ 'Hidden or inactive' | t: 'staff.dashboardCards.stat.offLabel' }}</span></div>
       </div>
 
       <section class="zed-card" aria-labelledby="dc-builtin-h">
         <div class="dc-head">
-          <h5 class="dc-h m-0" id="dc-builtin-h"><span class="dc-step">1</span> Built-in cards <span class="zed-chip">{{ shownBuiltIn() }} of {{ c.builtIn.length }} shown</span></h5>
-          <p class="muted m-0">Their buttons are the portal's own. Change the wording, or hide a card from the dashboard.</p>
+          <h5 class="dc-h m-0" id="dc-builtin-h"><span class="dc-step">1</span> {{ 'Built-in cards' | t: 'staff.dashboardCards.builtIn.title' }} <span class="zed-chip">{{ '{shown} of {total} shown' | t: 'staff.dashboardCards.builtIn.shownChip' : { shown: shownBuiltIn(), total: c.builtIn.length } }}</span></h5>
+          <p class="muted m-0">{{ "Their buttons are the portal's own. Change the wording, or hide a card from the dashboard." | t: 'staff.dashboardCards.builtIn.note' }}</p>
         </div>
         @if (!c.builtIn.length) {
-          <div class="no-data">The built-in cards are not in the database yet. Please ask the administrator to apply database migration 0026.</div>
+          <div class="no-data">{{ 'The built-in cards are not in the database yet. Please ask the administrator to apply database migration 0026.' | t: 'staff.dashboardCards.builtIn.empty' }}</div>
         }
         <div class="dc-grid">
           @for (b of c.builtIn; track b.card) {
             <article class="dc-card" [class.is-off]="!b.active">
               <div class="dc-bar">
-                <span class="status-badge" [class.is-active]="b.active" [class.is-inactive]="!b.active">{{ b.active ? 'Shown' : 'Hidden' }}</span>
+                <span class="status-badge" [class.is-active]="b.active" [class.is-inactive]="!b.active">{{ b.active ? ('Shown' | t: 'staff.dashboardCards.status.shown') : ('Hidden' | t: 'staff.dashboardCards.status.hidden') }}</span>
                 <span class="dc-order">#{{ $index + 1 }}</span>
               </div>
               <div class="pv-card">
                 <div class="pv-head">
                   <img [src]="image(b.card)" alt="" />
-                  <span class="pv-avail" aria-hidden="true">Avail</span>
+                  <span class="pv-avail" aria-hidden="true">{{ 'Avail' | t: 'msme.dashboard.incentive.availButton' }}</span>
                 </div>
                 <div class="pv-body">
                   <h6>{{ b.title }}</h6>
@@ -95,9 +96,9 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
               </div>
               <small class="muted dc-action">{{ action(b.card) }}</small>
               <div class="dc-actions">
-                <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(b)">Edit</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(b)">{{ 'Edit' | t: 'staff.dashboardCards.card.editButton' }}</button>
                 <button type="button" class="btn btn-sm" [class.btn-outline-danger]="b.active" [class.btn-outline-success]="!b.active"
-                        [disabled]="busy()" (click)="toggle(b)">{{ b.active ? 'Hide' : 'Show' }}</button>
+                        [disabled]="busy()" (click)="toggle(b)">{{ b.active ? ('Hide' | t: 'staff.dashboardCards.card.hideButton') : ('Show' | t: 'staff.dashboardCards.card.showButton') }}</button>
               </div>
             </article>
           }
@@ -107,14 +108,14 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
       <section class="zed-card" aria-labelledby="dc-inc-h">
         <div class="dc-head dc-head-row">
           <div>
-            <h5 class="dc-h m-0" id="dc-inc-h"><span class="dc-step">2</span> Incentives on the main dashboard <span class="zed-chip">{{ c.incentives.length }}</span></h5>
-            <p class="muted m-0">Incentives whose "Where it appears" is Main dashboard: each has its own card after the built-in ones, active ones only.</p>
+            <h5 class="dc-h m-0" id="dc-inc-h"><span class="dc-step">2</span> {{ 'Incentives on the main dashboard' | t: 'staff.dashboardCards.incentives.title' }} <span class="zed-chip">{{ c.incentives.length }}</span></h5>
+            <p class="muted m-0">{{ 'Incentives whose "Where it appears" is Main dashboard: each has its own card after the built-in ones, active ones only.' | t: 'staff.dashboardCards.incentives.note' }}</p>
           </div>
           @if (c.incentives.length) {
-            <div class="seg" role="group" aria-label="Level">
+            <div class="seg" role="group" [attr.aria-label]="'Level' | t: 'staff.dashboardCards.levelFilter.aria'">
               @for (l of levelFilters; track l.value) {
                 <button type="button" [attr.data-level]="l.value" [class.active]="level() === l.value" [attr.aria-pressed]="level() === l.value"
-                        (click)="level.set(l.value)">{{ l.label }} <span class="seg-count">{{ levelCount(l.value) }}</span></button>
+                        (click)="level.set(l.value)">{{ l.value === 'all' ? ('All levels' | t: 'staff.dashboardCards.levelFilter.all') : l.label }} <span class="seg-count">{{ levelCount(l.value) }}</span></button>
               }
             </div>
           }
@@ -123,13 +124,13 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
           @for (i of shownIncentives(); track i.id) {
             <article class="dc-card dc-inc" [class.is-off]="!i.active">
               <div class="dc-bar">
-                <span class="status-badge" [class.is-active]="i.active" [class.is-inactive]="!i.active">{{ i.active ? 'Active' : 'Inactive' }}</span>
+                <span class="status-badge" [class.is-active]="i.active" [class.is-inactive]="!i.active">{{ i.active ? ('Active' | t: 'staff.dashboardCards.status.active') : ('Inactive' | t: 'staff.dashboardCards.status.inactive') }}</span>
                 <span class="dc-stake">{{ stakeholder(i) }}</span>
               </div>
               <div class="pv-card">
                 <div class="pv-head">
                   <img src="/Images/Dashboard/incentive.png" alt="" />
-                  <span class="pv-avail" aria-hidden="true">Avail</span>
+                  <span class="pv-avail" aria-hidden="true">{{ 'Avail' | t: 'msme.dashboard.incentive.availButton' }}</span>
                 </div>
                 <div class="pv-body">
                   <h6>{{ i.title }}</h6>
@@ -143,26 +144,26 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                 @if (i.applicableForZEDX) { <span class="lv-chip lv-zedx">ZED-X</span> }
               </div>
               <div class="dc-actions">
-                <a class="btn btn-outline-primary btn-sm" [routerLink]="['/staff/incentives', groupKey(i), i.id, 'edit']" [queryParams]="stateParams(i)">Edit</a>
-                @if (!i.active) { <small class="muted">Not on the dashboard until it is active.</small> }
+                <a class="btn btn-outline-primary btn-sm" [routerLink]="['/staff/incentives', groupKey(i), i.id, 'edit']" [queryParams]="stateParams(i)">{{ 'Edit' | t: 'staff.dashboardCards.card.editButton' }}</a>
+                @if (!i.active) { <small class="muted">{{ 'Not on the dashboard until it is active.' | t: 'staff.dashboardCards.incentive.inactiveNote' }}</small> }
               </div>
             </article>
           } @empty {
-            <div class="no-data">{{ c.incentives.length ? 'No incentive card applies to this level.' : 'No incentive is on the main dashboard yet. Choose "Main dashboard" under "Where it appears" when you create or edit one.' }}</div>
+            <div class="no-data">{{ c.incentives.length ? ('No incentive card applies to this level.' | t: 'staff.dashboardCards.incentives.levelEmpty') : ('No incentive is on the main dashboard yet. Choose "Main dashboard" under "Where it appears" when you create or edit one.' | t: 'staff.dashboardCards.incentives.empty') }}</div>
           }
         </div>
       </section>
 
       <section class="zed-card" aria-labelledby="dc-stake-h">
         <div class="dc-head">
-          <h5 class="dc-h m-0" id="dc-stake-h"><span class="dc-step">3</span> Stakeholder cards</h5>
-          <p class="muted m-0">Always shown last. Their Avail opens the incentive page of the group; manage their incentives there.</p>
+          <h5 class="dc-h m-0" id="dc-stake-h"><span class="dc-step">3</span> {{ 'Stakeholder cards' | t: 'staff.dashboardCards.stake.title' }}</h5>
+          <p class="muted m-0">{{ 'Always shown last. Their Avail opens the incentive page of the group; manage their incentives there.' | t: 'staff.dashboardCards.stake.note' }}</p>
         </div>
         <div class="dc-stake-grid">
           @for (s of stakeholderCards; track s.key) {
             <a class="dc-stake-card" [routerLink]="['/staff/incentives', s.key]">
               <img [src]="s.image" alt="" />
-              <span><strong>{{ s.title }}</strong><small class="muted d-block">Open its incentives →</small></span>
+              <span><strong>{{ cardTitle(s.key) }}</strong><small class="muted d-block">{{ 'Open its incentives →' | t: 'staff.dashboardCards.stake.openLink' }}</small></span>
             </a>
           }
         </div>
@@ -175,46 +176,46 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="dc-edit-title">Edit card</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                <h3 class="registration-title m-0" id="dc-edit-title">{{ 'Edit card' | t: 'staff.dashboardCards.edit.title' }}</h3>
+                <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.dashboardCards.edit.closeAria'" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="save()" novalidate>
               <div class="modal-body">
                 <div class="dc-edit">
                   <div class="form-grid">
-                    <label for="dc-title">Card title<span class="req">*</span></label>
+                    <label for="dc-title">{{ 'Card title' | t: 'staff.dashboardCards.edit.titleLabel' }}<span class="req">*</span></label>
                     <input id="dc-title" name="title" class="form-control" maxlength="200" [(ngModel)]="e.form.title" />
-                    <label for="dc-highlight">Highlight</label>
-                    <input id="dc-highlight" name="highlight" class="form-control" maxlength="300" placeholder="e.g. Rs. 10,000/-" [(ngModel)]="e.form.highlight" />
-                    <label for="dc-details" class="top">Description<span class="req">*</span></label>
+                    <label for="dc-highlight">{{ 'Highlight' | t: 'staff.dashboardCards.edit.highlightLabel' }}</label>
+                    <input id="dc-highlight" name="highlight" class="form-control" maxlength="300" [placeholder]="'e.g. Rs. 10,000/-' | t: 'staff.dashboardCards.edit.highlightPlaceholder'" [(ngModel)]="e.form.highlight" />
+                    <label for="dc-details" class="top">{{ 'Description' | t: 'staff.dashboardCards.edit.detailsLabel' }}<span class="req">*</span></label>
                     <textarea id="dc-details" name="details" class="form-control" rows="3" maxlength="1000" [(ngModel)]="e.form.details"></textarea>
-                    <span class="label-like">On the dashboard</span>
+                    <span class="label-like">{{ 'On the dashboard' | t: 'staff.dashboardCards.edit.activeLabel' }}</span>
                     <div class="form-check form-switch dc-switch">
                       <input class="form-check-input" type="checkbox" role="switch" id="dc-active" name="active" [(ngModel)]="e.form.active" />
-                      <label class="form-check-label" for="dc-active">{{ e.form.active ? 'Shown' : 'Hidden' }}</label>
+                      <label class="form-check-label" for="dc-active">{{ e.form.active ? ('Shown' | t: 'staff.dashboardCards.status.shown') : ('Hidden' | t: 'staff.dashboardCards.status.hidden') }}</label>
                     </div>
                   </div>
-                  <aside class="dc-preview" aria-label="Preview">
-                    <h4>Preview</h4>
+                  <aside class="dc-preview" [attr.aria-label]="'Preview' | t: 'staff.dashboardCards.edit.previewTitle'">
+                    <h4>{{ 'Preview' | t: 'staff.dashboardCards.edit.previewTitle' }}</h4>
                     <div class="pv-card" [class.is-faded]="!e.form.active">
                       <div class="pv-head">
                         <img [src]="image(e.card)" alt="" />
-                        <span class="pv-avail" aria-hidden="true">Avail</span>
+                        <span class="pv-avail" aria-hidden="true">{{ 'Avail' | t: 'msme.dashboard.incentive.availButton' }}</span>
                       </div>
                       <div class="pv-body">
-                        <h6>{{ e.form.title.trim() || 'Card title' }}</h6>
+                        <h6>{{ e.form.title.trim() || ('Card title' | t: 'staff.dashboardCards.edit.previewEmptyTitle') }}</h6>
                         <p>@if (e.form.highlight.trim()) { <span class="clr-spot">{{ e.form.highlight }}</span> } {{ e.form.details }}</p>
                       </div>
                     </div>
-                    <small class="muted d-block mt-2">{{ e.form.active ? action(e.card) : 'Hidden: MSMEs do not see this card.' }}</small>
+                    <small class="muted d-block mt-2">{{ e.form.active ? action(e.card) : ('Hidden: MSMEs do not see this card.' | t: 'staff.dashboardCards.edit.hiddenNote') }}</small>
                   </aside>
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">Update</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.dashboardCards.edit.cancelButton' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Update' | t: 'staff.dashboardCards.edit.updateButton' }}</button>
               </div>
             </form>
           </div>
@@ -303,6 +304,9 @@ export class DashboardCardsPage {
   private readonly api = inject(IncentivesApi);
 
   protected readonly stakeholderCards = STAKEHOLDER_CARDS;
+  protected readonly subLine = computed(() =>
+    t('staff.dashboardCards.sub', 'The cards of "My Incentives" on every MSME\'s dashboard, in their order.'));
+  /** The level names (as Certification Levels names them) stay as they are; "All levels" is shown through the t pipe. */
   protected readonly levelFilters: { value: LevelFilter; label: string }[] = [
     { value: 'all', label: 'All levels' }, { value: 'bronze', label: 'Bronze' }, { value: 'silver', label: 'Silver' }, { value: 'gold', label: 'Gold' }, { value: 'zedx', label: 'ZED-X' },
   ];
@@ -340,7 +344,11 @@ export class DashboardCardsPage {
   }
 
   protected action(card: string): string {
-    return BUILT_IN_ACTION[card] ?? '';
+    return BUILT_IN_ACTION[card]?.() ?? '';
+  }
+
+  protected cardTitle(key: (typeof STAKEHOLDER_CARDS)[number]['key']): string {
+    return groupText(key).card;
   }
 
   protected levelCount(l: LevelFilter): number {
@@ -350,7 +358,7 @@ export class DashboardCardsPage {
 
   protected stakeholder(i: DashboardIncentive): string {
     const g = groupOfType(i.incentiveType);
-    return g.key === 'state' ? `State Government: ${i.incentiveType}` : g.label;
+    return g.key === 'state' ? t('staff.dashboardCards.stakeholder.state', 'State Government: {state}', { state: i.incentiveType }) : groupText(g.key).label;
   }
 
   protected groupKey(i: DashboardIncentive): string {
@@ -370,7 +378,7 @@ export class DashboardCardsPage {
     const e = this.editing();
     if (!e) return;
     if (!e.form.title.trim() || !e.form.details.trim()) {
-      this.editError.set('Please enter the card title and description.');
+      this.editError.set(t('staff.dashboardCards.edit.requiredError', 'Please enter the card title and description.'));
       return;
     }
     if (await this.put(e.card, e.form, (m) => this.editError.set(m))) this.editing.set(null);

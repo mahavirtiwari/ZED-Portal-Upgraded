@@ -6,6 +6,7 @@ import { PORTAL_SYSTEM } from '../portal-system';
 import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
 import { loginLevels } from '../msme/login-shell/login-shell';
 import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
+import { TextPipe, t } from '../content/page-text';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password).
@@ -17,46 +18,46 @@ import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
 @Component({
   selector: 'zed-staff-login-shell',
   host: { class: 'zed-login d-block' },
-  imports: [RouterLink, ApnaengeBanner],
+  imports: [RouterLink, ApnaengeBanner, TextPipe],
   template: `
     <div class="ml-page">
       <div class="ml-cols">
-        <aside class="ml-hero" aria-label="About the portal">
+        <aside class="ml-hero" [attr.aria-label]="'About the portal' | t: 'public.staffLogin.hero.aria'">
           <div class="ml-logos">
             @if (links.url('ministry'); as u) {
-              <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" /></a>
+              <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', 'Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.staffLogin.hero.ministryLogoAlt'" class="ml-ministry" /></a>
             } @else {
-              <img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" />
+              <img [src]="brand.logo('login-left', 'Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'public.staffLogin.hero.ministryLogoAlt'" class="ml-ministry" />
             }
-            <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" class="ml-zed" />
+            <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" [alt]="'ZED' | t: 'public.staffLogin.hero.zedLogoAlt'" class="ml-zed" />
           </div>
           <div class="ml-hero-body">
             <div class="ml-blk">
-            <p class="ml-kicker">{{ kicker }}</p>
-            <h2 class="ml-title">{{ title }}</h2>
-            <p class="ml-sub">{{ lead }}</p>
+            <p class="ml-kicker">{{ kicker() }}</p>
+            <h2 class="ml-title">{{ title() }}</h2>
+            <p class="ml-sub">{{ lead() }}</p>
             </div>
 
             <zed-apnaenge-banner />
 
             @if (msmeLinks) {
               <div class="ml-blk">
-              <p class="ml-label ml-label-rule">Are you an MSME?</p>
+              <p class="ml-label ml-label-rule">{{ 'Are you an MSME?' | t: 'public.staffLogin.hero.msmeLabel' }}</p>
               <ul class="ml-benefits ml-quick">
                 <li>
                   <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></svg></span>
-                  <a routerLink="/msme/login"><strong>MSME login →</strong><small>Apply for and track your certification</small></a>
+                  <a routerLink="/msme/login"><strong>{{ 'MSME login →' | t: 'public.staffLogin.hero.msmeLoginLink' }}</strong><small>{{ 'Apply for and track your certification' | t: 'public.staffLogin.hero.msmeLoginNote' }}</small></a>
                 </li>
                 <li>
                   <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 20h20M4 20V10l5 3V10l5 3V6l6-3v17" /></svg></span>
-                  <a routerLink="/msme/register"><strong>Register your enterprise →</strong><small>With your Udyam registration number</small></a>
+                  <a routerLink="/msme/register"><strong>{{ 'Register your enterprise →' | t: 'public.staffLogin.hero.registerLink' }}</strong><small>{{ 'With your Udyam registration number' | t: 'public.staffLogin.hero.registerNote' }}</small></a>
                 </li>
               </ul>
               </div>
             }
 
             <div class="ml-blk">
-            <p class="ml-label">Certification levels</p>
+            <p class="ml-label">{{ 'Certification levels' | t: 'public.staffLogin.hero.levelsLabel' }}</p>
             <div class="ml-levels">
               @if (levels().steps.length) {
                 <ul class="ml-lv-box">
@@ -79,22 +80,22 @@ import { ApnaengeBanner } from '../msme/login-shell/apnaenge-banner';
             @if (links.url('contact'); as c) {
               <a class="ml-help" [href]="c" target="_blank" rel="noopener">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" /></svg>
-                Need help?
+                {{ 'Need help?' | t: 'public.staffLogin.helpLink' }}
               </a>
             }
           </div>
           <section class="ml-card">
-            <span class="ml-tag">{{ audience }}</span>
+            <span class="ml-tag">{{ audience() }}</span>
             <ng-content />
           </section>
           <div class="ml-secure">
             <span class="ml-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></svg></span>
-            <p><strong>Authorised users only</strong><small>Sign-ins are recorded.</small></p>
+            <p><strong>{{ 'Authorised users only' | t: 'public.staffLogin.secure.title' }}</strong><small>{{ 'Sign-ins are recorded.' | t: 'public.staffLogin.secure.note' }}</small></p>
           </div>
         </main>
       </div>
       <footer class="ml-footer">
-        <small>© {{ year }} Ministry of MSME, Government of India</small>
+        <small>{{ '© {year} Ministry of MSME, Government of India' | t: 'public.staffLogin.footer.copyrightText' : { year } }}</small>
       </footer>
     </div>
   `,
@@ -119,15 +120,20 @@ export class StaffLoginShell {
   protected readonly brand = inject(BrandingService);
   protected readonly year = new Date().getFullYear();
   /** Who signs in here (the card's tag). */
-  protected readonly audience = PORTAL_SYSTEM === 'consultancy' ? 'Staff · Organisation · Consultant' : 'Staff · Agency · Assessor';
-  protected readonly kicker = PORTAL_SYSTEM === 'consultancy' ? 'Organisation and consultant portal' : PORTAL_SYSTEM === 'surveillance' ? 'Surveillance · agency and assessor portal' : 'Staff, agency and assessor portal';
-  protected readonly title = PORTAL_SYSTEM === 'consultancy' ? 'ZED Handholding' : 'MSME Sustainable (ZED) Certification';
-  protected readonly lead =
+  protected readonly audience = computed(() =>
+    PORTAL_SYSTEM === 'consultancy' ? t('public.staffLogin.audience.consultancyLabel', 'Staff · Organisation · Consultant') : t('public.staffLogin.audience.label', 'Staff · Agency · Assessor'));
+  protected readonly kicker = computed(() =>
+    PORTAL_SYSTEM === 'consultancy' ? t('public.staffLogin.hero.consultancyKicker.text', 'Organisation and consultant portal')
+      : PORTAL_SYSTEM === 'surveillance' ? t('public.staffLogin.hero.surveillanceKicker.text', 'Surveillance · agency and assessor portal')
+        : t('public.staffLogin.hero.kicker.text', 'Staff, agency and assessor portal'));
+  protected readonly title = computed(() =>
+    PORTAL_SYSTEM === 'consultancy' ? t('public.staffLogin.hero.consultancyTitle', 'ZED Handholding') : t('public.staffLogin.hero.title', 'MSME Sustainable (ZED) Certification'));
+  protected readonly lead = computed(() =>
     PORTAL_SYSTEM === 'consultancy'
-      ? 'Handholding of MSMEs towards ZED Silver and Gold: milestones, reviews and reports for organisations and consultants.'
+      ? t('public.staffLogin.hero.consultancyLead', 'Handholding of MSMEs towards ZED Silver and Gold: milestones, reviews and reports for organisations and consultants.')
       : PORTAL_SYSTEM === 'surveillance'
-        ? 'Surveillance of ZED certified MSMEs: assessments, reviews and reports for agencies and assessors.'
-        : 'Desktop and site assessments, reviews and reports for the staff, agencies and assessors of ZED.';
+        ? t('public.staffLogin.hero.surveillanceLead', 'Surveillance of ZED certified MSMEs: assessments, reviews and reports for agencies and assessors.')
+        : t('public.staffLogin.hero.lead', 'Desktop and site assessments, reviews and reports for the staff, agencies and assessors of ZED.'));
   /** MSMEs sign in and register on the main portal. */
   protected readonly msmeLinks = PORTAL_SYSTEM === 'main';
   private readonly publicLevels = inject(PublicLevels);

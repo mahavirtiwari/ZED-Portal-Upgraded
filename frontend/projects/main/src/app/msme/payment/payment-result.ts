@@ -5,7 +5,9 @@ import { RouterLink } from '@angular/router';
 import { PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
+import { TextPipe, t } from '../../content/page-text';
 import { isLegacyLevel, levelLogo, levelName } from '../shared/levels';
+import { BOLD, boldParts } from '../shared/bold-parts';
 import { PageHead } from '../shared/page-head';
 import { StepTracker, TrackerStep } from '../shared/step-tracker';
 import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
@@ -21,14 +23,13 @@ import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
  */
 @Component({
   selector: 'zed-payment-result',
-  imports: [RouterLink, ContentTextComponent, PageHead, StepTracker, DecimalPipe, DatePipe],
+  imports: [RouterLink, ContentTextComponent, PageHead, StepTracker, DecimalPipe, DatePipe, TextPipe],
   template: `
     <div class="container form-page result-page">
-      <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Certifications', link: '/msme/dashboard' }, { label: label() }, { label: 'Payment' }]"
-                     [title]="state() === 'success' ? 'Payment confirmation' : state() === 'pending' ? 'Payment pending' : 'Payment failed'" [subtitle]="subtitle()">
-        <a class="btn btn-ph" routerLink="/msme/dashboard">← Back to dashboard</a>
+      <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+        <a class="btn btn-ph" routerLink="/msme/dashboard">{{ '← Back to dashboard' | t: 'msme.paymentResult.backButton' }}</a>
       </zed-page-head>
-      <zed-step-tracker class="pr-tracker" [steps]="steps()" [current]="state() === 'success' ? 4 : 2" label="Application steps" />
+      <zed-step-tracker class="pr-tracker" [steps]="steps()" [current]="state() === 'success' ? 4 : 2" [label]="'Application steps' | t: 'msme.paymentResult.stepsAria'" />
 
       <div class="pr-cols">
         <div class="pr-main">
@@ -38,35 +39,36 @@ import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
                 <div class="pr-hero">
                   <span class="pr-mark ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
                   <div>
-                    <h2>Payment successful</h2>
-                    <p>@if (conf()?.amount != null) { ₹ {{ conf()!.amount | number: '1.2-2' }} received for {{ label() }}. }
-                      @else { Your payment towards {{ surveillance() ? 'ZED Surveillance' : 'ZED Certification' }} has been successful. }</p>
+                    <h2>{{ 'Payment successful' | t: 'msme.paymentResult.success.title' }}</h2>
+                    <p>@if (conf()?.amount != null) { {{ '₹ {amount} received for {item}.' | t: 'msme.paymentResult.success.amountText' : { amount: (conf()!.amount | number: '1.2-2'), item: label() } }} }
+                      @else if (surveillance()) { {{ 'Your payment towards ZED Surveillance has been successful.' | t: 'msme.paymentResult.success.surveillanceText' }} }
+                      @else { {{ 'Your payment towards ZED Certification has been successful.' | t: 'msme.paymentResult.success.certificationText' }} }</p>
                   </div>
                 </div>
                 @if (conf(); as c) {
                   @if (c.transactionId || c.orderId || c.paidOn || c.method) {
                     <dl class="pr-facts">
-                      @if (c.transactionId) { <div><dt>Transaction ID</dt><dd>{{ c.transactionId }}</dd></div> }
-                      @if (c.orderId) { <div><dt>Order ID</dt><dd>{{ c.orderId }}</dd></div> }
-                      @if (c.paidOn) { <div><dt>Paid on</dt><dd>{{ c.paidOn | date: 'd MMM y, hh:mm a' }}</dd></div> }
-                      @if (c.method) { <div><dt>Method</dt><dd>{{ c.method }}</dd></div> }
+                      @if (c.transactionId) { <div><dt>{{ 'Transaction ID' | t: 'msme.paymentResult.transactionLabel' }}</dt><dd>{{ c.transactionId }}</dd></div> }
+                      @if (c.orderId) { <div><dt>{{ 'Order ID' | t: 'msme.paymentResult.orderLabel' }}</dt><dd>{{ c.orderId }}</dd></div> }
+                      @if (c.paidOn) { <div><dt>{{ 'Paid on' | t: 'msme.paymentResult.paidOnLabel' }}</dt><dd>{{ c.paidOn | date: 'd MMM y, hh:mm a' }}</dd></div> }
+                      @if (c.method) { <div><dt>{{ 'Method' | t: 'msme.paymentResult.methodLabel' }}</dt><dd>{{ c.method }}</dd></div> }
                     </dl>
                   }
                   <div class="pr-actions">
-                    @if (c.receiptUrl) { <a class="btn btn-primary pr-solid" [href]="c.receiptUrl" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download receipt</a> }
+                    @if (c.receiptUrl) { <a class="btn btn-primary pr-solid" [href]="c.receiptUrl" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> {{ 'Download receipt' | t: 'msme.paymentResult.receiptButton' }}</a> }
                     @if (c.invoiceUrl) {
-                      <a class="btn pr-line" [href]="c.invoiceUrl" target="_blank" rel="noopener" data-invoice><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download tax invoice</a>
+                      <a class="btn pr-line" [href]="c.invoiceUrl" target="_blank" rel="noopener" data-invoice><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> {{ 'Download tax invoice' | t: 'msme.paymentResult.invoiceButton' }}</a>
                     } @else {
-                      <button type="button" class="btn pr-line" disabled data-invoice aria-describedby="invoiceNote"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Download tax invoice</button>
+                      <button type="button" class="btn pr-line" disabled data-invoice aria-describedby="invoiceNote"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> {{ 'Download tax invoice' | t: 'msme.paymentResult.invoiceButton' }}</button>
                     }
                     @if (c.email) {
-                      <button type="button" class="btn btn-link pr-mail" [disabled]="sending()" (click)="emailCopy()"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg> E-mail a copy</button>
+                      <button type="button" class="btn btn-link pr-mail" [disabled]="sending()" (click)="emailCopy()"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg> {{ 'E-mail a copy' | t: 'msme.paymentResult.emailButton' }}</button>
                     }
                   </div>
-                  @if (!c.invoiceUrl) { <p class="pr-note" id="invoiceNote">The tax invoice is issued shortly; it will be in My Documents.</p> }
-                  @if (sentTo()) { <p class="pr-note pr-sent" role="status">Sent to {{ sentTo() }}</p> }
+                  @if (!c.invoiceUrl) { <p class="pr-note" id="invoiceNote">{{ 'The tax invoice is issued shortly; it will be in My Documents.' | t: 'msme.paymentResult.invoiceNote' }}</p> }
+                  @if (sentTo()) { <p class="pr-note pr-sent" role="status">{{ 'Sent to {email}' | t: 'msme.paymentResult.sentMessage' : { email: sentTo() } }}</p> }
                   @if (mailError()) { <p class="pr-note pr-err" role="alert">{{ mailError() }}</p> }
-                  @if (c.email && !sentTo()) { <p class="pr-note">A confirmation has been sent to your registered e-mail.</p> }
+                  @if (c.email && !sentTo()) { <p class="pr-note">{{ 'A confirmation has been sent to your registered e-mail.' | t: 'msme.paymentResult.emailNote' }}</p> }
                 }
               </section>
 
@@ -74,24 +76,25 @@ import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
                 <section class="pr-card" aria-labelledby="nextTitle">
                   <header class="pr-h">
                     <span class="pr-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg></span>
-                    <h3 id="nextTitle">What happens next</h3>
+                    <h3 id="nextTitle">{{ 'What happens next' | t: 'msme.paymentResult.next.title' }}</h3>
                   </header>
                   <ol class="pr-next">
                     <li class="now">
-                      <div><b>Download the ZED MSME mobile app</b> <i class="you">YOU</i>
-                        <p>You can now start the <strong>{{ name() }} Certification</strong> from the ZED MSME Mobile Application: basic information and documents are submitted in the app.</p></div>
+                      @let line = appLine();
+                      <div><b>{{ 'Download the ZED MSME mobile app' | t: 'msme.paymentResult.next.appHeading' }}</b> <i class="you">{{ 'YOU' | t: 'msme.paymentResult.next.youChip' }}</i>
+                        <p>{{ line.before }}<strong>{{ line.bold }}</strong>{{ line.after }}</p></div>
                       <div class="pr-apps">
-                        @if (links.url('appStore'); as u) { <a class="btn pr-dark" [href]="u" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> iOS app</a> }
-                        @if (links.url('playStore'); as u) { <a class="btn pr-dark" [href]="u" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> Android app</a> }
-                        <img src="/api/public/links/playStore/qr" width="64" height="64" alt="QR code for the ZED MSME app" />
+                        @if (links.url('appStore'); as u) { <a class="btn pr-dark" [href]="u" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> {{ 'iOS app' | t: 'msme.paymentResult.next.iosButton' }}</a> }
+                        @if (links.url('playStore'); as u) { <a class="btn pr-dark" [href]="u" target="_blank" rel="noopener"><svg class="pr-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg> {{ 'Android app' | t: 'msme.paymentResult.next.androidButton' }}</a> }
+                        <img src="/api/public/links/playStore/qr" width="64" height="64" [alt]="'QR code for the ZED MSME app' | t: 'msme.paymentResult.next.qrAlt'" />
                       </div>
                     </li>
-                    <li><div><b>Fill Basic Information and upload documents</b> <i class="you">YOU</i><p>Your application moves to verification once you submit.</p></div></li>
-                    <li><div><b>Desktop verification</b> <i>ZED</i><p>An assessor reviews your documents. Non-conformances, if any, are raised to you.</p></div></li>
+                    <li><div><b>{{ 'Fill Basic Information and upload documents' | t: 'msme.paymentResult.next.basicHeading' }}</b> <i class="you">{{ 'YOU' | t: 'msme.paymentResult.next.youChip' }}</i><p>{{ 'Your application moves to verification once you submit.' | t: 'msme.paymentResult.next.basicText' }}</p></div></li>
+                    <li><div><b>{{ 'Desktop verification' | t: 'msme.paymentResult.next.desktopHeading' }}</b> <i>{{ 'ZED' | t: 'msme.paymentResult.next.zedChip' }}</i><p>{{ 'An assessor reviews your documents. Non-conformances, if any, are raised to you.' | t: 'msme.paymentResult.next.desktopText' }}</p></div></li>
                     @if (siteVisit()) {
-                      <li><div><b>Site visit and certification</b> <i>ZED</i><p>After the on-site assessment, your certificate and report are generated.</p></div></li>
+                      <li><div><b>{{ 'Site visit and certification' | t: 'msme.paymentResult.next.siteHeading' }}</b> <i>{{ 'ZED' | t: 'msme.paymentResult.next.zedChip' }}</i><p>{{ 'After the on-site assessment, your certificate and report are generated.' | t: 'msme.paymentResult.next.siteText' }}</p></div></li>
                     } @else {
-                      <li><div><b>Certification</b> <i>ZED</i><p>Once the assessment is complete, your certificate and report are generated.</p></div></li>
+                      <li><div><b>{{ 'Certification' | t: 'msme.paymentResult.next.certHeading' }}</b> <i>{{ 'ZED' | t: 'msme.paymentResult.next.zedChip' }}</i><p>{{ 'Once the assessment is complete, your certificate and report are generated.' | t: 'msme.paymentResult.next.certText' }}</p></div></li>
                     }
                   </ol>
                 </section>
@@ -99,25 +102,25 @@ import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
             }
             @case ('pending') {
               <section class="pr-card pr-state warn" role="status">
-                <h2><span aria-hidden="true">◷</span> Payment pending</h2>
-                <p>We are confirming with your bank. This can take a few minutes. Please do not pay again.</p>
+                <h2><span aria-hidden="true">◷</span> {{ 'Payment pending' | t: 'msme.paymentResult.pending.heading' }}</h2>
+                <p>{{ 'We are confirming with your bank. This can take a few minutes. Please do not pay again.' | t: 'msme.paymentResult.pending.text' }}</p>
                 @if (message()) { <p class="pr-msg">{{ message() }}</p> }
                 @if (checkNote()) { <p class="pr-msg">{{ checkNote() }}</p> }
                 <div class="pr-actions">
-                  <button type="button" class="btn pr-line" [disabled]="checking()" (click)="checkStatus()">Check status</button>
-                  <a class="btn btn-link pr-mail" routerLink="/msme/contact">Contact helpdesk</a>
+                  <button type="button" class="btn pr-line" [disabled]="checking()" (click)="checkStatus()">{{ 'Check status' | t: 'msme.paymentResult.pending.checkButton' }}</button>
+                  <a class="btn btn-link pr-mail" routerLink="/msme/contact">{{ 'Contact helpdesk' | t: 'msme.paymentResult.helpdeskLink' }}</a>
                 </div>
               </section>
             }
             @default {
               <section class="pr-card pr-state bad" role="alert">
-                <h2><span aria-hidden="true">✕</span> Payment failed</h2>
+                <h2><span aria-hidden="true">✕</span> {{ 'Payment failed' | t: 'msme.paymentResult.failed.heading' }}</h2>
                 <zed-text key="msme.payment.failed"><p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p></zed-text>
-                <p>No amount was collected. If money left your account, your bank reverses it automatically.</p>
-                @if (message()) { <p class="pr-msg"><b>Error Message</b>: <span>{{ message() }}</span></p> }
+                <p>{{ 'No amount was collected. If money left your account, your bank reverses it automatically.' | t: 'msme.paymentResult.failed.text' }}</p>
+                @if (message()) { <p class="pr-msg"><b>{{ 'Error Message' | t: 'msme.paymentResult.failed.errorLabel' }}</b>: <span>{{ message() }}</span></p> }
                 <div class="pr-actions">
-                  <a class="btn btn-primary pr-solid" [routerLink]="retryLink()" [queryParams]="retryQuery()">Try again</a>
-                  <a class="btn btn-link pr-mail" routerLink="/msme/contact">Contact helpdesk</a>
+                  <a class="btn btn-primary pr-solid" [routerLink]="retryLink()" [queryParams]="retryQuery()">{{ 'Try again' | t: 'msme.paymentResult.failed.retryButton' }}</a>
+                  <a class="btn btn-link pr-mail" routerLink="/msme/contact">{{ 'Contact helpdesk' | t: 'msme.paymentResult.helpdeskLink' }}</a>
                 </div>
               </section>
             }
@@ -126,14 +129,14 @@ import { PaymentApi, PaymentConfirmation, PaymentKind } from './payment.api';
 
         @if (state() === 'success' && certification()) {
           <aside class="pr-card pr-rail" aria-labelledby="createdTitle">
-            <h3 class="pr-h pr-rh" id="createdTitle">{{ surveillance() ? 'Surveillance paid' : 'Application created' }}</h3>
+            <h3 class="pr-h pr-rh" id="createdTitle">{{ surveillance() ? ('Surveillance paid' | t: 'msme.paymentResult.rail.surveillanceTitle') : ('Application created' | t: 'msme.paymentResult.rail.title') }}</h3>
             <div class="pr-level">
               <img [src]="logo()" alt="" />
-              <div><b>{{ label() }}</b><span class="pr-chip">✓ {{ surveillance() ? 'PAYMENT RECEIVED' : 'APPLICATION RECEIVED' }}</span></div>
+              <div><b>{{ label() }}</b><span class="pr-chip">✓ {{ surveillance() ? ('PAYMENT RECEIVED' | t: 'msme.paymentResult.rail.paymentChip') : ('APPLICATION RECEIVED' | t: 'msme.paymentResult.rail.applicationChip') }}</span></div>
             </div>
-            @if (conf()?.amount != null) { <p class="pr-paid"><span>Fee paid</span><b>₹ {{ conf()!.amount | number: '1.2-2' }}</b></p> }
+            @if (conf()?.amount != null) { <p class="pr-paid"><span>{{ 'Fee paid' | t: 'msme.paymentResult.rail.feeLabel' }}</span><b>₹ {{ conf()!.amount | number: '1.2-2' }}</b></p> }
             <a class="btn btn-primary pr-solid pr-go" [routerLink]="['/msme/certification', certification() + (surveillance() ? 'Surveillance' : '')]">
-              Go to my {{ name() }} {{ surveillance() ? 'surveillance' : 'application' }} →</a>
+              {{ surveillance() ? ('Go to my {level} surveillance →' | t: 'msme.paymentResult.rail.surveillanceButton' : { level: name() }) : ('Go to my {level} application →' | t: 'msme.paymentResult.rail.applicationButton' : { level: name() }) }}</a>
           </aside>
         }
       </div>
@@ -247,20 +250,40 @@ export class PaymentResultPage {
   private readonly paymentKind = computed<PaymentKind>(() => (this.surveillance() ? 'surveillance' : 'certification'));
   protected readonly name = computed(() => (this.certification() ? levelName(this.certification()) : 'ZED'));
   protected readonly logo = computed(() => levelLogo(this.certification()));
-  protected readonly label = computed(() => `${this.name()} ${this.surveillance() ? 'Surveillance' : 'Certification'}`);
+  protected readonly label = computed(() => this.surveillance()
+    ? t('msme.paymentResult.surveillanceLabel', '{level} Surveillance', { level: this.name() })
+    : t('msme.paymentResult.certificationLabel', '{level} Certification', { level: this.name() }));
+  protected readonly crumbs = computed(() => [
+    { label: t('msme.paymentResult.crumb.home', 'Home'), link: '/msme/dashboard' },
+    { label: t('msme.paymentResult.crumb.certifications', 'Certifications'), link: '/msme/dashboard' },
+    { label: this.label() },
+    { label: t('msme.paymentResult.crumb.payment', 'Payment') },
+  ]);
+  protected readonly title = computed(() => this.state() === 'success' ? t('msme.paymentResult.title', 'Payment confirmation')
+    : this.state() === 'pending' ? t('msme.paymentResult.pendingTitle', 'Payment pending') : t('msme.paymentResult.failedTitle', 'Payment failed'));
   protected readonly subtitle = computed(() => {
-    if (this.state() === 'pending') return 'Step 3 of 4: we are confirming your payment with the bank.';
-    if (this.state() === 'failure') return 'Step 3 of 4: the payment did not go through.';
-    return this.surveillance() ? `Step 4 of 4: your ${this.name()} surveillance payment is complete.` : `Step 4 of 4: your ${this.name()} application has been created.`;
+    if (this.state() === 'pending') return t('msme.paymentResult.pending.sub', 'Step 3 of 4: we are confirming your payment with the bank.');
+    if (this.state() === 'failure') return t('msme.paymentResult.failed.sub', 'Step 3 of 4: the payment did not go through.');
+    return this.surveillance() ? t('msme.paymentResult.surveillance.sub', 'Step 4 of 4: your {level} surveillance payment is complete.', { level: this.name() })
+      : t('msme.paymentResult.sub', 'Step 4 of 4: your {level} application has been created.', { level: this.name() });
   });
   protected readonly steps = computed<TrackerStep[]>(() => {
     const done = this.state() === 'success';
+    const doneNote = t('msme.paymentResult.tracker.doneNote', 'Done');
     return [
-      { label: 'Disclaimer', note: 'Done' },
-      { label: 'Fee & tax details', note: 'Done' },
-      { label: 'Payment', note: done ? 'Done' : this.state() === 'pending' ? 'Awaiting the bank' : 'Not completed' },
-      { label: 'Confirmation', note: done ? 'Done' : 'Receipt and next steps' },
+      { label: t('msme.payment.tracker.disclaimerLabel', 'Disclaimer'), note: doneNote },
+      { label: t('msme.payment.tracker.feeLabel', 'Fee & tax details'), note: doneNote },
+      { label: t('msme.payment.tracker.paymentLabel', 'Payment'), note: done ? doneNote : this.state() === 'pending'
+        ? t('msme.paymentResult.tracker.awaitingNote', 'Awaiting the bank') : t('msme.paymentResult.tracker.notCompletedNote', 'Not completed') },
+      { label: t('msme.payment.tracker.confirmationLabel', 'Confirmation'), note: done ? doneNote : t('msme.payment.tracker.confirmationNote', 'Receipt and next steps') },
     ];
+  });
+  /** "You can now start the <strong>{level} Certification</strong> from the app…": the sentence around its bold value. */
+  protected readonly appLine = computed(() => {
+    const bold = t('msme.paymentResult.next.appCertification', '{level} Certification', { level: this.name() });
+    return boldParts(t('msme.paymentResult.next.appText',
+      'You can now start the {certification} from the ZED MSME Mobile Application: basic information and documents are submitted in the app.',
+      { certification: BOLD }), bold);
   });
 
   protected readonly conf = signal<PaymentConfirmation | null>(null);
@@ -315,7 +338,7 @@ export class PaymentResultPage {
       this.confirmed.set(true);
     } catch (err) {
       this.checkNote.set(err instanceof HttpErrorResponse && err.status === 404
-        ? 'Not confirmed yet. Please check again in a few minutes.' : apiErrorMessage(err));
+        ? t('msme.paymentResult.pending.notConfirmedMessage', 'Not confirmed yet. Please check again in a few minutes.') : apiErrorMessage(err));
     } finally {
       this.checking.set(false);
     }

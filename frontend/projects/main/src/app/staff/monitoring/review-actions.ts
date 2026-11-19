@@ -6,6 +6,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { ChecklistItem, SubmissionChecklistApi } from '../quality/quality.api';
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { RemarksKind, ReviewActions, ReviewApi } from './review.api';
+import { TextPipe, t } from '../../content/page-text';
 
 type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
 
@@ -17,16 +18,16 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
  */
 @Component({
   selector: 'zed-review-actions',
-  imports: [FormsModule, ContentTextComponent, SubmitChecklist],
+  imports: [FormsModule, ContentTextComponent, SubmitChecklist, TextPipe],
   template: `
     @if (actions().finalSubmit) {
-      <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="open('finalSubmit')" />
+      <input type="button" [value]="'Final Submit' | t: 'staff.reviewActions.finalSubmitButton'" class="btn btn-primary btn-md" [disabled]="busy()" (click)="open('finalSubmit')" />
     }
     @if (actions().sendBack) {
-      <input type="button" value="Send Back to Assessor" class="btn btn-outline-primary btn-md" [disabled]="busy()" (click)="open('sendBack')" />
+      <input type="button" [value]="'Send Back to Assessor' | t: 'staff.reviewActions.sendBackButton'" class="btn btn-outline-primary btn-md" [disabled]="busy()" (click)="open('sendBack')" />
     }
     @if (actions().reject) {
-      <input type="button" value="Reject" class="btn btn-outline-danger btn-md" [disabled]="busy()" (click)="open('reject')" />
+      <input type="button" [value]="'Reject' | t: 'staff.reviewActions.rejectButton'" class="btn btn-outline-danger btn-md" [disabled]="busy()" (click)="open('reject')" />
     }
 
     @if (dialog(); as d) {
@@ -35,20 +36,20 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
           <div class="modal-content">
             <div class="modal-header justify-content-between">
               <h5 class="modal-title" id="reviewDialogTitle">
-                {{ d === 'finalSubmit' ? 'Confirm Final Submit' : d === 'reject' ? 'Confirm Reject Certification' : 'Send Back to Assessor' }}
+                {{ d === 'finalSubmit' ? ('Confirm Final Submit' | t: 'staff.reviewActions.finalSubmit.title') : d === 'reject' ? ('Confirm Reject Certification' | t: 'staff.reviewActions.reject.title') : ('Send Back to Assessor' | t: 'staff.reviewActions.sendBack.title') }}
               </h5>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+              <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.reviewActions.closeAria'" (click)="close()"></button>
             </div>
             <div class="modal-body">
               @if (d === 'finalSubmit') {
                 <!-- 2026-11-17 (approved): the Admin's agency quality-check checklist (it replaced the fixed exemptions / quality boxes). -->
                 @if (checklistLoading()) {
-                  <p class="text-muted mb-0">Loading the checklist…</p>
+                  <p class="text-muted mb-0">{{ 'Loading the checklist…' | t: 'staff.reviewActions.finalSubmit.loading.text' }}</p>
                 } @else if (checklistError()) {
                   <div class="alert alert-danger mb-0" role="alert">{{ checklistError() }}</div>
                 } @else {
                   <zed-submit-checklist [items]="checklist()" [(ticked)]="ticked" />
-                  @if (!checklist().length) { <p class="mb-0">Submit the {{ stage() === 'desktop' ? 'desktop verification' : 'site assessment' }} review?</p> }
+                  @if (!checklist().length) { <p class="mb-0">{{ stage() === 'desktop' ? ('Submit the desktop verification review?' | t: 'staff.reviewActions.finalSubmit.desktop.text') : ('Submit the site assessment review?' | t: 'staff.reviewActions.finalSubmit.site.text') }}</p> }
                 }
               } @else if (d === 'reject') {
                 <div class="form-check ms-3">
@@ -58,7 +59,7 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                 </div>
               } @else {
                 <div class="mb-2">
-                  <label class="form-label" for="reviewSendBack">Agency Send Back Remarks<span class="req">*</span></label>
+                  <label class="form-label" for="reviewSendBack">{{ 'Agency Send Back Remarks' | t: 'staff.reviewActions.sendBack.remarks.label' }}<span class="req">*</span></label>
                   <textarea id="reviewSendBack" name="sendBackRemarks" class="form-control" maxlength="2000" rows="4"
                     [ngModel]="remarks()" (ngModelChange)="remarks.set($event)"></textarea>
                 </div>
@@ -66,10 +67,10 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="close()" />
+              <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.reviewActions.cancelButton'" (click)="close()" />
               <!-- REJECT is the final destructive confirmation: solid red once it can be sent. -->
               <input type="button" class="btn" [class.btn-primary]="canSubmit() && d !== 'reject'" [class.btn-danger]="canSubmit() && d === 'reject'" [class.btn-default]="!canSubmit()"
-                [value]="d === 'reject' ? 'Reject' : 'Submit'" [disabled]="!canSubmit() || busy()" (click)="submit()" />
+                [value]="d === 'reject' ? ('Reject' | t: 'staff.reviewActions.dialog.rejectButton') : ('Submit' | t: 'staff.reviewActions.dialog.submitButton')" [disabled]="!canSubmit() || busy()" (click)="submit()" />
             </div>
           </div>
         </div>
@@ -176,25 +177,25 @@ export interface RemarksTarget {
 /** "Agency Remarks" (desktop) / "Remarks" (site) / "OFI Comments" pop-up of the old review pages. */
 @Component({
   selector: 'zed-review-remarks',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     @if (target(); as tg) {
       <div class="modal d-block text-start" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reviewRemarksTitle">
         <div class="modal-dialog modal-popup">
           <div class="modal-content">
             <div class="modal-header justify-content-between">
-              <h5 class="modal-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Agency Remarks' }}</h5>
-              <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
+              <h5 class="modal-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? ('OFI Comments' | t: 'staff.reviewActions.remarks.ofi.title') : stage() === 'site' ? ('Remarks' | t: 'staff.reviewActions.remarks.site.title') : ('Agency Remarks' | t: 'staff.reviewActions.remarks.title') }}</h5>
+              <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.reviewActions.closeAria'" (click)="closed.emit()"></button>
             </div>
             <div class="modal-body">
-              <label class="form-label" for="reviewRemarksText">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Assessment Agency Final Remarks' }}<span class="req">*</span></label>
+              <label class="form-label" for="reviewRemarksText">{{ tg.kind === 'ofi' ? ('OFI Comments' | t: 'staff.reviewActions.remarks.ofi.label') : stage() === 'site' ? ('Remarks' | t: 'staff.reviewActions.remarks.site.label') : ('Assessment Agency Final Remarks' | t: 'staff.reviewActions.remarks.label') }}<span class="req">*</span></label>
               <textarea id="reviewRemarksText" name="reviewRemarks" class="form-control" maxlength="2000" rows="4"
                 [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
             </div>
             <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="Cancel" (click)="closed.emit()" />
-              <input type="button" class="btn btn-primary" value="Update" [disabled]="busy()" (click)="save(tg)" />
+              <input type="button" class="btn btn-default" [value]="'Cancel' | t: 'staff.reviewActions.cancelButton'" (click)="closed.emit()" />
+              <input type="button" class="btn btn-primary" [value]="'Update' | t: 'staff.reviewActions.remarks.updateButton'" [disabled]="busy()" (click)="save(tg)" />
             </div>
           </div>
         </div>
@@ -219,27 +220,28 @@ export class ReviewRemarksDialog {
 
   constructor() {
     effect(() => {
-      const t = this.target();
+      const tg = this.target();
       untracked(() => {
-        this.text.set(t?.remarks ?? '');
+        this.text.set(tg?.remarks ?? '');
         this.error.set('');
       });
     });
   }
 
-  protected async save(t: RemarksTarget): Promise<void> {
+  protected async save(tg: RemarksTarget): Promise<void> {
     const value = this.text().trim();
     if (!value) {
-      this.error.set(t.kind === 'ofi' ? 'Please enter OFI comments.' : 'Please enter remarks.');
+      this.error.set(tg.kind === 'ofi' ? t('staff.reviewActions.remarks.ofiRequired.error', 'Please enter OFI comments.')
+        : t('staff.reviewActions.remarks.required.error', 'Please enter remarks.'));
       return;
     }
     this.busy.set(true);
     this.error.set('');
     try {
       const res = await firstValueFrom(
-        t.kind === 'ofi'
-          ? this.api.ofiComments(this.zedId(), this.certification(), t.id, value)
-          : this.api.remarks(this.zedId(), this.certification(), t.kind, t.id, value),
+        tg.kind === 'ofi'
+          ? this.api.ofiComments(this.zedId(), this.certification(), tg.id, value)
+          : this.api.remarks(this.zedId(), this.certification(), tg.kind, tg.id, value),
       );
       this.saved.emit(res.message);
     } catch (err) {

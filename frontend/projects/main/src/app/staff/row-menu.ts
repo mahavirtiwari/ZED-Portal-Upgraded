@@ -1,4 +1,5 @@
-import { Component, ElementRef, HostListener, Injector, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, Injector, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { t } from '../content/page-text';
 
 /** The small line icons a menu item can show. */
 export type RowMenuIcon = 'edit' | 'people' | 'mail' | 'history' | 'lock' | 'unlock' | 'eye' | 'download' | 'trash' | 'refresh' | 'award' | 'file';
@@ -38,12 +39,12 @@ const ICONS: Record<RowMenuIcon, string> = {
   selector: 'zed-row-menu',
   host: { class: 'zed-row-menu' },
   template: `
-    <button #trigger type="button" class="rm-btn" aria-haspopup="menu" [attr.aria-expanded]="open()" [attr.aria-label]="label()"
+    <button #trigger type="button" class="rm-btn" aria-haspopup="menu" [attr.aria-expanded]="open()" [attr.aria-label]="name()"
             (click)="toggle($event)" (keydown)="triggerKey($event)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
     </button>
     @if (open()) {
-      <div #menu class="rm-menu" role="menu" [attr.aria-label]="label()" [style.top.px]="pos().top" [style.left.px]="pos().left" (keydown)="menuKey($event)">
+      <div #menu class="rm-menu" role="menu" [attr.aria-label]="name()" [style.top.px]="pos().top" [style.left.px]="pos().left" (keydown)="menuKey($event)">
         @for (item of items(); track item.key; let i = $index) {
           @if (item.danger && i > 0 && !items()[i - 1].danger) { <div class="rm-sep" role="separator"></div> }
           <button type="button" role="menuitem" class="rm-item" [class.danger]="item.danger" [disabled]="item.disabled" tabindex="-1"
@@ -83,7 +84,9 @@ const ICONS: Record<RowMenuIcon, string> = {
 export class RowMenu {
   readonly items = input.required<RowMenuItem[]>();
   /** The button's accessible name, e.g. "More actions for Mahavir Agency". */
-  readonly label = input('More actions');
+  /** Unset: the standard "More actions" (Admin-editable). */
+  readonly label = input<string>();
+  protected readonly name = computed(() => this.label() || t('common.rowMenu.aria', 'More actions'));
   /** The key of the item chosen. */
   readonly picked = output<string>();
 

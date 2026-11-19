@@ -5,6 +5,7 @@ import { BrandingService } from '../../branding';
 import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
 import { BhashiniMenu } from './bhashini-menu';
 import { NotificationBell } from './notification-bell';
+import { TextPipe } from '../../content/page-text';
 
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
@@ -15,34 +16,34 @@ import { NotificationBell } from './notification-bell';
  */
 @Component({
   selector: 'zed-msme-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBell, BhashiniMenu],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NotificationBell, BhashiniMenu, TextPipe],
   host: { class: 'zed-legacy zed-msme d-block' },
   template: `
     <div class="main-container">
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" />}
-            <a routerLink="/msme/dashboard"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'msme.layout.ministryLogoAlt'" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" [alt]="'Ministry of MSME' | t: 'msme.layout.ministryLogoAlt'" />}
+            <a routerLink="/msme/dashboard"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" [alt]="'ZED' | t: 'msme.layout.zedLogoAlt'" /></a>
           </div>
         </div>
       </header>
 
-      <nav class="navbar navbar-expand-lg topnav" id="main_navbar" aria-label="MSME menu">
+      <nav class="navbar navbar-expand-lg topnav" id="main_navbar" [attr.aria-label]="'MSME menu' | t: 'msme.layout.menu.aria'">
         <div class="container">
-          <span class="topnav-portal d-lg-none">ZED Certification</span>
+          <span class="topnav-portal d-lg-none">{{ 'ZED Certification' | t: 'msme.layout.menu.portalLabel' }}</span>
           <button class="navbar-toggler" type="button" aria-controls="msme-menu" [attr.aria-expanded]="menuOpen()"
-                  aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
+                  [attr.aria-label]="'Toggle navigation' | t: 'msme.layout.menu.toggleAria'" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="msme-menu" [class.show]="menuOpen()">
             <ul class="navbar-nav me-auto">
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" [class.active]="section() === 'home'">Home</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="certifications" [class.active]="section() === 'certifications'">Certifications</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="incentives" [class.active]="section() === 'incentives'">Incentives</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">My Documents</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/profile" [class.active]="section() === 'profile'">Profile</a></li>
-              <li class="nav-item"><a class="nav-link" routerLink="/msme/contact" routerLinkActive="active">Help</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" [class.active]="section() === 'home'">{{ 'Home' | t: 'msme.layout.menu.homeLink' }}</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="certifications" [class.active]="section() === 'certifications'">{{ 'Certifications' | t: 'msme.layout.menu.certificationsLink' }}</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/dashboard" fragment="incentives" [class.active]="section() === 'incentives'">{{ 'Incentives' | t: 'msme.layout.menu.incentivesLink' }}</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">{{ 'My Documents' | t: 'msme.layout.menu.documentsLink' }}</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/profile" [class.active]="section() === 'profile'">{{ 'Profile' | t: 'msme.layout.menu.profileLink' }}</a></li>
+              <li class="nav-item"><a class="nav-link" routerLink="/msme/contact" routerLinkActive="active">{{ 'Help' | t: 'msme.layout.menu.helpLink' }}</a></li>
             </ul>
             <ul class="navbar-nav nav-tools">
               <li class="nav-item tool"><zed-bhashini-menu /></li>
@@ -53,11 +54,11 @@ import { NotificationBell } from './notification-bell';
                   <span class="avatar" aria-hidden="true">{{ (user()?.userName || '?').charAt(0) }}</span>{{ user()?.userName }}
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
-                  <li><a class="dropdown-item" routerLink="/msme/profile">View Profile</a></li>
-                  <li><a class="dropdown-item" routerLink="/msme/edit-history">Edit History</a></li>
-                  <li><a class="dropdown-item" routerLink="/msme/change-password">Change Password</a></li>
+                  <li><a class="dropdown-item" routerLink="/msme/profile">{{ 'View Profile' | t: 'msme.layout.user.profileLink' }}</a></li>
+                  <li><a class="dropdown-item" routerLink="/msme/edit-history">{{ 'Edit History' | t: 'msme.layout.user.historyLink' }}</a></li>
+                  <li><a class="dropdown-item" routerLink="/msme/change-password">{{ 'Change Password' | t: 'msme.layout.user.passwordLink' }}</a></li>
                   <!-- A link like the others, so the old menu style (bold, same padding) applies. -->
-                  <li><a class="dropdown-item" href="/msme/login" role="button" (click)="$event.preventDefault(); logout()">Logout</a></li>
+                  <li><a class="dropdown-item" href="/msme/login" role="button" (click)="$event.preventDefault(); logout()">{{ 'Logout' | t: 'msme.layout.user.logoutButton' }}</a></li>
                 </ul>
               </li>
             </ul>
@@ -71,14 +72,14 @@ import { NotificationBell } from './notification-bell';
 
       <footer class="msme-footer">
         <div class="container mf">
-          <small>ZED © {{ year }} All Rights Reserved</small>
-          <nav class="mf-links" aria-label="Footer">
-            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">Scheme guidelines</a><span aria-hidden="true">·</span> }
-            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">Privacy policy</a><span aria-hidden="true">·</span> }
-            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">Terms of use</a><span aria-hidden="true">·</span> }
-            <a routerLink="/msme/contact">Help desk</a>
+          <small>{{ 'ZED © {year} All Rights Reserved' | t: 'msme.layout.footer.copyrightText' : { year } }}</small>
+          <nav class="mf-links" [attr.aria-label]="'Footer' | t: 'msme.layout.footer.aria'">
+            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'msme.layout.footer.guidelinesLink' }}</a><span aria-hidden="true">·</span> }
+            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'msme.layout.footer.privacyLink' }}</a><span aria-hidden="true">·</span> }
+            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'msme.layout.footer.termsLink' }}</a><span aria-hidden="true">·</span> }
+            <a routerLink="/msme/contact">{{ 'Help desk' | t: 'msme.layout.footer.helpDeskLink' }}</a>
           </nav>
-          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
+          <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'msme.layout.footer.qciLogoAlt'" height="32" />
         </div>
       </footer>
     </div>

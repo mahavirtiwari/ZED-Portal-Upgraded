@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, HostListener, ElementRef, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe } from '../../content/page-text';
 
 export interface MsmeNotification {
   at: string;
@@ -24,21 +25,21 @@ export const NOTIFICATIONS_API = '/api/msme/notifications';
  */
 @Component({
   selector: 'zed-notification-bell',
-  imports: [DatePipe],
+  imports: [DatePipe, TextPipe],
   host: { class: 'nb' },
   template: `
     <button type="button" class="nb-btn" [attr.aria-expanded]="open()" aria-haspopup="true"
-            [attr.aria-label]="unread() ? 'Notifications, ' + unread() + ' unread' : 'Notifications'" (click)="toggle($event)">
+            [attr.aria-label]="unread() ? ('Notifications, {count} unread' | t: 'msme.notifications.bellCountAria' : { count: unread() }) : ('Notifications' | t: 'msme.notifications.title')" (click)="toggle($event)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
       @if (unread()) { <span class="nb-count" data-unread>{{ unread() > 9 ? '9+' : unread() }}</span> }
     </button>
     @if (open()) {
-      <div class="nb-panel" role="dialog" aria-label="Notifications">
-        <div class="nb-head">Notifications</div>
+      <div class="nb-panel" role="dialog" [attr.aria-label]="'Notifications' | t: 'msme.notifications.title'">
+        <div class="nb-head">{{ 'Notifications' | t: 'msme.notifications.title' }}</div>
         @if (items() === null) {
-          <p class="nb-empty">Loading…</p>
+          <p class="nb-empty">{{ 'Loading…' | t: 'msme.notifications.loadingText' }}</p>
         } @else if (!items()!.length) {
-          <p class="nb-empty" data-no-notifications>No notifications yet.</p>
+          <p class="nb-empty" data-no-notifications>{{ 'No notifications yet.' | t: 'msme.notifications.empty' }}</p>
         } @else {
           <ul class="nb-list">
             @for (n of items(); track $index) {

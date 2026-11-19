@@ -2,15 +2,15 @@
   <div class="scheme-page">
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
-        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
-          <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+        <zed-page-head [crumbs]="crumbs" [title]="'Technology upgradation' | t: 'msme.technologyUpgradation.title'">
+          <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.technologyUpgradation.refreshButton' }}</button>
         </zed-page-head>
         <div class="row">
           <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
           <div class="col-sm-9 dash-main">
             <div class="alert alert-info" role="status" id="tuMessage">{{ p.message }}</div>
             <div class="stepper-footer-sec">
-              <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
+              <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
             </div>
           </div>
         </div>
@@ -22,16 +22,16 @@
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [full]="false" /></div>
               <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Provided Email ID</span></div></div></div>
+                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>{{ 'Provided Email ID' | t: 'msme.technologyUpgradation.unit.emailHeading' }}</span></div></div></div>
                 <div class="unit-selection"><img src="/Images/svgicons/email.svg" width="20" alt="" /><p>{{ unit()['PledgeEmailId'] }}</p></div>
               </div>
               <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Unit</span></div></div></div>
+                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>{{ 'Selected Unit' | t: 'msme.technologyUpgradation.unit.unitHeading' }}</span></div></div></div>
                 <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ unit()['PUnitName'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ unit()['PAddress'] }}, {{ unit()['PDistrictName'] }}, {{ unit()['PStateName'] }}, {{ unit()['PPin'] }}</p></div>
               </div>
               <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Activity</span></div></div></div>
+                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>{{ 'Selected Activity' | t: 'msme.technologyUpgradation.unit.activityHeading' }}</span></div></div></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ unit()['Activity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ unit()['TwoDigitActivity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ unit()['FourDigitActivity'] }}</p></div>
@@ -45,34 +45,34 @@
               </label>
             </div>
             <div class="stepper-footer-sec initial-step1">
-              <button type="button" class="btn btn-default" (click)="go(2)">BACK</button>
-              <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">PROCEED</button>
+              <button type="button" class="btn btn-default" (click)="go(2)">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
+              <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
             </div>
           }
           @case ('list') {
-            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
-              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+            <zed-page-head [crumbs]="crumbs" [title]="'Technology upgradation' | t: 'msme.technologyUpgradation.title'">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.technologyUpgradation.refreshButton' }}</button>
             </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">List of Technologies</div></div></div>
+                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">{{ 'List of Technologies' | t: 'msme.technologyUpgradation.list.heading' }}</div></div></div>
                 <div>
-                  <p class="muted">Select one or more technologies</p>
+                  <p class="muted">{{ 'Select one or more technologies' | t: 'msme.technologyUpgradation.list.note' }}</p>
                   <div class="table-responsive">
                     <table class="table table-zed table-bordered" id="tuTechnologies">
-                      <thead><tr><th>Technology</th><th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 140px">Action</th></tr></thead>
+                      <thead><tr><th>{{ 'Technology' | t: 'msme.technologyUpgradation.list.column.technology' }}</th><th class="text-center" style="width: 110px">{{ 'Status' | t: 'msme.technologyUpgradation.list.column.status' }}</th><th class="text-center" style="width: 140px">{{ 'Action' | t: 'msme.technologyUpgradation.list.column.action' }}</th></tr></thead>
                       <tbody>
                         @for (t of technologies(); track t.code) {
                           <tr>
                             <td>{{ t.sNo }}. {{ t.name }}</td>
-                            <td class="text-center">@if (t.submitted) { <span class="status-badge is-success">SUBMITTED</span> } @else { <span class="muted">--</span> }</td>
+                            <td class="text-center">@if (t.submitted) { <span class="status-badge is-success">{{ 'SUBMITTED' | t: 'msme.technologyUpgradation.list.submittedChip' }}</span> } @else { <span class="muted">--</span> }</td>
                             <td class="text-center">
                               <div class="row-actions justify-content-center">
                                 @if (t.submitted) {
-                                  <button type="button" class="btn btn-outline-primary" (click)="open(t)">VIEW</button>
+                                  <button type="button" class="btn btn-outline-primary" (click)="open(t)">{{ 'VIEW' | t: 'msme.technologyUpgradation.list.viewButton' }}</button>
                                 } @else {
-                                  <button type="button" class="btn btn-primary" (click)="open(t)">APPLY</button>
+                                  <button type="button" class="btn btn-primary" (click)="open(t)">{{ 'APPLY' | t: 'msme.technologyUpgradation.list.applyButton' }}</button>
                                 }
                               </div>
                             </td>
@@ -83,112 +83,112 @@
                   </div>
                 </div>
                 <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go(3)">BACK</button>
-                  <button type="button" class="btn btn-primary" id="tuProceed" [disabled]="!anySubmitted()" (click)="go('summary')">PROCEED</button>
+                  <button type="button" class="btn btn-default" (click)="go(3)">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                  <button type="button" class="btn btn-primary" id="tuProceed" [disabled]="!anySubmitted()" (click)="go('summary')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                 </div>
               </div>
             </div>
           }
           @case ('technology') {
             @if (current(); as t) {
-              <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
-                <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+              <zed-page-head [crumbs]="crumbs" [title]="'Technology upgradation' | t: 'msme.technologyUpgradation.title'">
+                <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.technologyUpgradation.refreshButton' }}</button>
               </zed-page-head>
               <div class="row">
                 <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
                 <div class="col-sm-9 dash-main">
                   <form class="form-horizontal" id="tuTechnologyForm" #techForm="ngForm" (ngSubmit)="saveTechnology()">
-                    <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Technology Details</div></div></div>
+                    <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">{{ 'Technology Details' | t: 'msme.technologyUpgradation.form.heading' }}</div></div></div>
                     <div>
                       <p class="tech-name"><b>{{ t.sNo }}. {{ t.name }}</b></p>
                       <div class="scheme-fields">
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuMaker">Name of Manufacturer<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuMaker">{{ 'Name of Manufacturer' | t: 'msme.technologyUpgradation.form.manufacturerLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuMaker" name="NameOfTheManufaturer" class="form-control" maxlength="500" required [(ngModel)]="tech.nameOfTheManufaturer" />
-                              @if (fieldError(techForm, 'NameOfTheManufaturer')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'NameOfTheManufaturer')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuModel">Make / Model Name<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuModel">{{ 'Make / Model Name' | t: 'msme.technologyUpgradation.form.modelLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuModel" name="MakeOrModelName" class="form-control" maxlength="500" required [(ngModel)]="tech.makeOrModelName" />
-                              @if (fieldError(techForm, 'MakeOrModelName')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'MakeOrModelName')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuPurchase">Date of Purchase<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuPurchase">{{ 'Date of Purchase' | t: 'msme.technologyUpgradation.form.purchaseDateLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuPurchase" name="DateOfPurchase" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.dateOfPurchase" />
-                              @if (fieldError(techForm, 'DateOfPurchase')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'DateOfPurchase')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuSupplier">Name of Agency/Supplier<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuSupplier">{{ 'Name of Agency/Supplier' | t: 'msme.technologyUpgradation.form.supplierLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuSupplier" name="AgencyOrSupplier" class="form-control" maxlength="200" required [(ngModel)]="tech.agencyOrSupplier" />
-                              @if (fieldError(techForm, 'AgencyOrSupplier')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'AgencyOrSupplier')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuInvoice">Invoice/Bill No.<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuInvoice">{{ 'Invoice/Bill No.' | t: 'msme.technologyUpgradation.form.invoiceNoLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="tech.invoiceNo" />
-                              @if (fieldError(techForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'InvoiceNo')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuInvoiceDate">Invoice/Bill Date<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuInvoiceDate">{{ 'Invoice/Bill Date' | t: 'msme.technologyUpgradation.form.invoiceDateLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.invoiceBillDate" />
-                              @if (fieldError(techForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'InvoiceBillDate')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuAmount">Amount Paid (Rs.)<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuAmount">{{ 'Amount Paid (Rs.)' | t: 'msme.technologyUpgradation.form.amountLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <input id="tuAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="tech.amountPaid" />
-                              @if (fieldError(techForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'AmountPaid')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
                         <div class="card card-default m-b-0">
                           <div class="card-body">
-                            <label class="col-sm-12 p-l-0" for="tuMode">Mode of Payment<span class="req">*</span></label>
+                            <label class="col-sm-12 p-l-0" for="tuMode">{{ 'Mode of Payment' | t: 'msme.technologyUpgradation.form.modeLabel' }}<span class="req">*</span></label>
                             <div class="col-sm-12 p-l-0">
                               <select id="tuMode" name="ModeOfPayment" class="form-select" required [(ngModel)]="tech.modeOfPayment">
-                                <option value="">-Select-</option>
-                                <option value="Offline">Offline</option>
-                                <option value="Online">Online</option>
+                                <option value="">{{ '-Select-' | t: 'msme.technologyUpgradation.form.modeSelect' }}</option>
+                                <option value="Offline">{{ 'Offline' | t: 'msme.technologyUpgradation.form.modeOffline' }}</option>
+                                <option value="Online">{{ 'Online' | t: 'msme.technologyUpgradation.form.modeOnline' }}</option>
                               </select>
-                              @if (fieldError(techForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
+                              @if (fieldError(techForm, 'ModeOfPayment')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                             </div>
                           </div>
                         </div>
-                        <zed-scheme-document label="Picture of Purchased Technology" inputId="tuDocPurchased" [required]="true" [busy]="busy()"
+                        <zed-scheme-document [label]="'Picture of Purchased Technology' | t: 'msme.technologyUpgradation.doc.pictureLabel'" inputId="tuDocPurchased" [required]="true" [busy]="busy()"
                           [documents]="docs(techDocs(), docTypes.purchased)" (pick)="upload('tech', docTypes.purchased, $event)" (remove)="remove('tech', $event)" />
-                        <zed-scheme-document label="Upload Invoice Copy of Purchased Technology" inputId="tuDocInvoice" [required]="true" [busy]="busy()"
+                        <zed-scheme-document [label]="'Upload Invoice Copy of Purchased Technology' | t: 'msme.technologyUpgradation.doc.invoiceLabel'" inputId="tuDocInvoice" [required]="true" [busy]="busy()"
                           [documents]="docs(techDocs(), docTypes.invoice)" (pick)="upload('tech', docTypes.invoice, $event)" (remove)="remove('tech', $event)" />
-                        <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="tuDocCa" [busy]="busy()"
+                        <zed-scheme-document [label]="'CA certificate of expenditure (Optional)' | t: 'msme.technologyUpgradation.doc.caLabel'" inputId="tuDocCa" [busy]="busy()"
                           [documents]="docs(techDocs(), docTypes.ca)" (pick)="upload('tech', docTypes.ca, $event)" (remove)="remove('tech', $event)" />
                       </div>
                     </div>
                     <div class="stepper-footer-sec initial-step1">
-                      <button type="button" class="btn btn-default" (click)="go('list')">BACK</button>
-                      <button type="submit" class="btn btn-primary" [disabled]="busy()">SUBMIT</button>
+                      <button type="button" class="btn btn-default" (click)="go('list')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                      <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'SUBMIT' | t: 'msme.technologyUpgradation.submitButton' }}</button>
                     </div>
                   </form>
                 </div>
@@ -196,94 +196,94 @@
             }
           }
           @case ('summary') {
-            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+            <zed-page-head [crumbs]="crumbs" [title]="'Technology upgradation' | t: 'msme.technologyUpgradation.title'">
             </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
                 <div class="table-responsive">
                   <table class="table table-zed table-bordered" id="tuSummary">
-                    <thead><tr><th class="text-center" style="width: 70px">S.No</th><th>Name of Technology</th><th class="text-center" style="width: 160px">Amount (Rs.)</th></tr></thead>
+                    <thead><tr><th class="text-center" style="width: 70px">{{ 'S.No' | t: 'msme.technologyUpgradation.summary.column.number' }}</th><th>{{ 'Name of Technology' | t: 'msme.technologyUpgradation.summary.column.name' }}</th><th class="text-center" style="width: 160px">{{ 'Amount (Rs.)' | t: 'msme.technologyUpgradation.summary.column.amount' }}</th></tr></thead>
                     <tbody>
                       @for (t of technologies(); track t.code) {
                         @if (t.submitted) {
-                          <tr><td class="text-center">{{ t.sNo }}</td><td>{{ t.name }}</td><td class="text-center">{{ inr(t.details?.['AmountPaid']) || 'NA' }}</td></tr>
+                          <tr><td class="text-center">{{ t.sNo }}</td><td>{{ t.name }}</td><td class="text-center">{{ inr(t.details?.['AmountPaid']) || ('NA' | t: 'msme.technologyUpgradation.summary.noAmount') }}</td></tr>
                         }
                       }
-                      <tr class="total-row"><td></td><td><strong>Total Amount (Rs.)</strong></td><td class="text-center"><strong>{{ inr(p.totalAmount) }}</strong></td></tr>
-                      <tr class="total-row"><td></td><td><strong>Technology Support Eligible Amount (Rs.)</strong></td><td class="text-center"><strong>{{ inr(p.eligibleTotal) }}</strong></td></tr>
+                      <tr class="total-row"><td></td><td><strong>{{ 'Total Amount (Rs.)' | t: 'msme.technologyUpgradation.summary.totalLabel' }}</strong></td><td class="text-center"><strong>{{ inr(p.totalAmount) }}</strong></td></tr>
+                      <tr class="total-row"><td></td><td><strong>{{ 'Technology Support Eligible Amount (Rs.)' | t: 'msme.technologyUpgradation.summary.eligibleLabel' }}</strong></td><td class="text-center"><strong>{{ inr(p.eligibleTotal) }}</strong></td></tr>
                     </tbody>
                   </table>
                 </div>
                 <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go('list')">BACK</button>
-                  <button type="button" class="btn btn-primary" (click)="go('account')">PROCEED</button>
+                  <button type="button" class="btn btn-default" (click)="go('list')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                  <button type="button" class="btn btn-primary" (click)="go('account')">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                 </div>
               </div>
             </div>
           }
           @case ('account') {
-            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
-              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+            <zed-page-head [crumbs]="crumbs" [title]="'Technology upgradation' | t: 'msme.technologyUpgradation.title'">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.technologyUpgradation.refreshButton' }}</button>
             </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
                 <form class="form-horizontal" id="tuAccountForm" #accountForm="ngForm" (ngSubmit)="submit()">
-                  <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Account Details of Reimbursement</div></div></div>
+                  <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">{{ 'Account Details of Reimbursement' | t: 'msme.technologyUpgradation.account.heading' }}</div></div></div>
                   <div>
                     <div class="scheme-fields">
                       <div class="card card-default m-b-0">
                         <div class="card-body">
-                          <label class="col-sm-12 p-l-0" for="tuAccount">Account No.<span class="req">*</span></label>
+                          <label class="col-sm-12 p-l-0" for="tuAccount">{{ 'Account No.' | t: 'msme.technologyUpgradation.account.accountLabel' }}<span class="req">*</span></label>
                           <div class="col-sm-12 p-l-0">
                             <input id="tuAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.accountNo" />
-                            @if (fieldError(accountForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
+                            @if (fieldError(accountForm, 'AccountNo')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                           </div>
                         </div>
                       </div>
                       <div class="card card-default m-b-0">
                         <div class="card-body">
-                          <label class="col-sm-12 p-l-0" for="tuAccount2">Re-Enter Account No.<span class="req">*</span></label>
+                          <label class="col-sm-12 p-l-0" for="tuAccount2">{{ 'Re-Enter Account No.' | t: 'msme.technologyUpgradation.account.accountAgainLabel' }}<span class="req">*</span></label>
                           <div class="col-sm-12 p-l-0">
                             <input id="tuAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.confirmAccountNo" />
-                            @if (fieldError(accountForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
+                            @if (fieldError(accountForm, 'ConfirmAccountNo')) { <span class="help-block">{{ 'Re-Enter Account Number is required.' | t: 'msme.technologyUpgradation.account.accountAgainError' }}</span> }
                             @if (account.confirmAccountNo && account.accountNo !== account.confirmAccountNo) {
-                              <span class="help-block text-danger">Account Numbers must match.</span>
+                              <span class="help-block text-danger">{{ 'Account Numbers must match.' | t: 'msme.technologyUpgradation.account.mismatchError' }}</span>
                             }
                           </div>
                         </div>
                       </div>
                       <div class="card card-default m-b-0">
                         <div class="card-body">
-                          <label class="col-sm-12 p-l-0" for="tuIfsc">IFSC Code<span class="req">*</span></label>
+                          <label class="col-sm-12 p-l-0" for="tuIfsc">{{ 'IFSC Code' | t: 'msme.technologyUpgradation.account.ifscLabel' }}<span class="req">*</span></label>
                           <div class="col-sm-12 p-l-0">
                             <input id="tuIfsc" name="IfscCode" class="form-control text-uppercase" minlength="11" maxlength="11" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="account.ifscCode" />
-                            @if (fieldError(accountForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
-                            @if (fieldError(accountForm, 'IfscCode', 'pattern')) { <span class="help-block">Invalid IFSC code format.</span> }
-                            @if (fieldError(accountForm, 'IfscCode', 'minlength') || fieldError(accountForm, 'IfscCode', 'maxlength')) { <span class="help-block">The IFSC code must be 11 characters long.</span> }
+                            @if (fieldError(accountForm, 'IfscCode')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
+                            @if (fieldError(accountForm, 'IfscCode', 'pattern')) { <span class="help-block">{{ 'Invalid IFSC code format.' | t: 'msme.technologyUpgradation.account.ifscError' }}</span> }
+                            @if (fieldError(accountForm, 'IfscCode', 'minlength') || fieldError(accountForm, 'IfscCode', 'maxlength')) { <span class="help-block">{{ 'The IFSC code must be 11 characters long.' | t: 'msme.technologyUpgradation.account.ifscLengthError' }}</span> }
                           </div>
                         </div>
                       </div>
                       <div class="card card-default m-b-0">
                         <div class="card-body">
-                          <label class="col-sm-12 p-l-0" for="tuBranch">Branch Address<span class="req">*</span></label>
+                          <label class="col-sm-12 p-l-0" for="tuBranch">{{ 'Branch Address' | t: 'msme.technologyUpgradation.account.branchLabel' }}<span class="req">*</span></label>
                           <div class="col-sm-12 p-l-0">
                             <input id="tuBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="account.branchAddress" />
-                            @if (fieldError(accountForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
+                            @if (fieldError(accountForm, 'BranchAddress')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                           </div>
                         </div>
                       </div>
                       <div class="card card-default m-b-0">
                         <div class="card-body">
-                          <label class="col-sm-12 p-l-0" for="tuBank">Name of the Bank<span class="req">*</span></label>
+                          <label class="col-sm-12 p-l-0" for="tuBank">{{ 'Name of the Bank' | t: 'msme.technologyUpgradation.account.bankLabel' }}<span class="req">*</span></label>
                           <div class="col-sm-12 p-l-0">
                             <input id="tuBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="account.bankName" />
-                            @if (fieldError(accountForm, 'BankName')) { <span class="help-block">This is required.</span> }
+                            @if (fieldError(accountForm, 'BankName')) { <span class="help-block">{{ 'This is required.' | t: 'msme.technologyUpgradation.requiredError' }}</span> }
                           </div>
                         </div>
                       </div>
-                      <zed-scheme-document label="Cancelled Cheque Copy" inputId="tuDocCheque" [required]="true" [busy]="busy()"
+                      <zed-scheme-document [label]="'Cancelled Cheque Copy' | t: 'msme.technologyUpgradation.doc.chequeLabel'" inputId="tuDocCheque" [required]="true" [busy]="busy()"
                         [documents]="chequeDocs()" (pick)="upload('cheque', docTypes.cheque, $event)" (remove)="remove('cheque', $event)" />
                     </div>
                   </div>
@@ -294,8 +294,8 @@
                     </label>
                   </div>
                   <div class="stepper-footer-sec initial-step1">
-                    <button type="button" class="btn btn-default" (click)="go('summary')">BACK</button>
-                    <button type="submit" class="btn btn-primary" [class.btn-disabled]="!declaration" [disabled]="busy()">PROCEED</button>
+                    <button type="button" class="btn btn-default" (click)="go('summary')">{{ 'BACK' | t: 'msme.technologyUpgradation.backButton' }}</button>
+                    <button type="submit" class="btn btn-primary" [class.btn-disabled]="!declaration" [disabled]="busy()">{{ 'PROCEED' | t: 'msme.technologyUpgradation.proceedButton' }}</button>
                   </div>
                 </form>
               </div>
@@ -305,10 +305,10 @@
             <div class="done-page">
               <div class="card card-default panel-design text-center done-card" id="tuDone">
                 <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
-                <h2>Application for Financial Support for Zero Effect Solution submitted successfully!</h2>
+                <h2>{{ 'Application for Financial Support for Zero Effect Solution submitted successfully!' | t: 'msme.technologyUpgradation.done.title' }}</h2>
               </div>
               <div class="stepper-footer-sec justify-content-center">
-                <a class="btn btn-primary" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
+                <a class="btn btn-primary" routerLink="/msme/dashboard">{{ 'BACK TO DASHBOARD' | t: 'msme.technologyUpgradation.dashboardButton' }}</a>
               </div>
             </div>
           }
@@ -320,7 +320,7 @@
 
 @if (loading() || busy()) {
   <div class="loadingdiv" role="status" aria-live="polite">
-    <div class="text-center text-white"><div class="loader"></div><small>Please wait ...</small></div>
+    <div class="text-center text-white"><div class="loader"></div><small>{{ 'Please wait ...' | t: 'msme.technologyUpgradation.waitText' }}</small></div>
   </div>
 }
 

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
@@ -92,7 +93,7 @@ function emptyAssessor(): AssessorModel {
  */
 @Component({
   selector: 'zed-staff-assessor-form',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel, TextPipe],
   styleUrls: ['./assessor-form-scope.scss', './assessor-form-view.scss'],
   templateUrl: './assessor-form.html',
 })
@@ -157,9 +158,26 @@ export class AssessorFormPage {
 
   /** "PAN card · ABCDE1234F" in full; "Aadhaar card · •••••9012" (the server sends an Aadhaar number with its last four only). */
   protected get idProofLine(): string {
-    const type = this.model.idProofType ? this.model.idProofType.replace(/ Card$/, ' card') : '';
+    const p = this.model.idProofType;
+    const type = p === 'Aadhaar Card' ? t('staff.assessorForm.view.aadhaarCard', 'Aadhaar card') : p === 'PAN Card' ? t('staff.assessorForm.view.panCard', 'PAN card')
+      : p ? p.replace(/ Card$/, ' card') : '';
     const masked = this.maskedIdProof()?.replace(/^[Xx*•]+/, '•••••') ?? '';
-    return [type, masked].filter(Boolean).join(' · ') || 'Not saved';
+    return [type, masked].filter(Boolean).join(' · ') || t('staff.assessorForm.view.notSaved', 'Not saved');
+  }
+
+  /** The ID proof choice as shown (the stored value stays "Aadhaar Card" / "PAN Card"). */
+  protected idProofName(p: string): string {
+    return p === 'Aadhaar Card' ? t('staff.assessorForm.idProof.aadhaar', 'Aadhaar Card') : p === 'PAN Card' ? t('staff.assessorForm.idProof.pan', 'PAN Card') : p;
+  }
+
+  /** A mode as shown (the stored value stays Desktop / Remote / Onsite). */
+  protected modeName(m: AssessmentModeName): string {
+    switch (m) {
+      case 'Desktop': return t('staff.assessorForm.scope.mode.desktop', 'Desktop');
+      case 'Remote': return t('staff.assessorForm.scope.mode.remote', 'Remote');
+      case 'Onsite': return t('staff.assessorForm.scope.mode.onsite', 'Onsite');
+      default: return m;
+    }
   }
 
   /** The medal colour of a level row (bronze, silver, gold, zedx). */
@@ -178,7 +196,8 @@ export class AssessorFormPage {
   protected readonly managesLogin = this.isAgency || this.auth.currentUser()?.roleId === StaffRole.MasterAdmin;
 
   protected get crumbs() {
-    return staffCrumbs({ label: this.consultancy ? 'Consultants/Experts' : 'Assessors', link: this.backLink }, { label: this.userId ?? 'Add' });
+    return staffCrumbs({ label: this.consultancy ? t('staff.assessorForm.crumb.consultants', 'Consultants/Experts') : t('staff.assessorForm.crumb.assessors', 'Assessors'), link: this.backLink },
+      { label: this.userId ?? t('staff.assessorForm.crumb.add', 'Add') });
   }
 
   /** The head's actions: a saved assessor, once loaded. */
@@ -210,7 +229,7 @@ export class AssessorFormPage {
   }
 
   protected get agencyWord(): string {
-    return this.consultancy ? 'Consultant Organisation' : 'Assessment agency';
+    return this.consultancy ? t('staff.assessorForm.rail.agency.organisationTitle', 'Consultant Organisation') : t('staff.assessorForm.rail.agency.title', 'Assessment agency');
   }
 
   /** Assessments allotted to the assessor and not certified yet (null: not known; the rail block is hidden). */
@@ -224,8 +243,13 @@ export class AssessorFormPage {
     }
   }
 
-  protected openWords(n: number): string {
-    return `${n} ${this.consultancy ? 'case' : 'assessment'}${n === 1 ? '' : 's'}`;
+  /** The rail's line: "3 assessments allotted and not certified yet." (one and many as two wordings). */
+  protected openLine(n: number): string {
+    return this.consultancy
+      ? (n === 1 ? t('staff.assessorForm.rail.open.case', '{count} case allotted and not certified yet.', { count: n })
+        : t('staff.assessorForm.rail.open.cases', '{count} cases allotted and not certified yet.', { count: n }))
+      : (n === 1 ? t('staff.assessorForm.rail.open.assessment', '{count} assessment allotted and not certified yet.', { count: n })
+        : t('staff.assessorForm.rail.open.assessments', '{count} assessments allotted and not certified yet.', { count: n }));
   }
 
   /** Coverage: the states, sectors and areas collapse to a count or the first one, until "View all". */
@@ -236,9 +260,9 @@ export class AssessorFormPage {
   }
 
   protected firstOf(values: readonly string[], options: readonly MultiSelectOption[]): string {
-    if (!values.length) return 'None selected';
+    if (!values.length) return t('staff.assessorForm.rail.coverage.none', 'None selected');
     const first = this.labelsOf(values.slice(0, 1), options)[0];
-    return values.length > 1 ? `${first} +${values.length - 1} more` : first;
+    return values.length > 1 ? t('staff.assessorForm.rail.coverage.firstMore', '{first} +{count} more', { first, count: values.length - 1 }) : first;
   }
 
   /** The confirmation open: block (with its reason) or the reset link. */
@@ -249,24 +273,35 @@ export class AssessorFormPage {
   protected readonly confirmAsk = computed<ConfirmAsk | null>(() => {
     const kind = this.confirming();
     const name = this.model.userName || this.userId!;
-    if (kind === 'reset') return resetLinkAsk(this.model.userName, this.userId!, this.model.emailId, this.consultancy ? 'Consultant' : 'Assessor');
+    if (kind === 'reset') return resetLinkAsk(this.model.userName, this.userId!, this.model.emailId,
+      this.consultancy ? t('staff.assessorForm.reset.consultant', 'Consultant') : t('staff.assessorForm.reset.assessor', 'Assessor'));
     if (kind !== 'block') return null;
     const n = this.openCount();
-    const who = this.consultancy ? 'consultant/expert' : 'assessor';
-    const open = n
-      ? ` ${this.openWords(n)} allotted to this ${who} ${n === 1 ? 'is' : 'are'} still open; ${this.isAgency ? 'you' : 'the ' + (this.consultancy ? 'organisation' : 'agency')} will need to re-allot ${n === 1 ? 'it' : 'them'}.`
-      : '';
+    const who = this.consultancy ? t('staff.assessorForm.block.whoConsultant', 'consultant/expert') : t('staff.assessorForm.block.whoAssessor', 'assessor');
+    const by = this.isAgency ? t('staff.assessorForm.block.byYou', 'you')
+      : this.consultancy ? t('staff.assessorForm.block.byOrganisation', 'the organisation') : t('staff.assessorForm.block.byAgency', 'the agency');
+    const v = { count: n, who, by };
+    // One and many as two wordings each (plural forms differ).
+    const open = !n ? ''
+      : this.consultancy
+        ? (n === 1 ? t('staff.assessorForm.block.openCase', '{count} case allotted to this {who} is still open; {by} will need to re-allot it.', v)
+          : t('staff.assessorForm.block.openCases', '{count} cases allotted to this {who} are still open; {by} will need to re-allot them.', v))
+        : (n === 1 ? t('staff.assessorForm.block.openAssessment', '{count} assessment allotted to this {who} is still open; {by} will need to re-allot it.', v)
+          : t('staff.assessorForm.block.openAssessments', '{count} assessments allotted to this {who} are still open; {by} will need to re-allot them.', v));
     // 2026-11-18 (the user: staff pages 'not aligned with SVG files'): popup-03: a lock tile, the ID under the title, red bullets.
     return {
-      title: `Block ${name}?`,
+      title: t('staff.assessorForm.block.title', 'Block {name}?', { name }),
       subtitle: this.userId,
       icon: 'lock',
-      points: [`${name} will not be able to sign in.`, open.trim(), 'Nothing is deleted; you can unblock at any time.'].filter(Boolean),
-      confirmLabel: 'Block ' + this.noun.toLowerCase(),
+      points: [t('staff.assessorForm.block.point1', '{name} will not be able to sign in.', { name }), open,
+        t('staff.assessorForm.block.point3', 'Nothing is deleted; you can unblock at any time.')].filter(Boolean),
+      confirmLabel: t('staff.assessorForm.block.confirmButton', 'Block {noun}', { noun: this.noun.toLowerCase() }),
       danger: true,
       reason: {
-        label: 'Reason for blocking', placeholder: `Shown in the ${who}'s history`, requiredMessage: 'Please enter the reason for blocking.', maxLength: 2000,
-        hint: `Kept in the history and e-mailed to the ${who}.`,
+        label: t('staff.assessorForm.block.reasonLabel', 'Reason for blocking'),
+        placeholder: t('staff.assessorForm.block.reasonPlaceholder', "Shown in the {who}'s history", { who }),
+        requiredMessage: t('staff.assessorForm.block.reasonRequired', 'Please enter the reason for blocking.'), maxLength: 2000,
+        hint: t('staff.assessorForm.block.reasonHint', 'Kept in the history and e-mailed to the {who}.', { who }),
       },
     };
   });
@@ -290,10 +325,10 @@ export class AssessorFormPage {
         const r = await firstValueFrom(this.api.block('assessors', this.userId, reason));
         this.isActive.set(false);
         this.model.reasonForRejection = reason;
-        this.toast.success(this.noun + ' blocked', r.message);
+        this.toast.success(t('staff.assessorForm.toast.blocked', '{noun} blocked', { noun: this.noun }), r.message);
       } else {
         const r = await firstValueFrom(this.api.passwordReset('assessors', this.userId));
-        this.toast.success('Reset link sent', 'E-mailed to ' + sentTo(r.message, this.model.emailId));
+        this.toast.success(t('staff.assessorForm.toast.resetSent', 'Reset link sent'), t('staff.assessorForm.toast.resetTo', 'E-mailed to {to}', { to: sentTo(r.message, this.model.emailId) }));
       }
       this.confirming.set(null);
     } catch (err) {
@@ -323,7 +358,7 @@ export class AssessorFormPage {
       const r = await firstValueFrom(this.api.unblock('assessors', this.userId, reason));
       this.isActive.set(true);
       this.model.reasonForRejection = reason;
-      this.toast.success(this.noun + ' unblocked', r.message);
+      this.toast.success(t('staff.assessorForm.toast.unblocked', '{noun} unblocked', { noun: this.noun }), r.message);
       this.unblockAsk.set(null);
     } catch (err) {
       this.confirmFailed.set(apiErrorMessage(err));
@@ -344,7 +379,7 @@ export class AssessorFormPage {
     this.historyOpen.set(true);
     try {
       const entries = await firstValueFrom(this.api.assessorHistory(this.userId));
-      this.historyItems.set(blockHistoryItems(entries, this.consultancy ? 'organisation' : 'agency'));
+      this.historyItems.set(blockHistoryItems(entries, this.consultancy ? t('staff.assessorForm.history.organisationWord', 'organisation') : t('staff.assessorForm.history.agencyWord', 'agency')));
     } catch (err) {
       this.historyError.set(apiErrorMessage(err));
     }
@@ -372,9 +407,10 @@ export class AssessorFormPage {
   }
 
   protected get typeChoices(): { value: string; label: string }[] {
-    if (!this.consultancy) return [{ value: 'BronzeAssessor', label: 'Bronze Assessor' }, { value: 'Assessor', label: 'Assessor' }];
-    const choices = [{ value: 'Consultant', label: 'Consultant/Expert' }];
-    if (this.offersTechnicalExpert) choices.push({ value: 'TechnicalExpert', label: 'Technical Expert' });
+    if (!this.consultancy)
+      return [{ value: 'BronzeAssessor', label: t('staff.assessorForm.type.bronzeAssessor', 'Bronze Assessor') }, { value: 'Assessor', label: t('staff.assessorForm.type.assessor', 'Assessor') }];
+    const choices = [{ value: 'Consultant', label: t('staff.assessorForm.type.consultant', 'Consultant/Expert') }];
+    if (this.offersTechnicalExpert) choices.push({ value: 'TechnicalExpert', label: t('staff.assessorForm.type.technicalExpert', 'Technical Expert') });
     return choices;
   }
 
@@ -384,10 +420,10 @@ export class AssessorFormPage {
   }
 
   protected get saveNote(): string {
-    if (this.isNew && this.searches && !this.lookupDone) return 'Search the certified professional to continue.';
-    if (this.isNew && this.verifyOff && !this.offDetailsValid) return 'Enter the certificate number, PAN, name, e-mail and mobile number to continue.';
-    if (this.dirty()) return 'Not saved yet.';
-    return this.isNew ? 'Fill in the details, then Create.' : 'No unsaved changes.';
+    if (this.isNew && this.searches && !this.lookupDone) return t('staff.assessorForm.save.searchFirst', 'Search the certified professional to continue.');
+    if (this.isNew && this.verifyOff && !this.offDetailsValid) return t('staff.assessorForm.save.enterDetails', 'Enter the certificate number, PAN, name, e-mail and mobile number to continue.');
+    if (this.dirty()) return t('staff.assessorForm.save.unsaved', 'Not saved yet.');
+    return this.isNew ? t('staff.assessorForm.save.fillIn', 'Fill in the details, then Create.') : t('staff.assessorForm.save.noChanges', 'No unsaved changes.');
   }
 
   protected get backLink(): string {
@@ -404,7 +440,7 @@ export class AssessorFormPage {
   protected readonly siteVerification = (this.auth.currentUser()?.subRoles ?? []).includes('SiteVerification');
 
   protected get noun(): string {
-    return this.consultancy ? 'Consultant/Expert' : 'Assessor';
+    return this.consultancy ? t('staff.assessorForm.noun.consultant', 'Consultant/Expert') : t('staff.assessorForm.noun.assessor', 'Assessor');
   }
 
   /** Consultancy: Technical Expert is offered only to a CO with SiteVerification. */
@@ -464,19 +500,20 @@ export class AssessorFormPage {
 
   // 2026-11-18 (staff-05): "Assessor details" in sentence case; the view has no subtitle (the "View only" pill says it).
   protected get title(): string {
-    if (!this.isAgency) return this.noun + ' details';
-    return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' details';
+    const noun = this.noun;
+    if (!this.isAgency) return t('staff.assessorForm.viewTitle', '{noun} details', { noun });
+    return this.isNew ? t('staff.assessorForm.addTitle', 'Add {noun}', { noun }) : t('staff.assessorForm.editTitle', 'Update {noun} details', { noun });
   }
 
   protected get subtitle(): string | null {
     const noun = this.noun.toLowerCase();
     if (!this.isAgency) return null;
-    if (!this.isNew) return `Address, ID proof, states, sectors and areas of the ${noun}.`;
-    if (this.typed) return 'Enter the name, e-mail and mobile number of the technical expert.';
-    if (this.verifyOff) return `Enter the certificate number, PAN, name, e-mail and mobile number of the ${noun} as on the certificate.`;
+    if (!this.isNew) return t('staff.assessorForm.editSubtitle', 'Address, ID proof, states, sectors and areas of the {noun}.', { noun });
+    if (this.typed) return t('staff.assessorForm.typedSubtitle', 'Enter the name, e-mail and mobile number of the technical expert.');
+    if (this.verifyOff) return t('staff.assessorForm.verifyOffSubtitle', 'Enter the certificate number, PAN, name, e-mail and mobile number of the {noun} as on the certificate.', { noun });
     return this.byApi
-      ? 'Search the certified professional by certificate number and PAN; the name, e-mail and mobile come from that record.'
-      : 'Search the certified professional by certificate number and registered e-mail; the name, e-mail and mobile come from that record.';
+      ? t('staff.assessorForm.apiSubtitle', 'Search the certified professional by certificate number and PAN; the name, e-mail and mobile come from that record.')
+      : t('staff.assessorForm.lookupSubtitle', 'Search the certified professional by certificate number and registered e-mail; the name, e-mail and mobile come from that record.');
   }
 
   protected get lookupDone(): boolean {
@@ -542,11 +579,11 @@ export class AssessorFormPage {
     Object.assign(m, { userName: '', emailId: '', mobileNo: '', address: '', pinCode: '' });
     if (this.byApi) {
       if (!m.assessorType || !m.certificateNo.trim() || !this.panValid) {
-        this.error.set('Please enter the Certificate Number and a valid PAN (e.g. ABCDE1234F).');
+        this.error.set(t('staff.assessorForm.error.lookupPan', 'Please enter the Certificate Number and a valid PAN (e.g. ABCDE1234F).'));
         return;
       }
     } else if (!m.assessorType || !m.certificateNo.trim() || !m.professionalEmail.trim()) {
-      this.error.set('Please enter the Certificate Number and the Registered Email Id.');
+      this.error.set(t('staff.assessorForm.error.lookupEmail', 'Please enter the Certificate Number and the Registered Email Id.'));
       return;
     }
     this.searching.set(true);
@@ -570,7 +607,7 @@ export class AssessorFormPage {
   protected get idProofPlaceholder(): string {
     const masked = this.maskedIdProof();
     if (!masked || this.model.idProofType !== this.storedIdProofType()) return '';
-    return this.canEdit() ? `${masked} (leave blank to keep)` : masked;
+    return this.canEdit() ? t('staff.assessorForm.idProof.keepPlaceholder', '{masked} (leave blank to keep)', { masked }) : masked;
   }
 
   protected async submit(): Promise<void> {
@@ -579,46 +616,46 @@ export class AssessorFormPage {
     this.error.set('');
     const m = this.model;
     if (this.isNew && this.typed && [m.userName, m.emailId, m.mobileNo].some((v) => !v.trim())) {
-      this.error.set('Please enter the name, e-mail and mobile number.');
+      this.error.set(t('staff.assessorForm.error.typedDetails', 'Please enter the name, e-mail and mobile number.'));
       return;
     }
     if (this.isNew && this.verifyOff) {
       if (!m.assessorType || !m.certificateNo.trim() || [m.pan, m.userName, m.emailId, m.mobileNo].some((v) => !v.trim())) {
-        this.error.set('Please enter the certificate number, PAN, name, e-mail and mobile number.');
+        this.error.set(t('staff.assessorForm.error.offDetails', 'Please enter the certificate number, PAN, name, e-mail and mobile number.'));
         return;
       }
       if (!this.panValid) {
-        this.error.set('Please enter a valid PAN (e.g. ABCDE1234F).');
+        this.error.set(t('staff.assessorForm.error.pan', 'Please enter a valid PAN (e.g. ABCDE1234F).'));
         return;
       }
       if (!EMAIL_PATTERN.test(m.emailId.trim())) {
-        this.error.set('Please enter a valid Email ID.');
+        this.error.set(t('staff.assessorForm.error.email', 'Please enter a valid Email ID.'));
         return;
       }
       if (!MOBILE_PATTERN.test(m.mobileNo.trim())) {
-        this.error.set('Please enter a valid 10 digit mobile number.');
+        this.error.set(t('staff.assessorForm.error.mobile', 'Please enter a valid 10 digit mobile number.'));
         return;
       }
     }
     if (!this.consultancy && this.levels().length && !this.ticks().length) {
-      this.error.set('Please tick at least one certification level and mode the assessor may assess.');
+      this.error.set(t('staff.assessorForm.error.noScope', 'Please tick at least one certification level and mode the assessor may assess.'));
       return;
     }
     if (this.editsMobile && !MOBILE_PATTERN.test(m.mobileNo.trim())) {
-      this.error.set('Please enter a valid 10 digit mobile number.');
+      this.error.set(t('staff.assessorForm.error.mobile', 'Please enter a valid 10 digit mobile number.'));
       return;
     }
     if (this.isNew && this.searches && !this.lookupDone) {
-      this.error.set('Please SEARCH the certified professional first.');
+      this.error.set(t('staff.assessorForm.error.searchFirst', 'Please SEARCH the certified professional first.'));
       return;
     }
     const keepsStoredId = !this.isNew && m.idProofType === this.storedIdProofType() && !!this.maskedIdProof();
     if (!m.address.trim() || !m.pinCode.trim() || !m.idProofType || (!m.idProofNumber.trim() && !keepsStoredId)) {
-      this.error.set('Please enter valid data.');
+      this.error.set(t('staff.assessorForm.error.invalid', 'Please enter valid data.'));
       return;
     }
     if (!this.consultancy && !m.sectorActivity) {
-      this.error.set('Please select whether the assessor assesses Manufacturing, Services or Both.');
+      this.error.set(t('staff.assessorForm.error.noSectorType', 'Please select whether the assessor assesses Manufacturing, Services or Both.'));
       return;
     }
     this.saving.set(true);
@@ -644,7 +681,7 @@ export class AssessorFormPage {
             ...(this.consultancy || !this.levels().length ? {} : { assessments: this.ticks() }),
           }),
         );
-        this.toast.success(this.noun + ' updated', r.message);
+        this.toast.success(t('staff.assessorForm.toast.updated', '{noun} updated', { noun: this.noun }), r.message);
         this.dirty.set(false);
       }
     } catch (err) {

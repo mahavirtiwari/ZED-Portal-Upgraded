@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { StaffRole } from '../staff-menu';
 import { FaAccount, FaApi, FaApplication, FaDocument, FaStatus } from './fa.api';
+import { TextPipe, t } from '../../content/page-text';
 
 export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
 
@@ -21,47 +22,50 @@ interface Section {
   account?: boolean;
 }
 
-/** The three sections of the old page, with the document types the MSME app uploads for each. */
+/**
+ * The three sections of the old page, with the document types the MSME app uploads for each. The wording is read when shown
+ * (getters: the Admin's, Texts → Page wording, staff.faVerification.*, or the standard one); the keys and types stay the code values.
+ */
 const SECTIONS: Section[] = [
   {
-    title: 'Certification Details',
+    get title() { return t('staff.faVerification.certification.title', 'Certification Details'); },
     fields: [
-      { label: 'Category of Certificate', key: 'CategoryOfCertificate' },
-      { label: 'Name of Certificate', key: 'NameOfCertficate' },
-      { label: 'Name of Certification Agency', key: 'CertificationAgency' },
-      { label: 'Certificate Number', key: 'CertficateNumber' },
-      { label: 'Date of Issue of Certificate', key: 'DateOfIssue' },
-      { label: 'Period of validity of Certificate', key: 'ValidityOfCertificate' },
-      { label: 'Any other information related to this certificate', key: 'AnyOtherInformation' },
+      { get label() { return t('staff.faVerification.certification.category.label', 'Category of Certificate'); }, key: 'CategoryOfCertificate' },
+      { get label() { return t('staff.faVerification.certification.name.label', 'Name of Certificate'); }, key: 'NameOfCertficate' },
+      { get label() { return t('staff.faVerification.certification.agency.label', 'Name of Certification Agency'); }, key: 'CertificationAgency' },
+      { get label() { return t('staff.faVerification.certification.number.label', 'Certificate Number'); }, key: 'CertficateNumber' },
+      { get label() { return t('staff.faVerification.certification.issued.label', 'Date of Issue of Certificate'); }, key: 'DateOfIssue' },
+      { get label() { return t('staff.faVerification.certification.validity.label', 'Period of validity of Certificate'); }, key: 'ValidityOfCertificate' },
+      { get label() { return t('staff.faVerification.certification.other.label', 'Any other information related to this certificate'); }, key: 'AnyOtherInformation' },
     ],
-    documents: [{ label: 'Copy of Certificate', type: 'Copy of Certificate' }],
+    documents: [{ get label() { return t('staff.faVerification.certification.copy.label', 'Copy of Certificate'); }, type: 'Copy of Certificate' }],
   },
   {
-    title: 'Details of Expenditure',
+    get title() { return t('staff.faVerification.expenditure.title', 'Details of Expenditure'); },
     fields: [
-      { label: 'Name of Certificate', key: 'ExpenditureCertficate' },
-      { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
-      { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
-      { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
-      { label: 'Amount Paid(Rs.)', key: 'AmountPaid', prefix: 'Rs.' },
-      { label: 'Eligible Financial Assistance(Rs.)', key: 'EligibleAmount', prefix: 'Rs.' },
-      { label: 'Mode of Payment', key: 'ModeOfPayment' },
+      { get label() { return t('staff.faVerification.expenditure.certificate.label', 'Name of Certificate'); }, key: 'ExpenditureCertficate' },
+      { get label() { return t('staff.faVerification.expenditure.supplier.label', 'Name of Agency/Supplier'); }, key: 'AgencyOrSupplier' },
+      { get label() { return t('staff.faVerification.expenditure.invoiceNo.label', 'Invoice/Bill No.'); }, key: 'InvoiceNo' },
+      { get label() { return t('staff.faVerification.expenditure.invoiceDate.label', 'Invoice Bill Date'); }, key: 'InvoiceBillDate' },
+      { get label() { return t('staff.faVerification.expenditure.amountPaid.label', 'Amount Paid(Rs.)'); }, key: 'AmountPaid', prefix: 'Rs.' },
+      { get label() { return t('staff.faVerification.expenditure.eligible.label', 'Eligible Financial Assistance(Rs.)'); }, key: 'EligibleAmount', prefix: 'Rs.' },
+      { get label() { return t('staff.faVerification.expenditure.mode.label', 'Mode of Payment'); }, key: 'ModeOfPayment' },
     ],
     // Order and labels of the old page: the CA certificate row came before the invoice.
     documents: [
-      { label: 'CA certificate of expenditure (Optional)', type: 'CA certificate of expenditure' },
-      { label: 'Invoice Copy', type: 'Copy of Invoice' },
+      { get label() { return t('staff.faVerification.expenditure.caCertificate.label', 'CA certificate of expenditure (Optional)'); }, type: 'CA certificate of expenditure' },
+      { get label() { return t('staff.faVerification.expenditure.invoiceCopy.label', 'Invoice Copy'); }, type: 'Copy of Invoice' },
     ],
   },
   {
-    title: 'Account Details of Reimbursement',
+    get title() { return t('staff.faVerification.account.title', 'Account Details of Reimbursement'); },
     fields: [
-      { label: 'Account No.', key: 'AccountNo' },
-      { label: 'IFSC Code', key: 'IfscCode' },
-      { label: 'Branch Address', key: 'BranchAddress' },
-      { label: 'Name of the Bank', key: 'BankName' },
+      { get label() { return t('staff.faVerification.account.number.label', 'Account No.'); }, key: 'AccountNo' },
+      { get label() { return t('staff.faVerification.account.ifsc.label', 'IFSC Code'); }, key: 'IfscCode' },
+      { get label() { return t('staff.faVerification.account.branch.label', 'Branch Address'); }, key: 'BranchAddress' },
+      { get label() { return t('staff.faVerification.account.bank.label', 'Name of the Bank'); }, key: 'BankName' },
     ],
-    documents: [{ label: 'Cancelled Cheque Copy', type: 'Copy of Cancelled Cheque' }],
+    documents: [{ get label() { return t('staff.faVerification.account.cheque.label', 'Cancelled Cheque Copy'); }, type: 'Copy of Cancelled Cheque' }],
     account: true,
   },
 ];
@@ -88,10 +92,12 @@ interface DecisionForm {
  * assigned financial assessor. Port of Views/FinancialAssistance/Verification.cshtml: documents
  * (opened through the API, which records when the assessor views them), validation of each document,
  * the assessor's and agency's decisions, and the reimbursement bank account.
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.faVerification.*) or the standard one
+ * here and in fa-verification.html; the data-correct pledge stays an HTML text (zed-text).
  */
 @Component({
   selector: 'zed-staff-fa-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent, PageHead, TextPipe],
   templateUrl: './fa-verification.html',
   styles: `
     .section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
@@ -118,7 +124,7 @@ export class FaVerificationPage {
   protected readonly sections = SECTIONS;
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
   /** 2026-11-17 (approved staff redesign): "Home > Financial Assistance > ZED ID". */
-  protected readonly crumbs = staffCrumbs({ label: 'Financial Assistance', link: '/staff/financial-assistance' }, { label: this.zedId });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.faVerification.crumb', 'Financial Assistance'), link: '/staff/financial-assistance' }, { label: this.zedId }));
   private readonly toast = inject(ToastService);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
@@ -235,7 +241,7 @@ export class FaVerificationPage {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (file && (file.size > MAX_SCREENSHOT_BYTES || !/\.(pdf|jpe?g|png)$/i.test(file.name))) {
-      this.dialogError.set('Please upload valid document (PDF / JPG / PNG, less than 2 MB).');
+      this.dialogError.set(t('staff.faVerification.validate.fileError', 'Please upload valid document (PDF / JPG / PNG, less than 2 MB).'));
       input.value = '';
       this.patchValidation({ file: null });
       return;
@@ -248,11 +254,11 @@ export class FaVerificationPage {
     const v = this.validation();
     if (!v) return;
     this.patchValidation({ submitted: true });
-    if (!v.isVerified) return this.dialogError.set('Please select whether the document is verified.');
-    if (v.isVerified === 'No' && !v.remarks.trim()) return this.dialogError.set('Please enter the remarks.');
+    if (!v.isVerified) return this.dialogError.set(t('staff.faVerification.validate.verifiedError', 'Please select whether the document is verified.'));
+    if (v.isVerified === 'No' && !v.remarks.trim()) return this.dialogError.set(t('staff.faVerification.validate.remarksError', 'Please enter the remarks.'));
     if (this.needsScreenshot(v)) {
-      if (!v.sourceOfValidation.trim()) return this.dialogError.set('Please enter the source of validation.');
-      if (!v.file && v.doc.screenshots.length === 0) return this.dialogError.set('Please upload valid pdf document.');
+      if (!v.sourceOfValidation.trim()) return this.dialogError.set(t('staff.faVerification.validate.sourceError', 'Please enter the source of validation.'));
+      if (!v.file && v.doc.screenshots.length === 0) return this.dialogError.set(t('staff.faVerification.validate.screenshotError', 'Please upload valid pdf document.'));
     }
     await this.run(
       () =>
@@ -287,7 +293,7 @@ export class FaVerificationPage {
   protected async saveDecision(app: FaApplication): Promise<void> {
     const d = this.decision();
     if (!d || !d.confirmed) return;
-    if (d.decision === 'reject' && !d.comments.trim()) return this.dialogError.set('Please enter the comments.');
+    if (d.decision === 'reject' && !d.comments.trim()) return this.dialogError.set(t('staff.faVerification.decision.commentsError', 'Please enter the comments.'));
     await this.run(() => this.api.decide(this.zedId, app.certification, d.decision, d.comments.trim()), () => this.decision.set(null));
   }
 
@@ -312,7 +318,7 @@ export class FaVerificationPage {
     const a = this.account();
     if (!a) return;
     if (!a.accountNo.trim() || !a.ifscCode.trim() || !a.branchAddress.trim() || !a.bankName.trim()) {
-      this.error.set('All fields are mandatory');
+      this.error.set(t('staff.faVerification.account.requiredError', 'All fields are mandatory'));
       return;
     }
     await this.run(

@@ -1,18 +1,17 @@
 <!-- 2026-11-17 (approved staff redesign, "same look"): the page head, the counts, the search, the list in one card with the
      actions at the end (Approve and View details on the row, the TU report in the row menu), a toast when approved. -->
-<zed-page-head [crumbs]="crumbs" [title]="title"
-               [subtitle]="(consultancy ? 'Technology upgradation' : 'Financial assistance') + ' reimbursements of the units ' + (allStates ? 'of every state' : 'in your area') + ', paid by NEFT.'">
-  <button type="button" class="btn btn-ph" (click)="load()">Refresh</button>
+<zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+  <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.neft.refresh.button' }}</button>
 </zed-page-head>
 @if (neftAdmin) {
   <!-- One NEFT Admin (2026-11-07): financial assistance here, Technology Upgradation on the Consultancy portal. -->
-  <zed-portal-switch title="Reimbursements" [portals]="neftPortals" [labels]="neftLabels" />
+  <zed-portal-switch [title]="'Reimbursements' | t: 'staff.neft.portalSwitch.label'" [portals]="neftPortals" [labels]="neftLabels()" />
 }
-<zed-list-counts [counts]="counts()" [selected]="filterable ? (stage() ?? 'all') : undefined" label="Transactions" (pick)="pickStage($event.key)" />
+<zed-list-counts [counts]="counts()" [selected]="filterable ? (stage() ?? 'all') : undefined" [label]="'Transactions' | t: 'staff.neft.counts.label'" (pick)="pickStage($event.key)" />
 
 <div class="zed-card nf-filters">
-  <input type="search" id="neft-search" class="form-control nf-q" maxlength="50" placeholder="Search ZED ID, unit, reference or account"
-         aria-label="Search ZED ID, unit, reference or account" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+  <input type="search" id="neft-search" class="form-control nf-q" maxlength="50" [placeholder]="'Search ZED ID, unit, reference or account' | t: 'staff.neft.search.placeholder'"
+         [attr.aria-label]="'Search ZED ID, unit, reference or account' | t: 'staff.neft.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
 </div>
 
 @if (error()) {
@@ -25,52 +24,52 @@
       @if (consultancy) {
         <!-- ZEDCS_CONSULTANCY Frontend/Neft/NewTransactions.cshtml and ApprovedTransactions.cshtml -->
         <tr>
-          <th>ZED ID</th>
-          <th>Plant Name</th>
-          <th>TechnologyName</th>
-          <th>Name Of The Manufacturer<br />Make Or Model Name<br />Agency or Supplier</th>
-          <th class="text-center">Amount Paid<br />Eligible Amount</th>
-          <th class="text-center">Account No.<br />IFSC Code</th>
-          <th>Branch Address</th>
+          <th>{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
+          <th>{{ 'Plant Name' | t: 'staff.neft.column.plantName' }}</th>
+          <th>{{ 'TechnologyName' | t: 'staff.neft.column.technology' }}</th>
+          <th>{{ 'Name Of The Manufacturer' | t: 'staff.neft.column.manufacturer' }}<br />{{ 'Make Or Model Name' | t: 'staff.neft.column.model' }}<br />{{ 'Agency or Supplier' | t: 'staff.neft.column.supplier' }}</th>
+          <th class="text-center">{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}<br />{{ 'Eligible Amount' | t: 'staff.neft.column.eligibleAmount' }}</th>
+          <th class="text-center">{{ 'Account No.' | t: 'staff.neft.column.accountNo' }}<br />{{ 'IFSC Code' | t: 'staff.neft.column.ifsc' }}</th>
+          <th>{{ 'Branch Address' | t: 'staff.neft.column.branch' }}</th>
           @if (list !== 'new') {
-            <th class="text-center">Payment receipt Date<br />Approver Ref No.<br />Approver Amount</th>
-            <th>Comments</th>
+            <th class="text-center">{{ 'Payment receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
+            <th>{{ 'Comments' | t: 'staff.neft.column.comments' }}</th>
           }
-          <th class="text-end">Actions</th>
+          <th class="text-end">{{ 'Actions' | t: 'staff.neft.column.actions' }}</th>
         </tr>
       } @else if (list === 'rejected') {
         <!-- Frontend/Neft/RejectedTransactions.cshtml -->
         <tr>
-          <th class="text-center">ZED ID</th>
-          <th>EnterpriseName</th>
-          <th class="text-center">UAM/ Udyam Number</th>
-          <th class="text-center">TotalEmp</th>
-          <th class="text-center">Gender and Social category</th>
-          <th class="text-center">Coupon</th>
-          <th class="text-center">GSTIN/ TAN Number</th>
-          <th class="text-center">Amount Paid</th>
-          <th class="text-center">UTR Number</th>
-          <th>Reason for Rejection</th>
+          <th class="text-center">{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
+          <th>{{ 'EnterpriseName' | t: 'staff.neft.rejected.column.enterprise' }}</th>
+          <th class="text-center">{{ 'UAM/ Udyam Number' | t: 'staff.neft.column.udyam' }}</th>
+          <th class="text-center">{{ 'TotalEmp' | t: 'staff.neft.column.employees' }}</th>
+          <th class="text-center">{{ 'Gender and Social category' | t: 'staff.neft.column.gender' }}</th>
+          <th class="text-center">{{ 'Coupon' | t: 'staff.neft.column.coupon' }}</th>
+          <th class="text-center">{{ 'GSTIN/ TAN Number' | t: 'staff.neft.column.gstin' }}</th>
+          <th class="text-center">{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}</th>
+          <th class="text-center">{{ 'UTR Number' | t: 'staff.neft.column.utr' }}</th>
+          <th>{{ 'Reason for Rejection' | t: 'staff.neft.column.reason' }}</th>
         </tr>
       } @else {
         <tr>
-          <th>ZED ID</th>
-          <th>Enterprise Name</th>
-          <th>Category Of Certificate</th>
-          <th>Name of the Certificate<br />Certification Agency</th>
-          <th class="text-center">Certificate Number<br />Date Of Issue<br />Validity</th>
-          <th>Expenditure Certificate<br />Agency or Supplier</th>
-          <th class="text-center">Invoice No.<br />Invoice Bill date<br />Amount Paid</th>
-          <th class="text-center">Account No.<br />IFSC Code</th>
-          <th>Branch Address</th>
+          <th>{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
+          <th>{{ 'Enterprise Name' | t: 'staff.neft.column.enterprise' }}</th>
+          <th>{{ 'Category Of Certificate' | t: 'staff.neft.column.certificateCategory' }}</th>
+          <th>{{ 'Name of the Certificate' | t: 'staff.neft.column.certificateName' }}<br />{{ 'Certification Agency' | t: 'staff.neft.column.certificationAgency' }}</th>
+          <th class="text-center">{{ 'Certificate Number' | t: 'staff.neft.column.certificateNumber' }}<br />{{ 'Date Of Issue' | t: 'staff.neft.column.issueDate' }}<br />{{ 'Validity' | t: 'staff.neft.column.validity' }}</th>
+          <th>{{ 'Expenditure Certificate' | t: 'staff.neft.column.expenditureCertificate' }}<br />{{ 'Agency or Supplier' | t: 'staff.neft.column.supplier' }}</th>
+          <th class="text-center">{{ 'Invoice No.' | t: 'staff.neft.column.invoiceNo' }}<br />{{ 'Invoice Bill date' | t: 'staff.neft.column.invoiceDate' }}<br />{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}</th>
+          <th class="text-center">{{ 'Account No.' | t: 'staff.neft.column.accountNo' }}<br />{{ 'IFSC Code' | t: 'staff.neft.column.ifsc' }}</th>
+          <th>{{ 'Branch Address' | t: 'staff.neft.column.branch' }}</th>
           @if (list === 'approved') {
-            <th class="text-center">Payment receipt Date<br />Approver Ref No.<br />Approver Amount</th>
+            <th class="text-center">{{ 'Payment receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
           }
           @if (list !== 'new') {
-            <th>Comments</th>
+            <th>{{ 'Comments' | t: 'staff.neft.column.comments' }}</th>
           }
           @if (list === 'new') {
-            <th class="text-end">Action</th>
+            <th class="text-end">{{ 'Action' | t: 'staff.neft.column.action' }}</th>
           }
         </tr>
       }
@@ -93,14 +92,14 @@
             <td class="text-end text-nowrap">
               @if (list === 'new') {
                 @if (t.VerificationStatus === 6) {
-                  <span class="chip is-good nf-done">Approved</span>
+                  <span class="chip is-good nf-done">{{ 'Approved' | t: 'staff.neft.row.approved.chip' }}</span>
                 }
                 @if (t.VerificationStatus === 4) {
-                  <button type="button" class="btn btn-primary nf-act" (click)="open(t)">Approve</button>
+                  <button type="button" class="btn btn-primary nf-act" (click)="open(t)">{{ 'Approve' | t: 'staff.neft.row.approve.button' }}</button>
                 }
               }
-              <a [routerLink]="tuLink(t)" class="btn btn-outline-primary nf-act">View details</a>
-              <zed-row-menu [items]="reportMenu" [label]="'More actions for ' + t.ZedId" (picked)="openReport(t)" />
+              <a [routerLink]="tuLink(t)" class="btn btn-outline-primary nf-act">{{ 'View details' | t: 'staff.neft.row.details.link' }}</a>
+              <zed-row-menu [items]="reportMenu()" [label]="'More actions for {zedId}' | t: 'staff.neft.row.menu.label' : { zedId: t.ZedId }" (picked)="openReport(t)" />
             </td>
           </tr>
         } @else if (list === 'rejected') {
@@ -110,7 +109,7 @@
             <td class="text-center">{{ t.UdyogAadharNo }}</td>
             <td class="text-center">{{ t.TotalEmp }}</td>
             <td class="cell-lines text-center"><span>{{ t.Gender }}</span><span>{{ t.SocialCategoryName }}</span></td>
-            <td class="text-center">@if (t.IsCouponUsed) { <span class="chip is-info">Yes</span> }</td>
+            <td class="text-center">@if (t.IsCouponUsed) { <span class="chip is-info">{{ 'Yes' | t: 'staff.neft.row.coupon.chip' }}</span> }</td>
             <td class="text-center">{{ t.GstinNumber }} {{ t.TanNumber }}</td>
             <td class="text-center">{{ t.AmountPaid }}</td>
             <td class="text-center">{{ t.UtrNumber }}</td>
@@ -134,13 +133,13 @@
               <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
             }
             @if (list === 'new') {
-              <td class="text-end"><button type="button" class="btn btn-primary nf-act" (click)="open(t)">Approve</button></td>
+              <td class="text-end"><button type="button" class="btn btn-primary nf-act" (click)="open(t)">{{ 'Approve' | t: 'staff.neft.row.approve.button' }}</button></td>
             }
           </tr>
         }
       } @empty {
         <tr>
-          <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">{{ loading() ? 'Loading…' : 'No Data' }}</div></td>
+          <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.neft.loading.text') : ('No Data' | t: 'staff.neft.empty') }}</div></td>
         </tr>
       }
     </tbody>
@@ -154,7 +153,7 @@
   @if (text) {
     <div class="comments" [class.clamp-3]="!expanded().has(id)" [title]="text">{{ text }}</div>
     @if (text.length > 160) {
-      <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id)">{{ expanded().has(id) ? 'less' : 'more' }}</button>
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id)">{{ expanded().has(id) ? ('less' | t: 'staff.neft.comments.less.button') : ('more' | t: 'staff.neft.comments.more.button') }}</button>
     }
   }
 </ng-template>
@@ -166,47 +165,47 @@
         <form (ngSubmit)="submit()" novalidate>
           <div class="modal-header justify-content-between">
             <div>
-              <h3 class="nf-pop-title" id="neftTitle">Approve NEFT transaction</h3>
+              <h3 class="nf-pop-title" id="neftTitle">{{ 'Approve NEFT transaction' | t: 'staff.neft.approve.title' }}</h3>
               <p class="nf-pop-sub">{{ f.transaction.ZedId }}@if (f.transaction.PUnitName || f.transaction.EnterpriseName) { · {{ f.transaction.PUnitName || f.transaction.EnterpriseName }} }</p>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+            <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.neft.approve.close.aria'" (click)="close()"></button>
           </div>
           <div class="modal-body">
             @if (formError()) {
               <div class="alert alert-danger" role="alert">{{ formError() }}</div>
             }
             <div class="form-group mb-3">
-              <label class="form-label" for="neftZedId">ZED ID<span class="req">*</span></label>
+              <label class="form-label" for="neftZedId">{{ 'ZED ID' | t: 'staff.neft.approve.zedId.label' }}<span class="req">*</span></label>
               <input id="neftZedId" type="text" readonly class="form-control" [value]="f.transaction.ZedId" />
             </div>
             <div class="form-group mb-3">
-              <label class="form-label" for="neftDate">Date of receipt of payment<span class="req">*</span></label>
+              <label class="form-label" for="neftDate">{{ 'Date of receipt of payment' | t: 'staff.neft.approve.date.label' }}<span class="req">*</span></label>
               <input id="neftDate" name="date" type="date" class="form-control" [max]="maxDate" required
                      [ngModel]="f.date" (ngModelChange)="update({ date: $event })" />
               @if (f.submitted && !f.date) {
-                <span class="help-block">This is required.</span>
+                <span class="help-block">{{ 'This is required.' | t: 'staff.neft.approve.required.label' }}</span>
               }
             </div>
             <div class="form-group mb-3">
-              <label class="form-label" for="neftRef">Reference number<span class="req">*</span></label>
+              <label class="form-label" for="neftRef">{{ 'Reference number' | t: 'staff.neft.approve.reference.label' }}<span class="req">*</span></label>
               <input id="neftRef" name="referenceNo" type="text" class="form-control" maxlength="100" required
                      [ngModel]="f.referenceNo" (ngModelChange)="update({ referenceNo: $event })" />
               @if (f.submitted && !f.referenceNo.trim()) {
-                <span class="help-block">This is required.</span>
+                <span class="help-block">{{ 'This is required.' | t: 'staff.neft.approve.required.label' }}</span>
               }
             </div>
             <div class="form-group mb-3">
-              <label class="form-label" for="neftAmount">Amount<span class="req">*</span></label>
+              <label class="form-label" for="neftAmount">{{ 'Amount' | t: 'staff.neft.approve.amount.label' }}<span class="req">*</span></label>
               <input id="neftAmount" name="amount" type="text" inputmode="decimal" class="form-control" maxlength="15" required
                      [ngModel]="f.amount" (ngModelChange)="update({ amount: $event })" />
               @if (f.submitted && !f.amount) {
-                <span class="help-block">This is required.</span>
+                <span class="help-block">{{ 'This is required.' | t: 'staff.neft.approve.required.label' }}</span>
               }
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
-            <button type="submit" class="btn btn-primary" [disabled]="saving()">Submit</button>
+            <button type="button" class="btn btn-light" (click)="close()">{{ 'Cancel' | t: 'staff.neft.approve.cancel.button' }}</button>
+            <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ 'Submit' | t: 'staff.neft.approve.submit.button' }}</button>
           </div>
         </form>
       </div>

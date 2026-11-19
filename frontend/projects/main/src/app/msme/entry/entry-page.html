@@ -1,51 +1,50 @@
 <!-- 2026-11-14 (approved): breadcrumb header, a step tracker with the progress of each step, the step's form in a card
      with Save / Next in a footer bar. -->
 <div class="container form-page entry-v2" id="zed_user_form">
-  <zed-page-head [crumbs]="crumbs()" [title]="levelName(certification()) + ': Basic information and documents'">
-    <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-    <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  <zed-page-head [crumbs]="crumbs()" [title]="'{level}: Basic information and documents' | t: 'msme.entry.title' : { level: levelName(certification()) }">
+    <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back' | t: 'msme.entry.backButton' }}</a>
+    <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.entry.refreshButton' }}</button>
   </zed-page-head>
 
   @if (loading() && !state()) {
-    <p class="text-muted" role="status">Loading…</p>
+    <p class="text-muted" role="status">{{ 'Loading…' | t: 'msme.entry.loading' }}</p>
   } @else if (loadError(); as err) {
     <div class="alert alert-warning" role="alert" id="entryError">{{ err }}</div>
-    <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
+    <a routerLink="/msme/dashboard" class="btn btn-default">{{ 'BACK TO DASHBOARD' | t: 'msme.entry.error.dashboardButton' }}</a>
   } @else if (state(); as s) {
     @if (s.submitted && !s.nc) {
       <div class="alert alert-success" role="status" id="entrySubmitted">
-        Your basic information and documents have been submitted. The assessment agency will review them; you can follow the progress
-        under <a [routerLink]="['/msme/certification', s.certification]">View Details</a>.
+        {{ submittedLine()[0] }}<a [routerLink]="['/msme/certification', s.certification]">{{ 'View Details' | t: 'msme.entry.submitted.detailsLink' }}</a>{{ submittedLine()[1] }}
       </div>
     }
     @if (!s.webEntry) {
       <!-- 2026-11-14: no web entry for any level; what the ZED MSME app uploaded, read-only. -->
       <div class="alert alert-info app-only" role="status" id="appOnly">
-        Basic information, documents and NC answers are entered in the <strong>ZED MSME app</strong>. Here you can see what has been uploaded.
+        {{ appOnlyLine()[0] }}<strong>{{ 'ZED MSME app' | t: 'msme.entry.appOnly.appLabel' }}</strong>{{ appOnlyLine()[1] }}
       </div>
     }
 
     <div class="entry-tabs" role="tablist">
       <button type="button" role="tab" [class.active]="tab() === 'basic'" [class.done]="s.basicInfoSaved" [attr.aria-selected]="tab() === 'basic'" (click)="tab.set('basic')">
         <span class="st-num" aria-hidden="true">{{ s.basicInfoSaved ? '✓' : '1' }}</span>
-        <span class="st-text">1. Basic Information <span class="count">{{ s.basicInfoSaved ? '(saved)' : 'Not saved yet' }}</span></span>
+        <span class="st-text">{{ '1. Basic Information' | t: 'msme.entry.tab.basic' }} <span class="count">{{ s.basicInfoSaved ? ('(saved)' | t: 'msme.entry.tab.basicSavedNote') : ('Not saved yet' | t: 'msme.entry.tab.basicNotSavedNote') }}</span></span>
       </button>
       <button type="button" role="tab" [class.active]="tab() === 'documents'" [class.done]="requiredCount() > 0 && requiredDone() === requiredCount()"
               [attr.aria-selected]="tab() === 'documents'" (click)="tab.set('documents')">
         <span class="st-num" aria-hidden="true">{{ requiredCount() > 0 && requiredDone() === requiredCount() ? '✓' : '2' }}</span>
-        <span class="st-text">2. Documents <span class="count">({{ requiredDone() }}/{{ requiredCount() }} required)</span></span>
+        <span class="st-text">{{ '2. Documents' | t: 'msme.entry.tab.documents' }} <span class="count">{{ '({done}/{total} required)' | t: 'msme.entry.tab.documentsNote' : { done: requiredDone(), total: requiredCount() } }}</span></span>
       </button>
       @if (s.nc; as n) {
         <button type="button" role="tab" class="is-nc" [class.active]="tab() === 'nc'" [class.done]="ncItems().total > 0 && ncItems().answered === ncItems().total"
                 [attr.aria-selected]="tab() === 'nc'" (click)="tab.set('nc')">
           <span class="st-num" aria-hidden="true">!</span>
-          <span class="st-text">NC {{ n.number }} <span class="count">({{ ncItems().answered }}/{{ ncItems().total }} answered)</span></span>
+          <span class="st-text">{{ 'NC {number}' | t: 'msme.entry.tab.nc' : { number: n.number } }} <span class="count">{{ '({answered}/{total} answered)' | t: 'msme.entry.tab.ncNote' : { answered: ncItems().answered, total: ncItems().total } }}</span></span>
         </button>
       }
       @if (s.editable || ncAnswerable()) {
         <button type="button" role="tab" [class.active]="tab() === 'submit'" [attr.aria-selected]="tab() === 'submit'" (click)="tab.set('submit')">
           <span class="st-num" aria-hidden="true">3</span>
-          <span class="st-text">3. Submit <span class="count">{{ readyToSubmit() ? 'Ready' : 'After all required' }}</span></span>
+          <span class="st-text">{{ '3. Submit' | t: 'msme.entry.tab.submit' }} <span class="count">{{ readyToSubmit() ? ('Ready' | t: 'msme.entry.tab.submitReadyNote') : ('After all required' | t: 'msme.entry.tab.submitWaitNote') }}</span></span>
         </button>
       }
     </div>
@@ -69,7 +68,7 @@
                           <tr>
                             <th scope="col">#</th>
                             @for (c of columns(f); track c.key) { <th scope="col">{{ c.label }} @if (c.required) { <span class="req">*</span> }</th> }
-                            @if (editable()) { <th scope="col"><span class="visually-hidden">Remove</span></th> }
+                            @if (editable()) { <th scope="col"><span class="visually-hidden">{{ 'Remove' | t: 'msme.entry.rows.removeColumn' }}</span></th> }
                           </tr>
                         </thead>
                         <tbody>
@@ -83,7 +82,7 @@
                                 </td>
                               }
                               @if (editable()) {
-                                <td><button type="button" class="btn btn-link btn-sm text-danger" [attr.aria-label]="'Remove entry ' + (i + 1)" (click)="removeRow(f.key, i)">Remove</button></td>
+                                <td><button type="button" class="btn btn-link btn-sm text-danger" [attr.aria-label]="'Remove entry {number}' | t: 'msme.entry.rows.removeAria' : { number: i + 1 }" (click)="removeRow(f.key, i)">{{ 'Remove' | t: 'msme.entry.rows.removeButton' }}</button></td>
                               }
                             </tr>
                           }
@@ -91,7 +90,7 @@
                       </table>
                     </div>
                     @if (editable() && rows(f.key).length < maxRows) {
-                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="addRow(f)">+ Add</button>
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="addRow(f)">{{ '+ Add' | t: 'msme.entry.rows.addButton' }}</button>
                     }
                   } @else {
                     <label [attr.for]="f.key">{{ f.label }} @if (f.required) { <span class="req">*</span> }</label>
@@ -103,9 +102,9 @@
             }
           }
           @if (editable()) {
-            <p class="help">Photos: JPG or PNG, up to 5 MB each. Your browser may ask to share your location: it is recorded with the photos, as the ZED app does.</p>
+            <p class="help">{{ 'Photos: JPG or PNG, up to 5 MB each. Your browser may ask to share your location: it is recorded with the photos, as the ZED app does.' | t: 'msme.entry.basic.photosNote' }}</p>
             <div class="stepper-footer-sec">
-              <button type="button" class="btn btn-primary" [disabled]="busy()" id="saveBasicInfo" (click)="saveBasicInfo()">{{ busy() ? 'Saving…' : 'SAVE AND CONTINUE' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" id="saveBasicInfo" (click)="saveBasicInfo()">{{ busy() ? ('Saving…' | t: 'msme.entry.basic.savingButton') : ('SAVE AND CONTINUE' | t: 'msme.entry.basic.saveButton') }}</button>
             </div>
           }
         </div>
@@ -114,10 +113,10 @@
       @case ('documents') {
         @if (editable()) {
           @if (!s.basicInfoSaved) {
-            <div class="alert alert-info" role="status">Please save the basic information first; the documents can be uploaded after that.</div>
+            <div class="alert alert-info" role="status">{{ 'Please save the basic information first; the documents can be uploaded after that.' | t: 'msme.entry.documents.saveFirstNote' }}</div>
           }
-          <p class="help">For each document, upload one PDF, or up to 10 photos (JPG / PNG), which are joined into one PDF. Uploading again replaces it.
-            Documents marked <span class="doc-badge badge-req">Required</span> are needed for the final submit.</p>
+          <p class="help">{{ 'For each document, upload one PDF, or up to 10 photos (JPG / PNG), which are joined into one PDF. Uploading again replaces it.' | t: 'msme.entry.documents.uploadNote' }}
+            {{ requiredLine()[0] }}<span class="doc-badge badge-req">{{ 'Required' | t: 'msme.entry.documents.requiredLabel' }}</span>{{ requiredLine()[1] }}</p>
         }
         @for (sec of s.sections; track sec.code) {
           <div class="doc-section">
@@ -133,19 +132,19 @@
                     </div>
                     <span class="doc-status">
                       @if (e.uploaded) {
-                        <span class="doc-badge badge-ok">Uploaded</span>
-                        @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">VIEW</a> }
+                        <span class="doc-badge badge-ok">{{ 'Uploaded' | t: 'msme.entry.documents.uploadedLabel' }}</span>
+                        @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">{{ 'VIEW' | t: 'msme.entry.viewButton' }}</a> }
                       } @else if (e.required) {
-                        <span class="doc-badge badge-req">Required</span>
+                        <span class="doc-badge badge-req">{{ 'Required' | t: 'msme.entry.documents.requiredLabel' }}</span>
                       } @else {
-                        <span class="doc-badge badge-opt">Optional</span>
+                        <span class="doc-badge badge-opt">{{ 'Optional' | t: 'msme.entry.documents.optionalLabel' }}</span>
                       }
                     </span>
                     @if (editable() && s.basicInfoSaved) {
                       <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
-                             [attr.aria-label]="'Files for ' + e.name" (change)="choose(e, $event)" />
+                             [attr.aria-label]="'Files for {name}' | t: 'msme.entry.documents.filesAria' : { name: e.name }" (change)="choose(e, $event)" />
                       <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || chosenFor(e).length === 0" (click)="upload(e)">
-                        {{ e.uploaded ? 'REPLACE' : 'UPLOAD' }}
+                        {{ e.uploaded ? ('REPLACE' | t: 'msme.entry.documents.replaceButton') : ('UPLOAD' | t: 'msme.entry.documents.uploadButton') }}
                       </button>
                     }
                   </div>
@@ -154,12 +153,12 @@
             }
           </div>
         } @empty {
-          <div class="alert alert-info" role="status">No documents are asked for this certification.</div>
+          <div class="alert alert-info" role="status">{{ 'No documents are asked for this certification.' | t: 'msme.entry.documents.empty' }}</div>
         }
         @if (editable()) {
           <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-default" (click)="tab.set('basic')">BACK</button>
-            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
+            <button type="button" class="btn btn-default" (click)="tab.set('basic')">{{ 'BACK' | t: 'msme.entry.backStepButton' }}</button>
+            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'NEXT' | t: 'msme.entry.nextButton' }}</button>
           </div>
         }
       }
@@ -167,40 +166,40 @@
       @case ('nc') {
         @if (nc(); as n) {
           <div class="alert alert-warning" role="status" id="ncIntro">
-            The assessor raised Non-Conformance {{ n.number }}.
-            @if (ncAnswerable()) { Answer each item below with a new document or photos and your remarks, then submit the answers on the Submit tab. }
-            @else { The items and their answers from the ZED MSME app are below. }
+            {{ 'The assessor raised Non-Conformance {number}.' | t: 'msme.entry.nc.intro' : { number: n.number } }}
+            @if (ncAnswerable()) { {{ 'Answer each item below with a new document or photos and your remarks, then submit the answers on the Submit tab.' | t: 'msme.entry.nc.answerNote' }} }
+            @else { {{ 'The items and their answers from the ZED MSME app are below.' | t: 'msme.entry.nc.appNote' }} }
           </div>
           @if (n.siteExterior; as site) {
             <div class="doc-section" data-nc="site">
-              <h5>Site exterior photos</h5>
+              <h5>{{ 'Site exterior photos' | t: 'msme.entry.nc.site.title' }}</h5>
               <div class="doc-row">
                 <div class="doc-name">
-                  @if (site.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ site.assessorRemarks }}</span> }
-                  @if (site.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
+                  @if (site.assessorRemarks) { <span class="help"><b>{{ 'Assessor:' | t: 'msme.entry.nc.assessorLabel' }}</b> {{ site.assessorRemarks }}</span> }
+                  @if (site.answered) { <span class="doc-badge badge-ok">{{ 'Answered' | t: 'msme.entry.nc.answeredLabel' }}</span> } @else { <span class="doc-badge badge-req">{{ 'To answer' | t: 'msme.entry.nc.toAnswerLabel' }}</span> }
                 </div>
                 @if (ncAnswerable()) {
                   <input type="file" class="form-control form-control-sm w-auto" multiple accept="image/jpeg,image/png"
-                         aria-label="New site exterior photos (up to 2)" (change)="chooseNc('site', $event)" />
-                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" aria-label="Remarks on the site exterior photos" maxlength="2000"
+                         [attr.aria-label]="'New site exterior photos (up to 2)' | t: 'msme.entry.nc.site.filesAria'" (change)="chooseNc('site', $event)" />
+                  <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on the site exterior photos' | t: 'msme.entry.nc.site.remarksAria'" maxlength="2000"
                          [value]="remark('site')" (input)="setRemark('site', $any($event.target).value)" />
-                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">SAVE</button>
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">{{ 'SAVE' | t: 'msme.entry.nc.saveButton' }}</button>
                 }
               </div>
             </div>
           }
           @if (n.formFields?.length) {
             <div class="doc-section" data-nc="form-fields">
-              <h5>Basic information</h5>
-              <p class="help mb-1">Answer these in the ZED MSME app: open Non-Conformances and enter each field again.</p>
+              <h5>{{ 'Basic information' | t: 'msme.entry.nc.fields.title' }}</h5>
+              <p class="help mb-1">{{ 'Answer these in the ZED MSME app: open Non-Conformances and enter each field again.' | t: 'msme.entry.nc.fields.note' }}</p>
               @for (f of n.formFields; track f.key) {
                 <div class="doc-row" [attr.data-nc]="'field-' + f.key">
                   <div class="doc-name">
                     {{ f.label }}
-                    @if (f.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ f.assessorRemarks }}</span> }
-                    @if (f.previousValue) { <span class="help">Your answer was {{ f.previousValue }}</span> }
-                    @if (f.answered) { <span class="help">New answer: {{ f.value }}</span> <span class="doc-badge badge-ok">Answered</span> }
-                    @else { <span class="doc-badge badge-req">To answer in the app</span> }
+                    @if (f.assessorRemarks) { <span class="help"><b>{{ 'Assessor:' | t: 'msme.entry.nc.assessorLabel' }}</b> {{ f.assessorRemarks }}</span> }
+                    @if (f.previousValue) { <span class="help">{{ 'Your answer was {value}' | t: 'msme.entry.nc.fields.previousNote' : { value: f.previousValue } }}</span> }
+                    @if (f.answered) { <span class="help">{{ 'New answer: {value}' | t: 'msme.entry.nc.fields.newNote' : { value: f.value } }}</span> <span class="doc-badge badge-ok">{{ 'Answered' | t: 'msme.entry.nc.answeredLabel' }}</span> }
+                    @else { <span class="doc-badge badge-req">{{ 'To answer in the app' | t: 'msme.entry.nc.fields.inAppLabel' }}</span> }
                   </div>
                 </div>
               }
@@ -208,24 +207,24 @@
           }
           @if (n.products.length) {
             <div class="doc-section">
-              <h5>Products</h5>
+              <h5>{{ 'Products' | t: 'msme.entry.nc.products.title' }}</h5>
               @for (p of n.products; track p.id) {
                 <div class="doc-row" [attr.data-nc]="'product-' + p.id">
                   <div class="doc-name">
                     {{ p.productName }}
-                    @if (p.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ p.assessorRemarks }}</span> }
-                    @if (p.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
+                    @if (p.assessorRemarks) { <span class="help"><b>{{ 'Assessor:' | t: 'msme.entry.nc.assessorLabel' }}</b> {{ p.assessorRemarks }}</span> }
+                    @if (p.answered) { <span class="doc-badge badge-ok">{{ 'Answered' | t: 'msme.entry.nc.answeredLabel' }}</span> } @else { <span class="doc-badge badge-req">{{ 'To answer' | t: 'msme.entry.nc.toAnswerLabel' }}</span> }
                   </div>
                   @if (ncAnswerable()) {
-                    <label class="small mb-0">Product photo
+                    <label class="small mb-0">{{ 'Product photo' | t: 'msme.entry.nc.products.photoLabel' }}
                       <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png" (change)="chooseNc('p-' + p.id + '-photo', $event)" />
                     </label>
-                    <label class="small mb-0">Label / description
+                    <label class="small mb-0">{{ 'Label / description' | t: 'msme.entry.nc.products.descriptionLabel' }}
                       <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png,application/pdf" (change)="chooseNc('p-' + p.id + '-label', $event)" />
                     </label>
-                    <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + p.productName" maxlength="2000"
+                    <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on {name}' | t: 'msme.entry.nc.remarksAria' : { name: p.productName }" maxlength="2000"
                            [value]="remark('p-' + p.id)" (input)="setRemark('p-' + p.id, $any($event.target).value)" />
-                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">SAVE</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">{{ 'SAVE' | t: 'msme.entry.nc.saveButton' }}</button>
                   }
                 </div>
               }
@@ -238,21 +237,21 @@
                 <div class="doc-row" [attr.data-nc]="'requirement-' + r.id">
                   <div class="doc-name">
                     {{ r.code }} {{ r.name }}
-                    @if (r.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ r.assessorRemarks }}</span> }
+                    @if (r.assessorRemarks) { <span class="help"><b>{{ 'Assessor:' | t: 'msme.entry.nc.assessorLabel' }}</b> {{ r.assessorRemarks }}</span> }
                     @if (r.answered) {
-                      <span class="doc-badge badge-ok">Answered</span>
-                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm ms-2">VIEW</a> }
+                      <span class="doc-badge badge-ok">{{ 'Answered' | t: 'msme.entry.nc.answeredLabel' }}</span>
+                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm ms-2">{{ 'VIEW' | t: 'msme.entry.viewButton' }}</a> }
                     } @else {
-                      <span class="doc-badge badge-req">To answer</span>
+                      <span class="doc-badge badge-req">{{ 'To answer' | t: 'msme.entry.nc.toAnswerLabel' }}</span>
                     }
                   </div>
                   @if (ncAnswerable()) {
                     <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
-                           [attr.aria-label]="'Document for ' + r.code" (change)="chooseNc('r-' + r.id, $event)" />
-                    <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + r.code" maxlength="2000"
+                           [attr.aria-label]="'Document for {code}' | t: 'msme.entry.nc.documentAria' : { code: r.code }" (change)="chooseNc('r-' + r.id, $event)" />
+                    <input class="form-control form-control-sm w-auto" [placeholder]="'Your remarks' | t: 'msme.entry.nc.remarksPlaceholder'" [attr.aria-label]="'Remarks on {name}' | t: 'msme.entry.nc.remarksAria' : { name: r.code }" maxlength="2000"
                            [value]="remark('r-' + r.id)" (input)="setRemark('r-' + r.id, $any($event.target).value)" />
                     <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('r-' + r.id).length === 0" (click)="answerRequirement(r.id)">
-                      {{ r.answered ? 'REPLACE' : 'SAVE' }}
+                      {{ r.answered ? ('REPLACE' | t: 'msme.entry.nc.replaceButton') : ('SAVE' | t: 'msme.entry.nc.saveButton') }}
                     </button>
                   }
                 </div>
@@ -261,7 +260,7 @@
           }
           @if (ncAnswerable()) {
             <div class="stepper-footer-sec">
-              <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
+              <button type="button" class="btn btn-primary" (click)="tab.set('submit')">{{ 'NEXT' | t: 'msme.entry.nextButton' }}</button>
             </div>
           }
         }
@@ -270,12 +269,12 @@
       @case ('submit') {
         @if (nc(); as n) {
           <ul class="checklist list-unstyled" id="submitChecklist">
-            <li>{{ ncItems().answered === ncItems().total ? '✔' : '✘' }} NC {{ n.number }} items answered: {{ ncItems().answered }} of {{ ncItems().total }}</li>
+            <li>{{ ncItems().answered === ncItems().total ? '✔' : '✘' }} {{ 'NC {number} items answered: {answered} of {total}' | t: 'msme.entry.submit.ncPoint' : { number: n.number, answered: ncItems().answered, total: ncItems().total } }}</li>
           </ul>
         } @else {
           <ul class="checklist list-unstyled" id="submitChecklist">
-            <li>{{ s.basicInfoSaved ? '✔' : '✘' }} Basic information saved</li>
-            <li>{{ requiredDone() === requiredCount() ? '✔' : '✘' }} Required documents uploaded: {{ requiredDone() }} of {{ requiredCount() }}</li>
+            <li>{{ s.basicInfoSaved ? '✔' : '✘' }} {{ 'Basic information saved' | t: 'msme.entry.submit.basicPoint' }}</li>
+            <li>{{ requiredDone() === requiredCount() ? '✔' : '✘' }} {{ 'Required documents uploaded: {done} of {total}' | t: 'msme.entry.submit.documentsPoint' : { done: requiredDone(), total: requiredCount() } }}</li>
           </ul>
         }
         @if (editable() || nc()) {
@@ -287,9 +286,9 @@
             </label>
           </div>
           <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-default" (click)="tab.set(nc() ? 'nc' : 'documents')">BACK</button>
+            <button type="button" class="btn btn-default" (click)="tab.set(nc() ? 'nc' : 'documents')">{{ 'BACK' | t: 'msme.entry.backStepButton' }}</button>
             <button type="button" class="btn btn-primary" id="finalSubmit" [disabled]="busy() || !readyToSubmit() || !confirmed()" (click)="finalSubmit()">
-              {{ busy() ? 'Submitting…' : nc() ? 'SUBMIT NC ANSWERS' : 'FINAL SUBMIT' }}
+              {{ busy() ? ('Submitting…' | t: 'msme.entry.submit.submittingButton') : nc() ? ('SUBMIT NC ANSWERS' | t: 'msme.entry.submit.ncButton') : ('FINAL SUBMIT' | t: 'msme.entry.submit.finalButton') }}
             </button>
           </div>
         }

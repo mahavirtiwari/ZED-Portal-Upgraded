@@ -1,6 +1,7 @@
 <!-- 2026-11-17 (approved staff redesign): the page head with crumbs; a completed recommendation as a toast. -->
-<zed-page-head [crumbs]="crumbs" [title]="'Recommended technologies · ' + zedId + ' (' + level + ')'"
-               subtitle="Technologies the lead consultant recommends to the unit after Handholding milestone 3." />
+<!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.techRecommendation.*). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Recommended technologies · {zedId} ({level})' | t: 'staff.techRecommendation.title' : { zedId, level }"
+               [subtitle]="'Technologies the lead consultant recommends to the unit after Handholding milestone 3.' | t: 'staff.techRecommendation.sub'" />
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 }
@@ -9,7 +10,7 @@
   @if (t.description) {
     <div class="description" [class.clamp-3]="!expanded().has(t.code)" [title]="t.description">{{ t.description }}</div>
     @if (t.description.length > 160) {
-      <button type="button" class="btn btn-link btn-sm p-0" (click)="toggleText(t.code)">{{ expanded().has(t.code) ? 'less' : 'more' }}</button>
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="toggleText(t.code)">{{ expanded().has(t.code) ? ('less' | t: 'staff.techRecommendation.lessButton') : ('more' | t: 'staff.techRecommendation.moreButton') }}</button>
     }
   }
 </ng-template>
@@ -17,45 +18,45 @@
 @if (page(); as p) {
   @if (p.recommended) {
     <div class="zed-card">
-      <h4>Summary Of Recommended Technologies</h4>
+      <h4>{{ 'Summary Of Recommended Technologies' | t: 'staff.techRecommendation.summary.title' }}</h4>
       <div class="table-responsive mb-0">
         <table class="table table-bordered table-zed">
-          <thead><tr><th>Technology Name</th><th>Description</th></tr></thead>
+          <thead><tr><th>{{ 'Technology Name' | t: 'staff.techRecommendation.column.name' }}</th><th>{{ 'Description' | t: 'staff.techRecommendation.column.description' }}</th></tr></thead>
           <tbody>
             @for (t of p.technologies; track t.code) {
               <tr><td><strong>{{ t.name }}</strong></td><td><ng-container *ngTemplateOutlet="description; context: { $implicit: t }" /></td></tr>
             } @empty {
-              <tr><td colspan="2" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+              <tr><td colspan="2" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.techRecommendation.summary.empty' }}</div></td></tr>
             }
           </tbody>
         </table>
       </div>
     </div>
   } @else if (!p.canRecommend && !p.technologies.length) {
-    <div class="alert alert-info">{{ p.message || 'The technologies have not been recommended yet.' }}</div>
+    <div class="alert alert-info">{{ p.message || ('The technologies have not been recommended yet.' | t: 'staff.techRecommendation.notYetNote') }}</div>
   } @else if (!summary()) {
     <!-- The old page's fixed counter of the selected technologies. -->
-    <div class="counter-block"><p>Selected: {{ chosen().size }}/{{ max() }}</p></div>
+    <div class="counter-block"><p>{{ 'Selected: {count}/{max}' | t: 'staff.techRecommendation.counterText' : { count: chosen().size, max: max() } }}</p></div>
     <div class="zed-card">
       <div class="section-head">
-        <h4>List of Technologies</h4>
+        <h4>{{ 'List of Technologies' | t: 'staff.techRecommendation.list.title' }}</h4>
         <div class="filter-bar">
           <div class="filter wide">
-            <input type="search" class="form-control" placeholder="Search Technology" aria-label="Search Technology" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+            <input type="search" class="form-control" [placeholder]="'Search Technology' | t: 'staff.techRecommendation.search.placeholder'" [attr.aria-label]="'Search Technology' | t: 'staff.techRecommendation.search.placeholder'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
           </div>
         </div>
       </div>
       <zed-text key="staff.consultancy.technologyRecommendation.note" [values]="{ Max: max() }" box="alert alert-danger" />
       <div class="table-responsive mb-0">
         <table class="table table-bordered table-zed">
-          <thead><tr><th>Technology Name</th><th>Description</th><th class="text-center" style="width: 80px">Select</th></tr></thead>
+          <thead><tr><th>{{ 'Technology Name' | t: 'staff.techRecommendation.column.name' }}</th><th>{{ 'Description' | t: 'staff.techRecommendation.column.description' }}</th><th class="text-center" style="width: 80px">{{ 'Select' | t: 'staff.techRecommendation.column.select' }}</th></tr></thead>
           <tbody>
             @for (t of visible(); track t.code) {
               <tr>
                 <td><strong>{{ t.name }}</strong></td>
                 <td><ng-container *ngTemplateOutlet="description; context: { $implicit: t }" /></td>
                 <td class="text-center">
-                  <input type="checkbox" class="form-check-input" [attr.aria-label]="'Select ' + t.name" [checked]="chosen().has(t.code)"
+                  <input type="checkbox" class="form-check-input" [attr.aria-label]="'Select {name}' | t: 'staff.techRecommendation.selectAria' : { name: t.name }" [checked]="chosen().has(t.code)"
                          [disabled]="!chosen().has(t.code) && chosen().size >= max()" (change)="toggle(t.code, $any($event.target).checked)" />
                 </td>
               </tr>
@@ -66,19 +67,19 @@
       <!-- When the lead consultant cannot recommend yet (e.g. PreviousRecomInProgress), its text takes PROCEED's place, as on the old page. -->
       <div class="form-actions">
         @if (p.canRecommend) {
-          <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">Proceed</button>
+          <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">{{ 'Proceed' | t: 'staff.techRecommendation.proceedButton' }}</button>
         } @else {
           <span class="muted">{{ p.message }}</span>
         }
       </div>
     </div>
   } @else {
-    <div class="counter-block"><p>Selected: {{ chosen().size }}/{{ max() }}</p></div>
+    <div class="counter-block"><p>{{ 'Selected: {count}/{max}' | t: 'staff.techRecommendation.counterText' : { count: chosen().size, max: max() } }}</p></div>
     <div class="zed-card">
-      <h4>Summary Of Recommended Technologies</h4>
+      <h4>{{ 'Summary Of Recommended Technologies' | t: 'staff.techRecommendation.summary.title' }}</h4>
       <div class="table-responsive">
         <table class="table table-bordered table-zed">
-          <thead><tr><th>Technology Name</th><th>Description</th></tr></thead>
+          <thead><tr><th>{{ 'Technology Name' | t: 'staff.techRecommendation.column.name' }}</th><th>{{ 'Description' | t: 'staff.techRecommendation.column.description' }}</th></tr></thead>
           <tbody>
             @for (t of selectedList(); track t.code) {
               <tr><td><strong>{{ t.name }}</strong></td><td><ng-container *ngTemplateOutlet="description; context: { $implicit: t }" /></td></tr>
@@ -91,8 +92,8 @@
         <label class="form-check-label" for="recConfirm"><zed-text key="staff.consultancy.technologyRecommendation.fairConfirm.checkbox" [inline]="true" /></label>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-default" (click)="summary.set(false)">Back</button>
-        <button type="button" class="btn btn-primary" [disabled]="!confirmed() || saving()" (click)="submit()">Submit</button>
+        <button type="button" class="btn btn-default" (click)="summary.set(false)">{{ 'Back' | t: 'staff.techRecommendation.backButton' }}</button>
+        <button type="button" class="btn btn-primary" [disabled]="!confirmed() || saving()" (click)="submit()">{{ 'Submit' | t: 'staff.techRecommendation.submitButton' }}</button>
       </div>
     </div>
   }

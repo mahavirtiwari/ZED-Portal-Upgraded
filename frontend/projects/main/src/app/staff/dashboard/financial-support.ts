@@ -6,6 +6,7 @@ import { ClientPager } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { TextPipe } from '../../content/page-text';
 
 /**
  * Financial support per unit (SuperAdmin, CitizenFeedback). Port of Views/Dashboard/FinancialSupport.cshtml.
@@ -13,21 +14,21 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
  */
 @Component({
   selector: 'zed-staff-financial-support',
-  imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
+  imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['financial-support']" />
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Financial Support</h3>
-        <p class="page-sub">Certification fee, amount paid by the unit and the financial support given, per unit.</p>
+        <h3 class="registration-title">{{ 'Financial Support' | t: 'staff.financialSupport.title' }}</h3>
+        <p class="page-sub">{{ 'Certification fee, amount paid by the unit and the financial support given, per unit.' | t: 'staff.financialSupport.sub' }}</p>
       </div>
     </div>
     <div class="zed-card">
       <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
         <div class="filter wide">
-          <label class="form-label" for="fs-search">Search</label>
-          <input type="search" id="fs-search" class="form-control" maxlength="50" placeholder="Search" aria-label="Search"
+          <label class="form-label" for="fs-search">{{ 'Search' | t: 'staff.financialSupport.search.label' }}</label>
+          <input type="search" id="fs-search" class="form-control" maxlength="50" [placeholder]="'Search' | t: 'staff.financialSupport.search.placeholder'" [attr.aria-label]="'Search' | t: 'staff.financialSupport.search.label'"
                  [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
         </div>
       </zed-list-filters>
@@ -37,15 +38,15 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
       <table class="table table-zed table-bordered">
         <thead>
           <tr>
-            <th class="text-center">S.No.</th>
-            <th class="text-center">Certification Level</th>
-            <th>Unit Name<br />ZedId<br />Enterprise Size</th>
-            <th class="text-center">Status</th>
-            <th>Unit Address</th>
-            <th>State</th>
-            <th class="text-center">Certification Fee<br />(Amount in Rs.)</th>
-            <th class="text-center">Amount Paid by Unit<br />(Amount in Rs.)</th>
-            <th class="text-center">Financial Support<br />(Amount in Rs.)</th>
+            <th class="text-center">{{ 'S.No.' | t: 'staff.financialSupport.column.serial' }}</th>
+            <th class="text-center">{{ 'Certification Level' | t: 'staff.financialSupport.column.level' }}</th>
+            <th>{{ 'Unit Name' | t: 'staff.financialSupport.column.unitName' }}<br />{{ 'ZedId' | t: 'staff.financialSupport.column.zedId' }}<br />{{ 'Enterprise Size' | t: 'staff.financialSupport.column.size' }}</th>
+            <th class="text-center">{{ 'Status' | t: 'staff.financialSupport.column.status' }}</th>
+            <th>{{ 'Unit Address' | t: 'staff.financialSupport.column.address' }}</th>
+            <th>{{ 'State' | t: 'staff.financialSupport.column.state' }}</th>
+            <th class="text-center">{{ 'Certification Fee' | t: 'staff.financialSupport.column.fee' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
+            <th class="text-center">{{ 'Amount Paid by Unit' | t: 'staff.financialSupport.column.paid' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
+            <th class="text-center">{{ 'Financial Support' | t: 'staff.financialSupport.column.support' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,13 +63,13 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
               <td class="text-center">{{ s['FinancialSupport'] }}</td>
             </tr>
           } @empty {
-            @if (!loading()) { <tr><td colspan="9" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+            @if (!loading()) { <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
           }
         </tbody>
       </table>
     </div>
     <zed-pager [pager]="pager" />
-    @if (loading()) { <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div> }
+    @if (loading()) { <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.financialSupport.loadingText' }}</small></div></div></div> }
   `,
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

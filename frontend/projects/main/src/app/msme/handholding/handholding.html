@@ -3,26 +3,26 @@
     @if (error()) {
       <div class="alert alert-danger alert-dismissible mt-3" role="alert">
         {{ error() }}
-        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+        <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'msme.handholding.closeAria'" (click)="error.set('')"></button>
         @if (!data()) {
-          <div><a class="btn btn-link p-0" routerLink="/msme/dashboard">Back to dashboard</a></div>
+          <div><a class="btn btn-link p-0" routerLink="/msme/dashboard">{{ 'Back to dashboard' | t: 'msme.handholding.error.backButton' }}</a></div>
         }
       </div>
     }
 
     @if (data()) {
       <!-- 2026-11-17 (the user's design): the level cards, then the selected level's milestones with the cost beside them. -->
-      <zed-page-head [crumbs]="crumbs" title="Handholding support" [subtitle]="subtitle()">
-        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
-        <button type="button" class="btn btn-ph refresh-link" (click)="load()" [title]="'Refreshed on ' + (loadedAt() | date: 'dd/MM/yyyy hh:mm a')">
-          <img src="/Images/svgicons/refresh.svg" alt="" /> Refresh
+      <zed-page-head [crumbs]="crumbs()" [title]="'Handholding support' | t: 'msme.handholding.title'" [subtitle]="subtitle()">
+        <a class="btn btn-ph" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> {{ 'Back' | t: 'msme.handholding.backButton' }}</a>
+        <button type="button" class="btn btn-ph refresh-link" (click)="load()" [title]="'Refreshed on {date}' | t: 'msme.handholding.refreshTooltip' : { date: (loadedAt() | date: 'dd/MM/yyyy hh:mm a') }">
+          <img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.handholding.refreshButton' }}
         </button>
       </zed-page-head>
 
       @if (!shownLevels().length) {
         <div class="hh-box hh-empty">
-          <p class="mb-0" data-no-handholding>No handholding is available for your unit's certification level now.</p>
-          <button type="button" class="hh-icon-btn" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
+          <p class="mb-0" data-no-handholding>{{ "No handholding is available for your unit's certification level now." | t: 'msme.handholding.empty' }}</p>
+          <button type="button" class="hh-icon-btn" [attr.aria-label]="'About Handholding Support' | t: 'msme.handholding.infoAria'" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
         </div>
       } @else {
         <div class="hh-levels">
@@ -37,11 +37,11 @@
           <section class="hh-box" id="hh-milestones" aria-labelledby="hh-ms-title">
             <header class="hh-box-head">
               <span class="hh-head-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
-              <h3 id="hh-ms-title">{{ levelName(level) }} handholding: milestones</h3>
+              <h3 id="hh-ms-title">{{ '{level} handholding: milestones' | t: 'msme.handholding.milestones.title' : { level: levelName(level) } }}</h3>
               @if (!paid(level)) {
-                <button type="button" class="hh-text-btn" (click)="viewDetails(level)">View details</button>
+                <button type="button" class="hh-text-btn" (click)="viewDetails(level)">{{ 'View details' | t: 'msme.handholding.milestones.detailsButton' }}</button>
               }
-              <button type="button" class="hh-icon-btn" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
+              <button type="button" class="hh-icon-btn" [attr.aria-label]="'About Handholding Support' | t: 'msme.handholding.infoAria'" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="" /></button>
             </header>
             <ol class="ms-list">
               @for (m of milestones(); track m.number) {
@@ -49,7 +49,7 @@
                   <span class="ms-num" aria-hidden="true">{{ m.accepted ? '✓' : m.number }}</span>
                   <div class="ms-body">
                     <div class="ms-line">
-                      <small class="ms-eyebrow">Milestone {{ m.number }}</small>
+                      <small class="ms-eyebrow">{{ 'Milestone {number}' | t: 'msme.handholding.milestones.numberLabel' : { number: m.number } }}</small>
                       <span class="ms-state">{{ m.state }}</span>
                     </div>
                     <!-- 2026-11-18 (the user's applicant designs): title and text on the left, the action on the right of the box, vertically centred. -->
@@ -67,12 +67,12 @@
                       @if (m.canAccept || m.applied || m.canApply) {
                         <div class="ms-act">
                           @if (m.canAccept) {
-                            <button type="button" class="btn btn-primary" (click)="openAccept(m)">Accept milestone {{ m.number }}</button>
+                            <button type="button" class="btn btn-primary" (click)="openAccept(m)">{{ 'Accept milestone {number}' | t: 'msme.handholding.milestones.acceptButton' : { number: m.number } }}</button>
                           }
                           @if (m.applied) {
-                            <a [class]="m.canAccept ? 'btn btn-outline-primary' : 'btn btn-primary'" [routerLink]="milestoneRoute(m)">{{ m.number === 1 ? 'View action plan' : 'View milestone' }}</a>
+                            <a [class]="m.canAccept ? 'btn btn-outline-primary' : 'btn btn-primary'" [routerLink]="milestoneRoute(m)">{{ m.number === 1 ? ('View action plan' | t: 'msme.handholding.milestones.planButton') : ('View milestone' | t: 'msme.handholding.milestones.viewButton') }}</a>
                           } @else if (m.canApply) {
-                            <button type="button" class="btn btn-primary ms-apply" (click)="apply(m)">Apply</button>
+                            <button type="button" class="btn btn-primary ms-apply" (click)="apply(m)">{{ 'Apply' | t: 'msme.handholding.milestones.applyButton' }}</button>
                           }
                         </div>
                       }
@@ -85,10 +85,10 @@
                 <span class="ms-num" aria-hidden="true">{{ done ? '✓' : 4 }}</span>
                 <div class="ms-body">
                   <div class="ms-line">
-                    <small class="ms-eyebrow">Completion</small>
-                    <span class="ms-state">{{ done ? 'Completed' : 'Not started' }}</span>
+                    <small class="ms-eyebrow">{{ 'Completion' | t: 'msme.handholding.completion.label' }}</small>
+                    <span class="ms-state">{{ done ? ('Completed' | t: 'msme.handholding.completion.doneLabel') : ('Not started' | t: 'msme.handholding.completion.notStartedLabel') }}</span>
                   </div>
-                  <strong class="ms-title">Handholding closed</strong>
+                  <strong class="ms-title">{{ 'Handholding closed' | t: 'msme.handholding.completion.title' }}</strong>
                   <div class="ms-desc">
                     <zed-text key="msme.handholding.steps.3"><p>Handholding is complete when all the actions of the implementation plan are done.</p></zed-text>
                   </div>
@@ -108,16 +108,16 @@
             <section class="hh-box" aria-labelledby="hh-cost-title">
               <header class="hh-box-head">
                 <span class="hh-head-icon hh-rupee" aria-hidden="true">₹</span>
-                <h3 id="hh-cost-title">Cost and subsidy</h3>
+                <h3 id="hh-cost-title">{{ 'Cost and subsidy' | t: 'msme.handholding.cost.title' }}</h3>
               </header>
               <dl class="hh-cost">
                 @if (cost(); as c) {
-                  <div><dt>Handholding cost</dt><dd>₹ {{ c.amount }}@if (c.taxes) { <small>incl. taxes</small> }</dd></div>
+                  <div><dt>{{ 'Handholding cost' | t: 'msme.handholding.cost.costLabel' }}</dt><dd>₹ {{ c.amount }}@if (c.taxes) { <small>{{ 'incl. taxes' | t: 'msme.handholding.cost.taxesNote' }}</small> }</dd></div>
                 }
-                <div><dt>Subsidy{{ size() ? ' (' + size() + ')' : '' }}</dt><dd class="hh-green">As per scheme</dd></div>
-                <div><dt>Your contribution</dt><dd>Shown before you pay</dd></div>
+                <div><dt>{{ size() ? ('Subsidy ({size})' | t: 'msme.handholding.cost.subsidySizeLabel' : { size: size() }) : ('Subsidy' | t: 'msme.handholding.cost.subsidyLabel') }}</dt><dd class="hh-green">{{ 'As per scheme' | t: 'msme.handholding.cost.subsidyText' }}</dd></div>
+                <div><dt>{{ 'Your contribution' | t: 'msme.handholding.cost.contributionLabel' }}</dt><dd>{{ 'Shown before you pay' | t: 'msme.handholding.cost.contributionText' }}</dd></div>
               </dl>
-              <p class="hh-cost-note">You pay at the start of each milestone; the next milestone opens after you accept the previous one.</p>
+              <p class="hh-cost-note">{{ 'You pay at the start of each milestone; the next milestone opens after you accept the previous one.' | t: 'msme.handholding.cost.note' }}</p>
             </section>
           </aside>
         }
@@ -132,8 +132,8 @@
     <div class="modal-dialog modal-sm modal-popup modal-certification-info modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="registration-title modal-title" id="infoTitle">{{ topic === 'My' ? 'Handholding Support' : 'Handholding for ' + levelName(topic) + ' Level' }}</h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="info.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          <h3 class="registration-title modal-title" id="infoTitle">{{ topic === 'My' ? ('Handholding Support' | t: 'msme.handholding.infoPopup.title') : ('Handholding for {level} Level' | t: 'msme.handholding.infoPopup.levelTitle' : { level: levelName(topic) }) }}</h3>
+          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.handholding.closeAria'" (click)="info.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
           <zed-text [key]="topic === 'My' ? 'msme.handholding.info.general' : 'msme.handholding.info.level'" />
@@ -150,11 +150,11 @@
     <div class="modal-dialog modal-popup modal-certification modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="registration-title modal-title" id="detailsTitle">{{ levelName(level).toUpperCase() }} LEVEL</h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="detailsOf.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          <h3 class="registration-title modal-title" id="detailsTitle">{{ '{level} LEVEL' | t: 'msme.handholding.details.title' : { level: levelName(level).toUpperCase() } }}</h3>
+          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.handholding.closeAria'" (click)="detailsOf.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
-          <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
+          <div class="modal-info"><p>{{ 'Click on APPLY button to start Application Process' | t: 'msme.handholding.details.note' }}</p></div>
         </div>
         <div class="modal-footer" [class.footer-silver]="level === 'Silver'" [class.footer-gold]="level === 'Gold'" [class.footer-zedx]="level === 'ZEDX'">
           <div><span class="img-bg"></span><img [src]="logo(level)" alt="" /></div>
@@ -171,8 +171,8 @@
     <div class="modal-dialog modal-md modal-popup modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="registration-title modal-title" id="acceptTitle">Accept Milestone {{ a.milestone }}</h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="accepting.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          <h3 class="registration-title modal-title" id="acceptTitle">{{ 'Accept Milestone {number}' | t: 'msme.handholding.accept.title' : { number: a.milestone } }}</h3>
+          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'msme.handholding.closeAria'" (click)="accepting.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
           <div class="checkbox-text">
@@ -183,8 +183,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="accepting.set(null)">Cancel</button>
-          <button type="button" class="btn btn-primary" [disabled]="!accepted || busy()" (click)="submitAccept()">Submit</button>
+          <button type="button" class="btn btn-default" (click)="accepting.set(null)">{{ 'Cancel' | t: 'msme.handholding.accept.cancelButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="!accepted || busy()" (click)="submitAccept()">{{ 'Submit' | t: 'msme.handholding.accept.submitButton' }}</button>
         </div>
       </div>
     </div>
@@ -193,5 +193,5 @@
 }
 
 @if (busy()) {
-  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Please wait…' | t: 'msme.handholding.loading' }}</span></div>
 }

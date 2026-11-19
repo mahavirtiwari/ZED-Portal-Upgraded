@@ -1,9 +1,9 @@
 <!-- 2026-11-17 (the user's staff design 15): the shared header, then the unit's identity with its links. -->
-<zed-page-head [crumbs]="crumbs" title="MSME Profile">
+<zed-page-head [crumbs]="crumbs()" [title]="'MSME Profile' | t: 'staff.msmeProfile.title'">
   @if (profile() && canEdit && !editing()) {
-    <button type="button" class="btn btn-primary" (click)="startEdit()">Edit Profile</button>
+    <button type="button" class="btn btn-primary" (click)="startEdit()">{{ 'Edit Profile' | t: 'staff.msmeProfile.editButton' }}</button>
   }
-  <button type="button" class="btn btn-ph pf-back" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> Back</button>
+  <button type="button" class="btn btn-ph pf-back" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg> {{ 'Back' | t: 'staff.msmeProfile.backButton' }}</button>
 </zed-page-head>
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -11,7 +11,7 @@
 @if (success()) {
   <div class="alert alert-success alert-dismissible" role="status">
     {{ success() }}
-    <button type="button" class="btn-close" aria-label="Close" (click)="success.set('')"></button>
+    <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.msmeProfile.closeAria'" (click)="success.set('')"></button>
   </div>
 }
 @if (profile(); as p) {
@@ -20,8 +20,8 @@
     <div class="pf-id-text">
       <h3 class="pf-name" id="pf-name">{{ name(p) }}</h3>
       <div class="pf-tags">
-        @if (text(p.enterprise, 'UdyogAadharNo')) { <span class="pf-tag"><small>Udyam</small>&ngsp;{{ text(p.enterprise, 'UdyogAadharNo') }}</span> }
-        <span class="pf-tag"><small>ZED ID</small>&ngsp;{{ zedId }}</span>
+        @if (text(p.enterprise, 'UdyogAadharNo')) { <span class="pf-tag"><small>{{ 'Udyam' | t: 'staff.msmeProfile.udyamLabel' }}</small>&ngsp;{{ text(p.enterprise, 'UdyogAadharNo') }}</span> }
+        <span class="pf-tag"><small>{{ 'ZED ID' | t: 'staff.msmeProfile.zedIdLabel' }}</small>&ngsp;{{ zedId }}</span>
         @if (text(p.enterprise, 'EnterpriseTypee')) { <span class="pf-chip pf-type">{{ text(p.enterprise, 'EnterpriseTypee') }}</span> }
         @for (c of p.certifications; track $index) { <span class="pf-chip">{{ c }}</span> }
       </div>
@@ -30,7 +30,7 @@
       <div class="pf-links">
         @if (historyLink) {
           <a class="btn btn-ph" [routerLink]="historyLink" [queryParams]="{ zedId: zedId }">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg> ZED ID history</a>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg> {{ 'ZED ID history' | t: 'staff.msmeProfile.historyLink' }}</a>
         }
         @for (a of assessmentLinks(); track a.level) {
           <a class="btn btn-outline-primary" [routerLink]="a.link">{{ a.label }}</a>
@@ -92,8 +92,8 @@
 
   @if (editing()) {
     <div class="form-actions mb-3">
-      <button type="button" class="btn btn-default" (click)="cancelEdit()">Cancel</button>
-      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="update()">Update</button>
+      <button type="button" class="btn btn-default" (click)="cancelEdit()">{{ 'Cancel' | t: 'staff.msmeProfile.cancelButton' }}</button>
+      <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="update()">{{ 'Update' | t: 'staff.msmeProfile.updateButton' }}</button>
     </div>
   }
 
@@ -101,7 +101,7 @@
     <section class="pf-card pf-history" aria-labelledby="pf-history-h">
       <div class="pf-card-h">
         <span class="pf-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span>
-        <h4 class="pf-bar" id="pf-history-h">Edit history (changes made by the applicant)</h4>
+        <h4 class="pf-bar" id="pf-history-h">{{ 'Edit history (changes made by the applicant)' | t: 'staff.msmeProfile.editHistory.title' }}</h4>
       </div>
       <div class="pf-history-body">
         <zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" layout="table" />
@@ -109,5 +109,5 @@
     </section>
   }
 } @else if (loading()) {
-  <p role="status">Loading…</p>
+  <p role="status">{{ 'Loading…' | t: 'staff.msmeProfile.loadingText' }}</p>
 }

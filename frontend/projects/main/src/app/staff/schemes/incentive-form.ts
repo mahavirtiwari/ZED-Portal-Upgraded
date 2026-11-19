@@ -3,8 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { INCENTIVE_ACTIVITIES, INCENTIVE_GROUPS, IncentiveActivity, IncentiveDisplay, IncentiveForm, IncentiveGroup, IncentivesApi, STATES, incentiveActivity } from './incentives.api';
-import { GROUP_CARD, MAX_INCENTIVE_DOC_BYTES } from './incentive-master';
+import { TextPipe, t } from '../../content/page-text';
+import { INCENTIVE_ACTIVITIES, INCENTIVE_GROUPS, IncentiveActivity, IncentiveDisplay, IncentiveForm, IncentiveGroup, IncentiveGroupKey, IncentivesApi, STATES, activityText, groupText, incentiveActivity } from './incentives.api';
+import { MAX_INCENTIVE_DOC_BYTES } from './incentive-master';
 
 type TextKey = 'incentive' | 'details' | 'ministryOrDepartment' | 'contactPerson' | 'mobileNo' | 'email' | 'videoLink' | 'webLink' | 'cardHighlight';
 type LevelKey = 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold' | 'applicableForZEDX';
@@ -18,13 +19,18 @@ function emptyForm(): IncentiveForm {
   };
 }
 
-/** The stakeholder cards of "My Incentives" on the MSME dashboard (their picture and fixed text), for the preview. */
-const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: string }> = {
-  ministry: { image: '/Images/Dashboard/dash-msme.PNG', text: 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs' },
-  state: { image: '/Images/Dashboard/stateUts.png', text: 'Incentives by States/UTs for ZED Certified MSMEs' },
-  financial: { image: '/Images/Dashboard/financial-Institution.png', text: 'Incentives by Financial Institutions for ZED Certified MSMEs' },
-  others: { image: '/Images/Dashboard/incentive.png', text: 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs' },
-};
+/**
+ * The stakeholder cards of "My Incentives" on the MSME dashboard (their picture and fixed text), for the preview; the text is
+ * the MSME dashboard's own wording (msme.dashboard.stakeholder.*), so the preview shows what MSMEs see.
+ */
+function stakeholderCardOf(key: IncentiveGroupKey): { image: string; text: string } {
+  switch (key) {
+    case 'ministry': return { image: '/Images/Dashboard/dash-msme.PNG', text: t('msme.dashboard.stakeholder.msme.text', 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs') };
+    case 'state': return { image: '/Images/Dashboard/stateUts.png', text: t('msme.dashboard.stakeholder.states.text', 'Incentives by States/UTs for ZED Certified MSMEs') };
+    case 'financial': return { image: '/Images/Dashboard/financial-Institution.png', text: t('msme.dashboard.stakeholder.financial.text', 'Incentives by Financial Institutions for ZED Certified MSMEs') };
+    default: return { image: '/Images/Dashboard/incentive.png', text: t('msme.dashboard.stakeholder.other.text', 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs') };
+  }
+}
 
 /**
  * Create New Incentive / Edit Incentive (V4, as the LEAN portal's incentive form): the incentive's details, its
@@ -35,23 +41,24 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
  * dashboard, or listed inside its stakeholder card (Ministry of MSME, States/UTs, ...), as before. V4 layout: numbered
  * sections (details, levels as choice cards, nodal contact, resources, where it appears and status) beside a live
  * preview of the card as the MSME dashboard shows it, and a save bar that says when there are unsaved changes.
+ * 2026-11-19 ("All page wording"): every wording is the Admin's (Texts → Page wording, staff.incentiveForm.*) or the standard one here.
  */
 @Component({
   selector: 'zed-staff-incentive-form',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TextPipe],
   template: `
     <div class="back-row">
-      <nav class="crumbs" aria-label="Breadcrumb">
-        <span>Incentives</span><span aria-hidden="true">›</span>
-        <a [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">{{ group().label }}</a><span aria-hidden="true">›</span>
-        <span aria-current="page">{{ editId() ? 'Edit' : 'Create' }}</span>
+      <nav class="crumbs" [attr.aria-label]="'Breadcrumb' | t: 'staff.incentiveForm.crumbsAria'">
+        <span>{{ 'Incentives' | t: 'staff.incentiveForm.crumb.incentives' }}</span><span aria-hidden="true">›</span>
+        <a [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">{{ text().label }}</a><span aria-hidden="true">›</span>
+        <span aria-current="page">{{ editId() ? ('Edit' | t: 'staff.incentiveForm.crumb.edit') : ('Create' | t: 'staff.incentiveForm.crumb.create') }}</span>
       </nav>
-      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">← Back</a>
+      <a class="btn btn-outline-primary btn-sm back-btn" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">{{ '← Back' | t: 'staff.incentiveForm.backButton' }}</a>
     </div>
     <div class="page-head">
       <div>
-        <h3 class="registration-title">{{ editId() ? 'Edit Incentive' : 'Create New Incentive' }} <span class="zed-chip">{{ group().label }}</span></h3>
-        <p class="page-sub">{{ editId() ? group().subtitle : group().createSubtitle }}</p>
+        <h3 class="registration-title">{{ editId() ? ('Edit Incentive' | t: 'staff.incentiveForm.editTitle') : ('Create New Incentive' | t: 'staff.incentiveForm.createTitle') }} <span class="zed-chip">{{ text().label }}</span></h3>
+        <p class="page-sub">{{ editId() ? text().subtitle : text().createSubtitle }}</p>
       </div>
     </div>
     @if (error()) {
@@ -62,94 +69,94 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
         <div class="inc-form">
           <div class="inc-sections">
             <section class="zed-card" aria-labelledby="inc-details-h">
-              <h5 class="inc-h" id="inc-details-h"><span class="inc-step">1</span> Incentive details</h5>
-              <label class="form-label" for="inc-incentive">Incentive title<span class="req">*</span></label>
-              <input class="form-control" id="inc-incentive" name="incentive" maxlength="4000" placeholder="e.g. CLCS-TUS Capital Subsidy Scheme" [ngModel]="form().incentive" (ngModelChange)="patch('incentive', $event)" />
-              <label class="form-label" for="inc-details">Description<span class="req">*</span></label>
-              <textarea class="form-control" id="inc-details" name="details" rows="4" maxlength="4000" placeholder="Eligibility, quantum of assistance, application route and scope of the scheme." [ngModel]="form().details" (ngModelChange)="patch('details', $event)"></textarea>
+              <h5 class="inc-h" id="inc-details-h"><span class="inc-step">1</span> {{ 'Incentive details' | t: 'staff.incentiveForm.details.title' }}</h5>
+              <label class="form-label" for="inc-incentive">{{ 'Incentive title' | t: 'staff.incentiveForm.incentive.label' }}<span class="req">*</span></label>
+              <input class="form-control" id="inc-incentive" name="incentive" maxlength="4000" [placeholder]="'e.g. CLCS-TUS Capital Subsidy Scheme' | t: 'staff.incentiveForm.incentive.placeholder'" [ngModel]="form().incentive" (ngModelChange)="patch('incentive', $event)" />
+              <label class="form-label" for="inc-details">{{ 'Description' | t: 'staff.incentiveForm.description.label' }}<span class="req">*</span></label>
+              <textarea class="form-control" id="inc-details" name="details" rows="4" maxlength="4000" [placeholder]="'Eligibility, quantum of assistance, application route and scope of the scheme.' | t: 'staff.incentiveForm.description.placeholder'" [ngModel]="form().details" (ngModelChange)="patch('details', $event)"></textarea>
               <small class="muted d-block text-end">{{ form().details.length }} / 4000</small>
               <div class="inc-pair">
                 <div>
-                  <label class="form-label" for="inc-group">Stakeholder<span class="req">*</span></label>
+                  <label class="form-label" for="inc-group">{{ 'Stakeholder' | t: 'staff.incentiveForm.stakeholder.label' }}<span class="req">*</span></label>
                   <select class="form-select" id="inc-group" name="group" [disabled]="!!editId()" [ngModel]="group().key" (ngModelChange)="pickGroup($event)">
-                    @for (g of groups; track g.key) { <option [value]="g.key">{{ g.label }}</option> }
+                    @for (g of groups; track g.key) { <option [value]="g.key">{{ groupLabel(g.key) }}</option> }
                   </select>
                 </div>
                 @if (group().key === 'state') {
                   <div>
-                    <label class="form-label" for="inc-state">State / UT<span class="req">*</span></label>
+                    <label class="form-label" for="inc-state">{{ 'State / UT' | t: 'staff.incentiveForm.state.label' }}<span class="req">*</span></label>
                     <select class="form-select" id="inc-state" name="state" [disabled]="!!editId()" [ngModel]="state()" (ngModelChange)="state.set($event)">
-                      <option value="">Select state</option>
+                      <option value="">{{ 'Select state' | t: 'staff.incentiveForm.state.selectOption' }}</option>
                       @for (s of states; track s.id) { <option [value]="s.name">{{ s.name }}</option> }
                     </select>
                   </div>
                 }
               </div>
-              <label class="form-label" for="inc-ministryOrDepartment">{{ group().department }}<span class="req">*</span></label>
-              <input class="form-control" id="inc-ministryOrDepartment" name="ministryOrDepartment" maxlength="4000" [placeholder]="group().departmentHint" [ngModel]="form().ministryOrDepartment" (ngModelChange)="patch('ministryOrDepartment', $event)" />
+              <label class="form-label" for="inc-ministryOrDepartment">{{ text().department }}<span class="req">*</span></label>
+              <input class="form-control" id="inc-ministryOrDepartment" name="ministryOrDepartment" maxlength="4000" [placeholder]="text().departmentHint" [ngModel]="form().ministryOrDepartment" (ngModelChange)="patch('ministryOrDepartment', $event)" />
             </section>
 
             <section class="zed-card" aria-labelledby="inc-activity-h">
-              <h5 class="inc-h" id="inc-activity-h"><span class="inc-step">2</span> Applies to<span class="req">*</span></h5>
+              <h5 class="inc-h" id="inc-activity-h"><span class="inc-step">2</span> {{ 'Applies to' | t: 'staff.incentiveForm.activity.title' }}<span class="req">*</span></h5>
               <div class="seg act-seg" role="radiogroup" aria-labelledby="inc-activity-h">
                 @for (a of activities; track a.value) {
                   <button type="button" role="radio" [attr.data-activity]="a.value" [class.active]="form().applicableActivity === a.value"
-                          [attr.aria-checked]="form().applicableActivity === a.value" (click)="patchActivity(a.value)">{{ a.label }}</button>
+                          [attr.aria-checked]="form().applicableActivity === a.value" (click)="patchActivity(a.value)">{{ activityLabel(a.value) }}</button>
                 }
               </div>
-              <small class="muted d-block mt-2">The MSMEs whose Udyam activity is this see the incentive. Both: every MSME.</small>
+              <small class="muted d-block mt-2">{{ 'The MSMEs whose Udyam activity is this see the incentive. Both: every MSME.' | t: 'staff.incentiveForm.activity.note' }}</small>
             </section>
 
             <section class="zed-card" aria-labelledby="inc-levels-h">
-              <h5 class="inc-h" id="inc-levels-h"><span class="inc-step">3</span> Activation level<span class="req">*</span></h5>
-              <div class="level-options" role="group" aria-label="Activation level">
+              <h5 class="inc-h" id="inc-levels-h"><span class="inc-step">3</span> {{ 'Activation level' | t: 'staff.incentiveForm.levels.title' }}<span class="req">*</span></h5>
+              <div class="level-options" role="group" [attr.aria-label]="'Activation level' | t: 'staff.incentiveForm.levels.title'">
                 @for (l of levels; track l.key) {
                   <label class="level-option" [class]="'lv-' + l.css" [class.is-on]="form()[l.key]">
                     <input type="checkbox" class="form-check-input" [id]="'inc-' + l.key" [name]="l.key" [ngModel]="form()[l.key]" (ngModelChange)="patchLevel(l.key, $event)" />
-                    <span class="level-body"><span class="level-name">{{ l.label }}</span><span class="level-help">Units with {{ l.short }} certification</span></span>
+                    <span class="level-body"><span class="level-name">{{ l.label }}</span><span class="level-help">{{ 'Units with {level} certification' | t: 'staff.incentiveForm.levels.optionNote' : { level: l.short } }}</span></span>
                   </label>
                 }
               </div>
-              <small class="muted d-block mt-2">Tick every level this incentive applies to.{{ editId() ? ' The stakeholder and state of a saved incentive stay as they are.' : '' }}</small>
+              <small class="muted d-block mt-2">{{ 'Tick every level this incentive applies to.' | t: 'staff.incentiveForm.levels.note' }}{{ editId() ? ' ' + ('The stakeholder and state of a saved incentive stay as they are.' | t: 'staff.incentiveForm.levels.savedNote') : '' }}</small>
             </section>
 
             <section class="zed-card" aria-labelledby="inc-contact-h">
-              <h5 class="inc-h" id="inc-contact-h"><span class="inc-step">4</span> Nodal contact</h5>
-              <label class="form-label" for="inc-contactPerson">Contact person with designation<span class="req">*</span></label>
-              <input class="form-control" id="inc-contactPerson" name="contactPerson" maxlength="2000" placeholder="e.g. Shri A. Kumar, Deputy Director" [ngModel]="form().contactPerson" (ngModelChange)="patch('contactPerson', $event)" />
+              <h5 class="inc-h" id="inc-contact-h"><span class="inc-step">4</span> {{ 'Nodal contact' | t: 'staff.incentiveForm.contact.title' }}</h5>
+              <label class="form-label" for="inc-contactPerson">{{ 'Contact person with designation' | t: 'staff.incentiveForm.contactPerson.label' }}<span class="req">*</span></label>
+              <input class="form-control" id="inc-contactPerson" name="contactPerson" maxlength="2000" [placeholder]="'e.g. Shri A. Kumar, Deputy Director' | t: 'staff.incentiveForm.contactPerson.placeholder'" [ngModel]="form().contactPerson" (ngModelChange)="patch('contactPerson', $event)" />
               <div class="inc-pair">
                 <div>
-                  <label class="form-label" for="inc-mobileNo">Mobile / phone number<span class="req">*</span></label>
+                  <label class="form-label" for="inc-mobileNo">{{ 'Mobile / phone number' | t: 'staff.incentiveForm.mobile.label' }}<span class="req">*</span></label>
                   <input class="form-control" id="inc-mobileNo" name="mobileNo" maxlength="15" [ngModel]="form().mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
                 </div>
                 <div>
-                  <label class="form-label" for="inc-email">Official e-mail<span class="req">*</span></label>
+                  <label class="form-label" for="inc-email">{{ 'Official e-mail' | t: 'staff.incentiveForm.email.label' }}<span class="req">*</span></label>
                   <input class="form-control" id="inc-email" name="email" type="email" maxlength="200" [ngModel]="form().email" (ngModelChange)="patch('email', $event)" />
                 </div>
               </div>
             </section>
 
             <section class="zed-card" aria-labelledby="inc-res-h">
-              <h5 class="inc-h" id="inc-res-h"><span class="inc-step">5</span> Attach resources</h5>
+              <h5 class="inc-h" id="inc-res-h"><span class="inc-step">5</span> {{ 'Attach resources' | t: 'staff.incentiveForm.resources.title' }}</h5>
               <div class="inc-pair">
                 <div>
-                  <label class="form-label" for="inc-webLink">Portal / scheme link<span class="req">*</span></label>
+                  <label class="form-label" for="inc-webLink">{{ 'Portal / scheme link' | t: 'staff.incentiveForm.webLink.label' }}<span class="req">*</span></label>
                   <input class="form-control" id="inc-webLink" name="webLink" maxlength="1000" placeholder="https://" [ngModel]="form().webLink" (ngModelChange)="patch('webLink', $event)" />
-                  <small class="muted">A full address starting with https://, or --- when there is none.</small>
+                  <small class="muted">{{ 'A full address starting with https://, or --- when there is none.' | t: 'staff.incentiveForm.webLink.note' }}</small>
                 </div>
                 <div>
-                  <label class="form-label" for="inc-videoLink">Video link (tutorial / guide)</label>
+                  <label class="form-label" for="inc-videoLink">{{ 'Video link (tutorial / guide)' | t: 'staff.incentiveForm.videoLink.label' }}</label>
                   <input class="form-control" id="inc-videoLink" name="videoLink" maxlength="2000" placeholder="https://" [ngModel]="form().videoLink" (ngModelChange)="patch('videoLink', $event)" />
                 </div>
               </div>
               <div class="inc-pair">
                 @for (n of [1, 2]; track n) {
                   <div>
-                    <label class="form-label" [for]="'inc-doc' + n">{{ n === 1 ? 'Guidelines' : 'Gazette / other document' }} (PDF, up to 2 MB)</label>
+                    <label class="form-label" [for]="'inc-doc' + n">{{ n === 1 ? ('Guidelines (PDF, up to 2 MB)' | t: 'staff.incentiveForm.doc1.label') : ('Gazette / other document (PDF, up to 2 MB)' | t: 'staff.incentiveForm.doc2.label') }}</label>
                     <div class="doc-row">
                       <input class="form-control" type="file" accept="application/pdf" [id]="'inc-doc' + n" (change)="pick(n === 1 ? 1 : 2, $event)" />
                       @if (hasDocument()[n - 1]) {
-                        <a [href]="docUrl(n)" target="_blank" rel="noopener" [attr.aria-label]="'Current document ' + n"><img src="Images/svgicons/pdf-icon.svg" alt="" height="26" /></a>
+                        <a [href]="docUrl(n)" target="_blank" rel="noopener" [attr.aria-label]="'Current document {n}' | t: 'staff.incentiveForm.doc.currentAria' : { n }"><img src="Images/svgicons/pdf-icon.svg" alt="" height="26" /></a>
                       }
                     </div>
                   </div>
@@ -158,85 +165,85 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
             </section>
 
             <section class="zed-card" aria-labelledby="inc-where-h">
-              <h5 class="inc-h" id="inc-where-h"><span class="inc-step">6</span> Where it appears</h5>
+              <h5 class="inc-h" id="inc-where-h"><span class="inc-step">6</span> {{ 'Where it appears' | t: 'staff.incentiveForm.where.title' }}</h5>
               <div class="where-options" role="radiogroup" aria-labelledby="inc-where-h">
-                @for (o of places; track o.value) {
+                @for (o of places(); track o.value) {
                   <label class="where-option" [class.is-on]="form().displayOn === o.value" [for]="'inc-where-' + o.value">
                     <input class="form-check-input" type="radio" name="displayOn" [id]="'inc-where-' + o.value" [value]="o.value"
                            [ngModel]="form().displayOn" (ngModelChange)="patchDisplay($event)" />
                     <span class="where-body">
                       <span class="where-title">{{ o.title }}</span>
-                      <span class="where-help">{{ o.value === 'Card' ? o.help.replace('{group}', groupCard()) : o.help }}</span>
+                      <span class="where-help">{{ o.help }}</span>
                     </span>
                   </label>
                 }
               </div>
               @if (form().displayOn === 'Dashboard') {
-                <label class="form-label" for="inc-cardHighlight">Card highlight</label>
-                <input class="form-control" id="inc-cardHighlight" name="cardHighlight" maxlength="300" placeholder="e.g. Up to Rs. 5,00,000/-"
+                <label class="form-label" for="inc-cardHighlight">{{ 'Card highlight' | t: 'staff.incentiveForm.highlight.label' }}</label>
+                <input class="form-control" id="inc-cardHighlight" name="cardHighlight" maxlength="300" [placeholder]="'e.g. Up to Rs. 5,00,000/-' | t: 'staff.incentiveForm.highlight.placeholder'"
                        [ngModel]="form().cardHighlight" (ngModelChange)="patch('cardHighlight', $event)" />
-                <small class="muted">Shown in colour on the card, before the first lines of the description. The card's Avail button shows the full details.</small>
+                <small class="muted">{{ "Shown in colour on the card, before the first lines of the description. The card's Avail button shows the full details." | t: 'staff.incentiveForm.highlight.note' }}</small>
               }
 
-              <h5 class="inc-h mt-4">Status</h5>
+              <h5 class="inc-h mt-4">{{ 'Status' | t: 'staff.incentiveForm.status.title' }}</h5>
               <div class="form-check form-switch inc-switch" [class.is-on]="form().activeStatus">
                 <input class="form-check-input" type="checkbox" role="switch" id="inc-active" name="activeStatus" [ngModel]="form().activeStatus" (ngModelChange)="patchActive($event)" />
-                <label class="form-check-label" for="inc-active">{{ form().activeStatus ? 'Active: shown on the public incentive pages' : 'Inactive: not shown to MSMEs' }}</label>
+                <label class="form-check-label" for="inc-active">{{ form().activeStatus ? ('Active: shown on the public incentive pages' | t: 'staff.incentiveForm.status.activeLabel') : ('Inactive: not shown to MSMEs' | t: 'staff.incentiveForm.status.inactiveLabel') }}</label>
               </div>
             </section>
           </div>
 
-          <aside class="inc-preview" aria-label="Preview">
-            <h4>Preview</h4>
+          <aside class="inc-preview" [attr.aria-label]="'Preview' | t: 'staff.incentiveForm.preview.title'">
+            <h4>{{ 'Preview' | t: 'staff.incentiveForm.preview.title' }}</h4>
             @if (form().displayOn === 'Dashboard') {
-              <p class="pv-where">Its own card in "My Incentives" on the MSME dashboard</p>
+              <p class="pv-where">{{ 'Its own card in "My Incentives" on the MSME dashboard' | t: 'staff.incentiveForm.preview.dashboardNote' }}</p>
               <div class="pv-card" [class.is-off]="!form().activeStatus">
                 <div class="pv-card-head">
                   <img src="/Images/Dashboard/incentive.png" alt="" />
-                  <span class="pv-avail" aria-hidden="true">Avail</span>
+                  <span class="pv-avail" aria-hidden="true">{{ 'Avail' | t: 'msme.dashboard.incentive.availButton' }}</span>
                 </div>
                 <div class="pv-card-body">
-                  <div class="pv-title">{{ form().incentive.trim() || 'Incentive title' }}</div>
-                  <p class="pv-text">@if (form().cardHighlight.trim()) { <span class="pv-spot">{{ form().cardHighlight }}</span> } {{ form().details.trim() || 'The first lines of the description show here.' }}</p>
+                  <div class="pv-title">{{ form().incentive.trim() || ('Incentive title' | t: 'staff.incentiveForm.preview.emptyTitle') }}</div>
+                  <p class="pv-text">@if (form().cardHighlight.trim()) { <span class="pv-spot">{{ form().cardHighlight }}</span> } {{ form().details.trim() || ('The first lines of the description show here.' | t: 'staff.incentiveForm.preview.emptyDetailsNote') }}</p>
                 </div>
               </div>
             } @else {
-              <p class="pv-where">Listed inside the {{ groupCard() }} card of the MSME dashboard</p>
+              <p class="pv-where">{{ 'Listed inside the {card} card of the MSME dashboard' | t: 'staff.incentiveForm.preview.cardNote' : { card: groupCard() } }}</p>
               <div class="pv-card" [class.is-off]="!form().activeStatus">
                 <div class="pv-card-head">
                   <img [src]="stakeholderCard().image" alt="" [class.pv-wide]="group().key === 'ministry'" />
-                  <span class="pv-avail" aria-hidden="true">Avail</span>
+                  <span class="pv-avail" aria-hidden="true">{{ 'Avail' | t: 'msme.dashboard.incentive.availButton' }}</span>
                 </div>
                 <div class="pv-card-body">
                   <div class="pv-title">{{ groupCard() }}</div>
                   <p class="pv-text">{{ stakeholderCard().text }}</p>
                 </div>
               </div>
-              <p class="pv-where mt-3">Avail opens the incentive page, where it shows as</p>
+              <p class="pv-where mt-3">{{ 'Avail opens the incentive page, where it shows as' | t: 'staff.incentiveForm.preview.pageNote' }}</p>
               <div class="pv-row" [class.is-off]="!form().activeStatus">
-                <strong>{{ form().incentive.trim() || 'Incentive title' }}</strong>
-                <small class="muted d-block">{{ form().ministryOrDepartment.trim() || group().departmentHint }}</small>
+                <strong>{{ form().incentive.trim() || ('Incentive title' | t: 'staff.incentiveForm.preview.emptyTitle') }}</strong>
+                <small class="muted d-block">{{ form().ministryOrDepartment.trim() || text().departmentHint }}</small>
               </div>
             }
 
             <dl class="pv-facts">
-              <div><dt>Applies to</dt><dd data-pv-activity>{{ form().applicableActivity === 'Both' ? 'Manufacturing and Services' : form().applicableActivity + ' only' }}</dd></div>
-              <div><dt>Levels</dt><dd>
+              <div><dt>{{ 'Applies to' | t: 'staff.incentiveForm.preview.activityLabel' }}</dt><dd data-pv-activity>{{ appliesTo() }}</dd></div>
+              <div><dt>{{ 'Levels' | t: 'staff.incentiveForm.preview.levelsLabel' }}</dt><dd>
                 @for (l of chosenLevels(); track l.key) { <span class="lv-chip" [class]="'lv-' + l.css">{{ l.label }}</span> }
-                @if (!chosenLevels().length) { <span class="pv-missing">No level ticked yet</span> }
+                @if (!chosenLevels().length) { <span class="pv-missing">{{ 'No level ticked yet' | t: 'staff.incentiveForm.preview.noLevelNote' }}</span> }
               </dd></div>
-              <div><dt>Status</dt><dd>
-                <span class="status-badge" [class.is-active]="form().activeStatus" [class.is-inactive]="!form().activeStatus">{{ form().activeStatus ? 'Active' : 'Inactive' }}</span>
+              <div><dt>{{ 'Status' | t: 'staff.incentiveForm.preview.statusLabel' }}</dt><dd>
+                <span class="status-badge" [class.is-active]="form().activeStatus" [class.is-inactive]="!form().activeStatus">{{ form().activeStatus ? ('Active' | t: 'staff.incentiveForm.status.active') : ('Inactive' | t: 'staff.incentiveForm.status.inactive') }}</span>
               </dd></div>
             </dl>
-            <small class="muted d-block">MSMEs not certified at these levels see the card faded{{ form().applicableActivity === 'Both' ? '' : '; MSMEs of the other activity do not see it' }}.</small>
+            <small class="muted d-block">{{ form().applicableActivity === 'Both' ? ('MSMEs not certified at these levels see the card faded.' | t: 'staff.incentiveForm.preview.fadedNote') : ('MSMEs not certified at these levels see the card faded; MSMEs of the other activity do not see it.' | t: 'staff.incentiveForm.preview.fadedActivityNote') }}</small>
           </aside>
         </div>
         <div class="form-actions save-bar" [class.is-dirty]="dirty()">
-          @if (dirty()) { <span class="unsaved me-auto">Not saved yet. All fields marked * are mandatory.</span> }
-          @else { <span class="muted me-auto save-note">All fields marked * are mandatory.</span> }
-          <a class="btn btn-default" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">Cancel</a>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save Incentive</button>
+          @if (dirty()) { <span class="unsaved me-auto">{{ 'Not saved yet. All fields marked * are mandatory.' | t: 'staff.incentiveForm.save.dirtyNote' }}</span> }
+          @else { <span class="muted me-auto save-note">{{ 'All fields marked * are mandatory.' | t: 'staff.incentiveForm.save.note' }}</span> }
+          <a class="btn btn-default" [routerLink]="['/staff/incentives', group().key]" [queryParams]="stateParams()">{{ 'Cancel' | t: 'staff.incentiveForm.cancelButton' }}</a>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save Incentive' | t: 'staff.incentiveForm.saveButton' }}</button>
         </div>
       </form>
     }
@@ -354,12 +361,21 @@ export class IncentiveFormPage {
   ];
   protected readonly activities = INCENTIVE_ACTIVITIES;
 
-  protected readonly places: { value: IncentiveDisplay; title: string; help: string }[] = [
-    { value: 'Dashboard', title: 'Main dashboard', help: 'Its own card in "My Incentives" on every MSME\'s dashboard.' },
-    { value: 'Card', title: 'Stakeholder card', help: 'Listed inside the {group} card of the dashboard.' },
-  ];
-
   protected readonly group = signal<IncentiveGroup>(INCENTIVE_GROUPS[0]);
+  /** The group's wording (the Admin's or the standard). */
+  protected readonly text = computed(() => groupText(this.group().key));
+  protected readonly places = computed<{ value: IncentiveDisplay; title: string; help: string }[]>(() => [
+    { value: 'Dashboard', title: t('staff.incentiveForm.where.dashboardLabel', 'Main dashboard'),
+      help: t('staff.incentiveForm.where.dashboardNote', 'Its own card in "My Incentives" on every MSME\'s dashboard.') },
+    { value: 'Card', title: t('staff.incentiveForm.where.cardLabel', 'Stakeholder card'),
+      help: t('staff.incentiveForm.where.cardNote', 'Listed inside the {group} card of the dashboard.', { group: this.groupCard() }) },
+  ]);
+  /** "Applies to" of the preview. */
+  protected readonly appliesTo = computed(() => {
+    const a = this.form().applicableActivity;
+    return a === 'Both' ? t('staff.incentiveForm.preview.bothActivities', 'Manufacturing and Services')
+      : a === 'Manufacturing' ? t('staff.incentiveForm.preview.manufacturingOnly', 'Manufacturing only') : t('staff.incentiveForm.preview.servicesOnly', 'Services only');
+  });
   protected readonly state = signal('');
   protected readonly editId = signal<number | null>(null);
   protected readonly form = signal<IncentiveForm>(emptyForm());
@@ -370,7 +386,7 @@ export class IncentiveFormPage {
   private readonly filesChosen = signal(0);
   protected readonly dirty = computed(() => this.filesChosen() > 0 || JSON.stringify(this.form()) !== this.initial());
   protected readonly chosenLevels = computed(() => this.levels.filter((l) => this.form()[l.key]).map((l) => ({ key: l.key, label: l.short, css: l.css })));
-  protected readonly stakeholderCard = computed(() => STAKEHOLDER_CARD[this.group().key]);
+  protected readonly stakeholderCard = computed(() => stakeholderCardOf(this.group().key));
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -406,7 +422,15 @@ export class IncentiveFormPage {
 
   /** The dashboard card that lists the group's incentives. */
   protected groupCard(): string {
-    return GROUP_CARD[this.group().key];
+    return this.text().card;
+  }
+
+  protected groupLabel(key: IncentiveGroupKey): string {
+    return groupText(key).label;
+  }
+
+  protected activityLabel(a: IncentiveActivity): string {
+    return activityText(a);
   }
 
   protected patchActive(value: boolean): void {
@@ -433,7 +457,7 @@ export class IncentiveFormPage {
       input.value = '';
       this.files[n - 1] = null;
       this.filesChosen.set(this.files.filter(Boolean).length);
-      this.error.set('Please choose a valid PDF document (less than 2 MB).');
+      this.error.set(t('staff.incentiveForm.doc.pdfError', 'Please choose a valid PDF document (less than 2 MB).'));
       return;
     }
     this.files[n - 1] = file;
@@ -469,9 +493,9 @@ export class IncentiveFormPage {
       const docs = this.files.map((file, i) => ({ file, n: (i + 1) as 1 | 2 })).filter((d) => d.file);
       if (docs.length && savedId) {
         for (const d of docs) await firstValueFrom(this.api.uploadDocument(savedId, d.n, type, d.file!));
-        message += ' Documents attached.';
+        message += ' ' + t('staff.incentiveForm.toast.docsAttached', 'Documents attached.');
       } else if (docs.length) {
-        message += ' Attach the documents from the list.';
+        message += ' ' + t('staff.incentiveForm.toast.attachFromList', 'Attach the documents from the list.');
       }
       await this.router.navigate(['/staff/incentives', this.group().key], { queryParams: this.stateParams(), state: { message } });
     } catch (err) {
@@ -483,14 +507,19 @@ export class IncentiveFormPage {
   }
 
   private missing(f: IncentiveForm): string | null {
-    if (this.group().key === 'state' && !this.state()) return 'Please select the state.';
-    const required: [TextKey, string][] = [
-      ['incentive', 'Incentive title'], ['details', 'Description'], ['ministryOrDepartment', this.group().department],
-      ['contactPerson', 'Contact person'], ['mobileNo', 'Mobile / phone number'], ['email', 'Official e-mail'], ['webLink', 'Portal / scheme link'],
+    if (this.group().key === 'state' && !this.state()) return t('staff.incentiveForm.error.state', 'Please select the state.');
+    const required: [TextKey, () => string][] = [
+      ['incentive', () => t('staff.incentiveForm.error.incentive', 'Incentive title required.')],
+      ['details', () => t('staff.incentiveForm.error.details', 'Description required.')],
+      ['ministryOrDepartment', () => t('staff.incentiveForm.error.department', '{department} required.', { department: this.text().department })],
+      ['contactPerson', () => t('staff.incentiveForm.error.contactPerson', 'Contact person required.')],
+      ['mobileNo', () => t('staff.incentiveForm.error.mobile', 'Mobile / phone number required.')],
+      ['email', () => t('staff.incentiveForm.error.email', 'Official e-mail required.')],
+      ['webLink', () => t('staff.incentiveForm.error.webLink', 'Portal / scheme link required.')],
     ];
     const empty = required.find(([k]) => !String(f[k] ?? '').trim());
-    if (empty) return `${empty[1]} required.`;
-    if (!f.applicableForBronze && !f.applicableForSilver && !f.applicableForGold && !f.applicableForZEDX) return 'Please tick the levels the incentive applies to.';
+    if (empty) return empty[1]();
+    if (!f.applicableForBronze && !f.applicableForSilver && !f.applicableForGold && !f.applicableForZEDX) return t('staff.incentiveForm.error.levels', 'Please tick the levels the incentive applies to.');
     return null;
   }
 
@@ -500,7 +529,7 @@ export class IncentiveFormPage {
     try {
       const item = type ? (await firstValueFrom(this.api.catalogue(type))).find((i) => Number(i.incentive['Id']) === id) : undefined;
       if (!item) {
-        this.error.set('This incentive was not found.');
+        this.error.set(t('staff.incentiveForm.error.notFound', 'This incentive was not found.'));
         return;
       }
       const r = item.incentive;

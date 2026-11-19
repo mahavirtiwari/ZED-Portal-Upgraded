@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { t } from '../../content/page-text';
 
 /** 2026-11-16 (approved): the ZED team's quality observations (api/staff/quality-observations, QualityObservationsController). */
 
@@ -204,11 +205,49 @@ export class SubmissionChecklistApi {
   }
 }
 
-export const ABOUT_LABELS: Record<string, string> = { Desktop: 'Desktop assessor', Lead: 'Lead assessor', Co: 'Co-assessor', Agency: 'The agency' };
-
-/** Handholding (consultancy portal): consultants and the Consultant Organisation. */
-export const HANDHOLDING_ABOUT_LABELS: Record<string, string> = { Desktop: 'Consultant', Lead: 'Lead consultant', Co: 'Co-consultant', Agency: 'The consultant organisation' };
-
+/**
+ * Whose work an observation is about, as shown (handholding, on the consultancy portal: consultants and the Consultant
+ * Organisation). Read it when showing (not into a class field), so the Admin's wording shows.
+ */
 export function aboutLabels(system: string): Record<string, string> {
-  return system === 'consultancy' ? HANDHOLDING_ABOUT_LABELS : ABOUT_LABELS;
+  return system === 'consultancy'
+    ? {
+        Desktop: t('staff.quality.about.consultancy.desktop.label', 'Consultant'), Lead: t('staff.quality.about.consultancy.lead.label', 'Lead consultant'),
+        Co: t('staff.quality.about.consultancy.co.label', 'Co-consultant'), Agency: t('staff.quality.about.consultancy.agency.label', 'The consultant organisation'),
+      }
+    : {
+        Desktop: t('staff.quality.about.desktop.label', 'Desktop assessor'), Lead: t('staff.quality.about.lead.label', 'Lead assessor'),
+        Co: t('staff.quality.about.co.label', 'Co-assessor'), Agency: t('staff.quality.about.agency.label', 'The agency'),
+      };
+}
+
+/** A severity as shown (the code value stays for logic and styles). */
+export function severityLabel(s: QoSeverity | string | null | undefined): string {
+  switch (s) {
+    case 'Minor': return t('staff.quality.severity.minor.label', 'Minor');
+    case 'Major': return t('staff.quality.severity.major.label', 'Major');
+    case 'Critical': return t('staff.quality.severity.critical.label', 'Critical');
+    default: return s ?? '';
+  }
+}
+
+/** An observation's status as shown ("Responded" shows as Replied). */
+export function statusLabel(s: QoStatus | string | null | undefined): string {
+  switch (s) {
+    case 'Open': return t('staff.quality.status.open.label', 'Open');
+    case 'Responded': return t('staff.quality.status.replied.label', 'Replied');
+    case 'Closed': return t('staff.quality.status.closed.label', 'Closed');
+    default: return s ?? '';
+  }
+}
+
+/** A step of an observation's time history as shown. */
+export function stepLabel(kind: QoStep['kind'] | string): string {
+  switch (kind) {
+    case 'Raised': return t('staff.quality.step.raised.label', 'Raised');
+    case 'Responded': return t('staff.quality.step.responded.label', 'Responded');
+    case 'Closed': return t('staff.quality.step.closed.label', 'Closed');
+    case 'Reopened': return t('staff.quality.step.reopened.label', 'Reopened');
+    default: return kind;
+  }
 }

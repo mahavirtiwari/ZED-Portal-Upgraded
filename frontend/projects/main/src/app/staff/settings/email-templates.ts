@@ -9,6 +9,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
+import { TextPipe, t } from '../../content/page-text';
 
 export interface EmailTemplateItem {
   key: string;
@@ -93,9 +94,9 @@ export function insertAtCursor(text: string, snippet: string, box: HTMLInputElem
 /** Which e-mails the list shows (the buttons beside the search box). */
 type StatusFilter = 'all' | 'sent' | 'off' | 'changed';
 
-const standardBodySample =
+const standardBodySample = (): string =>
   '<div style="margin:8px 0;padding:14px 16px;border:1px dashed #9ccdd1;border-radius:8px;background:var(--zt-pale, #f7fbfb);color:#5f6f70;font:14px/1.5 sans-serif">' +
-  "The standard e-mail's text is put here.</div>";
+  escapeHtml(t('staff.emailTemplates.preview.standardBodyText', "The standard e-mail's text is put here.")) + '</div>';
 
 /**
  * Admin → Email Templates (new in V4): every e-mail of this portal and of its database procedures. An Admin can switch an
@@ -106,12 +107,12 @@ const standardBodySample =
  */
 @Component({
   selector: 'zed-staff-email-templates',
-  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent],
+  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Email Templates</h3>
-        <p class="page-sub">The e-mails of this portal and of its database procedures: switch one off, change its subject and text, or reset it.</p>
+        <h3 class="registration-title">{{ 'Email Templates' | t: 'staff.emailTemplates.title' }}</h3>
+        <p class="page-sub">{{ 'The e-mails of this portal and of its database procedures: switch one off, change its subject and text, or reset it.' | t: 'staff.emailTemplates.sub' }}</p>
       </div>
     </div>
     <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
@@ -124,23 +125,23 @@ const standardBodySample =
     }
 
     <div class="et-stats">
-      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">E-mails</span></div>
-      <div class="stat"><span class="stat-value is-sent">{{ stats().sent }}</span><span class="stat-label">Sent</span></div>
-      <div class="stat"><span class="stat-value is-off">{{ stats().off }}</span><span class="stat-label">Switched off</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">Changed by Admin</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'E-mails' | t: 'staff.emailTemplates.stat.totalLabel' }}</span></div>
+      <div class="stat"><span class="stat-value is-sent">{{ stats().sent }}</span><span class="stat-label">{{ 'Sent' | t: 'staff.emailTemplates.stat.sentLabel' }}</span></div>
+      <div class="stat"><span class="stat-value is-off">{{ stats().off }}</span><span class="stat-label">{{ 'Switched off' | t: 'staff.emailTemplates.stat.offLabel' }}</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">{{ 'Changed by Admin' | t: 'staff.emailTemplates.stat.changedLabel' }}</span></div>
     </div>
 
     <div class="zed-card list-card">
       <div class="et-tabs" role="tablist">
-        @for (t of tabs; track t.database) {
+        @for (t of tabs(); track t.database) {
           <button type="button" role="tab" class="et-tab" [class.active]="database() === t.database" [attr.aria-selected]="database() === t.database"
                   (click)="database.set(t.database)">{{ t.label }} ({{ count(t.database) }})</button>
         }
       </div>
       <div class="list-toolbar">
-        <input type="search" class="form-control search" placeholder="Search e-mail, group or subject" aria-label="Search e-mails" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-        <div class="seg" role="group" aria-label="Show">
-          @for (f of filters; track f.key) {
+        <input type="search" class="form-control search" [placeholder]="'Search e-mail, group or subject' | t: 'staff.emailTemplates.search.placeholder'" [attr.aria-label]="'Search e-mails' | t: 'staff.emailTemplates.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <div class="seg" role="group" [attr.aria-label]="'Show' | t: 'staff.emailTemplates.filterAria'">
+          @for (f of filters(); track f.key) {
             <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="filter.set(f.key)">{{ f.label }}</button>
           }
         </div>
@@ -149,11 +150,11 @@ const standardBodySample =
         <table class="table table-zed et-table">
           <thead>
             <tr>
-              <th class="text-center col-sno">S.No</th>
-              <th>E-mail</th>
-              <th class="col-status">Status</th>
-              <th class="col-change">Last change</th>
-              <th class="text-end col-action">Action</th>
+              <th class="text-center col-sno">{{ 'S.No' | t: 'staff.emailTemplates.column.sno' }}</th>
+              <th>{{ 'E-mail' | t: 'staff.emailTemplates.column.email' }}</th>
+              <th class="col-status">{{ 'Status' | t: 'staff.emailTemplates.column.status' }}</th>
+              <th class="col-change">{{ 'Last change' | t: 'staff.emailTemplates.column.change' }}</th>
+              <th class="text-end col-action">{{ 'Action' | t: 'staff.emailTemplates.column.action' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -168,40 +169,40 @@ const standardBodySample =
                         <strong>{{ t.name }}</strong>
                         @if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
                       </div>
-                      @if (t.subject) {<small class="muted d-block subject">Subject: {{ t.subject }}</small>}
-                      @else {<small class="muted d-block subject">Standard subject</small>}
+                      @if (t.subject) {<small class="muted d-block subject">{{ 'Subject: {subject}' | t: 'staff.emailTemplates.row.subjectNote' : { subject: t.subject } }}</small>}
+                      @else {<small class="muted d-block subject">{{ 'Standard subject' | t: 'staff.emailTemplates.row.standardSubjectNote' }}</small>}
                     </div>
                   </div>
                 </td>
                 <td>
                   <!-- 2026-11-19 (admin audit: status shown twice): the switch is the one status indicator, labelled Sent / Switched off. -->
                   <div class="status-stack">
-                    <label class="quick-switch" [class.off]="!t.enabled" [title]="t.enabled ? 'Switch this e-mail off' : 'Switch this e-mail on'">
-                      <input type="checkbox" role="switch" [checked]="t.enabled" [attr.aria-label]="(t.enabled ? 'Switch off ' : 'Switch on ') + t.name"
+                    <label class="quick-switch" [class.off]="!t.enabled" [title]="t.enabled ? ('Switch this e-mail off' | t: 'staff.emailTemplates.row.switchOffTooltip') : ('Switch this e-mail on' | t: 'staff.emailTemplates.row.switchOnTooltip')">
+                      <input type="checkbox" role="switch" [checked]="t.enabled" [attr.aria-label]="t.enabled ? ('Switch off {name}' | t: 'staff.emailTemplates.row.switchOffAria' : { name: t.name }) : ('Switch on {name}' | t: 'staff.emailTemplates.row.switchOnAria' : { name: t.name })"
                              (click)="$event.preventDefault(); toggle(t)" />
-                      <span class="qs-track" aria-hidden="true"></span>{{ t.enabled ? 'Sent' : 'Switched off' }}
+                      <span class="qs-track" aria-hidden="true"></span>{{ t.enabled ? ('Sent' | t: 'staff.emailTemplates.row.sentStatus') : ('Switched off' | t: 'staff.emailTemplates.row.offStatus') }}
                     </label>
-                    @if (t.customised && t.enabled) {<span class="status-badge is-info">Changed by Admin</span>}
+                    @if (t.customised && t.enabled) {<span class="status-badge is-info">{{ 'Changed by Admin' | t: 'staff.emailTemplates.row.changedChip' }}</span>}
                   </div>
                 </td>
                 <td class="col-change-cell">
                   @if (t.updatedOn) {
                     <span class="text-nowrap">{{ t.updatedOn | indianTime }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
                   } @else {
-                    <span class="muted" title="Not changed">—</span>
+                    <span class="muted" [title]="'Not changed' | t: 'staff.emailTemplates.row.notChangedTooltip'">—</span>
                   }
                 </td>
                 <td class="text-end">
                   <div class="et-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(t)">Edit</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(t)">{{ 'Edit' | t: 'staff.emailTemplates.row.editButton' }}</button>
                     @if (t.customised) {
-                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(t)">Reset</button>
+                      <button type="button" class="btn btn-outline-danger btn-sm" (click)="reset(t)">{{ 'Reset' | t: 'staff.emailTemplates.row.resetButton' }}</button>
                     }
                   </div>
                 </td>
               </tr>
             } @empty {
-              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">No e-mails found</div></td></tr> }
+              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ 'No e-mails found' | t: 'staff.emailTemplates.empty' }}</div></td></tr> }
             }
           </tbody>
         </table>
@@ -218,24 +219,24 @@ const standardBodySample =
             <div class="modal-header ed-head">
               <div class="title-block">
                 <div class="modal-title" id="templateTitle">{{ e.item.name }}</div>
-                <small>{{ e.item.database ? 'Database mail' : 'Portal mail' }} · {{ e.item.group }}</small>
+                <small>{{ e.item.database ? ('Database mail' | t: 'staff.emailTemplates.editor.databaseLabel') : ('Portal mail' | t: 'staff.emailTemplates.editor.portalLabel') }} · {{ e.item.group }}</small>
               </div>
               <div class="head-right">
                 <label class="head-switch" [class.off]="!e.enabled" for="templateEnabled">
                   <input class="form-check-input" type="checkbox" role="switch" id="templateEnabled" [(ngModel)]="e.enabled" />
-                  <span>{{ e.enabled ? 'Sent (switch off to stop it)' : 'Switched off (not sent)' }}</span>
+                  <span>{{ e.enabled ? ('Sent (switch off to stop it)' | t: 'staff.emailTemplates.editor.sentLabel') : ('Switched off (not sent)' | t: 'staff.emailTemplates.editor.offLabel') }}</span>
                 </label>
-                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+                <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.emailTemplates.editor.closeAria'" (click)="editing.set(null)"></button>
               </div>
             </div>
             <div class="ed-strip">
               <div class="ed-subject">
-                <label class="ed-label" for="templateSubject">Subject</label>
-                <input #subjectBox type="text" class="form-control" id="templateSubject" maxlength="400" autocomplete="off" placeholder="Empty: the standard subject"
+                <label class="ed-label" for="templateSubject">{{ 'Subject' | t: 'staff.emailTemplates.editor.subject.label' }}</label>
+                <input #subjectBox type="text" class="form-control" id="templateSubject" maxlength="400" autocomplete="off" [placeholder]="'Empty: the standard subject' | t: 'staff.emailTemplates.editor.subject.placeholder'"
                        [(ngModel)]="e.subject" (focus)="focused('subject')" />
               </div>
               <div class="fields" role="group" aria-labelledby="templateFields">
-                <div class="ed-label" id="templateFields">Fields <small class="muted fw-normal">: click one to put it at the cursor (in the subject when you were typing there)</small></div>
+                <div class="ed-label" id="templateFields">{{ 'Fields' | t: 'staff.emailTemplates.editor.fields.label' }} <small class="muted fw-normal">{{ ': click one to put it at the cursor (in the subject when you were typing there)' | t: 'staff.emailTemplates.editor.fields.note' }}</small></div>
                 <div class="chips">
                   @for (p of e.item.placeholders; track p) {
                     <button type="button" class="chip" [title]="hint(p)" (mousedown)="$event.preventDefault()" (click)="insert(p)">{{ braces(p) }}</button>
@@ -247,39 +248,38 @@ const standardBodySample =
               <div class="editor">
                 <div class="pane">
                   <div class="pane-head">
-                    <label class="ed-label" for="templateBody">Text (HTML)</label>
-                    @if (e.standardBody) {<small class="muted">the standard e-mail</small>}
+                    <label class="ed-label" for="templateBody">{{ 'Text (HTML)' | t: 'staff.emailTemplates.editor.body.label' }}</label>
+                    @if (e.standardBody) {<small class="muted">{{ 'the standard e-mail' | t: 'staff.emailTemplates.editor.body.standardNote' }}</small>}
                   </div>
                   <textarea #bodyBox class="form-control font-monospace code" id="templateBody" spellcheck="false" autocomplete="off"
                             [(ngModel)]="e.body" (ngModelChange)="preview.set($event)" (focus)="focused('body')"></textarea>
                 </div>
                 <div class="pane">
                   <div class="pane-head">
-                    <span class="ed-label">Preview</span>
-                    <div class="seg" role="group" aria-label="Preview width">
-                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
-                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
+                    <span class="ed-label">{{ 'Preview' | t: 'staff.emailTemplates.editor.preview.label' }}</span>
+                    <div class="seg" role="group" [attr.aria-label]="'Preview width' | t: 'staff.emailTemplates.editor.preview.widthAria'">
+                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">{{ 'Desktop' | t: 'staff.emailTemplates.editor.preview.desktopButton' }}</button>
+                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">{{ 'Phone' | t: 'staff.emailTemplates.editor.preview.phoneButton' }}</button>
                     </div>
                   </div>
                   <div class="preview-well">
                     <div class="mail-frame" [class.phone]="phone()">
                       <div class="mail-meta">
-                        <span class="meta-label">Subject</span>
+                        <span class="meta-label">{{ 'Subject' | t: 'staff.emailTemplates.editor.preview.subjectLabel' }}</span>
                         <span class="meta-subject">{{ subjectPreview(e) }}</span>
                       </div>
-                      <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
+                      <iframe class="preview" [title]="'E-mail preview' | t: 'staff.emailTemplates.editor.preview.frameTooltip'" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
                     </div>
                   </div>
                 </div>
               </div>
               <small class="muted d-block ed-note">
-                A field is filled in when the e-mail is sent ({{ braces('StandardBody') }} is the standard e-mail's text, {{ braces('StandardSubject') }} its subject);
-                the preview shows sample values: [Name] stands for the unit's value.
+                {{ "A field is filled in when the e-mail is sent ({body} is the standard e-mail's text, {subject} its subject); the preview shows sample values: [Name] stands for the unit's value." | t: 'staff.emailTemplates.editor.fieldsNote' : { body: braces('StandardBody'), subject: braces('StandardSubject') } }}
                 @if (e.item.database) {
                   <span data-db-example>
-                    @if (e.example?.createdAt) { {{ braces('StandardBody') }} shows the procedure's last mail, of {{ e.example!.createdAt | date: 'dd-MM-yyyy HH:mm' }}. }
-                    @else { This procedure has sent no mail yet, so {{ braces('StandardBody') }} is shown as a box. }
-                    {{ braces('To') }} is the recipient and {{ braces('ZedId') }} the ZED ID the mail names.
+                    @if (e.example?.createdAt) { {{ "{body} shows the procedure's last mail, of {date}." | t: 'staff.emailTemplates.editor.exampleNote' : { body: braces('StandardBody'), date: (e.example!.createdAt | date: 'dd-MM-yyyy HH:mm') } }} }
+                    @else { {{ 'This procedure has sent no mail yet, so {body} is shown as a box.' | t: 'staff.emailTemplates.editor.noExampleNote' : { body: braces('StandardBody') } }} }
+                    {{ '{to} is the recipient and {zedId} the ZED ID the mail names.' | t: 'staff.emailTemplates.editor.recipientNote' : { to: braces('To'), zedId: braces('ZedId') } }}
                   </span>
                 }
               </small>
@@ -288,12 +288,12 @@ const standardBodySample =
             <div class="modal-footer ed-foot">
               <span>
                 @if (e.item.customised) {
-                  <button type="button" class="btn btn-outline-danger" (click)="resetFromEditor(e)">Reset to standard</button>
+                  <button type="button" class="btn btn-outline-danger" (click)="resetFromEditor(e)">{{ 'Reset to standard' | t: 'staff.emailTemplates.editor.resetButton' }}</button>
                 }
               </span>
               <span class="ed-foot-actions">
-                <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-                <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+                <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.emailTemplates.editor.cancelButton' }}</button>
+                <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.emailTemplates.editor.saveButton' }}</button>
               </span>
             </div>
           </div>
@@ -379,19 +379,19 @@ export class EmailTemplatesPage {
   private readonly subjectBox = viewChild<ElementRef<HTMLInputElement>>('subjectBox');
   private readonly bodyBox = viewChild<ElementRef<HTMLTextAreaElement>>('bodyBox');
 
-  protected readonly tabs = [
-    { label: 'Portal mails', database: false },
-    { label: 'Database mails', database: true },
-  ];
+  protected readonly tabs = computed(() => [
+    { label: t('staff.emailTemplates.tab.portal', 'Portal mails'), database: false },
+    { label: t('staff.emailTemplates.tab.database', 'Database mails'), database: true },
+  ]);
   protected readonly items = signal<EmailTemplateItem[]>([]);
   protected readonly database = signal(false);
   protected readonly search = signal('');
-  protected readonly filters: readonly { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'sent', label: 'Sent' },
-    { key: 'off', label: 'Switched off' },
-    { key: 'changed', label: 'Changed' },
-  ];
+  protected readonly filters = computed<readonly { key: StatusFilter; label: string }[]>(() => [
+    { key: 'all', label: t('staff.emailTemplates.filter.all', 'All') },
+    { key: 'sent', label: t('staff.emailTemplates.filter.sent', 'Sent') },
+    { key: 'off', label: t('staff.emailTemplates.filter.off', 'Switched off') },
+    { key: 'changed', label: t('staff.emailTemplates.filter.changed', 'Changed') },
+  ]);
   protected readonly filter = signal<StatusFilter>('all');
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -416,7 +416,7 @@ export class EmailTemplatesPage {
    */
   protected readonly previewHtml = computed<SafeHtml>(() =>
     this.sanitizer.bypassSecurityTrustHtml(
-      fillSampleFields(this.preview(), this.baseUrl, { StandardBody: this.editing()?.example?.bodyHtml || standardBodySample }),
+      fillSampleFields(this.preview(), this.baseUrl, { StandardBody: this.editing()?.example?.bodyHtml || standardBodySample() }),
     ),
   );
   /** Where a field chip goes: the subject or the text, whichever was last in focus. */
@@ -441,16 +441,17 @@ export class EmailTemplatesPage {
   }
 
   protected hint(name: string): string {
-    if (name === 'StandardBody') return "The standard e-mail's text";
-    if (name === 'StandardSubject') return "The standard e-mail's subject";
-    return `Filled in with ${name}`;
+    if (name === 'StandardBody') return t('staff.emailTemplates.editor.fields.standardBodyTooltip', "The standard e-mail's text");
+    if (name === 'StandardSubject') return t('staff.emailTemplates.editor.fields.standardSubjectTooltip', "The standard e-mail's subject");
+    return t('staff.emailTemplates.editor.fields.fieldTooltip', 'Filled in with {name}', { name });
   }
 
   /** The subject line of the preview: the Admin's (fields with sample values) or the standard one. */
   protected subjectPreview(e: Editing): string {
     const subject = e.subject.trim();
-    if (!subject) return "The standard e-mail's subject";
-    return subject.replace(fieldPattern, (_m, name: string) => (name.toLowerCase() === 'standardsubject' ? '[the standard subject]' : `[${name}]`));
+    if (!subject) return t('staff.emailTemplates.editor.preview.standardSubjectText', "The standard e-mail's subject");
+    const standard = t('staff.emailTemplates.editor.preview.standardSubjectField', '[the standard subject]');
+    return subject.replace(fieldPattern, (_m, name: string) => (name.toLowerCase() === 'standardsubject' ? standard : `[${name}]`));
   }
 
   protected focused(target: 'subject' | 'body'): void {
@@ -523,7 +524,9 @@ export class EmailTemplatesPage {
   protected async toggle(item: EmailTemplateItem): Promise<void> {
     const on = !item.enabled;
     if (!on && !(await this.confirms.ask({
-      title: 'Switch This E-mail Off?', message: `"${item.name}" is no longer sent until it is switched on again.`, confirmLabel: 'Switch Off', danger: true,
+      title: t('staff.emailTemplates.switchOff.title', 'Switch This E-mail Off?'),
+      message: t('staff.emailTemplates.switchOff.message', '"{name}" is no longer sent until it is switched on again.', { name: item.name }),
+      confirmLabel: t('staff.emailTemplates.switchOff.confirmButton', 'Switch Off'), danger: true,
     }))) return;
     this.busy.set(true);
     this.error.set('');
@@ -548,8 +551,9 @@ export class EmailTemplatesPage {
 
   private askReset(item: EmailTemplateItem): Promise<boolean> {
     return this.confirms.ask({
-      title: 'Reset to the Standard E-mail?', message: `"${item.name}" uses the standard e-mail again. The saved subject and text are removed.`,
-      confirmLabel: 'Reset', danger: true,
+      title: t('staff.emailTemplates.reset.title', 'Reset to the Standard E-mail?'),
+      message: t('staff.emailTemplates.reset.message', '"{name}" uses the standard e-mail again. The saved subject and text are removed.', { name: item.name }),
+      confirmLabel: t('staff.emailTemplates.reset.confirmButton', 'Reset'), danger: true,
     });
   }
 

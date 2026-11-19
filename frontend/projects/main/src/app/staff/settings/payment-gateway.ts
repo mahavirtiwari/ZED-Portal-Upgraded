@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { ConfirmService } from '../confirm-dialog';
 
 /** A saved CCAvenue account as the API shows it: never a key, only whether one is saved. */
@@ -69,12 +70,12 @@ export interface PaymentGatewayInfo {
  */
 @Component({
   selector: 'zed-staff-payment-gateway',
-  imports: [FormsModule],
+  imports: [FormsModule, TextPipe],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Payment Gateway and Invoices</h3>
-        <p class="page-sub">The CCAvenue account of the payments, and whether payments get invoices.</p>
+        <h3 class="registration-title">{{ 'Payment Gateway and Invoices' | t: 'staff.paymentGateway.title' }}</h3>
+        <p class="page-sub">{{ 'The CCAvenue account of the payments, and whether payments get invoices.' | t: 'staff.paymentGateway.sub' }}</p>
       </div>
     </div>
     @if (error()) {
@@ -86,194 +87,192 @@ export interface PaymentGatewayInfo {
     @if (info(); as i) {
       <!-- 2026-11-15 (the user): side by side as Questionnaire: the sections on the left, the chosen one on the right. -->
       <div class="pg-layout">
-      <nav class="pg-nav" aria-label="Sections">
+      <nav class="pg-nav" [attr.aria-label]="'Sections' | t: 'staff.paymentGateway.nav.aria'">
         <button type="button" class="pg-item" [class.active]="section() === 'payments'" [attr.aria-current]="section() === 'payments'" (click)="section.set('payments')">
-          <span><strong>Online payments</strong><small>Payments on the portal and in the apps</small></span>
-          <span class="chip" [class.is-good]="i.paymentsOn" [class.is-bad]="!i.paymentsOn">{{ i.paymentsOn ? 'On' : 'Off' }}</span>
+          <span><strong>{{ 'Online payments' | t: 'staff.paymentGateway.payments.title' }}</strong><small>{{ 'Payments on the portal and in the apps' | t: 'staff.paymentGateway.nav.paymentsNote' }}</small></span>
+          <span class="chip" [class.is-good]="i.paymentsOn" [class.is-bad]="!i.paymentsOn">{{ i.paymentsOn ? ('On' | t: 'staff.paymentGateway.state.on') : ('Off' | t: 'staff.paymentGateway.state.off') }}</span>
         </button>
         <button type="button" class="pg-item" [class.active]="section() === 'gateway'" [attr.aria-current]="section() === 'gateway'" (click)="section.set('gateway')">
-          <span><strong>CCAvenue payment gateway</strong><small>{{ i.gateway.inUse === 'page' ? 'The account saved here' : 'The server settings file' }}</small></span>
-          <span class="chip" [class.is-good]="i.gateway.inUse === 'page' || i.gateway.file.configured">{{ i.gateway.inUse === 'page' || i.gateway.file.configured ? 'Set up' : 'Not set' }}</span>
+          <span><strong>{{ 'CCAvenue payment gateway' | t: 'staff.paymentGateway.gateway.title' }}</strong><small>{{ i.gateway.inUse === 'page' ? ('The account saved here' | t: 'staff.paymentGateway.nav.gatewayPage') : ('The server settings file' | t: 'staff.paymentGateway.nav.gatewayFile') }}</small></span>
+          <span class="chip" [class.is-good]="i.gateway.inUse === 'page' || i.gateway.file.configured">{{ i.gateway.inUse === 'page' || i.gateway.file.configured ? ('Set up' | t: 'staff.paymentGateway.state.setUp') : ('Not set' | t: 'staff.paymentGateway.state.notSet') }}</span>
         </button>
         <button type="button" class="pg-item" [class.active]="section() === 'erp'" [attr.aria-current]="section() === 'erp'" (click)="section.set('erp')">
-          <span><strong>QCI ERP connection</strong><small>Business Central account of the invoices</small></span>
-          <span class="chip" [class.is-good]="i.invoices.erpReady" [class.is-warn]="!i.invoices.erpReady">{{ i.invoices.erpReady ? 'Set up' : 'Not set' }}</span>
+          <span><strong>{{ 'QCI ERP connection' | t: 'staff.paymentGateway.nav.erpTitle' }}</strong><small>{{ 'Business Central account of the invoices' | t: 'staff.paymentGateway.nav.erpNote' }}</small></span>
+          <span class="chip" [class.is-good]="i.invoices.erpReady" [class.is-warn]="!i.invoices.erpReady">{{ i.invoices.erpReady ? ('Set up' | t: 'staff.paymentGateway.state.setUp') : ('Not set' | t: 'staff.paymentGateway.state.notSet') }}</span>
         </button>
         <button type="button" class="pg-item" [class.active]="section() === 'invoices'" [attr.aria-current]="section() === 'invoices'" (click)="section.set('invoices')">
-          <span><strong>Invoices</strong><small>Invoice numbers and ERP posting</small></span>
-          <span class="chip" [class.is-good]="i.invoices.enabled">{{ i.invoices.enabled ? 'On' : 'Off' }}</span>
+          <span><strong>{{ 'Invoices' | t: 'staff.paymentGateway.nav.invoicesTitle' }}</strong><small>{{ 'Invoice numbers and ERP posting' | t: 'staff.paymentGateway.nav.invoicesNote' }}</small></span>
+          <span class="chip" [class.is-good]="i.invoices.enabled">{{ i.invoices.enabled ? ('On' | t: 'staff.paymentGateway.state.on') : ('Off' | t: 'staff.paymentGateway.state.off') }}</span>
         </button>
       </nav>
       <div class="pg-detail">
       <form class="zed-card" [hidden]="section() !== 'payments'" (ngSubmit)="savePayments()" novalidate>
         <div class="card-head">
-          <h5 class="card-title">Online payments</h5>
-          <span class="status-badge" [class.is-active]="i.paymentsOn" data-testid="payments-state">{{ i.paymentsOn ? 'On' : 'Off' }}</span>
+          <h5 class="card-title">{{ 'Online payments' | t: 'staff.paymentGateway.payments.title' }}</h5>
+          <span class="status-badge" [class.is-active]="i.paymentsOn" data-testid="payments-state">{{ i.paymentsOn ? ('On' | t: 'staff.paymentGateway.state.on') : ('Off' | t: 'staff.paymentGateway.state.off') }}</span>
         </div>
         <div class="grid">
-          <span class="lbl">Payments</span>
-          <span class="rc-group" role="radiogroup" aria-label="Payments">
-            <label class="rc" [class.on]="paymentsOn() === true"><input type="radio" name="payments" [value]="true" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> On</label>
-            <label class="rc" [class.on]="paymentsOn() === false"><input type="radio" name="payments" [value]="false" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> Off</label>
+          <span class="lbl">{{ 'Payments' | t: 'staff.paymentGateway.payments.label' }}</span>
+          <span class="rc-group" role="radiogroup" [attr.aria-label]="'Payments' | t: 'staff.paymentGateway.payments.label'">
+            <label class="rc" [class.on]="paymentsOn() === true"><input type="radio" name="payments" [value]="true" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> {{ 'On' | t: 'staff.paymentGateway.radio.on' }}</label>
+            <label class="rc" [class.on]="paymentsOn() === false"><input type="radio" name="payments" [value]="false" [ngModel]="paymentsOn()" (ngModelChange)="paymentsOn.set($event)" /> {{ 'Off' | t: 'staff.paymentGateway.radio.off' }}</label>
           </span>
         </div>
         <small class="muted d-block mt-2">
-          Off: no new CCAvenue payment starts on the portal or in the apps (certification, surveillance, handholding); units see
-          "Online payment is not available right now". Payments already started still complete, and an amount of zero is still recorded.
+          {{ 'Off: no new CCAvenue payment starts on the portal or in the apps (certification, surveillance, handholding); units see "Online payment is not available right now". Payments already started still complete, and an amount of zero is still recorded.' | t: 'staff.paymentGateway.payments.note' }}
         </small>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || paymentsOn() === i.paymentsOn">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || paymentsOn() === i.paymentsOn">{{ 'Save' | t: 'staff.paymentGateway.saveButton' }}</button>
         </div>
       </form>
 
       <form class="zed-card" [hidden]="section() !== 'gateway'" (ngSubmit)="saveGateway()" novalidate>
         <div class="card-head">
-          <h5 class="card-title">CCAvenue payment gateway</h5>
+          <h5 class="card-title">{{ 'CCAvenue payment gateway' | t: 'staff.paymentGateway.gateway.title' }}</h5>
           <span class="status-badge" [class.is-active]="i.gateway.inUse === 'page'" data-testid="gateway-in-use">
-            In use: {{ i.gateway.inUse === 'page' ? 'the account saved here' : 'server settings file' }}
+            {{ i.gateway.inUse === 'page' ? ('In use: the account saved here' | t: 'staff.paymentGateway.inUse.page') : ('In use: server settings file' | t: 'staff.paymentGateway.inUse.file') }}
           </span>
         </div>
         @if (i.gateway.problem) {
-          <div class="alert alert-warning" role="alert">The saved account is not used: {{ i.gateway.problem }}.</div>
+          <div class="alert alert-warning" role="alert">{{ 'The saved account is not used: {problem}.' | t: 'staff.paymentGateway.gateway.problem' : { problem: i.gateway.problem } }}</div>
         }
         @if (i.gateway.inUse === 'file') {
           <p class="muted">
-            Server settings file: {{ i.gateway.file.configured ? 'merchant ' + (i.gateway.file.merchantId ?? '') + ', ' + (i.gateway.file.mode === 'test' ? 'test' : 'live') + ' gateway' : 'no complete account' }}.
+            {{ !i.gateway.file.configured ? ('Server settings file: no complete account.' | t: 'staff.paymentGateway.gateway.fileNone')
+              : i.gateway.file.mode === 'test' ? ('Server settings file: merchant {merchant}, test gateway.' | t: 'staff.paymentGateway.gateway.fileTest' : { merchant: i.gateway.file.merchantId ?? '' })
+              : ('Server settings file: merchant {merchant}, live gateway.' | t: 'staff.paymentGateway.gateway.fileLive' : { merchant: i.gateway.file.merchantId ?? '' }) }}
           </p>
         }
         <p class="muted">
-          Before changing to another merchant account: switch Online payments off, wait about 30 minutes so payments in
-          progress can finish, save the new account, then switch Online payments on again.
+          {{ 'Before changing to another merchant account: switch Online payments off, wait about 30 minutes so payments in progress can finish, save the new account, then switch Online payments on again.' | t: 'staff.paymentGateway.gateway.changeNote' }}
         </p>
         <div class="grid">
-          <span class="lbl">Gateway</span>
+          <span class="lbl">{{ 'Gateway' | t: 'staff.paymentGateway.gateway.modeLabel' }}</span>
           <span>
-            <span class="rc-group" role="radiogroup" aria-label="Gateway">
-              <label class="rc" [class.on]="mode() === 'live'"><input type="radio" name="mode" value="live" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Live</label>
+            <span class="rc-group" role="radiogroup" [attr.aria-label]="'Gateway' | t: 'staff.paymentGateway.gateway.modeLabel'">
+              <label class="rc" [class.on]="mode() === 'live'"><input type="radio" name="mode" value="live" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> {{ 'Live' | t: 'staff.paymentGateway.gateway.live' }}</label>
               <label class="rc" [class.on]="mode() === 'test'" [class.is-disabled]="!i.gateway.testAllowed">
-                <input type="radio" name="mode" value="test" [disabled]="!i.gateway.testAllowed" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> Test
+                <input type="radio" name="mode" value="test" [disabled]="!i.gateway.testAllowed" [ngModel]="mode()" (ngModelChange)="mode.set($event)" /> {{ 'Test' | t: 'staff.paymentGateway.gateway.test' }}
               </label>
             </span>
-            @if (!i.gateway.testAllowed) { <small class="muted d-block mt-1">The test gateway cannot be used on the live portal.</small> }
+            @if (!i.gateway.testAllowed) { <small class="muted d-block mt-1">{{ 'The test gateway cannot be used on the live portal.' | t: 'staff.paymentGateway.gateway.testNotAllowed' }}</small> }
           </span>
-          <label class="lbl" for="pg-merchant">Merchant ID</label>
+          <label class="lbl" for="pg-merchant">{{ 'Merchant ID' | t: 'staff.paymentGateway.gateway.merchantLabel' }}</label>
           <input id="pg-merchant" name="merchantId" class="form-control" inputmode="numeric" maxlength="20" [(ngModel)]="merchantId" />
-          <label class="lbl" for="pg-access">Access code (web)</label>
+          <label class="lbl" for="pg-access">{{ 'Access code (web)' | t: 'staff.paymentGateway.gateway.accessLabel' }}</label>
           <input id="pg-access" name="accessCode" class="form-control" maxlength="40" autocomplete="off" [(ngModel)]="accessCode" />
-          <label class="lbl" for="pg-key">Working key (web)</label>
+          <label class="lbl" for="pg-key">{{ 'Working key (web)' | t: 'staff.paymentGateway.gateway.keyLabel' }}</label>
           <span>
             <input id="pg-key" name="workingKey" type="password" class="form-control" maxlength="64" autocomplete="new-password"
-                   [placeholder]="i.gateway.saved?.workingKeySet ? 'Saved (hidden): leave blank to keep' : 'Not saved'" [(ngModel)]="workingKey" />
+                   [placeholder]="i.gateway.saved?.workingKeySet ? ('Saved (hidden): leave blank to keep' | t: 'staff.paymentGateway.keySavedPlaceholder') : ('Not saved' | t: 'staff.paymentGateway.keyNotSavedPlaceholder')" [(ngModel)]="workingKey" />
           </span>
-          <label class="lbl" for="pg-rec">Reconciliation key</label>
+          <label class="lbl" for="pg-rec">{{ 'Reconciliation key' | t: 'staff.paymentGateway.gateway.reconciliationLabel' }}</label>
           <input id="pg-rec" name="reconciliationKey" type="password" class="form-control" maxlength="64" autocomplete="new-password"
-                 [placeholder]="i.gateway.saved?.reconciliationKeySet ? 'Saved (hidden): leave blank to keep' : 'Not saved'" [(ngModel)]="reconciliationKey" />
-          <label class="lbl" for="pg-mob-access">Access code (app)</label>
-          <input id="pg-mob-access" name="mobileAccessCode" class="form-control" maxlength="40" autocomplete="off" placeholder="For the MSME app (optional)" [(ngModel)]="mobileAccessCode" />
-          <label class="lbl" for="pg-mob-key">Working key (app)</label>
+                 [placeholder]="i.gateway.saved?.reconciliationKeySet ? ('Saved (hidden): leave blank to keep' | t: 'staff.paymentGateway.keySavedPlaceholder') : ('Not saved' | t: 'staff.paymentGateway.keyNotSavedPlaceholder')" [(ngModel)]="reconciliationKey" />
+          <label class="lbl" for="pg-mob-access">{{ 'Access code (app)' | t: 'staff.paymentGateway.gateway.mobileAccessLabel' }}</label>
+          <input id="pg-mob-access" name="mobileAccessCode" class="form-control" maxlength="40" autocomplete="off" [placeholder]="'For the MSME app (optional)' | t: 'staff.paymentGateway.gateway.mobileAccessPlaceholder'" [(ngModel)]="mobileAccessCode" />
+          <label class="lbl" for="pg-mob-key">{{ 'Working key (app)' | t: 'staff.paymentGateway.gateway.mobileKeyLabel' }}</label>
           <input id="pg-mob-key" name="mobileWorkingKey" type="password" class="form-control" maxlength="64" autocomplete="new-password"
-                 [placeholder]="i.gateway.saved?.mobileWorkingKeySet ? 'Saved (hidden): leave blank to keep' : 'Not saved'" [(ngModel)]="mobileWorkingKey" />
+                 [placeholder]="i.gateway.saved?.mobileWorkingKeySet ? ('Saved (hidden): leave blank to keep' | t: 'staff.paymentGateway.keySavedPlaceholder') : ('Not saved' | t: 'staff.paymentGateway.keyNotSavedPlaceholder')" [(ngModel)]="mobileWorkingKey" />
         </div>
         <small class="muted d-block mt-2">
-          The keys are stored encrypted and never shown again. A saved account replaces the server file's within half a minute.
-          Without the app's access code and key, payments from the MSME app are refused. CCAvenue's return address: {{ i.gateway.returnBase }}/Pay/…
+          {{ "The keys are stored encrypted and never shown again. A saved account replaces the server file's within half a minute. Without the app's access code and key, payments from the MSME app are refused. CCAvenue's return address: {address}/Pay/…" | t: 'staff.paymentGateway.gateway.keysNote' : { address: i.gateway.returnBase } }}
         </small>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save' | t: 'staff.paymentGateway.saveButton' }}</button>
           @if (i.gateway.saved) {
-            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useFile()">Use server file again</button>
+            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useFile()">{{ 'Use server file again' | t: 'staff.paymentGateway.useFileButton' }}</button>
           }
         </div>
       </form>
 
       <form class="zed-card" [hidden]="section() !== 'invoices'" (ngSubmit)="saveInvoices()" novalidate>
         <div class="card-head">
-          <h5 class="card-title">Invoices (QCI ERP posting)</h5>
-          <span class="status-badge" [class.is-active]="i.invoices.enabled" data-testid="invoices-state">{{ i.invoices.enabled ? 'On' : 'Off' }}</span>
+          <h5 class="card-title">{{ 'Invoices (QCI ERP posting)' | t: 'staff.paymentGateway.invoices.title' }}</h5>
+          <span class="status-badge" [class.is-active]="i.invoices.enabled" data-testid="invoices-state">{{ i.invoices.enabled ? ('On' | t: 'staff.paymentGateway.state.on') : ('Off' | t: 'staff.paymentGateway.state.off') }}</span>
         </div>
         <div class="grid">
-          <span class="lbl">Invoices</span>
-          <span class="rc-group" role="radiogroup" aria-label="Invoices">
-            <label class="rc" [class.on]="invoicesOn() === true"><input type="radio" name="invoices" [value]="true" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> On</label>
-            <label class="rc" [class.on]="invoicesOn() === false"><input type="radio" name="invoices" [value]="false" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> Off</label>
+          <span class="lbl">{{ 'Invoices' | t: 'staff.paymentGateway.invoices.label' }}</span>
+          <span class="rc-group" role="radiogroup" [attr.aria-label]="'Invoices' | t: 'staff.paymentGateway.invoices.label'">
+            <label class="rc" [class.on]="invoicesOn() === true"><input type="radio" name="invoices" [value]="true" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> {{ 'On' | t: 'staff.paymentGateway.radio.on' }}</label>
+            <label class="rc" [class.on]="invoicesOn() === false"><input type="radio" name="invoices" [value]="false" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> {{ 'Off' | t: 'staff.paymentGateway.radio.off' }}</label>
           </span>
           @if (!i.invoices.setup) {
-            <span class="lbl">Invoice numbers</span>
-            <span>{{ i.invoices.examples[0] }} (Manufacturing), {{ i.invoices.examples[1] }} (Services): each sector has its own series</span>
+            <span class="lbl">{{ 'Invoice numbers' | t: 'staff.paymentGateway.invoices.numbersLabel' }}</span>
+            <span>{{ '{manufacturing} (Manufacturing), {services} (Services): each sector has its own series' | t: 'staff.paymentGateway.invoices.numbersExample' : { manufacturing: i.invoices.examples[0], services: i.invoices.examples[1] } }}</span>
           }
-          <span class="lbl">QCI ERP connection</span>
+          <span class="lbl">{{ 'QCI ERP connection' | t: 'staff.paymentGateway.invoices.erpLabel' }}</span>
           <span [class.text-danger]="!i.invoices.erpReady">
-            {{ i.invoices.erpReady ? 'Set up' : 'Not set up (needed before switching on)' }}
-            <button type="button" class="btn btn-link p-0 ms-1 align-baseline" (click)="section.set('erp')">{{ i.invoices.erpReady ? 'View' : 'Set it up' }}</button>
+            {{ i.invoices.erpReady ? ('Set up' | t: 'staff.paymentGateway.state.setUp') : ('Not set up (needed before switching on)' | t: 'staff.paymentGateway.invoices.erpMissing') }}
+            <button type="button" class="btn btn-link p-0 ms-1 align-baseline" (click)="section.set('erp')">{{ i.invoices.erpReady ? ('View' | t: 'staff.paymentGateway.invoices.erpViewButton') : ('Set it up' | t: 'staff.paymentGateway.invoices.erpSetUpButton') }}</button>
           </span>
         </div>
         <small class="muted d-block mt-2">
-          On: after each gateway payment the customer, invoice and receipt go to the ERP, and the invoice PDF comes back through the
-          Finance API. Off: payments work as usual and no invoice is made.
+          {{ 'On: after each gateway payment the customer, invoice and receipt go to the ERP, and the invoice PDF comes back through the Finance API. Off: payments work as usual and no invoice is made.' | t: 'staff.paymentGateway.invoices.note' }}
         </small>
 
         @if (i.invoices.setup; as setup) {
           <!-- 2026-11-15 (the user): the setup of the invoices; an empty field keeps today's value (shown greyed). -->
           <section class="inv-sec" aria-labelledby="inv-numbers">
-            <h6 id="inv-numbers" class="inv-title">Invoice numbers</h6>
+            <h6 id="inv-numbers" class="inv-title">{{ 'Invoice numbers' | t: 'staff.paymentGateway.invoices.numbersTitle' }}</h6>
             <div class="grid">
-              <label class="lbl" for="inv-series-m">Manufacturing series</label>
+              <label class="lbl" for="inv-series-m">{{ 'Manufacturing series' | t: 'staff.paymentGateway.invoices.seriesManufacturingLabel' }}</label>
               <span class="inv-pair">
                 <input id="inv-series-m" name="seriesManufacturing" class="form-control inv-short" maxlength="10" autocomplete="off"
                        [placeholder]="setup.defaults.seriesManufacturing" [(ngModel)]="inv.seriesManufacturing" />
-                <span class="muted">e.g. {{ (inv.seriesManufacturing || setup.defaults.seriesManufacturing).toUpperCase() }}/{{ fy(i) }}/1</span>
+                <span class="muted">{{ 'e.g. {example}' | t: 'staff.paymentGateway.invoices.seriesExample' : { example: (inv.seriesManufacturing || setup.defaults.seriesManufacturing).toUpperCase() + '/' + fy(i) + '/1' } }}</span>
               </span>
-              <label class="lbl" for="inv-series-s">Services series</label>
+              <label class="lbl" for="inv-series-s">{{ 'Services series' | t: 'staff.paymentGateway.invoices.seriesServicesLabel' }}</label>
               <span class="inv-pair">
                 <input id="inv-series-s" name="seriesServices" class="form-control inv-short" maxlength="10" autocomplete="off"
                        [placeholder]="setup.defaults.seriesServices" [(ngModel)]="inv.seriesServices" />
-                <span class="muted">e.g. {{ (inv.seriesServices || setup.defaults.seriesServices).toUpperCase() }}/{{ fy(i) }}/1</span>
+                <span class="muted">{{ 'e.g. {example}' | t: 'staff.paymentGateway.invoices.seriesExample' : { example: (inv.seriesServices || setup.defaults.seriesServices).toUpperCase() + '/' + fy(i) + '/1' } }}</span>
               </span>
             </div>
-            <small class="muted d-block mt-1">Letters and digits. Each sector keeps its own counter, which starts again at 1 every 1 April.</small>
+            <small class="muted d-block mt-1">{{ 'Letters and digits. Each sector keeps its own counter, which starts again at 1 every 1 April.' | t: 'staff.paymentGateway.invoices.seriesNote' }}</small>
           </section>
 
           <section class="inv-sec" aria-labelledby="inv-erp">
-            <h6 id="inv-erp" class="inv-title">Values sent to the ERP</h6>
+            <h6 id="inv-erp" class="inv-title">{{ 'Values sent to the ERP' | t: 'staff.paymentGateway.invoices.erpValuesTitle' }}</h6>
             <div class="grid">
-              <label class="lbl" for="inv-board">Board</label>
+              <label class="lbl" for="inv-board">{{ 'Board' | t: 'staff.paymentGateway.invoices.boardLabel' }}</label>
               <input id="inv-board" name="board" class="form-control inv-short" maxlength="30" autocomplete="off" [placeholder]="setup.defaults.board" [(ngModel)]="inv.board" />
-              <label class="lbl" for="inv-portal">Portal · Location code</label>
+              <label class="lbl" for="inv-portal">{{ 'Portal · Location code' | t: 'staff.paymentGateway.invoices.portalLocationLabel' }}</label>
               <span class="inv-pair">
-                <input id="inv-portal" name="portal" class="form-control inv-short" maxlength="30" autocomplete="off" aria-label="Portal" [placeholder]="setup.defaults.portal" [(ngModel)]="inv.portal" />
-                <input id="inv-location" name="locationCode" class="form-control inv-short" maxlength="30" autocomplete="off" aria-label="Location code" [placeholder]="setup.defaults.locationCode" [(ngModel)]="inv.locationCode" />
+                <input id="inv-portal" name="portal" class="form-control inv-short" maxlength="30" autocomplete="off" [attr.aria-label]="'Portal' | t: 'staff.paymentGateway.invoices.portalAria'" [placeholder]="setup.defaults.portal" [(ngModel)]="inv.portal" />
+                <input id="inv-location" name="locationCode" class="form-control inv-short" maxlength="30" autocomplete="off" [attr.aria-label]="'Location code' | t: 'staff.paymentGateway.invoices.locationAria'" [placeholder]="setup.defaults.locationCode" [(ngModel)]="inv.locationCode" />
               </span>
-              <label class="lbl" for="inv-ledger">Fee ledger</label>
+              <label class="lbl" for="inv-ledger">{{ 'Fee ledger' | t: 'staff.paymentGateway.invoices.ledgerLabel' }}</label>
               <input id="inv-ledger" name="feeLedger" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.feeLedger" [(ngModel)]="inv.feeLedger" />
             </div>
           </section>
 
           <section class="inv-sec" aria-labelledby="inv-items">
-            <h6 id="inv-items" class="inv-title">Item name on the invoice, by level</h6>
+            <h6 id="inv-items" class="inv-title">{{ 'Item name on the invoice, by level' | t: 'staff.paymentGateway.invoices.itemsTitle' }}</h6>
             <div class="grid">
-              <label class="lbl" for="inv-bronze">Bronze</label>
+              <label class="lbl" for="inv-bronze">{{ 'Bronze' | t: 'staff.paymentGateway.invoices.bronzeLabel' }}</label>
               <input id="inv-bronze" name="itemBronze" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemBronze" [(ngModel)]="inv.itemBronze" />
-              <label class="lbl" for="inv-silver">Silver</label>
+              <label class="lbl" for="inv-silver">{{ 'Silver' | t: 'staff.paymentGateway.invoices.silverLabel' }}</label>
               <input id="inv-silver" name="itemSilver" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemSilver" [(ngModel)]="inv.itemSilver" />
-              <label class="lbl" for="inv-gold">Gold</label>
+              <label class="lbl" for="inv-gold">{{ 'Gold' | t: 'staff.paymentGateway.invoices.goldLabel' }}</label>
               <input id="inv-gold" name="itemGold" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemGold" [(ngModel)]="inv.itemGold" />
             </div>
           </section>
 
           <section class="inv-sec" aria-labelledby="inv-units">
-            <h6 id="inv-units" class="inv-title">Units never invoiced (test units)</h6>
+            <h6 id="inv-units" class="inv-title">{{ 'Units never invoiced (test units)' | t: 'staff.paymentGateway.invoices.unitsTitle' }}</h6>
             <div class="inv-tags" data-testid="inv-units">
               @for (u of units(); track u) {
-                <span class="inv-tag">{{ u }}<button type="button" class="inv-x" [attr.aria-label]="'Remove ' + u" (click)="removeUnit(u)">×</button></span>
+                <span class="inv-tag">{{ u }}<button type="button" class="inv-x" [attr.aria-label]="'Remove {unit}' | t: 'staff.paymentGateway.invoices.removeUnitAria' : { unit: u }" (click)="removeUnit(u)">×</button></span>
               } @empty {
-                <span class="muted">None: every unit's payment is posted.</span>
+                <span class="muted">{{ "None: every unit's payment is posted." | t: 'staff.paymentGateway.invoices.unitsEmpty' }}</span>
               }
             </div>
             <div class="inv-pair mt-2">
               <input id="inv-unit" name="newUnit" class="form-control inv-unit" maxlength="25" autocomplete="off" placeholder="UDYAM-XX-00-0000000"
-                     aria-label="Add a UDYAM number" [(ngModel)]="newUnit" (keydown.enter)="$event.preventDefault(); addUnit()" />
-              <button type="button" class="btn btn-outline-primary" (click)="addUnit()">Add</button>
-              <span class="muted">Payments of these units are not posted to the ERP.</span>
+                     [attr.aria-label]="'Add a UDYAM number' | t: 'staff.paymentGateway.invoices.addUnitAria'" [(ngModel)]="newUnit" (keydown.enter)="$event.preventDefault(); addUnit()" />
+              <button type="button" class="btn btn-outline-primary" (click)="addUnit()">{{ 'Add' | t: 'staff.paymentGateway.invoices.addUnitButton' }}</button>
+              <span class="muted">{{ 'Payments of these units are not posted to the ERP.' | t: 'staff.paymentGateway.invoices.unitsNote' }}</span>
             </div>
             @if (unitProblem()) {
               <small class="text-danger d-block mt-1" role="alert">{{ unitProblem() }}</small>
@@ -281,49 +280,48 @@ export interface PaymentGatewayInfo {
           </section>
         }
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || (!i.invoices.setup && invoicesOn() === i.invoices.enabled)">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || (!i.invoices.setup && invoicesOn() === i.invoices.enabled)">{{ 'Save' | t: 'staff.paymentGateway.saveButton' }}</button>
         </div>
       </form>
 
       <!-- 2026-11-15 (the user): the ERP account entered here, as the CCAvenue account (else the server file's). -->
       <form class="zed-card" [hidden]="section() !== 'erp'" (ngSubmit)="saveErp()" novalidate>
         <div class="card-head">
-          <h5 class="card-title">QCI ERP connection (Business Central)</h5>
+          <h5 class="card-title">{{ 'QCI ERP connection (Business Central)' | t: 'staff.paymentGateway.erp.title' }}</h5>
           <span class="status-badge" [class.is-active]="erpInUse(i) === 'page'" data-testid="erp-in-use">
-            In use: {{ erpInUse(i) === 'page' ? 'the account saved here' : erpInUse(i) === 'file' ? 'server settings file' : 'none' }}
+            {{ erpInUse(i) === 'page' ? ('In use: the account saved here' | t: 'staff.paymentGateway.inUse.page') : erpInUse(i) === 'file' ? ('In use: server settings file' | t: 'staff.paymentGateway.inUse.file') : ('In use: none' | t: 'staff.paymentGateway.inUse.none') }}
           </span>
         </div>
         @if (i.invoices.erp?.problem; as problem) {
-          <div class="alert alert-warning" role="alert">The saved account is not used: {{ problem }}</div>
+          <div class="alert alert-warning" role="alert">{{ 'The saved account is not used: {problem}' | t: 'staff.paymentGateway.erp.problem' : { problem } }}</div>
         }
         <div class="grid">
-          <label class="lbl" for="erp-tenant">Tenant ID</label>
-          <input id="erp-tenant" name="tenantId" class="form-control" maxlength="100" autocomplete="off" placeholder="Azure directory ID or domain" [(ngModel)]="erpTenantId" />
-          <label class="lbl" for="erp-client">Client ID</label>
-          <input id="erp-client" name="clientId" class="form-control" maxlength="100" autocomplete="off" placeholder="Application (client) ID" [(ngModel)]="erpClientId" />
-          <label class="lbl" for="erp-secret">Client secret</label>
+          <label class="lbl" for="erp-tenant">{{ 'Tenant ID' | t: 'staff.paymentGateway.erp.tenantLabel' }}</label>
+          <input id="erp-tenant" name="tenantId" class="form-control" maxlength="100" autocomplete="off" [placeholder]="'Azure directory ID or domain' | t: 'staff.paymentGateway.erp.tenantPlaceholder'" [(ngModel)]="erpTenantId" />
+          <label class="lbl" for="erp-client">{{ 'Client ID' | t: 'staff.paymentGateway.erp.clientLabel' }}</label>
+          <input id="erp-client" name="clientId" class="form-control" maxlength="100" autocomplete="off" [placeholder]="'Application (client) ID' | t: 'staff.paymentGateway.erp.clientPlaceholder'" [(ngModel)]="erpClientId" />
+          <label class="lbl" for="erp-secret">{{ 'Client secret' | t: 'staff.paymentGateway.erp.secretLabel' }}</label>
           <input id="erp-secret" name="clientSecret" type="password" class="form-control" maxlength="500" autocomplete="new-password"
-                 [placeholder]="i.invoices.erp?.saved?.clientSecretSet ? 'Saved (hidden): leave blank to keep' : 'Not saved'" [(ngModel)]="erpClientSecret" />
-          <label class="lbl" for="erp-base">Company base URL</label>
+                 [placeholder]="i.invoices.erp?.saved?.clientSecretSet ? ('Saved (hidden): leave blank to keep' | t: 'staff.paymentGateway.keySavedPlaceholder') : ('Not saved' | t: 'staff.paymentGateway.keyNotSavedPlaceholder')" [(ngModel)]="erpClientSecret" />
+          <label class="lbl" for="erp-base">{{ 'Company base URL' | t: 'staff.paymentGateway.erp.baseLabel' }}</label>
           <input id="erp-base" name="companyBaseUrl" class="form-control" maxlength="500" autocomplete="off"
                  placeholder="https://api.businesscentral.dynamics.com/v2.0/<tenant>/Production/ODataV4/Company('…')/" [(ngModel)]="erpBaseUrl" />
-          <label class="lbl" for="erp-scope">Scope</label>
+          <label class="lbl" for="erp-scope">{{ 'Scope' | t: 'staff.paymentGateway.erp.scopeLabel' }}</label>
           <input id="erp-scope" name="scope" class="form-control" maxlength="300" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.scope ?? ''" [(ngModel)]="erpScope" />
-          <label class="lbl" for="erp-customer">Customer endpoint</label>
+          <label class="lbl" for="erp-customer">{{ 'Customer endpoint' | t: 'staff.paymentGateway.erp.customerLabel' }}</label>
           <input id="erp-customer" name="customerEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.customerEndpoint ?? ''" [(ngModel)]="erpCustomerEndpoint" />
-          <label class="lbl" for="erp-invoice">Invoice endpoint</label>
+          <label class="lbl" for="erp-invoice">{{ 'Invoice endpoint' | t: 'staff.paymentGateway.erp.invoiceLabel' }}</label>
           <input id="erp-invoice" name="invoiceEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.invoiceEndpoint ?? ''" [(ngModel)]="erpInvoiceEndpoint" />
-          <label class="lbl" for="erp-receipt">Receipt endpoint</label>
+          <label class="lbl" for="erp-receipt">{{ 'Receipt endpoint' | t: 'staff.paymentGateway.erp.receiptLabel' }}</label>
           <input id="erp-receipt" name="receiptEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.receiptEndpoint ?? ''" [(ngModel)]="erpReceiptEndpoint" />
         </div>
         <small class="muted d-block mt-2">
-          The client secret is stored encrypted and never shown again. Scope and endpoints left empty use the defaults shown.
-          A saved account is used from the next payment; the Invoices switch decides whether invoices are made.
+          {{ 'The client secret is stored encrypted and never shown again. Scope and endpoints left empty use the defaults shown. A saved account is used from the next payment; the Invoices switch decides whether invoices are made.' | t: 'staff.paymentGateway.erp.note' }}
         </small>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Save' | t: 'staff.paymentGateway.saveButton' }}</button>
           @if (i.invoices.erp?.saved) {
-            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useErpFile()">Use server file again</button>
+            <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="useErpFile()">{{ 'Use server file again' | t: 'staff.paymentGateway.useFileButton' }}</button>
           }
         </div>
       </form>
@@ -417,7 +415,7 @@ export class PaymentGatewayPage {
     this.unitProblem.set('');
     if (!u) return;
     if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(u)) {
-      this.unitProblem.set('Please enter a UDYAM number like UDYAM-UP-29-0003915.');
+      this.unitProblem.set(t('staff.paymentGateway.invoices.unitError', 'Please enter a UDYAM number like UDYAM-UP-29-0003915.'));
       return;
     }
     if (!this.units().includes(u)) this.units.update((list) => [...list, u]);
@@ -460,7 +458,11 @@ export class PaymentGatewayPage {
   }
 
   protected async useErpFile(): Promise<void> {
-    if (!(await this.confirms.ask({ title: 'Use the Settings File Account?', message: 'ERP postings will use the account in the server settings file again.', confirmLabel: 'Continue' }))) return;
+    if (!(await this.confirms.ask({
+      title: t('staff.paymentGateway.erp.useFileConfirm.title', 'Use the Settings File Account?'),
+      message: t('staff.paymentGateway.erp.useFileConfirm.message', 'ERP postings will use the account in the server settings file again.'),
+      confirmLabel: t('staff.paymentGateway.erp.useFileConfirm.button', 'Continue'),
+    }))) return;
     await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${PaymentGatewayPage.url}/erp`)));
   }
   protected merchantId = '';
@@ -494,7 +496,11 @@ export class PaymentGatewayPage {
   }
 
   protected async useFile(): Promise<void> {
-    if (!(await this.confirms.ask({ title: 'Use the Settings File Account?', message: 'Payments will use the account in the server settings file again.', confirmLabel: 'Continue' }))) return;
+    if (!(await this.confirms.ask({
+      title: t('staff.paymentGateway.gateway.useFileConfirm.title', 'Use the Settings File Account?'),
+      message: t('staff.paymentGateway.gateway.useFileConfirm.message', 'Payments will use the account in the server settings file again.'),
+      confirmLabel: t('staff.paymentGateway.gateway.useFileConfirm.button', 'Continue'),
+    }))) return;
     await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(PaymentGatewayPage.url)));
   }
 

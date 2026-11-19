@@ -1,7 +1,8 @@
-<zed-page-head [crumbs]="crumbs" title="Financial Assistance"
-               subtitle="Applications are allotted to agencies by round robin as they are submitted; the Master Admin can re-allot." />
+<!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.faSubmissions.*). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Financial Assistance' | t: 'staff.faSubmissions.title'"
+               [subtitle]="'Applications are allotted to agencies by round robin as they are submitted; the Master Admin can re-allot.' | t: 'staff.faSubmissions.sub'" />
 @if (!isAssessor()) {
-  <zed-chip-filter class="fa-tabs" label="Stage" [chips]="chips()" [value]="'' + status()" (valueChange)="load(+$event)" />
+  <zed-chip-filter class="fa-tabs" [label]="'Stage' | t: 'staff.faSubmissions.filter.stage'" [chips]="chips()" [value]="'' + status()" (valueChange)="load(+$event)" />
 }
 <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): one unlabelled row as staff-16: the search with its icon on
      the left (300px), All levels (170), All agencies (240) and one "Registered: any date" dropdown (220); "Custom dates…" opens
@@ -10,36 +11,36 @@
   <div class="fa-row">
     <label class="fa-q">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-      <input type="search" id="fa-sub-search" class="form-control" maxlength="50" placeholder="Search applications" aria-label="Search applications"
+      <input type="search" id="fa-sub-search" class="form-control" maxlength="50" [placeholder]="'Search applications' | t: 'staff.faSubmissions.search.placeholder'" [attr.aria-label]="'Search applications' | t: 'staff.faSubmissions.search.placeholder'"
              [value]="search()" (input)="search.set($any($event.target).value)" />
     </label>
-    <select id="fa-level" class="form-select fa-level" aria-label="Certification level" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
-      <option value="">All levels</option>
+    <select id="fa-level" class="form-select fa-level" [attr.aria-label]="'Certification level' | t: 'staff.faSubmissions.filter.levelAria'" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
+      <option value="">{{ 'All levels' | t: 'staff.faSubmissions.filter.allLevels' }}</option>
       @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
     </select>
     @if (isAdmin()) {
-      <select id="fa-agency" class="form-select fa-agency" aria-label="Agency" [ngModel]="filter().agency" (ngModelChange)="setFilter('agency', $event)">
-        <option value="">All agencies</option>
+      <select id="fa-agency" class="form-select fa-agency" [attr.aria-label]="'Agency' | t: 'staff.faSubmissions.filter.agencyAria'" [ngModel]="filter().agency" (ngModelChange)="setFilter('agency', $event)">
+        <option value="">{{ 'All agencies' | t: 'staff.faSubmissions.filter.allAgencies' }}</option>
         @for (a of agencyOptions(); track a.userId) { <option [value]="a.userId">{{ a.userName }} ({{ a.userId }})</option> }
       </select>
     }
-    <select id="fa-when" class="form-select fa-when" aria-label="Registered on" [ngModel]="when()" (ngModelChange)="setWhen($event)">
-      @for (w of whenOptions; track w.key) { <option [value]="w.key">{{ w.label }}</option> }
+    <select id="fa-when" class="form-select fa-when" [attr.aria-label]="'Registered on' | t: 'staff.faSubmissions.filter.whenAria'" [ngModel]="when()" (ngModelChange)="setWhen($event)">
+      @for (w of whenOptions(); track w.key) { <option [value]="w.key">{{ w.label }}</option> }
     </select>
     @if (when() === 'custom') {
-      <div class="fa-dates" role="group" aria-label="Registered between">
-        <input type="date" id="fa-from" class="form-control" aria-label="Registered from" [max]="filter().to || null"
+      <div class="fa-dates" role="group" [attr.aria-label]="'Registered between' | t: 'staff.faSubmissions.filter.datesAria'">
+        <input type="date" id="fa-from" class="form-control" [attr.aria-label]="'Registered from' | t: 'staff.faSubmissions.filter.fromAria'" [max]="filter().to || null"
                [ngModel]="filter().from" (ngModelChange)="setFilter('from', $event)" />
-        <span class="to">to</span>
-        <input type="date" id="fa-to" class="form-control" aria-label="Registered to" [min]="filter().from || null"
+        <span class="to">{{ 'to' | t: 'staff.faSubmissions.filter.toText' }}</span>
+        <input type="date" id="fa-to" class="form-control" [attr.aria-label]="'Registered to' | t: 'staff.faSubmissions.filter.toAria'" [min]="filter().from || null"
                [ngModel]="filter().to" (ngModelChange)="setFilter('to', $event)" />
       </div>
     }
   </div>
   @if (filtering()) {
     <div class="fa-filter-foot">
-      <span data-filter-summary>Showing {{ filterSummary() }} · {{ rows().length }} application{{ rows().length === 1 ? '' : 's' }} in this list</span>
-      <button type="button" class="btn btn-outline-primary btn-sm" (click)="clearFilters()">Clear filters</button>
+      <span data-filter-summary>{{ rows().length === 1 ? ('Showing {filters} · {count} application in this list' | t: 'staff.faSubmissions.filter.summaryOne' : { filters: filterSummary(), count: rows().length }) : ('Showing {filters} · {count} applications in this list' | t: 'staff.faSubmissions.filter.summaryMany' : { filters: filterSummary(), count: rows().length }) }}</span>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="clearFilters()">{{ 'Clear filters' | t: 'staff.faSubmissions.filter.clearButton' }}</button>
     </div>
   }
 </div>
@@ -51,16 +52,16 @@
     <table class="table table-zed">
       <thead>
         <tr>
-          <th>Unit</th>
-          <th>Level</th>
-          <th>Registered on</th>
-          <th>Agency</th>
-          @if (!isAssessor()) { <th>Assessor</th> }
-          <th>Certificate claimed</th>
-          @if (showVerificationColumn()) { <th>Verified on</th> }
-          @if (showStatusColumn() && isAdmin()) { <th>Status</th> }
-          @if (showReasonColumn() && !isAssessor()) { <th>Reason for rejection</th> }
-          <th class="text-end">Action</th>
+          <th>{{ 'Unit' | t: 'staff.faSubmissions.column.unit' }}</th>
+          <th>{{ 'Level' | t: 'staff.faSubmissions.column.level' }}</th>
+          <th>{{ 'Registered on' | t: 'staff.faSubmissions.column.registered' }}</th>
+          <th>{{ 'Agency' | t: 'staff.faSubmissions.column.agency' }}</th>
+          @if (!isAssessor()) { <th>{{ 'Assessor' | t: 'staff.faSubmissions.column.assessor' }}</th> }
+          <th>{{ 'Certificate claimed' | t: 'staff.faSubmissions.column.certificate' }}</th>
+          @if (showVerificationColumn()) { <th>{{ 'Verified on' | t: 'staff.faSubmissions.column.verified' }}</th> }
+          @if (showStatusColumn() && isAdmin()) { <th>{{ 'Status' | t: 'staff.faSubmissions.column.status' }}</th> }
+          @if (showReasonColumn() && !isAssessor()) { <th>{{ 'Reason for rejection' | t: 'staff.faSubmissions.column.reason' }}</th> }
+          <th class="text-end">{{ 'Action' | t: 'staff.faSubmissions.column.action' }}</th>
         </tr>
       </thead>
       <tbody>
@@ -74,13 +75,13 @@
             <td class="unit-cell">
               @if (s.CertificationBodyUserId) {
                 <b>{{ s.CertificationBodyName }}</b><small>{{ s.CertificationBodyUserId }}
-                  @if (s.AllotmentType === 'RoundRobin') { <span class="zed-chip is-auto" title="Allotted by round robin">Auto</span> }</small>
-              } @else { <span class="sub">Not yet allotted</span> }
+                  @if (s.AllotmentType === 'RoundRobin') { <span class="zed-chip is-auto" [title]="'Allotted by round robin' | t: 'staff.faSubmissions.row.autoTooltip'">{{ 'Auto' | t: 'staff.faSubmissions.row.autoChip' }}</span> }</small>
+              } @else { <span class="sub">{{ 'Not yet allotted' | t: 'staff.faSubmissions.row.notAllottedNote' }}</span> }
             </td>
             @if (!isAssessor()) {
               <td class="unit-cell">
                 @if (s.FinancialAssessorId) { <b>{{ assessorName(s) }}</b><small>{{ s.FinancialAssessorId }}</small> }
-                @else { <span class="sub">Not yet assigned</span> }
+                @else { <span class="sub">{{ 'Not yet assigned' | t: 'staff.faSubmissions.row.notAssignedNote' }}</span> }
               </td>
             }
             <td class="unit-cell fa-cert"><b>{{ s.NameOfCertficate }}</b><small>{{ certificateLine(s) }}</small></td>
@@ -88,11 +89,11 @@
             @if (showStatusColumn() && isAdmin()) {
               <td>
                 @if (s.ReasonForRejection) {
-                  <span class="chip is-bad" [title]="'Reason for rejection: ' + s.ReasonForRejection">Rejected</span>
+                  <span class="chip is-bad" [title]="'Reason for rejection: {reason}' | t: 'staff.faSubmissions.row.rejectedTooltip' : { reason: s.ReasonForRejection }">{{ 'Rejected' | t: 'staff.faSubmissions.row.status.rejected' }}</span>
                 } @else if (s.FinancialAssessorId) {
-                  <span class="chip is-good">Allotted to assessor</span>
+                  <span class="chip is-good">{{ 'Allotted to assessor' | t: 'staff.faSubmissions.row.status.assessor' }}</span>
                 } @else if (s.CertificationBodyUserId) {
-                  <span class="chip is-info">Allotted to agency</span>
+                  <span class="chip is-info">{{ 'Allotted to agency' | t: 'staff.faSubmissions.row.status.agency' }}</span>
                 }
               </td>
             }
@@ -107,7 +108,7 @@
                   }
                 }
                 @if (acts.length > 1) {
-                  <zed-row-menu [items]="acts.slice(1)" [label]="'More actions for ' + (s.EnterpriseName || s.ZedId)" (picked)="act(s, $event)" />
+                  <zed-row-menu [items]="acts.slice(1)" [label]="'More actions for {name}' | t: 'staff.faSubmissions.row.menuAria' : { name: s.EnterpriseName || s.ZedId }" (picked)="act(s, $event)" />
                 }
               </div>
             </td>
@@ -115,7 +116,7 @@
         } @empty {
           @if (!loading()) {
             <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): sentence-style empty text. -->
-            <tr><td colspan="11" style="padding: 0"><div class="no-data">{{ search() || filtering() ? 'No application matches the search or filter.' : 'No application at this stage.' }}</div></td></tr>
+            <tr><td colspan="11" style="padding: 0"><div class="no-data">{{ search() || filtering() ? ('No application matches the search or filter.' | t: 'staff.faSubmissions.list.searchEmpty') : ('No application at this stage.' | t: 'staff.faSubmissions.list.empty') }}</div></td></tr>
           }
         }
       </tbody>
@@ -131,12 +132,12 @@
         <div class="modal-header justify-content-between">
           <h3 class="registration-title m-0" id="faDialogTitle">
             @switch (d.kind) {
-              @case ('allot') { {{ d.row.CertificationBodyUserId ? 'Re-allot to an agency' : 'Allot to an agency' }} }
-              @case ('accept') { Accept the application }
-              @case ('reject') { Reject the application }
+              @case ('allot') { {{ d.row.CertificationBodyUserId ? ('Re-allot to an agency' | t: 'staff.faSubmissions.dialog.reallotTitle') : ('Allot to an agency' | t: 'staff.faSubmissions.dialog.allotTitle') }} }
+              @case ('accept') { {{ 'Accept the application' | t: 'staff.faSubmissions.dialog.acceptTitle' }} }
+              @case ('reject') { {{ 'Reject the application' | t: 'staff.faSubmissions.dialog.rejectTitle' }} }
             }
           </h3>
-          <button type="button" class="btn btn-link p-0 fa-x" aria-label="Close" (click)="close()">×</button>
+          <button type="button" class="btn btn-link p-0 fa-x" [attr.aria-label]="'Close' | t: 'staff.faSubmissions.dialog.closeAria'" (click)="close()">×</button>
         </div>
         <div class="modal-body">
           <p class="mb-2"><strong>{{ d.row.ZedId }}</strong> · {{ d.row.EnterpriseName }} · {{ levelName(d.row.CertificationType) }}</p>
@@ -144,13 +145,13 @@
             <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
           }
           @if (d.kind === 'reject') {
-            <label class="form-label" for="faReason">Reason for rejection<span class="req">*</span></label>
+            <label class="form-label" for="faReason">{{ 'Reason for rejection' | t: 'staff.faSubmissions.dialog.reasonLabel' }}<span class="req">*</span></label>
             <textarea id="faReason" class="form-control" maxlength="100" rows="4" [ngModel]="d.reason" (ngModelChange)="setReason($event)"></textarea>
-            <small class="text-muted">Up to 100 characters.</small>
+            <small class="text-muted">{{ 'Up to 100 characters.' | t: 'staff.faSubmissions.dialog.reasonNote' }}</small>
           } @else {
-            <label class="form-label" for="faChoice">{{ d.kind === 'allot' ? 'Assessment agency' : 'Assessor' }}<span class="req">*</span></label>
+            <label class="form-label" for="faChoice">{{ d.kind === 'allot' ? ('Assessment agency' | t: 'staff.faSubmissions.dialog.agencyLabel') : ('Assessor' | t: 'staff.faSubmissions.dialog.assessorLabel') }}<span class="req">*</span></label>
             <select id="faChoice" class="form-select" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
-              <option value="">{{ d.kind === 'allot' ? '--Select Certification Body--' : '--Select--' }}</option>
+              <option value="">{{ d.kind === 'allot' ? ('--Select Certification Body--' | t: 'staff.faSubmissions.dialog.agencyOption') : ('--Select--' | t: 'staff.faSubmissions.dialog.assessorOption') }}</option>
               @for (o of d.options; track o.userId) {
                 <option [value]="o.userId">{{ o.userName }}</option>
               }
@@ -158,9 +159,9 @@
           }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
+          <button type="button" class="btn btn-default" (click)="close()">{{ 'Cancel' | t: 'staff.faSubmissions.dialog.cancelButton' }}</button>
           <button type="button" class="btn" [class.btn-danger]="d.kind === 'reject'" [class.btn-primary]="d.kind !== 'reject'" [disabled]="saving()" (click)="confirm()">
-            {{ d.kind === 'allot' ? (d.row.CertificationBodyUserId ? 'Re-allot' : 'Allot') : d.kind === 'accept' ? 'Accept' : 'Reject' }}
+            {{ d.kind === 'allot' ? (d.row.CertificationBodyUserId ? ('Re-allot' | t: 'staff.faSubmissions.dialog.reallotButton') : ('Allot' | t: 'staff.faSubmissions.dialog.allotButton')) : d.kind === 'accept' ? ('Accept' | t: 'staff.faSubmissions.dialog.acceptButton') : ('Reject' | t: 'staff.faSubmissions.dialog.rejectButton') }}
           </button>
         </div>
       </div>

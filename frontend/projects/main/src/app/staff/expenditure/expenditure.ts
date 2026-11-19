@@ -16,6 +16,7 @@ import {
 } from './expenditure.api';
 import { InvoiceReviewDialog } from './invoice-review';
 import { TaxDetailsCard } from './tax-details';
+import { TextPipe, t } from '../../content/page-text';
 
 /** A view of the page: the assessment agencies (main) or the consultant organisations (Consultancy). */
 type View = 'agencies' | 'organisations';
@@ -29,7 +30,7 @@ type View = 'agencies' | 'organisations';
  */
 @Component({
   selector: 'zed-staff-expenditure',
-  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard],
+  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard, TextPipe],
   templateUrl: './expenditure.html',
   styles: `
     .xp-tabs { display: inline-flex; border: 1px solid #dde7e8; border-radius: 9px; overflow: hidden; }
@@ -62,7 +63,7 @@ export class ExpenditurePage {
   private readonly system = inject(STAFF_SYSTEM);
   private readonly user = inject(AuthService).currentUser;
 
-  protected readonly crumbs = staffCrumbs({ label: 'Expenditure' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.expenditure.crumb', 'Expenditure') }));
   protected readonly money = rupees;
   protected readonly date = shownDate;
   protected readonly tone = statusTone;
@@ -75,7 +76,7 @@ export class ExpenditurePage {
   /** The Consultancy portal's API for the Admin's "Consultant organisations" view on main. */
   protected readonly portal = computed<AdminPortal | null>(() => (this.system === 'main' && this.view() === 'organisations' ? 'consultancy' : null));
   protected readonly consultant = computed(() => this.view() === 'organisations');
-  protected readonly word = computed(() => (this.consultant() ? 'Consultant organisation' : 'Agency'));
+  protected readonly word = computed(() => (this.consultant() ? t('staff.expenditure.organisationLabel', 'Consultant organisation') : t('staff.expenditure.agencyLabel', 'Agency')));
 
   protected readonly partyId = signal('');
   protected readonly level = signal('');
@@ -94,15 +95,18 @@ export class ExpenditurePage {
   protected readonly counts = computed<ListCount[]>(() => {
     const c = this.data()?.cards;
     if (!c) return [];
-    const list: ListCount[] = [{ label: 'Cases in POs', value: c.poCases }];
-    if (this.consultant()) list.push({ label: 'Milestones counted', value: c.milestones, tone: 'good' });
+    const list: ListCount[] = [{ label: t('staff.expenditure.count.poCases', 'Cases in POs'), value: c.poCases }];
+    if (this.consultant()) list.push({ label: t('staff.expenditure.count.milestones', 'Milestones counted'), value: c.milestones, tone: 'good' });
     else
       list.push(
-        { label: 'Completed', value: c.completed, tone: 'good' },
-        { label: 'Rejected after assessment', value: c.rejected, tone: 'bad' },
-        { label: 'Surveillance visits', value: c.surveillance, tone: 'warn' },
+        { label: t('staff.expenditure.count.completed', 'Completed'), value: c.completed, tone: 'good' },
+        { label: t('staff.expenditure.count.rejected', 'Rejected after assessment'), value: c.rejected, tone: 'bad' },
+        { label: t('staff.expenditure.count.surveillance', 'Surveillance visits'), value: c.surveillance, tone: 'warn' },
       );
-    list.push({ label: 'Payable (excl. GST)', value: rupeesShort(c.payable) }, { label: 'Invoices approved', value: rupeesShort(c.approved), tone: 'good', sub: 'excl. GST' });
+    list.push(
+      { label: t('staff.expenditure.count.payable', 'Payable (excl. GST)'), value: rupeesShort(c.payable) },
+      { label: t('staff.expenditure.count.approved', 'Invoices approved'), value: rupeesShort(c.approved), tone: 'good', sub: t('staff.expenditure.count.approvedNote', 'excl. GST') },
+    );
     return list;
   });
 
@@ -155,11 +159,21 @@ export class ExpenditurePage {
 
   protected pill(r: ExpenditureRow) {
     const p = poPill(r.poState, r.balance);
-    return r.poState === 'Stopped' ? { ...p, text: '0 · stopped' } : r.poState === 'Low' ? { ...p, text: String(r.balance ?? 0) } : p;
+    return r.poState === 'Stopped' ? { ...p, text: t('staff.expenditure.po.stoppedBalanceLabel', '0 · stopped') } : r.poState === 'Low' ? { ...p, text: String(r.balance ?? 0) } : p;
   }
 
   protected openCases(row: ExpenditureRow): void {
     this.casesOf.set({ row, filter: { ...this.filter(), partyId: row.partyId, level: row.level } });
+  }
+
+  /** The Cases pop-up's title: the agency and the level. */
+  protected casesTitle(row: ExpenditureRow): string {
+    return t('staff.expenditure.cases.dialogTitle', '{party} · {level}', { party: row.partyName, level: row.levelName });
+  }
+
+  /** "12 cases" under the PO. */
+  protected casesText(n: number): string {
+    return n === 1 ? t('staff.expenditure.row.case', '{count} case', { count: n }) : t('staff.expenditure.row.cases', '{count} cases', { count: n });
   }
 
   protected reviewed(changed: boolean): void {
@@ -170,21 +184,42 @@ export class ExpenditurePage {
   protected async export(): Promise<void> {
     const rows = this.data()?.rows ?? [];
     const kind: PayeeKind = this.consultant() ? 'Consultant' : 'Agency';
+    const x = (key: 'id' | 'level' | 'po' | 'poCases' | 'balance' | 'payable' | 'invoiced' | 'outstanding'): string => {
+      switch (key) {
+        case 'id': return t('staff.expenditure.export.column.id', 'ID');
+        case 'level': return t('staff.expenditure.export.column.level', 'Level');
+        case 'po': return t('staff.expenditure.export.column.po', 'PO');
+        case 'poCases': return t('staff.expenditure.export.column.poCases', 'Cases in PO');
+        case 'balance': return t('staff.expenditure.export.column.balance', 'Balance');
+        case 'payable': return t('staff.expenditure.export.column.payable', 'Payable (₹)');
+        case 'invoiced': return t('staff.expenditure.export.column.invoiced', 'Invoiced (₹)');
+        default: return t('staff.expenditure.export.column.outstanding', 'Outstanding (₹)');
+      }
+    };
     const cols = this.consultant()
-      ? ['Consultant organisation', 'ID', 'Level', 'PO', 'Cases in PO', 'Milestones', 'Balance', 'Payable (₹)', 'Invoiced (₹)', 'Outstanding (₹)']
-      : ['Agency', 'ID', 'Level', 'PO', 'Cases in PO', 'Completed', 'Rejected', 'Surveillance', 'Balance', 'Payable (₹)', 'Invoiced (₹)', 'Outstanding (₹)'];
-    const body = rows.map((r) => [r.partyName, r.partyId, r.levelName, r.poLabel ?? 'No PO', r.poCases,
+      ? [this.word(), x('id'), x('level'), x('po'), x('poCases'), t('staff.expenditure.export.column.milestones', 'Milestones'), x('balance'), x('payable'), x('invoiced'), x('outstanding')]
+      : [this.word(), x('id'), x('level'), x('po'), x('poCases'), t('staff.expenditure.export.column.completed', 'Completed'),
+        t('staff.expenditure.export.column.rejected', 'Rejected'), t('staff.expenditure.export.column.surveillance', 'Surveillance'), x('balance'), x('payable'),
+        x('invoiced'), x('outstanding')];
+    const noPo = t('staff.expenditure.po.noPoLabel', 'No PO');
+    const body = rows.map((r) => [r.partyName, r.partyId, r.levelName, r.poLabel ?? noPo, r.poCases,
       ...(kind === 'Consultant' ? [r.milestones] : [r.completed, r.rejected, r.surveillance]),
       r.poState === 'NoPo' ? null : r.balance, r.payable, r.invoiced, r.outstanding]);
     const inv = this.invoices().map((i) => [i.partyName, i.monthLabel, i.invoiceNo, i.invoiceDate, i.portalCases, i.portalTotal, i.invoiceAmount, i.status,
-      i.status === 'Approved' ? i.erpExport ?? 'Pending' : null]);
+      i.status === 'Approved' ? i.erpExport ?? t('staff.expenditure.export.erpPending', 'Pending') : null]);
+    const invoiceColumns = [
+      this.word(), t('staff.expenditure.export.invoice.month', 'Month'), t('staff.expenditure.export.invoice.invoice', 'Invoice'),
+      t('staff.expenditure.export.invoice.date', 'Invoice date'), t('staff.expenditure.export.invoice.cases', 'Cases'),
+      t('staff.expenditure.export.invoice.portalAmount', 'Portal amount incl. GST (₹)'), t('staff.expenditure.export.invoice.amount', 'Invoice amount (₹)'),
+      t('staff.expenditure.export.invoice.status', 'Status'), t('staff.expenditure.export.invoice.erp', 'ERP'),
+    ];
     try {
       await this.excel.xlsx(this.consultant() ? 'expenditure-consultant-organisations' : 'expenditure-assessment-agencies', [
         { name: 'Expenditure', columns: cols, rows: body },
-        { name: 'Invoices', columns: [this.word(), 'Month', 'Invoice', 'Invoice date', 'Cases', 'Portal amount incl. GST (₹)', 'Invoice amount (₹)', 'Status', 'ERP'], rows: inv },
+        { name: 'Invoices', columns: invoiceColumns, rows: inv },
       ]);
     } catch (e) {
-      this.toast.error('Export failed', apiErrorMessage(e));
+      this.toast.error(t('staff.expenditure.toast.exportFailed', 'Export failed'), apiErrorMessage(e));
     }
   }
 }

@@ -8,6 +8,7 @@ import { PageHead } from '../../msme/shared/page-head';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
+import { TextPipe, t } from '../../content/page-text';
 
 export const TAT_API = '/api/staff/settings/tat';
 
@@ -29,7 +30,13 @@ export interface TatResponse {
 }
 
 /** The switch's names for the modules each portal's TAT is for. */
-export const TAT_MODULES: Partial<Record<AdminPortal, string>> = { main: 'Assessment', consultancy: 'Handholding', surveillance: 'Surveillance' };
+export function tatModules(): Partial<Record<AdminPortal, string>> {
+  return {
+    main: t('staff.tat.module.main', 'Assessment'),
+    consultancy: t('staff.tat.module.consultancy', 'Handholding'),
+    surveillance: t('staff.tat.module.surveillance', 'Surveillance'),
+  };
+}
 
 interface Editing { id: number | null; name: string; certification: string; fromStatus: string; toStatus: string; days: number | null; isActive: boolean }
 
@@ -43,31 +50,32 @@ type Ask = { kind: 'delete'; relation: TatRelation } | { kind: 'suggested' };
  */
 @Component({
   selector: 'zed-staff-tat',
-  imports: [FormsModule, PortalSwitchComponent, PageHead, ChipFilter, ConfirmDialog],
+  imports: [FormsModule, PortalSwitchComponent, PageHead, ChipFilter, ConfirmDialog, TextPipe],
   template: `
-    <zed-page-head title="TAT (Turnaround Time)" [crumbs]="[{ label: 'All settings', link: '/staff/administration' }, { label: 'TAT' }]"
-      subtitle="Days allowed per status and between statuses; the monitoring pages show the delayed cases from these." />
-    <zed-portal-switch [portals]="portals" title="Module" [labels]="modules" />
+    <zed-page-head [title]="'TAT (Turnaround Time)' | t: 'staff.tat.title'"
+      [crumbs]="[{ label: 'All settings' | t: 'staff.tat.crumb.settings', link: '/staff/administration' }, { label: 'TAT' | t: 'staff.tat.crumb.tat' }]"
+      [subtitle]="'Days allowed per status and between statuses; the monitoring pages show the delayed cases from these.' | t: 'staff.tat.sub'" />
+    <zed-portal-switch [portals]="portals" [title]="'Module' | t: 'staff.tat.switch.label'" [labels]="modules()" />
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
     @if (data(); as d) {
       <div class="zed-card tat-card">
         <div class="tat-head">
-          <h3 class="tat-h">Days allowed per status · {{ d.module }}</h3>
-          <zed-chip-filter label="Level" [chips]="levelChips()" [value]="level()" (valueChange)="pickLevel($event)" />
+          <h3 class="tat-h">{{ 'Days allowed per status · {module}' | t: 'staff.tat.days.heading' : { module: d.module } }}</h3>
+          <zed-chip-filter [label]="'Level' | t: 'staff.tat.filter.level'" [chips]="levelChips()" [value]="level()" (valueChange)="pickLevel($event)" />
         </div>
         <div class="table-responsive">
           <table class="table table-zed tat-table">
-            <thead><tr><th>Status</th><th>Stage</th><th class="tat-days">Days allowed</th></tr></thead>
+            <thead><tr><th>{{ 'Status' | t: 'staff.tat.days.column.status' }}</th><th>{{ 'Stage' | t: 'staff.tat.days.column.stage' }}</th><th class="tat-days">{{ 'Days allowed' | t: 'staff.tat.days.column.days' }}</th></tr></thead>
             <tbody>
               @for (s of d.statuses; track s.code) {
                 <tr [attr.data-status]="s.code" [class.is-off]="s.final">
                   <td><b>{{ s.name }}</b>@if (s.systemText && s.systemText.toLowerCase() !== s.name.toLowerCase()) { <small class="sub">{{ s.systemText }}</small> }</td>
-                  <td>@if (s.track) { <span class="chip is-info">{{ s.track === 'desktop' ? 'Desktop' : 'Site' }}</span> }</td>
+                  <td>@if (s.track) { <span class="chip is-info">{{ s.track === 'desktop' ? ('Desktop' | t: 'staff.tat.days.chip.desktop') : ('Site' | t: 'staff.tat.days.chip.site') }}</span> }</td>
                   <td class="tat-days">
-                    @if (s.final) { <span class="text-muted">Final status</span> }
+                    @if (s.final) { <span class="text-muted">{{ 'Final status' | t: 'staff.tat.days.final' }}</span> }
                     @else {
-                      <input type="number" class="form-control" min="1" max="365" placeholder="No TAT" [attr.aria-label]="'Days allowed: ' + s.name"
+                      <input type="number" class="form-control" min="1" max="365" [placeholder]="'No TAT' | t: 'staff.tat.days.placeholder'" [attr.aria-label]="'Days allowed: {status}' | t: 'staff.tat.days.aria' : { status: s.name }"
                         [ngModel]="draft()[s.code] ?? null" (ngModelChange)="setDays(s.code, $event)" />
                     }
                   </td>
@@ -77,80 +85,80 @@ type Ask = { kind: 'delete'; relation: TatRelation } | { kind: 'suggested' };
           </table>
         </div>
         <div class="tat-foot">
-          <small class="text-muted">Blank = no TAT for that status. Days count from the date the case reached the status.</small>
-          <button type="button" class="btn btn-primary" [disabled]="!dirty() || busy()" (click)="saveDays()">Save days</button>
+          <small class="text-muted">{{ 'Blank = no TAT for that status. Days count from the date the case reached the status.' | t: 'staff.tat.days.note' }}</small>
+          <button type="button" class="btn btn-primary" [disabled]="!dirty() || busy()" (click)="saveDays()">{{ 'Save days' | t: 'staff.tat.days.saveButton' }}</button>
         </div>
       </div>
 
       <div class="zed-card tat-card">
         <div class="tat-head">
-          <h3 class="tat-h">Relations</h3>
+          <h3 class="tat-h">{{ 'Relations' | t: 'staff.tat.relations.heading' }}</h3>
           <div class="tat-acts">
-            <button type="button" class="btn btn-default" [disabled]="!missing().length || busy()" (click)="ask.set({ kind: 'suggested' })">Add Suggested Relations</button>
-            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="add()">Add Relation</button>
+            <button type="button" class="btn btn-default" [disabled]="!missing().length || busy()" (click)="ask.set({ kind: 'suggested' })">{{ 'Add Suggested Relations' | t: 'staff.tat.relations.suggestedButton' }}</button>
+            <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="add()">{{ 'Add Relation' | t: 'staff.tat.relations.addButton' }}</button>
           </div>
         </div>
         <div class="table-responsive">
           <table class="table table-zed tat-table">
-            <thead><tr><th>Name</th><th>Level</th><th>From → To</th><th class="text-end">Days</th><th class="text-end">Actions</th></tr></thead>
+            <thead><tr><th>{{ 'Name' | t: 'staff.tat.relations.column.name' }}</th><th>{{ 'Level' | t: 'staff.tat.relations.column.level' }}</th><th>{{ 'From → To' | t: 'staff.tat.relations.column.fromTo' }}</th><th class="text-end">{{ 'Days' | t: 'staff.tat.relations.column.days' }}</th><th class="text-end">{{ 'Actions' | t: 'staff.tat.relations.column.actions' }}</th></tr></thead>
             <tbody>
               @for (r of d.relations; track r.id) {
                 <tr [attr.data-id]="r.id" [class.is-off]="!r.isActive">
-                  <td><b>{{ r.name }}</b>@if (!r.isActive) { <span class="status-badge is-inactive ms-1">Inactive</span> }</td>
+                  <td><b>{{ r.name }}</b>@if (!r.isActive) { <span class="status-badge is-inactive ms-1">{{ 'Inactive' | t: 'staff.tat.relations.inactive' }}</span> }</td>
                   <td>{{ levelLabel(r.certification) }}</td>
                   <td>{{ pointName(r.fromStatus) }} → {{ pointName(r.toStatus) }}</td>
                   <td class="text-end">{{ r.days }}</td>
                   <td class="text-end text-nowrap">
-                    <button type="button" class="btn btn-sm" [class.btn-outline-danger]="r.isActive" [class.btn-outline-primary]="!r.isActive" [disabled]="busy()" (click)="toggle(r)">{{ r.isActive ? 'Deactivate' : 'Activate' }}</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="busy()" (click)="edit(r)">Edit</button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="ask.set({ kind: 'delete', relation: r })">Delete</button>
+                    <button type="button" class="btn btn-sm" [class.btn-outline-danger]="r.isActive" [class.btn-outline-primary]="!r.isActive" [disabled]="busy()" (click)="toggle(r)">{{ r.isActive ? ('Deactivate' | t: 'staff.tat.relations.deactivateButton') : ('Activate' | t: 'staff.tat.relations.activateButton') }}</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="busy()" (click)="edit(r)">{{ 'Edit' | t: 'staff.tat.relations.editButton' }}</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" (click)="ask.set({ kind: 'delete', relation: r })">{{ 'Delete' | t: 'staff.tat.relations.deleteButton' }}</button>
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="5"><div class="no-data">No relations yet. Add one, or add the suggested relations.</div></td></tr>
+                <tr><td colspan="5"><div class="no-data">{{ 'No relations yet. Add one, or add the suggested relations.' | t: 'staff.tat.relations.empty' }}</div></td></tr>
               }
             </tbody>
           </table>
         </div>
       </div>
     } @else if (!busy()) {
-      <div class="no-data">The TAT could not be loaded</div>
+      <div class="no-data">{{ 'The TAT could not be loaded' | t: 'staff.tat.loadError' }}</div>
     }
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tatRelTitle">
         <div class="modal-dialog">
           <div class="modal-content">
-            <div class="modal-header"><h3 class="registration-title m-0" id="tatRelTitle">{{ e.id ? 'Edit Relation' : 'Add Relation' }}</h3></div>
+            <div class="modal-header"><h3 class="registration-title m-0" id="tatRelTitle">{{ e.id ? ('Edit Relation' | t: 'staff.tat.dialog.editTitle') : ('Add Relation' | t: 'staff.tat.dialog.addTitle') }}</h3></div>
             <div class="modal-body">
-              <label class="form-label" for="tatName">Name<span class="req">*</span></label>
-              <input id="tatName" class="form-control" maxlength="100" placeholder="e.g. Allocation to desktop assessment" [(ngModel)]="e.name" />
-              <label class="form-label mt-3" for="tatLevel">Level</label>
+              <label class="form-label" for="tatName">{{ 'Name' | t: 'staff.tat.dialog.name.label' }}<span class="req">*</span></label>
+              <input id="tatName" class="form-control" maxlength="100" [placeholder]="'e.g. Allocation to desktop assessment' | t: 'staff.tat.dialog.name.placeholder'" [(ngModel)]="e.name" />
+              <label class="form-label mt-3" for="tatLevel">{{ 'Level' | t: 'staff.tat.dialog.level.label' }}</label>
               <select id="tatLevel" class="form-select" [(ngModel)]="e.certification">
-                <option value="">All levels</option>
+                <option value="">{{ 'All levels' | t: 'staff.tat.allLevels.label' }}</option>
                 @for (l of data()?.levels ?? []; track l.code) { <option [value]="l.code">{{ l.name }}</option> }
               </select>
-              <label class="form-label mt-3" for="tatFrom">From<span class="req">*</span></label>
+              <label class="form-label mt-3" for="tatFrom">{{ 'From' | t: 'staff.tat.dialog.from.label' }}<span class="req">*</span></label>
               <select id="tatFrom" class="form-select" [(ngModel)]="e.fromStatus">
-                <option value="">Choose</option>
+                <option value="">{{ 'Choose' | t: 'staff.tat.dialog.choose.label' }}</option>
                 @for (p of startPoints(); track p.code) { <option [value]="p.code">{{ p.name }}</option> }
               </select>
-              <label class="form-label mt-3" for="tatTo">To<span class="req">*</span></label>
+              <label class="form-label mt-3" for="tatTo">{{ 'To' | t: 'staff.tat.dialog.to.label' }}<span class="req">*</span></label>
               <select id="tatTo" class="form-select" [(ngModel)]="e.toStatus">
-                <option value="">Choose</option>
+                <option value="">{{ 'Choose' | t: 'staff.tat.dialog.choose.label' }}</option>
                 @for (p of data()?.points ?? []; track p.code) { <option [value]="p.code">{{ p.name }}</option> }
               </select>
-              <label class="form-label mt-3" for="tatDays">Days<span class="req">*</span></label>
+              <label class="form-label mt-3" for="tatDays">{{ 'Days' | t: 'staff.tat.dialog.days.label' }}<span class="req">*</span></label>
               <input id="tatDays" type="number" class="form-control" min="1" max="999" [(ngModel)]="e.days" />
               <div class="form-check mt-3">
                 <input class="form-check-input" type="checkbox" id="tatActive" [(ngModel)]="e.isActive" />
-                <label class="form-check-label" for="tatActive">Active</label>
+                <label class="form-check-label" for="tatActive">{{ 'Active' | t: 'staff.tat.dialog.active.label' }}</label>
               </div>
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">Save</button>
+              <button type="button" class="btn btn-default" (click)="editing.set(null)">{{ 'Cancel' | t: 'staff.tat.dialog.cancelButton' }}</button>
+              <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="save(e)">{{ 'Save' | t: 'staff.tat.dialog.saveButton' }}</button>
             </div>
           </div>
         </div>
@@ -183,7 +191,7 @@ export class TatPage {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
   protected readonly portals = ALL_PORTALS;
-  protected readonly modules = TAT_MODULES;
+  protected readonly modules = computed(() => tatModules());
 
   protected readonly data = signal<TatResponse | null>(null);
   protected readonly level = signal('');
@@ -248,11 +256,11 @@ export class TatPage {
     const draft = this.draft();
     const bad = d.statuses.find((s) => !s.final && draft[s.code] !== null && draft[s.code] !== undefined && !(Number.isInteger(draft[s.code]) && draft[s.code]! >= 1 && draft[s.code]! <= 365));
     if (bad) {
-      this.toast.error('Days allowed', `${bad.name}: enter 1 to 365 days, or leave it blank.`);
+      this.toast.error(t('staff.tat.toast.daysTitle', 'Days allowed'), t('staff.tat.toast.daysRange', '{status}: enter 1 to 365 days, or leave it blank.', { status: bad.name }));
       return;
     }
     const days = d.statuses.filter((s) => !s.final).map((s) => ({ status: s.code, days: draft[s.code] ?? null }));
-    await this.run(this.http.put<MessageResponse>(`${TAT_API}/days/${encodeURIComponent(this.level())}`, { days }), 'TAT');
+    await this.run(this.http.put<MessageResponse>(`${TAT_API}/days/${encodeURIComponent(this.level())}`, { days }), t('staff.tat.toast.tat', 'TAT'));
   }
 
   protected add(): void {
@@ -267,11 +275,11 @@ export class TatPage {
 
   /** Null when the relation can be sent; else what to fix (the API checks again). */
   static problem(e: Editing): string | null {
-    if (!e.name.trim()) return "Please enter the relation's name.";
-    if (!e.fromStatus) return 'Please choose the status the relation starts from.';
-    if (!e.toStatus) return 'Please choose the status the relation ends at.';
-    if (e.fromStatus === e.toStatus) return 'The relation must end at another status.';
-    if (!(Number.isInteger(Number(e.days)) && Number(e.days) >= 1 && Number(e.days) <= 999)) return 'Days must be 1 to 999.';
+    if (!e.name.trim()) return t('staff.tat.dialog.error.name', "Please enter the relation's name.");
+    if (!e.fromStatus) return t('staff.tat.dialog.error.from', 'Please choose the status the relation starts from.');
+    if (!e.toStatus) return t('staff.tat.dialog.error.to', 'Please choose the status the relation ends at.');
+    if (e.fromStatus === e.toStatus) return t('staff.tat.dialog.error.same', 'The relation must end at another status.');
+    if (!(Number.isInteger(Number(e.days)) && Number(e.days) >= 1 && Number(e.days) <= 999)) return t('staff.tat.dialog.error.days', 'Days must be 1 to 999.');
     return null;
   }
 
@@ -283,22 +291,30 @@ export class TatPage {
     }
     const body = { name: e.name.trim(), certification: e.certification || null, fromStatus: e.fromStatus, toStatus: e.toStatus, days: Number(e.days), isActive: e.isActive };
     const call = e.id ? this.http.put<MessageResponse>(`${TAT_API}/relations/${e.id}`, body) : this.http.post<MessageResponse>(`${TAT_API}/relations`, body);
-    if (await this.run(call, 'Relation', true)) this.editing.set(null);
+    if (await this.run(call, t('staff.tat.toast.relation', 'Relation'), true)) this.editing.set(null);
   }
 
   protected async toggle(r: TatRelation): Promise<void> {
     const body = { name: r.name, certification: r.certification, fromStatus: r.fromStatus, toStatus: r.toStatus, days: r.days, isActive: !r.isActive };
-    await this.run(this.http.put<MessageResponse>(`${TAT_API}/relations/${r.id}`, body), 'Relation');
+    await this.run(this.http.put<MessageResponse>(`${TAT_API}/relations/${r.id}`, body), t('staff.tat.toast.relation', 'Relation'));
   }
 
   protected confirmAsk(a: Ask): ConfirmAsk {
     if (a.kind === 'delete') {
-      return { title: 'Delete Relation', message: `Delete "${a.relation.name}"? The monitoring pages stop using it.`, confirmLabel: 'Delete', danger: true };
+      return {
+        title: t('staff.tat.deleteDialog.title', 'Delete Relation'),
+        message: t('staff.tat.deleteDialog.message', 'Delete "{name}"? The monitoring pages stop using it.', { name: a.relation.name }),
+        confirmLabel: t('staff.tat.deleteDialog.confirmButton', 'Delete'), danger: true,
+      };
     }
     return {
-      title: 'Add Suggested Relations', confirmLabel: 'Add', icon: 'info',
-      message: 'These relations will be added for all levels (you can change or delete them afterwards):',
-      points: this.missing().map((s) => `${s.name}: ${this.pointName(s.fromStatus)} → ${this.pointName(s.toStatus)}, ${s.days} days`),
+      title: t('staff.tat.suggestedDialog.title', 'Add Suggested Relations'), confirmLabel: t('staff.tat.suggestedDialog.confirmButton', 'Add'), icon: 'info',
+      message: t('staff.tat.suggestedDialog.message', 'These relations will be added for all levels (you can change or delete them afterwards):'),
+      points: this.missing().map((s) => {
+        const values = { name: s.name, from: this.pointName(s.fromStatus), to: this.pointName(s.toStatus), days: s.days };
+        return s.days === 1 ? t('staff.tat.suggestedDialog.pointDay', '{name}: {from} → {to}, {days} day', values)
+          : t('staff.tat.suggestedDialog.pointDays', '{name}: {from} → {to}, {days} days', values);
+      }),
     };
   }
 
@@ -311,7 +327,7 @@ export class TatPage {
     const call = a.kind === 'delete'
       ? this.http.delete<MessageResponse>(`${TAT_API}/relations/${a.relation.id}`)
       : this.http.post<MessageResponse>(`${TAT_API}/relations/suggested`, null);
-    if (await this.run(call, 'Relations', true)) this.ask.set(null);
+    if (await this.run(call, t('staff.tat.toast.relations', 'Relations'), true)) this.ask.set(null);
   }
 
   private async run(call: Observable<MessageResponse>, title: string, inModal = false): Promise<boolean> {
@@ -336,6 +352,6 @@ export class TatPage {
   }
 
   protected levelLabel(code: string | null): string {
-    return code ? (this.data()?.levels.find((l) => l.code === code)?.name ?? code) : 'All levels';
+    return code ? (this.data()?.levels.find((l) => l.code === code)?.name ?? code) : t('staff.tat.allLevels.label', 'All levels');
   }
 }

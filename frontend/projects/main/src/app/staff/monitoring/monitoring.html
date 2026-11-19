@@ -4,63 +4,63 @@
      an arrow, the level as a medal. -->
 <!-- 2026-11-18 (approved monitoring design): sub-sections per stage, a date range that follows the stage, the app's steps and the
      submission pending (man-days) in progress, TAT delays on quality check, Excel export of the filtered list. -->
-<zed-page-head [crumbs]="crumbs" [title]="title" [subtitle]="subtitle">
-  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />Export</button>
-  <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />Refresh</button>
+<zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
+  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />{{ 'Export' | t: 'staff.monitoring.exportButton' }}</button>
+  <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.monitoring.refreshButton' }}</button>
 </zed-page-head>
-<zed-list-counts class="mo-stages" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" label="Stages" (pick)="pickStage($event.key)" />
+<zed-list-counts class="mo-stages" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" [label]="'Stages' | t: 'staff.monitoring.stages.aria'" (pick)="pickStage($event.key)" />
 
 <div class="mo-sec">
-<div class="mo-tabs" role="tablist" aria-label="Sub-sections">
+<div class="mo-tabs" role="tablist" [attr.aria-label]="'Sub-sections' | t: 'staff.monitoring.tracks.aria'">
   @for (t of tracks(); track t.key) {
     <button type="button" role="tab" class="mo-tab" [class.on]="t.key === track()" [attr.aria-selected]="t.key === track()" [attr.data-track]="t.key"
             (click)="pickTrack(t.key)">{{ t.label }}&ngsp;<span class="cf-n">{{ t.count }}</span></button>
   }
 </div>
 @if (showSteps()) {
-  <zed-chip-filter class="mo-chips" label="Progress" [chips]="stepFilter()" [value]="step()" (valueChange)="step.set($event)" />
+  <zed-chip-filter class="mo-chips" [label]="'Progress' | t: 'staff.monitoring.stepChip.label'" [chips]="stepFilter()" [value]="step()" (valueChange)="step.set($event)" />
 }
 @if (showDelays()) {
-  <zed-chip-filter class="mo-chips" label="Delay" [chips]="delayFilter()" [value]="delay()" (valueChange)="delay.set($event)" />
+  <zed-chip-filter class="mo-chips" [label]="'Delay' | t: 'staff.monitoring.delay.label'" [chips]="delayFilter()" [value]="delay()" (valueChange)="delay.set($event)" />
 }
 <div class="mo-filters">
   <div class="mo-q">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-    <input type="search" id="monitoringSearch" class="form-control" maxlength="50" aria-label="Search ZED ID, unit, agency or assessor"
-           [placeholder]="consultancy ? 'Search ZED ID, unit, CO or consultant' : 'Search ZED ID, unit, agency or assessor'"
+    <input type="search" id="monitoringSearch" class="form-control" maxlength="50" [attr.aria-label]="'Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.aria'"
+           [placeholder]="consultancy ? ('Search ZED ID, unit, CO or consultant' | t: 'staff.monitoring.search.consultancy.placeholder') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.placeholder')"
            [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
-  <select id="certification" class="form-select mo-lv" aria-label="Certification level"
+  <select id="certification" class="form-select mo-lv" [attr.aria-label]="'Certification level' | t: 'staff.monitoring.level.aria'"
           [ngModel]="certification()" (ngModelChange)="setCertification($event)">
-    <option value="">All levels</option>
+    <option value="">{{ 'All levels' | t: 'staff.monitoring.level.all.label' }}</option>
     @for (l of levels(); track l) {
       <option [value]="l">{{ levelName(l) }}</option>
     }
   </select>
-  <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? 'CO' : 'Agency'" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
-    <option value="">{{ consultancy ? 'All COs' : 'All agencies' }}</option>
+  <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? ('CO' | t: 'staff.monitoring.co.aria') : ('Agency' | t: 'staff.monitoring.agency.aria')" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
+    <option value="">{{ consultancy ? ('All COs' | t: 'staff.monitoring.co.all.label') : ('All agencies' | t: 'staff.monitoring.agency.all.label') }}</option>
     @for (a of agencies(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }
   </select>
   @if (!consultancy && track() === 'site') {
-    <select id="monitoringMode" class="form-select mo-md" aria-label="Mode of assessment" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
-      <option value="">All modes</option>
+    <select id="monitoringMode" class="form-select mo-md" [attr.aria-label]="'Mode of assessment' | t: 'staff.monitoring.mode.aria'" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
+      <option value="">{{ 'All modes' | t: 'staff.monitoring.mode.all.label' }}</option>
       @for (m of modes(); track m[0]) { <option [value]="m[0]">{{ m[1] }}</option> }
     </select>
   }
   @if (!consultancy && status() === 4) {
     <div class="mo-nc">
-      <input type="date" id="NcCloseDate" class="form-control" aria-label="NC closure date" [ngModel]="ncClosingDate()" (ngModelChange)="ncClosingDate.set($event)" />
-      <button type="button" class="btn btn-outline-primary" aria-label="Filter by NC closure date" (click)="load()">Search</button>
+      <input type="date" id="NcCloseDate" class="form-control" [attr.aria-label]="'NC closure date' | t: 'staff.monitoring.ncDate.aria'" [ngModel]="ncClosingDate()" (ngModelChange)="ncClosingDate.set($event)" />
+      <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Filter by NC closure date' | t: 'staff.monitoring.ncDate.searchAria'" (click)="load()">{{ 'Search' | t: 'staff.monitoring.ncDate.searchButton' }}</button>
     </div>
   }
   <div class="mo-range">
     <label for="monitoringFrom">{{ dateLabel() }}</label>
-    <input type="date" id="monitoringFrom" class="form-control" [attr.aria-label]="dateLabel() + ' (from)'" [ngModel]="from()" (ngModelChange)="setRange('from', $event)" />
-    <label for="monitoringTo">to</label>
-    <input type="date" id="monitoringTo" class="form-control" [attr.aria-label]="dateLabel() + ' (to)'" [min]="from()" [ngModel]="to()" (ngModelChange)="setRange('to', $event)" />
+    <input type="date" id="monitoringFrom" class="form-control" [attr.aria-label]="'{range} (from)' | t: 'staff.monitoring.range.fromAria' : { range: dateLabel() }" [ngModel]="from()" (ngModelChange)="setRange('from', $event)" />
+    <label for="monitoringTo">{{ 'to' | t: 'staff.monitoring.range.to.label' }}</label>
+    <input type="date" id="monitoringTo" class="form-control" [attr.aria-label]="'{range} (to)' | t: 'staff.monitoring.range.toAria' : { range: dateLabel() }" [min]="from()" [ngModel]="to()" (ngModelChange)="setRange('to', $event)" />
   </div>
-  @if (filtered()) { <button type="button" class="mo-clear" (click)="clearAll()">Clear All</button> }
-  @if (dueSort()) { <span class="mo-sort">{{ showDelays() ? 'Sorted by most delayed' : 'Sorted by days left' }}</span> }
+  @if (filtered()) { <button type="button" class="mo-clear" (click)="clearAll()">{{ 'Clear All' | t: 'staff.monitoring.clearAllButton' }}</button> }
+  @if (dueSort()) { <span class="mo-sort">{{ showDelays() ? ('Sorted by most delayed' | t: 'staff.monitoring.sort.delayed.label') : ('Sorted by days left' | t: 'staff.monitoring.sort.daysLeft.label') }}</span> }
 </div>
 </div>
 
@@ -74,28 +74,28 @@
     <thead>
       @if (consultancy) {
         <tr>
-          <th>Unit</th>
-          <th>Level</th>
-          <th>CO</th>
-          <th>Milestone</th>
-          <th>Consultants / expert</th>
-          <th>Site visit dates</th>
-          <th class="text-end">Actions</th>
+          <th>{{ 'Unit' | t: 'staff.monitoring.column.unit' }}</th>
+          <th>{{ 'Level' | t: 'staff.monitoring.column.level' }}</th>
+          <th>{{ 'CO' | t: 'staff.monitoring.column.co' }}</th>
+          <th>{{ 'Milestone' | t: 'staff.monitoring.column.milestone' }}</th>
+          <th>{{ 'Consultants / expert' | t: 'staff.monitoring.column.consultants' }}</th>
+          <th>{{ 'Site visit dates' | t: 'staff.monitoring.column.siteVisitDates' }}</th>
+          <th class="text-end">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
         </tr>
       } @else {
         <tr>
-          <th>Unit</th>
-          <th>{{ surveillance ? 'Level / Surveillance No' : 'Level' }}</th>
-          <th>Agency</th>
-          @if (track() !== 'desktop') { <th>Mode</th> }
-          <th>Assessor</th>
-          @if (main) { <th class="text-center">Duplicates</th> }
-          <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} dates</th>
-          @if (showSteps()) { <th>Progress</th> }
+          <th>{{ 'Unit' | t: 'staff.monitoring.column.unit' }}</th>
+          <th>{{ surveillance ? ('Level / Surveillance No' | t: 'staff.monitoring.column.levelSurveillance') : ('Level' | t: 'staff.monitoring.column.level') }}</th>
+          <th>{{ 'Agency' | t: 'staff.monitoring.column.agency' }}</th>
+          @if (track() !== 'desktop') { <th>{{ 'Mode' | t: 'staff.monitoring.column.mode' }}</th> }
+          <th>{{ 'Assessor' | t: 'staff.monitoring.column.assessor' }}</th>
+          @if (main) { <th class="text-center">{{ 'Duplicates' | t: 'staff.monitoring.column.duplicates' }}</th> }
+          <th>{{ surveillance ? ('Surveillance dates' | t: 'staff.monitoring.column.surveillanceDates') : ('Assessment dates' | t: 'staff.monitoring.column.assessmentDates') }}</th>
+          @if (showSteps()) { <th>{{ 'Progress' | t: 'staff.monitoring.column.progress' }}</th> }
           <th [attr.aria-sort]="dueSort() === 1 ? 'ascending' : dueSort() === -1 ? 'descending' : 'none'">
-            <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? 'Sorted by days left' : dueSort() === -1 ? 'Most days left first' : 'Sort by days left'" (click)="toggleDueSort()">{{ showDelays() ? 'Delay' : 'Due' }}</button>
+            <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? ('Sorted by days left' | t: 'staff.monitoring.due.sortedTooltip') : dueSort() === -1 ? ('Most days left first' | t: 'staff.monitoring.due.reverseTooltip') : ('Sort by days left' | t: 'staff.monitoring.due.sortTooltip')" (click)="toggleDueSort()">{{ showDelays() ? ('Delay' | t: 'staff.monitoring.column.delay') : ('Due' | t: 'staff.monitoring.column.due') }}</button>
           </th>
-          <th class="text-end">Actions</th>
+          <th class="text-end">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
         </tr>
       }
     </thead>
@@ -106,10 +106,10 @@
           <td class="unit-cell">
             <b>{{ s['PUnitName'] }}</b>
             <span class="dash-text-clr mo-id">{{ s['ZedId'] }}</span>
-            <small [title]="t(s, 'UnitAddress')">{{ s['UnitAddress'] }}</small>
+            <small [title]="col(s, 'UnitAddress')">{{ s['UnitAddress'] }}</small>
           </td>
           <td>
-            <zed-level-medal [level]="t(s, 'Certification')" />
+            <zed-level-medal [level]="col(s, 'Certification')" />
             @if (surveillance) { <small class="sub">{{ s['SurveillanceNo'] }}</small> }
           </td>
           <td class="mo-name">
@@ -117,18 +117,18 @@
             <small class="sub">{{ s['CertificationBodyUserId'] }}</small>
           </td>
           @if (consultancy) {
-            <td><span class="chip is-info">Milestone {{ s['NcCount'] }}</span>
-              @if (showSteps() && s['Step']) { <small class="sub">{{ stepNames['' + s['Step']] }}</small> }
-              @if (s['TatLabel']) { <small class="sub" [title]="t(s, 'TatRule')">{{ s['TatLabel'] }}</small> }
+            <td><span class="chip is-info">{{ 'Milestone {number}' | t: 'staff.monitoring.row.milestone.chip' : { number: s['NcCount'] } }}</span>
+              @if (showSteps() && s['Step']) { <small class="sub">{{ stepNames()['' + s['Step']] }}</small> }
+              @if (s['TatLabel']) { <small class="sub" [title]="col(s, 'TatRule')">{{ s['TatLabel'] }}</small> }
             </td>
             <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
             <td class="stack text-nowrap">
               @if (num(s, 'NcCount') > 1) {
-                <div>{{ s['DocVerifiAllot'] }}</div><div>PR{{ num(s, 'NcCount') - 1 }}: {{ s['SaAssessmentDate'] }}</div>
+                <div>{{ s['DocVerifiAllot'] }}</div><div>{{ 'PR{round}: {date}' | t: 'staff.monitoring.row.reviewDate.label' : { round: num(s, 'NcCount') - 1, date: s['SaAssessmentDate'] } }}</div>
               } @else {
-                <div>BDS: {{ s['BdsFromDate'] }}</div><div>HAP: {{ s['HapFromDate'] }}</div>
+                <div>{{ 'BDS: {date}' | t: 'staff.monitoring.row.bds.label' : { date: s['BdsFromDate'] } }}</div><div>{{ 'HAP: {date}' | t: 'staff.monitoring.row.hap.label' : { date: s['HapFromDate'] } }}</div>
               }
             </td>
           } @else {
@@ -151,20 +151,20 @@
               <td>
                 <div class="mo-steps">
                   @for (st of stepOrder; track st; let last = $last) {
-                    <span [class]="stepState(s['Step'], st)">{{ stepNames[st] }}</span>@if (!last) { <i aria-hidden="true"></i> }
+                    <span [class]="stepState(s['Step'], st)">{{ stepNames()[st] }}</span>@if (!last) { <i aria-hidden="true"></i> }
                   }
                 </div>
-                @if (s['SubmissionPending']) { <span class="mo-pend">Submission pending through mobile app</span> }
+                @if (s['SubmissionPending']) { <span class="mo-pend">{{ 'Submission pending through mobile app' | t: 'staff.monitoring.row.pending.text' }}</span> }
               </td>
             }
             <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span>@if (s['TatRule']) { <small class="mo-rule">{{ s['TatRule'] }}</small> } }</td>
           }
-          <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for ' + s['ZedId']" (picked)="act(s, $event)" /></td>
+          <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.monitoring.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" /></td>
         </tr>
       } @empty {
         <tr>
           <td [attr.colspan]="12" style="padding: 0px">
-            <div class="no-data mo-empty">{{ loading() ? 'Loading…' : status() === null ? 'Choose a stage above to list its units.' : 'No unit at this stage.' }}</div>
+            <div class="no-data mo-empty">{{ loading() ? ('Loading…' | t: 'staff.monitoring.loading.text') : status() === null ? ('Choose a stage above to list its units.' | t: 'staff.monitoring.chooseStage.empty') : ('No unit at this stage.' | t: 'staff.monitoring.empty') }}</div>
           </td>
         </tr>
       }
@@ -182,19 +182,19 @@
         <div class="modal-header justify-content-between">
           <h5 class="modal-title" id="monitoring-action-title">
             @switch (a.kind) {
-              @case ('extend') { Extend NC final closure date }
-              @case ('stepBack') { Step back the NC round }
-              @case ('sendBack') { Send back to the agency }
+              @case ('extend') { {{ 'Extend NC final closure date' | t: 'staff.monitoring.extend.title' }} }
+              @case ('stepBack') { {{ 'Step back the NC round' | t: 'staff.monitoring.stepBack.title' }} }
+              @case ('sendBack') { {{ 'Send back to the agency' | t: 'staff.monitoring.sendBack.title' }} }
             }
           </h5>
-          <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+          <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.monitoring.action.closeAria'" (click)="close()"></button>
         </div>
         <div class="modal-body">
           <p class="mb-2"><strong>{{ a.unit['ZedId'] }}</strong> ({{ a.unit['Certification'] }})</p>
           @switch (a.kind) {
             @case ('extend') {
-              <div class="alert alert-warning">NC final closure date: <strong>{{ a.unit['NcFinalClosureDt'] }}</strong></div>
-              <label class="form-label" for="noOfDays">No. of days to extend</label>
+              <div class="alert alert-warning">{{ 'NC final closure date:' | t: 'staff.monitoring.extend.date.label' }} <strong>{{ a.unit['NcFinalClosureDt'] }}</strong></div>
+              <label class="form-label" for="noOfDays">{{ 'No. of days to extend' | t: 'staff.monitoring.extend.days.label' }}</label>
               <select id="noOfDays" class="form-select" [(ngModel)]="a.days">
                 @for (d of extendDays; track d) {
                   <option [ngValue]="d">{{ d }}</option>
@@ -202,10 +202,10 @@
               </select>
             }
             @case ('stepBack') {
-              <div class="alert alert-warning mb-0">Are you sure you want to step back to <strong>NC{{ num(a.unit, 'NcCount') - 1 }}</strong>?</div>
+              <div class="alert alert-warning mb-0">{{ 'Are you sure you want to step back to NC{round}?' | t: 'staff.monitoring.stepBack.message' : { round: num(a.unit, 'NcCount') - 1 } }}</div>
             }
             @case ('sendBack') {
-              <div class="alert alert-warning mb-0">Are you sure you want to send it back to the agency for re-allocation?</div>
+              <div class="alert alert-warning mb-0">{{ 'Are you sure you want to send it back to the agency for re-allocation?' | t: 'staff.monitoring.sendBack.message' }}</div>
             }
           }
           @if (actionError()) {
@@ -213,8 +213,8 @@
           }
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-light" (click)="close()">Cancel</button>
-          <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="submit(a)">Submit</button>
+          <button type="button" class="btn btn-light" (click)="close()">{{ 'Cancel' | t: 'staff.monitoring.action.cancelButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="loading()" (click)="submit(a)">{{ 'Submit' | t: 'staff.monitoring.action.submitButton' }}</button>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { GENDERS, SIZES, STATES } from './dashboard-filters';
 import { levelOptions } from '../../msme/shared/levels';
 import { ListFilter } from './dashboard.api';
+import { TextPipe } from '../../content/page-text';
 
 /**
  * State / Certification Level / MSME Size / Gender drop-downs of the list pages, as one filter-bar; the page's own
@@ -9,33 +10,34 @@ import { ListFilter } from './dashboard.api';
  */
 @Component({
   selector: 'zed-list-filters',
+  imports: [TextPipe],
   template: `
     <div class="filter-bar">
       <div class="filter">
-        <label class="form-label" for="f-state">State</label>
+        <label class="form-label" for="f-state">{{ 'State' | t: 'staff.listFilters.stateLabel' }}</label>
         <select class="form-select" id="f-state" (change)="set('state', $event)">
-          <option value="">Show All</option>
+          <option value="">{{ 'Show All' | t: 'staff.listFilters.showAll' }}</option>
           @for (s of states; track s.value) { <option [value]="s.value" [selected]="filter().state === s.value">{{ s.label }}</option> }
         </select>
       </div>
       <div class="filter">
-        <label class="form-label" for="f-cert">Certification Level</label>
+        <label class="form-label" for="f-cert">{{ 'Certification Level' | t: 'staff.listFilters.levelLabel' }}</label>
         <select class="form-select" id="f-cert" (change)="set('certification', $event)">
-          <option value="">Show All</option>
+          <option value="">{{ 'Show All' | t: 'staff.listFilters.showAll' }}</option>
           @for (c of certifications(); track c.value) { <option [value]="c.value" [selected]="filter().certification === c.value">{{ c.label }}</option> }
         </select>
       </div>
       <div class="filter">
-        <label class="form-label" for="f-size">MSME Size</label>
+        <label class="form-label" for="f-size">{{ 'MSME Size' | t: 'staff.listFilters.sizeLabel' }}</label>
         <select class="form-select" id="f-size" (change)="set('size', $event)">
-          <option value="">Show All</option>
+          <option value="">{{ 'Show All' | t: 'staff.listFilters.showAll' }}</option>
           @for (s of sizes; track s) { <option [value]="s" [selected]="filter().size === s">{{ s }}</option> }
         </select>
       </div>
       <div class="filter">
-        <label class="form-label" for="f-gender">Gender</label>
+        <label class="form-label" for="f-gender">{{ 'Gender' | t: 'staff.listFilters.genderLabel' }}</label>
         <select class="form-select" id="f-gender" (change)="set('gender', $event)">
-          <option value="">Show All</option>
+          <option value="">{{ 'Show All' | t: 'staff.listFilters.showAll' }}</option>
           @for (g of genders; track g.value) { <option [value]="g.value" [selected]="filter().gender === g.value">{{ g.label }}</option> }
         </select>
       </div>

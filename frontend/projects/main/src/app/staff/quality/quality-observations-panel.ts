@@ -7,7 +7,8 @@ import { QualityObservationItem } from './quality-observation-item';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { AttentionService } from '../attention';
 import { ToastService } from '../toast';
-import { QoSeverity, QoTarget, QoUnitView, QualityApi, aboutLabels } from './quality.api';
+import { QoSeverity, QoTarget, QoUnitView, QualityApi, aboutLabels, severityLabel } from './quality.api';
+import { TextPipe, t } from '../../content/page-text';
 
 /** Points of each severity in the ranking (QualityObservations.Points on the server). */
 export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Critical: 5 };
@@ -29,7 +30,7 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
  */
 @Component({
   selector: 'zed-qo-panel',
-  imports: [FormsModule, QualityObservationItem],
+  imports: [FormsModule, QualityObservationItem, TextPipe],
   host: { '(document:keydown.escape)': 'cancel()' },
   template: `
     @if (shown()) {
@@ -37,17 +38,17 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
       <section class="qo-panel" [class.qo-rail]="rail()" data-qo-panel id="quality-observations" aria-labelledby="qo-panel-title">
         <div class="qo-head">
           <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
-          <h4 id="qo-panel-title">ZED quality observations</h4>
+          <h4 id="qo-panel-title">{{ 'ZED quality observations' | t: 'staff.quality.panel.title' }}</h4>
         </div>
         <div class="qo-bar">
-          <small>{{ openCount() }} open · {{ v.items.length }} in all</small>
+          <small>{{ '{open} open · {total} in all' | t: 'staff.quality.panel.count.label' : { open: openCount(), total: v.items.length } }}</small>
           @if (v.canRaise) {
-            <button type="button" class="btn btn-primary btn-sm qo-add" (click)="start(null)">+ Observation</button>
+            <button type="button" class="btn btn-primary btn-sm qo-add" (click)="start(null)">{{ '+ Observation' | t: 'staff.quality.panel.add.button' }}</button>
           }
         </div>
         @if (scope(); as sc) {
-          <div class="qo-chips" role="group" aria-label="Show">
-            <button type="button" [class.on]="!scoped()" [attr.aria-pressed]="!scoped()" (click)="scoped.set(false)">All <span>{{ v.items.length }}</span></button>
+          <div class="qo-chips" role="group" [attr.aria-label]="'Show' | t: 'staff.quality.panel.chips.aria'">
+            <button type="button" [class.on]="!scoped()" [attr.aria-pressed]="!scoped()" (click)="scoped.set(false)">{{ 'All' | t: 'staff.quality.panel.chip.all' }} <span>{{ v.items.length }}</span></button>
             <button type="button" [class.on]="scoped()" [attr.aria-pressed]="scoped()" (click)="scoped.set(true)">{{ sc.label }} <span>{{ inScope().length }}</span></button>
           </div>
         }
@@ -55,7 +56,7 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
           @for (o of shownItems(); track o.id) {
             <zed-qo-item [item]="o" [canRespond]="v.canRespond" [canClose]="v.canClose" (changed)="reload($event)" />
           } @empty {
-            <p class="qo-empty">No observations yet.</p>
+            <p class="qo-empty">{{ 'No observations yet.' | t: 'staff.quality.panel.empty' }}</p>
           }
         </div>
       </section>
@@ -68,18 +69,18 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
             <div class="qo-dlg-head">
               <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
               <div class="qo-dlg-t">
-                <h3 id="qo-dlg-title">Raise a quality observation</h3>
+                <h3 id="qo-dlg-title">{{ 'Raise a quality observation' | t: 'staff.quality.raise.title' }}</h3>
                 <p>{{ heading() }}</p>
               </div>
-              <button type="button" class="qo-x" aria-label="Close" (click)="cancel()">×</button>
+              <button type="button" class="qo-x" [attr.aria-label]="'Close' | t: 'staff.quality.raise.close.aria'" (click)="cancel()">×</button>
             </div>
             <div class="qo-dlg-body">
-              <label for="qo-target">About</label>
+              <label for="qo-target">{{ 'About' | t: 'staff.quality.raise.target.label' }}</label>
               <select id="qo-target" class="form-select" name="target" [ngModel]="f.targetKey" (ngModelChange)="patch('targetKey', $event)">
                 @for (t of allTargets(); track key(t)) { <option [value]="key(t)">{{ t.label }}</option> }
               </select>
 
-              <span class="qo-l" id="qo-about-l">Whose work</span>
+              <span class="qo-l" id="qo-about-l">{{ 'Whose work' | t: 'staff.quality.raise.about.label' }}</span>
               <div class="qo-seg" role="radiogroup" aria-labelledby="qo-about-l" data-qo-about>
                 @for (a of abouts(); track a) {
                   <button type="button" role="radio" [attr.aria-checked]="f.about === a" [class.on]="f.about === a" [attr.data-about]="a"
@@ -88,35 +89,37 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
               </div>
 
               <!-- 2026-11-17 (approved): the Admin's reasons; the severity comes from the reason. -->
-              <label for="qo-category">Category</label>
+              <label for="qo-category">{{ 'Category' | t: 'staff.quality.raise.category.label' }}</label>
               <select id="qo-category" class="form-select" name="category" [ngModel]="f.category" (ngModelChange)="patch('category', $event)">
-                <option value="">Select</option>
+                <option value="">{{ 'Select' | t: 'staff.quality.raise.category.option' }}</option>
                 @for (r of view()?.reasons ?? []; track r.id) { <option [value]="r.id">{{ r.text }}</option> }
               </select>
 
-              <span class="qo-l">Severity</span>
-              <div class="qo-sevs" role="radiogroup" aria-label="Severity (set by the reason)" aria-describedby="qo-sev-note">
+              <span class="qo-l">{{ 'Severity' | t: 'staff.quality.raise.severity.label' }}</span>
+              <div class="qo-sevs" role="radiogroup" [attr.aria-label]="'Severity (set by the reason)' | t: 'staff.quality.raise.severity.aria'" aria-describedby="qo-sev-note">
                 @for (s of severities; track s) {
                   <span class="qo-sev-card" role="radio" aria-disabled="true" [attr.aria-checked]="reason()?.severity === s" [class.on]="reason()?.severity === s"
                     [attr.data-sev]="s">
                     <span class="qo-dot" aria-hidden="true"></span>
-                    <span><b>{{ s }}</b>&ngsp;<small>{{ points[s] }} point{{ points[s] === 1 ? '' : 's' }}</small></span>
+                    <span><b>{{ severityLabel(s) }}</b>&ngsp;<small>{{ points[s] === 1 ? ('{count} point' | t: 'staff.quality.raise.point.label' : { count: points[s] })
+                      : ('{count} points' | t: 'staff.quality.raise.points.label' : { count: points[s] }) }}</small></span>
                   </span>
                 }
               </div>
               <small class="qo-sev-note" id="qo-sev-note" data-qo-severity>
-                @if (reason(); as r) { {{ r.severity }}: set by the Admin for this reason. } @else { Choose the reason: its severity is set by the Admin. }
+                @if (reason(); as r) { {{ '{severity}: set by the Admin for this reason.' | t: 'staff.quality.raise.severity.set.note' : { severity: severityLabel(r.severity) } }} }
+                @else { {{ 'Choose the reason: its severity is set by the Admin.' | t: 'staff.quality.raise.severity.choose.note' }} }
               </small>
 
-              <label for="qo-text">Observation<span class="req">*</span></label>
-              <textarea id="qo-text" class="form-control" name="text" rows="3" maxlength="2000" placeholder="What you observed, in a sentence or two"
+              <label for="qo-text">{{ 'Observation' | t: 'staff.quality.raise.text.label' }}<span class="req">*</span></label>
+              <textarea id="qo-text" class="form-control" name="text" rows="3" maxlength="2000" [placeholder]="'What you observed, in a sentence or two' | t: 'staff.quality.raise.text.placeholder'"
                 [ngModel]="f.text" (ngModelChange)="patch('text', $event)"></textarea>
-              @if (holds()) { <p class="qo-warn" role="status">{{ blockingHint }}</p> }
+              @if (holds()) { <p class="qo-warn" role="status">{{ blockingHint() }}</p> }
               @if (formError()) { <div class="alert alert-danger py-1 mb-0 mt-2" role="alert">{{ formError() }}</div> }
             </div>
             <div class="qo-dlg-foot">
-              <button type="button" class="btn btn-default" (click)="cancel()">Cancel</button>
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">Raise observation</button>
+              <button type="button" class="btn btn-default" (click)="cancel()">{{ 'Cancel' | t: 'staff.quality.raise.cancel.button' }}</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Raise observation' | t: 'staff.quality.raise.submit.button' }}</button>
             </div>
           </form>
         </div>
@@ -179,12 +182,15 @@ export class QualityObservationsPanel {
   private readonly toast = inject(ToastService);
   private readonly attention = inject(AttentionService);
   private readonly system = inject(ASSESSMENT_SYSTEM);
-  private readonly labels = aboutLabels(this.system);
+  protected readonly severityLabel = severityLabel;
   /** The whole assessment (the whole milestone in handholding). */
-  private readonly overall: QoTarget = { type: 'Overall', id: null, label: this.system === 'consultancy' ? 'Whole milestone' : 'Whole assessment' };
-  protected readonly blockingHint = this.system === 'consultancy'
-    ? "A major or critical observation holds the consultant organisation's final submit until it replies."
-    : "A major or critical observation holds the agency's final submit until it replies.";
+  private readonly overall = computed((): QoTarget => ({
+    type: 'Overall', id: null,
+    label: this.system === 'consultancy' ? t('staff.quality.raise.wholeMilestone.option', 'Whole milestone') : t('staff.quality.raise.wholeAssessment.option', 'Whole assessment'),
+  }));
+  protected readonly blockingHint = computed(() => this.system === 'consultancy'
+    ? t('staff.quality.raise.holds.consultancy.warning', "A major or critical observation holds the consultant organisation's final submit until it replies.")
+    : t('staff.quality.raise.holds.warning', "A major or critical observation holds the agency's final submit until it replies."));
   protected readonly severities: QoSeverity[] = ['Minor', 'Major', 'Critical'];
   protected readonly points = QO_POINTS;
   private readonly auth = inject(AuthService);
@@ -219,7 +225,7 @@ export class QualityObservationsPanel {
   protected readonly form = signal<{ targetKey: string; about: string; category: string; text: string } | null>(null);
   protected readonly busy = signal(false);
   protected readonly formError = signal('');
-  protected readonly allTargets = computed(() => [this.overall, ...this.targets()]);
+  protected readonly allTargets = computed(() => [this.overall(), ...this.targets()]);
   protected readonly openCount = computed(() => (this.view()?.items ?? []).filter((o) => o.status !== 'Closed').length);
   /** There is a panel: the login may raise observations or has some to see. */
   readonly shown = computed(() => {
@@ -242,9 +248,9 @@ export class QualityObservationsPanel {
       if (z && c) untracked(() => void this.load());
     });
     effect(() => {
-      const t = this.target();
-      if (t && this.view()?.canRaise) untracked(() => {
-        this.start(t);
+      const wanted = this.target();
+      if (wanted && this.view()?.canRaise) untracked(() => {
+        this.start(wanted);
         this.target.set(null);
       });
     });
@@ -255,12 +261,12 @@ export class QualityObservationsPanel {
   }
 
   protected aboutLabel(a: string): string {
-    return this.labels[a] ?? a;
+    return aboutLabels(this.system)[a] ?? a;
   }
 
-  protected start(t: QoTarget | null): void {
+  protected start(on: QoTarget | null): void {
     this.formError.set('');
-    this.form.set({ targetKey: this.key(t ?? this.overall), about: this.abouts()[0] ?? 'Lead', category: '', text: '' });
+    this.form.set({ targetKey: this.key(on ?? this.overall()), about: this.abouts()[0] ?? 'Lead', category: '', text: '' });
     setTimeout(() => document.getElementById('qo-target')?.focus());
   }
 
@@ -275,14 +281,14 @@ export class QualityObservationsPanel {
   protected async save(): Promise<void> {
     const f = this.form();
     if (!f) return;
-    if (!f.category) return this.formError.set('Please choose the category.');
-    if (!f.text.trim()) return this.formError.set('Please write the observation.');
-    const t = this.allTargets().find((x) => this.key(x) === f.targetKey) ?? this.overall;
+    if (!f.category) return this.formError.set(t('staff.quality.raise.category.error', 'Please choose the category.'));
+    if (!f.text.trim()) return this.formError.set(t('staff.quality.raise.text.error', 'Please write the observation.'));
+    const on = this.allTargets().find((x) => this.key(x) === f.targetKey) ?? this.overall();
     this.busy.set(true);
     this.formError.set('');
     try {
       const r = await firstValueFrom(this.api.raise(this.zedId(), this.certification(), {
-        refType: t.type, refId: t.id, refLabel: t.type === 'Overall' ? null : t.label, category: f.category, about: f.about, text: f.text.trim(),
+        refType: on.type, refId: on.id, refLabel: on.type === 'Overall' ? null : on.label, category: f.category, about: f.about, text: f.text.trim(),
       }));
       this.form.set(null);
       await this.reload(r.message);

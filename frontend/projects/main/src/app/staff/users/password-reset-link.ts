@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { StepTracker, TrackerStep } from '../../msme/shared/step-tracker';
 import { LABELS } from '../../portal-labels';
@@ -36,67 +37,68 @@ const API = '/api/staff/password-reset/';
  */
 @Component({
   selector: 'zed-staff-password-reset-link',
-  imports: [FormsModule, DatePipe, PageHead, StepTracker],
+  imports: [FormsModule, DatePipe, PageHead, StepTracker, TextPipe],
   template: `
-    <zed-page-head [crumbs]="crumbs" title="Password Reset Link" subtitle="E-mails any staff account of this portal a link to set a new password." />
+    <zed-page-head [crumbs]="crumbs()" [title]="'Password Reset Link' | t: 'staff.passwordResetLink.title'"
+                   [subtitle]="'E-mails any staff account of this portal a link to set a new password.' | t: 'staff.passwordResetLink.subtitle'" />
     <div class="prl-grid">
       <section class="zed-card prl-main">
-        <zed-step-tracker class="prl-steps" [steps]="steps()" [current]="step() === 2 ? 3 : step()" label="Steps" />
+        <zed-step-tracker class="prl-steps" [steps]="steps()" [current]="step() === 2 ? 3 : step()" [label]="'Steps' | t: 'staff.passwordResetLink.stepsLabel'" />
         <form class="prl-form" (ngSubmit)="step() === 0 ? lookUp() : send()" novalidate>
-          <label class="form-label" for="resetUserId">User ID<span class="req">*</span></label>
+          <label class="form-label" for="resetUserId">{{ 'User ID' | t: 'staff.passwordResetLink.userIdLabel' }}<span class="req">*</span></label>
           <div class="prl-id">
             <input id="resetUserId" name="userId" class="form-control" [(ngModel)]="userId" required maxlength="50" autocomplete="off"
-                   placeholder="e.g. ZEDAA0001" aria-describedby="resetUserIdHelp" [readonly]="step() > 0" />
-            @if (step() > 0) { <button type="button" class="btn btn-link prl-change" (click)="restart()">Change</button> }
+                   [placeholder]="'e.g. ZEDAA0001' | t: 'staff.passwordResetLink.userIdPlaceholder'" aria-describedby="resetUserIdHelp" [readonly]="step() > 0" />
+            @if (step() > 0) { <button type="button" class="btn btn-link prl-change" (click)="restart()">{{ 'Change' | t: 'staff.passwordResetLink.changeButton' }}</button> }
           </div>
-          <small id="resetUserIdHelp" class="prl-help">The login ID of any staff account: agency, assessor, Master Admin, Ministry, MSME DFO or dashboard.</small>
+          <small id="resetUserIdHelp" class="prl-help">{{ 'The login ID of any staff account: agency, assessor, Master Admin, Ministry, MSME DFO or dashboard.' | t: 'staff.passwordResetLink.userIdHelp' }}</small>
           @if (error()) { <div class="alert alert-danger prl-alert" role="alert">{{ error() }}</div> }
 
-          @if (target(); as t) {
-            <div class="prl-who" [class.is-blocked]="!t.canSend">
-              <span class="prl-av" aria-hidden="true">{{ initials(t.userName) }}</span>
+          @if (target(); as tg) {
+            <div class="prl-who" [class.is-blocked]="!tg.canSend">
+              <span class="prl-av" aria-hidden="true">{{ initials(tg.userName) }}</span>
               <div class="prl-who-text">
-                <strong>{{ t.userName }}</strong>
-                <small>{{ roleName(t) }} · {{ t.userId }}</small>
-                @if (t.canSend) {
-                  <span class="prl-to" [title]="t.email">Link will go to <b>{{ t.email }}</b></span>
+                <strong>{{ tg.userName }}</strong>
+                <small>{{ '{role} · {id}' | t: 'staff.passwordResetLink.who.line' : { role: roleName(tg), id: tg.userId } }}</small>
+                @if (tg.canSend) {
+                  <span class="prl-to" [title]="tg.email">{{ 'Link will go to' | t: 'staff.passwordResetLink.who.linkTo' }} <b>{{ tg.email }}</b></span>
                 } @else {
-                  <span class="prl-why" role="alert">{{ t.reason }}</span>
+                  <span class="prl-why" role="alert">{{ tg.reason }}</span>
                 }
               </div>
-              <span class="status-badge" [class.is-active]="t.isActive" [class.is-rejected]="!t.isActive">{{ t.isActive ? 'Active' : 'Blocked' }}</span>
+              <span class="status-badge" [class.is-active]="tg.isActive" [class.is-rejected]="!tg.isActive">{{ tg.isActive ? ('Active' | t: 'staff.passwordResetLink.who.active') : ('Blocked' | t: 'staff.passwordResetLink.who.blocked') }}</span>
             </div>
           }
           @if (step() === 2 && lastSent(); as s) {
-            <div class="prl-done" role="status">Link e-mailed to <b>{{ s.sentTo }}</b>. It works once, for a short time.</div>
+            <div class="prl-done" role="status">{{ 'Link e-mailed to {to}. It works once, for a short time.' | t: 'staff.passwordResetLink.done.text' : { to: s.sentTo } }}</div>
           }
 
           <div class="prl-actions">
             @switch (step()) {
-              @case (0) { <button type="submit" class="btn btn-primary" [disabled]="busy()">Find user</button> }
+              @case (0) { <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Find user' | t: 'staff.passwordResetLink.findButton' }}</button> }
               @case (1) {
-                <button type="button" class="btn btn-default" (click)="restart()">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy() || !target()?.canSend"><svg class="prl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg>Send reset link</button>
+                <button type="button" class="btn btn-default" (click)="restart()">{{ 'Cancel' | t: 'staff.passwordResetLink.cancelButton' }}</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy() || !target()?.canSend"><svg class="prl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg>{{ 'Send reset link' | t: 'staff.passwordResetLink.sendButton' }}</button>
               }
-              @default { <button type="button" class="btn btn-primary" (click)="restart()">Send another link</button> }
+              @default { <button type="button" class="btn btn-primary" (click)="restart()">{{ 'Send another link' | t: 'staff.passwordResetLink.anotherButton' }}</button> }
             }
-            <small class="prl-help ms-auto">Works once, for a short time.</small>
+            <small class="prl-help ms-auto">{{ 'Works once, for a short time.' | t: 'staff.passwordResetLink.worksOnceNote' }}</small>
           </div>
         </form>
       </section>
 
       <div class="prl-side">
         <section class="zed-card" aria-labelledby="prl-how-title">
-          <h2 class="prl-title" id="prl-how-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg></span>How the link works</h2>
+          <h2 class="prl-title" id="prl-how-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg></span>{{ 'How the link works' | t: 'staff.passwordResetLink.how.title' }}</h2>
           <ul class="prl-points">
-            <li>It goes to the registered e-mail address shown above.</li>
-            <li>You never see or set the password: the user chooses it.</li>
-            <li>It works once, for a short time. A newer link replaces the older one.</li>
-            <li class="is-amber">A blocked user must be unblocked first, and a user without a valid e-mail address needs it updated first.</li>
+            <li>{{ 'It goes to the registered e-mail address shown above.' | t: 'staff.passwordResetLink.how.point1' }}</li>
+            <li>{{ 'You never see or set the password: the user chooses it.' | t: 'staff.passwordResetLink.how.point2' }}</li>
+            <li>{{ 'It works once, for a short time. A newer link replaces the older one.' | t: 'staff.passwordResetLink.how.point3' }}</li>
+            <li class="is-amber">{{ 'A blocked user must be unblocked first, and a user without a valid e-mail address needs it updated first.' | t: 'staff.passwordResetLink.how.point4' }}</li>
           </ul>
         </section>
         <section class="zed-card" aria-labelledby="prl-sent-title">
-          <h2 class="prl-title" id="prl-sent-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg></span>Sent from this page <span class="prl-count">{{ sent().length }}</span></h2>
+          <h2 class="prl-title" id="prl-sent-title"><span class="prl-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" /></svg></span>{{ 'Sent from this page' | t: 'staff.passwordResetLink.sent.title' }} <span class="prl-count">{{ sent().length }}</span></h2>
           <div class="prl-card-body">
           @for (s of sent(); track $index) {
             <div class="prl-sent-row">
@@ -107,7 +109,7 @@ const API = '/api/staff/password-reset/';
               </span>
             </div>
           }
-          <p class="prl-none">{{ sent().length ? 'Listed here until you leave the page.' : 'Links you send are listed here until you leave the page.' }}</p>
+          <p class="prl-none">{{ sent().length ? ('Listed here until you leave the page.' | t: 'staff.passwordResetLink.sent.note') : ('Links you send are listed here until you leave the page.' | t: 'staff.passwordResetLink.sent.empty') }}</p>
           </div>
         </section>
       </div>
@@ -164,7 +166,7 @@ export class PasswordResetLinkPage {
   private readonly toast = inject(ToastService);
   private readonly labels = LABELS[inject(STAFF_SYSTEM)];
 
-  protected readonly crumbs = staffCrumbs({ label: 'Password Reset Link' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.passwordResetLink.crumb', 'Password Reset Link') }));
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   /** 0: enter the User ID, 1: confirm who gets the link, 2: link e-mailed. */
@@ -178,13 +180,16 @@ export class PasswordResetLinkPage {
 
   protected readonly steps = computed<TrackerStep[]>(() => {
     const s = this.step();
-    const note = (i: number) => (s > i ? 'Done' : s === i ? 'You are here' : null);
-    return [{ label: 'Enter the User ID', note: note(0) }, { label: 'Confirm', note: note(1) }, { label: 'Link e-mailed', note: s === 2 ? 'Done' : null }];
+    const done = t('staff.passwordResetLink.step.done', 'Done');
+    const note = (i: number) => (s > i ? done : s === i ? t('staff.passwordResetLink.step.here', 'You are here') : null);
+    return [{ label: t('staff.passwordResetLink.step.enter', 'Enter the User ID'), note: note(0) },
+      { label: t('staff.passwordResetLink.step.confirm', 'Confirm'), note: note(1) },
+      { label: t('staff.passwordResetLink.step.emailed', 'Link e-mailed'), note: s === 2 ? done : null }];
   });
 
   /** The role as this portal names it (Consultancy: Consultant Organisation, Consultant/Expert). */
-  protected roleName(t: ResetTarget): string {
-    return t.roleId === 2 ? this.labels.agency : t.roleId === 3 ? this.labels.assessor : t.role;
+  protected roleName(r: ResetTarget): string {
+    return r.roleId === 2 ? this.labels.agency : r.roleId === 3 ? this.labels.assessor : r.role;
   }
 
   /** Step 1 → 2: who the User ID belongs to (read-only; nothing is sent). */
@@ -192,7 +197,7 @@ export class PasswordResetLinkPage {
     this.error.set('');
     const id = this.userId.trim();
     if (!id) {
-      this.error.set('Please enter the User ID.');
+      this.error.set(t('staff.passwordResetLink.error.noUserId', 'Please enter the User ID.'));
       return;
     }
     this.busy.set(true);
@@ -201,7 +206,7 @@ export class PasswordResetLinkPage {
       this.userId = this.target()!.userId;
       this.step.set(1);
     } catch (err) {
-      this.error.set(err instanceof HttpErrorResponse && err.status === 404 ? 'User not found.' : apiErrorMessage(err));
+      this.error.set(err instanceof HttpErrorResponse && err.status === 404 ? t('staff.passwordResetLink.error.notFound', 'User not found.') : apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }
@@ -209,19 +214,19 @@ export class PasswordResetLinkPage {
 
   /** Step 2 → 3: "Send reset link" is the confirmation. */
   protected async send(): Promise<void> {
-    const t = this.target();
-    if (!t?.canSend || this.busy()) return;
+    const tg = this.target();
+    if (!tg?.canSend || this.busy()) return;
     this.error.set('');
     this.busy.set(true);
     try {
-      const message = (await firstValueFrom(this.http.post<MessageResponse>(API + encodeURIComponent(t.userId), null))).message;
+      const message = (await firstValueFrom(this.http.post<MessageResponse>(API + encodeURIComponent(tg.userId), null))).message;
       // The answer names the address in brackets, e.g. "(meena@zed.test)".
-      const to = /\(([^()]*@[^()]*)\)/.test(message) ? sentTo(message, null) : t.email ?? 'Registered e-mail address';
-      this.sent.update((list) => [{ userId: t.userId, userName: t.userName, sentTo: to, at: new Date() }, ...list]);
+      const to = /\(([^()]*@[^()]*)\)/.test(message) ? sentTo(message, null) : tg.email ?? t('staff.passwordResetLink.toast.noEmail', 'Registered e-mail address');
+      this.sent.update((list) => [{ userId: tg.userId, userName: tg.userName, sentTo: to, at: new Date() }, ...list]);
       this.step.set(2);
-      this.toast.success('Reset link sent', `E-mailed to ${to}`);
+      this.toast.success(t('staff.passwordResetLink.toast.sent', 'Reset link sent'), t('staff.passwordResetLink.toast.sentTo', 'E-mailed to {to}', { to }));
     } catch (err) {
-      this.error.set(err instanceof HttpErrorResponse && err.status === 404 ? 'User not found.' : apiErrorMessage(err));
+      this.error.set(err instanceof HttpErrorResponse && err.status === 404 ? t('staff.passwordResetLink.error.notFound', 'User not found.') : apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }

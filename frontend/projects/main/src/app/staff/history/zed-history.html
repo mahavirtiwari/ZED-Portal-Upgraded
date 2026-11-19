@@ -1,18 +1,18 @@
 <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
 <zed-dashboard-portal-switch [screens]="['history']" />
 <!-- 2026-11-17 (the user's staff design 13): the search, then the unit's header, its timeline and the summary beside it. -->
-<zed-page-head [crumbs]="crumbs" [title]="heading" subtitle="The certification journey of a unit, event by event, across the portals." />
+<zed-page-head [crumbs]="crumbs()" [title]="heading()" [subtitle]="'The certification journey of a unit, event by event, across the portals.' | t: 'staff.history.sub'" />
 
 <form class="hs-card hs-search" (ngSubmit)="search()" role="search">
   <div class="hs-box">
-    <label class="visually-hidden" for="zedId">ZED ID</label>
+    <label class="visually-hidden" for="zedId">{{ 'ZED ID' | t: 'staff.history.search.label' }}</label>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-    <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" placeholder="ZED ID, e.g. ZEDMSME000123" autocomplete="off" [(ngModel)]="zedId" />
+    <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" [placeholder]="'ZED ID, e.g. ZEDMSME000123' | t: 'staff.history.search.placeholder'" autocomplete="off" [(ngModel)]="zedId" />
   </div>
-  <button type="submit" class="btn btn-primary hs-go" [disabled]="loading()">Search</button>
+  <button type="submit" class="btn btn-primary hs-go" [disabled]="loading()">{{ 'Search' | t: 'staff.history.searchButton' }}</button>
   @if (recentShown().length) {
-    <div class="hs-recent" role="group" aria-label="Recent searches">
-      <span>Recent:</span>
+    <div class="hs-recent" role="group" [attr.aria-label]="'Recent searches' | t: 'staff.history.recent.aria'">
+      <span>{{ 'Recent:' | t: 'staff.history.recent.label' }}</span>
       @for (r of recentShown(); track r) { <button type="button" class="hs-pill" (click)="pick(r)">{{ r }}</button> }
     </div>
   }
@@ -21,22 +21,22 @@
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
 @if (events().length) {
-  <section class="hs-card hs-unit" aria-label="Unit" data-unit>
+  <section class="hs-card hs-unit" [attr.aria-label]="'Unit' | t: 'staff.history.unit.aria'" data-unit>
     <span class="hs-avatar" aria-hidden="true">{{ (unitName() || searched()).charAt(0).toUpperCase() }}</span>
     <div class="hs-unit-text">
       <h3>
         {{ unitName() || searched() }}
         @if (level(); as l) {
-          <span class="hs-level" [class.on]="l.certified">@if (l.certified) {<span aria-hidden="true">✓&nbsp;</span>}{{ l.level }}{{ l.certified ? ' certified' : '' }}</span>
+          <span class="hs-level" [class.on]="l.certified">@if (l.certified) {<span aria-hidden="true">✓&nbsp;</span>}{{ l.certified ? ('{level} certified' | t: 'staff.history.unit.certifiedLabel' : { level: l.level }) : l.level }}</span>
         }
       </h3>
       <p>{{ searched() }}@if (unitLine()) { · {{ unitLine() }} }</p>
     </div>
     <div class="hs-links">
       <button type="button" class="btn hs-btn" [disabled]="exporting()" (click)="export()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> Export</button>
-      <a class="btn hs-btn" [routerLink]="['/staff/msme-profile', searched()]">MSME profile</a>
-      @if (assessmentLink(); as link) { <a class="btn btn-outline-primary hs-btn-o" [routerLink]="link">Assessment details</a> }
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> {{ 'Export' | t: 'staff.history.exportButton' }}</button>
+      <a class="btn hs-btn" [routerLink]="['/staff/msme-profile', searched()]">{{ 'MSME profile' | t: 'staff.history.profileLink' }}</a>
+      @if (assessmentLink(); as link) { <a class="btn btn-outline-primary hs-btn-o" [routerLink]="link">{{ 'Assessment details' | t: 'staff.history.assessmentLink' }}</a> }
     </div>
   </section>
 
@@ -44,11 +44,11 @@
     <section class="hs-card" aria-labelledby="hs-events-h">
       <div class="hs-head">
         <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
-        <h4 id="hs-events-h">Events</h4>
-        <button type="button" class="hs-sort" [attr.aria-pressed]="newestFirst()" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? 'Newest first' : 'Oldest first' }}</button>
+        <h4 id="hs-events-h">{{ 'Events' | t: 'staff.history.events.title' }}</h4>
+        <button type="button" class="hs-sort" [attr.aria-pressed]="newestFirst()" (click)="newestFirst.set(!newestFirst())">{{ newestFirst() ? ('Newest first' | t: 'staff.history.events.newestButton') : ('Oldest first' | t: 'staff.history.events.oldestButton') }}</button>
       </div>
       <div class="hs-chips">
-        <zed-chip-filter label="By portal" [chips]="chips()" [(value)]="actor" />
+        <zed-chip-filter [label]="'By portal' | t: 'staff.history.events.chipsLabel'" [chips]="chips()" [(value)]="actor" />
       </div>
       <div class="timeline-wrap">
         @for (g of shownGroups(); track g.title) {
@@ -56,7 +56,7 @@
             <div class="tl-group-head">
               <span class="cert-badge">{{ g.title }}</span>
               <span class="tl-group-range">{{ g.start | date: 'dd MMM yyyy' }} &ndash; {{ g.end | date: 'dd MMM yyyy' }}</span>
-              <span class="tl-group-count">{{ g.events.length }} event(s)</span>
+              <span class="tl-group-count">{{ eventsText(g.events.length) }}</span>
             </div>
             <ul class="timeline">
               @for (e of g.events; track $index) {
@@ -66,7 +66,7 @@
                   <div class="tl-body">
                     <p class="tl-label">{{ e.label || e.Description }}</p>
                     <div class="tl-meta">
-                      @if (e.actor) { <span class="tl-actor" [attr.data-actor]="e.actor">{{ e.actor }}</span> }
+                      @if (e.actor) { <span class="tl-actor" [attr.data-actor]="e.actor">{{ actorText(e.actor) }}</span> }
                       <span class="tl-source">{{ e.Source_DB }}</span>
                     </div>
                     @if (e.label && e.Description) { <p class="tl-desc">{{ e.Description }}</p> }
@@ -76,7 +76,7 @@
             </ul>
           </div>
         } @empty {
-          <p class="hs-none">No {{ actor() === 'Other' ? 'other' : actor() }} events in this history.</p>
+          <p class="hs-none">{{ noneText() }}</p>
         }
       </div>
     </section>
@@ -85,42 +85,42 @@
       <section class="hs-card history-summary" aria-labelledby="hs-sum-h">
         <div class="hs-head">
           <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg></span>
-          <h4 id="hs-sum-h">Summary</h4>
+          <h4 id="hs-sum-h">{{ 'Summary' | t: 'staff.history.summary.title' }}</h4>
         </div>
         <dl class="hs-dates">
-          <div><dt>ZED ID</dt><dd>{{ searched() }}</dd></div>
+          <div><dt>{{ 'ZED ID' | t: 'staff.history.summary.zedIdLabel' }}</dt><dd>{{ searched() }}</dd></div>
           @for (k of dates(); track k.label) {
             <div><dt>{{ k.label }}</dt><dd>{{ k.date | date: 'dd MMM yyyy' }}</dd></div>
           }
-          <div><dt>Current stage</dt><dd>{{ latest()?.label || latest()?.Description }}</dd></div>
-          <div><dt>Last updated</dt><dd>{{ latest()?.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
-          <div><dt>Events</dt><dd>{{ events().length }}</dd></div>
+          <div><dt>{{ 'Current stage' | t: 'staff.history.summary.stageLabel' }}</dt><dd>{{ latest()?.label || latest()?.Description }}</dd></div>
+          <div><dt>{{ 'Last updated' | t: 'staff.history.summary.updatedLabel' }}</dt><dd>{{ latest()?.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</dd></div>
+          <div><dt>{{ 'Events' | t: 'staff.history.summary.eventsLabel' }}</dt><dd>{{ events().length }}</dd></div>
         </dl>
       </section>
       <section class="hs-card" aria-labelledby="hs-by-h">
         <div class="hs-head">
           <span class="hs-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" /><path d="M3 20c.8-3.5 3-5 6-5s5.2 1.5 6 5M16 4.5a3.5 3.5 0 0 1 0 7M18 15c1.6.6 2.6 2.2 3 5" /></svg></span>
-          <h4 id="hs-by-h">By portal</h4>
+          <h4 id="hs-by-h">{{ 'By portal' | t: 'staff.history.byPortal.title' }}</h4>
         </div>
         <ul class="hs-bars">
           @for (a of actors; track a) {
             <li [attr.data-actor]="a">
-              <span>{{ a }}</span>
+              <span>{{ actorText(a) }}</span>
               <span class="hs-bar"><span [style.width.%]="(counts()[a] / maxCount()) * 100"></span></span>
               <b>{{ counts()[a] }}</b>
             </li>
           }
           @if (others()) {
-            <li data-actor="Other"><span>Other</span><span class="hs-bar"><span [style.width.%]="(others() / maxCount()) * 100"></span></span><b>{{ others() }}</b></li>
+            <li data-actor="Other"><span>{{ actorText('Other') }}</span><span class="hs-bar"><span [style.width.%]="(others() / maxCount()) * 100"></span></span><b>{{ others() }}</b></li>
           }
         </ul>
       </section>
     </aside>
   </div>
 } @else if (loaded() && !loading() && !error()) {
-  <div class="hs-card no-history"><p>No certification history found for this unit.</p></div>
+  <div class="hs-card no-history"><p>{{ 'No certification history found for this unit.' | t: 'staff.history.empty' }}</p></div>
 }
 
 @if (loading()) {
-  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... It may take upto 60 seconds</small></div></div></div>
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ... It may take upto 60 seconds' | t: 'staff.history.loadingText' }}</small></div></div></div>
 }

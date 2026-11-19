@@ -13,13 +13,14 @@ import { ToastService } from '../toast';
 import { levelName } from '../../msme/shared/levels';
 import { LevelMedal } from '../assessment/level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
+import { TextPipe, t } from '../../content/page-text';
 
 /** MsmePaymentInfo.PaymentType as shown (ZeroAmount: nothing to pay after the subsidy or reward, 2026-11-17). */
-const PAYMENT_TYPES: Record<string, string> = {
-  PaymentGateway: 'Online',
-  NEFT: 'NEFT',
-  ZeroAmount: 'Zero amount',
-  PaidAtMilestone1: 'Paid at milestone 1',
+const PAYMENT_TYPES: Readonly<Record<string, () => string>> = {
+  PaymentGateway: () => t('staff.paymentsReceived.type.online', 'Online'),
+  NEFT: () => t('staff.paymentsReceived.type.neft', 'NEFT'),
+  ZeroAmount: () => t('staff.paymentsReceived.type.zeroAmount', 'Zero amount'),
+  PaidAtMilestone1: () => t('staff.paymentsReceived.type.milestone1', 'Paid at milestone 1'),
 };
 
 /** A number of the list (amounts and percentages come as numbers or text). */
@@ -32,13 +33,13 @@ function num(row: Row, field: string): number {
  * 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the design's "Paid between" drop-down ("Any date" first). The
  * range goes to the API as paidFrom / paidTo (yyyy-MM-dd), which filters on the payment's recorded date (PaidOn).
  */
-export const PAID_RANGES = [
-  { value: '', label: 'Any date' },
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-  { value: 'fy', label: 'This financial year' },
-] as const;
+export const PAID_RANGES: readonly { readonly value: string; readonly label: string }[] = [
+  { value: '', get label() { return t('staff.paymentsReceived.paid.any', 'Any date'); } },
+  { value: '7', get label() { return t('staff.paymentsReceived.paid.last7', 'Last 7 days'); } },
+  { value: '30', get label() { return t('staff.paymentsReceived.paid.last30', 'Last 30 days'); } },
+  { value: '90', get label() { return t('staff.paymentsReceived.paid.last90', 'Last 90 days'); } },
+  { value: 'fy', get label() { return t('staff.paymentsReceived.paid.thisYear', 'This financial year'); } },
+];
 
 function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -80,14 +81,15 @@ export function rupees(n: number): string {
  */
 @Component({
   selector: 'zed-staff-payments-received',
-  imports: [ListFiltersBar, PagerComponent, PageHead, LevelMedal, DashIcon],
+  imports: [ListFiltersBar, PagerComponent, PageHead, LevelMedal, DashIcon, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs" title="MSME Payment Received" subtitle="Payments received from the units, with the TDS, subsidy and amount paid.">
+    <zed-page-head [crumbs]="crumbs()" [title]="'MSME Payment Received' | t: 'staff.paymentsReceived.title'"
+      [subtitle]="'Payments received from the units, with the TDS, subsidy and amount paid.' | t: 'staff.paymentsReceived.sub'">
       <button type="button" class="btn btn-outline-primary pr-btn" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
-        <zed-dash-icon name="download" [size]="16" />{{ exporting() ? 'Exporting…' : 'Export' }}</button>
+        <zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.paymentsReceived.exportingButton') : ('Export' | t: 'staff.paymentsReceived.exportButton') }}</button>
     </zed-page-head>
-    <div class="pr-tiles" role="list" aria-label="Totals of the payments shown">
+    <div class="pr-tiles" role="list" [attr.aria-label]="'Totals of the payments shown' | t: 'staff.paymentsReceived.tilesAria'">
       @for (t of tiles(); track t.label) {
         <div class="pr-tile" role="listitem"><b [class]="t.tone">{{ t.value }}</b>&ngsp;<span>{{ t.label }}</span></div>
       }
@@ -96,11 +98,11 @@ export function rupees(n: number): string {
       <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
         <div class="filter wide pr-search">
           <svg class="pr-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input type="search" id="pr-search" class="form-control" maxlength="50" placeholder="Search ZED ID, unit, GSTIN or TAN"
-                 aria-label="Search ZED ID, unit, GSTIN or TAN" [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
+          <input type="search" id="pr-search" class="form-control" maxlength="50" [placeholder]="'Search ZED ID, unit, GSTIN or TAN' | t: 'staff.paymentsReceived.search.placeholder'"
+                 [attr.aria-label]="'Search ZED ID, unit, GSTIN or TAN' | t: 'staff.paymentsReceived.search.placeholder'" [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
         </div>
         <div class="filter pr-paid">
-          <label class="form-label" for="pr-paid">Paid between</label>
+          <label class="form-label" for="pr-paid">{{ 'Paid between' | t: 'staff.paymentsReceived.paid.label' }}</label>
           <select class="form-select" id="pr-paid" (change)="onPaid($any($event.target).value)">
             @for (r of paidRanges; track r.value) { <option [value]="r.value" [selected]="paid() === r.value">{{ r.label }}</option> }
           </select>
@@ -113,17 +115,17 @@ export function rupees(n: number): string {
         <table class="table table-zed pr-table">
           <thead>
             <tr>
-              <th>Unit</th>
-              <th>Level</th>
-              <th>Size / Gender</th>
-              <th>Social category</th>
-              <th>{{ consultancy ? 'Milestone' : 'Joining reward' }}</th>
-              <th>State / District</th>
-              <th class="num">TDS</th>
-              <th class="num">Subsidy</th>
-              <th>GSTIN / TAN</th>
-              <th>Paid on</th>
-              <th class="num">Amount paid</th>
+              <th>{{ 'Unit' | t: 'staff.paymentsReceived.column.unit' }}</th>
+              <th>{{ 'Level' | t: 'staff.paymentsReceived.column.level' }}</th>
+              <th>{{ 'Size / Gender' | t: 'staff.paymentsReceived.column.sizeGender' }}</th>
+              <th>{{ 'Social category' | t: 'staff.paymentsReceived.column.social' }}</th>
+              <th>{{ consultancy ? ('Milestone' | t: 'staff.paymentsReceived.column.milestone') : ('Joining reward' | t: 'staff.paymentsReceived.column.reward') }}</th>
+              <th>{{ 'State / District' | t: 'staff.paymentsReceived.column.stateDistrict' }}</th>
+              <th class="num">{{ 'TDS' | t: 'staff.paymentsReceived.column.tds' }}</th>
+              <th class="num">{{ 'Subsidy' | t: 'staff.paymentsReceived.column.subsidy' }}</th>
+              <th>{{ 'GSTIN / TAN' | t: 'staff.paymentsReceived.column.tax' }}</th>
+              <th>{{ 'Paid on' | t: 'staff.paymentsReceived.column.paidOn' }}</th>
+              <th class="num">{{ 'Amount paid' | t: 'staff.paymentsReceived.column.amount' }}</th>
             </tr>
           </thead>
           <tbody>
@@ -131,7 +133,7 @@ export function rupees(n: number): string {
               <tr>
                 <td class="unit-cell">
                   <b>{{ t['PUnitName'] }}</b><small>{{ t['ZedId'] }}</small>
-                  @if (!consultancy && t['MileStoneNum']) { <small>Milestone {{ t['MileStoneNum'] }}</small> }
+                  @if (!consultancy && t['MileStoneNum']) { <small>{{ 'Milestone {no}' | t: 'staff.paymentsReceived.milestoneText' : { no: t['MileStoneNum'] } }}</small> }
                 </td>
                 <td><zed-level-medal [level]="$any(t['Certification'])" /></td>
                 <td><span>{{ t['EnterpriseTypee'] }}</span><small class="sub">{{ t['Gender'] }}</small></td>
@@ -139,14 +141,14 @@ export function rupees(n: number): string {
                 @if (consultancy) {
                   <td>{{ t['MileStoneNum'] }}</td>
                 } @else {
-                  <td><span class="chip" [class.is-good]="flag(t, 'IsCouponUsed')">{{ flag(t, 'IsCouponUsed') ? 'Yes' : 'No' }}</span></td>
+                  <td><span class="chip" [class.is-good]="flag(t, 'IsCouponUsed')">{{ flag(t, 'IsCouponUsed') ? ('Yes' | t: 'staff.paymentsReceived.reward.yes') : ('No' | t: 'staff.paymentsReceived.reward.no') }}</span></td>
                 }
                 <td><span>{{ t['PStateName'] }}</span><small class="sub">{{ t['PDistrictName'] }}</small></td>
                 <td class="num">{{ percent(t, 'Tds') || '—' }}</td>
                 <td class="num">{{ percent(t, 'SubsidyPercentage') || '—' }}</td>
                 <td class="pr-tax">
                   @let ids = taxIds(t);
-                  @for (id of ids; track $index) { <span>{{ id }}</span> } @empty { <span class="sub">Not given</span> }
+                  @for (id of ids; track $index) { <span>{{ id }}</span> } @empty { <span class="sub">{{ 'Not given' | t: 'staff.paymentsReceived.tax.empty' }}</span> }
                 </td>
                 <td class="sub pr-paid-on">{{ day(t['PaidOn']) }}</td>
                 <td class="num">
@@ -155,14 +157,14 @@ export function rupees(n: number): string {
                 </td>
               </tr>
             } @empty {
-              @if (!loading()) { <tr><td colspan="11" style="padding: 0"><div class="no-data">No payment matches these filters.</div></td></tr> }
+              @if (!loading()) { <tr><td colspan="11" style="padding: 0"><div class="no-data">{{ 'No payment matches these filters.' | t: 'staff.paymentsReceived.empty' }}</div></td></tr> }
             }
           </tbody>
         </table>
       </div>
       <zed-pager [pager]="pager" />
     </div>
-    @if (loading()) { <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div> }
+    @if (loading()) { <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.paymentsReceived.loadingText' }}</small></div></div></div> }
   `,
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -200,7 +202,7 @@ export class PaymentsReceivedPage {
   private readonly exporter = inject(TableExport);
   private readonly toast = inject(ToastService);
 
-  protected readonly crumbs = staffCrumbs({ label: 'Payment Received' });
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.paymentsReceived.crumb', 'Payment Received') }));
   protected readonly pager = new ClientPager<Row>();
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
@@ -219,12 +221,12 @@ export class PaymentsReceivedPage {
     const sum = rows.reduce((s, r) => s + num(r, 'FinalAmountPaid'), 0);
     const tds = rows.filter((r) => num(r, 'Tds') > 0).length;
     const last = this.consultancy
-      ? { label: 'Zero amount', value: rows.filter((r) => text(r, 'PaymentType') === 'ZeroAmount').length.toLocaleString('en-IN'), tone: '' }
-      : { label: 'Used Joining Reward', value: rows.filter((r) => flag(r, 'IsCouponUsed')).length.toLocaleString('en-IN'), tone: 'good' };
+      ? { label: t('staff.paymentsReceived.tile.zeroAmount', 'Zero amount'), value: rows.filter((r) => text(r, 'PaymentType') === 'ZeroAmount').length.toLocaleString('en-IN'), tone: '' }
+      : { label: t('staff.paymentsReceived.tile.reward', 'Used Joining Reward'), value: rows.filter((r) => flag(r, 'IsCouponUsed')).length.toLocaleString('en-IN'), tone: 'good' };
     return [
-      { label: 'Amount received', value: rupees(sum), tone: '' },
-      { label: 'Payments', value: rows.length.toLocaleString('en-IN'), tone: '' },
-      { label: 'With TDS deducted', value: tds.toLocaleString('en-IN'), tone: 'warn' },
+      { label: t('staff.paymentsReceived.tile.amount', 'Amount received'), value: rupees(sum), tone: '' },
+      { label: t('staff.paymentsReceived.tile.payments', 'Payments'), value: rows.length.toLocaleString('en-IN'), tone: '' },
+      { label: t('staff.paymentsReceived.tile.tds', 'With TDS deducted'), value: tds.toLocaleString('en-IN'), tone: 'warn' },
       last,
     ];
   });
@@ -273,8 +275,8 @@ export class PaymentsReceivedPage {
   }
 
   protected paymentType(row: Row): string {
-    const t = text(row, 'PaymentType').trim();
-    return PAYMENT_TYPES[t] ?? t;
+    const type = text(row, 'PaymentType').trim();
+    return PAYMENT_TYPES[type]?.() ?? type;
   }
 
   protected taxIds(row: Row): string[] {
@@ -284,21 +286,36 @@ export class PaymentsReceivedPage {
   /** Export (approved): the rows shown (filters and search), with the full GSTIN and TAN. */
   protected async exportRows(): Promise<void> {
     const rows = this.pager.filtered();
-    const t = (r: Row, c: string) => text(r, c);
+    const v = (r: Row, c: string) => text(r, c);
+    const columns = [
+      t('staff.paymentsReceived.export.column.serial', 'S.No.'), t('staff.paymentsReceived.export.column.zedId', 'ZED ID'),
+      t('staff.paymentsReceived.export.column.unit', 'Unit'), t('staff.paymentsReceived.export.column.level', 'Level'),
+      t('staff.paymentsReceived.export.column.size', 'Size'), t('staff.paymentsReceived.export.column.gender', 'Gender'),
+      t('staff.paymentsReceived.export.column.social', 'Social category'),
+      this.consultancy ? t('staff.paymentsReceived.export.column.milestone', 'Milestone') : t('staff.paymentsReceived.export.column.reward', 'Joining reward'),
+      t('staff.paymentsReceived.export.column.state', 'State'), t('staff.paymentsReceived.export.column.district', 'District'),
+      t('staff.paymentsReceived.export.column.tds', 'TDS (%)'), t('staff.paymentsReceived.export.column.subsidy', 'Subsidy (%)'),
+      t('staff.paymentsReceived.export.column.gstin', 'GSTIN'), t('staff.paymentsReceived.export.column.tan', 'TAN'),
+      t('staff.paymentsReceived.export.column.paidOn', 'Paid on'), t('staff.paymentsReceived.export.column.type', 'Payment type'),
+      t('staff.paymentsReceived.export.column.amount', 'Amount paid (Rs.)'),
+    ];
+    const yes = t('staff.paymentsReceived.reward.yes', 'Yes');
+    const no = t('staff.paymentsReceived.reward.no', 'No');
     this.exporting.set(true);
     try {
       await this.exporter.xlsx('payments-received', [{
         name: 'Payments received',
-        columns: ['S.No.', 'ZED ID', 'Unit', 'Level', 'Size', 'Gender', 'Social category', this.consultancy ? 'Milestone' : 'Joining reward',
-          'State', 'District', 'TDS (%)', 'Subsidy (%)', 'GSTIN', 'TAN', 'Paid on', 'Payment type', 'Amount paid (Rs.)'],
-        rows: rows.map((r, i) => [i + 1, t(r, 'ZedId'), t(r, 'PUnitName'), this.level(r), t(r, 'EnterpriseTypee'), t(r, 'Gender'), t(r, 'SocialCategoryName'),
-          this.consultancy ? t(r, 'MileStoneNum') : flag(r, 'IsCouponUsed') ? 'Yes' : 'No', t(r, 'PStateName'), t(r, 'PDistrictName'),
-          t(r, 'Tds'), t(r, 'SubsidyPercentage'), t(r, 'GstinNumber'), t(r, 'TanNumber'), t(r, 'PaidOn').slice(0, 10), this.paymentType(r),
+        columns,
+        rows: rows.map((r, i) => [i + 1, v(r, 'ZedId'), v(r, 'PUnitName'), this.level(r), v(r, 'EnterpriseTypee'), v(r, 'Gender'), v(r, 'SocialCategoryName'),
+          this.consultancy ? v(r, 'MileStoneNum') : flag(r, 'IsCouponUsed') ? yes : no, v(r, 'PStateName'), v(r, 'PDistrictName'),
+          v(r, 'Tds'), v(r, 'SubsidyPercentage'), v(r, 'GstinNumber'), v(r, 'TanNumber'), v(r, 'PaidOn').slice(0, 10), this.paymentType(r),
           num(r, 'FinalAmountPaid')]),
       }]);
-      this.toast.success('Export ready', `${rows.length} payment${rows.length === 1 ? '' : 's'}.`);
+      const count = rows.length;
+      this.toast.success(t('staff.paymentsReceived.toast.exported', 'Export ready'),
+        count === 1 ? t('staff.paymentsReceived.toast.exportedOne', '{count} payment.', { count }) : t('staff.paymentsReceived.toast.exportedMany', '{count} payments.', { count }));
     } catch (err) {
-      this.toast.error('The export failed', apiErrorMessage(err));
+      this.toast.error(t('staff.paymentsReceived.toast.exportFailed', 'The export failed'), apiErrorMessage(err));
     } finally {
       this.exporting.set(false);
     }
