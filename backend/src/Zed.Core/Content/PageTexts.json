@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 8590,
+  "count": 8592,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -5861,6 +5861,30 @@
     {
       "key": "msme.dashboard.fact.feeNote",
       "standard": "incl. GST, after subsidy",
+      "kind": "note",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feePaid",
+      "standard": "Paid",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.fact.feePaidNote",
+      "standard": "payment received",
       "kind": "note",
       "portal": "msme",
       "page": "dashboard",

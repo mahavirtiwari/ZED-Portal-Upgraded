@@ -350,7 +350,7 @@ export class DashboardPage {
   /** 2026-11-15: the pop-up's "Availed" chip: the joining reward used, financial assistance or TU availed. */
   protected availed(kind: string): boolean {
     if (kind === 'joining') return this.is(this.msme(), 'IsCouponUsed', 1);
-    if (kind === 'fa') return this.is(this.cert(), 'FinancialAssistanceStatus', 0);
+    if (kind === 'fa') return this.faApplied();
     if (kind === 'tu') return this.is(this.cert(), 'TechnologyUpgradationStatus', 0);
     return false;
   }
@@ -360,6 +360,14 @@ export class DashboardPage {
     const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
     return v === null || v === undefined || v === '' || !Number.isFinite(n) ? String(v ?? '') : '₹ ' + n.toLocaleString('en-IN');
   }
+
+  /**
+   * 2026-11-20: financial assistance applied for: FinancialAssistanceStatus 0 (set by the submission) with the application's
+   * level, reference or date. 0 alone is also the column's default before certification, so it does not mean "availed".
+   */
+  protected readonly faApplied = computed(() =>
+    this.is(this.cert(), 'FinancialAssistanceStatus', 0)
+    && ['LevelOfCertificationForFa', 'FaReferenceNo', 'DateOfFaAvail'].some((f) => String(this.cert()[f] ?? '').trim() !== ''));
 
   /** Loose equality like the AngularJS expressions (null/undefined never equal a number). */
   protected is(row: Row, field: string, value: number): boolean {
@@ -410,7 +418,11 @@ export class DashboardPage {
     const visits = this.surveillanceMonths(level);
     if (visits.length) rows.push({ id: 'surveillance', label: t('msme.dashboard.fact.surveillanceLabel', 'Surveillance'), value: this.visitsText(visits) });
     const fee = this.levelFees()[level];
-    if (typeof fee === 'number') rows.push(this.feeFact(fee));
+    // 2026-11-20 (a Micro unit's paid Silver showed "Nil, fully subsidised"): the fee procedure answers 0 once the level is
+    // paid, so a paid level says so instead.
+    if (this.paid(level)) rows.push({ id: 'fee', label: t('msme.dashboard.fact.feeLabel', 'Your fee'), value: t('msme.dashboard.fact.feePaid', 'Paid'),
+      note: t('msme.dashboard.fact.feePaidNote', 'payment received') });
+    else if (typeof fee === 'number') rows.push(this.feeFact(fee));
     return rows;
   }
 
@@ -554,9 +566,12 @@ export class DashboardPage {
     }
     const fa = this.card('FINANCIAL_ASSISTANCE');
     if (fa) {
-      const eligible = this.is(this.basic(), 'IsEligibleForFinancial', 1);
-      const availed = eligible && this.is(this.cert(), 'FinancialAssistanceStatus', 0);
-      tiles.push(!eligible ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: notEligible }
+      // 2026-11-20 (a Bronze-certified unit saw "Not yet available"): as the server decides (SchemeUnit): the ZED team blocks a
+      // unit with IsEligibleForFinancial = 0 (empty = allowed), and the application needs a certified level.
+      const blocked = this.is(this.basic(), 'IsEligibleForFinancial', 0);
+      const certified = this.anyCertified();
+      const availed = !blocked && certified && this.faApplied();
+      tiles.push(blocked || !certified ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: blocked ? notEligible : notCertified }
         : availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: details }, modal: { kind: 'fa' } }
           : { ...base('fa', 'rupee', fa), state: 'open', action: { label: avail, link: '/msme/financial-assistance' } });
     }

@@ -127,7 +127,8 @@ describe('DashboardPage', () => {
     expect(band.querySelector('a[href="/msme/pledge-certificate"]')).toBeTruthy();
 
     const facts = (code: string) => [...card(code).querySelectorAll('.lv-facts > div')].map((d) => `${d.querySelector('dt')!.textContent}: ${d.querySelector('dd b')!.textContent}`);
-    expect(facts('bronze')).toEqual(['Valid for: 3 years', 'Surveillance: 1 visit (month 15)']);
+    // Bronze is paid (2026-11-20: a paid level says so instead of a fee).
+    expect(facts('bronze')).toEqual(['Valid for: 3 years', 'Surveillance: 1 visit (month 15)', 'Your fee: Paid']);
     expect(facts('silver')).toEqual(['Valid for: 3 years', 'Surveillance: 1 visit (month 12)']);
     expect(facts('zedx')).toEqual(['Valid for: 5 years', 'Surveillance: 2 visits (month 15, 27)', 'Your fee: ₹ 75,000']);
     expect(card('zedx').querySelector('.lv-facts > div:last-child dd small')!.textContent).toBe('incl. GST, after subsidy');
@@ -446,6 +447,36 @@ describe('DashboardPage', () => {
     const last = [...el.querySelectorAll('.ns-card')].pop()!;
     expect(last.querySelector('h3')!.textContent).toBe('Continue handholding');
     expect(last.querySelector('a')!.getAttribute('href')).toBe('/msme/handholding');
+  });
+
+  // 2026-11-20 (a Bronze-certified unit saw Financial Assistance "Not yet available"; a paid Silver showed "Nil, fully subsidised").
+  it('opens financial assistance as the server does, and says a paid level is paid', async () => {
+    const chip = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Financial Assistance')!
+      .querySelector('.inc-chip')!.textContent!.trim();
+    // Certified, the eligibility flag empty (allowed), status 1: open.
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], { IsEligibleForFinancial: null });
+    expect(chip()).toBe('Open');
+    fixture.destroy();
+    // Not certified (status 0 is also the column's default): locked until certified, never "Availed".
+    await render({ BronzeStatus: 3, FinancialAssistanceStatus: 0 }, {}, 0, undefined, [], {});
+    expect(chip()).toBe('Locked');
+    expect(el.textContent).toContain('Unlocks once your unit is certified');
+    fixture.destroy();
+    // Certified and applied (status 0 with the application's level): availed.
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 0, LevelOfCertificationForFa: 'Bronze' }, { IsBronzePaymentDone: 1 }, 0, undefined, [], {});
+    expect(chip()).toBe('Availed');
+    fixture.destroy();
+    // Blocked by the ZED team.
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], { IsEligibleForFinancial: 0 });
+    expect(chip()).toBe('Locked');
+    fixture.destroy();
+
+    const levels = ['Bronze', 'Silver'].map((code) => ({ code, name: code, description: null, comment: null, logoUrl: null, assessmentMode: 'Site',
+      validityMonths: 60, fee: null, surveillance: null }));
+    await render({ BronzeStatus: 6, SilverStatus: 3 }, { IsBronzePaymentDone: 1, IsSilverPaymentDone: true }, 0, undefined, levels, {}, { Bronze: 0, Silver: 0 });
+    const fee = (code: string) => [...card(code).querySelectorAll('.lv-facts > div')].map((d) => d.textContent!.replace(/\s+/g, ' ').trim())
+      .find((x) => x.startsWith('Your fee'));
+    expect(fee('silver')).toBe('Your feePaidpayment received');
   });
 
   it('shows the certification steps from the Texts', async () => {
