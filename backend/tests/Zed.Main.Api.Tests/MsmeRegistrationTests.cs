@@ -145,6 +145,46 @@ public sealed partial class MsmeRegistrationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 1, activityIndex = 0 })).StatusCode);
     }
 
+    /// <summary>2026-11-19 (the user): units were registering with plant names such as N/A, NA, 1, 2, 3.</summary>
+    [Fact]
+    public async Task A_plant_with_a_placeholder_unit_name_is_greyed_out_and_refused()
+    {
+        _host.Udyam.Result = _host.Udyam.Result with
+        {
+            Plants =
+            [
+                new() { ["PlantIdNo"] = "P1", ["UnitName"] = "N/A", ["PAddress"] = "Plot 4" },
+                new() { ["PlantIdNo"] = "P2", ["UnitName"] = "Acme Unit 2", ["PAddress"] = "Plot 9" },
+            ],
+        };
+        var client = await _host.CreateBrowserAsync();
+        var lookup = await (await client.PostAsJsonAsync("/api/msme/registration/lookup", new { registrationNo = "udyam-up-29-0003915", mobileNo = "9999999999" }))
+            .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var id = lookup.GetProperty("registrationId").GetString();
+
+        var plants = lookup.GetProperty("plants").EnumerateArray().ToList();
+        Assert.Equal(Zed.Portal.Features.Msme.UnitNameRule.Refused,
+            plants[0].GetProperty(Zed.Portal.Features.Msme.MsmeRegistrationService.UnitNameRefusedKey).GetString());
+        Assert.False(plants[1].TryGetProperty(Zed.Portal.Features.Msme.MsmeRegistrationService.UnitNameRefusedKey, out _));
+
+        var r = await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 0, activityIndex = 0 });
+        Assert.Equal(Zed.Portal.Features.Msme.UnitNameRule.Refused, await r.ProblemTitle());
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 1, activityIndex = 0 })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("N/A")] [InlineData("NA")] [InlineData("n.a.")] [InlineData("1")] [InlineData("2")] [InlineData("003")]
+    [InlineData("")] [InlineData("  ")] [InlineData(null)] [InlineData("-")] [InlineData("XXX")] [InlineData("Nil")]
+    [InlineData("Not Applicable")] [InlineData("Unit 1")] [InlineData("Plant No. 2")] [InlineData("NA1")] [InlineData("Test")]
+    public void Placeholder_unit_names_are_recognised(string? name) =>
+        Assert.True(Zed.Portal.Features.Msme.UnitNameRule.IsPlaceholder(name));
+
+    [Theory]
+    [InlineData("Acme Unit 1")] [InlineData("SAMPLE UNIT 1")] [InlineData("Shree Ganesh Castings")] [InlineData("A1 Engineering")]
+    [InlineData("3M India")] [InlineData("NA Steel Works")] [InlineData("Unit 2 of Kanpur Forge")] [InlineData("Nalco")]
+    public void Real_unit_names_are_accepted(string name) =>
+        Assert.False(Zed.Portal.Features.Msme.UnitNameRule.IsPlaceholder(name));
+
     [Theory]
     [InlineData("Plot-4", "", "Industrial  Area", "KANPUR", "208 001", "plot4||industrialarea|kanpur|208001")]
     [InlineData("", "", "", "", "208001", null)]

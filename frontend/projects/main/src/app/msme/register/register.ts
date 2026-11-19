@@ -79,6 +79,20 @@ export class RegisterPage {
     return typeof v === 'string' ? v : null;
   }
 
+  /**
+   * 2026-11-19 (the user): the server marks a plant whose unit name in Udyam is blank or a placeholder (N/A, NA, 1, 2, ...);
+   * it cannot be chosen until the name is corrected on the Udyam portal.
+   */
+  protected badUnitName(plant: UdyamRow): boolean {
+    const v = plant['V4UnitNameRefused'];
+    return typeof v === 'string' && v.trim() !== '';
+  }
+
+  /** The plant can be chosen: not registered already and with a proper unit name. */
+  protected plantOpen(plant: UdyamRow): boolean {
+    return this.registeredZedId(plant) === null && !this.badUnitName(plant);
+  }
+
   /** New (2026-11-07): why an activity cannot be registered (the scheme does not cover it); null when it can. */
   protected notEligible(activity: UdyamRow): string | null {
     const v = activity['V4NotEligible'];

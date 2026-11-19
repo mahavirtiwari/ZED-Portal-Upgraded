@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 8542,
+  "count": 8543,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -20807,6 +20807,18 @@
       "key": "public.register.plant.activityHeading",
       "standard": "Select the activity of that plant",
       "kind": "heading",
+      "portal": "public",
+      "page": "register",
+      "pageName": "Register",
+      "placeholders": [],
+      "files": [
+        "msme/register/register.html"
+      ]
+    },
+    {
+      "key": "public.register.plant.badNameChip",
+      "standard": "The unit name in Udyam is not valid (N/A, NA, 1, 2, 3 etc.). Please update the unit name of this plant on the Udyam portal, then register.",
+      "kind": "text",
       "portal": "public",
       "page": "register",
       "pageName": "Register",

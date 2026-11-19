@@ -268,6 +268,28 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
     }
 
+    /// <summary>2026-11-19 (the user): a plant named N/A, NA, 1, 2, ... in Udyam is refused in the app too, at each step.</summary>
+    [Fact]
+    public async Task A_plant_with_a_placeholder_unit_name_is_refused_in_the_app()
+    {
+        _host.Udyam.Result = _host.Udyam.Result with { Plants = [new() { ["PlantIdNo"] = "P1", ["UnitName"] = "NA", ["PAddress"] = "Plot 4" }] };
+        var app = _host.CreateClient();
+
+        var lookup = await app.PostAsJsonAsync("/Msme/LookupUdyam", new { udyamNumber = Udyam, mobileNo = "9999999999" });
+        using (var doc = JsonDocument.Parse(await lookup.Content.ReadAsStringAsync()))
+            Assert.Equal(UnitNameRule.Refused, doc.RootElement.GetProperty("Plants")[0].GetProperty(MsmeRegistrationService.UnitNameRefusedKey).GetString());
+
+        Assert.Equal("1", (await Answer(await Post(app, "ValidateCaptcha", new { token = "safetynet-token" }))).Status);
+        var plant = await Answer(await Post(app, "ValidatePlantAndActivity", new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" }));
+        Assert.Equal(("0", UnitNameRule.Refused), plant);
+        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge }))).Status);
+        var otp = OtpInMail().Match(_host.Email.Sent.Last(m => m.To == Pledge).HtmlBody).Groups[1].Value;
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
+        var submit = await Answer(await Post(app, "FinalSubmit", RegistrationBody()));
+        Assert.Equal(("0", UnitNameRule.Refused), submit);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
+    }
+
     [Fact]
     public async Task Activities_sharing_an_ActivityDetail_Id_register_the_one_the_user_chose()
     {

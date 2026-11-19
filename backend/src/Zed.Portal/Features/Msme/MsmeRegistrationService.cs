@@ -104,6 +104,8 @@ public sealed class MsmeRegistrationService(
 
     /// <summary>Set on a plant of the shown Udyam record when it is registered already: its ZED ID, partly hidden.</summary>
     public const string PlantRegisteredKey = "V4RegisteredZedId";
+    /// <summary>2026-11-19: set on a plant whose unit name is blank or a placeholder (<see cref="UnitNameRule"/>): the reason.</summary>
+    public const string UnitNameRefusedKey = "V4UnitNameRefused";
     /// <summary>Set on an activity of the shown Udyam record when it cannot be registered: the reason.</summary>
     public const string ActivityRefusedKey = "V4NotEligible";
 
@@ -120,6 +122,7 @@ public sealed class MsmeRegistrationService(
         foreach (var p in lookup.Plants)
         {
             var copy = new Dictionary<string, string>(p);
+            if (UnitNameRule.IsPlaceholder(p.GetValueOrDefault("UnitName"))) copy[UnitNameRefusedKey] = UnitNameRule.Refused;
             if (p.GetValueOrDefault("PlantIdNo") is { Length: > 0 } plantId)
             {
                 var sets = await db.QueryProcMultipleAsync("SP_MSME_VALIDATE_UDYAM_DETAILS", new
@@ -164,8 +167,10 @@ public sealed class MsmeRegistrationService(
 
     /// <summary>The chosen plant and activity of a session, checked as <see cref="CheckEligibilityAsync"/>.</summary>
     /// <remarks>2026-11-17: also refused when a registered plant of the same Udyam has the same address (<see cref="SameAddressAsync"/>).</remarks>
+    /// <remarks>2026-11-19: and when the plant's unit name is blank or a placeholder (<see cref="UnitNameRule"/>).</remarks>
     public async Task<string?> CheckEligibilityAsync(RegistrationSession s, string? emailId, string? ip, CancellationToken ct) =>
-        await CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),
+        (UnitNameRule.IsPlaceholder(s.Plant!.GetValueOrDefault("UnitName")) ? UnitNameRule.Refused : null)
+        ?? await CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),
             s.Activity!.GetValueOrDefault("Two_DigitActivity"), emailId, ip, ct)
         ?? (await SameAddressAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant, ct) is { } sameAs ? SameAddressRegistered(sameAs) : null);
 

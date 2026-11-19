@@ -603,14 +603,29 @@ public sealed class ExternalApiTests : IDisposable
 
     // ===== Udyami =====
 
-    private static object Registration(string token, string email = "owner@acme.test") => new
+    private static object Registration(string token, string email = "owner@acme.test", string unitName = "Acme Unit 1") => new
     {
         Token = token, RequestId = "REQ-1", ReqTimeStamp = "2026-10-21T10:00:00", UserMobileNo = "9999999999", UserEmail = email,
         UdyamDetails = new { UdyogAadharNo = Udyam, EnterpriseName = "Acme", OwnerName = "A Kumar", PanNo = "ABCDE1234F", State_Id = "9", EmailId = "owner@acme.test" },
-        PlantDetails = new { PlantIdNo = "P1", UnitName = "Acme Unit 1", PAddress = "Plot 4", ZedCertified = false },
+        PlantDetails = new { PlantIdNo = "P1", UnitName = unitName, PAddress = "Plot 4", ZedCertified = false },
         ActivityDetails = new { Activity = "Manufacturing", Two_DigitActivity = "24" },
         Password = "attacker-chosen",
     };
+
+    /// <summary>2026-11-19 (the user): no registration of a plant named N/A, NA, 1, 2, ... (or with no name).</summary>
+    [Theory]
+    [InlineData("N/A")]
+    [InlineData("1")]
+    [InlineData("")]
+    public async Task RegisterPlant_refuses_a_placeholder_unit_name_without_calling_the_database(string unitName)
+    {
+        var r = await Http().PostAsJsonAsync("/Msme/RegisterPlant", Registration(UdyamiToken, unitName: unitName));
+
+        var json = await Json(r);
+        Assert.Equal("400", json.GetProperty("StatusCode").GetString());
+        Assert.Equal(Zed.Portal.Features.Msme.UnitNameRule.Refused, json.GetProperty("StatusMessage").GetString());
+        Assert.Empty(CallsTo("SP_API_MSME_INSERT_UDYAM_DETAILS"));
+    }
 
     [Fact]
     public async Task RegisterPlant_registers_returns_the_pledge_certificate_and_mails_it()

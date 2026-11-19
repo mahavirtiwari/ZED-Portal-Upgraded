@@ -158,6 +158,12 @@ public sealed class MsmeAppRegistrationController(
         // 2026-11-17 (the user): a plant at the address of a registered plant of the same Udyam (another plant number) is
         // refused here too (the Udyam record of LookupUdyam; FinalSubmit checks it again with a fresh lookup).
         var chosen = (await store.GetPlantsAsync(regNo, ct))?.FirstOrDefault(p => Same(p.GetValueOrDefault("PlantIdNo"), plant));
+        // 2026-11-19 (the user): a plant whose unit name is blank or a placeholder (N/A, NA, 1, 2, ...) is refused.
+        if (chosen is not null && UnitNameRule.IsPlaceholder(chosen.GetValueOrDefault("UnitName")))
+        {
+            Audit("plant check refused: placeholder unit name", regNo);
+            return Fail(UnitNameRule.Refused);
+        }
         if (await registration.SameAddressAsync(regNo, chosen, ct) is { } sameAs)
         {
             Audit("plant check refused: same address as a registered plant", regNo);

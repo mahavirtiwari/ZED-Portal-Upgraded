@@ -101,6 +101,32 @@ describe('RegisterPage', () => {
     expect(el.querySelector('[data-key="msme.registration.plant.validatedNote"]')).not.toBeNull();
   });
 
+  // 2026-11-19 (the user): a plant named N/A, NA, 1, 2, ... in Udyam cannot be chosen; the reason is shown on it.
+  it('greys out a plant whose Udyam unit name is a placeholder, with the reason and no radio button', async () => {
+    await goToUdyamStep();
+    type('#regNo', 'UDYAM-UP-29-0003915');
+    type('#mobileNo', '9999999999');
+    button('Check and proceed').click();
+    await settle();
+    http.expectOne('/api/msme/registration/lookup').flush({
+      registrationId: 'r1',
+      basicDetails: { EnterpriseName: 'Acme Castings', UdyogAadharNo: 'UDYAM-UP-29-0003915' },
+      plants: [
+        { UnitName: 'N/A', PAddress: 'Plot 4', V4UnitNameRefused: 'not valid' },
+        { UnitName: 'Acme Castings Unit', PAddress: 'Plot 9' },
+      ],
+      activities: [{ Activity: 'Manufacturing', Two_DigitActivity: '24' }],
+    });
+    await settle();
+
+    const units = el.querySelectorAll('.reg-units label.reg-unit');
+    expect(units[0].classList).toContain('off');
+    expect(units[0].querySelector('input[name="plant"]')).toBeNull();
+    expect(el.querySelector('[data-plant-bad-name="0"]')!.textContent).toContain('update the unit name of this plant on the Udyam portal');
+    expect(units[1].classList).not.toContain('off');
+    expect(units[1].querySelector('input[name="plant"]')).not.toBeNull();
+  });
+
   it('shows the API message when the lookup is rejected', async () => {
     await goToUdyamStep();
     type('#regNo', 'UDYAM-UP-29-0003915');

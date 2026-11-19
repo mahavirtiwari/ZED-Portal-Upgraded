@@ -114,10 +114,10 @@
           <h4 class="reg-sec"><span class="reg-n">1</span> {{ 'Select one plant location' | t: 'public.register.plant.locationHeading' }}</h4>
           <div class="reg-units" role="radiogroup" [attr.aria-label]="'Plant location' | t: 'public.register.plant.locationAria'">
             @for (p of lookup()?.plants ?? []; track $index) {
-              <label class="reg-unit" [class.sel]="plantIndex() === $index" [class.off]="registeredZedId(p) !== null">
+              <label class="reg-unit" [class.sel]="plantIndex() === $index" [class.off]="!plantOpen(p)">
                 <span class="reg-unit-head">
                   <b class="reg-unit-name">
-                    @if (registeredZedId(p) === null) {
+                    @if (plantOpen(p)) {
                       <input type="radio" class="reg-radio" name="plant" [value]="$index" [attr.aria-label]="p['UnitName']"
                              [checked]="plantIndex() === $index" (change)="plantIndex.set($index)" />
                     }
@@ -127,6 +127,8 @@
                     <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">{{ 'Already registered: {zedId}. Log in with its ZED ID.' | t: 'public.register.plant.registeredChip' : { zedId: registered } }}</span>
                   } @else if (registeredZedId(p) === '') {
                     <span class="reg-chip reg-chip-off" [attr.data-plant-registered]="$index">{{ 'Already registered. Log in with its ZED ID.' | t: 'public.register.plant.registeredNoIdChip' }}</span>
+                  } @else if (badUnitName(p)) {
+                    <span class="reg-chip reg-chip-off" [attr.data-plant-bad-name]="$index">{{ 'The unit name in Udyam is not valid (N/A, NA, 1, 2, 3 etc.). Please update the unit name of this plant on the Udyam portal, then register.' | t: 'public.register.plant.badNameChip' }}</span>
                   } @else if (plantIndex() === $index) {
                     <span class="reg-chip">{{ 'Selected' | t: 'public.register.plant.selectedChip' }}</span>
                   }

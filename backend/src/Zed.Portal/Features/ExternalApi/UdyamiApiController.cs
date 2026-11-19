@@ -60,6 +60,12 @@ public sealed class UdyamiApiController(
             log.LogWarning("Msme/RegisterPlant from {Client}: refused input for request {RequestId}", caller.Client, Short(msme.RequestId));
             return LegacyJson(new ApiRegisterServiceResponse { StatusCode = "400", StatusMessage = "Bad Request" });
         }
+        // 2026-11-19 (the user): no registration of a plant whose unit name is blank or a placeholder (N/A, NA, 1, 2, ...).
+        if (Msme.UnitNameRule.IsPlaceholder(p.UnitName))
+        {
+            log.LogInformation("Msme/RegisterPlant by {Client}: {Udyam} plant {Plant} refused: placeholder unit name", caller.Client, b.UdyogAadharNo, p.PlantIdNo);
+            return LegacyJson(new ApiRegisterServiceResponse { StatusCode = "400", StatusMessage = Msme.UnitNameRule.Refused });
+        }
 
         var ds = await db.QueryProcMultipleAsync("SP_API_MSME_INSERT_UDYAM_DETAILS", new
         {
