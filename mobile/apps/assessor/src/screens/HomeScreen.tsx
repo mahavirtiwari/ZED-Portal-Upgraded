@@ -26,6 +26,7 @@ import {
 import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, GradientFill, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
 import { viewAssessment } from './assessmentActions';
 import { ClearDataSheet } from './ClearDataSheet';
+import { SchemeVisitsHomeCard } from './SchemeVisitScreens';
 import { showExitAlert } from './common';
 
 /** The units kept on the phone (their AssessorData rows), for the progress and "Clear data". */
@@ -81,7 +82,7 @@ export function HomeScreen() {
 
   const refresh = useCallback(async () => {
     if (!(await isNetworkAvailable())) return;
-    await Promise.all([app.refreshAssessments(), app.refreshNotifications(), app.refreshReports()].map(p => p.catch(() => undefined)));
+    await Promise.all([app.refreshAssessments(), app.refreshNotifications(), app.refreshReports(), app.schemes.refreshList()].map(p => p.catch(() => undefined)));
   }, [app]);
 
   useEffect(() => {
@@ -183,6 +184,8 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
       </View>
       <ZScroll contentContainerStyle={z.screenPad} refreshControl={refreshControl}>
         <CorrectionsCard />
+        {/* 2026-11-20: the incentive scheme applications allotted to the assessor for onsite verification. */}
+        <SchemeVisitsHomeCard />
         {list.length === 0 ? (
           <EmptyState
             icon="clipboard"

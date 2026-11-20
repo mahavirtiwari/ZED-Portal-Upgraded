@@ -17,6 +17,7 @@ import {
   type RequestContext,
 } from '@zed/shared';
 import type { AssessmentsResponse, NotificationsResponse, ReportsResponse, SignInResponse } from './portfolio';
+import type { SchemeCheckInput, SchemePhotoInput, SchemeVisitDetailResponse, SchemeVisitListResponse, SchemeVisitWriteResponse } from './schemes/visits';
 import type { Attendance, AssessmentDetails, BaseServiceRequest, BasicInformation, ParametersDetails, AllottedParameters, PhotoInformation, ServiceResponse, SubmitAssessmentRequest, SubmitSelfieImageRequest } from './models';
 
 export type SaSystem = 'main' | 'surveillance';
@@ -170,6 +171,52 @@ export class SaApi {
     }
     fields.push(...contextFields(this.ctx()));
     return this.retrofit.postMultipart<BaseServiceResponse>(this.base + 'SubmitAttendance', fields);
+  }
+
+  // ----- 2026-11-20: scheme visits (incentive schemes, onsite verification; main host only, mobile API SchemeVisits/*) -----
+
+  private get schemes() {
+    return this.host + 'SchemeVisits/';
+  }
+
+  /** The applications allotted to the assessor for onsite verification. */
+  schemeVisits(saId: string) {
+    return this.retrofit.postJson<SchemeVisitListResponse>(this.schemes + 'List', this.body({ saId }));
+  }
+
+  /** One application: answers, onsite checks, photo items and what the visit saved. */
+  schemeVisit(saId: string, applicationId: number) {
+    return this.rest.postJson<SchemeVisitDetailResponse>(this.schemes + 'Detail', this.body({ saId, applicationId }));
+  }
+
+  /** The start of the visit: the selfie and the site photo (GPS and time). */
+  schemeStart(req: { saId: string; applicationId: number; selfie: SchemePhotoInput; site: SchemePhotoInput }) {
+    return this.rest.postJson<SchemeVisitWriteResponse>(this.schemes + 'Start', this.body(req));
+  }
+
+  /** One geo-tagged photo of an item. */
+  schemeSavePhoto(req: { saId: string; applicationId: number; section: string; index: number; photo: SchemePhotoInput }) {
+    return this.rest.postJson<SchemeVisitWriteResponse>(this.schemes + 'SavePhoto', this.body(req));
+  }
+
+  /** An item photo removed (the app's photo ID). */
+  schemeDeletePhoto(req: { saId: string; applicationId: number; photoId: string }) {
+    return this.retrofit.postJson<SchemeVisitWriteResponse>(this.schemes + 'DeletePhoto', this.body(req));
+  }
+
+  /** The representative, the remarks and the onsite checks (what is given). */
+  schemeSave(req: { saId: string; applicationId: number; representativeName?: string | null; representativeMobile?: string | null; remarks?: string | null; checks?: SchemeCheckInput[] }) {
+    return this.retrofit.postJson<SchemeVisitWriteResponse>(this.schemes + 'Save', this.body(req));
+  }
+
+  /** Recommend (verified claim) or reject (reason and remarks). */
+  schemeSubmit(req: { saId: string; applicationId: number; decision: 'recommend' | 'reject'; verifiedClaim?: number | null; reason?: string | null; remarks?: string | null }) {
+    return this.rest.postJson<SchemeVisitWriteResponse>(this.schemes + 'Submit', this.body(req));
+  }
+
+  /** A document or photo of the application (opened with the sign-in token, as the reports). */
+  schemeDocumentUrl(saId: string, applicationId: number, name: string): string {
+    return `${this.schemes}Document?saId=${encodeURIComponent(saId)}&applicationId=${applicationId}&name=${encodeURIComponent(name)}`;
   }
 
   /** New in V4 (docs/mobile/APP-TEXTS.md). */

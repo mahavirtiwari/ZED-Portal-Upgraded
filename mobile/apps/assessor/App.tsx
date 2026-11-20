@@ -18,6 +18,7 @@ import { AboutScreen, HelpScreen, NotificationsScreen, ViewProfileScreen } from 
 import { ForgotPasswordScreen, LoginScreen, SplashScreen } from './src/screens/LoginScreen';
 import { MeetingScreen, SiteImagesScreen } from './src/screens/MeetingScreens';
 import { ParametersPagerScreen, QuestionsPagerScreen } from './src/screens/ParametersScreens';
+import { SchemeVisitScreen, SchemeVisitsScreen } from './src/screens/SchemeVisitScreens';
 import { SubmitParametersScreen } from './src/screens/SubmitParametersScreen';
 import { C } from './src/ui/zed';
 
@@ -49,6 +50,9 @@ export const SCREENS: ScreenMap = {
   ViewProfile: withAssessor(ViewProfileScreen),
   // 2026-11-16: the Basic Information answers the agency sent back for correction.
   Corrections: withAssessor(CorrectionsScreen),
+  // 2026-11-20 (incentive schemes, phase 2): the onsite verification of scheme applications allotted to the assessor.
+  SchemeVisits: withAssessor(SchemeVisitsScreen),
+  SchemeVisit: withAssessor(SchemeVisitScreen),
   Help: HelpScreen,
   About: AboutScreen,
   // The company profile and the steps are one page in the redesign (07 Assessment Detail); both legacy names lead there.

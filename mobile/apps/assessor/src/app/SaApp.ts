@@ -24,6 +24,8 @@ import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, P
 import { ASSESSOR_BASIC_INFO, BUILT_IN_BASIC_INFO } from '../forms';
 import { EVIDENCE_ADDED, EVIDENCE_SITE_TOUR, normalizeDetails, type AssessmentDetails } from '../models';
 import { hasUnsentWork, type AppNotification, type AssessmentSummary, type AssessorProfile, type ReportLinkResponse, type ReportSummary } from '../portfolio';
+import { SchemeVisits } from '../schemes/schemeVisits';
+import { randomUuid } from '../util/uuid';
 import { base64Decode, base64EncodeDefault } from '../util/base64';
 
 /** ZedCache key of an assessor's profile and assessment list (redesign). */
@@ -78,6 +80,8 @@ export class SaApp {
   /** The portal (reports): the build's environment, not the local MobileApi port. */
   readonly portalEnvironment: Environment;
   readonly versionName: string;
+  /** 2026-11-20 (incentive schemes, phase 2): the onsite assessor's scheme visits (main host). */
+  readonly schemes: SchemeVisits;
 
   private _details: AssessmentDetails | null = null;
   private _assessor: AssessorProfile | null = null;
@@ -110,6 +114,25 @@ export class SaApp {
     this.mainApi.retrofit.useSession(this.mainSession);
     this.surveillanceApi.rest.useSession(this.surveillanceSession);
     this.surveillanceApi.retrofit.useSession(this.surveillanceSession);
+    this.schemes = new SchemeVisits({
+      cache: this.cache,
+      photos: this.photos,
+      queue: this.queue,
+      texts: this.texts,
+      api: () => this.mainApi,
+      saId: () => this._assessor?.assessorId ?? '',
+      touch: () => this.touch(),
+      newId: () => `${this._assessor?.assessorId ?? 'SA'}-${randomUuid()}`,
+    });
+  }
+
+  /** The main host's API and sign-in token (scheme visits and their documents are on the main host only). */
+  get schemeApi(): SaApi {
+    return this.mainApi;
+  }
+
+  get schemeToken(): string | null {
+    return this.mainSession.appToken;
   }
 
   /** The current unit's host API (main unless a surveillance unit is open). */
@@ -336,6 +359,7 @@ export class SaApp {
     this._notifications = n?.list ?? [];
     this._read = new Set(n?.read ?? []);
     this._reports = (await this.cache.get<ReportSummary[]>(REPORTS_KEY + assessorId)) ?? [];
+    await this.schemes.load(assessorId);
   }
 
   /** The assessments of this assessor kept on the phone (its unit rows), by ZED ID. */
@@ -519,6 +543,7 @@ export class SaApp {
     this._notifications = [];
     this._read = new Set();
     this._reports = [];
+    this.schemes.reset();
     this.session.clear();
     this.touch();
   }

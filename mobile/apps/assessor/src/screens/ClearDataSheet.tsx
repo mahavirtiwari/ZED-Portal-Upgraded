@@ -22,14 +22,43 @@ import {
 type Step = 'pick' | 'confirm' | 'everything';
 
 /**
+ * 2026-11-20: what the sheet clears when it is not an assessment (a scheme visit of the incentive schemes): its name, badge,
+ * sections and the two ways of clearing, with the wording of "Remove everything".
+ */
+export type ClearTarget = {
+  name: string;
+  badge?: string;
+  load: () => Promise<ClearSection[]>;
+  clear: (ids: string[]) => Promise<boolean>;
+  clearAll: () => Promise<boolean>;
+  everythingLink: string;
+  everythingTitle: string;
+  everythingText: string;
+  /** The confirmation's note (what stays); the assessment's when not given. */
+  confirmText?: string;
+};
+
+/**
  * 2026-11-18: the assessment card's "Clear data" (design Common_04c_Dashboard_ClearData): one row per step of the assessment
  * the phone holds data for (the same for an Onsite certification and a surveillance visit), with what it holds and an
  * "Unsynced" mark; only the ticked steps are removed, after a confirmation that asks for a tick when any of them holds
  * unsynced work. "Remove everything" is the earlier one-step clean, confirmed by typing CLEAR when anything is unsynced.
  */
-export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary; onClose: () => void; onCleared: () => void }) {
+export function ClearDataSheet({ a, target: given, onClose, onCleared }: { a?: AssessmentSummary; target?: ClearTarget; onClose: () => void; onCleared: () => void }) {
   const app = useSa();
   const ui = useUi();
+  // An assessment's sections (the earlier sheet), unless another target is given.
+  const target: ClearTarget = given ?? {
+    name: a ? nameOf(a) : '',
+    badge: a?.system === 'surveillance' ? 'Surveillance visit' : undefined,
+    load: () => app.dataSections(a!.zedId),
+    clear: ids => app.clearSections(a!.zedId, ids),
+    clearAll: () => app.deleteStoredAssessment(a!.zedId),
+    everythingLink: 'Remove everything for this assessment',
+    everythingTitle: EVERYTHING_TITLE,
+    everythingText: EVERYTHING_TEXT,
+  };
+  const targetKey = a ? a.zedId : target.name;
   const [sections, setSections] = useState<ClearSection[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [step, setStep] = useState<Step>('pick');
@@ -39,14 +68,15 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
 
   useEffect(() => {
     let alive = true;
-    app
-      .dataSections(a.zedId)
+    target
+      .load()
       .then(list => alive && setSections(list))
       .catch(() => alive && setSections([]));
     return () => {
       alive = false;
     };
-  }, [app, a.zedId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app, targetKey]);
 
   const list = sections ?? [];
   const chosen = list.filter(s => selected.includes(s.id));
@@ -67,7 +97,7 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
     setBusy(true);
     let ok = false;
     try {
-      ok = await app.clearSections(a.zedId, chosen.map(s => s.id));
+      ok = await target.clear(chosen.map(s => s.id));
     } catch {
       ok = false;
     } finally {
@@ -83,7 +113,7 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
     setBusy(true);
     let ok = false;
     try {
-      ok = await app.deleteStoredAssessment(a.zedId);
+      ok = await target.clearAll();
     } catch {
       ok = false;
     } finally {
@@ -101,11 +131,11 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
           <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={st.overline}>CLEAR DATA</Text>
             <Text style={[z.h2, { marginTop: 6 }]} testID="clear-data-name">
-              {nameOf(a)}
+              {target.name}
             </Text>
-            {a.system === 'surveillance' ? (
+            {target.badge ? (
               <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                <Badge label="Surveillance visit" tone="info" small testID="clear-data-surveillance" />
+                <Badge label={target.badge} tone="info" small testID={a?.system === 'surveillance' ? 'clear-data-surveillance' : 'clear-data-badge'} />
               </View>
             ) : null}
           </View>
@@ -145,7 +175,7 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
             </View>
             {list.length > 0 ? (
               <Pressable style={st.everything} onPress={() => setStep('everything')} accessibilityRole="button" testID="clear-everything">
-                <Text style={st.everythingText}>Remove everything for this assessment</Text>
+                <Text style={st.everythingText}>{target.everythingLink}</Text>
               </Pressable>
             ) : null}
           </>
@@ -162,7 +192,7 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
                 </View>
               ))}
             </View>
-            <Text style={[z.sub, { marginTop: 8 }]}>{CLEAR_CONFIRM_TEXT}</Text>
+            <Text style={[z.sub, { marginTop: 8 }]}>{target.confirmText ?? CLEAR_CONFIRM_TEXT}</Text>
             {unsentChosen.length ? (
               <>
                 <Warning
@@ -188,8 +218,8 @@ export function ClearDataSheet({ a, onClose, onCleared }: { a: AssessmentSummary
 
         {step === 'everything' ? (
           <View testID="clear-everything-step">
-            <Text style={[z.title, { marginTop: 14 }]}>{EVERYTHING_TITLE}</Text>
-            <Text style={[z.sub, { marginTop: 8 }]}>{EVERYTHING_TEXT}</Text>
+            <Text style={[z.title, { marginTop: 14 }]}>{target.everythingTitle}</Text>
+            <Text style={[z.sub, { marginTop: 8 }]}>{target.everythingText}</Text>
             {anyUnsent ? (
               <>
                 <Warning text={`Some of it is not synced. ${UNSYNCED_WARNING}`} testID="clear-everything-warning" />

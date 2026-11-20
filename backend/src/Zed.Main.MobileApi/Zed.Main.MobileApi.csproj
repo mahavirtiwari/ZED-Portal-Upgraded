@@ -5,6 +5,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- 2026-11-20 (incentive schemes, phase 2): the scheme definition and application core, shared with the portal (not copied). -->
+    <Compile Include="..\Zed.Portal\Features\Incentives\SchemeDefinition.cs" Link="Schemes\SchemeDefinition.cs" />
+    <Compile Include="..\Zed.Portal\Features\Incentives\SchemeApplications.cs" Link="Schemes\SchemeApplications.cs" />
   </ItemGroup>
 
   <PropertyGroup>

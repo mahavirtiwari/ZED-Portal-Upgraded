@@ -7,4 +7,194 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.assessor.siteTour.tourInstruction": "Here you can capture Site Photos which can later be used as evidences",
   // Login: two days before the site assessment (Main)
   "app.assessor.login.windowNote": "You can only login 2 days prior to your allocated Site Assessment date",
+  // Scheme visits: Home: quick action (Main)
+  "app.assessor.schemes.home.quickAction": "Scheme visits",
+  // Scheme visits: Home: visits waiting (Main)
+  "app.assessor.schemes.home.card": "{{Count}} scheme visit(s) to do",
+  // Scheme visits: List: title (Main)
+  "app.assessor.schemes.list.title": "Scheme visits",
+  // Scheme visits: List: subtitle (Main)
+  "app.assessor.schemes.list.subtitle": "Incentive scheme applications allotted to you for onsite verification",
+  // Scheme visits: List: nothing allotted (headline) (Main)
+  "app.assessor.schemes.list.emptyHeadline": "No scheme visits",
+  // Scheme visits: List: nothing allotted (Main)
+  "app.assessor.schemes.list.emptyText": "Applications allotted to you for onsite verification appear here. Pull down to refresh.",
+  // Scheme visits: List: kept on the phone (heading) (Main)
+  "app.assessor.schemes.list.kept": "Kept on this phone",
+  // Scheme visits: List: kept on the phone (note) (Main)
+  "app.assessor.schemes.list.keptNote": "No longer allotted to you or already submitted. Clear the data once it is synced.",
+  // Scheme visits: List: claim (Main)
+  "app.assessor.schemes.list.claim": "Claim Rs. {{Amount}}",
+  // Scheme visits: List: allotted on (Main)
+  "app.assessor.schemes.list.allotted": "Allotted {{Date}}",
+  // Scheme visits: List: visit started on (Main)
+  "app.assessor.schemes.list.started": "Visit started {{Date}}",
+  // Scheme visits: List: open button (Main)
+  "app.assessor.schemes.list.open": "Open",
+  // Scheme visits: List: clear data button (Main)
+  "app.assessor.schemes.list.clear": "Clear data",
+  // Scheme visits: Status: to visit (Main)
+  "app.assessor.schemes.status.toVisit": "To visit",
+  // Scheme visits: Status: visit started (Main)
+  "app.assessor.schemes.status.visiting": "Visit started",
+  // Scheme visits: Status: unsynced (Main)
+  "app.assessor.schemes.status.unsynced": "Unsynced",
+  // Scheme visits: Status: submitted (Main)
+  "app.assessor.schemes.status.submitted": "Submitted",
+  // Scheme visits: Visit: title (Main)
+  "app.assessor.schemes.visit.title": "Scheme visit",
+  // Scheme visits: Visit: offline banner (Main)
+  "app.assessor.schemes.visit.offline": "You are offline. Your work is saved on the phone and syncs when you are online.",
+  // Scheme visits: Visit: waiting to sync (Main)
+  "app.assessor.schemes.visit.unsynced": "{{Count}} change(s) waiting to sync.",
+  // Scheme visits: Visit: a send was refused (Main)
+  "app.assessor.schemes.visit.syncFailed": "Not synced: {{Error}}",
+  // Scheme visits: Visit: retry button (Main)
+  "app.assessor.schemes.visit.retry": "Retry",
+  // Scheme visits: Visit: submitted (Main)
+  "app.assessor.schemes.visit.readOnly": "The result of this visit is submitted.",
+  // Scheme visits: Visit: not on the phone (Main)
+  "app.assessor.schemes.visit.notAvailable": "Could not open the application. Please try again when you are online.",
+  // Scheme visits: Visit: unit heading (Main)
+  "app.assessor.schemes.visit.unit": "Unit",
+  // Scheme visits: Visit: claim line (Main)
+  "app.assessor.schemes.visit.claimed": "Claimed Rs. {{Claim}} · desktop eligible Rs. {{Eligible}}",
+  // Scheme visits: Start: heading (Main)
+  "app.assessor.schemes.start.heading": "Start the visit",
+  // Scheme visits: Start: note (Main)
+  "app.assessor.schemes.start.note": "At the unit, take a selfie and a photo of the site. GPS must be on; the date of verification is saved when the visit starts.",
+  // Scheme visits: Start: selfie (Main)
+  "app.assessor.schemes.start.selfie": "Selfie at the unit",
+  // Scheme visits: Start: site photo (Main)
+  "app.assessor.schemes.start.site": "Site photo",
+  // Scheme visits: Start: capture button (Main)
+  "app.assessor.schemes.start.capture": "Capture",
+  // Scheme visits: Start: retake button (Main)
+  "app.assessor.schemes.start.retake": "Retake",
+  // Scheme visits: Start: start button (Main)
+  "app.assessor.schemes.start.button": "Start visit",
+  // Scheme visits: Start: both photos needed (Main)
+  "app.assessor.schemes.start.needBoth": "Please take the selfie and the site photo.",
+  // Scheme visits: Start: started (Main)
+  "app.assessor.schemes.start.done": "Visit started {{Date}}",
+  // Scheme visits: Start: saved offline (Main)
+  "app.assessor.schemes.start.queued": "The start of the visit is saved on the phone and syncs when you are online.",
+  // Scheme visits: Representative: heading (Main)
+  "app.assessor.schemes.rep.heading": "Unit representative",
+  // Scheme visits: Representative: name (Main)
+  "app.assessor.schemes.rep.name": "Representative's name",
+  // Scheme visits: Representative: mobile (Main)
+  "app.assessor.schemes.rep.mobile": "Representative's mobile",
+  // Scheme visits: Representative: invalid mobile (Main)
+  "app.assessor.schemes.rep.mobileInvalid": "Please enter a valid 10-digit mobile number.",
+  // Scheme visits: Answers: heading (Main)
+  "app.assessor.schemes.answers.heading": "Applicant's answers",
+  // Scheme visits: Answers: valid (Main)
+  "app.assessor.schemes.answers.valid": "Valid",
+  // Scheme visits: Answers: not valid (Main)
+  "app.assessor.schemes.answers.notValid": "Not valid",
+  // Scheme visits: Answers: remark (Main)
+  "app.assessor.schemes.answers.remark": "What is not valid",
+  // Scheme visits: Answers: desktop check (Main)
+  "app.assessor.schemes.answers.desktop": "Desktop check: {{Status}}",
+  // Scheme visits: Answers: open a document (Main)
+  "app.assessor.schemes.answers.open": "Open",
+  // Scheme visits: Answers: document offline (Main)
+  "app.assessor.schemes.answers.openOffline": "Documents open when you are online.",
+  // Scheme visits: Answers: document not opened (Main)
+  "app.assessor.schemes.answers.openFailed": "The document could not be opened. Please try again.",
+  // Scheme visits: Answers: checked count (Main)
+  "app.assessor.schemes.answers.checked": "{{Done}} of {{Total}} checked",
+  // Scheme visits: Photos: heading (Main)
+  "app.assessor.schemes.photos.heading": "Photos",
+  // Scheme visits: Photos: count (Main)
+  "app.assessor.schemes.photos.count": "{{Taken}} taken · {{Min}} to {{Max}} needed",
+  // Scheme visits: Photos: take button (Main)
+  "app.assessor.schemes.photos.take": "Take photo",
+  // Scheme visits: Photos: maximum reached (Main)
+  "app.assessor.schemes.photos.max": "At most {{Max}} photos for this item.",
+  // Scheme visits: Photos: remove question (Main)
+  "app.assessor.schemes.photos.removeTitle": "Remove this photo?",
+  // Scheme visits: Photos: remove button (Main)
+  "app.assessor.schemes.photos.remove": "Remove",
+  // Scheme visits: Photos: saved on the server (Main)
+  "app.assessor.schemes.photos.onServer": "On the server",
+  // Scheme visits: Remarks: heading (Main)
+  "app.assessor.schemes.remarks.heading": "Overall remarks",
+  // Scheme visits: Remarks: placeholder (Main)
+  "app.assessor.schemes.remarks.placeholder": "Your remarks on the visit",
+  // Scheme visits: Result: heading (Main)
+  "app.assessor.schemes.decision.heading": "Result of the visit",
+  // Scheme visits: Result: recommend (Main)
+  "app.assessor.schemes.decision.recommend": "Recommend",
+  // Scheme visits: Result: reject (Main)
+  "app.assessor.schemes.decision.reject": "Reject",
+  // Scheme visits: Result: verified claim (Main)
+  "app.assessor.schemes.decision.verifiedClaim": "Verified claim (Rs.)",
+  // Scheme visits: Result: share and maximum (Main)
+  "app.assessor.schemes.decision.grade": "Share {{Share}}% up to Rs. {{Max}}",
+  // Scheme visits: Result: eligible amount (Main)
+  "app.assessor.schemes.decision.eligible": "Eligible amount: Rs. {{Amount}}",
+  // Scheme visits: Result: reason for rejection (Main)
+  "app.assessor.schemes.decision.reason": "Reason for rejection",
+  // Scheme visits: Result: before you submit (Main)
+  "app.assessor.schemes.decision.missing": "Before you submit:",
+  // Scheme visits: Result: submit button (Main)
+  "app.assessor.schemes.decision.submit": "Submit result",
+  // Scheme visits: Readiness: start the visit (Main)
+  "app.assessor.schemes.ready.start": "Start the visit (selfie and site photo)",
+  // Scheme visits: Readiness: representative's name (Main)
+  "app.assessor.schemes.ready.repName": "Enter the representative's name",
+  // Scheme visits: Readiness: representative's mobile (Main)
+  "app.assessor.schemes.ready.repMobile": "Enter the representative's 10-digit mobile number",
+  // Scheme visits: Readiness: answers to check (Main)
+  "app.assessor.schemes.ready.unchecked": "Check every answer ({{Count}} left)",
+  // Scheme visits: Readiness: answers not valid (Main)
+  "app.assessor.schemes.ready.notValid": "{{Count}} answer(s) marked Not valid: reject the application instead",
+  // Scheme visits: Readiness: remark missing (Main)
+  "app.assessor.schemes.ready.remark": "Write what is not valid for each answer marked Not valid",
+  // Scheme visits: Readiness: photos missing (Main)
+  "app.assessor.schemes.ready.photos": "{{Item}}: take at least {{Min}} photo(s)",
+  // Scheme visits: Readiness: verified claim (Main)
+  "app.assessor.schemes.ready.claim": "Enter the verified claim (up to Rs. {{Claim}})",
+  // Scheme visits: Readiness: reason for rejection (Main)
+  "app.assessor.schemes.ready.reason": "Enter the reason for rejection",
+  // Scheme visits: Readiness: overall remarks (Main)
+  "app.assessor.schemes.ready.remarks": "Write your remarks on the visit",
+  // Scheme visits: Confirm: recommend (title) (Main)
+  "app.assessor.schemes.confirm.recommendTitle": "Recommend the application?",
+  // Scheme visits: Confirm: recommend (Main)
+  "app.assessor.schemes.confirm.recommendText": "Verified claim Rs. {{Claim}}, eligible Rs. {{Amount}}. It goes to the onsite agency for QC. The visit cannot be changed after this.",
+  // Scheme visits: Confirm: reject (title) (Main)
+  "app.assessor.schemes.confirm.rejectTitle": "Reject the application?",
+  // Scheme visits: Confirm: reject (Main)
+  "app.assessor.schemes.confirm.rejectText": "The unit is told and may apply again. The visit cannot be changed after this.",
+  // Scheme visits: Confirm: cancel (Main)
+  "app.assessor.schemes.confirm.cancel": "Cancel",
+  // Scheme visits: Confirm: submit (Main)
+  "app.assessor.schemes.confirm.submit": "Submit",
+  // Scheme visits: Submit: offline (Main)
+  "app.assessor.schemes.submit.offline": "Submitting needs an internet connection. Your work is kept on the phone.",
+  // Scheme visits: Submit: not synced yet (Main)
+  "app.assessor.schemes.submit.unsynced": "Some photos or answers are not synced yet. {{Error}}",
+  // Scheme visits: Submit: done (Main)
+  "app.assessor.schemes.submit.done": "The result is submitted.",
+  // Scheme visits: Clear data: badge (Main)
+  "app.assessor.schemes.clear.badge": "Scheme visit",
+  // Scheme visits: Clear data: start of the visit (Main)
+  "app.assessor.schemes.clear.start": "Start of visit (selfie and site photo)",
+  // Scheme visits: Clear data: start not synced (Main)
+  "app.assessor.schemes.clear.startNote": "Not synced yet: clearing it also clears the photos and checks waiting for it.",
+  // Scheme visits: Clear data: an item's photos (Main)
+  "app.assessor.schemes.clear.photos": "Photos · {{Item}}",
+  // Scheme visits: Clear data: checks and remarks (Main)
+  "app.assessor.schemes.clear.checks": "Checks, representative and remarks",
+  // Scheme visits: Clear data: remove everything (Main)
+  "app.assessor.schemes.clear.everything": "Remove everything for this visit",
+  // Scheme visits: Clear data: remove everything (title) (Main)
+  "app.assessor.schemes.clear.everythingTitle": "Remove everything for this visit?",
+  // Scheme visits: Clear data: what stays (Main)
+  "app.assessor.schemes.clear.confirmText": "They are removed from this phone only. What the server has stays.",
+  // Scheme visits: Clear data: remove everything (text) (Main)
+  "app.assessor.schemes.clear.everythingText": "The photos, checks and remarks of this visit and the sends waiting to sync are removed from the phone. What the server has stays.",
 };
