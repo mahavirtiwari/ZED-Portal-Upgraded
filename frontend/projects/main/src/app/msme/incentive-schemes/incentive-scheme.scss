@@ -27,3 +27,5 @@
 .fa-message.is-warn { border-color: #f0c36d; background: #fffaf0; color: #6b4a00; }
 .fa-actions.is-gap { margin-bottom: 20px; }
 .is-fix { border-color: #f0c36d; }
+// 2026-11-20: a scheme's own disclaimer / instructions / declaration (plain text): its line breaks are kept.
+.is-scheme-text { white-space: pre-line; overflow-wrap: anywhere; }

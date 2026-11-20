@@ -11,10 +11,10 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// <summary>
 /// The desktop assessor's scheme verification (2026-11-20, approved): accept an application the agency named them for (or return
 /// it to the agency with a reason); check each answer the scheme marks for checking and every document — Valid ("Yes") or Not
-/// valid ("No", with the remark the unit corrects); then decide: <b>Correction</b> (at least one Not valid, rounds left: round
-/// n of the scheme's rounds, answered within its days, else rejected by <see cref="SchemeSweep"/>), <b>Reject</b> (a reason;
-/// also the way to end an application whose last round is still not valid) or <b>Recommend</b> (everything checked and valid:
-/// the eligible amount of the verified claim goes to the agency's QC).
+/// valid ("No", with the remark the unit corrects); then decide: <b>Correction</b> (at least one Not valid; rounds left: round
+/// n of the scheme's rounds, answered within its days, else rejected by <see cref="SchemeSweep"/>; no round left: the application is
+/// rejected automatically, <see cref="LastRoundReason"/> with the Not-valid remarks, and the unit may apply again), <b>Reject</b> (a
+/// reason) or <b>Recommend</b> (everything checked and valid: the eligible amount of the verified claim goes to the agency's QC).
 /// </summary>
 [Route("api/staff/scheme-verification/assessor")]
 [StaffRoles(UserRole.DesktopAssessor)]
@@ -23,6 +23,9 @@ public sealed class SchemeAssessorController(
     ISqlExecutor db, SchemeStore store, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<SchemeAssessorController> log) : StaffApiController
 {
     public const string Base = "/api/staff/scheme-verification/assessor";
+
+    /// <summary>The reason of the automatic rejection when Correction is chosen with no round left (followed by the Not-valid remarks).</summary>
+    public const string LastRoundReason = "Not valid after the last correction round";
 
     private SchemeNotifier Notifier => SchemeServices.Get<SchemeNotifier>(HttpContext.RequestServices);
 
@@ -135,13 +138,26 @@ public sealed class SchemeAssessorController(
                 {
                     var rounds = def?.Verification.CorrectionRounds ?? 0;
                     if (notValid.Count == 0) return this.Problem400("Mark at least one answer or document Not valid, with what the unit must correct.");
-                    if ((c.CorrectionRound ?? 0) >= rounds) return this.Problem400("No correction round is left: reject the application or recommend it.");
+                    var remarks = new StringBuilder();
+                    foreach (var p in notValid) remarks.Append("• ").Append(p.Label).Append(": ").AppendLine(checks[p.Path].Remarks);
+                    if ((c.CorrectionRound ?? 0) >= rounds)
+                    {
+                        // 2026-11-20 (the product owner: "Auto-reject, can re-apply"): no correction round is left and answers are still
+                        // not valid, so the application is rejected automatically with the Not-valid remarks; the unit may apply again.
+                        var why = $"{LastRoundReason}:{Environment.NewLine}{remarks.ToString().TrimEnd()}";
+                        c.Status = Rejected;
+                        c.ReasonForRejection = why;
+                        c.DecidedOn = DateTime.Now;
+                        if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
+                        await SchemeCases.HistoryAsync(db, log, c,
+                            $"Scheme application rejected automatically: {LastRoundReason} (round {c.CorrectionRound ?? 0} of {rounds}; {notValid.Count} point(s); assessor {UserId})", ct);
+                        await Notifier.RejectedAsync(c, why, ct);
+                        return new MessageResponse("No correction round was left: the application has been rejected. The unit may apply again.");
+                    }
                     c.CorrectionRound = (c.CorrectionRound ?? 0) + 1;
                     c.CorrectionDueOn = DateTime.Today.AddDays(def!.Verification.CorrectionDays);
                     c.Status = Correction;
                     if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
-                    var remarks = new StringBuilder();
-                    foreach (var p in notValid) remarks.Append("• ").Append(p.Label).Append(": ").AppendLine(checks[p.Path].Remarks);
                     await SchemeCases.HistoryAsync(db, log, c,
                         $"Correction round {c.CorrectionRound} of {rounds} asked by assessor {UserId} ({notValid.Count} point(s)); due {c.CorrectionDueOn:dd-MMM-yyyy}", ct);
                     await Notifier.CorrectionAsync(c, rounds, remarks.ToString().TrimEnd(), ct);
@@ -206,8 +222,10 @@ public sealed class SchemeAssessorController(
         var notValid = places.Count(p => checks.TryGetValue(p.Path, out var x) && x.Status == SchemeReview.No);
         var open = c.Status == Verifying && c.AssessorAcceptedOn is not null;
         var left = Math.Max(0, (def?.Verification.CorrectionRounds ?? 0) - (c.CorrectionRound ?? 0));
-        return new SchemeReview.Actions(Accept: c.Status == WithAssessor, Check: open, Correction: open && notValid > 0 && left > 0, Reject: open,
-            Recommend: open && notValid == 0 && done == places.Count, RoundsLeft: left, Checked: done, Checkable: places.Count, NotValid: notValid);
+        // With no round left, "Correction" rejects the application automatically (CorrectionRejects: the page says so before the click).
+        return new SchemeReview.Actions(Accept: c.Status == WithAssessor, Check: open, Correction: open && notValid > 0, Reject: open,
+            Recommend: open && notValid == 0 && done == places.Count, RoundsLeft: left, Checked: done, Checkable: places.Count, NotValid: notValid,
+            CorrectionRejects: open && notValid > 0 && left == 0);
     }
 
     private async Task<SchemeCase?> Mine(int id, CancellationToken ct) =>

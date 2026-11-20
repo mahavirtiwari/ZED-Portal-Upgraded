@@ -48,20 +48,56 @@ public sealed class SchemesAdminTests : IDisposable
     private void Seed(SchemeDefinition d) => _rows[d.Code] = (SchemeRules.Serialize(d), d.Active, d.OrderNo);
 
     [Fact]
-    public async Task The_first_list_adds_the_direct_technology_upgradation_scheme_once_and_off()
+    public async Task The_first_list_adds_the_built_in_schemes_once_fa_on_and_direct_tu_off()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var body = await client.GetFromJsonAsync<JsonElement>(Url);
-        var tu = Assert.Single(body.GetProperty("schemes").EnumerateArray());
-        Assert.Equal(SchemeTemplates.DirectTuCode, tu.GetProperty("code").GetString());
+        var schemes = body.GetProperty("schemes").EnumerateArray().ToDictionary(s => s.GetProperty("code").GetString()!);
+        Assert.Equal([SchemeTemplates.FaCode, SchemeTemplates.DirectTuCode], schemes.Keys.Order());
+        var tu = schemes[SchemeTemplates.DirectTuCode];
         Assert.False(tu.GetProperty("active").GetBoolean());
         Assert.Equal("Size", tu.GetProperty("grading").GetProperty("mode").GetString());
+        // 2026-11-20: the Financial Assistance card's scheme, switched on (the card opens it).
+        Assert.True(schemes[SchemeTemplates.FaCode].GetProperty("active").GetBoolean());
         Assert.Equal(["FA", "TU"], body.GetProperty("templates").EnumerateArray().Select(t => t.GetString()));
         Assert.Contains(body.GetProperty("levels").EnumerateArray(), l => l.GetProperty("code").GetString() == "Bronze");
         Assert.Equal(["Micro", "Small", "Medium"], body.GetProperty("sizes").EnumerateArray().Select(t => t.GetString()));
 
         await client.GetFromJsonAsync<JsonElement>(Url);
-        Assert.Single(Calls(SchemeStore.InsertSql));
+        Assert.Equal(2, Calls(SchemeStore.InsertSql).Count);
+        // The built-in codes are not offered to a new scheme.
+        Assert.Equal("The code FA is already used.", await (await client.PostAsJsonAsync(Url, new { template = "FA", code = "FA", name = "Other" })).ProblemTitle());
+    }
+
+    [Fact]
+    public async Task The_main_dashboard_cards_page_sets_up_the_built_in_schemes_too()
+    {
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var body = await client.GetFromJsonAsync<JsonElement>($"{Url}/cards");
+        Assert.True(_rows.ContainsKey(SchemeTemplates.DirectTuCode));
+        Assert.True(_rows.ContainsKey(SchemeTemplates.FaCode));
+        // The direct scheme is offered to the Technology Upgradation card; the Financial Assistance scheme is not.
+        Assert.Equal(SchemeTemplates.DirectTuCode,
+            Assert.Single(body.GetProperty("technologyUpgradation").GetProperty("schemes").EnumerateArray()).GetProperty("code").GetString());
+        // Every certification level is offered to the Financial Assistance card.
+        Assert.Contains(body.GetProperty("financialAssistance").GetProperty("levels").EnumerateArray(), l => l.GetProperty("code").GetString() == "ZEDX");
+    }
+
+    [Fact]
+    public async Task A_stored_built_in_scheme_of_an_older_template_is_upgraded_once()
+    {
+        var old = SchemeTemplates.TechnologyUpgradation() with { TemplateVersion = 0, Name = "TU (ours)", Disclaimer = null };
+        var s = old.Form.Sections[0];
+        Seed(old with { Form = old.Form with { Sections = [s with { Fields = s.Fields.Select(f => f.Type == "document" ? f with { MaxFiles = 1 } : f).ToList() }] } });
+        Seed(SchemeTemplates.FinancialAssistance(SchemeTemplates.FaCode));
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        await client.GetFromJsonAsync<JsonElement>(Url);
+        await client.GetFromJsonAsync<JsonElement>(Url);
+        var up = SchemeRules.Parse(_rows[SchemeTemplates.DirectTuCode].Json)!;
+        Assert.Equal((SchemeTemplates.Version, "TU (ours)", SchemeTemplates.TuDisclaimer), (up.TemplateVersion, up.Name, up.Disclaimer));
+        Assert.All(up.Form.Sections[0].Fields.Where(f => f.Type == "document"), f => Assert.Equal(3, f.MaxFiles));
+        Assert.Single(Calls(SchemeStore.UpdateSql));
+        Assert.Empty(Calls(SchemeStore.InsertSql));
     }
 
     [Fact]
@@ -143,26 +179,83 @@ public sealed class SchemesAdminTests : IDisposable
         Assert.True(tu.GetProperty("recommendationRequired").GetBoolean());
         Assert.Equal(SchemeTemplates.DirectTuCode, Assert.Single(tu.GetProperty("schemes").EnumerateArray()).GetProperty("code").GetString());
 
-        var badLevel = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Bronze", "ZEDX" } }, technologyUpgradation = new { recommendationRequired = true } });
-        Assert.Equal("Financial Assistance opens after Bronze, Silver or Gold only.", await badLevel.ProblemTitle());
+        var badLevel = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Bronze", "Platinum" } }, technologyUpgradation = new { recommendationRequired = true } });
+        Assert.Equal("Financial Assistance: choose among the certification levels.", await badLevel.ProblemTitle());
+        var none = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = Array.Empty<string>() }, technologyUpgradation = new { recommendationRequired = true } });
+        Assert.Equal("Financial Assistance: tick at least one level it opens after.", await none.ProblemTitle());
         var noScheme = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Silver" } }, technologyUpgradation = new { recommendationRequired = false } });
         Assert.Equal("Choose the scheme Technology Upgradation opens without the recommendation.", await noScheme.ProblemTitle());
         var unknown = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Silver" } }, technologyUpgradation = new { recommendationRequired = false, directSchemeCode = "NOPE" } });
         Assert.Equal("The direct scheme was not found.", await unknown.ProblemTitle());
+        var fa = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Silver" } }, technologyUpgradation = new { recommendationRequired = false, directSchemeCode = "FA" } });
+        Assert.Equal("The direct scheme was not found.", await fa.ProblemTitle());
         Assert.Empty(Calls(SchemeStore.SaveCardSettingsSql));
 
+        // Off with the direct scheme switched off: it is switched on with the card, and the message says so.
         var ok = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "gold", "Silver" } }, technologyUpgradation = new { recommendationRequired = false, directSchemeCode = "tu_direct" } });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        Assert.Contains("is off", (await ok.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Contains("now switched on", (await ok.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.True(_rows[SchemeTemplates.DirectTuCode].Active);
         var writes = Calls(SchemeStore.SaveCardSettingsSql);
         Assert.Equal(2, writes.Count);
         Assert.Equal(("FINANCIAL_ASSISTANCE", "Silver,Gold"), (FakeSql.Arg(writes[0].Args, "Card"), FakeSql.Arg(writes[0].Args, "ActivatesAfter")));
         Assert.Equal(("TECHNOLOGY_UPGRADATION", "False", "TU_DIRECT"),
             (FakeSql.Arg(writes[1].Args, "Card"), FakeSql.Arg(writes[1].Args, "RecommendationRequired"), FakeSql.Arg(writes[1].Args, "DirectSchemeCode")));
+        // The card's levels are the Financial Assistance scheme's activation.
+        Assert.Equal(["Silver", "Gold"], SchemeRules.Parse(_rows[SchemeTemplates.FaCode].Json)!.Activation.Levels);
+    }
 
-        // No level ticked = all three.
-        await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = Array.Empty<string>() }, technologyUpgradation = new { recommendationRequired = true } });
-        Assert.Equal("Bronze,Silver,Gold", FakeSql.Arg(Calls(SchemeStore.SaveCardSettingsSql)[2].Args, "ActivatesAfter"));
+    [Fact]
+    public async Task Financial_assistance_opens_after_any_level_graded_for_each()
+    {
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        await client.GetFromJsonAsync<JsonElement>($"{Url}/cards");
+        var r = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Bronze", "ZEDX" } }, technologyUpgradation = new { recommendationRequired = true } });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Contains("grading added for ZED-X", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        var fa = SchemeRules.Parse(_rows[SchemeTemplates.FaCode].Json)!;
+        Assert.Equal(["Bronze", "ZEDX"], fa.Activation.Levels);
+        Assert.Contains(fa.Grading.Rows, g => g.Key == "ZEDX" && g.SharePercent == 75 && g.MaxAmount == 50000);
+        Assert.Null(SchemeRules.Problem(fa, Zed.Core.Data.LevelRegistry.Codes));
+
+        // Changed in the scheme editor: the levels go back to the card; Registration / Handholding are refused.
+        var edited = fa with { Activation = new() { Mode = SchemeRules.Levels, Levels = ["Silver"] }, Grading = fa.Grading with { Rows = [new("All", 75, 50000)] } };
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Url}/FA", edited, SchemeRules.Json)).StatusCode);
+        Assert.Equal("Silver", FakeSql.Arg(Calls(SchemeStore.SaveCardSettingsSql)[^1].Args, "ActivatesAfter"));
+        var registration = edited with { Activation = new() { Mode = SchemeRules.Registration } };
+        Assert.Equal("Financial Assistance opens after certification levels only.", await (await client.PutAsJsonAsync($"{Url}/FA", registration, SchemeRules.Json)).ProblemTitle());
+    }
+
+    [Fact]
+    public async Task A_direct_scheme_that_cannot_be_switched_on_is_refused_with_the_reason()
+    {
+        Seed(SchemesAdminController.Blank("NEW_ONE", "New one"));
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await client.PutAsJsonAsync($"{Url}/cards", new { financialAssistance = new { activatesAfter = new[] { "Bronze" } }, technologyUpgradation = new { recommendationRequired = false, directSchemeCode = "NEW_ONE" } });
+        Assert.Contains("cannot be switched on", await r.ProblemTitle());
+        Assert.Empty(Calls(SchemeStore.SaveCardSettingsSql));
+        Assert.False(_rows["NEW_ONE"].Active);
+    }
+
+    [Fact]
+    public async Task The_editor_saves_the_scheme_texts_and_the_unique_mark()
+    {
+        var tu = SchemeTemplates.TechnologyUpgradation();
+        Seed(tu);
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var s = tu.Form.Sections[0];
+        var edited = tu with
+        {
+            Disclaimer = "  Our disclaimer\r\nline 2  ", Instructions = " ", Declaration = "We declare.",
+            Form = tu.Form with { Sections = [s with { Fields = s.Fields.Select(f => f.Key == "invoice_no" ? f with { Unique = true } : f).ToList() }] },
+        };
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"{Url}/{tu.Code}", edited, SchemeRules.Json)).StatusCode);
+        var saved = SchemeRules.Parse(_rows[tu.Code].Json)!;
+        Assert.Equal(("Our disclaimer\nline 2", null, "We declare."), (saved.Disclaimer, saved.Instructions, saved.Declaration));
+        Assert.True(saved.Form.Sections[0].Fields.Single(f => f.Key == "invoice_no").Unique);
+        // A grading that leaves a level of the activation without a row is refused.
+        var gap = tu with { Grading = tu.Grading with { Rows = [new("Micro", 80, 300000)] } };
+        Assert.Contains("Small", await (await client.PutAsJsonAsync($"{Url}/{tu.Code}", gap, SchemeRules.Json)).ProblemTitle());
     }
 
     [Theory]

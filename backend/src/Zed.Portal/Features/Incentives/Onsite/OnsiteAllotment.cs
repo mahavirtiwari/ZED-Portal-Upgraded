@@ -1,6 +1,6 @@
 using System.Data.Common;
 using Zed.Core.Data;
-using Zed.Core.Security;
+using Zed.Portal.Features.Incentives.Agencies;
 using Zed.Portal.Features.Incentives.Staff;
 using static Zed.Portal.Features.Incentives.SchemeApplications;
 
@@ -29,29 +29,15 @@ public sealed class OnsiteAllotment(ISqlExecutor db, SchemeStore store, IService
     internal const string CandidatesSql =
         "SELECT Id, UserId, UserName, SchemeVerification, CreatedBy FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND AgencyKind = 'SchemeOnsite' AND SchemeVerification IS NOT NULL;";
 
-    internal const string UnitPlaceSql = "SELECT TOP 1 PStateName, PDistrictName, CAST(PLgDistrictCode AS varchar(20)) AS PLgDistrictCode FROM dbo.Msme WHERE ZedId = @ZedId;";
+    internal const string UnitPlaceSql = IncentiveAgencies.UnitPlaceSql;
 
-    internal const string StatesSql = "SELECT UserId, States, Districts FROM dbo.AgencyUserStates WHERE RoleId = 2 AND ISNULL(IsActive, 1) = 1 AND UserId IN @Ids;";
+    internal const string StatesSql = IncentiveAgencies.StatesSql;
 
     internal const string LastSql =
         "SELECT TOP 1 AgencyId FROM dbo.AgencyAllotmentHistory WHERE AllotType = 'SchemeOnsite' AND CertificationType = @SchemeCode ORDER BY Id DESC;";
 
     internal const string HistorySql =
         "INSERT INTO dbo.AgencyAllotmentHistory (AgencyId, ZedId, CertificationType, AllotType, Descrip, CreatedDate) VALUES (@AgencyId, @ZedId, @SchemeCode, 'SchemeOnsite', @Descrip, GETDATE());";
-
-    private sealed class PlaceRow
-    {
-        public string? PStateName { get; init; }
-        public string? PDistrictName { get; init; }
-        public string? PLgDistrictCode { get; init; }
-    }
-
-    private sealed class StateRow
-    {
-        public string? UserId { get; init; }
-        public string? States { get; init; }
-        public string? Districts { get; init; }
-    }
 
     private sealed class LastRow
     {
@@ -64,25 +50,9 @@ public sealed class OnsiteAllotment(ISqlExecutor db, SchemeStore store, IService
             .Select(r => new SchemeAllotment.AgencyOption(r.UserId!.Trim(), r.UserName?.Trim() ?? r.UserId!.Trim(), rejected.Contains(r.UserId!.Trim())))
             .ToList();
 
-    private async Task<List<SchemeAllotment.CandidateRow>> EligibleRowsAsync(string zedId, string schemeCode, CancellationToken ct)
-    {
-        var ticked = (await db.QuerySqlAsync<SchemeAllotment.CandidateRow>(CandidatesSql, null, ct))
-            .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && SchemeTicks.Has(r.SchemeVerification, schemeCode, SchemeTicks.Onsite))
-            .GroupBy(r => r.UserId!.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First())
-            .OrderBy(r => r.Id).ToList();
-        if (ticked.Count == 0) return [];
-
-        var place = (await db.QuerySqlAsync<PlaceRow>(UnitPlaceSql, new { ZedId = Ansi(zedId, 50) }, ct)).FirstOrDefault();
-        var state = place?.PStateName?.Trim() ?? "";
-        if (state.Length == 0) return [];
-        var rows = (await db.QuerySqlAsync<StateRow>(StatesSql, new { Ids = ticked.Select(r => r.UserId!.Trim()).ToArray() }, ct))
-            .Where(r => r.UserId is not null).ToLookup(r => r.UserId!.Trim(), StringComparer.OrdinalIgnoreCase);
-        // An onsite agency serves only the states (and districts) the Master Admin chose for it: no row = no state.
-        return ticked.Where(r => rows[r.UserId!.Trim()].Any(s =>
-                string.Equals(s.States?.Trim(), state, StringComparison.OrdinalIgnoreCase)
-                && OnsiteAgencies.CoversDistrict(s.Districts, place!.PLgDistrictCode, place.PDistrictName)))
-            .ToList();
-    }
+    private async Task<List<SchemeAllotment.CandidateRow>> EligibleRowsAsync(string zedId, string schemeCode, CancellationToken ct) =>
+        await IncentiveAgencies.CoveringAsync(db, await db.QuerySqlAsync<SchemeAllotment.CandidateRow>(CandidatesSql, null, ct), SchemeTicks.Onsite,
+            zedId, schemeCode, ct);
 
     /// <summary>The next onsite agency of the rotation for the application (never one that rejected it), or null.</summary>
     internal async Task<SchemeAllotment.AgencyOption?> NextAsync(SchemeCase c, CancellationToken ct)

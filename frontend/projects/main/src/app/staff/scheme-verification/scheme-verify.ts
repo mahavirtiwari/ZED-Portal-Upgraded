@@ -14,9 +14,10 @@ import { CheckInput, SchemeDetail, SchemeField, SchemeVerificationApi } from './
 /**
  * 2026-11-20 (incentive schemes, approved): the desktop assessor's verification of one scheme application. Accept it (or return it to
  * the agency); then mark each answer the scheme asks to check and every document Valid or Not valid (with the remark the unit
- * corrects), see the totals (claimed / verified / eligible), and decide: Send for correction (round n of N; only with a Not valid
- * and rounds left), Reject (a reason; also when the last round is still not valid) or Recommend (everything checked and valid).
- * Unsaved marks are saved before a decision.
+ * corrects), see the totals (claimed / verified / eligible), and decide: Send for correction (round n of N; only with a Not valid),
+ * Reject (a reason) or Recommend (everything checked and valid). 2026-11-20 (the product owner: "Auto-reject, can re-apply"): with no
+ * correction round left the button reads "Reject (no correction round left)" and, after a confirmation, the application is rejected
+ * automatically with the Not-valid remarks (the unit may apply again). Unsaved marks are saved before a decision.
  */
 @Component({
   selector: 'zed-staff-scheme-verify',
@@ -46,10 +47,16 @@ import { CheckInput, SchemeDetail, SchemeField, SchemeVerificationApi } from './
           </span>
           <button type="button" class="btn btn-default" [disabled]="!dirty() || saving()" (click)="save()">{{ 'Save checks' | t: 'staff.schemeVerification.verify.save' }}</button>
           <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="ask('reject')">{{ 'Reject' | t: 'staff.schemeVerification.action.reject' }}</button>
-          <button type="button" class="btn btn-outline-primary" [disabled]="saving() || !canCorrect()" (click)="ask('correction')"
-                  [attr.title]="roundsLeft() === 0 ? ('No correction round is left.' | t: 'staff.schemeVerification.verify.noRounds') : null">
-            {{ 'Send for correction (round {n} of {total})' | t: 'staff.schemeVerification.verify.correction' : { n: d.application.correctionRound + 1, total: d.application.correctionRounds } }}
-          </button>
+          @if (roundsLeft() > 0) {
+            <button type="button" class="btn btn-outline-primary" data-correction [disabled]="saving() || !canCorrect()" (click)="ask('correction')">
+              {{ 'Send for correction (round {n} of {total})' | t: 'staff.schemeVerification.verify.correction' : { n: d.application.correctionRound + 1, total: d.application.correctionRounds } }}
+            </button>
+          } @else {
+            <button type="button" class="btn btn-outline-danger" data-correction [disabled]="saving() || !canCorrect()" (click)="ask('correction')"
+                    [attr.title]="'No correction round is left: points still not valid reject the application.' | t: 'staff.schemeVerification.verify.noRoundsTitle'">
+              {{ 'Reject (no correction round left)' | t: 'staff.schemeVerification.verify.autoReject' }}
+            </button>
+          }
           <button type="button" class="btn btn-primary" [disabled]="saving() || !canRecommend()" (click)="ask('recommend')">{{ 'Recommend' | t: 'staff.schemeVerification.verify.recommend' }}</button>
         </div>
       }
@@ -97,7 +104,8 @@ export class SchemeVerifyPage {
     return { done: m.filter((x) => !!x).length, all: m.length, no: m.filter((x) => x?.status === 'No').length };
   });
   protected readonly roundsLeft = computed(() => this.detail()?.actions.roundsLeft ?? 0);
-  protected readonly canCorrect = computed(() => this.progress().no > 0 && this.roundsLeft() > 0);
+  /** Correction with a Not valid: a new round while rounds are left, else the automatic rejection. */
+  protected readonly canCorrect = computed(() => this.progress().no > 0);
   protected readonly canRecommend = computed(() => this.progress().no === 0 && this.progress().done === this.progress().all);
 
   constructor() {
@@ -156,7 +164,12 @@ export class SchemeVerifyPage {
     let ask: ConfirmAsk;
     switch (kind) {
       case 'correction':
-        ask = {
+        ask = now.actions.roundsLeft <= 0 ? {
+          title: t('staff.schemeVerification.verify.autoRejectTitle', 'Reject: no correction round left'), subtitle: sub,
+          message: t('staff.schemeVerification.verify.autoRejectMessage', 'All {total} correction round(s) are used and {count} point(s) are still Not valid. The application is rejected ("Not valid after the last correction round", with your remarks) and the unit is told by e-mail; it may apply again.',
+            { total: now.application.correctionRounds, count: now.actions.notValid }),
+          confirmLabel: t('staff.schemeVerification.dialog.rejectButton', 'Reject'), danger: true,
+        } : {
           title: t('staff.schemeVerification.verify.correctionTitle', 'Send for correction'), subtitle: sub,
           message: t('staff.schemeVerification.verify.correctionMessage', 'Round {n} of {total}: the unit is e-mailed the {count} point(s) marked Not valid and must answer within {days} days, or the application is rejected.',
             { n: now.application.correctionRound + 1, total: now.application.correctionRounds, count: now.actions.notValid, days: now.application.correctionDays }),

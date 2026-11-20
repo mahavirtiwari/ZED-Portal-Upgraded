@@ -1,132 +1,40 @@
 using System.Text.Json;
-using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Zed.Core.Data;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
-using Zed.Main.MobileApi.Templates;
 
 namespace Zed.Main.MobileApi.Controllers;
 
 /// <summary>
-/// Financial assistance claims. Both actions require a completed certification
-/// (SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE returns a level); the old code inserted the
-/// claim without one and then failed while picking the mail's level.
+/// Financial assistance claims from the ZED MSME app. 2026-11-20 (the product owner): Financial Assistance moved to the incentive
+/// schemes framework of the portal (the dashboard's Financial Assistance card), so the app no longer takes new claims: both
+/// actions answer <see cref="FinancialAssistanceMovedMessage"/> in the old failure shapes and store nothing. Claims made before
+/// stay with the staff (nothing more is asked of the unit on them).
 /// </summary>
 public sealed partial class MsmeController
 {
-    private async Task<string?> CurrentCertificateAsync(string? zedId, CancellationToken ct) =>
-        string.IsNullOrWhiteSpace(zedId)
-            ? null
-            : (await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE", new { ZedId = zedId }, ct))
-                .FirstRow(0).Text("CertificationType") is { Length: > 0 } c ? c : null;
+    /// <summary>The app's answer to a new claim (the same sense as the portal's legacy page).</summary>
+    public const string FinancialAssistanceMovedMessage =
+        "Financial Assistance is now applied for on the ZED portal: please sign in there and open the Financial Assistance card on your dashboard.";
 
-    /// <summary>SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE; answered as Newtonsoft text (text/html), as before.</summary>
+    /// <summary>SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE until 2026-11-20; now refused (Newtonsoft text, text/html, as before).</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "ZedId")]
     [MsmeEditAudit("App: financial assistance data submitted")]
-    public async Task<IActionResult> SubmitFinancialData(FinancialViewModel model, CancellationToken ct)
+    public IActionResult SubmitFinancialData(FinancialViewModel model)
     {
-        static ContentResult Answer(ServiceResponse r) => LegacyContent(JsonSerializer.Serialize(r, Zed.Core.Mobile.LegacyJson.Write));
-
-        if (model.CertificationDetails is not { } cert || model.ExpenditureDetails is not { } exp || model.AccountDetails is not { } acc)
-            return Answer(ServiceResponse.Fail(NoDataFound));
-
-        var level = await CurrentCertificateAsync(model.ZedId, ct);
-        if (level is null)
-        {
-            log.LogWarning("Msme/SubmitFinancialData refused for {ZedId}: no completed certification", model.ZedId);
-            return Answer(ServiceResponse.Fail(InvalidDetails));
-        }
-
-        // As the web page: 75% of the amount paid (whole rupees), at most Rs. 50,000, computed here; the app's
-        // EligibleAmount is ignored (SECURITY-FINDINGS #77).
-        if (!decimal.TryParse(exp.AmountPaid, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var amountPaid)
-            || amountPaid is <= 0 or > 100_000_000)
-        {
-            log.LogWarning("Msme/SubmitFinancialData refused for {ZedId}: invalid amount paid", model.ZedId);
-            return Answer(ServiceResponse.Fail(InvalidDetails));
-        }
-        var eligible = Math.Min(decimal.Truncate(amountPaid) * 0.75m, 50_000m);
-        static string Money(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-
-        var points = PhotoTable();
-        void Add(IEnumerable<PhotoInformation?>? photos, string name)
-        {
-            foreach (var p in photos ?? [])
-                if (p is not null) AddPhotoRow(points, p.photoId + "." + (p.isPdf ? "pdf" : "jpg"), name, p.timeStamp, p.latitude, p.longitude, name);
-        }
-        Add(cert.Photos, "Copy of Certificate");
-        Add(exp.Photos, "CA certificate of expenditure");
-        Add(exp.InvoicePhotos, "Copy of Invoice");
-        Add(acc.Photos, "Copy of Cancelled Cheque");
-
-        var args = new DynamicParameters();
-        args.Add("RefId", NewRefId());
-        args.Add("ZedId", model.ZedId);
-        args.Add("CategoryOfCertificate", cert.CategoryOfCertificate);
-        args.Add("NameOfCertficate", cert.NameOfCertficate);
-        args.Add("CertificationAgency", cert.CertificationAgency);
-        args.Add("CertficateNumber", cert.CertficateNumber);
-        args.Add("DateOfIssue", cert.DateOfIssue);
-        args.Add("ValidityOfCertificate", cert.ValidityOfCertificate);
-        args.Add("AnyOtherInformation", cert.AnyOtherInformation);
-        args.Add("ExpenditureCertficate", exp.ExpenditureCertficate);
-        args.Add("AgencyOrSupplier", exp.AgencyOrSupplier);
-        args.Add("InvoiceNo", exp.InvoiceNo);
-        args.Add("InvoiceBillDate", exp.InvoiceBillDate);
-        args.Add("AmountPaid", Money(amountPaid));
-        args.Add("ModeOfPayment", exp.ModeOfPayment);
-        args.Add("EligibleAmount", Money(eligible));
-        args.Add("AccountNo", acc.AccountNo);
-        args.Add("IfscCode", acc.IfscCode);
-        args.Add("BranchAddress", acc.BranchAddress);
-        args.Add("BankName", acc.BankName);
-        args.Add("SubmittedFrom", "App");
-        AddTable(args, "PhotoListApp", points, "DynamicPhotoList2");
-
-        var error = await TryExecuteAsync("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE", args, ct);
-        if (error is not null) return Answer(ServiceResponse.Fail(error));
-        log.LogInformation("App financial assistance claim for {ZedId} ({Level})", model.ZedId, level);
-
-        try
-        {
-            var row = (await db.QueryProcMultipleAsync("SP_EMAIL_GET_DETAILS", new { ZedId = model.ZedId, Certification = level }, ct)).FirstRow(0);
-            await SendMailAsync<MsmeFinancialAssistanceEmail>(row.Text("EmailId"),
-                "ZED Financial Assistance Documents Upload Confirmation - " + model.ZedId, new Dictionary<string, object?>
-                {
-                    [nameof(MsmeFinancialAssistanceEmail.EnterpriseName)] = row.Text("EnterpriseName"),
-                    [nameof(MsmeFinancialAssistanceEmail.ZedId)] = model.ZedId ?? "",
-                }, null, ct, copyOffice: true);
-        }
-        catch (System.Data.Common.DbException ex)
-        {
-            log.LogWarning(ex, "No mail details for the financial assistance claim of {ZedId}", model.ZedId);
-        }
-
-        return Answer(new ServiceResponse { status = "1" });
+        log.LogInformation("Msme/SubmitFinancialData refused for {ZedId}: Financial Assistance is applied for on the portal", model.ZedId);
+        return LegacyContent(JsonSerializer.Serialize(ServiceResponse.Fail(FinancialAssistanceMovedMessage), Zed.Core.Mobile.LegacyJson.Write));
     }
 
-    /// <summary>Claim documents (Photos/{zedId or userName}/FinancialAssistance). Files only, as before.</summary>
+    /// <summary>The claim's documents (Photos/{zedId}/FinancialAssistance) until 2026-11-20; now refused, nothing stored.</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "zedId", "userName")]
     [MsmeEditAudit("App: financial assistance photos submitted", "zedId", "userName")]
-    public async Task<IActionResult> SubmitFinancialPhotos(SubmitPhotosRequestFile request, List<IFormFile>? files, CancellationToken ct)
+    public IActionResult SubmitFinancialPhotos(SubmitPhotosRequestFile request)
     {
-        if (!string.IsNullOrEmpty(request.zedId)) request.userName = request.zedId;
-        if (request.photos is null && files is not { Count: > 0 }) return Fail(NoPhotosFound);
-
-        var zedId = request.userName ?? "";
-        if (await CurrentCertificateAsync(zedId, ct) is null)
-        {
-            log.LogWarning("Msme/SubmitFinancialPhotos refused for {ZedId}: no completed certification", zedId);
-            return Fail(InvalidDetails);
-        }
-
-        var uploads = new Uploads(Storage);
-        CollectPhotoFiles(uploads, request.photos, files, "Photos", zedId, "FinancialAssistance");
-        await uploads.SaveAsync(ct);
-        return LegacyJson(new ServiceResponse { status = "1" });
+        log.LogInformation("Msme/SubmitFinancialPhotos refused for {ZedId}: Financial Assistance is applied for on the portal", request.zedId ?? request.userName);
+        return Fail(FinancialAssistanceMovedMessage);
     }
 }

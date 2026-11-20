@@ -9,7 +9,7 @@ import { PageHead } from '../../msme/shared/page-head';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { staffCrumbs } from '../staff-crumbs';
-import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
+import { STAFF_SYSTEM, StaffRole, agencyKindOf } from '../staff-menu';
 import { ToastService } from '../toast';
 import { SchemeTicksPanel } from '../scheme-verification/scheme-ticks-panel';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
@@ -106,6 +106,8 @@ export class AssessorFormPage {
 
   protected readonly userId: string | null = inject(ActivatedRoute).snapshot.paramMap.get('userId');
   protected readonly isAgency = this.auth.currentUser()?.roleId === StaffRole.Agency;
+  /** 2026-11-20: the signed-in agency is an incentive verification agency (desktop / onsite): its assessors are ticked for schemes. */
+  protected readonly incentiveAgency = this.isAgency && agencyKindOf(this.auth.currentUser()?.subRoles ?? []) !== 'assessment';
   protected readonly isNew = !this.userId;
   /** Agencies create and edit their assessors; the MasterAdmin only views them. */
   protected readonly canEdit = signal(this.isNew && this.isAgency);

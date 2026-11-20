@@ -243,4 +243,31 @@ describe('IncentiveSchemePage', () => {
     expect(el.querySelector('#isMessage')!.textContent).toContain('Opens after Bronze, Silver, Gold certification');
     expect(el.querySelector('zed-step-tracker')).toBeNull();
   });
+
+  // 2026-11-20: each scheme shows its own disclaimer, instructions and declaration (the global Texts when it has none).
+  it("shows the scheme's own texts with their line breaks", async () => {
+    const base = page({});
+    await open({ ...base, scheme: { ...base.scheme, disclaimer: 'TU clause 1\nTU clause 2', instructions: 'Keep the invoice ready.', declaration: 'We declare.' } });
+    const disclaimer = el.querySelector('#isDisclaimerText') as HTMLElement;
+    expect(disclaimer.textContent).toBe('TU clause 1\nTU clause 2');
+    expect(disclaimer.classList).toContain('is-scheme-text');
+    expect(el.querySelector('[data-key="msme.scheme.disclaimer"]')).toBeNull();
+    p().consent.set(true);
+    await p().next();
+    await settle();
+    expect(el.querySelector('#isInstructionsText')!.textContent).toBe('Keep the invoice ready.');
+  });
+
+  it('words a hold for the applicant, never the staff reason', async () => {
+    await open(page({ status: 'OnHold', holdKind: 'suspended', holdReason: 'Your certificate is suspended; the ZED team will resume or close the application.' },
+      { state: 'onhold', canApply: false }));
+    const hold = el.querySelector('#isHold')!.textContent!;
+    expect(hold).toContain('Your certificate is suspended; the ZED team will resume or close the application.');
+    expect(hold).not.toContain('was Verifying');
+  });
+
+  it('words the new locked reasons', async () => {
+    await open(page(null, { state: 'locked', note: 'legacyInProgress', canApply: false, window: null, message: null }));
+    expect(el.querySelector('#isMessage')!.textContent).toContain('earlier application for this benefit is still in progress');
+  });
 });

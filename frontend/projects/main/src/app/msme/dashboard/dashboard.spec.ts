@@ -6,14 +6,17 @@ import { Router, provideRouter } from '@angular/router';
 import { setPageTexts } from '../../content/page-text';
 import { DashboardPage } from './dashboard';
 
-/** GET api/msme/incentive-schemes without schemes (the built-in cards keep their own rules). */
-const NO_SCHEMES = { schemes: [], tu: { direct: false, scheme: null }, fa: { activatesAfter: [], level: null } };
-
 const schemeTile = (code: string, state = 'open', more: object = {}) => ({
   code, title: `Scheme ${code}`, highlight: 'Up to Rs. 1,00,000', details: 'For certified units', icon: 'star', state, note: null, message: null,
   applicationId: null, status: null, level: 'Bronze', grade: { sharePercent: 50, maxAmount: 100000 }, activationMode: 'Levels', activationLevels: ['Bronze', 'Silver'],
   ...more,
 });
+
+/** 2026-11-20: the Financial Assistance card's scheme (FA), open. */
+const FA_OPEN = { scheme: schemeTile('FA', 'open'), legacy: false };
+
+/** GET api/msme/incentive-schemes without Admin schemes (the TU card keeps its own rule; the FA card opens its scheme). */
+const NO_SCHEMES = { schemes: [], tu: { direct: false, scheme: null, legacy: false }, fa: FA_OPEN };
 
 describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
@@ -459,26 +462,39 @@ describe('DashboardPage', () => {
     expect(last.querySelector('a')!.getAttribute('href')).toBe('/msme/handholding');
   });
 
-  // 2026-11-20 (a Bronze-certified unit saw Financial Assistance "Not yet available"; a paid Silver showed "Nil, fully subsidised").
-  it('opens financial assistance as the server does, and says a paid level is paid', async () => {
-    const chip = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Financial Assistance')!
-      .querySelector('.inc-chip')!.textContent!.trim();
-    // Certified, the eligibility flag empty (allowed), status 1: open.
-    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], { IsEligibleForFinancial: null });
+  // 2026-11-20 (the product owner): the Financial Assistance card opens the framework's scheme; the old page only for an
+  // application made there that is still in progress; a paid Silver showed "Nil, fully subsidised".
+  it('opens the financial assistance scheme from its card, the old page for an application in progress there, and says a paid level is paid', async () => {
+    const fa = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Financial Assistance') as HTMLElement;
+    const chip = () => fa().querySelector('.inc-chip')!.textContent!.trim();
+    const eligible = { IsEligibleForFinancial: null, IsEligibleForBenefits: 1 };
+    await render({ BronzeStatus: 6 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], eligible);
     expect(chip()).toBe('Open');
+    expect(fa().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/incentive-schemes/FA');
     fixture.destroy();
-    // Not certified (status 0 is also the column's default): locked until certified, never "Availed".
-    await render({ BronzeStatus: 3, FinancialAssistanceStatus: 0 }, {}, 0, undefined, [], {});
+    // Locked by the server with its reason (here: blocked for financial assistance).
+    await render({ BronzeStatus: 6 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], eligible, {}, undefined,
+      { ...NO_SCHEMES, fa: { scheme: schemeTile('FA', 'locked', { note: 'financialBlocked' }), legacy: false } });
     expect(chip()).toBe('Locked');
-    expect(el.textContent).toContain('Unlocks once your unit is certified');
+    expect(fa().textContent).toContain('Financial assistance is not available for your unit');
     fixture.destroy();
-    // Certified and applied (status 0 with the application's level): availed.
-    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 0, LevelOfCertificationForFa: 'Bronze' }, { IsBronzePaymentDone: 1 }, 0, undefined, [], {});
+    // An application made on the old page, still in progress: View opens the old page.
+    await render({ BronzeStatus: 6 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], eligible, {}, undefined,
+      { ...NO_SCHEMES, fa: { scheme: schemeTile('FA', 'locked', { note: 'legacyInProgress' }), legacy: true } });
+    expect(chip()).toBe('In progress');
+    expect(fa().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/financial-assistance');
+    fixture.destroy();
+    // Without the scheme (not readable): an application made before shows availed; blocked or without benefits stays locked.
+    const none = { ...NO_SCHEMES, fa: { scheme: null, legacy: false } };
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 0, LevelOfCertificationForFa: 'Bronze' }, { IsBronzePaymentDone: 1 }, 0, undefined, [], eligible, {}, undefined, none);
     expect(chip()).toBe('Availed');
     fixture.destroy();
-    // Blocked by the ZED team.
-    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, { IsBronzePaymentDone: 1 }, 0, undefined, [], { IsEligibleForFinancial: 0 });
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 0, LevelOfCertificationForFa: 'Bronze' }, { IsBronzePaymentDone: 1 }, 0, undefined, [], { IsEligibleForBenefits: 0 }, {}, undefined, none);
     expect(chip()).toBe('Locked');
+    fixture.destroy();
+    await render({ BronzeStatus: 3, FinancialAssistanceStatus: 0 }, {}, 0, undefined, [], {}, {}, undefined, none);
+    expect(chip()).toBe('Locked');
+    expect(el.textContent).toContain('Unlocks once your unit is certified');
     fixture.destroy();
 
     const levels = ['Bronze', 'Silver'].map((code) => ({ code, name: code, description: null, comment: null, logoUrl: null, assessmentMode: 'Site',
@@ -555,16 +571,23 @@ describe('DashboardPage', () => {
     expect(tu().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/technology-upgradation');
   });
 
-  it('locks financial assistance until a level the card activates after', async () => {
-    const fa = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Financial Assistance') as HTMLElement;
-    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, {}, 0, undefined, [], {}, {}, undefined,
-      { ...NO_SCHEMES, fa: { activatesAfter: ['Silver', 'Gold'], level: 'Bronze' } });
-    expect(fa().classList).toContain('is-locked');
-    expect(fa().textContent).toContain('Opens after Silver / Gold certification');
+  it('follows the Technology Upgradation toggle both ways', async () => {
+    const tu = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Technology Upgradation') as HTMLElement;
+    // Direct, with an application of the consultant-recommended flow in progress: it continues on the old page.
+    await render({ BronzeStatus: 6, TechnologyUpgradationStatus: 1 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined,
+      { ...NO_SCHEMES, tu: { direct: true, scheme: schemeTile('TU_DIRECT', 'locked', { note: 'legacyInProgress' }), legacy: true } });
+    expect(tu().querySelector('.inc-chip')!.textContent!.trim()).toBe('In progress');
+    expect(tu().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/technology-upgradation');
     fixture.destroy();
-
-    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, {}, 0, undefined, [], {}, {}, undefined,
-      { ...NO_SCHEMES, fa: { activatesAfter: ['Bronze'], level: 'Bronze' } });
-    expect(fa().querySelector('.inc-chip')!.textContent!.trim()).toBe('Open');
+    // Back on the recommendation, a direct application not final still shows, to be followed on its page.
+    await render({ BronzeStatus: 6 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined,
+      { ...NO_SCHEMES, tu: { direct: false, scheme: schemeTile('TU_DIRECT', 'progress', { applicationId: 8 }), legacy: false } });
+    expect(tu().querySelector('.inc-chip')!.textContent!.trim()).toBe('In progress');
+    expect(tu().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/incentive-schemes/TU_DIRECT');
+    fixture.destroy();
+    // A locked reason of the framework (the highest certificate suspended) is worded on the card.
+    await render({ BronzeStatus: 6 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined,
+      { ...NO_SCHEMES, tu: { direct: true, scheme: schemeTile('TU_DIRECT', 'locked', { note: 'suspended' }), legacy: false } });
+    expect(tu().textContent).toContain('highest certificate is suspended or withdrawn');
   });
 });

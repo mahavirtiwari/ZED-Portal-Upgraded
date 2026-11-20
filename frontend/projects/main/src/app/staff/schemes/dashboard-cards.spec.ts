@@ -144,10 +144,10 @@ describe('DashboardCardsPage', () => {
     (tu.querySelector('#cs-recommendation') as HTMLInputElement).click();
     await settle();
     expect(tu.textContent).toContain('apply directly');
+    // 2026-11-20: the built-in direct scheme is chosen, and the Admin is told the save switches it on.
     const select = tu.querySelector('#cs-direct') as HTMLSelectElement;
-    select.value = select.options[1].value;
-    select.dispatchEvent(new Event('change'));
-    await settle();
+    expect(select.value).toBe(select.options[1].value);
+    expect(tu.querySelector('#cs-direct-off')!.textContent).toContain('saving switches it on');
     button(tu, 'Save setting').click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === settingsApi);
@@ -155,9 +155,44 @@ describe('DashboardCardsPage', () => {
       financialAssistance: { activatesAfter: ['Silver', 'Gold'] },
       technologyUpgradation: { recommendationRequired: false, directSchemeCode: 'TU_DIRECT' },
     });
-    put.flush({ message: 'Card settings saved. Technology Upgradation (direct) is off: switch it on so units can apply.' });
+    put.flush({ message: 'Card settings saved. Technology Upgradation (direct) was off and is now switched on, so units can apply.' });
     await settle();
-    expect(tu.textContent).toContain('switch it on');
-    expect(fa.textContent).not.toContain('switch it on');
+    // The settings are read again as saved (the scheme now on).
+    const s = settings();
+    http.expectOne((r) => r.method === 'GET' && r.url === settingsApi).flush({
+      financialAssistance: { activatesAfter: ['Silver', 'Gold'] },
+      technologyUpgradation: { recommendationRequired: false, directSchemeCode: 'TU_DIRECT', schemes: [{ ...s.technologyUpgradation.schemes[0], active: true }] },
+    });
+    await settle();
+    expect(tu.textContent).toContain('now switched on');
+    expect(fa.textContent).not.toContain('now switched on');
+    expect(tu.querySelector('#cs-direct-off')).toBeNull();
+  });
+
+  it('offers every certification level to Financial Assistance', async () => {
+    http.expectNone(settingsApi);
+    fixture.destroy();
+    fixture = TestBed.createComponent(DashboardCardsPage);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne(api).flush(cards(true));
+    http.expectOne(settingsApi).flush({
+      ...settings(),
+      financialAssistance: { activatesAfter: ['Bronze', 'ZEDX'], levels: [{ code: 'Bronze', name: 'Bronze' }, { code: 'Silver', name: 'Silver' }, { code: 'Gold', name: 'Gold' }, { code: 'ZEDX', name: 'ZED-X' }] },
+    });
+    await settle();
+    const fa = builtIn('Financial Assistance');
+    expect([...fa.querySelectorAll('[data-level]')].map((i) => i.getAttribute('data-level'))).toEqual(['Bronze', 'Silver', 'Gold', 'ZEDX']);
+    expect((fa.querySelector('[data-level="ZEDX"]') as HTMLInputElement).checked).toBe(true);
+    (fa.querySelector('[data-level="Gold"]') as HTMLInputElement).click();
+    await settle();
+    button(fa, 'Save setting').click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === settingsApi);
+    expect(put.request.body.financialAssistance).toEqual({ activatesAfter: ['Bronze', 'Gold', 'ZEDX'] });
+    put.flush({ message: 'Card settings saved.' });
+    await settle();
+    http.expectOne(settingsApi).flush(settings());
+    await settle();
   });
 });

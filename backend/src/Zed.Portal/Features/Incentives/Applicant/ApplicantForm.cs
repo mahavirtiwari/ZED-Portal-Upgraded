@@ -57,7 +57,7 @@ public static class ApplicantForm
 
     public static bool IsDocument(FormField f) => f.Type is "document" or "photo";
 
-    public static int MaxFiles(FormField f) => Math.Clamp(f.MaxFiles ?? 1, 1, 3);
+    public static int MaxFiles(FormField f) => Math.Clamp(f.MaxFiles ?? 1, 1, SchemeRules.MaxFilesPerField);
 
     /// <summary>
     /// A date bound: "today", "certified" (the claim window's opening date; none when unknown), "days:N" (earliest: N days before
@@ -122,7 +122,11 @@ public static class ApplicantForm
                 return (d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), null);
             }
             case "choice":
-                return f.Options.FirstOrDefault(o => o == text) is { } o ? (o, null) : (null, $"\"{label}\": please choose one of the options.");
+            {
+                // A value a template version renamed (e.g. "System/Quality" → "Quality") is read as the new one.
+                var value = SchemeTemplates.RenamedOptions.TryGetValue(text!, out var renamed) && f.Options.Contains(renamed) && !f.Options.Contains(text!) ? renamed : text;
+                return f.Options.FirstOrDefault(o => o == value) is { } o ? (o, null) : (null, $"\"{label}\": please choose one of the options.");
+            }
             case "multichoice":
             {
                 var picked = Files(text);
@@ -254,6 +258,38 @@ public static class ApplicantForm
         }
         if (answers.Sections.TryGetValue(BankSection, out var bank)) result[BankSection] = bank;
         return (new FormAnswers { Sections = result }, null);
+    }
+
+    /// <summary>A value already used: the field key, the value and where ("application no. 12").</summary>
+    public sealed record TakenValue(string FieldKey, string Value, string Where);
+
+    /// <summary>
+    /// The values of the unique fields (<see cref="FormField.Unique"/>) in the answers: of every counted item (a plain section's
+    /// item, an "Add more" section's saved items), or of one item only (<paramref name="section"/> / <paramref name="index"/>).
+    /// </summary>
+    public static IEnumerable<(FormField Field, string Value)> UniqueValues(SchemeForm form, FormAnswers answers, string? section = null, int? index = null)
+    {
+        foreach (var s in form.Sections.Where(s => section is null || s.Key == section))
+        {
+            var unique = s.Fields.Where(f => f.Unique).ToList();
+            if (unique.Count == 0 || !answers.Sections.TryGetValue(s.Key, out var items)) continue;
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (index is { } only ? i != only : s.Repeating && !items[i].Saved) continue;
+                foreach (var f in unique)
+                    if (items[i].Values.GetValueOrDefault(f.Key)?.Trim() is { Length: > 0 } v) yield return (f, v);
+            }
+        }
+    }
+
+    /// <summary>The first unique value of <paramref name="mine"/> already used elsewhere (same field key, any case), or null.</summary>
+    public static string? UniqueProblem(IEnumerable<(FormField Field, string Value)> mine, IEnumerable<TakenValue> taken)
+    {
+        var list = taken.ToList();
+        foreach (var (f, v) in mine)
+            if (list.FirstOrDefault(t => t.FieldKey == f.Key && string.Equals(t.Value.Trim(), v, StringComparison.OrdinalIgnoreCase)) is { } used)
+                return $"\"{f.Label}\" {v} was already used in {used.Where}. The same value cannot be claimed twice.";
+        return null;
     }
 
     /// <summary>Every stored document of the answers with its place: (path "{section}/{item}/{field}", file name, field label).</summary>

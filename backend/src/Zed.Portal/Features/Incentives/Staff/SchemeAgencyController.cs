@@ -10,9 +10,10 @@ using static Zed.Portal.Features.Incentives.SchemeApplications;
 namespace Zed.Portal.Features.Incentives.Staff;
 
 /// <summary>
-/// The agency's scheme applications (2026-11-20, approved): "Scheme Allotment" — accept an allotted application naming one of its
-/// assessors ticked for the scheme, or reject it with a reason of Admin → Rejection Reasons (+ optional remarks): an "Auto"
-/// reason re-allots it by round robin to another agency, a "Master Admin" reason sends it back to the Master Admin's list;
+/// The desktop verification agency's scheme applications (2026-11-20, approved): "Scheme Allotment" — accept an allotted application
+/// naming one of its assessors ticked for the scheme, or reject it with a reason of Admin → Rejection Reasons (+ optional remarks): an
+/// "Auto" reason re-allots it by round robin to another agency while the scheme's AutoAllot is on (off: the Master Admin's list), a
+/// "Master Admin" reason sends it back to the Master Admin's list;
 /// "Scheme QC" — approve the assessor's recommendation (an amount up to the eligible amount of the verified claim) or send it
 /// back to the assessor with a remark.
 /// </summary>
@@ -102,6 +103,9 @@ public sealed class SchemeAgencyController(
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != WithAgency) return this.Problem400("This application has already been processed.");
             var text = RejectionReasons.LegacyText(reason, remarks, 2000);
+            // 2026-11-20 (the product owner): an "Auto" reason re-allots by round robin only while the scheme's AutoAllot is on;
+            // otherwise the application goes to the Master Admin (with the waiting-for-allotment mail).
+            var autoOff = reason.AutoReallot && !await Allotment.AutoAllotOnAsync(c.Code, ct);
             c.AddRejected(UserId);
             c.ReasonForRejectionAgency = $"Rejected by agency {UserId}: {text}";
             c.Agency = null;
@@ -111,11 +115,11 @@ public sealed class SchemeAgencyController(
             c.Status = Submitted;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application allotment rejected by agency {UserId}: {text}", ct);
-            if (reason.AutoReallot
+            if (reason.AutoReallot && !autoOff
                 && await SchemeCases.LoadAsync(db, id, ct) is { } back
                 && await Allotment.AllotLockedAsync(back, ct) is not null)
                 return new MessageResponse("Application rejected. It has been allotted to another agency.");
-            await Notifier.ManualAllotAsync(c, SchemeNotifier.DesktopStage, $"Rejected by agency {UserId}: {text}", ct);
+            await Notifier.ManualAllotAsync(c, SchemeNotifier.DesktopStage, $"Rejected by agency {UserId}: {text}" + (autoOff ? " " + SchemeNotifier.AutoAllotOff : ""), ct);
             return new MessageResponse("Application rejected. It goes back to the ZED team for allotment.");
         }
     }

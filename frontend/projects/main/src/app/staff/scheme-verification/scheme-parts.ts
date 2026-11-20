@@ -39,7 +39,8 @@ export interface CheckEdit {
           <div><dt>{{ 'Bank account' | t: 'staff.schemeVerification.detail.bank' }}</dt><dd>{{ a.accountNo }} · {{ a.ifscCode }} · {{ a.bankName }}@if (a.branchAddress) { · {{ a.branchAddress }} }</dd></div>
         }
       </dl>
-      @if (a.holdReason) { <div class="alert alert-warning mb-2" role="status">{{ 'On hold: {reason}' | t: 'staff.schemeVerification.detail.hold' : { reason: a.holdReason } }}</div> }
+      @if (a.holdReason && a.status === 'OnHold') { <div class="alert alert-warning mb-2" role="status">{{ 'On hold: {reason}' | t: 'staff.schemeVerification.detail.hold' : { reason: a.holdReason } }}</div> }
+      @else if (a.holdReason) { <div class="alert alert-info mb-2" role="status">{{ 'Resumed by the Master Admin. It was on hold: {reason}' | t: 'staff.schemeVerification.detail.resumed' : { reason: resumedText(a.holdReason) } }}</div> }
       @if (a.reasonForRejection) { <div class="alert alert-danger mb-2" role="status">{{ 'Reason for rejection: {reason}' | t: 'staff.schemeVerification.detail.rejected' : { reason: a.reasonForRejection } }}</div> }
       @if (a.agencyRemarks) { <div class="alert alert-info mb-2" role="status">{{ a.agencyRemarks }}</div> }
       <div class="ss-totals" role="list">
@@ -72,6 +73,10 @@ export class SchemeSummary {
   protected readonly statusTone = statusTone;
   protected readonly money = money;
   protected readonly day = day;
+  /** The stored "Resumed: …" marker (the sweep does not hold it again for the same certificate state) without its prefix. */
+  protected resumedText(reason: string): string {
+    return reason.startsWith('Resumed: ') ? reason.slice('Resumed: '.length) : reason;
+  }
 }
 
 /**
@@ -84,7 +89,7 @@ export class SchemeSummary {
   template: `
     @for (s of sections(); track s.key) {
       <section class="zed-card sa" [attr.aria-labelledby]="'sa-' + s.key">
-        <h4 [id]="'sa-' + s.key">{{ s.title }}</h4>
+        <h4 [id]="'sa-' + s.key">{{ title(s) }}</h4>
         @for (it of s.items; track it.index) {
           <div class="sa-item">
             @if (s.repeating) {
@@ -94,7 +99,7 @@ export class SchemeSummary {
               <tbody>
                 @for (f of it.fields; track f.key) {
                   <tr [class.sa-no]="mark(f)?.status === 'No'">
-                    <th scope="row">{{ f.label }}</th>
+                    <th scope="row">{{ label(s, f) }}</th>
                     <td>
                       @if (f.files.length) {
                         @for (file of f.files; track file.name) {
@@ -109,14 +114,14 @@ export class SchemeSummary {
                     <td class="sa-check">
                       @if (f.path) {
                         @if (editable()) {
-                          <div class="sa-radios" role="radiogroup" [attr.aria-label]="'Check of {label}' | t: 'staff.schemeVerification.answers.checkAria' : { label: f.label }">
+                          <div class="sa-radios" role="radiogroup" [attr.aria-label]="'Check of {label}' | t: 'staff.schemeVerification.answers.checkAria' : { label: label(s, f) }">
                             <label><input type="radio" [name]="'c-' + f.path" value="Yes" [checked]="mark(f)?.status === 'Yes'" (change)="set(f, 'Yes')" /> {{ 'Valid' | t: 'staff.schemeVerification.answers.valid' }}</label>
                             <label><input type="radio" [name]="'c-' + f.path" value="No" [checked]="mark(f)?.status === 'No'" (change)="set(f, 'No')" /> {{ 'Not valid' | t: 'staff.schemeVerification.answers.notValid' }}</label>
                           </div>
                           @if (mark(f)?.status === 'No') {
                             <input type="text" class="form-control form-control-sm sa-remark" maxlength="1000" [attr.data-path]="f.path"
                                    [placeholder]="'What is not valid (the unit corrects it)' | t: 'staff.schemeVerification.answers.remarkPlaceholder'"
-                                   [attr.aria-label]="'Remark for {label}' | t: 'staff.schemeVerification.answers.remarkAria' : { label: f.label }"
+                                   [attr.aria-label]="'Remark for {label}' | t: 'staff.schemeVerification.answers.remarkAria' : { label: label(s, f) }"
                                    [ngModel]="mark(f)?.remarks ?? ''" (ngModelChange)="remark(f, $event)" />
                           }
                         } @else if (f.check) {
@@ -179,7 +184,23 @@ export class SchemeAnswers {
   protected amount(v: string): string {
     return money(Number(v));
   }
+
+  /** The standard bank block (section "_bank") has fixed wording of its own; other sections show the scheme's titles. */
+  protected title(s: SchemeSection): string {
+    return s.key === BANK_SECTION ? t('staff.schemeVerification.answers.bankTitle', 'Bank account') : s.title;
+  }
+
+  /** 2026-11-20: the bank block's account details (number, IFSC, bank, branch) and cancelled cheque are checked like the answers. */
+  protected label(s: SchemeSection, f: SchemeField): string {
+    if (s.key !== BANK_SECTION) return f.label;
+    if (f.key === 'account') return t('staff.schemeVerification.answers.bankAccount', 'Bank account details');
+    if (f.key === 'cheque') return t('staff.schemeVerification.answers.cheque', 'Cancelled cheque');
+    return f.label;
+  }
 }
+
+/** The answers' key of the standard bank block (ApplicantForm.BankSection). */
+const BANK_SECTION = '_bank';
 
 /**
  * Phase 2 (2026-11-20): the onsite stage of a Desktop + Onsite application, as the Master Admin and the onsite agency (its final QC)

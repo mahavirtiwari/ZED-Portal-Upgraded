@@ -62,8 +62,8 @@ public sealed class StaffAgenciesController(
         var allotted = host.IsConsultancy() ? null : await UserLevelCounts.AgenciesAsync(db, null, log, ct);
         // 2026-11-16: an operation admin limited to some agencies sees only those.
         var scope = await HttpContext.LoginScopeAsync(ct);
-        // 2026-11-20 (phase 2): the onsite verification agencies of the incentive schemes have their own page (not these lists).
-        var onsite = host.IsConsultancy() ? new HashSet<string>() : await global::Zed.Portal.Features.Incentives.Onsite.OnsiteAgencies.IdsAsync(db, log, ct);
+        // 2026-11-20: the incentive verification agencies (desktop and onsite) have their own page (not these lists).
+        var onsite = host.IsConsultancy() ? new HashSet<string>() : await global::Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.IdsAsync(db, log, ct);
         return sets[0].Where(r => scope.AllowsAgency(r.Text("UserId")) && !onsite.Contains(r.Text("UserId").Trim())).Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
@@ -400,8 +400,8 @@ public sealed class StaffAgenciesController(
     {
         var agency = await StaffUserRules.LoadAsync(db, userId, UserRole.Agency, ct);
         if (agency is null || !StaffUserRules.CanManage(CurrentUser, agency, UserRole.Agency)) return null;
-        // 2026-11-20 (phase 2): an onsite verification agency is managed on its own page (Onsite Verification Agencies), never here.
-        if (!host.IsConsultancy() && (await global::Zed.Portal.Features.Incentives.Onsite.OnsiteAgencies.IdsAsync(db, log, ct)).Contains(agency.UserId.Trim())) return null;
+        // 2026-11-20: an incentive verification agency (desktop or onsite) is managed on its own page (Incentive Verification Agencies), never here.
+        if (!host.IsConsultancy() && (await global::Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.IdsAsync(db, log, ct)).Contains(agency.UserId.Trim())) return null;
         return agency;
     }
 

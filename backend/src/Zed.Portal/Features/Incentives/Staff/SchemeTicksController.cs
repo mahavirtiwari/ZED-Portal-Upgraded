@@ -7,10 +7,11 @@ namespace Zed.Portal.Features.Incentives.Staff;
 
 /// <summary>
 /// The schemes an agency or assessor verifies (Users.SchemeVerification, 2026-11-20, approved): per active scheme the ticks
-/// "Desktop verification" and "Onsite verification" (onsite is stored; it is used from phase 2, the assessor app). The Master
-/// Admin sets an agency's (Agencies → the agency's page); an agency sets its own assessors', only for the schemes and kinds the
-/// agency itself is ticked for (the assessor's page). Under api/staff/users/… so the sub-users' "users" / "assessors" screen
-/// permissions cover them.
+/// "Desktop verification" and "Onsite verification". 2026-11-20 (the product owner): only the incentive verification agencies verify
+/// (a desktop agency "CODE:D", an onsite agency "CODE:O"); the Master Admin ticks them on "Incentive Verification Agencies" (these
+/// agency endpoints remain, within the agency's kind; an assessment agency can no longer be ticked). An incentive agency sets its own
+/// assessors', only for the schemes and kinds the agency itself is ticked for (the assessor's page). Under api/staff/users/… so the
+/// sub-users' "users" / "assessors" screen permissions cover them.
 /// </summary>
 [PortalSystems(PortalSystem.Main)]
 public sealed class SchemeTicksController(ISqlExecutor db, SchemeStore store, ILogger<SchemeTicksController> log) : StaffApiController
@@ -50,7 +51,7 @@ public sealed class SchemeTicksController(ISqlExecutor db, SchemeStore store, IL
         var isAgency = IsRole(UserRole.Agency);
         if (isAgency && !SameUser(assessor.CreatedBy, UserId)) return NotFound();
         var agency = await SchemeCases.UserAsync(db, assessor.CreatedBy, ct);
-        return await ResponseAsync(assessor, TicksLimit(agency?.SchemeVerification ?? ""), isAgency, ct);
+        return await ResponseAsync(assessor, TicksLimit(agency), isAgency, ct);
     }
 
     [HttpPut("api/staff/users/assessors/{userId}/schemes")]
@@ -59,17 +60,24 @@ public sealed class SchemeTicksController(ISqlExecutor db, SchemeStore store, IL
     {
         if (await UserAsync(userId, UserRole.DesktopAssessor, ct) is not { } assessor || !SameUser(assessor.CreatedBy, UserId)) return NotFound();
         var agency = await SchemeCases.UserAsync(db, UserId, ct);
-        return await SaveAsync(assessor, UserRole.DesktopAssessor, TicksLimit(agency?.SchemeVerification ?? ""), req, ct);
+        return await SaveAsync(assessor, UserRole.DesktopAssessor, TicksLimit(agency), req, ct);
     }
 
     /// <summary>
-    /// Phase 2 (the user, 2026-11-20): desktop and onsite are always different agencies, so an assessment agency is ticked for the
-    /// desktop verification only and an onsite verification agency (Users.AgencyKind) for the onsite verification only.
+    /// 2026-11-20 (the product owner): desktop and onsite are always different agencies, both added apart from the assessment
+    /// agencies: a desktop verification agency is ticked for the desktop verification only, an onsite verification agency for the
+    /// onsite verification only, and an assessment agency for none.
     /// </summary>
     private static Func<string, string, bool> KindLimit(SchemeCases.UserRow agency) =>
-        agency.IsOnsiteAgency ? (_, kind) => kind == SchemeTicks.Onsite : (_, kind) => kind == SchemeTicks.Desktop;
+        agency.IsOnsiteAgency ? (_, kind) => kind == SchemeTicks.Onsite
+        : agency.IsDesktopAgency ? (_, kind) => kind == SchemeTicks.Desktop
+        : (_, _) => false;
 
-    private static Func<string, string, bool> TicksLimit(string ticks) => (code, kind) => SchemeTicks.Has(ticks, code, kind);
+    /// <summary>An assessor's ticks: within its agency's own, and only when the agency is an incentive verification agency.</summary>
+    private static Func<string, string, bool> TicksLimit(SchemeCases.UserRow? agency) =>
+        agency is { IsDesktopAgency: true } or { IsOnsiteAgency: true }
+            ? (code, kind) => SchemeTicks.Has(agency.SchemeVerification, code, kind)
+            : (_, _) => false;
 
     /// <param name="limit">The ticks an assessor's are limited to (its agency's), or the kinds an agency may have.</param>
     private async Task<TicksResponse> ResponseAsync(SchemeCases.UserRow user, Func<string, string, bool> limit, bool canEdit, CancellationToken ct)
@@ -95,7 +103,7 @@ public sealed class SchemeTicksController(ISqlExecutor db, SchemeStore store, IL
             if (scheme is null) return this.Problem400("Unknown scheme.");
             if ((t.Desktop && !limit(scheme.Code, SchemeTicks.Desktop)) || (t.Onsite && !limit(scheme.Code, SchemeTicks.Onsite)))
                 return this.Problem400(role == UserRole.Agency
-                    ? $"{scheme.Name}: an assessment agency verifies at the desktop and an onsite verification agency onsite only."
+                    ? $"{scheme.Name}: a desktop verification agency verifies at the desktop only, an onsite verification agency onsite only, and an assessment agency verifies no scheme."
                     : $"{scheme.Name}: your agency is not ticked for this verification.");
             if (t.Desktop) ticks.Add($"{scheme.Code}:{SchemeTicks.Desktop}");
             if (t.Onsite) ticks.Add($"{scheme.Code}:{SchemeTicks.Onsite}");

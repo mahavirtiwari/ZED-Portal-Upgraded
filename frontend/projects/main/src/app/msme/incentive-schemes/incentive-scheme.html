@@ -29,7 +29,12 @@
                 @case ('disclaimer') {
                   <section class="fa-card" aria-labelledby="isDisclaimerTitle">
                     <header class="fa-card-head"><h3 id="isDisclaimerTitle">{{ 'Disclaimer' | t: 'msme.incentiveScheme.disclaimer.title' }}</h3></header>
-                    <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.disclaimer"><zed-text key="msme.schemes.disclaimer" /></zed-text></div>
+                    <!-- 2026-11-20: the scheme's own disclaimer (plain text, the scheme editor), else the global Texts. -->
+                    @if (s.disclaimer) {
+                      <div class="fa-card-body fa-clauses is-scheme-text" id="isDisclaimerText">{{ s.disclaimer }}</div>
+                    } @else {
+                      <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.disclaimer"><zed-text key="msme.schemes.disclaimer" /></zed-text></div>
+                    }
                     <div class="fa-consent">
                       <label class="fa-check">
                         <input type="checkbox" id="isConsent" [checked]="consent()" (change)="consent.set(!consent())" />
@@ -45,7 +50,11 @@
                 @case ('instructions') {
                   <section class="fa-card" aria-labelledby="isInstructionsTitle">
                     <header class="fa-card-head"><h3 id="isInstructionsTitle">{{ 'Instructions' | t: 'msme.incentiveScheme.instructions.title' }}</h3></header>
-                    <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.instructions"><zed-text key="msme.schemes.instructions" /></zed-text></div>
+                    @if (s.instructions) {
+                      <div class="fa-card-body fa-clauses is-scheme-text" id="isInstructionsText">{{ s.instructions }}</div>
+                    } @else {
+                      <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.instructions"><zed-text key="msme.schemes.instructions" /></zed-text></div>
+                    }
                     <ng-container [ngTemplateOutlet]="stepActions" [ngTemplateOutletContext]="{ $implicit: 'Accept & proceed' }" />
                   </section>
                 }
@@ -166,7 +175,11 @@
                       @if (s.blocks.declaration) {
                         <label class="fa-check">
                           <input type="checkbox" id="isDeclaration" [checked]="declaration()" (change)="declaration.set(!declaration())" />
-                          <zed-text key="msme.scheme.declaration" [inline]="true"><zed-text key="msme.schemes.declaration.checkbox" [inline]="true" /></zed-text>
+                          @if (s.declaration) {
+                            <span class="is-scheme-text" id="isDeclarationText">{{ s.declaration }}</span>
+                          } @else {
+                            <zed-text key="msme.scheme.declaration" [inline]="true"><zed-text key="msme.schemes.declaration.checkbox" [inline]="true" /></zed-text>
+                          }
                         </label>
                       }
                       <div class="fa-actions">
@@ -187,7 +200,7 @@
         @if (app(); as a) {
           <zed-step-tracker class="fa-track" [steps]="statusSteps()" [current]="statusIndex()" [label]="'Application status' | t: 'msme.incentiveScheme.statusAria'" />
           @if (a.status === 'OnHold') {
-            <div class="fa-message is-warn" role="status" id="isHold">{{ 'The application is on hold.' | t: 'msme.incentiveScheme.onHold' }} {{ a.holdReason }}</div>
+            <div class="fa-message is-warn" role="status" id="isHold">{{ 'The application is on hold.' | t: 'msme.incentiveScheme.onHold' }} {{ holdText() }}</div>
           }
           <div class="fa-grid">
             <div class="fa-main">

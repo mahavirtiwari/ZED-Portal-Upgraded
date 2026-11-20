@@ -11,7 +11,7 @@ import { StepTracker, TrackerStep } from '../shared/step-tracker';
 import { SchemeAccount, inr } from '../schemes/schemes.api';
 import {
   ACCOUNT_FIELD, BANK_SECTION, CHEQUE_FIELD, FormAnswers, FormField, FormItem, FormSection, IncentiveSchemesApi, PickEntry, SchemePage,
-  claimOf, dateBound, eligibleOf, filesOf, lockedNote,
+  claimOf, dateBound, eligibleOf, filesOf, holdText, lockedNote,
 } from './incentive-schemes.api';
 import { SchemeAnswersComponent } from './scheme-answers';
 import { SchemeFieldComponent } from './scheme-field';
@@ -453,6 +453,11 @@ export class IncentiveSchemePage {
       case 'OnHold': return t('msme.incentiveScheme.status.onHold', 'On hold');
       default: return status;
     }
+  }
+
+  /** Why the application is on hold, in the applicant's words (2026-11-20). */
+  protected holdText(): string {
+    return holdText(this.app()?.holdKind);
   }
 
   protected lockedText(): string {

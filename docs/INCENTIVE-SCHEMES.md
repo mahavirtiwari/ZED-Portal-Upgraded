@@ -132,3 +132,56 @@ tab. Framework templates are listed on the main portal only. Sent by `Features/I
 **Rule for future incentives (the user):** any new incentive flow, or a step added to one, gets a mail at each step with its own
 template in the `Incentives` group (and its row in this table). Schemes defined by the Admin in the framework get these mails
 automatically; a separately coded incentive must replicate them.
+
+# Changes after the owner's review (2026-11-20)
+
+The owner found the flow "not as per instructions"; an audit against their words led to these changes (their answers: desktop
+agencies separate too, FA moves to the framework, FA card offers all levels).
+
+**Agencies (incentive verification only; normal assessments untouched)**
+- Master Admin → **Incentive Verification Agencies** (`/staff/scheme-agencies`, API `api/staff/scheme-agencies`; the old onsite
+  routes redirect / still answer): an agency is created as **Desktop** (`Users.AgencyKind = 'SchemeDesktop'`, ticks "CODE:D") or
+  **Onsite** (`'SchemeOnsite'`, ticks "CODE:O"; Desktop + Onsite schemes only), with states and districts. One kind per agency, so
+  desktop and onsite are always different agencies. Code: `Features/Incentives/Agencies/`.
+- Desktop round robin and the Master Admin's manual list: active `SchemeDesktop` agencies ticked for the scheme whose states /
+  districts cover the unit's plant state and district (no NIC-sector rule), rejecters excluded. Normal assessment agencies can no
+  longer be ticked for schemes (applications already with one finish there).
+- Sub-roles at sign-in `SchemeDesktop` / `SchemeOnsite`; a desktop agency's menu: Assessors, Scheme Allotment, Scheme QC, Sub-Users
+  (its assessors: Scheme Verification, web only; they never get the assessor app). Migration `0107_incentive_desktop_agencies.sql`
+  keeps desktop agencies' assessment flags cleared, their surveillance copy inactive, their assessors without SiteVerification.
+
+**Verification**
+- Sending for correction with no round left **rejects automatically** ("Not valid after the last correction round" + the remarks);
+  the unit may apply again. The button says so first.
+- An "Auto" rejection reason re-allots only while the scheme's AutoAllot is on (else: Master Admin + waiting mail).
+- The bank account details are checkable (Valid / Not valid → the applicant corrects them).
+- Hold on suspension / withdrawal also covers **Approved, not paid** applications (resume returns to Approved) and Registration /
+  Handholding schemes (the unit's highest certificate decides). A Master Admin resume keeps `HoldReason = "Resumed: …"`, so the
+  sweep does not hold it again for the same certificate in the same phase (`SchemeSweep.ResumedFor`).
+
+**Financial Assistance card → framework scheme `FA`**
+- The FA card opens scheme `FA` (created and kept up to date by `SchemeStore.EnsureBuiltInAsync`); its "Activates after" offers all
+  levels (`LevelRegistry`), synced both ways with the scheme's activation and grading (levels only).
+- New legacy FA applications are refused on the web and in the ZED MSME app; a legacy FA application in progress (SchemeCode NULL,
+  status not 5/6) is finished on the old page and locks scheme FA until paid or rejected. A paid legacy FA counts as the claim of
+  its level when made on or after that certificate's date (or for the level's first certificate); after a re-certification
+  (`SP_RESET_FOR_RE_CERTIFICATION` archives rows as `{ZedId}_R_{Id}`) the new certificate opens a fresh claim.
+- **Setup:** FA applications are allotted to desktop incentive agencies ticked "FA:D"; until such agencies exist they wait for the
+  Master Admin's allotment (mail to the ZED team inbox).
+
+**TU toggle**
+- Off: the legacy TU page refuses new applications (a legacy TU in progress continues). On: a non-final TU_DIRECT application stays
+  on the card and can be continued; no new draft. No double claim either way; a paid legacy TU for the same certificate counts as
+  the TU claim. The direct scheme is created when Main Dashboard Cards opens; turning the toggle off switches it on (with a note).
+
+**Applicant form and validations ("the current validations")**
+- Units blocked for financial assistance (`IsEligibleForFinancial = 0`) cannot apply to any scheme (`financialBlocked`).
+- `FormField.Unique`: a value may not repeat across the unit's other non-rejected applications of the scheme (FA `invoice_no`,
+  also against legacy FA invoices).
+- 3 files per document (`MaxFilesPerField`); FA categories Quality / Product / Testing as legacy; the CA certificate stays optional.
+- Per-scheme **Disclaimer / Instructions / Declaration** (scheme editor; empty = the global Texts).
+- Grading must cover every activation level (or "All"), by size Micro / Small / Medium; no grade = no submission.
+- A suspended / withdrawn certificate above the highest active one locks the window (`suspended`).
+- Stored built-in schemes (FA, TU_DIRECT) are upgraded once per `SchemeTemplates.Version` (only template fields; the Admin's other
+  changes stay).
+- Known gap: number fields accept decimals (e.g. FA "Validity (years)").

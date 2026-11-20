@@ -21,6 +21,20 @@ public sealed record SchemeDefinition
     public SchemeGrading Grading { get; init; } = new();
     public SchemeForm Form { get; init; } = new();
     public SchemeVerification Verification { get; init; } = new();
+
+    /// <summary>
+    /// 2026-11-20: the applicant's disclaimer, instructions and declaration of this scheme (plain text, line breaks kept; the
+    /// Admin edits them in the scheme editor). Empty = the global wording of Admin → Texts (msme.scheme.* / msme.schemes.*).
+    /// </summary>
+    public string? Disclaimer { get; init; }
+    public string? Instructions { get; init; }
+    public string? Declaration { get; init; }
+
+    /// <summary>
+    /// 2026-11-20: the version of the templates (SchemeTemplates.Version) a built-in scheme (Financial Assistance, the direct
+    /// Technology Upgradation) was last brought up to; 0 = before versions (SchemeTemplates.Upgrade).
+    /// </summary>
+    public int TemplateVersion { get; init; }
 }
 
 /// <summary>The dashboard card's wording (the applicant's page heading is <see cref="Title"/>).</summary>
@@ -138,6 +152,11 @@ public sealed record FormField
     /// assessor in the app) or "both" (<see cref="SchemeRules.CheckStages"/>).
     /// </summary>
     public string? CheckStage { get; init; }
+    /// <summary>
+    /// 2026-11-20 (no duplicate claims): the value cannot repeat across the unit's other applications of the same scheme that
+    /// are not rejected (e.g. an invoice number). Text, number, amount or date fields only.
+    /// </summary>
+    public bool Unique { get; init; }
 }
 
 /// <summary>
@@ -150,7 +169,7 @@ public sealed record DocumentRule(string Kind, int Count, IReadOnlyList<string> 
 /// The verification: <see cref="Flow"/> <see cref="SchemeRules.Desktop"/> or <see cref="SchemeRules.DesktopOnsite"/> (onsite in
 /// the assessor app: phase 2). Correction rounds: at most <see cref="CorrectionRounds"/>, each answered within
 /// <see cref="CorrectionDays"/> days; then (or when the last round is still not valid) rejected automatically. Allotment:
-/// round robin (<see cref="AutoAllot"/>) among the agencies ticked for the scheme, by the unit's states and sectors.
+/// round robin (<see cref="AutoAllot"/>) among the desktop incentive verification agencies ticked for the scheme, by the unit's state and district.
 /// </summary>
 public sealed record SchemeVerification
 {
@@ -207,6 +226,13 @@ public static partial class SchemeRules
     public const decimal AmountCeiling = 100_000_000m;
     /// <summary>A document file: PDF / JPEG / PNG up to 5 MB (SchemeUploads).</summary>
     public const int MaxFileMb = 5;
+    /// <summary>Files per document field (the legacy FA / TU pages: 3 per document type).</summary>
+    public const int MaxFilesPerField = 3;
+    /// <summary>The scheme's own disclaimer, instructions or declaration (characters).</summary>
+    public const int MaxSchemeTextLength = 10000;
+
+    /// <summary>The field types that can be unique (<see cref="FormField.Unique"/>).</summary>
+    public static readonly IReadOnlyList<string> UniqueTypes = ["text", "number", "amount", "date"];
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -259,6 +285,10 @@ public static partial class SchemeRules
             if (g.MaxAmount is < 0 || g.MaxAmount > AmountCeiling) return $"Grading {g.Key}: the maximum is 0 to 10 crore.";
         }
         if (d.Grading.Rows.GroupBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1)) return "Grading: a row is listed twice.";
+        if (GradingGap(d.Activation, d.Grading) is { } gap) return gap;
+
+        foreach (var (label, text) in new[] { ("disclaimer", d.Disclaimer), ("instructions", d.Instructions), ("declaration", d.Declaration) })
+            if ((text?.Length ?? 0) > MaxSchemeTextLength) return $"The {label} is too long (up to {MaxSchemeTextLength} characters).";
 
         if (d.Verification?.Flow is not (Desktop or DesktopOnsite)) return "Choose the verification flow.";
         if (d.Verification.CorrectionRounds is < 0 or > 5) return "Correction rounds: 0 to 5.";
@@ -267,6 +297,23 @@ public static partial class SchemeRules
             return "Onsite photos per item: 0–5 at least, 1–5 at most, the minimum not above the maximum.";
 
         return FormProblem(d.Form);
+    }
+
+    /// <summary>
+    /// 2026-11-20: every claim must find its grade. By level: a row (or "All") for each level the scheme opens after (for
+    /// Registration / Handholding: that row or "All"); by size: a row for Micro, Small and Medium. Null when complete.
+    /// </summary>
+    public static string? GradingGap(SchemeActivation? activation, SchemeGrading? grading)
+    {
+        if (activation is null || grading is null) return null;
+        bool Has(string key) => grading.Rows.Any(r => string.Equals(r.Key, key, StringComparison.OrdinalIgnoreCase));
+        if (grading.Mode == BySize)
+            return Sizes.FirstOrDefault(s => !Has(s)) is { } size ? $"Grading: add the share and maximum of {size} enterprises." : null;
+        if (Has("All")) return null;
+        IReadOnlyList<string> needed = activation.Mode == Levels ? activation.Levels : [activation.Mode];
+        return needed.FirstOrDefault(k => !Has(k)) is { } missing
+            ? $"Grading: add a row for {Zed.Core.Data.LevelRegistry.Find(missing)?.Name ?? missing} (or All): its claims would have no grade."
+            : null;
     }
 
     public static string? FormProblem(SchemeForm? f)
@@ -302,7 +349,8 @@ public static partial class SchemeRules
                 if (x.Type is "choice" or "multichoice" && (x.Options.Count == 0 || x.Options.Count > MaxOptions || x.Options.Any(o => string.IsNullOrWhiteSpace(o) || o.Length > 100)))
                     return $"\"{x.Label}\": 1–{MaxOptions} options of up to 100 characters.";
                 if (x.Type == "copy" && string.IsNullOrWhiteSpace(x.CopyOf)) return $"\"{x.Label}\": choose the field it copies.";
-                if (x.Type is "document" or "photo" && x.MaxFiles is < 1 or > 3) return $"\"{x.Label}\": 1–3 files.";
+                if (x.Type is "document" or "photo" && x.MaxFiles is < 1 or > MaxFilesPerField) return $"\"{x.Label}\": 1–{MaxFilesPerField} files.";
+                if (x.Unique && !UniqueTypes.Contains(x.Type)) return $"\"{x.Label}\": only a text, number, amount or date can be unique.";
                 if (x.IsClaim && x.Type != "amount") return $"\"{x.Label}\": only an amount can be the claim.";
                 if (x.CheckStage is { } stage && !CheckStages.Contains(stage)) return $"\"{x.Label}\": checked at desktop, onsite or both.";
                 if (x.IsClaim) claims++;

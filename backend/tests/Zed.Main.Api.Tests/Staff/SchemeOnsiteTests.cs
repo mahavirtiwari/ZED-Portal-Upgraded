@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Http;
 using Zed.Core.Security;
 using Zed.Portal.Features.Incentives;
+using Zed.Portal.Features.Incentives.Agencies;
 using Zed.Portal.Features.Incentives.Onsite;
 using Zed.Portal.Features.Incentives.Staff;
 using Zed.Portal.Features.Staff.SubUsers;
@@ -30,9 +31,12 @@ public sealed class SchemeOnsiteTests : IDisposable
         ["ONSITE2"] = (2, "SchemeOnsite", "MADMIN"),
         ["OSA1"] = (3, null, "ONSITE1"),
         ["OSA9"] = (3, null, "ONSITE1"),
+        // 2026-11-20 (the product owner): a desktop verification agency and its assessor.
+        ["DESK1"] = (2, "SchemeDesktop", "MADMIN"),
+        ["DSA1"] = (3, null, "DESK1"),
     };
 
-    private static SchemeDefinition Definition(string flow) => new()
+    private static SchemeDefinition Definition(string flow, bool autoAllot = true) => new()
     {
         Code = Code, Name = "Onsite Scheme", Active = true,
         Card = new() { Title = "Onsite Scheme" },
@@ -55,8 +59,10 @@ public sealed class SchemeOnsiteTests : IDisposable
                 },
             ],
         },
-        Verification = new() { Flow = flow, CorrectionRounds = 2, CorrectionDays = 30, AutoAllot = true, OnsitePhotosMin = 1, OnsitePhotosMax = 3 },
+        Verification = new() { Flow = flow, CorrectionRounds = 2, CorrectionDays = 30, AutoAllot = autoAllot, OnsitePhotosMin = 1, OnsitePhotosMax = 3 },
     };
+
+    private bool _autoAllot = true;
 
     private string _flow = SchemeRules.DesktopOnsite;
 
@@ -72,8 +78,9 @@ public sealed class SchemeOnsiteTests : IDisposable
         },
     }.Serialize();
 
+    // The bank block is on (the default): the account details are checked at the desktop too.
     private static readonly string[] DesktopPaths =
-        ["items/0/invoice_no", "items/0/amount", "items/0/invoice", "items/1/invoice_no", "items/1/amount", "items/1/invoice"];
+        ["items/0/invoice_no", "items/0/amount", "items/0/invoice", "items/1/invoice_no", "items/1/amount", "items/1/invoice", "_bank/0/account"];
 
     public SchemeOnsiteTests()
     {
@@ -83,7 +90,7 @@ public sealed class SchemeOnsiteTests : IDisposable
                 : FakeSql.Sets([], [new { ERRORMSG = "INVALID CREDENTIAILS" }]);
         // Onsite agencies and their assessors have no verification sub-role (their flags are cleared).
         _host.Sql.Procs["SP_GET_SUB_ROLE"] = args =>
-            FakeSql.Arg(args, "UserId") is { } id && (id.StartsWith("ONSITE") || id.StartsWith("OSA"))
+            FakeSql.Arg(args, "UserId") is { } id && (id.StartsWith("ONSITE") || id.StartsWith("OSA") || id.StartsWith("DESK") || id.StartsWith("DSA"))
                 ? FakeSql.Sets([new { DesktopVerification = 0, SiteVerification = 0, FinancialVerification = 0 }])
                 : FakeSql.Sets([new { DesktopVerification = 1, SiteVerification = 1, FinancialVerification = 1 }]);
 
@@ -98,7 +105,7 @@ public sealed class SchemeOnsiteTests : IDisposable
         };
         var q = _host.Sql.Queries;
         q[SchemeApplications.ByIdWithOnsiteSql] = args => FakeSql.Arg(args, "Id") == "900" ? [new Dictionary<string, object?>(_app)] : [];
-        q[SchemeStore.AllSql] = _ => [new { Id = 1L, SchemeCode = Code, SchemeJson = SchemeRules.Serialize(Definition(_flow)), Active = true, OrderNo = (int?)1 }];
+        q[SchemeStore.AllSql] = _ => [new { Id = 1L, SchemeCode = Code, SchemeJson = SchemeRules.Serialize(Definition(_flow, _autoAllot)), Active = true, OrderNo = (int?)1 }];
         _host.Sql.Procs[SchemeCases.SaveSql] = args =>
         {
             if (FakeSql.Arg(args, "Expected") != (_app["SchemeStatus"]?.ToString() ?? "Draft")) return FakeSql.Sets();
@@ -109,9 +116,9 @@ public sealed class SchemeOnsiteTests : IDisposable
         q[SchemeCases.UnitSql] = _ => [new { EnterpriseName = "Acme Castings", EmailId = "msme@acme.test", PAddress = "Plot 4", PCity = "Kanpur", PStateName = "UTTAR PRADESH" }];
         q[SchemeCases.UserSql] = args => FakeSql.Arg(args, "UserId") is { } id && Users.TryGetValue(id, out var u)
             ? [new { UserId = id, UserName = id + " name", Email = id.ToLowerInvariant() + "@x.test", RoleId = u.Role, IsActive = true, CreatedBy = u.CreatedBy,
-                SchemeVerification = u.Kind is null ? Code + ":D" : Code + ":O", AgencyKind = u.Kind }]
+                SchemeVerification = u.Kind is null or "SchemeDesktop" ? Code + ":D" : Code + ":O", AgencyKind = u.Kind }]
             : [];
-        q[OnsiteAgencies.KindOfSql] = args => FakeSql.Arg(args, "UserId") is { } id && Users.TryGetValue(id, out var u)
+        q[IncentiveAgencies.KindOfSql] = args => FakeSql.Arg(args, "UserId") is { } id && Users.TryGetValue(id, out var u)
             ? [new { RoleId = u.Role, AgencyKind = u.Kind, CreatorKind = u.CreatedBy is { } c && Users.TryGetValue(c, out var cu) ? cu.Kind : null }]
             : [];
 
@@ -212,12 +219,12 @@ public sealed class SchemeOnsiteTests : IDisposable
     [Fact]
     public void Districts_none_means_the_whole_state_and_match_by_lgd_code_or_name()
     {
-        Assert.True(OnsiteAgencies.CoversDistrict(null, "164", "KANPUR NAGAR"));
-        Assert.True(OnsiteAgencies.CoversDistrict(" ", "164", null));
-        Assert.True(OnsiteAgencies.CoversDistrict("163, 0164", "164", null));
-        Assert.True(OnsiteAgencies.CoversDistrict("Kanpur Nagar,Lucknow", null, "KANPUR NAGAR"));
-        Assert.False(OnsiteAgencies.CoversDistrict("163", "164", "KANPUR NAGAR"));
-        Assert.False(OnsiteAgencies.CoversDistrict("163", null, null));
+        Assert.True(IncentiveAgencies.CoversDistrict(null, "164", "KANPUR NAGAR"));
+        Assert.True(IncentiveAgencies.CoversDistrict(" ", "164", null));
+        Assert.True(IncentiveAgencies.CoversDistrict("163, 0164", "164", null));
+        Assert.True(IncentiveAgencies.CoversDistrict("Kanpur Nagar,Lucknow", null, "KANPUR NAGAR"));
+        Assert.False(IncentiveAgencies.CoversDistrict("163", "164", "KANPUR NAGAR"));
+        Assert.False(IncentiveAgencies.CoversDistrict("163", null, null));
     }
 
     [Fact]
@@ -413,20 +420,28 @@ public sealed class SchemeOnsiteTests : IDisposable
             var me = await (await SignIn(user)).GetFromJsonAsync<JsonElement>("/api/auth/me");
             return me.GetProperty("subRoles").EnumerateArray().Select(s => s.GetString()!).ToArray();
         }
-        Assert.Equal([OnsiteAgencies.SubRole], await SubRoles("ONSITE1"));
-        Assert.Equal([OnsiteAgencies.SubRole], await SubRoles("OSA1"));
-        Assert.DoesNotContain(OnsiteAgencies.SubRole, await SubRoles("AGENCY1"));
-        Assert.DoesNotContain(OnsiteAgencies.SubRole, await SubRoles("DA1"));
+        Assert.Equal([IncentiveAgencies.OnsiteSubRole], await SubRoles("ONSITE1"));
+        Assert.Equal([IncentiveAgencies.OnsiteSubRole], await SubRoles("OSA1"));
+        Assert.DoesNotContain(IncentiveAgencies.OnsiteSubRole, await SubRoles("AGENCY1"));
+        Assert.DoesNotContain(IncentiveAgencies.OnsiteSubRole, await SubRoles("DA1"));
+        // 2026-11-20 (the product owner): a desktop verification agency and its assessors carry their own kind.
+        Assert.Equal([IncentiveAgencies.DesktopSubRole], await SubRoles("DESK1"));
+        Assert.Equal([IncentiveAgencies.DesktopSubRole], await SubRoles("DSA1"));
+        Assert.DoesNotContain(IncentiveAgencies.DesktopSubRole, await SubRoles("AGENCY1"));
     }
 
     [Fact]
     public void An_onsite_agency_gives_its_sub_users_only_its_assessors_and_the_scheme_onsite_screens()
     {
-        var onsite = SubUserPermissions.For((int)UserRole.Agency, [OnsiteAgencies.SubRole], PortalSystem.Main).Select(p => p.Key).ToArray();
+        var onsite = SubUserPermissions.For((int)UserRole.Agency, [IncentiveAgencies.OnsiteSubRole], PortalSystem.Main).Select(p => p.Key).ToArray();
         Assert.Equal(["assessors", "scheme-onsite"], onsite);
+        // A desktop verification agency: its assessors and the scheme allotment and QC only.
+        var desktop = SubUserPermissions.For((int)UserRole.Agency, [IncentiveAgencies.DesktopSubRole], PortalSystem.Main).Select(p => p.Key).ToArray();
+        Assert.Equal(["assessors", "scheme-verification"], desktop);
+        // An assessment agency no longer verifies schemes.
         var normal = SubUserPermissions.For((int)UserRole.Agency, [SubRoles.DesktopVerification], PortalSystem.Main).Select(p => p.Key).ToList();
         Assert.DoesNotContain("scheme-onsite", normal);
-        Assert.Contains("scheme-verification", normal);
+        Assert.DoesNotContain("scheme-verification", normal);
         Assert.Contains("scheme-onsite-agencies", SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key));
     }
 
@@ -436,8 +451,10 @@ public sealed class SchemeOnsiteTests : IDisposable
     public async Task Normal_agency_list_leaves_out_onsite_agencies_and_refuses_to_edit_them()
     {
         _host.Sql.Procs["SP_GET_USERS_BY_ROLE"] = _ => FakeSql.Sets(
-            [new { Id = 1, UserId = "AGENCY1", UserName = "Agency One", IsActive = true }, new { Id = 2, UserId = "ONSITE1", UserName = "Onsite One", IsActive = true }]);
-        _host.Sql.Queries[OnsiteAgencies.IdsSql] = _ => [new { UserId = "ONSITE1" }];
+            [new { Id = 1, UserId = "AGENCY1", UserName = "Agency One", IsActive = true }, new { Id = 2, UserId = "ONSITE1", UserName = "Onsite One", IsActive = true },
+             new { Id = 3, UserId = "DESK1", UserName = "Desktop One", IsActive = true }]);
+        Assert.Contains("'SchemeDesktop'", IncentiveAgencies.IdsSql);
+        _host.Sql.Queries[IncentiveAgencies.IdsSql] = _ => [new { UserId = "ONSITE1" }, new { UserId = "DESK1" }];
         _host.Sql.Procs["SP_GET_USER_DETAILS_BY_USER_ID"] = args => FakeSql.Sets(
             [new { UserId = FakeSql.Arg(args, "UserId"), UserName = "x", RoleId = 2, IsActive = true, CreatedBy = "MADMIN" }], [], [], []);
         var admin = await SignIn("MADMIN");
@@ -445,6 +462,8 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.Equal(["AGENCY1"], list.EnumerateArray().Select(a => a.GetProperty("UserId").GetString()!).ToArray());
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/users/agencies/ONSITE1")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/staff/users/agencies/ONSITE1", new { userName = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/users/agencies/DESK1")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/staff/users/agencies/DESK1", new { userName = "x" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/staff/users/agencies/AGENCY1")).StatusCode);
     }
 
@@ -453,7 +472,7 @@ public sealed class SchemeOnsiteTests : IDisposable
     [Fact]
     public async Task Master_admin_creates_an_onsite_agency_with_states_districts_and_schemes()
     {
-        _host.Sql.Queries[OnsiteAgenciesController.DistrictsSql] = args => [new { Code = "163", Name = "KANPUR DEHAT" }, new { Code = "164", Name = "KANPUR NAGAR" }];
+        _host.Sql.Queries[IncentiveAgenciesController.DistrictsSql] = args => [new { Code = "163", Name = "KANPUR DEHAT" }, new { Code = "164", Name = "KANPUR NAGAR" }];
         _host.Sql.Procs["SP_INSERT_USER"] = _ => FakeSql.Sets([new { Id = "ZEDAA0099" }]);
         var admin = await SignIn("MADMIN");
         var options = await admin.GetFromJsonAsync<JsonElement>("/api/staff/scheme-onsite/agencies/options");
@@ -473,15 +492,83 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.Equal(("2", "False", "False", "False", "UTTAR PRADESH,GOA"), (FakeSql.Arg(insert.Args, "RoleId"), FakeSql.Arg(insert.Args, "DesktopVerification"),
             FakeSql.Arg(insert.Args, "SiteVerification"), FakeSql.Arg(insert.Args, "FinancialVerification"), FakeSql.Arg(insert.Args, "PreferredStates")));
         Assert.Null(FakeSql.Arg(insert.Args, "OrgPartnerId"));
-        var mark = _host.Sql.Calls.Last(c => c.Name == OnsiteAgenciesController.MarkSql);
-        Assert.Equal(("ZEDAA0099", $"{Code}:O"), (FakeSql.Arg(mark.Args, "UserId"), FakeSql.Arg(mark.Args, "Ticks")));
-        var districts = _host.Sql.Calls.Where(c => c.Name == OnsiteAgenciesController.SetDistrictsSql).Select(c => (FakeSql.Arg(c.Args, "State"), FakeSql.Arg(c.Args, "Districts"))).ToList();
+        var mark = _host.Sql.Calls.Last(c => c.Name == IncentiveAgenciesController.MarkSql);
+        // The old address without a type creates an onsite agency.
+        Assert.Equal(("ZEDAA0099", $"{Code}:O", "SchemeOnsite"), (FakeSql.Arg(mark.Args, "UserId"), FakeSql.Arg(mark.Args, "Ticks"), FakeSql.Arg(mark.Args, "Kind")));
+        var districts = _host.Sql.Calls.Where(c => c.Name == IncentiveAgenciesController.SetDistrictsSql).Select(c => (FakeSql.Arg(c.Args, "State"), FakeSql.Arg(c.Args, "Districts"))).ToList();
         Assert.Equal(new List<(string?, string?)> { ("UTTAR PRADESH", "164"), ("GOA", null) }, districts);
         Assert.Contains(_host.Email.Sent, m => m.To == "spoc@onsite.test");
     }
 
     [Fact]
-    public void Scheme_ticks_keep_desktop_for_assessment_agencies_and_onsite_for_onsite_agencies()
+    public async Task Master_admin_creates_a_desktop_verification_agency_with_states_districts_and_schemes()
+    {
+        _flow = SchemeRules.Desktop; // a desktop agency may serve every scheme (each is verified at the desktop)
+        _host.Sql.Queries[IncentiveAgenciesController.DistrictsSql] = args => [new { Code = "163", Name = "KANPUR DEHAT" }, new { Code = "164", Name = "KANPUR NAGAR" }];
+        _host.Sql.Procs["SP_INSERT_USER"] = _ => FakeSql.Sets([new { Id = "ZEDAA0100" }]);
+        var admin = await SignIn("MADMIN");
+        var options = await admin.GetFromJsonAsync<JsonElement>("/api/staff/scheme-agencies/options");
+        Assert.Equal(Code, Assert.Single(options.GetProperty("desktopSchemes").EnumerateArray()).GetProperty("code").GetString());
+        Assert.Equal(0, options.GetProperty("schemes").GetArrayLength()); // not a Desktop + Onsite scheme: no onsite agency for it
+
+        object Body(string? type) => new
+        {
+            type, userName = "Desk Partners", spocName = "D K", emailId = "spoc@desk.test", mobileNo = "9876543211", address = "Lucknow", pinCode = "226001",
+            states = new object[] { new { state = "Uttar Pradesh", districts = new[] { "163", "164" } } },
+            schemes = new[] { Code },
+        };
+        // The type is required on the new address.
+        var r = await admin.PostAsJsonAsync("/api/staff/scheme-agencies", Body(null));
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Contains("type of agency", await r.ProblemTitle());
+        // An onsite agency cannot serve a Desktop-only scheme.
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/staff/scheme-agencies", Body("Onsite"))).StatusCode);
+        (await admin.PostAsJsonAsync("/api/staff/scheme-agencies", Body("Desktop"))).EnsureSuccessStatusCode();
+
+        var insert = _host.Sql.Calls.Last(c => c.Name == "SP_INSERT_USER");
+        Assert.Equal(("False", "False", "False"), (FakeSql.Arg(insert.Args, "DesktopVerification"), FakeSql.Arg(insert.Args, "SiteVerification"), FakeSql.Arg(insert.Args, "FinancialVerification")));
+        var mark = _host.Sql.Calls.Last(c => c.Name == IncentiveAgenciesController.MarkSql);
+        Assert.Equal(("ZEDAA0100", $"{Code}:D", "SchemeDesktop"), (FakeSql.Arg(mark.Args, "UserId"), FakeSql.Arg(mark.Args, "Ticks"), FakeSql.Arg(mark.Args, "Kind")));
+        var districts = _host.Sql.Calls.Where(c => c.Name == IncentiveAgenciesController.SetDistrictsSql).Select(c => (FakeSql.Arg(c.Args, "State"), FakeSql.Arg(c.Args, "Districts"))).ToList();
+        Assert.Equal(new List<(string?, string?)> { ("UTTAR PRADESH", "163,164") }, districts);
+        Assert.Contains(_host.Email.Sent, m => m.To == "spoc@desk.test" && m.Subject.StartsWith("Desktop Verification Agency Login Details"));
+
+        // The list shows both types; an agency's type never changes.
+        _host.Sql.Queries[IncentiveAgenciesController.ListSql] = _ =>
+        [
+            new { Id = 1L, UserId = "DESK1", UserName = "Desk One", IsActive = true, SchemeVerification = $"{Code}:D", AgencyKind = "SchemeDesktop", Assessors = 1 },
+            new { Id = 2L, UserId = "ONSITE1", UserName = "Onsite One", IsActive = true, SchemeVerification = $"{Code}:O", AgencyKind = "SchemeOnsite", Assessors = 2 },
+        ];
+        var list = await admin.GetFromJsonAsync<JsonElement>("/api/staff/scheme-agencies");
+        Assert.Equal([("DESK1", "Desktop", Code), ("ONSITE1", "Onsite", Code)], list.EnumerateArray()
+            .Select(a => (a.GetProperty("userId").GetString(), a.GetProperty("type").GetString(), a.GetProperty("schemes")[0].GetString())).ToArray());
+        Assert.Contains("AgencyKind IN ('SchemeDesktop', 'SchemeOnsite')", IncentiveAgenciesController.ListSql);
+        _host.Sql.Queries[IncentiveAgenciesController.OneSql] = _ =>
+            [new { UserId = "DESK1", UserName = "Desk One", IsActive = true, SchemeVerification = $"{Code}:D", AgencyKind = "SchemeDesktop" }];
+        var put = await admin.PutAsJsonAsync("/api/staff/scheme-agencies/DESK1", Body("Onsite"));
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        Assert.Contains("cannot be changed", await put.ProblemTitle());
+        (await admin.PutAsJsonAsync("/api/staff/scheme-agencies/DESK1", Body(null))).EnsureSuccessStatusCode();
+        var update = _host.Sql.Calls.Last(c => c.Name == IncentiveAgenciesController.UpdateSql);
+        Assert.Equal(($"{Code}:D", "SchemeDesktop"), (FakeSql.Arg(update.Args, "Ticks"), FakeSql.Arg(update.Args, "Kind")));
+        // The old address of the onsite page still answers.
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/staff/scheme-onsite/agencies")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Onsite_agency_rejection_with_an_auto_reason_waits_for_the_master_admin_when_auto_allot_is_off()
+    {
+        _autoAllot = false;
+        At("OnsiteWithAgency", "ONSITE1");
+        var r = await (await SignIn("ONSITE1")).PostAsJsonAsync("/api/staff/scheme-onsite/agency/900/reject", new { reasonId = "conflict" });
+        r.EnsureSuccessStatusCode();
+        Assert.Contains("ZED team", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Equal(("OnsiteAllot", (object?)null, (object?)"MasterAdmin"), (Status, _app["OnsiteAgencyId"], _app["OnsiteAllotmentType"]));
+        Assert.Contains(_host.Email.Sent, m => m.Subject.StartsWith("Application waiting for allotment (Onsite verification)") && m.HtmlBody.Contains("Automatic allotment is off"));
+    }
+
+    [Fact]
+    public void Scheme_ticks_keep_desktop_for_desktop_agencies_and_onsite_for_onsite_agencies()
     {
         // The user's rule: desktop and onsite are always different agencies (SchemeTicksController.KindLimit).
         Assert.True(SchemeTicks.Has($"{Code}:O", Code, SchemeTicks.Onsite));

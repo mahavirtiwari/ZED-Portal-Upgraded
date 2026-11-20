@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9186,
+  "count": 9221,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -6188,20 +6188,6 @@
       "page": "dashboard",
       "pageName": "Dashboard",
       "placeholders": [],
-      "files": [
-        "msme/dashboard/dashboard.ts"
-      ]
-    },
-    {
-      "key": "msme.dashboard.incentive.opensAfter",
-      "standard": "Opens after {levels} certification",
-      "kind": "text",
-      "portal": "msme",
-      "page": "dashboard",
-      "pageName": "Dashboard",
-      "placeholders": [
-        "levels"
-      ],
       "files": [
         "msme/dashboard/dashboard.ts"
       ]
@@ -13033,6 +13019,42 @@
       ]
     },
     {
+      "key": "msme.incentiveScheme.hold.other",
+      "standard": "The ZED team will resume or close the application.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.hold.suspended",
+      "standard": "Your certificate is suspended; the ZED team will resume or close the application.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.hold.withdrawn",
+      "standard": "Your certificate is withdrawn; the ZED team will resume or close the application.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
       "key": "msme.incentiveScheme.instructions.title",
       "standard": "Instructions",
       "kind": "heading",
@@ -13160,8 +13182,44 @@
       ]
     },
     {
+      "key": "msme.incentiveScheme.locked.closed",
+      "standard": "This scheme is not taking new applications now.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.financialBlocked",
+      "standard": "Financial assistance is not available for your unit. Please contact ZED team.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
       "key": "msme.incentiveScheme.locked.handholding",
       "standard": "Opens once your Handholding support is completed",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.legacyInProgress",
+      "standard": "Your earlier application for this benefit is still in progress. It continues on its own page.",
       "kind": "text",
       "portal": "msme",
       "page": "incentiveScheme",
@@ -13214,6 +13272,30 @@
     {
       "key": "msme.incentiveScheme.locked.notEligible",
       "standard": "You are not eligible for benefits. Please contact ZED team.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.notGraded",
+      "standard": "This scheme is not yet set up for your unit's certification or size. Please contact ZED team.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.suspended",
+      "standard": "Your highest certificate is suspended or withdrawn. The scheme opens again once it is active.",
       "kind": "text",
       "portal": "msme",
       "page": "incentiveScheme",
@@ -59335,6 +59417,261 @@
       ]
     },
     {
+      "key": "staff.incentiveAgencies.add",
+      "standard": "Add agency",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.column.type",
+      "standard": "Type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.empty",
+      "standard": "No incentive verification agency yet.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.addTitle",
+      "standard": "Add incentive verification agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.areaHelp",
+      "standard": "Applications go to the agencies of the unit’s plant state and district by round robin. Choose the whole state or some of its districts.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.desktopSchemesTitle",
+      "standard": "Schemes verified at the desktop",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.editTitle",
+      "standard": "Edit incentive verification agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.error.desktopSchemes",
+      "standard": "Please select at least one scheme the agency verifies at the desktop.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.error.type",
+      "standard": "Please select the type of agency: desktop verification or onsite verification.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.noDesktopSchemes",
+      "standard": "No incentive scheme is defined yet (Admin → Incentive Schemes).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.typeFirst",
+      "standard": "Choose the type of agency first.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.typeFixed",
+      "standard": "The type of an agency cannot be changed.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.typeHelp",
+      "standard": "Desktop and onsite verification are always done by different agencies: an agency is of one type only.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.form.typeTitle",
+      "standard": "Type of agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.search",
+      "standard": "Search agencies",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.sub",
+      "standard": "Agencies that verify incentive scheme applications, at the desktop or onsite, by state and district. Desktop and onsite are always different agencies; assessment agencies are kept on their own page.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.title",
+      "standard": "Incentive Verification Agencies",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts",
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.type.desktop",
+      "standard": "Desktop verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts",
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.type.onsite",
+      "standard": "Onsite verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts",
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.typeAll",
+      "standard": "All types",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.typeFilterAria",
+      "standard": "Type of agency",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
       "key": "staff.incentiveForm.activity.note",
       "standard": "The MSMEs whose Udyam activity is this see the incentive. Both: every MSME.",
       "kind": "note",
@@ -62273,7 +62610,7 @@
     },
     {
       "key": "staff.incentivesAdmin.cards.faHelp",
-      "standard": "None ticked = all three levels.",
+      "standard": "Tick at least one level. The card opens the Financial Assistance scheme of Incentive Schemes for units certified at these levels.",
       "kind": "note",
       "portal": "staff",
       "page": "incentivesAdmin",
@@ -62368,6 +62705,18 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.cards.tuSwitchOn",
+      "standard": "This scheme is off: saving switches it on, so units can apply.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.backLink",
       "standard": "Back to schemes",
       "kind": "button",
@@ -62419,6 +62768,18 @@
       "key": "staff.incentivesAdmin.editor.card.details",
       "standard": "Details",
       "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.faNote",
+      "standard": "Financial Assistance opens after certification levels only. These levels are also the \"Activates after\" of its dashboard card.",
+      "kind": "note",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
@@ -62680,6 +63041,18 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.editor.fields.unique",
+      "standard": "Unique",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.form.addRepeating",
       "standard": "Add \"Add more\" section",
       "kind": "button",
@@ -62765,7 +63138,7 @@
     },
     {
       "key": "staff.incentivesAdmin.editor.form.blocksHelp",
-      "standard": "Their wording is in Admin → Texts.",
+      "standard": "Their wording: the texts of this scheme below; left empty, the common wording of Admin → Texts.",
       "kind": "note",
       "portal": "staff",
       "page": "incentivesAdmin",
@@ -63424,6 +63797,66 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.editor.texts.declaration",
+      "standard": "Declaration",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.texts.disclaimer",
+      "standard": "Disclaimer",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.texts.help",
+      "standard": "Plain text; each line is shown as written. Empty: the common wording of Admin → Texts.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.texts.instructions",
+      "standard": "Instructions",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.texts.title",
+      "standard": "Applicant texts of this scheme",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.title",
       "standard": "Incentive scheme",
       "kind": "heading",
@@ -64014,6 +64447,18 @@
     {
       "key": "staff.incentivesAdmin.field.type",
       "standard": "Type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.unique",
+      "standard": "Unique: the value cannot be used again in another application of the unit (e.g. an invoice number)",
       "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",
@@ -70402,6 +70847,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.incentiveVerificationAgenciesLabel",
+      "standard": "Incentive Verification Agencies",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.lgDirectoryLabel",
       "standard": "LG Directory",
       "kind": "label",
@@ -70572,18 +71029,6 @@
     {
       "key": "staff.menu.item.observationReasonsLabel",
       "standard": "Observation Reasons",
-      "kind": "label",
-      "portal": "staff",
-      "page": "menu",
-      "pageName": "Menu",
-      "placeholders": [],
-      "files": [
-        "staff/staff-menu.ts"
-      ]
-    },
-    {
-      "key": "staff.menu.item.onsiteVerificationAgenciesLabel",
-      "standard": "Onsite Verification Agencies",
       "kind": "label",
       "portal": "staff",
       "page": "menu",
@@ -97322,7 +97767,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97334,7 +97779,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97346,7 +97791,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97358,43 +97803,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.agencies.add",
-      "standard": "Add onsite agency",
-      "kind": "button",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.agencies.empty",
-      "standard": "No onsite verification agency yet.",
-      "kind": "note",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.agencies.search",
-      "standard": "Search agencies",
-      "kind": "placeholder",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97406,32 +97815,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.agencies.sub",
-      "standard": "Agencies that verify incentive scheme applications at the unit (Desktop + Onsite schemes), by state and district. Assessment agencies are kept on their own page.",
-      "kind": "note",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.agencies.title",
-      "standard": "Onsite Verification Agencies",
-      "kind": "heading",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agencies.ts",
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97443,7 +97827,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97455,7 +97839,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97467,7 +97851,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97479,7 +97863,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97491,7 +97875,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97503,7 +97887,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97515,7 +97899,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97527,7 +97911,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97539,7 +97923,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97551,7 +97935,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97563,7 +97947,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97575,7 +97959,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97587,7 +97971,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97599,7 +97983,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97611,7 +97995,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97623,7 +98007,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97635,7 +98019,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97647,7 +98031,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -97659,7 +98043,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97671,7 +98055,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97683,19 +98067,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.form.addTitle",
-      "standard": "Add onsite agency",
-      "kind": "heading",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97707,7 +98079,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97719,19 +98091,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.form.areaHelp",
-      "standard": "Applications go to the onsite agencies of the unit’s plant state and district by round robin. Choose the whole state or some of its districts.",
-      "kind": "note",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97743,7 +98103,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97755,7 +98115,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97767,7 +98127,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97781,7 +98141,7 @@
         "state"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97793,19 +98153,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.form.editTitle",
-      "standard": "Edit onsite agency",
-      "kind": "heading",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97817,7 +98165,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97831,7 +98179,7 @@
         "state"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97843,7 +98191,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97855,7 +98203,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97867,7 +98215,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97879,7 +98227,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97891,7 +98239,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97905,7 +98253,7 @@
         "state"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97917,7 +98265,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97929,7 +98277,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97941,7 +98289,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97953,7 +98301,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97965,7 +98313,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97977,7 +98325,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -97989,7 +98337,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98001,7 +98349,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98013,7 +98361,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98025,7 +98373,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98037,7 +98385,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98049,7 +98397,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98061,7 +98409,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98073,7 +98421,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98087,7 +98435,7 @@
         "n"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98099,7 +98447,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98111,7 +98459,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98123,7 +98471,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agency-form.ts"
+        "staff/scheme-onsite/incentive-agency-form.ts"
       ]
     },
     {
@@ -98135,7 +98483,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -98149,7 +98497,7 @@
         "n"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -98161,7 +98509,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -98175,7 +98523,7 @@
         "name"
       ],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -98187,7 +98535,7 @@
       "pageName": "Scheme onsite",
       "placeholders": [],
       "files": [
-        "staff/scheme-onsite/onsite-agencies.ts"
+        "staff/scheme-onsite/incentive-agencies.ts"
       ]
     },
     {
@@ -98410,6 +98758,30 @@
       ]
     },
     {
+      "key": "staff.schemeVerification.answers.bankAccount",
+      "standard": "Bank account details",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.bankTitle",
+      "standard": "Bank account",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.answers.checkAria",
       "standard": "Check of {label}",
       "kind": "tooltip",
@@ -98419,6 +98791,18 @@
       "placeholders": [
         "label"
       ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.cheque",
+      "standard": "Cancelled cheque",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
       "files": [
         "staff/scheme-verification/scheme-parts.ts"
       ]
@@ -98784,6 +99168,20 @@
     {
       "key": "staff.schemeVerification.detail.rejected",
       "standard": "Reason for rejection: {reason}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.resumed",
+      "standard": "Resumed by the Master Admin. It was on hold: {reason}",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -100253,8 +100651,8 @@
       ]
     },
     {
-      "key": "staff.schemeVerification.ticks.agencyHelp",
-      "standard": "Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s states and sectors).",
+      "key": "staff.schemeVerification.ticks.agencyAreaHelp",
+      "standard": "Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s state and district).",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
@@ -100316,18 +100714,6 @@
       "key": "staff.schemeVerification.ticks.onsite",
       "standard": "Onsite verification",
       "kind": "label",
-      "portal": "staff",
-      "page": "schemeVerification",
-      "pageName": "Scheme verification",
-      "placeholders": [],
-      "files": [
-        "staff/scheme-verification/scheme-ticks-panel.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeVerification.ticks.phase2",
-      "standard": "(phase 2)",
-      "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
       "pageName": "Scheme verification",
@@ -100457,6 +100843,45 @@
       ]
     },
     {
+      "key": "staff.schemeVerification.verify.autoReject",
+      "standard": "Reject (no correction round left)",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.autoRejectMessage",
+      "standard": "All {total} correction round(s) are used and {count} point(s) are still Not valid. The application is rejected (\"Not valid after the last correction round\", with your remarks) and the unit is told by e-mail; it may apply again.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "total",
+        "count"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.autoRejectTitle",
+      "standard": "Reject: no correction round left",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.verify.correction",
       "standard": "Send for correction (round {n} of {total})",
       "kind": "button",
@@ -100513,9 +100938,9 @@
       ]
     },
     {
-      "key": "staff.schemeVerification.verify.noRounds",
-      "standard": "No correction round is left.",
-      "kind": "tooltip",
+      "key": "staff.schemeVerification.verify.noRoundsTitle",
+      "standard": "No correction round is left: points still not valid reject the application.",
+      "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
       "pageName": "Scheme verification",

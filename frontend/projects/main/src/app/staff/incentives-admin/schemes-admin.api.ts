@@ -4,6 +4,12 @@ import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { t } from '../../content/page-text';
 
+/** The code of the built-in Financial Assistance scheme the dashboard card opens (SchemeTemplates.FaCode). */
+export const FA_SCHEME_CODE = 'FA';
+
+/** The field types that can be unique (SchemeRules.UniqueTypes). */
+export const UNIQUE_TYPES: readonly string[] = ['text', 'number', 'amount', 'date'];
+
 /** The vocabulary of a scheme definition (backend Features/Incentives/SchemeDefinition.cs, SchemeRules). */
 export type ActivationMode = 'Levels' | 'Registration' | 'Handholding';
 export type GradingMode = 'Level' | 'Size';
@@ -16,7 +22,7 @@ export type FieldType = (typeof FIELD_TYPES)[number];
 /** The dashboard's card icons a scheme can use. */
 export const CARD_ICONS = ['star', 'rupee', 'zap', 'award', 'users', 'building', 'bank', 'trend', 'pin'] as const;
 
-export const SCHEME_LIMITS = { sections: 10, fields: 40, items: 50, options: 50, text: 4000, amount: 100_000_000, rounds: 5, days: 180, photos: 5 } as const;
+export const SCHEME_LIMITS = { sections: 10, fields: 40, items: 50, options: 50, text: 4000, amount: 100_000_000, rounds: 5, days: 180, photos: 5, files: 3, schemeText: 10000 } as const;
 
 export interface SchemeCard { title: string; highlight?: string | null; details?: string | null; icon: string }
 export interface SchemeActivation { mode: ActivationMode; levels: string[] }
@@ -43,6 +49,8 @@ export interface FormField {
   maxFiles?: number | null;
   /** Phase 2: who checks the answer (when assessorChecks) in the Desktop + Onsite flow; desktop when not set. */
   checkStage?: CheckStage | null;
+  /** 2026-11-20: the value cannot repeat across the unit's other applications of the scheme (text, number, amount, date). */
+  unique?: boolean;
 }
 
 /** Phase 2 (FormField.CheckStage): checked at the desktop, at the onsite visit, or both. */
@@ -90,6 +98,12 @@ export interface SchemeDefinition {
   grading: SchemeGrading;
   form: SchemeForm;
   verification: SchemeVerification;
+  /** 2026-11-20: the applicant's texts of this scheme (plain text); empty = the global wording of Admin → Texts. */
+  disclaimer?: string | null;
+  instructions?: string | null;
+  declaration?: string | null;
+  /** The template version a built-in scheme was brought up to (kept by the server). */
+  templateVersion?: number;
 }
 
 export interface SchemeSummary {
@@ -108,7 +122,8 @@ export interface LevelOption { code: string; name: string }
 export interface SchemesResponse { schemes: SchemeSummary[]; templates: string[]; levels: LevelOption[]; sizes: string[] }
 
 export interface CardSettings {
-  financialAssistance: { activatesAfter: string[] };
+  /** 2026-11-20: any certification level; the GET also lists the levels. */
+  financialAssistance: { activatesAfter: string[]; levels?: LevelOption[] };
   technologyUpgradation: { recommendationRequired: boolean; directSchemeCode: string | null; schemes?: { code: string; name: string; active: boolean }[] };
 }
 

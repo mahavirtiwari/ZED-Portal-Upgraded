@@ -160,9 +160,61 @@ describe('SchemeEditorPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('Scheme saved.');
   });
 
+  // 2026-11-20: the scheme's own disclaimer, instructions and declaration.
+  it('edits the applicant texts of the scheme and saves them trimmed', async () => {
+    await tab('form');
+    const area = (id: string, value: string) => {
+      const t = el.querySelector(id) as HTMLTextAreaElement;
+      t.value = value;
+      t.dispatchEvent(new Event('input'));
+    };
+    area('#se-disclaimer', '  Line 1\nLine 2  ');
+    area('#se-instructions', '   ');
+    area('#se-declaration', 'We declare.');
+    await settle();
+    (el.querySelector('#se-save') as HTMLButtonElement).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT');
+    expect([put.request.body.disclaimer, put.request.body.instructions, put.request.body.declaration]).toEqual(['Line 1\nLine 2', null, 'We declare.']);
+    put.flush({ message: 'Scheme saved.' });
+    await settle();
+  });
+
   it('reads and writes the date limits', () => {
     expect(formatBound(parseBound('days:30'))).toBe('days:30');
     expect(formatBound(parseBound('date:2026-01-01'))).toBe('date:2026-01-01');
     expect(formatBound(parseBound(null))).toBeNull();
+  });
+});
+
+/** 2026-11-20: the built-in Financial Assistance scheme (FA) opens after certification levels only. */
+describe('SchemeEditorPage: Financial Assistance', () => {
+  it('offers levels only, with a note on the dashboard card', async () => {
+    await TestBed.configureTestingModule({
+      imports: [SchemeEditorPage],
+      providers: [
+        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ code: 'FA' }) } } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(SchemeEditorPage);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    http.expectOne('/api/staff/settings/schemes').flush({ schemes: [], templates: ['FA', 'TU'], sizes: ['Micro', 'Small', 'Medium'], levels: [{ code: 'Bronze', name: 'Bronze' }] });
+    http.expectOne('/api/staff/settings/schemes/FA').flush({
+      code: 'FA', name: 'Financial Assistance', active: true, orderNo: 1, card: { title: 'Financial Assistance', icon: 'rupee' },
+      activation: { mode: 'Levels', levels: ['Bronze'] }, grading: { mode: 'Level', rows: [{ key: 'Bronze', sharePercent: 75, maxAmount: 50000 }] },
+      form: { blocks: { disclaimer: true, instructions: true, unitConfirm: true, bankAccount: true, declaration: true }, sections: [], rules: [] },
+      verification: { flow: 'Desktop', correctionRounds: 2, correctionDays: 30, autoAllot: true },
+    });
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-mode="Registration"]')).toBeNull();
+    expect(el.querySelector('[data-mode="Handholding"]')).toBeNull();
+    expect(el.querySelector('[data-level="Bronze"]')).not.toBeNull();
+    expect(el.querySelector('#se-fa-note')!.textContent).toContain('dashboard card');
+    http.verify();
   });
 });

@@ -208,10 +208,8 @@
     <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? ('Update' | t: 'staff.agencyForm.save.updateButton') : ('Create {word}' | t: 'staff.agencyForm.save.createButton' : { word: word() }) }}</button>
   </div>
 </form>
-<!-- 2026-11-20 (incentive schemes, Part C): the schemes the agency verifies, saved on its own. -->
-@if (isEdit && !consultancy && userId) {
-  <zed-scheme-ticks-panel kind="agencies" [userId]="userId" />
-}
+<!-- 2026-11-20 (the product owner): an assessment agency no longer verifies incentive schemes; the incentive verification agencies
+     (desktop / onsite) and their schemes are on Schemes → Incentive Verification Agencies. -->
 
 @if (loading() || saving()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">{{ 'Loading…' | t: 'staff.agencyForm.loading' }}</span></div>

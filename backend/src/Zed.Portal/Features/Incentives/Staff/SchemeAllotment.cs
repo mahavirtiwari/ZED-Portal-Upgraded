@@ -1,36 +1,31 @@
 using System.Data.Common;
 using Zed.Core.Data;
-using Zed.Core.Security;
-using Zed.Portal.Features.Staff.Users;
+using Zed.Portal.Features.Incentives.Agencies;
 
 namespace Zed.Portal.Features.Incentives.Staff;
 
 /// <summary>
-/// Scheme applications go to a desktop agency by round robin (2026-11-20, approved: "verification like the assessment"): when the
-/// unit submits (the scheme's Verification.AutoAllot), and again when the allotted agency rejects it with an "Auto" reason
-/// (Admin → Rejection Reasons). Eligible agencies: active agencies (RoleId 2) ticked "Desktop verification" for the scheme
-/// (Users.SchemeVerification contains "{CODE}:D"), serving the unit's plant state (AgencyUserStates; none = every state) and NIC
-/// sector (UserNicSectors; none = every sector) as SP_ASSESSMENT_AGENCIES_TO_ALLOT, whose sector type fits the unit
-/// (<see cref="UserSectorActivity.Serves"/>), and that have not returned the application (FinancialAssistance.RejectedAgencies).
-/// The rotation takes them in Users.Id order after the agency of the scheme's last round-robin allotment (AllotmentType
-/// 'RoundRobin' rows with the scheme's code, by AllotmentDate). With none, the application stays Submitted on the Master Admin's
-/// list. Callers hold <see cref="SchemeCaseLock"/> for the *Locked methods.
+/// Scheme applications go to a desktop verification agency by round robin (2026-11-20, approved: "verification like the assessment"):
+/// when the unit submits (the scheme's Verification.AutoAllot), and again when the allotted agency rejects it with an "Auto" reason
+/// (Admin → Rejection Reasons) while AutoAllot is on. 2026-11-20 (the product owner): desktop and onsite are done by separate agencies
+/// added by the Master Admin with their states and districts, and the allocation is by state and district; the normal assessment
+/// agencies are no longer used. Eligible agencies: active desktop verification agencies (RoleId 2, Users.AgencyKind
+/// <see cref="IncentiveAgencies.DesktopKind"/>, migration 0107) ticked "Desktop verification" for the scheme (Users.SchemeVerification
+/// "{CODE}:D") with an AgencyUserStates row for the unit's plant state whose Districts list the unit's plant district (NULL / empty =
+/// the whole state; <see cref="IncentiveAgencies.CoversDistrict"/>), no NIC-sector rule, and that have not returned the application
+/// (FinancialAssistance.RejectedAgencies). The rotation takes them in Users.Id order after the agency of the scheme's last round-robin
+/// allotment (AllotmentType 'RoundRobin' rows with the scheme's code, by AllotmentDate). With none, the application stays Submitted on
+/// the Master Admin's list (the manual allot list has the same eligibility). Callers hold <see cref="SchemeCaseLock"/> for the *Locked methods.
 /// </summary>
 public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IServiceProvider services, ILogger<SchemeAllotment> log)
 {
     public const string RoundRobin = "RoundRobin";
     public const string Manual = "Manual";
 
+    /// <summary>The desktop verification agencies (never an assessment agency nor an onsite agency).</summary>
     internal const string CandidatesSql =
-        "SELECT Id, UserId, UserName, SchemeVerification, CreatedBy FROM dbo.Users WHERE RoleId = @RoleId AND IsActive = 1 AND SchemeVerification IS NOT NULL " +
-        // Phase 2: an onsite verification agency (migration 0106) never takes the desktop verification.
-        "AND ISNULL(AgencyKind, '') <> 'SchemeOnsite';";
-
-    internal const string UnitPlaceSql = "SELECT TOP 1 PStateName, TwoDigitActivity FROM dbo.Msme WHERE ZedId = @ZedId;";
-
-    internal const string StatesSql = "SELECT UserId, States FROM dbo.AgencyUserStates WHERE RoleId = 2 AND UserId IN @Ids;";
-
-    internal const string SectorsSql = "SELECT UserId, NicSectorCode FROM dbo.UserNicSectors WHERE RoleId = 2 AND UserId IN @Ids;";
+        "SELECT Id, UserId, UserName, SchemeVerification, CreatedBy FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND AgencyKind = 'SchemeDesktop' " +
+        "AND SchemeVerification IS NOT NULL;";
 
     internal const string LastSql =
         "SELECT TOP (1) U.Id FROM dbo.FinancialAssistance F JOIN dbo.Users U ON U.UserId = F.CertificationBodyUserId AND U.RoleId = 2 " +
@@ -45,24 +40,6 @@ public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IService
         public string? CreatedBy { get; init; }
     }
 
-    private sealed class PlaceRow
-    {
-        public string? PStateName { get; init; }
-        public string? TwoDigitActivity { get; init; }
-    }
-
-    private sealed class StateRow
-    {
-        public string? UserId { get; init; }
-        public string? States { get; init; }
-    }
-
-    private sealed class SectorRow
-    {
-        public string? UserId { get; init; }
-        public string? NicSectorCode { get; init; }
-    }
-
     private sealed class IdRow
     {
         public long Id { get; init; }
@@ -71,35 +48,11 @@ public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IService
     /// <param name="RejectedBefore">The agency returned this application before (the round robin skips it; the Master Admin may still choose it).</param>
     public sealed record AgencyOption(string UserId, string UserName, bool RejectedBefore);
 
-    /// <summary>The agencies the application may go to (ticked for the scheme, the unit's state, sector and kind), in Users.Id order.</summary>
+    /// <summary>The desktop agencies the application may go to (ticked for the scheme, the unit's state and district), in Users.Id order.</summary>
     public async Task<IReadOnlyList<AgencyOption>> EligibleAsync(string zedId, string schemeCode, IReadOnlySet<string> rejected, CancellationToken ct)
     {
-        var ticked = (await db.QuerySqlAsync<CandidateRow>(CandidatesSql, new { RoleId = (int)UserRole.Agency }, ct))
-            .Where(r => !string.IsNullOrWhiteSpace(r.UserId) && SchemeTicks.Has(r.SchemeVerification, schemeCode, SchemeTicks.Desktop))
-            .GroupBy(r => r.UserId!.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First())
-            .OrderBy(r => r.Id).ToList();
-        if (ticked.Count == 0) return [];
-
-        var ids = ticked.Select(r => r.UserId!.Trim()).ToArray();
-        var place = (await db.QuerySqlAsync<PlaceRow>(UnitPlaceSql, new { ZedId = SchemeApplications.Ansi(zedId, 50) }, ct)).FirstOrDefault();
-        var state = place?.PStateName?.Trim() ?? "";
-        var sector = place?.TwoDigitActivity?.Trim() is { Length: >= 2 } t ? t[..2] : "";
-        var states = (await db.QuerySqlAsync<StateRow>(StatesSql, new { Ids = ids }, ct))
-            .Where(r => r.UserId is not null).ToLookup(r => r.UserId!.Trim(), r => r.States?.Trim() ?? "", StringComparer.OrdinalIgnoreCase);
-        var sectors = (await db.QuerySqlAsync<SectorRow>(SectorsSql, new { Ids = ids }, ct))
-            .Where(r => r.UserId is not null).ToLookup(r => r.UserId!.Trim(), r => r.NicSectorCode?.Trim() ?? "", StringComparer.OrdinalIgnoreCase);
-        var category = await UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
-        var activities = await UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
-
-        return ticked.Where(r =>
-            {
-                var id = r.UserId!.Trim();
-                var s = states[id].ToList();
-                var n = sectors[id].ToList();
-                return (s.Count == 0 || s.Contains(state, StringComparer.OrdinalIgnoreCase))
-                    && (n.Count == 0 || n.Contains(sector, StringComparer.OrdinalIgnoreCase))
-                    && UserSectorActivity.Serves(activities.GetValueOrDefault(id), category);
-            })
+        var candidates = await db.QuerySqlAsync<CandidateRow>(CandidatesSql, null, ct);
+        return (await IncentiveAgencies.CoveringAsync(db, candidates, SchemeTicks.Desktop, zedId, schemeCode, ct))
             .Select(r => new AgencyOption(r.UserId!.Trim(), r.UserName?.Trim() ?? r.UserId!.Trim(), rejected.Contains(r.UserId!.Trim())))
             .ToList();
     }
@@ -109,7 +62,7 @@ public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IService
     {
         var eligible = (await EligibleAsync(c.ZedId, c.Code, skip, ct)).Where(a => !a.RejectedBefore).ToList();
         if (eligible.Count == 0) return null;
-        var ids = (await db.QuerySqlAsync<CandidateRow>(CandidatesSql, new { RoleId = (int)UserRole.Agency }, ct))
+        var ids = (await db.QuerySqlAsync<CandidateRow>(CandidatesSql, null, ct))
             .Where(r => r.UserId is not null).GroupBy(r => r.UserId!.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
         long? lastId = null;

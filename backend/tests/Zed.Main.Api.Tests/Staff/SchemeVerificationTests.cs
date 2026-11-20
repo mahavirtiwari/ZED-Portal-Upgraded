@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Zed.Portal.Features.Incentives;
+using Zed.Portal.Features.Incentives.Agencies;
 using Zed.Portal.Features.Incentives.Staff;
 using Zed.Portal.Features.Staff.Schemes;
 
@@ -21,8 +22,10 @@ public sealed class SchemeVerificationTests : IDisposable
     private readonly List<Dictionary<string, object?>> _overdue = [];
     private readonly List<Dictionary<string, object?>> _inProgress = [];
     private readonly List<object> _heldCertificates = [];
+    private readonly List<object> _unitCertificates = [];
+    private bool _autoAllot = true;
 
-    private static readonly SchemeDefinition Definition = new()
+    private static readonly SchemeDefinition BaseDefinition = new()
     {
         Code = Code, Name = "Test Scheme", Active = true,
         Card = new() { Title = "Test Scheme" },
@@ -60,8 +63,13 @@ public sealed class SchemeVerificationTests : IDisposable
         },
     }.Serialize();
 
+    private SchemeDefinition Definition => BaseDefinition with { Verification = BaseDefinition.Verification with { AutoAllot = _autoAllot } };
+
+    private const string AccountPath = "_bank/0/account";
+
+    // The bank block is on (the default): the account details are checked too (2026-11-20, the product owner).
     private static readonly string[] AllPaths =
-        ["items/0/invoice_no", "items/0/amount", "items/0/invoice", "items/1/invoice_no", "items/1/amount", "items/1/invoice"];
+        ["items/0/invoice_no", "items/0/amount", "items/0/invoice", "items/1/invoice_no", "items/1/amount", "items/1/invoice", AccountPath];
 
     public SchemeVerificationTests()
     {
@@ -90,27 +98,37 @@ public sealed class SchemeVerificationTests : IDisposable
             return FakeSql.Sets();
         };
         q[SchemeCases.UnitSql] = _ => [new { EnterpriseName = "Acme Castings", EmailId = "msme@acme.test", PUnitName = "Acme", PAddress = "Plot 4", PCity = "Kanpur", PStateName = "UTTAR PRADESH" }];
+        // AGENCY1 and AGENCY2 are desktop verification agencies (migration 0107); AGENCYNOFV is an assessment agency.
         q[SchemeCases.UserSql] = args => FakeSql.Arg(args, "UserId") is { } id
-            ? [new { UserId = id, UserName = id + " name", Email = id.ToLowerInvariant() + "@x.test", RoleId = id.StartsWith("DA") ? 3 : 2, IsActive = true, CreatedBy = id.StartsWith("DA") ? "AGENCY1" : "MADMIN", SchemeVerification = id == "AGENCY1" ? Code + ":D" : null }]
+            ? [new { UserId = id, UserName = id + " name", Email = id.ToLowerInvariant() + "@x.test", RoleId = id.StartsWith("DA") ? 3 : 2, IsActive = true,
+                CreatedBy = id.StartsWith("DA") ? "AGENCY1" : "MADMIN", SchemeVerification = id is "AGENCY1" or "AGENCYNOFV" ? Code + ":D" : null,
+                AgencyKind = id is "AGENCY1" or "AGENCY2" ? IncentiveAgencies.DesktopKind : null }]
             : [];
 
-        // Agencies: AGENCY1, AGENCY2 and AGENCY6 are eligible; the others are not (tick, state, sector, onsite only, sector type).
-        q[SchemeAllotment.CandidatesSql] = args => FakeSql.Arg(args, "RoleId") != "2" ? [] :
+        // Desktop verification agencies (the query itself keeps to AgencyKind = 'SchemeDesktop'): AGENCY1 (the whole of UP), AGENCY2 (two
+        // districts of UP, the unit's among them) and AGENCY6 (the whole of UP) are eligible; the others are not: AGENCYX (not ticked),
+        // AGENCY3 (Maharashtra), AGENCY4 (another district of UP), AGENCY5 (ticked onsite only), AGENCY7 (no state chosen).
+        q[SchemeAllotment.CandidatesSql] = _ =>
         [
             new { Id = 10L, UserId = "AGENCY1", UserName = "Agency One", SchemeVerification = $"{Code}:D" },
             new { Id = 15L, UserId = "AGENCYX", UserName = "Not ticked", SchemeVerification = "OTHER:D" },
             new { Id = 20L, UserId = "AGENCY2", UserName = "Agency Two", SchemeVerification = $"OTHER:O,{Code.ToLowerInvariant()}:d" },
             new { Id = 30L, UserId = "AGENCY3", UserName = "Other state", SchemeVerification = $"{Code}:D" },
-            new { Id = 40L, UserId = "AGENCY4", UserName = "Other sector", SchemeVerification = $"{Code}:D" },
+            new { Id = 40L, UserId = "AGENCY4", UserName = "Other district", SchemeVerification = $"{Code}:D" },
             new { Id = 5L, UserId = "AGENCY5", UserName = "Onsite only", SchemeVerification = $"{Code}:O" },
             new { Id = 60L, UserId = "AGENCY6", UserName = "Agency Six", SchemeVerification = $"{Code}:D" },
-            new { Id = 70L, UserId = "AGENCY7", UserName = "Services only", SchemeVerification = $"{Code}:D" },
+            new { Id = 70L, UserId = "AGENCY7", UserName = "No state", SchemeVerification = $"{Code}:D" },
         ];
-        q[SchemeAllotment.UnitPlaceSql] = _ => [new { PStateName = "Uttar Pradesh", TwoDigitActivity = "24" }];
-        q[SchemeAllotment.StatesSql] = _ => [new { UserId = "AGENCY3", States = "MAHARASHTRA" }, new { UserId = "AGENCY1", States = "UTTAR PRADESH" }];
-        q[SchemeAllotment.SectorsSql] = _ => [new { UserId = "AGENCY4", NicSectorCode = "10" }, new { UserId = "AGENCY6", NicSectorCode = "24" }];
-        q["SELECT UserId, SectorActivity FROM dbo.Users WHERE RoleId"] = _ => [new { UserId = "AGENCY7", SectorActivity = "Services" }];
-        q["SELECT TOP 1 Activity, TwoDigitActivity FROM dbo.Msme"] = _ => [new { Activity = "Manufacturing", TwoDigitActivity = "24" }];
+        q[IncentiveAgencies.UnitPlaceSql] = _ => [new { PStateName = "Uttar Pradesh", PDistrictName = "KANPUR NAGAR", PLgDistrictCode = "164" }];
+        q[IncentiveAgencies.StatesSql] = _ =>
+        [
+            new { UserId = "AGENCY1", States = "UTTAR PRADESH", Districts = (string?)null },
+            new { UserId = "AGENCY2", States = "UTTAR PRADESH", Districts = (string?)"163,164" },
+            new { UserId = "AGENCY3", States = "MAHARASHTRA", Districts = (string?)null },
+            new { UserId = "AGENCY4", States = "UTTAR PRADESH", Districts = (string?)"999" },
+            new { UserId = "AGENCY5", States = "UTTAR PRADESH", Districts = (string?)null },
+            new { UserId = "AGENCY6", States = "UTTAR PRADESH", Districts = (string?)null },
+        ];
         q[SchemeAllotment.LastSql] = _ => _lastRoundRobinAgencyId is { } id ? [new { Id = id }] : [];
 
         q[SchemeAgencyController.AssessorsSql] = args => FakeSql.Arg(args, "Agency") != "AGENCY1" ? [] :
@@ -121,6 +139,7 @@ public sealed class SchemeVerificationTests : IDisposable
         q[SchemeSweep.OverdueSql] = _ => _overdue;
         q[SchemeSweep.InProgressSql] = _ => _inProgress;
         q[SchemeSweep.HeldCertificatesSql] = _ => _heldCertificates;
+        q[SchemeSweep.UnitCertificatesSql] = _ => _unitCertificates;
     }
 
     public void Dispose() => _host.Dispose();
@@ -158,18 +177,21 @@ public sealed class SchemeVerificationTests : IDisposable
     // ----- round robin -----
 
     [Fact]
-    public async Task Round_robin_takes_the_ticked_agencies_of_the_units_state_and_sector_in_turn()
+    public async Task Round_robin_takes_the_desktop_agencies_of_the_units_state_and_district_in_turn()
     {
+        // Only desktop verification agencies (never an assessment agency or an onsite agency), by state and district, no sector rule.
+        Assert.Contains("AgencyKind = 'SchemeDesktop'", SchemeAllotment.CandidatesSql);
+        Assert.DoesNotContain("UserNicSectors", SchemeAllotment.CandidatesSql);
         Assert.Equal("AGENCY1", await AllotAsync());
         Assert.Equal(("WithAgency", 1, "RoundRobin"), (Status, (int)_app["VerificationStatus"]!, _app["AllotmentType"]));
         Assert.Equal("agency1@x.test", Assert.Single(_host.Email.Sent).To);
 
-        // After the last round-robin agency (AGENCY1, Id 10) comes AGENCY2 (Id 20; AGENCYX is not ticked, AGENCY3/4 do not serve the unit).
+        // After the last round-robin agency (AGENCY1, Id 10) comes AGENCY2 (Id 20, its districts list the unit's; AGENCYX is not ticked).
         At("Submitted");
         _lastRoundRobinAgencyId = 10;
         Assert.Equal("AGENCY2", await AllotAsync());
 
-        // After AGENCY2 the next eligible one is AGENCY6 (AGENCY5 is onsite only); AGENCY7 assesses services only.
+        // After AGENCY2 the next eligible one is AGENCY6: AGENCY3 is of another state, AGENCY4 of another district (AGENCY5 is onsite only).
         At("Submitted");
         _lastRoundRobinAgencyId = 20;
         Assert.Equal("AGENCY6", await AllotAsync());
@@ -296,6 +318,19 @@ public sealed class SchemeVerificationTests : IDisposable
     }
 
     [Fact]
+    public async Task Agency_rejection_with_an_auto_reason_goes_to_the_master_admin_when_auto_allot_is_off()
+    {
+        _autoAllot = false;
+        At("WithAgency", agency: "AGENCY1");
+        var r = await (await SignIn("AGENCY1")).PostAsJsonAsync("/api/staff/scheme-verification/agency/900/reject", new { reasonId = "conflict" });
+        r.EnsureSuccessStatusCode();
+        Assert.Contains("ZED team", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Equal(("Submitted", (object?)null, (object?)"AGENCY1"), (Status, _app["CertificationBodyUserId"], _app["RejectedAgencies"]));
+        Assert.Contains(_host.Email.Sent, m => m.Subject.StartsWith("Application waiting for allotment (Desktop verification)")
+            && m.HtmlBody.Contains("Automatic allotment is off"));
+    }
+
+    [Fact]
     public async Task Agency_rejection_with_a_master_admin_reason_returns_it_to_the_master_admin()
     {
         At("WithAgency", agency: "AGENCY1");
@@ -361,12 +396,61 @@ public sealed class SchemeVerificationTests : IDisposable
         Assert.Contains("Invoice amount does not match", mail.HtmlBody);
         Assert.Contains("round 1 of 2", mail.HtmlBody);
 
-        // The unit answered; after the last round no correction is offered: reject or recommend.
+    }
+
+    [Fact]
+    public async Task Correction_with_no_round_left_rejects_the_application_automatically()
+    {
+        // The unit answered the last round (2 of 2) and an amount is still not valid.
         _app["CorrectionRound"] = 2;
+        _app["FormChecks"] = FieldCheck.Serialize(AllPaths.ToDictionary(p => p,
+            p => p == "items/1/amount" ? new FieldCheck("No", "Invoice amount does not match", 2, "DA1", DateTime.Now) : new FieldCheck("Yes", null, 2, "DA1", DateTime.Now)));
         At("Verifying", "AGENCY1", "DA1", accepted: true);
+        var da = await SignIn("DA1");
+        // The page is told before the click that Correction now rejects.
+        var actions = (await da.GetFromJsonAsync<JsonElement>("/api/staff/scheme-verification/assessor/900")).GetProperty("actions");
+        Assert.True(actions.GetProperty("correction").GetBoolean());
+        Assert.True(actions.GetProperty("correctionRejects").GetBoolean());
+        Assert.Equal(0, actions.GetProperty("roundsLeft").GetInt32());
+
         var r = await da.PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "correction" });
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        Assert.Contains("No correction round is left", await r.ProblemTitle());
+        r.EnsureSuccessStatusCode();
+        Assert.Contains("rejected", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Equal(("Rejected", 5, 2), (Status, (int)_app["VerificationStatus"]!, (int)_app["CorrectionRound"]!));
+        var reason = _app["ReasonForRejection"]?.ToString() ?? "";
+        Assert.StartsWith(SchemeAssessorController.LastRoundReason, reason);
+        Assert.Contains("Amount: Invoice amount does not match", reason);
+        Assert.NotNull(_app["DecidedOn"]);
+        // The unit gets the rejected mail (it may apply again).
+        var mail = Assert.Single(_host.Email.Sent, m => m.To == "msme@acme.test");
+        Assert.Contains(SchemeAssessorController.LastRoundReason, mail.HtmlBody);
+        Assert.Contains(History, h => h.Contains("rejected automatically"));
+    }
+
+    [Fact]
+    public async Task Bank_account_details_are_checkable_when_the_bank_block_is_on()
+    {
+        var answers = FormAnswers.Parse(Answers(1, 2));
+        Assert.Contains(AccountPath, SchemeReview.CheckablesOf(Definition, answers).Select(c => c.Path));
+        var noBank = Definition with { Form = Definition.Form with { Blocks = new SchemeBlocks { BankAccount = false } } };
+        Assert.DoesNotContain(AccountPath, SchemeReview.CheckablesOf(noBank, answers).Select(c => c.Path));
+
+        At("Verifying", "AGENCY1", "DA1", accepted: true);
+        var da = await SignIn("DA1");
+        var d = await da.GetFromJsonAsync<JsonElement>("/api/staff/scheme-verification/assessor/900");
+        var bank = d.GetProperty("sections").EnumerateArray().Single(s => s.GetProperty("key").GetString() == "_bank");
+        var account = bank.GetProperty("items")[0].GetProperty("fields")[0];
+        Assert.Equal((AccountPath, "123456789012, SBIN0001234, SBI, Kanpur"), (account.GetProperty("path").GetString(), account.GetProperty("value").GetString()));
+
+        // Not valid with a remark: the unit corrects it in the next round.
+        Assert.Equal(HttpStatusCode.BadRequest, (await da.PutAsJsonAsync("/api/staff/scheme-verification/assessor/900/checks",
+            new { checks = new[] { new { path = AccountPath, status = "No", remarks = (string?)null } } })).StatusCode);
+        (await da.PutAsJsonAsync("/api/staff/scheme-verification/assessor/900/checks",
+            new { checks = new[] { new { path = AccountPath, status = "No", remarks = (string?)"IFSC does not match the cheque" } } })).EnsureSuccessStatusCode();
+        Assert.Equal(("No", "IFSC does not match the cheque"), (Checks[AccountPath].Status, Checks[AccountPath].Remarks));
+        (await da.PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "correction" })).EnsureSuccessStatusCode();
+        Assert.Equal("Correction", Status);
+        Assert.Contains("IFSC does not match the cheque", Assert.Single(_host.Email.Sent, m => m.To == "msme@acme.test").HtmlBody);
     }
 
     [Fact]
@@ -392,7 +476,7 @@ public sealed class SchemeVerificationTests : IDisposable
         (await da.PutAsJsonAsync("/api/staff/scheme-verification/assessor/900/checks", new { checks = new[] { new { path = "items/0/amount", status = "Yes", remarks = (string?)null } } })).EnsureSuccessStatusCode();
         var r = await da.PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        Assert.Contains("5 left", await r.ProblemTitle());
+        Assert.Contains("6 left", await r.ProblemTitle());
 
         (await da.PutAsJsonAsync("/api/staff/scheme-verification/assessor/900/checks", CheckAll())).EnsureSuccessStatusCode();
         (await da.PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" })).EnsureSuccessStatusCode();
@@ -455,8 +539,67 @@ public sealed class SchemeVerificationTests : IDisposable
         var admin = await SignIn("MADMIN");
         (await admin.PostAsJsonAsync("/api/staff/scheme-applications/900/resume", new { })).EnsureSuccessStatusCode();
         Assert.Equal("Verifying", Status);
-        Assert.Null(_app["HoldReason"]);
+        Assert.Equal("Resumed: Certificate B-1 SUSPENDED (was Verifying)", _app["HoldReason"]);
+        // The Master Admin decided: the next sweep does not hold it again while the certificate stays suspended.
+        _inProgress.Clear();
+        _inProgress.Add(new Dictionary<string, object?>(_app));
+        using (var scope = _host.Services.CreateScope())
+            Assert.Equal(0, (await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None)).Held);
+        Assert.Equal("Verifying", Status);
         Assert.Contains(_host.Email.Sent, m => m.To == "msme@acme.test" && m.Subject.StartsWith("Application resumed") && m.HtmlBody.Contains("Desktop verification"));
+    }
+
+    [Fact]
+    public async Task Sweep_holds_an_approved_unpaid_application_and_resume_returns_it_to_approved()
+    {
+        At("Approved", "AGENCY1", "DA1", accepted: true);
+        _app["ApprovedAmount"] = 45000m;
+        _inProgress.Add(new Dictionary<string, object?>(_app));
+        _heldCertificates.Add(new { ZedId = Zed, Certification = "Bronze", CertNo = "B-1", Phase = "WITHDRAWN" });
+        Assert.Contains("'Approved'", SchemeSweep.InProgressSql);
+        using (var scope = _host.Services.CreateScope())
+            Assert.Equal(new SchemeSweep.Result(0, 1), await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None));
+        // On hold: VerificationStatus 2, so the NEFT pages (VerificationStatus 4) no longer list it.
+        Assert.Equal(("OnHold", 2, "Certificate B-1 WITHDRAWN (was Approved)"), (Status, (int)_app["VerificationStatus"]!, _app["HoldReason"]));
+
+        (await (await SignIn("MADMIN")).PostAsJsonAsync("/api/staff/scheme-applications/900/resume", new { })).EnsureSuccessStatusCode();
+        Assert.Equal(("Approved", 4, 45000m), (Status, (int)_app["VerificationStatus"]!, (decimal)_app["ApprovedAmount"]!));
+
+        // A paid application (VerificationStatus 6) is never held.
+        _app["VerificationStatus"] = 6;
+        _inProgress.Clear();
+        _inProgress.Add(new Dictionary<string, object?>(_app));
+        using (var scope = _host.Services.CreateScope())
+            Assert.Equal(new SchemeSweep.Result(0, 0), await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Sweep_holds_a_registration_scheme_application_when_the_units_highest_certificate_is_suspended()
+    {
+        At("Verifying", "AGENCY1", "DA1", accepted: true);
+        _app["SchemeLevel"] = SchemeRules.Registration;
+        _app["SchemeCertNo"] = Zed;
+        _inProgress.Add(new Dictionary<string, object?>(_app));
+        // A suspended lower certificate does not hold it while the highest (Silver) is valid.
+        _unitCertificates.Add(new { ZedId = Zed, Certification = "Bronze", CertNo = "B-1", Phase = "SUSPENDED", CertifiedOn = new DateTime(2025, 1, 1) });
+        _unitCertificates.Add(new { ZedId = Zed, Certification = "Silver", CertNo = "S-1", Phase = (string?)null, CertifiedOn = new DateTime(2026, 1, 1) });
+        using (var scope = _host.Services.CreateScope())
+            Assert.Equal(new SchemeSweep.Result(0, 0), await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None));
+        Assert.Equal("Verifying", Status);
+
+        // The highest becomes suspended: on hold.
+        _unitCertificates.Clear();
+        _unitCertificates.Add(new { ZedId = Zed, Certification = "Bronze", CertNo = "B-1", Phase = (string?)null, CertifiedOn = new DateTime(2025, 1, 1) });
+        _unitCertificates.Add(new { ZedId = Zed, Certification = "Silver", CertNo = "S-1", Phase = (string?)"SUSPENDED", CertifiedOn = new DateTime(2026, 1, 1) });
+        using (var scope = _host.Services.CreateScope())
+            Assert.Equal(new SchemeSweep.Result(0, 1), await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None));
+        Assert.Equal(("OnHold", "Certificate S-1 SUSPENDED (was Verifying)"), (Status, _app["HoldReason"]));
+        // An expired higher certificate does not count as the highest.
+        Assert.Equal("B-1", SchemeSweep.HighestCertificate(
+        [
+            new SchemeSweep.CertRow { ZedId = Zed, Certification = "Bronze", CertNo = "B-1", Phase = null },
+            new SchemeSweep.CertRow { ZedId = Zed, Certification = "Gold", CertNo = "G-1", Phase = "EXPIRED" },
+        ])?.CertNo);
     }
 
     [Fact]
@@ -475,12 +618,27 @@ public sealed class SchemeVerificationTests : IDisposable
     // ----- users' scheme ticks -----
 
     [Fact]
+    public async Task Normal_assessment_agencies_cannot_be_ticked_and_are_not_eligible()
+    {
+        // The round robin and the manual list read desktop verification agencies only (the SQL), whatever ticks an assessment agency has.
+        Assert.DoesNotContain("AgencyKind IS NULL", SchemeAllotment.CandidatesSql);
+        var admin = await SignIn("MADMIN");
+        var t = await admin.GetFromJsonAsync<JsonElement>("/api/staff/users/agencies/AGENCYNOFV/schemes");
+        Assert.False(t.GetProperty("schemes")[0].GetProperty("canDesktop").GetBoolean());
+        Assert.False(t.GetProperty("schemes")[0].GetProperty("canOnsite").GetBoolean());
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCYNOFV/schemes",
+            new { ticks = new[] { new { code = Code, desktop = true, onsite = false } } })).StatusCode);
+        var options = await admin.GetFromJsonAsync<JsonElement>("/api/staff/scheme-applications/900/agencies");
+        Assert.DoesNotContain("AGENCYNOFV", options.EnumerateArray().Select(o => o.GetProperty("userId").GetString()));
+    }
+
+    [Fact]
     public async Task Ticks_master_admin_sets_an_agencys_and_the_agency_its_assessors_within_its_own()
     {
         var admin = await SignIn("MADMIN");
         var t = await admin.GetFromJsonAsync<JsonElement>("/api/staff/users/agencies/AGENCY1/schemes");
         Assert.True(t.GetProperty("schemes")[0].GetProperty("desktop").GetBoolean());
-        // Phase 2: an assessment agency verifies at the desktop only (onsite is for the onsite verification agencies).
+        // A desktop verification agency verifies at the desktop only (onsite is for the onsite verification agencies).
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCY2/schemes", new { ticks = new[] { new { code = Code, desktop = true, onsite = true } } })).StatusCode);
         (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCY2/schemes", new { ticks = new[] { new { code = Code, desktop = true, onsite = false } } })).EnsureSuccessStatusCode();
         var save = _host.Sql.Calls.Last(c => c.Name == SchemeTicksController.SaveSql);

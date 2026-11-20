@@ -175,11 +175,12 @@ public sealed class MsmeAppNcTests : MsmeAppTestBase
     }
 }
 
+/// <summary>
+/// 2026-11-20 (the product owner): Financial Assistance is applied for on the portal (the dashboard's Financial Assistance card),
+/// so the ZED MSME app refuses new claims and their documents, with a message pointing there; nothing is stored or mailed.
+/// </summary>
 public sealed class MsmeAppFinancialTests : MsmeAppTestBase
 {
-    private void Certified(string? level = "Silver") =>
-        Host.Sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE"] = _ => level is null ? FakeSql.Sets() : FakeSql.Sets([new { CertificationType = level }]);
-
     private const string Claim = """
         {"ZedId":"ZEDMSME000001",
          "CertificationDetails":{"CategoryOfCertificate":"ISO","CertficateNumber":"C1","Photos":[{"photoId":"c1","isPdf":true}]},
@@ -187,94 +188,32 @@ public sealed class MsmeAppFinancialTests : MsmeAppTestBase
          "AccountDetails":{"AccountNo":"123","IfscCode":"SBIN0000001","Photos":[{"photoId":"q1"}]}}
         """;
 
+    private const string Moved = Zed.Main.MobileApi.Controllers.MsmeController.FinancialAssistanceMovedMessage;
+
     [Fact]
-    public async Task SubmitFinancialData_inserts_the_claim_answers_as_text_and_mails_a_confirmation()
+    public async Task SubmitFinancialData_refuses_a_new_claim_and_points_to_the_portal()
     {
-        Certified();
-        Host.Sql.Procs["SP_EMAIL_GET_DETAILS"] = _ => FakeSql.Sets([new { EmailId = "unit@example.com", EnterpriseName = "Acme", Password = "AssessorSecret1" }]);
+        Host.Sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE"] = _ => FakeSql.Sets([new { CertificationType = "Silver" }]);
         var r = await Client.PostAsync("/Msme/SubmitFinancialData", Json(Claim));
         Assert.Equal("text/html", r.Content.Headers.ContentType!.MediaType);
-        var e = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
-        AssertOk(e);
-
-        var args = Args("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE");
-        Assert.Equal("App", FakeSql.Arg(args, "SubmittedFrom"));
-        Assert.Equal("123", FakeSql.Arg(args, "AccountNo"));
-        var photos = Tvp(args, "PhotoListApp")!;
-        Assert.Equal(["c1.pdf", "x1.jpg", "i1.jpg", "q1.jpg"], photos.Rows.Cast<System.Data.DataRow>().Select(x => (string)x["PhotoId"]).ToArray());
-        Assert.Equal("Copy of Cancelled Cheque", photos.Rows[3]["PhotoType"]);
-        Assert.Equal("Silver", FakeSql.Arg(Args("SP_EMAIL_GET_DETAILS"), "Certification"));
-        var mail = Assert.Single(Host.Email.Sent);
-        Assert.Equal("ZED Financial Assistance Documents Upload Confirmation - " + ZedId, mail.Subject);
-        Assert.DoesNotContain("Secret1", mail.HtmlBody);
-    }
-
-    [Fact]
-    public async Task SubmitFinancialData_computes_the_eligible_amount_and_ignores_the_apps()
-    {
-        Certified();
-        var claim = Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"1000.80\",\"EligibleAmount\":\"999999\"");
-        AssertOk(JsonDocument.Parse(await (await Client.PostAsync("/Msme/SubmitFinancialData", Json(claim))).Content.ReadAsStringAsync()).RootElement);
-        var args = Args("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE");
-        Assert.Equal("1000.8", FakeSql.Arg(args, "AmountPaid"));
-        Assert.Equal("750", FakeSql.Arg(args, "EligibleAmount"));
-
-        Host.Sql.Calls.Clear();
-        AssertOk(JsonDocument.Parse(await (await Client.PostAsync("/Msme/SubmitFinancialData",
-            Json(Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"900000\"")))).Content.ReadAsStringAsync()).RootElement);
-        Assert.Equal("50000", FakeSql.Arg(Args("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"), "EligibleAmount"));
-
-        Host.Sql.Calls.Clear();
-        var bad = await Client.PostAsync("/Msme/SubmitFinancialData", Json(Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"abc\"")));
-        AssertFail(JsonDocument.Parse(await bad.Content.ReadAsStringAsync()).RootElement, "Invalid Details.");
+        AssertFail(JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement, Moved);
+        Assert.Contains("Financial Assistance card", Moved);
         Assert.Empty(CallsTo("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"));
-    }
-
-    [Fact]
-    public async Task SubmitFinancialData_needs_a_completed_certification_and_maps_the_procedures_refusal()
-    {
-        Certified(null);
-        var r = await Client.PostAsync("/Msme/SubmitFinancialData", Json(Claim));
-        AssertFail(JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement, "Invalid Details.");
-        Assert.Empty(CallsTo("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"));
-
-        Certified();
-        Host.Sql.Procs["SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"] = _ =>
-            throw new MsmeAppDbException("Conversion failed when converting the varchar value 'ABC' to data type bit.");
-        r = await Client.PostAsync("/Msme/SubmitFinancialData", Json(Claim));
-        AssertFail(JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement,
-            "Financial assistance has already been applied for, or the unit is not eligible.");
         Assert.Empty(Host.Email.Sent);
-
-        r = await Client.PostAsync("/Msme/SubmitFinancialData", Json("""{"ZedId":"ZEDMSME000001"}"""));
-        AssertFail(JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement, "No data found.");
     }
 
     [Fact]
-    public async Task SubmitFinancialPhotos_saves_under_the_zed_id_and_refuses_traversal()
+    public async Task SubmitFinancialPhotos_refuses_and_stores_nothing()
     {
-        Certified();
         var form = new MultipartFormDataContent
         {
-            { new StringContent("someone"), "userName" },
             { new StringContent(ZedId), "zedId" },
             { new StringContent("c1"), "photos[0].photoId" },
-            { new StringContent("true"), "photos[0].isPdf" },
             { new StringContent(Convert.ToBase64String("%PDF-1.4"u8.ToArray())), "photos[0].photo" },
             { FilePart(Png()), "files", "inv1.png" },
         };
-        AssertOk(await Post("/Msme/SubmitFinancialPhotos", form));
-        Assert.True(File.Exists(StoragePath("Photos", ZedId, "FinancialAssistance", "c1.pdf")));
-        Assert.True(File.Exists(StoragePath("Photos", ZedId, "FinancialAssistance", "inv1.png")));
-        Assert.Equal(ZedId, FakeSql.Arg(Args("SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE"), "ZedId"));
-
-        AssertFail(await Post("/Msme/SubmitFinancialPhotos",
-            Json($$"""{"zedId":"../../../evil-fa","photos":[{"photoId":"c1","photo":"{{PngBase64}}"}]}""")), "Invalid Data.");
-        AssertNothingOutside("evil-fa");
-        AssertFail(await Post("/Msme/SubmitFinancialPhotos", Json("""{"zedId":"ZEDMSME000001"}""")), "No photos found.");
-        Certified(null);
-        AssertFail(await Post("/Msme/SubmitFinancialPhotos",
-            Json($$"""{"zedId":"{{ZedId}}","photos":[{"photoId":"c2","photo":"{{PngBase64}}"}]}""")), "Invalid Details.");
-        Assert.False(File.Exists(StoragePath("Photos", ZedId, "FinancialAssistance", "c2.jpg")));
+        AssertFail(await Post("/Msme/SubmitFinancialPhotos", form), Moved);
+        Assert.False(File.Exists(StoragePath("Photos", ZedId, "FinancialAssistance", "c1.pdf")));
+        Assert.False(File.Exists(StoragePath("Photos", ZedId, "FinancialAssistance", "inv1.png")));
     }
 }

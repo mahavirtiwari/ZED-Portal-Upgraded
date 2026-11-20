@@ -21,7 +21,7 @@ export interface SchemeTile {
   details: string | null;
   icon: string;
   state: SchemeState;
-  /** Why it is locked: notEligible, notCertified, levelNotCovered, handholding. */
+  /** Why it is locked: notEligible, financialBlocked, notCertified, suspended, levelNotCovered, handholding, notGraded, legacyInProgress, closed. */
   note: string | null;
   /** The server's sentence for a locked scheme (the standard wording of the note). */
   message: string | null;
@@ -36,10 +36,14 @@ export interface SchemeTile {
 /** GET api/msme/incentive-schemes. */
 export interface SchemesDashboard {
   schemes: SchemeTile[];
-  /** The Technology Upgradation card: direct = without the consultant's recommendation, through the scheme. */
-  tu: { direct: boolean; scheme: SchemeTile | null };
-  /** The Financial Assistance card: its "Activates after" levels (empty: all) and the unit's current FA level. */
-  fa: { activatesAfter: string[]; level: string | null };
+  /**
+   * The Technology Upgradation card: direct = without the consultant's recommendation, through the scheme; the scheme's tile
+   * (also while a direct application is not final after the card went back to the recommendation); legacy = an application of
+   * the consultant-recommended flow is in progress (the old page).
+   */
+  tu: { direct: boolean; scheme: SchemeTile | null; legacy?: boolean };
+  /** 2026-11-20: the Financial Assistance card opens the built-in scheme FA; legacy = an application made before is in progress (the old page). */
+  fa: { scheme: SchemeTile | null; legacy: boolean };
 }
 
 export type FieldType = 'text' | 'longtext' | 'number' | 'amount' | 'date' | 'choice' | 'multichoice' | 'yesno' | 'copy' | 'document' | 'photo';
@@ -60,6 +64,8 @@ export interface FormField {
   copyOf?: string | null;
   isClaim?: boolean;
   maxFiles?: number | null;
+  /** The value cannot repeat across the unit's other applications of the scheme. */
+  unique?: boolean;
 }
 
 export interface PickSource {
@@ -108,6 +114,10 @@ export interface SchemeInfo {
   activationLevels: string[];
   correctionRounds: number;
   correctionDays: number;
+  /** The scheme's own texts (plain text), or null: the global wording of Admin → Texts. */
+  disclaimer?: string | null;
+  instructions?: string | null;
+  declaration?: string | null;
 }
 
 export interface FormItem {
@@ -139,7 +149,10 @@ export interface SchemeApplication {
   submittedOn: string | null;
   decidedOn: string | null;
   reason: string | null;
+  /** The applicant's sentence for a hold (never the staff's stored reason). */
   holdReason: string | null;
+  /** While on hold: suspended, withdrawn or other (the page words it through Admin → Texts). */
+  holdKind?: 'suspended' | 'withdrawn' | 'other' | null;
   account: { accountNo: string | null; ifscCode: string | null; branchAddress: string | null; bankName: string | null } | null;
 }
 
@@ -285,6 +298,15 @@ export function dateBound(bound: string | null | undefined, certified: string | 
   return date ? date[1] : '';
 }
 
+/** The applicant's sentence for an application on hold (2026-11-20: never the staff's "Certificate X SUSPENDED (was …)"). */
+export function holdText(kind: string | null | undefined): string {
+  switch (kind) {
+    case 'suspended': return t('msme.incentiveScheme.hold.suspended', 'Your certificate is suspended; the ZED team will resume or close the application.');
+    case 'withdrawn': return t('msme.incentiveScheme.hold.withdrawn', 'Your certificate is withdrawn; the ZED team will resume or close the application.');
+    default: return t('msme.incentiveScheme.hold.other', 'The ZED team will resume or close the application.');
+  }
+}
+
 /** Why a scheme is locked, in the Admin's wording (the reason keys of the API). */
 export function lockedNote(note: string | null | undefined, levels: string[]): string | null {
   const names = levels.map(levelName).join(', ');
@@ -294,6 +316,11 @@ export function lockedNote(note: string | null | undefined, levels: string[]): s
       : t('msme.incentiveScheme.locked.notCertified', 'Opens after your unit is ZED certified');
     case 'levelNotCovered': return t('msme.incentiveScheme.locked.levelNotCovered', 'For units certified at {levels}', { levels: names });
     case 'handholding': return t('msme.incentiveScheme.locked.handholding', 'Opens once your Handholding support is completed');
+    case 'financialBlocked': return t('msme.incentiveScheme.locked.financialBlocked', 'Financial assistance is not available for your unit. Please contact ZED team.');
+    case 'suspended': return t('msme.incentiveScheme.locked.suspended', 'Your highest certificate is suspended or withdrawn. The scheme opens again once it is active.');
+    case 'notGraded': return t('msme.incentiveScheme.locked.notGraded', 'This scheme is not yet set up for your unit\'s certification or size. Please contact ZED team.');
+    case 'legacyInProgress': return t('msme.incentiveScheme.locked.legacyInProgress', 'Your earlier application for this benefit is still in progress. It continues on its own page.');
+    case 'closed': return t('msme.incentiveScheme.locked.closed', 'This scheme is not taking new applications now.');
     default: return null;
   }
 }

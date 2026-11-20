@@ -256,8 +256,9 @@
     </div>
   }
 </form>
-<!-- 2026-11-20 (incentive schemes, Part C): the schemes the assessor verifies (its agency ticks them, within its own), saved on its own. -->
-@if (!isNew && !consultancy && userId) {
+<!-- 2026-11-20 (incentive schemes, Part C): the schemes the assessor verifies (its agency ticks them, within its own), saved on its own.
+     2026-11-20 (the product owner): only an incentive verification agency (desktop / onsite) verifies schemes, so only its assessors have them. -->
+@if (!isNew && !consultancy && userId && incentiveAgency) {
   <zed-scheme-ticks-panel kind="assessors" [userId]="userId" />
 }
 

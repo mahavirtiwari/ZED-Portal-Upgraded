@@ -25,6 +25,12 @@ namespace Zed.Portal.Features.Msme.Schemes;
 /// when the unit held no ZED certificate (CertificationType NULL); the "already submitted" check ran only
 /// in the browser; procedure and exception texts were shown to the user.
 /// </para>
+/// <para>
+/// 2026-11-20 (the product owner): Financial Assistance moved to the incentive schemes framework; the dashboard's Financial
+/// Assistance card opens the built-in scheme (<see cref="Incentives.SchemeTemplates.FaCode"/>). This page no longer takes new
+/// applications (<see cref="NewApplicationsMessage"/>; the ZED MSME app refuses them too): it shows the unit's applications made
+/// here, and the card opens it for one still in progress until it is paid or rejected.
+/// </para>
 /// </summary>
 [Route("api/msme/schemes/fa")]
 public sealed class MsmeFinancialAssistanceController(
@@ -34,9 +40,12 @@ public sealed class MsmeFinancialAssistanceController(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
-    Incentives.SchemeStore schemes,
     ILogger<MsmeFinancialAssistanceController> log) : MsmeApiController
 {
+    /// <summary>The answer to a new application here (web and ZED MSME app).</summary>
+    public const string NewApplicationsMessage =
+        "Financial Assistance is now applied for through the Financial Assistance card on your dashboard of the ZED portal. Please open it there.";
+
     public const string CertificateCopy = "Copy of Certificate";
     public const string CaCertificate = "CA certificate of expenditure";
     public const string InvoiceCopy = "Copy of Invoice";
@@ -114,11 +123,17 @@ public sealed class MsmeFinancialAssistanceController(
 
     public sealed record SubmitResponse(string Message, decimal AmountPaid, decimal EligibleAmount);
 
-    /// <summary>POST api/msme/schemes/fa — SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE, then the confirmation mail.</summary>
+    /// <summary>
+    /// POST api/msme/schemes/fa — SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE, then the confirmation mail. Since 2026-11-20 refused by
+    /// <see cref="StateAsync"/> (new applications go through the Financial Assistance card); the checks below stay for the record.
+    /// </summary>
     [HttpPost]
     [MsmeEditAudit("Financial assistance: application submitted")]
     public async Task<ActionResult<SubmitResponse>> Submit(SubmitRequest req, CancellationToken ct)
     {
+        var before = await StateAsync(ct);
+        if (before is null) return NotFound();
+        if (before.Value.Refusal is { } closed) return this.Problem400(closed);
         if (Validate(req) is { } invalid) return this.Problem400(invalid);
         var root = SchemeUploads.StorageRoot(env, portal.Value);
         var photos = Photos(root, req.Documents!);
@@ -248,23 +263,18 @@ public sealed class MsmeFinancialAssistanceController(
     /// <summary>The DynamicPhotoList rows (PhotoId, Name = document type, TimeStamp), or null when a file is not in the MSME's folder.</summary>
     private DataTable? Photos(string root, IReadOnlyList<SchemeDocumentRef> docs) => SchemePhotoList.Build(root, ZedId, SchemeUploads.FaFolder, docs);
 
-    /// <summary>The unit, the level the application will be for, and why the MSME may not apply now (null = may apply).</summary>
+    /// <summary>
+    /// The unit, the level an application would be for, and why the MSME may not apply here (null = may apply). Since 2026-11-20
+    /// always refused: a unit without benefits as before, every other with <see cref="NewApplicationsMessage"/> (the applications
+    /// already made here stay visible; nothing more is asked of the MSME on them).
+    /// </summary>
     private async Task<(SchemeUnit Unit, string? Certification, string? Refusal)?> StateAsync(CancellationToken ct)
     {
         var unit = await SchemeUnit.LoadAsync(db, ZedId, ct);
         if (unit is null) return null;
         if (!unit.EligibleForFinancial || !unit.EligibleForBenefits)
             return (unit, null, "You are not eligible for benefits. Please contact ZED team.");
-        if (unit.FaSubmitted) return (unit, null, "Data already submitted.");
-        var certification = FaApplications.Canonical(
-            (await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE", new { ZedId }, ct)).Scalar(0));
-        if (certification is null) return (unit, null, "Financial assistance can be applied for after the unit is ZED certified.");
-        // 2026-11-20 (incentive schemes, approved): the card's "Activates after" (Bronze / Silver / Gold; none ticked = all three).
-        var levels = Incentives.Applicant.MsmeIncentiveSchemesController.FaLevels(
-            (await schemes.CardSettingsAsync(ct)).GetValueOrDefault(Incentives.Applicant.MsmeIncentiveSchemesController.FaCard));
-        if (levels.Count > 0 && !levels.Contains(certification, StringComparer.OrdinalIgnoreCase))
-            return (unit, null, $"Financial assistance opens after {string.Join(" / ", levels)} certification.");
-        return (unit, certification, null);
+        return (unit, null, NewApplicationsMessage);
     }
 
     private ApplicationDto ToDto(FaApplication a) => new(

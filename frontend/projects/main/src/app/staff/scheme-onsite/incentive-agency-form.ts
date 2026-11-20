@@ -7,7 +7,8 @@ import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
-import { OnsiteAgencyRequest, OnsiteDistrict, OnsiteSchemeOption, SchemeOnsiteApi } from './scheme-onsite.api';
+import { agencyTypeLabel } from './incentive-agencies';
+import { IncentiveAgencyType, OnsiteAgencyRequest, OnsiteDistrict, OnsiteSchemeOption, SchemeOnsiteApi } from './scheme-onsite.api';
 
 /** A state of the form: the whole state, or the districts ticked (codes). */
 interface AreaEdit {
@@ -20,20 +21,33 @@ interface AreaEdit {
 }
 
 /**
- * 2026-11-20 (the user, incentive schemes phase 2): add or edit an onsite verification agency — its details and SPOC, the states it
- * serves and, per state, the whole state or its districts (the onsite allotment is by the unit's state and district), and the
- * Desktop + Onsite schemes it verifies onsite. Created as an assessment agency login and kept apart from them (no assessment work).
+ * 2026-11-20 (the product owner): add or edit an incentive verification agency — its type (desktop or onsite verification: chosen
+ * at creation, never changed), its details and SPOC, the states it serves and, per state, the whole state or its districts (the
+ * allotment of its stage is by the unit's state and district), and the schemes it verifies (a desktop agency: any scheme; an onsite
+ * agency: the Desktop + Onsite schemes). Created as an assessment agency login and kept apart from them (no assessment work).
  */
 @Component({
-  selector: 'zed-staff-onsite-agency-form',
+  selector: 'zed-staff-incentive-agency-form',
   imports: [FormsModule, RouterLink, PageHead, TextPipe],
   host: { class: 'd-block' },
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="userId ?? null">
-      <a routerLink="/staff/scheme-onsite/agencies" class="btn btn-default">{{ 'Back' | t: 'staff.schemeOnsite.form.back' }}</a>
+      <a routerLink="/staff/scheme-agencies" class="btn btn-default">{{ 'Back' | t: 'staff.schemeOnsite.form.back' }}</a>
     </zed-page-head>
     @if (error()) { <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div> }
     <form (ngSubmit)="submit()" novalidate>
+      <section class="zed-card of-sec" aria-labelledby="of-type-h">
+        <h4 id="of-type-h">{{ 'Type of agency' | t: 'staff.incentiveAgencies.form.typeTitle' }}<span class="req">*</span></h4>
+        @if (userId) {
+          <p class="m-0" data-type-fixed><b>{{ type() ? typeLabel(type()!) : '' }}</b> <small class="sub">{{ 'The type of an agency cannot be changed.' | t: 'staff.incentiveAgencies.form.typeFixed' }}</small></p>
+        } @else {
+          <div class="of-radios of-types" role="radiogroup" [attr.aria-label]="'Type of agency' | t: 'staff.incentiveAgencies.form.typeTitle'">
+            <label><input type="radio" name="agencyType" value="Desktop" [checked]="type() === 'Desktop'" (change)="setType('Desktop')" /> {{ 'Desktop verification' | t: 'staff.incentiveAgencies.type.desktop' }}</label>
+            <label><input type="radio" name="agencyType" value="Onsite" [checked]="type() === 'Onsite'" (change)="setType('Onsite')" /> {{ 'Onsite verification' | t: 'staff.incentiveAgencies.type.onsite' }}</label>
+          </div>
+          <p class="sub m-0">{{ 'Desktop and onsite verification are always done by different agencies: an agency is of one type only.' | t: 'staff.incentiveAgencies.form.typeHelp' }}</p>
+        }
+      </section>
       <section class="zed-card of-sec" aria-labelledby="of-org-h">
         <h4 id="of-org-h">{{ 'Agency' | t: 'staff.schemeOnsite.form.agencyTitle' }}</h4>
         <div class="of-grid">
@@ -76,7 +90,7 @@ interface AreaEdit {
 
       <section class="zed-card of-sec" aria-labelledby="of-area-h">
         <h4 id="of-area-h">{{ 'States and districts' | t: 'staff.schemeOnsite.form.areaTitle' }}<span class="req">*</span></h4>
-        <p class="sub">{{ 'Applications go to the onsite agencies of the unit’s plant state and district by round robin. Choose the whole state or some of its districts.' | t: 'staff.schemeOnsite.form.areaHelp' }}</p>
+        <p class="sub">{{ 'Applications go to the agencies of the unit’s plant state and district by round robin. Choose the whole state or some of its districts.' | t: 'staff.incentiveAgencies.form.areaHelp' }}</p>
         @for (a of areas(); track a.state) {
           <div class="of-area" [attr.data-state]="a.state">
             <div class="of-area-head">
@@ -115,16 +129,22 @@ interface AreaEdit {
       </section>
 
       <section class="zed-card of-sec" aria-labelledby="of-schemes-h">
-        <h4 id="of-schemes-h">{{ 'Schemes verified onsite' | t: 'staff.schemeOnsite.form.schemesTitle' }}<span class="req">*</span></h4>
-        @for (s of schemes(); track s.code) {
-          <label class="of-scheme"><input type="checkbox" [checked]="picked().has(s.code)" (change)="toggleScheme(s.code)" /> {{ s.name }} <small>({{ s.code }})</small>@if (!s.active) { <span class="zed-chip">{{ 'switched off' | t: 'staff.schemeOnsite.form.schemeOff' }}</span> }</label>
-        } @empty {
-          <p class="sub m-0">{{ 'No scheme has the Desktop + Onsite verification flow yet (Admin → Incentive Schemes → Verification).' | t: 'staff.schemeOnsite.form.noSchemes' }}</p>
+        <h4 id="of-schemes-h">{{ type() === 'Desktop' ? ('Schemes verified at the desktop' | t: 'staff.incentiveAgencies.form.desktopSchemesTitle') : ('Schemes verified onsite' | t: 'staff.schemeOnsite.form.schemesTitle') }}<span class="req">*</span></h4>
+        @if (!type()) {
+          <p class="sub m-0">{{ 'Choose the type of agency first.' | t: 'staff.incentiveAgencies.form.typeFirst' }}</p>
+        } @else {
+          @for (s of schemes(); track s.code) {
+            <label class="of-scheme"><input type="checkbox" [checked]="picked().has(s.code)" (change)="toggleScheme(s.code)" /> {{ s.name }} <small>({{ s.code }})</small>@if (!s.active) { <span class="zed-chip">{{ 'switched off' | t: 'staff.schemeOnsite.form.schemeOff' }}</span> }</label>
+          } @empty {
+            <p class="sub m-0">{{ type() === 'Desktop'
+              ? ('No incentive scheme is defined yet (Admin → Incentive Schemes).' | t: 'staff.incentiveAgencies.form.noDesktopSchemes')
+              : ('No scheme has the Desktop + Onsite verification flow yet (Admin → Incentive Schemes → Verification).' | t: 'staff.schemeOnsite.form.noSchemes') }}</p>
+          }
         }
       </section>
 
       <div class="of-bar">
-        <a routerLink="/staff/scheme-onsite/agencies" class="btn btn-default">{{ 'Cancel' | t: 'staff.schemeOnsite.form.cancel' }}</a>
+        <a routerLink="/staff/scheme-agencies" class="btn btn-default">{{ 'Cancel' | t: 'staff.schemeOnsite.form.cancel' }}</a>
         <button type="submit" class="btn btn-primary" id="of-save" [disabled]="saving()">{{ userId ? ('Save changes' | t: 'staff.schemeOnsite.form.save') : ('Create agency' | t: 'staff.schemeOnsite.form.create') }}</button>
       </div>
     </form>
@@ -140,6 +160,7 @@ interface AreaEdit {
     .of-area { border: 1px solid #dde7e8; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
     .of-area-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
     .of-radios { display: flex; gap: 14px; margin-right: auto; }
+    .of-types { margin-bottom: 6px; }
     .of-radios label { display: inline-flex; align-items: center; gap: 4px; font-weight: 400; margin: 0; cursor: pointer; }
     .of-dfilter { max-width: 260px; margin: 8px 0; }
     .of-districts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 14px; max-height: 240px; overflow: auto; }
@@ -151,21 +172,27 @@ interface AreaEdit {
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
-export class OnsiteAgencyFormPage {
+export class IncentiveAgencyFormPage {
   private readonly api = inject(SchemeOnsiteApi);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly userId = inject(ActivatedRoute).snapshot.paramMap.get('userId');
 
   protected readonly title = computed(() => this.userId
-    ? t('staff.schemeOnsite.form.editTitle', 'Edit onsite agency')
-    : t('staff.schemeOnsite.form.addTitle', 'Add onsite agency'));
+    ? t('staff.incentiveAgencies.form.editTitle', 'Edit incentive verification agency')
+    : t('staff.incentiveAgencies.form.addTitle', 'Add incentive verification agency'));
   protected readonly crumbs = computed(() => staffCrumbs(
-    { label: t('staff.schemeOnsite.agencies.title', 'Onsite Verification Agencies'), link: '/staff/scheme-onsite/agencies' }, { label: this.title() }));
+    { label: t('staff.incentiveAgencies.title', 'Incentive Verification Agencies'), link: '/staff/scheme-agencies' }, { label: this.title() }));
+  protected readonly typeLabel = agencyTypeLabel;
+  /** Chosen at creation; fixed afterwards. */
+  protected readonly type = signal<IncentiveAgencyType | null>(null);
+  private readonly onsiteSchemes = signal<OnsiteSchemeOption[]>([]);
+  private readonly desktopSchemes = signal<OnsiteSchemeOption[]>([]);
+  /** The schemes the chosen type may serve. */
+  protected readonly schemes = computed(() => (this.type() === 'Desktop' ? this.desktopSchemes() : this.type() === 'Onsite' ? this.onsiteSchemes() : []));
 
   protected model = { userName: '', spocName: '', emailId: '', mobileNo: '', address: '', pinCode: '', gstNumber: '' };
   protected readonly states = signal<string[]>([]);
-  protected readonly schemes = signal<OnsiteSchemeOption[]>([]);
   protected readonly areas = signal<AreaEdit[]>([]);
   protected readonly picked = signal(new Set<string>());
   protected readonly freeStates = computed(() => this.states().filter((s) => !this.areas().some((a) => a.state.toUpperCase() === s.toUpperCase())));
@@ -183,13 +210,15 @@ export class OnsiteAgencyFormPage {
     try {
       const options = await firstValueFrom(this.api.options());
       this.states.set(options.states);
-      this.schemes.set(options.schemes);
+      this.onsiteSchemes.set(options.schemes ?? []);
+      this.desktopSchemes.set(options.desktopSchemes ?? []);
       if (this.userId) {
         const d = await firstValueFrom(this.api.get(this.userId));
         this.model = {
           userName: d.userName ?? '', spocName: d.spocName ?? '', emailId: d.email ?? '', mobileNo: d.mobileNo ?? '', address: d.address ?? '',
           pinCode: d.pinCode ?? '', gstNumber: d.gstNumber ?? '',
         };
+        this.type.set(d.type ?? 'Onsite');
         this.picked.set(new Set(d.schemes));
         this.areas.set(d.states.map((a) => ({ state: a.state, whole: a.districts.length === 0, districts: new Set(a.districts), options: null, filter: '' })));
         for (const a of this.areas()) if (!a.whole) void this.loadDistricts(a);
@@ -199,6 +228,13 @@ export class OnsiteAgencyFormPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** A new agency's type; the schemes ticked that the type cannot serve are dropped. */
+  protected setType(type: IncentiveAgencyType): void {
+    this.type.set(type);
+    const allowed = new Set(this.schemes().map((s) => s.code));
+    this.picked.set(new Set([...this.picked()].filter((c) => allowed.has(c))));
   }
 
   protected addState(): void {
@@ -254,6 +290,8 @@ export class OnsiteAgencyFormPage {
   protected async submit(): Promise<void> {
     this.error.set('');
     const m = this.model;
+    const type = this.type();
+    if (!type) return this.error.set(t('staff.incentiveAgencies.form.error.type', 'Please select the type of agency: desktop verification or onsite verification.'));
     if (!m.userName.trim() || !m.spocName.trim() || !m.emailId.trim() || !m.mobileNo.trim() || !m.address.trim() || !m.pinCode.trim())
       return this.error.set(t('staff.schemeOnsite.form.error.required', 'Please fill in every required field.'));
     if (!/^\d{10}$/.test(m.mobileNo.trim())) return this.error.set(t('staff.schemeOnsite.form.error.mobile', 'Please enter a valid 10 digit SPOC mobile number.'));
@@ -261,18 +299,22 @@ export class OnsiteAgencyFormPage {
     if (this.areas().length === 0) return this.error.set(t('staff.schemeOnsite.form.error.states', 'Please add at least one state the agency serves.'));
     const noDistrict = this.areas().find((a) => !a.whole && a.districts.size === 0);
     if (noDistrict) return this.error.set(t('staff.schemeOnsite.form.error.districts', '{state}: tick at least one district, or choose the whole state.', { state: noDistrict.state }));
-    if (this.picked().size === 0) return this.error.set(t('staff.schemeOnsite.form.error.schemes', 'Please select at least one scheme the agency verifies onsite.'));
+    if (this.picked().size === 0)
+      return this.error.set(type === 'Desktop'
+        ? t('staff.incentiveAgencies.form.error.desktopSchemes', 'Please select at least one scheme the agency verifies at the desktop.')
+        : t('staff.schemeOnsite.form.error.schemes', 'Please select at least one scheme the agency verifies onsite.'));
     const body: OnsiteAgencyRequest = {
       userName: m.userName.trim(), spocName: m.spocName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim(), address: m.address.trim(),
       pinCode: m.pinCode.trim(), gstNumber: m.gstNumber.trim() || null,
       states: this.areas().map((a) => ({ state: a.state, districts: a.whole ? [] : [...a.districts] })),
       schemes: [...this.picked()],
+      type,
     };
     this.saving.set(true);
     try {
       const r = this.userId ? await firstValueFrom(this.api.update(this.userId, body)) : await firstValueFrom(this.api.create(body));
       this.toast.success(r.message);
-      await this.router.navigate(['/staff/scheme-onsite/agencies']);
+      await this.router.navigate(['/staff/scheme-agencies']);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

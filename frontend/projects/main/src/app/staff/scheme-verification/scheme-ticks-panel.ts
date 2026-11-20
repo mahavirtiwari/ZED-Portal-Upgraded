@@ -6,9 +6,10 @@ import { ToastService } from '../toast';
 import { SchemeTick, SchemeVerificationApi } from './scheme-verification.api';
 
 /**
- * 2026-11-20 (incentive schemes, approved): the schemes an agency (set by the Master Admin) or an assessor (set by its agency, only
- * within the agency's own ticks) verifies: per active scheme "Desktop verification" and "Onsite verification" (onsite: phase 2, the
- * assessor app). Saved on its own (Users.SchemeVerification). Placed on the agency and assessor pages, opened on demand.
+ * 2026-11-20 (incentive schemes, approved): the schemes an assessor verifies (set by its agency, only within the agency's own ticks):
+ * per active scheme "Desktop verification" and "Onsite verification". Saved on its own (Users.SchemeVerification). 2026-11-20 (the
+ * product owner): only the incentive verification agencies verify schemes, so it is placed on the assessor page of a desktop or onsite
+ * verification agency; an agency's own schemes are chosen on Incentive Verification Agencies ('agencies' kept for that API).
  */
 @Component({
   selector: 'zed-scheme-ticks-panel',
@@ -22,7 +23,7 @@ import { SchemeTick, SchemeVerificationApi } from './scheme-verification.api';
       </div>
       @if (open()) {
       <p class="sub">{{ kind() === 'agencies'
-        ? ('Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s states and sectors).' | t: 'staff.schemeVerification.ticks.agencyHelp')
+        ? ('Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s state and district).' | t: 'staff.schemeVerification.ticks.agencyAreaHelp')
         : ('The agency can name this assessor for the schemes ticked here (within the agency’s own ticks).' | t: 'staff.schemeVerification.ticks.assessorHelp') }}</p>
       @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
       @if (rows().length) {
@@ -31,7 +32,7 @@ import { SchemeTick, SchemeVerificationApi } from './scheme-verification.api';
             <tr>
               <th>{{ 'Scheme' | t: 'staff.schemeVerification.ticks.scheme' }}</th>
               <th>{{ 'Desktop verification' | t: 'staff.schemeVerification.ticks.desktop' }}</th>
-              <th>{{ 'Onsite verification' | t: 'staff.schemeVerification.ticks.onsite' }} <small class="sub">{{ '(phase 2)' | t: 'staff.schemeVerification.ticks.phase2' }}</small></th>
+              <th>{{ 'Onsite verification' | t: 'staff.schemeVerification.ticks.onsite' }}</th>
             </tr>
           </thead>
           <tbody>

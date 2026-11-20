@@ -47,14 +47,20 @@
         <span class="label top">{{ 'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter' }}<span class="req">*</span></span>
         <div>
           <div class="se-chips" role="group" [attr.aria-label]="'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter'">
-            <button type="button" class="se-chip" data-mode="Registration" [class.on]="d.activation.mode === 'Registration'" [attr.aria-pressed]="d.activation.mode === 'Registration'" (click)="setMode(d, 'Registration')">{{ 'Registration' | t: 'staff.incentivesAdmin.activation.registration' }}</button>
-            <button type="button" class="se-chip" data-mode="Handholding" [class.on]="d.activation.mode === 'Handholding'" [attr.aria-pressed]="d.activation.mode === 'Handholding'" (click)="setMode(d, 'Handholding')">{{ 'Handholding completed' | t: 'staff.incentivesAdmin.activation.handholding' }}</button>
-            <span class="se-or">{{ 'or certified at' | t: 'staff.incentivesAdmin.editor.card.orLevels' }}</span>
+            <!-- 2026-11-20: Financial Assistance opens after certification levels only. -->
+            @if (!isFa(d)) {
+              <button type="button" class="se-chip" data-mode="Registration" [class.on]="d.activation.mode === 'Registration'" [attr.aria-pressed]="d.activation.mode === 'Registration'" (click)="setMode(d, 'Registration')">{{ 'Registration' | t: 'staff.incentivesAdmin.activation.registration' }}</button>
+              <button type="button" class="se-chip" data-mode="Handholding" [class.on]="d.activation.mode === 'Handholding'" [attr.aria-pressed]="d.activation.mode === 'Handholding'" (click)="setMode(d, 'Handholding')">{{ 'Handholding completed' | t: 'staff.incentivesAdmin.activation.handholding' }}</button>
+              <span class="se-or">{{ 'or certified at' | t: 'staff.incentivesAdmin.editor.card.orLevels' }}</span>
+            }
             @for (l of levels(); track l.code) {
               <button type="button" class="se-chip" [attr.data-level]="l.code" [class.on]="hasLevel(d, l.code)" [attr.aria-pressed]="hasLevel(d, l.code)" (click)="toggleLevel(d, l.code)">{{ l.name }}</button>
             }
           </div>
           <small class="muted d-block mt-1">{{ 'Levels: one claim per level and certificate; Registration: one claim; Handholding: one claim per completed handholding.' | t: 'staff.incentivesAdmin.editor.card.activationHelp' }}</small>
+          @if (isFa(d)) {
+            <small class="muted d-block mt-1" id="se-fa-note">{{ 'Financial Assistance opens after certification levels only. These levels are also the "Activates after" of its dashboard card.' | t: 'staff.incentivesAdmin.editor.card.faNote' }}</small>
+          }
         </div>
       </div>
     </section>
@@ -109,7 +115,18 @@
         <label class="af-switch" [class.off]="!d.form.blocks.bankAccount"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.bankAccount" /><span class="af-track" aria-hidden="true"></span>{{ 'Bank account and cancelled cheque' | t: 'staff.incentivesAdmin.editor.form.block.bankAccount' }}</label>
         <label class="af-switch" [class.off]="!d.form.blocks.declaration"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.declaration" /><span class="af-track" aria-hidden="true"></span>{{ 'Declaration' | t: 'staff.incentivesAdmin.editor.form.block.declaration' }}</label>
       </div>
-      <small class="muted d-block">{{ 'Their wording is in Admin → Texts.' | t: 'staff.incentivesAdmin.editor.form.blocksHelp' }}</small>
+      <small class="muted d-block">{{ 'Their wording: the texts of this scheme below; left empty, the common wording of Admin → Texts.' | t: 'staff.incentivesAdmin.editor.form.blocksHelp' }}</small>
+
+      <h5 class="se-h mt-3">{{ 'Applicant texts of this scheme' | t: 'staff.incentivesAdmin.editor.texts.title' }}</h5>
+      <div class="form-grid">
+        <label for="se-disclaimer" class="top">{{ 'Disclaimer' | t: 'staff.incentivesAdmin.editor.texts.disclaimer' }}</label>
+        <textarea id="se-disclaimer" class="form-control" rows="6" [maxlength]="limits.schemeText" [(ngModel)]="d.disclaimer"></textarea>
+        <label for="se-instructions" class="top">{{ 'Instructions' | t: 'staff.incentivesAdmin.editor.texts.instructions' }}</label>
+        <textarea id="se-instructions" class="form-control" rows="6" [maxlength]="limits.schemeText" [(ngModel)]="d.instructions"></textarea>
+        <label for="se-declaration" class="top">{{ 'Declaration' | t: 'staff.incentivesAdmin.editor.texts.declaration' }}</label>
+        <textarea id="se-declaration" class="form-control" rows="3" [maxlength]="limits.schemeText" [(ngModel)]="d.declaration"></textarea>
+      </div>
+      <small class="muted d-block">{{ 'Plain text; each line is shown as written. Empty: the common wording of Admin → Texts.' | t: 'staff.incentivesAdmin.editor.texts.help' }}</small>
 
       <div class="se-form">
         <aside class="se-sections" [attr.aria-label]="'Sections' | t: 'staff.incentivesAdmin.editor.form.sectionsAria'">
@@ -196,6 +213,7 @@
                         @if (f.required) { <span class="req-chip is-yes">{{ 'Required' | t: 'staff.incentivesAdmin.editor.fields.required' }}</span> }
                         @if (f.assessorChecks) { <span class="req-chip">{{ 'Checked' | t: 'staff.incentivesAdmin.editor.fields.checked' }}@if (d.verification.flow === 'DesktopOnsite' && f.checkStage && f.checkStage !== 'desktop') { · {{ stageLabel(f.checkStage) }} }</span> }
                         @if (f.isClaim) { <span class="req-chip is-yes">{{ 'Claim' | t: 'staff.incentivesAdmin.editor.fields.claim' }}</span> }
+                        @if (f.unique) { <span class="req-chip">{{ 'Unique' | t: 'staff.incentivesAdmin.editor.fields.unique' }}</span> }
                       </td>
                       <td class="text-end se-row-actions">
                         <button type="button" class="af-icon" [attr.aria-label]="'Move up' | t: 'staff.incentivesAdmin.editor.moveUp'" [disabled]="i === 0" (click)="moveField(s, i, -1)">↑</button>

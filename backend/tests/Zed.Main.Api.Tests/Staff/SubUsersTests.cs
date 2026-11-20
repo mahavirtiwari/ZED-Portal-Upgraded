@@ -71,7 +71,8 @@ public sealed class SubUsersTests : IDisposable
         var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
         var list = (await agency.GetFromJsonAsync<SubUsersController.SubUsersResponse>("/api/staff/sub-users"))!;
         Assert.Equal("Sub-User", list.AccountType);
-        Assert.Equal(["monitoring", "assessors", "da-allotment", "sa-allotment", "results", "reports", "financial-assistance", "invoices", "scheme-verification"], list.Permissions.Select(p => p.Key));
+        // 2026-11-20: an assessment agency no longer verifies incentive schemes (the desktop verification agencies do: "scheme-verification").
+        Assert.Equal(["monitoring", "assessors", "da-allotment", "sa-allotment", "results", "reports", "financial-assistance", "invoices"], list.Permissions.Select(p => p.Key));
 
         var refused = await agency.PostAsJsonAsync("/api/staff/sub-users", new { userName = "Ravi", email = "ravi@zed.test", permissions = new[] { "allot" } });
         Assert.Equal("Please select only the screens of your own login.", await refused.ProblemTitle());

@@ -5,10 +5,14 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { SchemeDetailPage } from '../scheme-verification/scheme-detail';
 import { SchemeListPage } from '../scheme-verification/scheme-list';
-import { OnsiteAgenciesPage } from './onsite-agencies';
-import { OnsiteAgencyFormPage } from './onsite-agency-form';
+import { IncentiveAgenciesPage } from './incentive-agencies';
+import { IncentiveAgencyFormPage } from './incentive-agency-form';
+import { SCHEME_ONSITE_ROUTES } from './scheme-onsite.routes';
 
-/** 2026-11-20 (incentive schemes, phase 2): the onsite verification pages (onsite agency lists, Master Admin's onsite agencies). */
+/**
+ * 2026-11-20 (incentive schemes, phase 2): the onsite verification pages (onsite agency lists); 2026-11-20 (the product owner): the
+ * Master Admin's Incentive Verification Agencies (desktop and onsite).
+ */
 describe('scheme onsite verification pages', () => {
   let http: HttpTestingController;
   let harness: RouterTestingHarness;
@@ -39,8 +43,9 @@ describe('scheme onsite verification pages', () => {
           { path: 'applications', data: { mode: 'admin' }, component: SchemeListPage },
           { path: 'onsite/allotment', data: { mode: 'onsiteAllotment' }, component: SchemeListPage },
           { path: 'onsite/qc/:id', data: { mode: 'onsiteQc' }, component: SchemeDetailPage },
-          { path: 'staff/scheme-onsite/agencies', component: OnsiteAgenciesPage },
-          { path: 'staff/scheme-onsite/agencies/new', component: OnsiteAgencyFormPage },
+          { path: 'staff/scheme-agencies', component: IncentiveAgenciesPage },
+          { path: 'staff/scheme-agencies/new', component: IncentiveAgencyFormPage },
+          { path: 'staff/scheme-agencies/:userId', component: IncentiveAgencyFormPage },
         ]),
         provideHttpClient(), provideHttpClientTesting(),
       ],
@@ -154,23 +159,110 @@ describe('scheme onsite verification pages', () => {
     await settle();
   });
 
-  it('lists the onsite agencies with their states, districts and schemes', async () => {
-    await open('/staff/scheme-onsite/agencies');
-    http.expectOne('/api/staff/scheme-onsite/agencies').flush([
+  it('lists the desktop and onsite agencies with their type, states, districts and schemes', async () => {
+    await open('/staff/scheme-agencies');
+    http.expectOne('/api/staff/scheme-agencies').flush([
       { userId: 'ZEDAA0099', userName: 'Onsite Partners', spocName: 'S K', email: 'spoc@onsite.test', mobileNo: '9876543210', isActive: true,
-        states: [{ state: 'UTTAR PRADESH', districts: ['163', '164'] }, { state: 'GOA', districts: [] }], schemes: ['FA_ONSITE'], assessors: 2 },
+        states: [{ state: 'UTTAR PRADESH', districts: ['163', '164'] }, { state: 'GOA', districts: [] }], schemes: ['FA_ONSITE'], assessors: 2, type: 'Onsite' },
+      { userId: 'ZEDAA0100', userName: 'Desk Partners', spocName: 'D K', email: 'spoc@desk.test', mobileNo: '9876543211', isActive: true,
+        states: [{ state: 'GOA', districts: [] }], schemes: ['FA'], assessors: 1, type: 'Desktop' },
     ]);
     await settle();
-    expect(el.textContent).toContain('Onsite Verification Agencies');
+    expect(el.textContent).toContain('Incentive Verification Agencies');
     expect(el.textContent).toContain('2 district(s)');
     expect(el.textContent).toContain('whole state');
     expect(el.textContent).toContain('spoc@onsite.test · 9876543210');
     expect(el.textContent).toContain('FA_ONSITE');
+    expect(el.querySelector('[data-type="Desktop"]')!.textContent).toContain('Desktop verification');
+    expect(el.querySelector('[data-type="Onsite"]')!.textContent).toContain('Onsite verification');
+
+    // Filtered by type.
+    const type = el.querySelector('.oa-type') as HTMLSelectElement;
+    type.value = 'Desktop';
+    type.dispatchEvent(new Event('change'));
+    await settle();
+    expect(el.textContent).toContain('Desk Partners');
+    expect(el.textContent).not.toContain('Onsite Partners');
+  });
+
+  it('redirects the old onsite agencies address to the incentive agencies page', () => {
+    expect(SCHEME_ONSITE_ROUTES.find((r) => r.path === 'agencies')?.redirectTo).toBe('/staff/scheme-agencies');
+    expect(SCHEME_ONSITE_ROUTES.find((r) => r.path === 'agencies/:userId')?.redirectTo).toBe('/staff/scheme-agencies/:userId');
+  });
+
+  const fillDetails = () => {
+    const fill = (id: string, v: string) => {
+      const i = el.querySelector(id) as HTMLInputElement;
+      i.value = v;
+      i.dispatchEvent(new Event('input'));
+    };
+    fill('#of-name', 'Desk Partners');
+    fill('#of-address', 'Lucknow');
+    fill('#of-pin', '226001');
+    fill('#of-spoc', 'D K');
+    fill('#of-email', 'spoc@desk.test');
+    fill('#of-mobile', '9876543211');
+  };
+
+  it('creates a desktop verification agency: the type first, then its schemes (every scheme)', async () => {
+    await open('/staff/scheme-agencies/new');
+    http.expectOne('/api/staff/scheme-agencies/options').flush({
+      states: ['GOA'], schemes: [{ code: 'FA_ONSITE', name: 'FA Onsite', active: true }],
+      desktopSchemes: [{ code: 'FA', name: 'Financial Assistance', active: true }, { code: 'FA_ONSITE', name: 'FA Onsite', active: true }],
+    });
+    await settle();
+    expect(el.querySelectorAll('.of-scheme').length).toBe(0);
+    expect(el.textContent).toContain('Choose the type of agency first.');
+    fillDetails();
+    const s = el.querySelector('.of-add select') as HTMLSelectElement;
+    s.value = 'GOA';
+    s.dispatchEvent(new Event('change'));
+    await settle();
+    button('Add state')[0].click();
+    await settle();
+    // Without a type the form refuses.
+    (el.querySelector('#of-save') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('type of agency');
+
+    (el.querySelector('input[name="agencyType"][value="Desktop"]') as HTMLInputElement).click();
+    await settle();
+    expect(el.textContent).toContain('Schemes verified at the desktop');
+    expect(el.querySelectorAll('.of-scheme').length).toBe(2);
+    (el.querySelector('.of-scheme input') as HTMLInputElement).click();
+    await settle();
+    (el.querySelector('#of-save') as HTMLButtonElement).click();
+    await settle();
+    const create = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/scheme-agencies');
+    expect(create.request.body).toEqual({
+      userName: 'Desk Partners', spocName: 'D K', emailId: 'spoc@desk.test', mobileNo: '9876543211', address: 'Lucknow', pinCode: '226001', gstNumber: null,
+      states: [{ state: 'GOA', districts: [] }], schemes: ['FA'], type: 'Desktop',
+    });
+    create.flush({ message: 'Agency created successfully.', userId: 'ZEDAA0100' });
+    await settle();
+    http.expectOne('/api/staff/scheme-agencies').flush([]);
+    await settle();
+  });
+
+  it('shows the type of an existing agency as fixed', async () => {
+    await open('/staff/scheme-agencies/ZEDAA0100');
+    http.expectOne('/api/staff/scheme-agencies/options').flush({ states: ['GOA'], schemes: [], desktopSchemes: [{ code: 'FA', name: 'Financial Assistance', active: true }] });
+    await settle();
+    http.expectOne('/api/staff/scheme-agencies/ZEDAA0100').flush({
+      userId: 'ZEDAA0100', userName: 'Desk Partners', spocName: 'D K', email: 'spoc@desk.test', mobileNo: '9876543211', address: 'Lucknow', pinCode: '226001',
+      gstNumber: null, isActive: true, reasonForRejection: null, states: [{ state: 'GOA', districts: [] }], schemes: ['FA'], type: 'Desktop',
+    });
+    await settle();
+    expect(el.querySelector('[data-type-fixed]')!.textContent).toContain('Desktop verification');
+    expect(el.querySelector('input[name="agencyType"]')).toBeNull();
+    expect((el.querySelector('.of-scheme input') as HTMLInputElement).checked).toBe(true);
   });
 
   it('creates an onsite agency with the whole of one state and districts of another', async () => {
-    await open('/staff/scheme-onsite/agencies/new');
-    http.expectOne('/api/staff/scheme-onsite/agencies/options').flush({ states: ['GOA', 'UTTAR PRADESH'], schemes: [{ code: 'FA_ONSITE', name: 'FA Onsite', active: true }] });
+    await open('/staff/scheme-agencies/new');
+    http.expectOne('/api/staff/scheme-agencies/options').flush({ states: ['GOA', 'UTTAR PRADESH'], schemes: [{ code: 'FA_ONSITE', name: 'FA Onsite', active: true }], desktopSchemes: [] });
+    await settle();
+    (el.querySelector('input[name="agencyType"][value="Onsite"]') as HTMLInputElement).click();
     await settle();
     const fill = (id: string, v: string) => {
       const i = el.querySelector(id) as HTMLInputElement;
@@ -196,7 +288,7 @@ describe('scheme onsite verification pages', () => {
     const up = el.querySelector('[data-state="UTTAR PRADESH"]')!;
     (up.querySelectorAll('input[type="radio"]')[1] as HTMLInputElement).click();
     await settle();
-    http.expectOne((r) => r.url === '/api/staff/scheme-onsite/agencies/districts' && r.params.get('state') === 'UTTAR PRADESH')
+    http.expectOne((r) => r.url === '/api/staff/scheme-agencies/districts' && r.params.get('state') === 'UTTAR PRADESH')
       .flush([{ code: '163', name: 'KANPUR DEHAT' }, { code: '164', name: 'KANPUR NAGAR' }]);
     await settle();
     const nagar = [...el.querySelectorAll('[data-state="UTTAR PRADESH"] .of-districts label')].find((l) => text(l) === 'KANPUR NAGAR')!;
@@ -206,14 +298,14 @@ describe('scheme onsite verification pages', () => {
     await settle();
     (el.querySelector('#of-save') as HTMLButtonElement).click();
     await settle();
-    const create = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/scheme-onsite/agencies');
+    const create = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/scheme-agencies');
     expect(create.request.body).toEqual({
       userName: 'Onsite Partners', spocName: 'S K', emailId: 'spoc@onsite.test', mobileNo: '9876543210', address: 'Kanpur', pinCode: '208001', gstNumber: null,
-      states: [{ state: 'GOA', districts: [] }, { state: 'UTTAR PRADESH', districts: ['164'] }], schemes: ['FA_ONSITE'],
+      states: [{ state: 'GOA', districts: [] }, { state: 'UTTAR PRADESH', districts: ['164'] }], schemes: ['FA_ONSITE'], type: 'Onsite',
     });
     create.flush({ message: 'Agency created successfully.', userId: 'ZEDAA0099' });
     await settle();
-    http.expectOne('/api/staff/scheme-onsite/agencies').flush([]);
+    http.expectOne('/api/staff/scheme-agencies').flush([]);
     await settle();
   });
 });

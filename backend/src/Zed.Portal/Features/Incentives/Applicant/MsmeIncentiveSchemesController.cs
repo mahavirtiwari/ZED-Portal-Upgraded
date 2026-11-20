@@ -76,16 +76,22 @@ public sealed class MsmeIncentiveSchemesController(
     public sealed record SchemeTileDto(string Code, string Title, string? Highlight, string? Details, string Icon, string State, string? Note,
         string? Message, int? ApplicationId, string? Status, string? Level, GradeDto? Grade, string ActivationMode, IReadOnlyList<string> ActivationLevels);
 
-    public sealed record TuDto(bool Direct, SchemeTileDto? Scheme);
+    /// <param name="Direct">The card opens the direct scheme (no consultant's recommendation needed).</param>
+    /// <param name="Scheme">The direct scheme's tile: while the card is direct, or (the card back on the recommendation) while the
+    /// unit's application of the direct scheme is not final.</param>
+    /// <param name="Legacy">A consultant-recommended Technology Upgradation application of the unit is in progress (the old page).</param>
+    public sealed record TuDto(bool Direct, SchemeTileDto? Scheme, bool Legacy = false);
 
-    /// <param name="ActivatesAfter">The Financial Assistance card's levels (empty: Bronze, Silver and Gold).</param>
-    /// <param name="Level">The unit's current Financial Assistance level (SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE), or null.</param>
-    public sealed record FaDto(IReadOnlyList<string> ActivatesAfter, string? Level);
+    /// <param name="Scheme">2026-11-20: the Financial Assistance scheme's tile (<see cref="SchemeTemplates.FaCode"/>), the card opens it.</param>
+    /// <param name="Legacy">An application made before the framework is in progress: the card shows it and opens the old page.</param>
+    public sealed record FaDto(SchemeTileDto? Scheme, bool Legacy);
 
     public sealed record DashboardDto(IReadOnlyList<SchemeTileDto> Schemes, TuDto Tu, FaDto Fa);
 
+    /// <param name="Disclaimer">The scheme's own disclaimer (plain text), or null: the global Texts wording.</param>
     public sealed record SchemeDto(string Code, string Name, SchemeCard Card, SchemeBlocks Blocks, IReadOnlyList<FormSection> Sections,
-        IReadOnlyList<DocumentRule> Rules, SchemeGrading Grading, string ActivationMode, IReadOnlyList<string> ActivationLevels, int CorrectionRounds, int CorrectionDays);
+        IReadOnlyList<DocumentRule> Rules, SchemeGrading Grading, string ActivationMode, IReadOnlyList<string> ActivationLevels, int CorrectionRounds, int CorrectionDays,
+        string? Disclaimer = null, string? Instructions = null, string? Declaration = null);
 
     public sealed record WindowDto(string Level, string CertRef, string? OpenedOn, GradeDto? Grade);
 
@@ -98,7 +104,7 @@ public sealed class MsmeIncentiveSchemesController(
     public sealed record ApplicationDto(int Id, string Status, string? Level, FormAnswers Answers, IReadOnlyList<CheckDto> Checks,
         decimal ClaimAmount, decimal EligibleAmount, decimal? ApprovedAmount, decimal? SharePercent, decimal? MaxAmount,
         int? CorrectionRound, string? CorrectionDueOn, bool CorrectionOpen, string? SubmittedOn, string? DecidedOn, string? Reason, string? HoldReason,
-        AccountDto? Account);
+        AccountDto? Account, string? HoldKind = null);
 
     public sealed record HistoryDto(int Id, string? Date, string Status, string? Level, decimal? Amount, string? Reason);
 
@@ -119,49 +125,45 @@ public sealed class MsmeIncentiveSchemesController(
 
     // ----- dashboard -----
 
-    /// <summary>GET api/msme/incentive-schemes — the schemes' tiles, the Technology Upgradation card's direct scheme and the FA card's levels.</summary>
+    /// <summary>
+    /// GET api/msme/incentive-schemes — the schemes' tiles, the Financial Assistance card's scheme (2026-11-20) and the Technology
+    /// Upgradation card's direct scheme, with the legacy applications in progress the two cards open instead.
+    /// </summary>
     [HttpGet]
     public async Task<ActionResult<DashboardDto>> Dashboard(CancellationToken ct)
     {
         var unit = await SchemeUnit.LoadAsync(db, ZedId, ct);
         if (unit is null) return NotFound();
-        var facts = await FactsAsync(db, ZedId, unit.EligibleForBenefits, log, ct);
-        var cards = await store.CardSettingsAsync(ct);
-        var tu = cards.GetValueOrDefault(TuCard);
-        var directCode = tu?.DirectSchemeCode?.Trim();
-        var schemes = (await store.AllAsync(ct)).Where(d => d.Active).OrderBy(d => d.OrderNo).ToList();
+        var facts = await FactsAsync(db, ZedId, unit.EligibleForBenefits, log, ct, unit.EligibleForFinancial, legacy: true);
+        var all = await store.EnsureBuiltInAsync(ct);
+        var tu = (await store.CardSettingsAsync(ct)).GetValueOrDefault(TuCard);
+        var directCode = SchemeStore.DirectCodeOf(tu);
         var apps = await db.QuerySqlAsync<Row>(SchemeApplications.AllOfUnitSql, new { ZedId = SchemeApplications.Ansi(ZedId, 50) }, ct);
-        SchemeTileDto TileOf(SchemeDefinition d) =>
-            Tile(d, facts, apps.Where(a => string.Equals(a.SchemeCode?.Trim(), d.Code, StringComparison.OrdinalIgnoreCase)).ToList());
+        List<Row> AppsOf(string code) => apps.Where(a => SchemeStore.Same(a.SchemeCode, code)).ToList();
 
-        var tiles = schemes.Where(d => !string.Equals(d.Code, directCode, StringComparison.OrdinalIgnoreCase)).Select(TileOf).ToList();
+        // The two built-in schemes appear on their cards, never as tiles of their own.
+        var tiles = all.Where(d => d.Active && !SchemeStore.Same(d.Code, SchemeTemplates.FaCode) && !SchemeStore.Same(d.Code, directCode))
+            .OrderBy(d => d.OrderNo).Select(d => Tile(d, facts, AppsOf(d.Code))).ToList();
+
+        var fa = all.FirstOrDefault(d => SchemeStore.Same(d.Code, SchemeTemplates.FaCode));
+        var faApps = fa is null ? new List<Row>() : AppsOf(fa.Code);
+        var faTile = fa is not null && (fa.Active || faApps.Count > 0) ? Tile(fa, facts, faApps, LegacyKind.FinancialAssistance, fa.Active) : null;
+        var faLegacy = facts.LegacyFa.Any(c => c.InProgress) && faTile?.State is not (ApplicantState.Progress or ApplicantState.OnHold);
+
         var direct = tu?.Direct == true;
-        var directScheme = direct ? schemes.FirstOrDefault(d => string.Equals(d.Code, directCode, StringComparison.OrdinalIgnoreCase)) : null;
-        var fa = cards.GetValueOrDefault(FaCard);
-        return new DashboardDto(tiles, new TuDto(direct, directScheme is null ? null : TileOf(directScheme)),
-            new FaDto(FaLevels(fa), await FaLevelAsync(ct)));
+        var tuDef = all.FirstOrDefault(d => SchemeStore.Same(d.Code, directCode));
+        var tuApps = tuDef is null ? new List<Row>() : AppsOf(tuDef.Code);
+        // Card on the recommendation again: a direct application not final (a draft too) still shows, to be continued.
+        var tuShown = tuDef is not null && (direct ? tuDef.Active || tuApps.Count > 0 : tuApps.Any(a => !SchemeApplications.Final.Contains(a.Status)));
+        var tuTile = tuShown ? Tile(tuDef!, facts, tuApps, LegacyKind.TechnologyUpgradation, direct && tuDef!.Active) : null;
+        var tuLegacy = facts.LegacyTu.Any(c => c.InProgress) && tuTile?.State is not (ApplicantState.Progress or ApplicantState.OnHold);
+
+        return new DashboardDto(tiles, new TuDto(direct, tuTile, tuLegacy), new FaDto(faTile, faLegacy));
     }
 
-    /// <summary>The Financial Assistance card's "Activates after" levels (Bronze / Silver / Gold only; empty = all three).</summary>
-    public static IReadOnlyList<string> FaLevels(SchemeStore.CardSettings? fa) =>
-        (fa?.ActivationList ?? []).Select(LevelRegistry.Canonical).OfType<string>().Where(l => LevelRegistry.Legacy.Contains(l)).Distinct().ToList();
-
-    private async Task<string?> FaLevelAsync(CancellationToken ct)
+    private static SchemeTileDto Tile(SchemeDefinition d, UnitFacts facts, IReadOnlyList<Row> apps, LegacyKind legacy = LegacyKind.None, bool offered = true)
     {
-        try
-        {
-            return FaApplications.Canonical((await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE", new { ZedId }, ct)).Scalar(0));
-        }
-        catch (System.Data.Common.DbException ex)
-        {
-            log.LogWarning(ex, "Current FA certificate of {ZedId} not readable", ZedId);
-            return null;
-        }
-    }
-
-    private static SchemeTileDto Tile(SchemeDefinition d, UnitFacts facts, IReadOnlyList<Row> apps)
-    {
-        var s = ApplicantState.Of(d, facts, apps);
+        var s = ApplicantState.Of(d, facts, apps, legacy, offered);
         var grade = s.Window?.Grade is { } g ? new GradeDto(g.SharePercent, g.MaxAmount) : null;
         return new SchemeTileDto(d.Code, d.Card.Title, d.Card.Highlight, d.Card.Details, d.Card.Icon, s.State, s.Note,
             s.State == ApplicantState.Locked ? ApplicantState.LockedMessage(s.Note, d.Activation) : null,
@@ -252,6 +254,7 @@ public sealed class MsmeIncentiveSchemesController(
             var list = new List<FormItem>(items);
             if (index == list.Count) list.Add(item!); else list[index] = item!;
             answers.Sections[s.Key] = list;
+            if (UniqueProblem(UniqueValues(c.Def.Form, answers, s.Key, index), Taken(c, app)) is { } used) return this.Problem400(used);
             await SaveAnswersAsync(app, answers, ct);
             (c, error) = await LoadAsync(code, ct);
             return c is null ? error! : await PageAsync(c, ct);
@@ -363,6 +366,9 @@ public sealed class MsmeIncentiveSchemesController(
 
             var (clean, problem) = Check(c.Def.Form, answers, ctx);
             if (problem is not null) return this.Problem400(problem);
+            if (UniqueProblem(UniqueValues(c.Def.Form, clean!), Taken(c, app)) is { } used) return this.Problem400(used);
+            // The state refuses a window without a grade (notGraded); checked again so a claim is never stored at Rs. 0.
+            if (w.Grade is null) return this.Problem400(ApplicantState.LockedMessage("notGraded", c.Def.Activation));
             var claim = clean!.Claim(c.Def.Form);
             var eligible = Eligible(claim, w.Grade);
             var updated = (await db.QuerySqlAsync<int>(SubmitSql, new
@@ -449,25 +455,44 @@ public sealed class MsmeIncentiveSchemesController(
 
     // ----- helpers -----
 
-    private sealed record Ctx(SchemeDefinition Def, SchemeUnit Unit, UnitFacts Facts, IReadOnlyList<Row> Apps, ApplicantState.Standing Standing);
+    private sealed record Ctx(SchemeDefinition Def, SchemeUnit Unit, UnitFacts Facts, IReadOnlyList<Row> Apps, ApplicantState.Standing Standing,
+        LegacyKind Legacy = LegacyKind.None);
 
     private async Task<(Ctx? Ctx, ActionResult? Error)> LoadAsync(string code, CancellationToken ct)
     {
-        var def = await store.FindAsync(code, ct);
+        var def = (await store.EnsureBuiltInAsync(ct)).FirstOrDefault(d => SchemeStore.Same(d.Code, code));
         if (def is null) return (null, NotFound());
         var unit = await SchemeUnit.LoadAsync(db, ZedId, ct);
         if (unit is null) return (null, NotFound());
         var apps = await SchemeApplications.OfUnitAsync(db, ZedId, def.Code, ct);
-        // An inactive scheme, or the direct Technology Upgradation scheme while the card needs the recommendation, shows only
-        // applications already made.
-        if (apps.Count == 0 && (!def.Active || await HiddenDirectAsync(def, ct))) return (null, NotFound());
-        var facts = await FactsAsync(db, ZedId, unit.EligibleForBenefits, log, ct);
-        return (new Ctx(def, unit, facts, apps, ApplicantState.Of(def, facts, apps)), null);
+        // An inactive scheme, or the direct Technology Upgradation scheme while the card needs the recommendation, takes no new
+        // application: it shows only the applications already made (a draft or one in progress continues).
+        var tu = (await store.CardSettingsAsync(ct)).GetValueOrDefault(TuCard);
+        var isDirect = SchemeStore.Same(def.Code, SchemeStore.DirectCodeOf(tu));
+        var offered = def.Active && (!isDirect || tu?.Direct == true);
+        if (apps.Count == 0 && !offered) return (null, NotFound());
+        var legacy = SchemeStore.Same(def.Code, SchemeTemplates.FaCode) ? LegacyKind.FinancialAssistance
+            : isDirect ? LegacyKind.TechnologyUpgradation : LegacyKind.None;
+        var facts = await FactsAsync(db, ZedId, unit.EligibleForBenefits, log, ct, unit.EligibleForFinancial, legacy: legacy != LegacyKind.None);
+        return (new Ctx(def, unit, facts, apps, ApplicantState.Of(def, facts, apps, legacy, offered), legacy), null);
     }
 
-    private async Task<bool> HiddenDirectAsync(SchemeDefinition def, CancellationToken ct) =>
-        (await store.CardSettingsAsync(ct)).GetValueOrDefault(TuCard) is { } tu
-        && string.Equals(tu.DirectSchemeCode?.Trim(), def.Code, StringComparison.OrdinalIgnoreCase) && !tu.Direct;
+    /// <summary>
+    /// The values of the scheme's unique fields already used: in the unit's other applications of the scheme that are not
+    /// rejected, and (Financial Assistance) the invoice numbers of its applications made before the framework.
+    /// </summary>
+    private static IEnumerable<TakenValue> Taken(Ctx c, Row app)
+    {
+        foreach (var other in c.Apps.Where(a => a.Id != app.Id && a.Status != SchemeApplications.Rejected))
+            foreach (var (f, v) in UniqueValues(c.Def.Form, other.Answers))
+                yield return new TakenValue(f.Key, v, $"your application no. {other.Id}");
+        if (c.Legacy == LegacyKind.FinancialAssistance)
+            foreach (var l in c.Facts.LegacyFa.Where(l => !string.IsNullOrWhiteSpace(l.InvoiceNo)))
+                yield return new TakenValue(LegacyInvoiceField, l.InvoiceNo!, "your earlier Financial Assistance application");
+    }
+
+    /// <summary>The Financial Assistance field the legacy applications' invoice numbers (FinancialAssistance.InvoiceNo) are compared with.</summary>
+    public const string LegacyInvoiceField = "invoice_no";
 
     /// <summary>The application the applicant may change now (the draft of the open window, or one in an open correction round).</summary>
     private static (Row? App, string? Refusal) Editable(Ctx c)
@@ -569,13 +594,13 @@ public sealed class MsmeIncentiveSchemesController(
         var message = s.State switch
         {
             ApplicantState.Locked or ApplicantState.Availed => Refusal(c),
-            ApplicantState.OnHold => "The application is on hold. The ZED team will resume or close it.",
+            ApplicantState.OnHold => "The application is on hold. " + ApplicantState.HoldMessage(ApplicantState.HoldKind(s.Application?.HoldReason, SchemeApplications.OnHold)),
             _ => null,
         };
         var history = c.Apps.Where(a => a.Id != current?.Id && a.Status != SchemeApplications.Draft)
             .Select(a => new HistoryDto(a.Id, Date(a.SubmittedOn ?? a.CreatedDate), a.Status, a.SchemeLevel, Amount(a), Reason(a))).ToList();
         var scheme = new SchemeDto(d.Code, d.Name, d.Card, d.Form.Blocks, d.Form.Sections, d.Form.Rules, d.Grading, d.Activation.Mode, d.Activation.Levels,
-            d.Verification.CorrectionRounds, d.Verification.CorrectionDays);
+            d.Verification.CorrectionRounds, d.Verification.CorrectionDays, Text(d.Disclaimer), Text(d.Instructions), Text(d.Declaration));
         return new PageDto(scheme, c.Unit.Panel(), window, s.State, s.Note, s.State == ApplicantState.Open, message,
             current is null ? null : ToDto(c, current), picks, history);
     }
@@ -591,11 +616,13 @@ public sealed class MsmeIncentiveSchemesController(
         var checks = correction
             ? a.Checks.Where(kv => string.Equals(kv.Value.Status, "No", StringComparison.OrdinalIgnoreCase)).Select(kv => new CheckDto(kv.Key, kv.Value.Remarks)).ToList()
             : [];
+        // The stored hold reason is the staff's ("Certificate X SUSPENDED (was Verifying)"): the applicant sees a sentence of its own.
+        var hold = ApplicantState.HoldKind(a.HoldReason, a.Status);
         // The cancelled cheque is shown with the bank block, not as an answer.
         var account = a.AccountNo is null ? null : new AccountDto(a.AccountNo, a.IfscCode, a.BranchAddress, a.BankName);
         return new ApplicationDto(a.Id, a.Status, a.SchemeLevel, answers, checks, claim, eligible, a.ApprovedAmount, grade?.SharePercent, grade?.MaxAmount,
             a.CorrectionRound, Date(a.CorrectionDueOn), correction && (a.CorrectionDueOn is not { } due || DateTime.Today <= due.Date),
-            Date(a.SubmittedOn), Date(a.DecidedOn), Reason(a), a.HoldReason, account);
+            Date(a.SubmittedOn), Date(a.DecidedOn), Reason(a), ApplicantState.HoldMessage(hold), account, hold);
     }
 
     private static decimal? Amount(Row a) =>
@@ -606,6 +633,9 @@ public sealed class MsmeIncentiveSchemesController(
         : null;
 
     private static string? Date(DateTime? d) => d?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>A scheme text for the page: null when empty (the page then shows the global Texts wording).</summary>
+    private static string? Text(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     private static string FileUrl(string code, string name) =>
         $"/api/msme/incentive-schemes/{Uri.EscapeDataString(code)}/files/{Uri.EscapeDataString(name)}";

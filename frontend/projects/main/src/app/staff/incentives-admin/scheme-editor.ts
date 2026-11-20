@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { TextPipe, t } from '../../content/page-text';
 import { FieldDialogComponent } from './field-dialog';
 import {
-  ActivationMode, CARD_ICONS, DocumentRule, FormField, FormSection, GradingMode, LevelOption, SCHEME_LIMITS, SchemeDefinition, SchemesAdminApi,
+  ActivationMode, CARD_ICONS, DocumentRule, FA_SCHEME_CODE, FormField, FormSection, GradingMode, LevelOption, SCHEME_LIMITS, SchemeDefinition, SchemesAdminApi,
   VerificationFlow, CheckStage, checkStageLabel, fieldTypeLabel, gradeKeyLabel, keyFrom,
 } from './schemes-admin.api';
 
@@ -84,6 +84,11 @@ export class SchemeEditorPage {
   }
 
   // ----- Card and activation -----
+
+  /** 2026-11-20: the built-in Financial Assistance scheme (the dashboard card opens it): levels only. */
+  protected isFa(d: SchemeDefinition): boolean {
+    return d.code.toUpperCase() === FA_SCHEME_CODE;
+  }
 
   protected hasLevel(d: SchemeDefinition, code: string): boolean {
     return d.activation.mode === 'Levels' && d.activation.levels.some((l) => l.toLowerCase() === code.toLowerCase());
@@ -310,6 +315,9 @@ export class SchemeEditorPage {
         ...d,
         orderNo: n(d.orderNo),
         card: { ...d.card, highlight: d.card.highlight?.trim() || null, details: d.card.details?.trim() || null },
+        disclaimer: d.disclaimer?.trim() || null,
+        instructions: d.instructions?.trim() || null,
+        declaration: d.declaration?.trim() || null,
         grading: { ...d.grading, rows: d.grading.rows.map((g) => ({ ...g, sharePercent: n(g.sharePercent), maxAmount: n(g.maxAmount) })) },
         form: {
           ...d.form,

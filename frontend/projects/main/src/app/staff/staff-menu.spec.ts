@@ -1,4 +1,4 @@
-import { ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { DESKTOP_SCHEME_SUB_ROLE, ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
@@ -153,7 +153,8 @@ describe('staff menu', () => {
       const agency = (system: 'main' | 'consultancy' | 'surveillance') =>
         menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification'], system)).map((e: StaffMenuEntry) =>
           'group' in e ? `${e.group} (${e.items.length})` : e.item.label);
-      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Schemes (2)', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
+      // 2026-11-20: an assessment agency no longer verifies incentive schemes (no "Schemes" drop-down).
+      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Quality Observations', 'Sub-Users', 'Documents']);
       expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       // An agency with only desktop verification has one allotment screen: a link, not a drop-down.
@@ -173,18 +174,41 @@ describe('staff menu', () => {
       const normal = labels(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification']);
       expect(normal).not.toContain('Scheme Onsite Allotment');
       expect(normal).not.toContain('Scheme Onsite QC');
-      expect(normal).toContain('Scheme Allotment');
+      // 2026-11-20 (the product owner): the assessment agencies and their assessors no longer verify incentive schemes.
+      expect(normal).not.toContain('Scheme Allotment');
+      expect(normal).not.toContain('Scheme QC');
+      expect(labels(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'])).not.toContain('Scheme Verification');
       const onsite = labels(StaffRole.Agency, [ONSITE_SUB_ROLE]);
       for (const l of ['DA Allotment', 'SA Allotment', 'Monitoring', 'Scheme Allotment', 'Scheme QC', 'Reports', 'Expenditure', 'Financial Assistance']) expect(onsite).not.toContain(l);
       // Its assessors verify in the assessor app: no assessment screen on the web.
       expect(labels(StaffRole.DesktopAssessor, [ONSITE_SUB_ROLE])).toEqual([]);
     });
 
-    it('gives the master admin the Onsite Verification Agencies page under Schemes', () => {
-      expect(menuFor(StaffRole.MasterAdmin, []).filter((i) => i.group === 'Schemes').map((i) => i.label)).toContain('Onsite Verification Agencies');
+    it('gives the master admin the Incentive Verification Agencies page under Schemes', () => {
+      const schemes = menuFor(StaffRole.MasterAdmin, []).filter((i) => i.group === 'Schemes');
+      expect(schemes.map((i) => `${i.label} ${i.route}`)).toContain('Incentive Verification Agencies /staff/scheme-agencies');
+      expect(schemes.map((i) => i.label)).not.toContain('Onsite Verification Agencies');
       // A sub-user of an onsite agency given the onsite screens.
       expect(menuFor(StaffRole.Agency, [ONSITE_SUB_ROLE], 'main', ['/staff/scheme-onsite/allotment', '/staff/scheme-onsite/qc']).map((i) => i.label))
         .toEqual(['Scheme Onsite Allotment', 'Scheme Onsite QC']);
+    });
+  });
+
+  describe('desktop verification agencies (2026-11-20, the product owner)', () => {
+    it('gives a desktop agency only its assessors, sub-users and the scheme allotment and QC', () => {
+      expect(labels(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE])).toEqual(['Assessors', 'Scheme Allotment', 'Scheme QC', 'Sub-Users']);
+      expect(menuFor(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE]).map((i) => i.route)).toEqual([
+        '/staff/users/my-assessors', '/staff/schemes-verify/allotment', '/staff/schemes-verify/qc', '/staff/sub-users',
+      ]);
+      const desktop = labels(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE]);
+      for (const l of ['DA Allotment', 'SA Allotment', 'Monitoring', 'Scheme Onsite Allotment', 'Scheme Onsite QC', 'Reports', 'Expenditure', 'Financial Assistance'])
+        expect(desktop).not.toContain(l);
+    });
+
+    it('gives its assessors only Scheme Verification (on the web; no assessor app)', () => {
+      expect(labels(StaffRole.DesktopAssessor, [DESKTOP_SCHEME_SUB_ROLE])).toEqual(['Scheme Verification']);
+      // A sub-user of a desktop agency given the scheme screens.
+      expect(menuFor(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE], 'main', ['/staff/schemes-verify/allotment']).map((i) => i.label)).toEqual(['Scheme Allotment']);
     });
   });
 

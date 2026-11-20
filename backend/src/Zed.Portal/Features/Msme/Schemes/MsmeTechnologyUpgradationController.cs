@@ -40,8 +40,20 @@ public sealed class MsmeTechnologyUpgradationController(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
+    Incentives.SchemeStore schemes,
     ILogger<MsmeTechnologyUpgradationController> log) : MsmeApiController
 {
+    /// <summary>
+    /// 2026-11-20 (the card's toggle "Needs the consultant's recommendation" off): a new application goes through the card's direct
+    /// scheme; a unit with an application in progress here (a draft too) continues it.
+    /// </summary>
+    public const string NewApplicationsMessage =
+        "Technology Upgradation is now applied for through the Technology Upgradation card on your dashboard. Please open it there.";
+
+    /// <summary>No double claim: the unit's application of the card's direct scheme is in progress.</summary>
+    public const string DirectInProgressMessage =
+        "Your Technology Upgradation application made through the dashboard card is in progress. Please follow it there.";
+
     public const string PurchasedTechnology = "Purchased Technology";
     public const string InvoiceCopy = "Copy of Invoice";
     public const string CaCertificate = "CA certificate of expenditure";
@@ -265,6 +277,7 @@ public sealed class MsmeTechnologyUpgradationController(
         TuState Refuse(string message) => new(unit, null, null, null, message, [], [], []);
 
         if (!unit.EligibleForBenefits) return Refuse("You are not eligible for benefits. Please contact ZED team.");
+        if (await DirectRefusalAsync(ct) is { } direct) return Refuse(direct);
         if (unit.TuFlag != "1") return Refuse(unit.TuFlag == "0"
             ? "Data already submitted."
             : "Technology upgradation can be applied for after the Handholding Support recommends technologies for your unit.");
@@ -286,6 +299,38 @@ public sealed class MsmeTechnologyUpgradationController(
             ? DateOnly.FromDateTime(DateTime.Today.AddDays(-days))
             : null;
         return new TuState(unit, certification, certId, min, null, list[0], list[1], list[2]);
+    }
+
+    /// <summary>
+    /// 2026-11-20 (the card's toggle; no double claim): refused while the unit's application of the direct scheme is submitted
+    /// and not final; and, the card being direct, refused unless the unit has an application in progress here
+    /// (ZED_CONSULTANT.dbo.FinancialAssistance, not rejected, not paid: a draft too). Null = this page may go on.
+    /// </summary>
+    private async Task<string?> DirectRefusalAsync(CancellationToken ct)
+    {
+        var card = (await schemes.CardSettingsAsync(ct)).GetValueOrDefault(Incentives.SchemeStore.TuCard);
+        try
+        {
+            var apps = await Incentives.SchemeApplications.OfUnitAsync(db, ZedId, Incentives.SchemeStore.DirectCodeOf(card), ct);
+            if (apps.Any(a => a.Status != Incentives.SchemeApplications.Draft && !Incentives.SchemeApplications.Final.Contains(a.Status)))
+                return DirectInProgressMessage;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Direct Technology Upgradation applications of {ZedId} not readable (is migration 0105 applied?)", ZedId);
+        }
+        if (card?.Direct != true) return null;
+        try
+        {
+            var legacy = await db.QuerySqlAsync<Incentives.SchemeEligibility.LegacyRow>(Incentives.SchemeEligibility.LegacyTuSql,
+                new { ZedId = new DbString { Value = ZedId, IsAnsi = true, Length = 50 } }, ct);
+            return legacy.Any(r => r.VerificationStatus != 6) ? null : NewApplicationsMessage;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Technology Upgradation applications of {ZedId} not readable", ZedId);
+            return NewApplicationsMessage;
+        }
     }
 
     private static bool Submitted(IDictionary<string, object?> tech) => tech.Text("Submitted") is "1" or "True" or "true";

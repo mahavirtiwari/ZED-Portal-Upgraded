@@ -570,20 +570,23 @@ export class DashboardPage {
     }
     const fa = this.card('FINANCIAL_ASSISTANCE');
     if (fa) {
-      // 2026-11-20 (a Bronze-certified unit saw "Not yet available"): as the server decides (SchemeUnit): the ZED team blocks a
-      // unit with IsEligibleForFinancial = 0 (empty = allowed), and the application needs a certified level.
-      const blocked = this.is(this.basic(), 'IsEligibleForFinancial', 0);
+      // 2026-11-20 (the product owner): the card opens the Financial Assistance scheme of the framework (its state and page); an
+      // application made before on the old page and still in progress finishes there, so the card opens the old page for it.
+      const s = this.schemes()?.fa;
+      // As the server decides (SchemeUnit): the ZED team blocks a unit with IsEligibleForFinancial = 0 (empty = allowed) or
+      // without benefits (IsEligibleForBenefits = 1 required), and the application needs a certified level.
+      const blocked = this.is(this.basic(), 'IsEligibleForFinancial', 0) || !benefits;
       const certified = this.anyCertified();
-      const availed = !blocked && certified && this.faApplied();
-      // 2026-11-20 (incentive schemes): the card's "Activates after" levels (none ticked: Bronze, Silver and Gold).
-      const faLevels = this.schemes()?.fa.activatesAfter ?? [];
-      const faLevel = this.schemes()?.fa.level ?? null;
-      const faClosed = faLevels.length > 0 && !!faLevel && !faLevels.some((l) => l.toLowerCase() === faLevel.toLowerCase());
-      const opensAfter = t('msme.dashboard.incentive.opensAfter', 'Opens after {levels} certification', { levels: faLevels.map((l) => this.levelName(l)).join(' / ') });
-      tiles.push(blocked || !certified ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: blocked ? notEligible : notCertified }
-        : availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: details }, modal: { kind: 'fa' } }
-          : faClosed ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: opensAfter }
-            : { ...base('fa', 'rupee', fa), state: 'open', action: { label: avail, link: '/msme/financial-assistance' } });
+      if (s?.legacy) {
+        tiles.push({ ...base('fa', 'rupee', fa), state: 'progress', action: { label: t('msme.dashboard.incentive.viewButton', 'View'), link: '/msme/financial-assistance' } });
+      } else if (s?.scheme) {
+        tiles.push(this.schemeTile('fa', base('fa', 'rupee', fa), s.scheme));
+      } else {
+        // The scheme is not there (switched off, or the list could not be read): an application made before can still be seen.
+        const availed = !blocked && certified && this.faApplied();
+        tiles.push(availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: details }, modal: { kind: 'fa' } }
+          : { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: blocked || certified ? notEligible : notCertified });
+      }
     }
     const hh = this.card('HANDHOLDING');
     if (hh) {
@@ -594,10 +597,15 @@ export class DashboardPage {
     }
     const tu = this.card('TECHNOLOGY_UPGRADATION');
     const direct = this.schemes()?.tu;
-    if (tu && direct?.direct) {
-      // 2026-11-20: without the consultant's recommendation the card opens the direct scheme (its state and page).
-      tiles.push(direct.scheme ? this.schemeTile('tu', base('tu', 'zap', tu), direct.scheme)
-        : { ...base('tu', 'zap', tu), state: 'locked', action: null, note: notEligible });
+    if (tu && direct?.direct && direct.legacy) {
+      // 2026-11-20: the card is direct, but an application of the consultant-recommended flow is in progress: it continues there.
+      tiles.push({ ...base('tu', 'zap', tu), state: 'progress', action: { label: t('msme.dashboard.incentive.viewButton', 'View'), link: '/msme/technology-upgradation' } });
+    } else if (tu && direct?.scheme) {
+      // 2026-11-20: without the consultant's recommendation the card opens the direct scheme (its state and page); back on the
+      // recommendation, a direct application that is not final still shows here, to be continued.
+      tiles.push(this.schemeTile('tu', base('tu', 'zap', tu), direct.scheme));
+    } else if (tu && direct?.direct) {
+      tiles.push({ ...base('tu', 'zap', tu), state: 'locked', action: null, note: notEligible });
     } else if (tu) {
       const availed = this.is(this.cert(), 'TechnologyUpgradationStatus', 0);
       const open = (availed || this.is(this.cert(), 'TechnologyUpgradationStatus', 1)) && benefits;

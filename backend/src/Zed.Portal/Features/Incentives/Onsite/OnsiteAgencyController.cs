@@ -14,7 +14,8 @@ namespace Zed.Portal.Features.Incentives.Onsite;
 /// application allotted to it naming one of its assessors ticked "Onsite verification" for the scheme, without a date (the day the
 /// assessor starts the visit in the app is the date of verification) → <see cref="OnsiteWithAssessor"/>; name another of its assessors
 /// while the visit has not started; or reject it with a reason of Admin → Rejection Reasons (+ optional remarks): an "Auto" reason
-/// re-allots it by the onsite round robin (the agency is never offered it again), a "Master Admin" reason sends it back to
+/// re-allots it by the onsite round robin while the scheme's AutoAllot is on (the agency is never offered it again; AutoAllot off: it
+/// waits for the Master Admin), a "Master Admin" reason sends it back to
 /// <see cref="OnsiteAllot"/> for the Master Admin. "Scheme onsite QC" (the final QC; the desktop agency does none in this flow): the
 /// onsite report (visit date, representative, photos, checks, remarks, verified claim), then approve an amount (up to the eligible
 /// amount of the onsite verified claim) → <see cref="Approved"/>, or back to its assessor → <see cref="OnsiteWithAssessor"/>.
@@ -118,20 +119,25 @@ public sealed class OnsiteAgencyController(
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != OnsiteWithAgency) return this.Problem400("This application has already been processed.");
             var text = RejectionReasons.LegacyText(reason, remarks, 2000);
+            // 2026-11-20 (the product owner): an "Auto" reason re-allots by round robin only while the scheme's AutoAllot is on;
+            // otherwise the application waits for the Master Admin (with the waiting-for-allotment mail).
+            var autoOff = reason.AutoReallot && (await store.FindAsync(c.Code, ct))?.Verification.AutoAllot == false;
+            var auto = reason.AutoReallot && !autoOff;
             c.AddOnsiteRejected(UserId);
             c.ReasonForRejectionAgency = $"Rejected for onsite verification by agency {UserId}: {text}";
             c.OnsiteAgency = null;
             c.OnsiteAssessor = null;
             c.OnsiteAllotmentDate = null;
-            c.OnsiteAllotmentType = reason.AutoReallot ? null : OnsiteAllotment.WaitsForMasterAdmin;
+            c.OnsiteAllotmentType = auto ? null : OnsiteAllotment.WaitsForMasterAdmin;
             c.Status = OnsiteAllot;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Onsite allotment rejected by agency {UserId}: {text}", ct);
-            if (reason.AutoReallot
+            if (auto
                 && await SchemeCases.LoadAsync(db, id, ct) is { } back
                 && await Allotment.AllotLockedAsync(back, ct) is not null)
                 return new MessageResponse("Application rejected. It has been allotted to another agency.");
-            await Notifier.ManualAllotAsync(c, SchemeNotifier.OnsiteStage, $"Rejected for onsite verification by agency {UserId}: {text}", ct);
+            await Notifier.ManualAllotAsync(c, SchemeNotifier.OnsiteStage,
+                $"Rejected for onsite verification by agency {UserId}: {text}" + (autoOff ? " " + SchemeNotifier.AutoAllotOff : ""), ct);
             return new MessageResponse("Application rejected. It goes back to the ZED team for allotment.");
         }
     }
@@ -193,7 +199,7 @@ public sealed class OnsiteAgencyController(
             .OrderBy(r => r.UserName, StringComparer.OrdinalIgnoreCase)
             .Select(r => new Option(r.UserId!.Trim(), r.UserName?.Trim() ?? r.UserId!.Trim()));
 
-    private Task<bool> IsOnsiteAgencyAsync(CancellationToken ct) => OnsiteAgencies.IsOnsiteAgencyAsync(db, UserId, ct);
+    private Task<bool> IsOnsiteAgencyAsync(CancellationToken ct) => Agencies.IncentiveAgencies.IsAgencyOfKindAsync(db, UserId, Agencies.IncentiveAgencies.OnsiteKind, ct);
 
     /// <summary>An application allotted to this onsite agency (only an onsite agency gets any).</summary>
     private async Task<SchemeCase?> Mine(int id, CancellationToken ct) =>

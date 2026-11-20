@@ -159,7 +159,7 @@ internal sealed class SchemeNotifier(
 
     public const string DesktopStage = "Desktop verification";
     public const string OnsiteStage = "Onsite verification";
-    public const string NoDesktopAgency = "No desktop verification agency is eligible for the unit's states and sectors.";
+    public const string NoDesktopAgency = "No desktop verification agency serves this scheme in the unit's state and district.";
     public const string NoOnsiteAgency = "No onsite verification agency covers the unit's state and district, or automatic allotment is off for this scheme.";
     public const string AutoAllotOff = "Automatic allotment is off for this scheme.";
 
@@ -174,6 +174,7 @@ internal sealed class SchemeNotifier(
         OnsiteAllot => "Waiting for allotment of the onsite verification agency",
         OnsiteWithAgency => "With the onsite verification agency",
         OnsiteWithAssessor or OnsiteVisit => "Onsite verification",
+        Approved => "Approved, waiting for payment",
         _ => status,
     };
 

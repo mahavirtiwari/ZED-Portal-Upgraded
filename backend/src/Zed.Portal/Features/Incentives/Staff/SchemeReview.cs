@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Portal.Features.Incentives.Applicant;
 using Zed.Portal.Features.Msme.Schemes;
 using static Zed.Portal.Features.Incentives.SchemeApplications;
 
@@ -171,7 +172,8 @@ public static class SchemeReview
     public sealed record Actions(
         bool Allot = false, bool Hold = false, bool Respond = false, bool Qc = false, bool Accept = false, bool Check = false,
         bool Correction = false, bool Reject = false, bool Recommend = false, int RoundsLeft = 0, int Checked = 0, int Checkable = 0, int NotValid = 0,
-        bool OnsiteAllot = false, bool OnsiteRespond = false, bool OnsiteAssessor = false, bool OnsiteQc = false);
+        bool OnsiteAllot = false, bool OnsiteRespond = false, bool OnsiteAssessor = false, bool OnsiteQc = false,
+        bool CorrectionRejects = false);
 
     public sealed record Detail(Application Application, IReadOnlyList<Section> Sections, Totals Totals, IReadOnlyList<HistoryItem> History, Actions Actions)
     {
@@ -222,7 +224,24 @@ public static class SchemeReview
             for (var i = 0; i < items.Count; i++)
                 foreach (var (field, value) in items[i].Values)
                     if (FilesOf(value).Count > 0) list.Add(new(PathOf(key, i, field), Words(field), key, i, field));
+        // 2026-11-20 (the product owner): with the bank block on, the account details (number, IFSC, bank, branch) are checked too,
+        // so the assessor can mark them Not valid and the unit corrects them (the applicant side takes the new account then).
+        if (def?.Form.Blocks.BankAccount == true)
+            list.Add(new(AccountPath, AccountLabel, ApplicantForm.BankSection, 0, ApplicantForm.AccountField));
         return list;
+    }
+
+    /// <summary>The check path of the bank account details (ApplicantForm.AccountPath: "_bank/0/account").</summary>
+    public static string AccountPath => ApplicantForm.AccountPath;
+
+    /// <summary>The label of the account details' check (the staff page shows it through its Texts key).</summary>
+    public const string AccountLabel = "Bank account details";
+
+    /// <summary>The account details as one line: number, IFSC, bank, branch.</summary>
+    public static string? AccountText(Row row)
+    {
+        var parts = new[] { row.AccountNo, row.IfscCode, row.BankName, row.BranchAddress }.Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim()).ToList();
+        return parts.Count == 0 ? null : string.Join(", ", parts);
     }
 
     /// <summary>Every stored file name the application refers to (the only files the staff file endpoint serves).</summary>
@@ -307,6 +326,21 @@ public static class SchemeReview
                     files.Select(File).ToList(), checkable.Contains(path) ? path : null, false, CheckOf(path));
             }).ToList())).ToList();
             sections.Add(new Section(key, Words(key), items.Count > 1, shown));
+        }
+        if (checkable.Contains(AccountPath))
+        {
+            // The bank block's account details, with their check, in the bank section (added when the answers have none).
+            var account = new Field(ApplicantForm.AccountField, AccountLabel, "text", AccountText(row), [], AccountPath, false, CheckOf(AccountPath));
+            var at = sections.FindIndex(x => x.Key == ApplicantForm.BankSection);
+            if (at < 0) sections.Add(new Section(ApplicantForm.BankSection, Words(ApplicantForm.BankSection), false, [new Item(0, null, null, [account])]));
+            else
+            {
+                var bank = sections[at];
+                var items = bank.Items.ToList();
+                if (items.Count == 0) items.Add(new Item(0, null, null, [account]));
+                else items[0] = items[0] with { Fields = [account, .. items[0].Fields] };
+                sections[at] = bank with { Items = items };
+            }
         }
 
         var claimed = def is null ? row.ClaimAmount ?? 0 : answers.Claim(def.Form);

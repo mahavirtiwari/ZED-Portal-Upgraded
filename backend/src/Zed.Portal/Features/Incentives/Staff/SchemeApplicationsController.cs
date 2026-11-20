@@ -10,7 +10,8 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// <summary>
 /// The Master Admin's "Scheme Applications" (2026-11-20, approved): every submitted scheme application with filters (scheme, status,
 /// state, submitted from / to) and the counts per status; the detail; allot / re-allot to an eligible agency (ticked for the
-/// scheme, the unit's state and sector); resume or reject an application on hold (its certificate was suspended or withdrawn).
+/// scheme and the unit's state and district: the desktop verification agencies); resume or reject an application on hold (its certificate
+/// was suspended or withdrawn; an approved, unpaid one resumes as Approved).
 /// </summary>
 [Route("api/staff/scheme-applications")]
 [StaffRoles(UserRole.MasterAdmin)]
@@ -102,7 +103,7 @@ public sealed class SchemeApplicationsController(
             if (await Find(id, ct) is not { } c) return NotFound();
             if (c.Status is not (Submitted or WithAgency)) return this.Problem400("This application can no longer be allotted.");
             var agency = (await Allotment.EligibleAsync(c.ZedId, c.Code, c.Rejected, ct)).FirstOrDefault(a => string.Equals(a.UserId, req.AgencyUserId?.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (agency is null) return this.Problem400("Please select an agency ticked for this scheme.");
+            if (agency is null) return this.Problem400("Please select a desktop verification agency serving this scheme in the unit's state and district.");
             var before = c.Agency;
             c.Agency = agency.UserId;
             c.Assessor = null;
@@ -134,6 +135,8 @@ public sealed class SchemeApplicationsController(
             // Phase 2: the onsite stage resumes at its own steps (no onsite agency → OnsiteAllot, no onsite assessor → OnsiteWithAgency).
             if (next is OnsiteWithAgency && c.OnsiteAgency is null) next = SchemeApplications.OnsiteAllot;
             if (next is OnsiteWithAssessor or OnsiteVisit && c.OnsiteAssessor is null) next = c.OnsiteAgency is null ? SchemeApplications.OnsiteAllot : OnsiteWithAgency;
+            // An approved (unpaid) application resumes as Approved, so NEFT lists it again; without its amount it goes back to the QC.
+            if (next == Approved && c.ApprovedAmount is null) next = Qc;
             if (next == Qc && (c.OnsiteAgency is null ? c.Assessor is null : c.OnsiteAssessor is null))
                 next = c.OnsiteAgency is not null ? OnsiteWithAgency : c.Agency is null ? Submitted : WithAgency;
             if (next == Correction)
@@ -143,7 +146,8 @@ public sealed class SchemeApplicationsController(
             }
             var reason = c.HoldReason;
             c.Status = next;
-            c.HoldReason = null;
+            // Kept as "Resumed: …" so the sweep does not hold it again for the same certificate state (the Master Admin decided).
+            c.HoldReason = reason is { Length: > 0 } ? (SchemeSweep.ResumedPrefix + reason)[..Math.Min(500, SchemeSweep.ResumedPrefix.Length + reason.Length)] : null;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application resumed ({next}) by {ActorId}; it was on hold: {reason}", ct);
             await Notifier.ResumedAsync(c, SchemeNotifier.StageWords(next), ct);

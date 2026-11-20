@@ -24,9 +24,25 @@ export type SubRole = 'DesktopVerification' | 'SiteVerification' | 'FinancialVer
 
 /**
  * 2026-11-20 (incentive schemes, phase 2): the pseudo sub-role of an onsite verification agency (Users.AgencyKind 'SchemeOnsite'),
- * its sub-users and its assessors, added at sign-in (OnsiteAgencies.SubRole). They see only the entries marked `onsite`.
+ * its sub-users and its assessors, added at sign-in (IncentiveAgencies.OnsiteSubRole). They see only the entries for `onsite`.
  */
 export const ONSITE_SUB_ROLE = 'SchemeOnsite';
+
+/**
+ * 2026-11-20 (the product owner): the pseudo sub-role of a desktop verification agency (Users.AgencyKind 'SchemeDesktop'), its
+ * sub-users and its assessors, added at sign-in (IncentiveAgencies.DesktopSubRole). They see only the entries for `desktop`.
+ */
+export const DESKTOP_SCHEME_SUB_ROLE = 'SchemeDesktop';
+
+/**
+ * The kind of agency an agency user (or an assessor, by its agency) is: an assessment agency, or an incentive verification agency
+ * (desktop / onsite), from the sign-in's sub-roles.
+ */
+export type AgencyKind = 'assessment' | 'desktop' | 'onsite';
+
+export function agencyKindOf(subRoles: readonly string[]): AgencyKind {
+  return subRoles.includes(ONSITE_SUB_ROLE) ? 'onsite' : subRoles.includes(DESKTOP_SCHEME_SUB_ROLE) ? 'desktop' : 'assessment';
+}
 
 export interface StaffMenuItem {
   label: string;
@@ -59,10 +75,10 @@ export interface StaffMenuItem {
    */
   perLevel?: boolean;
   /**
-   * 2026-11-20 (phase 2): for an onsite verification agency (sub-role {@link ONSITE_SUB_ROLE}): 'only' = only for it (and not for
-   * the assessment agencies), 'also' = for both. Entries without it are not shown to an onsite agency or its assessors.
+   * 2026-11-20: the kinds of agency (and their assessors) the entry is for ({@link agencyKindOf}); without it, the assessment
+   * agencies only. The incentive verification agencies (desktop, onsite) see only the entries listing their kind.
    */
-  onsite?: 'only' | 'also';
+  agencyKinds?: readonly AgencyKind[];
 }
 
 /** A heading (or none) inside a drop-down, with its links. */
@@ -106,6 +122,8 @@ export function menuEntries(items: readonly StaffMenuItem[]): StaffMenuEntry[] {
 }
 
 const R = StaffRole;
+const ALL_KINDS: readonly AgencyKind[] = ['assessment', 'desktop', 'onsite'];
+const ASSESSMENT_ONLY: readonly AgencyKind[] = ['assessment'];
 
 /**
  * Main's staff menu per role, as in the role branches of Views/Shared/_Layout.cshtml. Screens are moved from
@@ -139,7 +157,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
 
   // Assessment workflow
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Assessment' },
-  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency], onsite: 'also' },
+  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency], agencyKinds: ALL_KINDS },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'], group: 'Allotment' },
   { label: 'SA Allotment', legacyPath: '/Assessment/SaAllotment', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Allotment' },
   { label: 'Desktop Verification', legacyPath: '/Assessment/DaVerification', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
@@ -155,16 +173,17 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.Agency, R.DesktopAssessor], subRoles: ['FinancialVerification'] },
   { label: 'Incentive Submissions', legacyPath: '/Incentive/Submissions', route: '/staff/incentives/submissions', roles: [R.SuperAdmin] },
   { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes' },
-  // 2026-11-20: the incentive schemes the Admin defines (verified like the assessment; who sees what is decided by the scheme ticks).
+  // 2026-11-20: the incentive schemes the Admin defines (verified like the assessment). 2026-11-20 (the product owner): desktop and
+  // onsite are done by separate agencies the Master Admin adds (Incentive Verification Agencies, by state and district), never by the
+  // assessment agencies: the desktop agency's allotment and QC, its assessors' verification; the onsite agency's onsite allotment and
+  // final QC (its assessors verify in the app).
   { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes' },
-  { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes' },
-  { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes' },
-  { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor] },
-  // 2026-11-20 (phase 2): onsite verification of Desktop + Onsite schemes: the Master Admin's onsite agencies (kept apart from the
-  // assessment agencies) and the onsite verification agency's onsite allotment and final QC (its assessors verify in the app).
-  { label: 'Onsite Verification Agencies', route: '/staff/scheme-onsite/agencies', roles: [R.MasterAdmin], group: 'Schemes' },
-  { label: 'Scheme Onsite Allotment', route: '/staff/scheme-onsite/allotment', roles: [R.Agency], group: 'Schemes', onsite: 'only' },
-  { label: 'Scheme Onsite QC', route: '/staff/scheme-onsite/qc', roles: [R.Agency], group: 'Schemes', onsite: 'only' },
+  { label: 'Incentive Verification Agencies', route: '/staff/scheme-agencies', roles: [R.MasterAdmin], group: 'Schemes' },
+  { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
+  { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
+  { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor], agencyKinds: ['desktop'] },
+  { label: 'Scheme Onsite Allotment', route: '/staff/scheme-onsite/allotment', roles: [R.Agency], group: 'Schemes', agencyKinds: ['onsite'] },
+  { label: 'Scheme Onsite QC', route: '/staff/scheme-onsite/qc', roles: [R.Agency], group: 'Schemes', agencyKinds: ['onsite'] },
   { label: 'NEFT: New Transactions', legacyPath: '/Neft/NewTransactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
   { label: 'NEFT: Approved Transactions', legacyPath: '/Neft/ApprovedTransactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
@@ -234,7 +253,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
   { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
-  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency], onsite: 'also' },
+  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency], agencyKinds: ALL_KINDS },
 ];
 
 /**
@@ -436,7 +455,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Scheme Allotment': () => t('staff.menu.item.schemeAllotmentLabel', 'Scheme Allotment'),
   'Scheme QC': () => t('staff.menu.item.schemeQcLabel', 'Scheme QC'),
   'Scheme Verification': () => t('staff.menu.item.schemeVerificationLabel', 'Scheme Verification'),
-  'Onsite Verification Agencies': () => t('staff.menu.item.onsiteVerificationAgenciesLabel', 'Onsite Verification Agencies'),
+  'Incentive Verification Agencies': () => t('staff.menu.item.incentiveVerificationAgenciesLabel', 'Incentive Verification Agencies'),
   'Scheme Onsite Allotment': () => t('staff.menu.item.schemeOnsiteAllotmentLabel', 'Scheme Onsite Allotment'),
   'Scheme Onsite QC': () => t('staff.menu.item.schemeOnsiteQcLabel', 'Scheme Onsite QC'),
   'User Management': () => t('staff.menu.item.userManagementLabel', 'User Management'),
@@ -595,11 +614,11 @@ export function menuFor(
   system: PortalSystem = PORTAL_SYSTEM,
   permissionRoutes?: readonly string[] | null,
 ): StaffMenuItem[] {
-  const onsite = subRoles.includes(ONSITE_SUB_ROLE);
+  const kind = agencyKindOf(subRoles);
   return expandLevels(MENUS[system]).filter(
     (i) =>
       i.roles.includes(roleId) &&
-      (i.onsite === 'only' ? onsite : i.onsite === 'also' || !onsite) &&
+      (i.agencyKinds ?? ASSESSMENT_ONLY).includes(kind) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&
       (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))) &&
       (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&

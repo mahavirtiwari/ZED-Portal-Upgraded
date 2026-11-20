@@ -2,7 +2,7 @@ import { Component, OnInit, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TextPipe, t } from '../../content/page-text';
-import { CHECK_STAGES, FIELD_TYPES, FormField, SCHEME_LIMITS, checkStageLabel, fieldTypeLabel, keyFrom } from './schemes-admin.api';
+import { CHECK_STAGES, FIELD_TYPES, FormField, SCHEME_LIMITS, UNIQUE_TYPES, checkStageLabel, fieldTypeLabel, keyFrom } from './schemes-admin.api';
 
 type BoundKind = '' | 'today' | 'certified' | 'days' | 'date';
 interface Bound { kind: BoundKind; days: number | null; date: string }
@@ -58,6 +58,9 @@ export function formatBound(b: Bound): string | null {
                 <label><input type="checkbox" id="fd-checks" [(ngModel)]="f.assessorChecks" /> {{ 'The assessor checks it' | t: 'staff.incentivesAdmin.field.assessorChecks' }}</label>
                 @if (f.type === 'amount') {
                   <label><input type="checkbox" id="fd-claim" [(ngModel)]="f.isClaim" /> {{ 'Claim amount (adds up to the claim)' | t: 'staff.incentivesAdmin.field.claim' }}</label>
+                }
+                @if (canBeUnique()) {
+                  <label><input type="checkbox" id="fd-unique" [(ngModel)]="f.unique" /> {{ 'Unique: the value cannot be used again in another application of the unit (e.g. an invoice number)' | t: 'staff.incentivesAdmin.field.unique' }}</label>
                 }
               </div>
               @if (f.assessorChecks && onsiteFlow()) {
@@ -170,6 +173,11 @@ export class FieldDialogComponent implements OnInit {
     return checkStageLabel(stage);
   }
 
+  /** 2026-11-20: a text, number, amount or date can be unique (SchemeRules.UniqueTypes). */
+  protected canBeUnique(): boolean {
+    return !!this.f && UNIQUE_TYPES.includes(this.f.type);
+  }
+
   protected typeLabel(type: string): string {
     return fieldTypeLabel(type);
   }
@@ -208,6 +216,8 @@ export class FieldDialogComponent implements OnInit {
       options: isChoice ? options : [],
       copyOf: f.type === 'copy' ? f.copyOf : null,
       isClaim: f.type === 'amount' && f.isClaim,
+      // 2026-11-20 (no duplicate claims): text, number, amount and date fields only.
+      unique: UNIQUE_TYPES.includes(f.type) && !!f.unique,
       maxFiles: isFile ? (f.maxFiles ?? 1) : null,
       // Desktop is the default (not stored); a Desktop-only scheme keeps the choice but ignores it.
       checkStage: f.assessorChecks && f.checkStage && f.checkStage !== 'desktop' ? f.checkStage : null,

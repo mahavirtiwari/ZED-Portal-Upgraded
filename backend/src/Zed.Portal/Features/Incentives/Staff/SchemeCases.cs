@@ -168,10 +168,11 @@ internal static class SchemeCases
         public bool? IsActive { get; init; }
         public string? CreatedBy { get; init; }
         public string? SchemeVerification { get; init; }
-        /// <summary>Migration 0106: 'SchemeOnsite' for an onsite verification agency.</summary>
+        /// <summary>Migration 0106 / 0107: 'SchemeOnsite' / 'SchemeDesktop' for an incentive verification agency.</summary>
         public string? AgencyKind { get; init; }
 
-        public bool IsOnsiteAgency => RoleId == 2 && string.Equals(AgencyKind?.Trim(), OnsiteAgencyKind, StringComparison.OrdinalIgnoreCase);
+        public bool IsOnsiteAgency => RoleId == 2 && Agencies.IncentiveAgencies.IsOnsite(AgencyKind);
+        public bool IsDesktopAgency => RoleId == 2 && Agencies.IncentiveAgencies.IsDesktop(AgencyKind);
     }
 
     public sealed class HistoryRow

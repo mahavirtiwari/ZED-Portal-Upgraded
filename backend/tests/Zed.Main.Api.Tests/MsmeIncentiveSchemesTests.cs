@@ -32,14 +32,42 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
     private readonly ConcurrentQueue<object?> _corrections = new();
     private string? _faCurrent = "Silver";
     private int _nextId = 100;
+    private int _financial = 1;
+    private readonly List<object> _legacyFa = [];
+    private readonly List<object> _legacyTu = [];
+    private readonly List<object> _archived = [];
 
     public MsmeIncentiveSchemesTests()
     {
         MsmeSchemesTestSupport.RegisterUsers(_host);
         var sql = _host.Sql;
-        sql.Procs["SP_MSME_GET_DETAILS"] = args => MsmeSchemesTestSupport.MsmeDetails(FakeSql.Arg(args, "ZedId")!, 1, _benefits);
+        sql.Procs["SP_MSME_GET_DETAILS"] = args => MsmeSchemesTestSupport.MsmeDetails(FakeSql.Arg(args, "ZedId")!, _financial, _benefits);
         sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE"] = _ => _faCurrent is null ? FakeSql.Sets() : FakeSql.Sets([new { CertificationType = _faCurrent }]);
-        sql.Queries["SELECT Id, SchemeCode, SchemeJson"] = _ => _schemes;
+        sql.Queries["SELECT Id, SchemeCode, SchemeJson"] = _ => { lock (_schemes) return _schemes.Select(s => (object)new Dictionary<string, object?>(s)).ToList(); };
+        // The built-in schemes added (or upgraded) on first use land in the same list.
+        sql.Procs[SchemeStore.InsertSql] = args =>
+        {
+            lock (_schemes)
+                _schemes.Add(new()
+                {
+                    ["Id"] = (long)(_schemes.Count + 1), ["SchemeCode"] = FakeSql.Arg(args, "Code"), ["SchemeJson"] = FakeSql.Arg(args, "Json"),
+                    ["Active"] = FakeSql.Arg(args, "Active") == "True", ["OrderNo"] = int.Parse(FakeSql.Arg(args, "OrderNo")!),
+                });
+            return FakeSql.Sets();
+        };
+        sql.Procs[SchemeStore.UpdateSql] = args =>
+        {
+            lock (_schemes)
+            {
+                var row = _schemes.First(s => (string?)s["SchemeCode"] == FakeSql.Arg(args, "Code"));
+                row["SchemeJson"] = FakeSql.Arg(args, "Json");
+                row["Active"] = FakeSql.Arg(args, "Active") == "True";
+            }
+            return FakeSql.Sets();
+        };
+        sql.Queries[SchemeEligibility.LegacyFaSql] = _ => _legacyFa;
+        sql.Queries[SchemeEligibility.LegacyTuSql] = _ => _legacyTu;
+        sql.Queries[SchemeEligibility.ArchivedSql] = _ => _archived;
         sql.Queries["SELECT DashboardCard AS Card, ActivatesAfter"] = _ => _cards;
         sql.Queries["SELECT TOP 1 M.EnterpriseType"] = _ => [new { EnterpriseType = "Micro", TwoDigitActivity = "24", RegisteredOn = new DateTime(2025, 1, 1) }];
         sql.Queries["SELECT Certification, CAST(CASE"] = _ => _certs;
@@ -118,6 +146,11 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
     private void AddScheme(SchemeDefinition d, bool active = true) =>
         _schemes.Add(new() { ["Id"] = (long)(_schemes.Count + 1), ["SchemeCode"] = d.Code, ["SchemeJson"] = SchemeRules.Serialize(d), ["Active"] = active, ["OrderNo"] = _schemes.Count });
 
+    private SchemeDefinition Stored(string code) => SchemeRules.Parse((string)_schemes.Single(s => (string?)s["SchemeCode"] == code)["SchemeJson"]!)!;
+
+    private static object LegacyRow(int id, string level, int? status, DateTime created, string? invoice = null) =>
+        new { Id = id, Level = level, VerificationStatus = status, CreatedOn = (DateTime?)created, InvoiceNo = invoice };
+
     private void Certified(string level, string no, DateTime on, string? phase = null) =>
         _certs.Add(new { Certification = level, CertNo = no, CertifiedOn = on, Phase = phase });
 
@@ -136,7 +169,7 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
         return await r.Content.ReadFromJsonAsync<JsonElement>();
     }
 
-    private async Task<string> UploadAsync(HttpClient client, string section, int item, string field, byte[]? content = null)
+    private async Task<string> UploadAsync(HttpClient client, string section, int item, string field, byte[]? content = null, string code = Code)
     {
         var file = new ByteArrayContent(content ?? MsmeSchemesTestSupport.Pdf);
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
@@ -144,7 +177,7 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
         {
             { new StringContent(section), "section" }, { new StringContent(item.ToString()), "item" }, { new StringContent(field), "field" }, { file, "file", "doc.pdf" },
         };
-        return (await Json(await client.PostAsync($"/api/msme/incentive-schemes/{Code}/documents", form))).GetProperty("fileName").GetString()!;
+        return (await Json(await client.PostAsync($"/api/msme/incentive-schemes/{code}/documents", form))).GetProperty("fileName").GetString()!;
     }
 
     private static string Files(params string[] names) => JsonSerializer.Serialize(names);
@@ -213,36 +246,271 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
     }
 
     [Fact]
-    public async Task Dashboard_lists_active_schemes_with_their_state_the_direct_tu_scheme_and_the_fa_levels()
+    public async Task Dashboard_lists_active_schemes_with_their_state_the_direct_tu_scheme_and_the_fa_scheme()
     {
         AddScheme(SchemeTemplates.TechnologyUpgradation());
         AddScheme(SchemeTemplates.FinancialAssistance("GREEN") with { Card = new() { Title = "Green", Icon = "star" } });
         AddScheme(SchemeTemplates.FinancialAssistance("OFF"), active: false);
         _cards.Add(new { Card = "TECHNOLOGY_UPGRADATION", ActivatesAfter = (string?)null, RecommendationRequired = false, DirectSchemeCode = Code });
-        _cards.Add(new { Card = "FINANCIAL_ASSISTANCE", ActivatesAfter = "Gold", RecommendationRequired = (bool?)null, DirectSchemeCode = (string?)null });
+        _cards.Add(new { Card = "FINANCIAL_ASSISTANCE", ActivatesAfter = "Bronze,Gold", RecommendationRequired = (bool?)null, DirectSchemeCode = (string?)null });
         Certified("Bronze", "B-1", new DateTime(2026, 11, 1));
-        // A suspended Silver certificate does not count: Bronze stays the window.
-        Certified("Silver", "S-1", new DateTime(2026, 11, 10), "SUSPENDED");
         _apps.Add(App(7, "Verifying", "Bronze", "B-1", "GREEN"));
 
         var json = await Json(await (await SignInAsync()).GetAsync("/api/msme/incentive-schemes"));
         var schemes = json.GetProperty("schemes").EnumerateArray().ToList();
+        // The two built-in schemes are on their cards, never tiles of their own.
         Assert.Equal(["GREEN"], schemes.Select(s => s.GetProperty("code").GetString()));
         Assert.Equal("progress", schemes[0].GetProperty("state").GetString());
         Assert.Equal(7, schemes[0].GetProperty("applicationId").GetInt32());
         var tu = json.GetProperty("tu");
         Assert.True(tu.GetProperty("direct").GetBoolean());
+        Assert.False(tu.GetProperty("legacy").GetBoolean());
         Assert.Equal("open", tu.GetProperty("scheme").GetProperty("state").GetString());
         Assert.Equal("Bronze", tu.GetProperty("scheme").GetProperty("level").GetString());
         Assert.Equal(80, tu.GetProperty("scheme").GetProperty("grade").GetProperty("sharePercent").GetDecimal());
-        Assert.Equal(["Gold"], json.GetProperty("fa").GetProperty("activatesAfter").EnumerateArray().Select(e => e.GetString()));
-        Assert.Equal("Silver", json.GetProperty("fa").GetProperty("level").GetString());
+        var fa = json.GetProperty("fa");
+        Assert.Equal(("FA", "open", false), (fa.GetProperty("scheme").GetProperty("code").GetString(), fa.GetProperty("scheme").GetProperty("state").GetString(),
+            fa.GetProperty("legacy").GetBoolean()));
+        Assert.Equal(["Bronze", "Gold"], fa.GetProperty("scheme").GetProperty("activationLevels").EnumerateArray().Select(e => e.GetString()));
+
+        // 2026-11-20: a suspended Silver certificate (higher than the active Bronze) closes the windows.
+        Certified("Silver", "S-1", new DateTime(2026, 11, 10), "SUSPENDED");
+        json = await Json(await (await SignInAsync()).GetAsync("/api/msme/incentive-schemes"));
+        Assert.Equal(("locked", "suspended"), (json.GetProperty("tu").GetProperty("scheme").GetProperty("state").GetString(),
+            json.GetProperty("tu").GetProperty("scheme").GetProperty("note").GetString()));
+        _certs.RemoveAt(1);
 
         // Benefits withdrawn: locked with the reason.
         _benefits = 0;
         json = await Json(await (await SignInAsync()).GetAsync("/api/msme/incentive-schemes"));
         Assert.Equal(("locked", "notEligible"), (json.GetProperty("tu").GetProperty("scheme").GetProperty("state").GetString(),
             json.GetProperty("tu").GetProperty("scheme").GetProperty("note").GetString()));
+        Assert.Equal("locked", json.GetProperty("fa").GetProperty("scheme").GetProperty("state").GetString());
+    }
+
+    // ----- 2026-11-20: Financial Assistance on the framework -----
+
+    private void FaCard(string levels = "Bronze,Silver,Gold") =>
+        _cards.Add(new { Card = "FINANCIAL_ASSISTANCE", ActivatesAfter = levels, RecommendationRequired = (bool?)null, DirectSchemeCode = (string?)null });
+
+    [Fact]
+    public async Task The_financial_assistance_card_opens_the_built_in_scheme_added_on_first_use()
+    {
+        FaCard("Bronze,ZEDX");
+        Certified("Bronze", "B-1", DateTime.Today.AddDays(-10));
+        var client = await SignInAsync();
+        var fa = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("fa");
+        Assert.Equal(("FA", "open"), (fa.GetProperty("scheme").GetProperty("code").GetString(), fa.GetProperty("scheme").GetProperty("state").GetString()));
+
+        // Stored once, switched on, opening after the card's levels and graded for each (ZED-X: a copy of the first row).
+        await client.GetAsync("/api/msme/incentive-schemes");
+        Assert.Single(_schemes, s => (string?)s["SchemeCode"] == SchemeTemplates.FaCode);
+        Assert.True((bool)_schemes.Single(s => (string?)s["SchemeCode"] == SchemeTemplates.FaCode)["Active"]!);
+        var stored = Stored(SchemeTemplates.FaCode);
+        Assert.Equal(["Bronze", "ZEDX"], stored.Activation.Levels);
+        Assert.Contains(stored.Grading.Rows, r => r.Key == "ZEDX" && r.SharePercent == 75);
+        // The direct TU scheme is added too, switched off.
+        Assert.False((bool)_schemes.Single(s => (string?)s["SchemeCode"] == Code)["Active"]!);
+
+        // The page: the FA form with its own texts; the draft is for the Bronze certificate.
+        var page = await Json(await client.GetAsync("/api/msme/incentive-schemes/FA"));
+        Assert.Equal(SchemeTemplates.FaDisclaimer.Trim(), page.GetProperty("scheme").GetProperty("disclaimer").GetString());
+        Assert.Equal(SchemeTemplates.DeclarationText, page.GetProperty("scheme").GetProperty("declaration").GetString());
+        page = await Json(await client.PostAsync("/api/msme/incentive-schemes/FA/draft", null));
+        Assert.Equal(("Draft", "Bronze"), (page.GetProperty("application").GetProperty("status").GetString(), page.GetProperty("application").GetProperty("level").GetString()));
+        Assert.Equal("B-1", _apps.Single()["SchemeCertNo"]);
+    }
+
+    [Fact]
+    public async Task A_legacy_financial_assistance_in_progress_finishes_on_the_old_page()
+    {
+        FaCard();
+        Certified("Silver", "S-1", DateTime.Today.AddDays(-10));
+        // Made on the old page for Bronze, still with the agency.
+        _legacyFa.Add(LegacyRow(9, "Bronze", 2, DateTime.Today.AddDays(-40)));
+        var client = await SignInAsync();
+        var fa = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("fa");
+        Assert.True(fa.GetProperty("legacy").GetBoolean());
+        Assert.Equal(("locked", "legacyInProgress"), (fa.GetProperty("scheme").GetProperty("state").GetString(), fa.GetProperty("scheme").GetProperty("note").GetString()));
+        var r = await client.PostAsync("/api/msme/incentive-schemes/FA/draft", null);
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Contains("earlier application", await r.ProblemTitle());
+
+        // Rejected (no longer read): the framework opens for Silver.
+        _legacyFa.Clear();
+        fa = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("fa");
+        Assert.Equal(("open", false), (fa.GetProperty("scheme").GetProperty("state").GetString(), fa.GetProperty("legacy").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task A_legacy_financial_assistance_paid_is_the_claim_of_its_level_and_certificate()
+    {
+        FaCard();
+        Certified("Bronze", "B-1", new DateTime(2026, 1, 10));
+        _legacyFa.Add(LegacyRow(9, "Bronze", 6, new DateTime(2026, 2, 1), "INV-OLD"));
+        var client = await SignInAsync();
+        async Task<string?> StateAsync() => (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("fa").GetProperty("scheme").GetProperty("state").GetString();
+        Assert.Equal("availed", await StateAsync());
+
+        // An upgrade opens the next level.
+        Certified("Silver", "S-1", new DateTime(2026, 6, 1));
+        Assert.Equal("open", await StateAsync());
+
+        // A re-certification of Bronze (the earlier certificate kept under {ZedId}_R_{Id}, a new number) opens Bronze again.
+        _certs.Clear();
+        Certified("Bronze", "B-2", new DateTime(2026, 9, 1));
+        _archived.Add(new { Certification = "Bronze", CertNo = "B-1", CertifiedOn = (DateTime?)new DateTime(2026, 1, 10), Phase = "EXPIRED" });
+        Assert.Equal("open", await StateAsync());
+
+        // The legacy invoice number cannot be claimed again (unique field).
+        await Json(await client.PostAsync("/api/msme/incentive-schemes/FA/draft", null));
+        var invoices = new[] { await UploadAsync(client, "expenditure", 0, "invoice_copy", code: "FA"), await UploadAsync(client, "expenditure", 0, "invoice_copy", code: "FA") };
+        var values = new Dictionary<string, string?>
+        {
+            ["invoice_no"] = "inv-old", ["invoice_date"] = Day(-3), ["amount_paid"] = "40000", ["payment_mode"] = "Online", ["invoice_copy"] = Files(invoices),
+        };
+        var r = await client.PutAsJsonAsync("/api/msme/incentive-schemes/FA/sections/expenditure", new { values });
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Contains("earlier Financial Assistance application", await r.ProblemTitle());
+        // Another value is accepted; two invoice copies satisfy the "at least 2 files" rule without the optional CA certificate.
+        values["invoice_no"] = "INV-NEW";
+        await Json(await client.PutAsJsonAsync("/api/msme/incentive-schemes/FA/sections/expenditure", new { values }));
+    }
+
+    [Fact]
+    public async Task A_document_takes_up_to_three_files_and_a_unique_value_is_not_reused_across_applications()
+    {
+        FaCard();
+        Certified("Silver", "S-1", DateTime.Today.AddDays(-10));
+        // A paid framework claim of an earlier certificate used INV-9.
+        var paid = App(50, "Paid", "Bronze", "B-0", SchemeTemplates.FaCode);
+        paid["FormAnswers"] = new FormAnswers { Sections = new() { ["expenditure"] = [new FormItem { Values = new() { ["invoice_no"] = "INV-9" } }] } }.Serialize();
+        _apps.Add(paid);
+        var client = await SignInAsync();
+        await Json(await client.PostAsync("/api/msme/incentive-schemes/FA/draft", null));
+        var files = new List<string>();
+        for (var i = 0; i < 4; i++) files.Add(await UploadAsync(client, "expenditure", 0, "invoice_copy", code: "FA"));
+        var values = new Dictionary<string, string?>
+        {
+            ["invoice_no"] = "INV-1", ["invoice_date"] = Day(-3), ["amount_paid"] = "40000", ["payment_mode"] = "Online", ["invoice_copy"] = Files([.. files]),
+        };
+        var url = "/api/msme/incentive-schemes/FA/sections/expenditure";
+        Assert.Equal("\"Copy of Invoice\": up to 3 file(s).", await (await client.PutAsJsonAsync(url, new { values })).ProblemTitle());
+        values["invoice_copy"] = Files([.. files.Take(3)]);
+        values["invoice_no"] = "inv-9";
+        Assert.Contains("application no. 50", await (await client.PutAsJsonAsync(url, new { values })).ProblemTitle());
+        values["invoice_no"] = "INV-1";
+        var page = await Json(await client.PutAsJsonAsync(url, new { values }));
+        Assert.Equal(3, JsonSerializer.Deserialize<string[]>(page.GetProperty("application").GetProperty("answers").GetProperty("sections")
+            .GetProperty("expenditure")[0].GetProperty("values").GetProperty("invoice_copy").GetString()!)!.Length);
+    }
+
+    [Fact]
+    public async Task A_unit_blocked_for_financial_assistance_cannot_apply_to_any_scheme()
+    {
+        DirectTu();
+        _financial = 0;
+        var client = await SignInAsync();
+        var tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu").GetProperty("scheme");
+        Assert.Equal(("locked", "financialBlocked"), (tu.GetProperty("state").GetString(), tu.GetProperty("note").GetString()));
+        var r = await client.PostAsync($"/api/msme/incentive-schemes/{Code}/draft", null);
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Equal(ApplicantState.LockedMessage("financialBlocked", new()), await r.ProblemTitle());
+    }
+
+    [Fact]
+    public async Task A_window_without_a_grade_cannot_be_applied_for()
+    {
+        // Stored before the coverage check: graded for small enterprises only; the unit is micro.
+        var tu = SchemeTemplates.TechnologyUpgradation();
+        AddScheme(tu with { Grading = tu.Grading with { Rows = [new("Small", 60, 300000)] } });
+        _cards.Add(new { Card = "TECHNOLOGY_UPGRADATION", ActivatesAfter = (string?)null, RecommendationRequired = false, DirectSchemeCode = Code });
+        Certified("Bronze", "B-1", DateTime.Today.AddDays(-10));
+        var client = await SignInAsync();
+        var page = await Json(await client.GetAsync($"/api/msme/incentive-schemes/{Code}"));
+        Assert.Equal(("locked", "notGraded", false), (page.GetProperty("state").GetString(), page.GetProperty("note").GetString(), page.GetProperty("canApply").GetBoolean()));
+        var r = await client.PostAsync($"/api/msme/incentive-schemes/{Code}/draft", null);
+        Assert.Contains("not yet set up", await r.ProblemTitle());
+        Assert.Empty(_apps);
+    }
+
+    [Fact]
+    public async Task On_hold_the_applicant_sees_a_friendly_reason_and_each_scheme_its_own_texts()
+    {
+        DirectTu();
+        var app = App(30, "OnHold", "Bronze", "B-1");
+        app["HoldReason"] = "Certificate B-1 SUSPENDED (was Verifying)";
+        _apps.Add(app);
+        var page = await Json(await (await SignInAsync()).GetAsync($"/api/msme/incentive-schemes/{Code}"));
+        var a = page.GetProperty("application");
+        Assert.Equal("suspended", a.GetProperty("holdKind").GetString());
+        Assert.Equal("Your certificate is suspended; the ZED team will resume or close the application.", a.GetProperty("holdReason").GetString());
+        Assert.DoesNotContain("was Verifying", page.GetRawText());
+        Assert.Contains("suspended", page.GetProperty("message").GetString());
+        Assert.Equal("withdrawn", ApplicantState.HoldKind("Certificate B-1 WITHDRAWN (was Qc)", "OnHold"));
+        Assert.Null(ApplicantState.HoldKind("x", "Verifying"));
+        // The TU template's texts, not the FA ones; empty texts fall back to the global wording (null).
+        Assert.Contains("technolog", page.GetProperty("scheme").GetProperty("disclaimer").GetString());
+        _schemes.Clear();
+        AddScheme(SchemeTemplates.TechnologyUpgradation() with { Disclaimer = " ", Instructions = null });
+        page = await Json(await (await SignInAsync()).GetAsync($"/api/msme/incentive-schemes/{Code}"));
+        Assert.Equal(JsonValueKind.Null, page.GetProperty("scheme").GetProperty("disclaimer").ValueKind);
+        Assert.Equal(JsonValueKind.Null, page.GetProperty("scheme").GetProperty("instructions").ValueKind);
+    }
+
+    // ----- 2026-11-20: the Technology Upgradation card's toggle switches cleanly -----
+
+    [Fact]
+    public async Task Toggle_off_a_legacy_tu_in_progress_continues_and_blocks_the_direct_scheme()
+    {
+        DirectTu();
+        _legacyTu.Add(LegacyRow(4, "Silver", null, DateTime.Today.AddDays(-2)));   // a draft on the old page
+        var client = await SignInAsync();
+        var tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu");
+        Assert.True(tu.GetProperty("legacy").GetBoolean());
+        Assert.Equal("legacyInProgress", tu.GetProperty("scheme").GetProperty("note").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"/api/msme/incentive-schemes/{Code}/draft", null)).StatusCode);
+        // The old page lets it continue; without it, the old page refuses a new application.
+        _host.Sql.Procs["SP_MSME_GET_DETAILS"] = args => FakeSql.Arg(args, "CertificationType") == "Techupgrade"
+            ? FakeSql.Sets([], [], [], [], [])
+            : MsmeSchemesTestSupport.MsmeDetails(Me, 1, 1);
+        var legacy = await Json(await client.GetAsync("/api/msme/schemes/tu"));
+        Assert.NotEqual(Zed.Portal.Features.Msme.Schemes.MsmeTechnologyUpgradationController.NewApplicationsMessage, legacy.GetProperty("message").GetString());
+        _legacyTu.Clear();
+        legacy = await Json(await client.GetAsync("/api/msme/schemes/tu"));
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeTechnologyUpgradationController.NewApplicationsMessage, legacy.GetProperty("message").GetString());
+
+        // A legacy TU paid for the same certificate is the TU claim.
+        _legacyTu.Add(LegacyRow(4, "Bronze", 6, DateTime.Today.AddDays(-2)));
+        tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu");
+        Assert.Equal(("availed", false), (tu.GetProperty("scheme").GetProperty("state").GetString(), tu.GetProperty("legacy").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task Toggle_on_a_direct_application_not_final_still_shows_and_blocks_the_old_page()
+    {
+        AddScheme(SchemeTemplates.TechnologyUpgradation());
+        _cards.Add(new { Card = "TECHNOLOGY_UPGRADATION", ActivatesAfter = (string?)null, RecommendationRequired = true, DirectSchemeCode = Code });
+        Certified("Bronze", "B-1", DateTime.Today.AddDays(-10));
+        var client = await SignInAsync();
+        var tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu");
+        Assert.Equal((false, JsonValueKind.Null), (tu.GetProperty("direct").GetBoolean(), tu.GetProperty("scheme").ValueKind));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/msme/incentive-schemes/{Code}")).StatusCode);
+
+        _apps.Add(App(60, "Verifying", "Bronze", "B-1"));
+        tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu");
+        Assert.Equal(("progress", 60), (tu.GetProperty("scheme").GetProperty("state").GetString(), tu.GetProperty("scheme").GetProperty("applicationId").GetInt32()));
+        await Json(await client.GetAsync($"/api/msme/incentive-schemes/{Code}"));
+        // No double claim: the old page refuses while it is in progress.
+        var legacy = await Json(await client.GetAsync("/api/msme/schemes/tu"));
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeTechnologyUpgradationController.DirectInProgressMessage, legacy.GetProperty("message").GetString());
+
+        // Rejected: no tile, and no new direct draft while the card needs the recommendation.
+        _apps[0]["SchemeStatus"] = "Rejected";
+        tu = (await Json(await client.GetAsync("/api/msme/incentive-schemes"))).GetProperty("tu");
+        Assert.Equal(JsonValueKind.Null, tu.GetProperty("scheme").ValueKind);
+        var r = await client.PostAsync($"/api/msme/incentive-schemes/{Code}/draft", null);
+        Assert.Equal("This scheme is not taking new applications now.", await r.ProblemTitle());
     }
 
     // ----- draft, items, submission -----
@@ -444,19 +712,17 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
     // ----- the Financial Assistance card's levels -----
 
     [Fact]
-    public async Task Financial_assistance_respects_the_cards_activates_after()
+    public async Task The_old_financial_assistance_page_takes_no_new_application_and_points_to_the_card()
     {
         _host.Sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_DETAILS"] = _ => FakeSql.Sets([], [], [], [], [], [], [], [], []);
-        _cards.Add(new { Card = "FINANCIAL_ASSISTANCE", ActivatesAfter = "Gold", RecommendationRequired = (bool?)null, DirectSchemeCode = (string?)null });
+        FaCard("Silver,Gold");
         var client = await SignInAsync();
         var page = await Json(await client.GetAsync("/api/msme/schemes/fa"));
         Assert.False(page.GetProperty("canApply").GetBoolean());
-        Assert.Equal("Financial assistance opens after Gold certification.", page.GetProperty("message").GetString());
-
-        _cards.Clear();
-        _cards.Add(new { Card = "FINANCIAL_ASSISTANCE", ActivatesAfter = "Silver,Gold", RecommendationRequired = (bool?)null, DirectSchemeCode = (string?)null });
-        page = await Json(await client.GetAsync("/api/msme/schemes/fa"));
-        Assert.True(page.GetProperty("canApply").GetBoolean());
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage, page.GetProperty("message").GetString());
+        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", new { declaration = true });
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage, await r.ProblemTitle());
+        Assert.Empty(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"));
     }
 
     private sealed class FakeWorkflow : ISchemeWorkflow

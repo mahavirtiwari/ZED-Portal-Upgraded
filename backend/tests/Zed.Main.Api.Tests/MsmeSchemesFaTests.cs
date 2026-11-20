@@ -136,30 +136,6 @@ public sealed class MsmeSchemesFaTests : IDisposable
 
     private Task<HttpClient> SignIn(string zedId = Me) => MsmeSchemesTestSupport.MsmeAsync(_host, zedId);
 
-    private async Task<string> UploadAsync(HttpClient client, string type, byte[]? content = null)
-    {
-        var r = await client.PostAsync("/api/msme/schemes/fa/documents", MsmeSchemesTestSupport.Upload(type, content ?? MsmeSchemesTestSupport.Pdf));
-        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        return (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("fileName").GetString()!;
-    }
-
-    private async Task<object> ValidRequestAsync(HttpClient client, decimal amount = 100000m) => new
-    {
-        categoryOfCertificate = "Quality", nameOfCertficate = "ISO 9001", certificationAgency = "BIS", certficateNumber = "C-1",
-        dateOfIssue = DateTime.Today.AddDays(-10).ToString("yyyy-MM-dd"), validityOfCertificate = 3, anyOtherInformation = "",
-        invoiceNo = "INV-1", invoiceBillDate = DateTime.Today.AddDays(-5).ToString("yyyy-MM-dd"), amountPaid = amount, modeOfPayment = "Online",
-        account = new { accountNo = "123456789012", confirmAccountNo = "123456789012", ifscCode = "sbin0001234", branchAddress = "MG Road", bankName = "SBI" },
-        documents = new[]
-        {
-            new { fileName = await UploadAsync(client, "Copy of Certificate"), type = "Copy of Certificate" },
-            new { fileName = await UploadAsync(client, "CA certificate of expenditure"), type = "CA certificate of expenditure" },
-            new { fileName = await UploadAsync(client, "Copy of Invoice", MsmeSchemesTestSupport.Png), type = "Copy of Invoice" },
-            new { fileName = await UploadAsync(client, "Copy of Cancelled Cheque"), type = "Copy of Cancelled Cheque" },
-        },
-        declaration = true,
-        eligibleAmount = 999999, // ignored: computed on the server
-    };
-
     [Fact]
     public async Task Signed_out_is_401_and_staff_is_403()
     {
@@ -182,8 +158,9 @@ public sealed class MsmeSchemesFaTests : IDisposable
         var body = await r.Content.ReadAsStringAsync();
         var json = JsonDocument.Parse(body).RootElement;
 
-        Assert.True(json.GetProperty("canApply").GetBoolean());
-        Assert.Equal("Silver", json.GetProperty("certification").GetString());
+        // 2026-11-20: the page shows the applications made here; new ones go through the Financial Assistance card.
+        Assert.False(json.GetProperty("canApply").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("certification").ValueKind);
         Assert.Equal("UDYAM-UP-29-0003915", json.GetProperty("unit").GetProperty("UdyogAadharNo").GetString());
         Assert.All(MsmeSchemesTestSupport.CallsTo(_host, "SP_MSME_GET_DETAILS"), a => Assert.Equal(Me, FakeSql.Arg(a, "ZedId")));
         Assert.All(MsmeSchemesTestSupport.CallsTo(_host, "SP_FINANCIAL_ASSISTANCE_GET_DETAILS"), a => Assert.Equal(Me, FakeSql.Arg(a, "ZedId")));
@@ -199,8 +176,19 @@ public sealed class MsmeSchemesFaTests : IDisposable
         Assert.Equal("/api/msme/schemes/fa/files/20240101100000.pdf", docs[0].GetProperty("url").GetString());
     }
 
+    /// <summary>A complete request as the old page sent it (2026-11-20: refused before any check).</summary>
+    private static object ValidRequest() => new
+    {
+        categoryOfCertificate = "Quality", nameOfCertficate = "ISO 9001", certificationAgency = "BIS", certficateNumber = "C-1",
+        dateOfIssue = DateTime.Today.AddDays(-10).ToString("yyyy-MM-dd"), validityOfCertificate = 3, anyOtherInformation = "",
+        invoiceNo = "INV-1", invoiceBillDate = DateTime.Today.AddDays(-5).ToString("yyyy-MM-dd"), amountPaid = 100000m, modeOfPayment = "Online",
+        account = new { accountNo = "123456789012", confirmAccountNo = "123456789012", ifscCode = "sbin0001234", branchAddress = "MG Road", bankName = "SBI" },
+        documents = new[] { new { fileName = "20240101120000000abcdef01.pdf", type = "Copy of Certificate" } },
+        declaration = true,
+    };
+
     [Fact]
-    public async Task Not_eligible_already_submitted_or_not_certified_cannot_apply()
+    public async Task Not_eligible_units_are_told_so_and_every_other_is_sent_to_the_card()
     {
         var client = await SignIn();
         _eligibleFinancial = 0;
@@ -208,20 +196,20 @@ public sealed class MsmeSchemesFaTests : IDisposable
         Assert.False(j.GetProperty("canApply").GetBoolean());
         Assert.Equal("You are not eligible for benefits. Please contact ZED team.", j.GetProperty("message").GetString());
 
-        _eligibleFinancial = 1; _faStatus = 0;
-        j = await client.GetFromJsonAsync<JsonElement>("/api/msme/schemes/fa");
-        Assert.Equal("Data already submitted.", j.GetProperty("message").GetString());
+        // 2026-11-20: whatever the old flags (submitted, certified or not), new applications go through the card.
+        foreach (var (status, current) in new[] { (1, "Silver"), (0, "Silver"), (1, (string?)null) })
+        {
+            _eligibleFinancial = 1; _faStatus = status; _current = current;
+            j = await client.GetFromJsonAsync<JsonElement>("/api/msme/schemes/fa");
+            Assert.False(j.GetProperty("canApply").GetBoolean());
+            Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage, j.GetProperty("message").GetString());
+        }
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/msme/schemes/fa/documents",
             MsmeSchemesTestSupport.Upload("Copy of Invoice", MsmeSchemesTestSupport.Pdf))).StatusCode);
-
-        _faStatus = 1; _current = null;
-        j = await client.GetFromJsonAsync<JsonElement>("/api/msme/schemes/fa");
-        Assert.False(j.GetProperty("canApply").GetBoolean());
-        Assert.Contains("ZED certified", j.GetProperty("message").GetString());
     }
 
     [Fact]
-    public async Task Upload_checks_the_content_and_serves_files_only_to_their_owner()
+    public async Task Upload_checks_the_content_first_and_files_are_served_only_to_their_owner()
     {
         var client = await SignIn();
         var exe = "MZ\x90\0fake"u8.ToArray();
@@ -229,122 +217,35 @@ public sealed class MsmeSchemesFaTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/msme/schemes/fa/documents",
             MsmeSchemesTestSupport.Upload("../../x", MsmeSchemesTestSupport.Pdf))).StatusCode);
+        // A valid file: refused too (no new application here), nothing saved.
+        var r = await client.PostAsync("/api/msme/schemes/fa/documents", MsmeSchemesTestSupport.Upload("Copy of Invoice", MsmeSchemesTestSupport.Pdf));
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage, await r.ProblemTitle());
+        Assert.False(Directory.Exists(Path.Combine(_host.StorageRoot, "mobileapi", "Photos", Me, "FinancialAssistance")));
 
-        var r = await client.PostAsync("/api/msme/schemes/fa/documents", MsmeSchemesTestSupport.Upload("Copy of Invoice", MsmeSchemesTestSupport.Pdf, "../../evil.aspx"));
-        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        var j = await r.Content.ReadFromJsonAsync<JsonElement>();
-        var name = j.GetProperty("fileName").GetString()!;
-        Assert.Matches(@"^\d{17}[0-9a-f]{8}\.pdf$", name);
-        Assert.True(File.Exists(Path.Combine(_host.StorageRoot, "mobileapi", "Photos", Me, "FinancialAssistance", name)));
-
-        var file = await client.GetAsync(j.GetProperty("url").GetString());
+        // The documents of the applications made here stay readable by their owner only.
+        const string name = "20240101100000000abcdef01.pdf";
+        MsmeSchemesTestSupport.WriteFile(_host, $"mobileapi/Photos/{Me}/FinancialAssistance/{name}", MsmeSchemesTestSupport.Pdf);
+        var file = await client.GetAsync($"/api/msme/schemes/fa/files/{name}");
         Assert.Equal(HttpStatusCode.OK, file.StatusCode);
         Assert.Equal("application/pdf", file.Content.Headers.ContentType?.MediaType);
         Assert.Equal("nosniff", file.Headers.GetValues("X-Content-Type-Options").Single());
-
         var other = await SignIn(Other);
-        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync(j.GetProperty("url").GetString())).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/msme/schemes/fa/files/{name}")).StatusCode);
         MsmeSchemesTestSupport.WriteFile(_host, "web.config", "<x/>"u8.ToArray());
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/schemes/fa/files/..%2F..%2F..%2F..%2Fweb.config")).StatusCode);
     }
 
     [Fact]
-    public async Task Submit_computes_the_amount_on_the_server_and_mails_the_msme_without_passwords()
+    public async Task A_new_application_is_refused_before_any_check_and_nothing_is_stored_or_mailed()
     {
         var client = await SignIn();
-        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", await ValidRequestAsync(client, 100000m));
-        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        var j = await r.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(50000m, j.GetProperty("eligibleAmount").GetDecimal());
-
-        var args = Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, Proc));
-        Assert.Equal(Me, FakeSql.Arg(args, "ZedId"));
-        Assert.Equal("50000", FakeSql.Arg(args, "EligibleAmount"));
-        Assert.Equal("100000", FakeSql.Arg(args, "AmountPaid"));
-        Assert.Equal("SBIN0001234", FakeSql.Arg(args, "IfscCode"));
-        Assert.Equal("ISO 9001", FakeSql.Arg(args, "ExpenditureCertficate"));
-        Assert.Equal("BIS", FakeSql.Arg(args, "AgencyOrSupplier"));
-        Assert.Equal(DateTime.Today.AddDays(-10).ToString("MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture), FakeSql.Arg(args, "DateOfIssue"));
-        Assert.Equal("Web", FakeSql.Arg(args, "SubmittedFrom"));
-        var photos = MsmeSchemesTestSupport.PhotoList(args);
-        Assert.Equal(4, photos.Rows.Count);
-        Assert.Equal(["Copy of Certificate", "CA certificate of expenditure", "Copy of Invoice", "Copy of Cancelled Cheque"],
-            photos.Rows.Cast<DataRow>().Select(x => (string)x["Name"]).ToArray());
-
-        var mail = Assert.Single(_host.Email.Sent);
-        Assert.Equal("msme@acme.test", mail.To);
-        Assert.Equal($"Confirmation of Application for Financial Assistance on Quality - {Me}", mail.Subject);
-        Assert.DoesNotContain("Secret#123", mail.HtmlBody);
-        Assert.DoesNotContain("Msme#Pass1", mail.HtmlBody);
-    }
-
-    [Fact]
-    public async Task Eligible_amount_is_75_percent_of_the_whole_rupees()
-    {
-        var client = await SignIn();
-        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", await ValidRequestAsync(client, 20001m));
-        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Equal("15000.75", FakeSql.Arg(Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, Proc)), "EligibleAmount"));
-    }
-
-    [Fact]
-    public async Task Submit_refuses_documents_of_another_unit_or_not_uploaded()
-    {
-        var client = await SignIn();
-        var req = JsonSerializer.SerializeToNode(await ValidRequestAsync(client))!;
-        // A generated-looking name that exists only in another MSME's folder.
-        const string foreign = "20240101120000000abcdef01.pdf";
-        MsmeSchemesTestSupport.WriteFile(_host, $"mobileapi/Photos/{Other}/FinancialAssistance/{foreign}", MsmeSchemesTestSupport.Pdf);
-        req["documents"]![0]!["fileName"] = foreign;
-        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", req);
+        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", ValidRequest());
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        Assert.Equal("Please upload the required documents.", await r.ProblemTitle());
-
-        req["documents"]![0]!["fileName"] = "../../../web.config";
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/schemes/fa", req)).StatusCode);
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage, await r.ProblemTitle());
+        // An incomplete one gets the same answer (not a field message).
+        Assert.Equal(Zed.Portal.Features.Msme.Schemes.MsmeFinancialAssistanceController.NewApplicationsMessage,
+            await (await client.PostAsJsonAsync("/api/msme/schemes/fa", new { declaration = false })).ProblemTitle());
         Assert.Empty(MsmeSchemesTestSupport.CallsTo(_host, Proc));
-    }
-
-    [Fact]
-    public async Task Submit_checks_fields_documents_and_state_on_the_server()
-    {
-        var client = await SignIn();
-        var req = JsonSerializer.SerializeToNode(await ValidRequestAsync(client))!;
-
-        var noCa = req.DeepClone();
-        noCa["documents"]!.AsArray().RemoveAt(1);
-        Assert.Equal("Please upload the required documents.", await (await client.PostAsJsonAsync("/api/msme/schemes/fa", noCa)).ProblemTitle());
-
-        var mismatch = req.DeepClone();
-        mismatch["account"]!["confirmAccountNo"] = "999";
-        Assert.Equal("Account Number and Re-Enter Account Number must match.", await (await client.PostAsJsonAsync("/api/msme/schemes/fa", mismatch)).ProblemTitle());
-
-        var future = req.DeepClone();
-        future["invoiceBillDate"] = DateTime.Today.AddDays(2).ToString("yyyy-MM-dd");
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/schemes/fa", future)).StatusCode);
-
-        var category = req.DeepClone();
-        category["categoryOfCertificate"] = "Gold plating";
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/schemes/fa", category)).StatusCode);
-
-        _faStatus = 0;
-        Assert.Equal("Data already submitted.", await (await client.PostAsJsonAsync("/api/msme/schemes/fa", req)).ProblemTitle());
-        _faStatus = 1; _current = null;
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/schemes/fa", req)).StatusCode);
-        Assert.Empty(MsmeSchemesTestSupport.CallsTo(_host, Proc));
-        Assert.Empty(_host.Email.Sent);
-    }
-
-    [Fact]
-    public async Task Procedure_refusal_is_reported_without_its_text()
-    {
-        var client = await SignIn();
-        var req = await ValidRequestAsync(client);
-        _host.Sql.Procs[Proc] = _ => throw new MsmeSchemesTestSupport.FakeDbException("Conversion failed when converting the varchar value 'ABC' to data type bit.");
-        var r = await client.PostAsJsonAsync("/api/msme/schemes/fa", req);
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
-        var title = await r.ProblemTitle();
-        Assert.DoesNotContain("Conversion", title);
         Assert.Empty(_host.Email.Sent);
     }
 }

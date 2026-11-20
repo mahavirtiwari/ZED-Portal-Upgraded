@@ -170,6 +170,8 @@ export interface SchemeActions {
   reject: boolean;
   recommend: boolean;
   roundsLeft: number;
+  /** 2026-11-20 (the product owner): no correction round is left, so "Correction" rejects the application automatically. */
+  correctionRejects?: boolean;
   checked: number;
   checkable: number;
   notValid: number;

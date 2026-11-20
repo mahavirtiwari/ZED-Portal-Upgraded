@@ -13,13 +13,13 @@ describe('SchemeVerifyPage', () => {
   const text = (b: Element) => b.textContent!.replace(/\s+/g, ' ').trim();
   const button = (start: string) => [...el.querySelectorAll('button')].find((b) => text(b).startsWith(start)) as HTMLButtonElement;
 
-  function detail(opts: { status?: string; docCheck?: { status: 'Yes' | 'No'; remarks: string | null } | null; accepted?: boolean } = {}) {
+  function detail(opts: { status?: string; docCheck?: { status: 'Yes' | 'No'; remarks: string | null } | null; accepted?: boolean; round?: number; bank?: boolean } = {}) {
     const status = opts.status ?? 'Verifying';
     const open = status === 'Verifying' && opts.accepted !== false;
     return {
       application: {
         id: 900, zedId: 'ZEDMSME000020', unitName: 'Acme Castings', unitAddress: 'Plot 4, Kanpur', schemeCode: 'TU_DIRECT', schemeName: 'Technology Upgradation (direct)',
-        level: 'Bronze', levelName: 'Bronze', certNo: 'B-1', status, claimAmount: 70000, eligibleAmount: null, approvedAmount: null, correctionRound: 0,
+        level: 'Bronze', levelName: 'Bronze', certNo: 'B-1', status, claimAmount: 70000, eligibleAmount: null, approvedAmount: null, correctionRound: opts.round ?? 0,
         correctionRounds: 2, correctionDays: 30, correctionDueOn: null, submittedOn: '2026-11-18T10:00:00', decidedOn: null, holdReason: null,
         agency: { userId: 'AG1', name: 'Agency One' }, assessor: { userId: 'DA1', name: 'Assessor One' }, assessorAcceptedOn: open ? '2026-11-19T10:00:00' : null,
         allotmentType: 'RoundRobin', reasonForRejection: null, agencyRemarks: null, accountNo: '123456789012', ifscCode: 'SBIN0001234', branchAddress: 'Kanpur', bankName: 'SBI',
@@ -35,12 +35,18 @@ describe('SchemeVerifyPage', () => {
             { key: 'supplier', label: 'Agency/Supplier', type: 'text', value: 'Sun Ltd', files: [], path: null, isClaim: false, check: null },
           ],
         }],
-      }],
+      }, ...(opts.bank ? [{
+        key: '_bank', title: 'Bank', repeating: false,
+        items: [{ index: 0, pick: null, pickName: null, fields: [
+          { key: 'account', label: 'Bank account details', type: 'text', value: '123456789012, SBIN0001234, SBI, Kanpur', files: [], path: '_bank/0/account', isClaim: false, check: null },
+        ] }],
+      }] : [])],
       totals: { claimed: 70000, verified: 70000, eligible: 56000, sharePercent: 80, maxAmount: 300000 },
       history: [],
       actions: {
         allot: false, hold: false, respond: false, qc: false, accept: status === 'WithAssessor', check: open, correction: false, reject: open, recommend: false,
-        roundsLeft: 2, checked: opts.docCheck ? 2 : 1, checkable: 2, notValid: opts.docCheck?.status === 'No' ? 1 : 0,
+        roundsLeft: 2 - (opts.round ?? 0), checked: opts.docCheck ? 2 : 1, checkable: 2, notValid: opts.docCheck?.status === 'No' ? 1 : 0,
+        correctionRejects: (opts.round ?? 0) >= 2 && opts.docCheck?.status === 'No',
       },
     };
   }
@@ -155,6 +161,37 @@ describe('SchemeVerifyPage', () => {
     await settle();
     http.expectOne('/api/staff/scheme-verification/assessor/900').flush(detail({ status: 'Rejected' }));
     await settle();
+  });
+
+  it('with no correction round left, says so on the button and rejects after a confirmation', async () => {
+    await open();
+    http.expectOne('/api/staff/scheme-verification/assessor/900').flush(detail({ round: 2, docCheck: { status: 'No', remarks: 'Invoice is not legible' } }));
+    await settle();
+    expect(el.textContent).not.toContain('Send for correction');
+    const auto = button('Reject (no correction round left)');
+    expect(auto.disabled).toBe(false);
+    auto.click();
+    await settle();
+    const dialog = el.querySelector('zed-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Not valid after the last correction round');
+    expect(dialog.textContent).toContain('may apply again');
+    (dialog.querySelector('.cd-ok') as HTMLButtonElement).click();
+    await settle();
+    const decide = http.expectOne('/api/staff/scheme-verification/assessor/900/decision');
+    expect(decide.request.body).toEqual({ decision: 'correction', reason: null });
+    decide.flush({ message: 'No correction round was left: the application has been rejected. The unit may apply again.' });
+    await settle();
+    http.expectOne('/api/staff/scheme-verification/assessor/900').flush(detail({ status: 'Rejected', round: 2 }));
+    await settle();
+  });
+
+  it('lets the assessor check the bank account details', async () => {
+    await open();
+    http.expectOne('/api/staff/scheme-verification/assessor/900').flush(detail({ bank: true }));
+    await settle();
+    expect(el.textContent).toContain('Bank account details');
+    expect(el.textContent).toContain('123456789012, SBIN0001234, SBI, Kanpur');
+    expect(el.querySelector('input[type="radio"][name="c-_bank/0/account"][value="No"]')).not.toBeNull();
   });
 
   it('asks the assessor to accept or return an application first', async () => {
