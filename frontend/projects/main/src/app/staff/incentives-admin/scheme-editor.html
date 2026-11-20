@@ -214,6 +214,7 @@
                         @if (f.assessorChecks) { <span class="req-chip">{{ 'Checked' | t: 'staff.incentivesAdmin.editor.fields.checked' }}@if (d.verification.flow === 'DesktopOnsite' && f.checkStage && f.checkStage !== 'desktop') { · {{ stageLabel(f.checkStage) }} }</span> }
                         @if (f.isClaim) { <span class="req-chip is-yes">{{ 'Claim' | t: 'staff.incentivesAdmin.editor.fields.claim' }}</span> }
                         @if (f.unique) { <span class="req-chip">{{ 'Unique' | t: 'staff.incentivesAdmin.editor.fields.unique' }}</span> }
+                        @if (f.wholeNumber) { <span class="req-chip">{{ 'Whole numbers' | t: 'staff.incentivesAdmin.editor.fields.wholeNumber' }}</span> }
                       </td>
                       <td class="text-end se-row-actions">
                         <button type="button" class="af-icon" [attr.aria-label]="'Move up' | t: 'staff.incentivesAdmin.editor.moveUp'" [disabled]="i === 0" (click)="moveField(s, i, -1)">↑</button>

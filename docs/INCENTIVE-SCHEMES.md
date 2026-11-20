@@ -184,4 +184,4 @@ agencies separate too, FA moves to the framework, FA card offers all levels).
 - A suspended / withdrawn certificate above the highest active one locks the window (`suspended`).
 - Stored built-in schemes (FA, TU_DIRECT) are upgraded once per `SchemeTemplates.Version` (only template fields; the Admin's other
   changes stay).
-- Known gap: number fields accept decimals (e.g. FA "Validity (years)").
+- Number fields can take whole numbers only (`FormField.WholeNumber`, Admin tick "Whole numbers only"); FA "Validity (years)" is whole numbers 1–100 (template version 3 adds the mark to the stored FA scheme).

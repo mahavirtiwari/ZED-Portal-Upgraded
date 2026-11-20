@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9221,
+  "count": 9224,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -63053,6 +63053,18 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.editor.fields.wholeNumber",
+      "standard": "Whole numbers",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.form.addRepeating",
       "standard": "Add \"Add more\" section",
       "kind": "button",
@@ -64265,6 +64277,18 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.field.error.wholeBounds",
+      "standard": "The minimum and maximum of a whole-number field are whole numbers.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.field.help",
       "standard": "Help",
       "kind": "note",
@@ -64459,6 +64483,18 @@
     {
       "key": "staff.incentivesAdmin.field.unique",
       "standard": "Unique: the value cannot be used again in another application of the unit (e.g. an invoice number)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.wholeNumber",
+      "standard": "Whole numbers only (e.g. years, counts)",
       "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",

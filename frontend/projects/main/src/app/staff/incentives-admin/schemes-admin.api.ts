@@ -51,6 +51,8 @@ export interface FormField {
   checkStage?: CheckStage | null;
   /** 2026-11-20: the value cannot repeat across the unit's other applications of the scheme (text, number, amount, date). */
   unique?: boolean;
+  /** Whole numbers only (number fields; SchemeDefinition FormField.WholeNumber). */
+  wholeNumber?: boolean;
 }
 
 /** Phase 2 (FormField.CheckStage): checked at the desktop, at the onsite visit, or both. */

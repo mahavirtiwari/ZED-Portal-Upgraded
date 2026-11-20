@@ -157,6 +157,8 @@ public sealed record FormField
     /// are not rejected (e.g. an invoice number). Text, number, amount or date fields only.
     /// </summary>
     public bool Unique { get; init; }
+    /// <summary>2026-11-20 (as the legacy forms, e.g. FA "Validity (years)" 1–100): a number field takes whole numbers only.</summary>
+    public bool WholeNumber { get; init; }
 }
 
 /// <summary>
@@ -351,6 +353,9 @@ public static partial class SchemeRules
                 if (x.Type == "copy" && string.IsNullOrWhiteSpace(x.CopyOf)) return $"\"{x.Label}\": choose the field it copies.";
                 if (x.Type is "document" or "photo" && x.MaxFiles is < 1 or > MaxFilesPerField) return $"\"{x.Label}\": 1–{MaxFilesPerField} files.";
                 if (x.Unique && !UniqueTypes.Contains(x.Type)) return $"\"{x.Label}\": only a text, number, amount or date can be unique.";
+                if (x.WholeNumber && x.Type != "number") return $"\"{x.Label}\": only a number field can take whole numbers only.";
+                if (x.WholeNumber && ((x.Min is { } wmin && wmin != decimal.Truncate(wmin)) || (x.Max is { } wmax && wmax != decimal.Truncate(wmax))))
+                    return $"\"{x.Label}\": the minimum and maximum of a whole-number field are whole numbers.";
                 if (x.IsClaim && x.Type != "amount") return $"\"{x.Label}\": only an amount can be the claim.";
                 if (x.CheckStage is { } stage && !CheckStages.Contains(stage)) return $"\"{x.Label}\": checked at desktop, onsite or both.";
                 if (x.IsClaim) claims++;

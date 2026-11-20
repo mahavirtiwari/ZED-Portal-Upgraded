@@ -29,7 +29,7 @@ import { FormField, IncentiveSchemesApi, filesOf } from './incentive-schemes.api
         <small class="isf-count">{{ (value() ?? '').length }} / {{ maxLength() }}</small>
       }
       @case ('number') {
-        <input type="number" class="form-control" [id]="id()" [attr.min]="f.min" [attr.max]="f.max" [disabled]="readonly()" [value]="value() ?? ''" (input)="set($any($event.target).value)" />
+        <input type="number" class="form-control" [attr.step]="f.wholeNumber ? 1 : null" [attr.inputmode]="f.wholeNumber ? 'numeric' : 'decimal'" [id]="id()" [attr.min]="f.min" [attr.max]="f.max" [disabled]="readonly()" [value]="value() ?? ''" (input)="set($any($event.target).value)" />
       }
       @case ('amount') {
         <div class="input-group">

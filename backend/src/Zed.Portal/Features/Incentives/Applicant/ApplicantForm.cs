@@ -105,11 +105,15 @@ public static class ApplicantForm
                     return (null, $"\"{label}\": please enter a number.");
                 var amount = f.Type == "amount";
                 if (amount && decimal.Round(v, 2) != v) return (null, $"\"{label}\": at most two decimals.");
+                var whole = f.Type == "number" && f.WholeNumber;
+                if (whole && v != decimal.Truncate(v)) return (null, $"\"{label}\": please enter a whole number.");
                 var min = f.Min ?? (amount ? 0m : decimal.MinValue);
                 var max = Math.Min(f.Max ?? SchemeRules.AmountCeiling, SchemeRules.AmountCeiling);
                 if (v < min || v > max)
-                    return (null, f.Min is not null ? $"\"{label}\": between {Money(min)} and {Money(max)}." : $"\"{label}\": up to {Money(max)}.");
-                return (Money(v), null);
+                    return (null, f.Min is not null
+                        ? (whole ? $"\"{label}\": a whole number between {min:0} and {max:0}." : $"\"{label}\": between {Money(min)} and {Money(max)}.")
+                        : (whole ? $"\"{label}\": a whole number up to {max:0}." : $"\"{label}\": up to {Money(max)}."));
+                return (whole ? v.ToString("0", CultureInfo.InvariantCulture) : Money(v), null);
             }
             case "date":
             {

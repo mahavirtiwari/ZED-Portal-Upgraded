@@ -351,4 +351,23 @@ public sealed class SchemeCoreTests
         var bad = tu with { Form = tu.Form with { Sections = [s with { Fields = [.. s.Fields, new FormField { Key = "z", Label = "Z", Type = "text", CheckStage = "site" }] }] } };
         Assert.Contains("desktop, onsite or both", SchemeRules.Problem(bad, Levels));
     }
+
+    [Fact]
+    public void Whole_number_fields_take_whole_numbers_only()
+    {
+        // 2026-11-20 (as the legacy FA form): "Validity (years)" takes whole numbers 1–100.
+        var fa = SchemeTemplates.FinancialAssistance();
+        var validity = fa.Form.Sections.SelectMany(s => s.Fields).Single(f => f.Key == "validity");
+        Assert.True(validity.WholeNumber);
+        var ctx = new Zed.Portal.Features.Incentives.Applicant.ApplicantForm.Context(DateOnly.FromDateTime(DateTime.Today), null, _ => true);
+        Assert.Equal(("3", (string?)null), Zed.Portal.Features.Incentives.Applicant.ApplicantForm.Field(validity, "3", ctx));
+        Assert.Contains("whole number", Zed.Portal.Features.Incentives.Applicant.ApplicantForm.Field(validity, "2.5", ctx).Problem);
+        Assert.Contains("between 1 and 100", Zed.Portal.Features.Incentives.Applicant.ApplicantForm.Field(validity, "101", ctx).Problem);
+        // Only a number field can be whole-number, with whole bounds.
+        var s0 = fa.Form.Sections[0];
+        Assert.Contains("only a number field", SchemeRules.Problem(fa with { Form = fa.Form with { Sections = [s0 with { Fields = [.. s0.Fields, new FormField { Key = "w", Label = "W", Type = "amount", WholeNumber = true }] }, .. fa.Form.Sections.Skip(1)] } }, Levels));
+        // A stored FA scheme of an older template version gets the mark.
+        var old = fa with { Code = SchemeTemplates.FaCode, TemplateVersion = 2, Form = fa.Form with { Sections = fa.Form.Sections.Select(s => s with { Fields = s.Fields.Select(f => f with { WholeNumber = false }).ToList() }).ToList() } };
+        Assert.True(SchemeTemplates.Upgrade(old).Form.Sections.SelectMany(s => s.Fields).Single(f => f.Key == "validity").WholeNumber);
+    }
 }

@@ -79,6 +79,9 @@ export function formatBound(b: Bound): string | null {
                   <span><label for="fd-min">{{ 'Minimum' | t: 'staff.incentivesAdmin.field.min' }}</label><input id="fd-min" type="number" class="form-control" [(ngModel)]="f.min" /></span>
                   <span><label for="fd-max">{{ 'Maximum' | t: 'staff.incentivesAdmin.field.max' }}</label><input id="fd-max" type="number" class="form-control" [(ngModel)]="f.max" /></span>
                 </div>
+                @if (f.type === 'number') {
+                  <label class="mt-2"><input type="checkbox" id="fd-whole" [(ngModel)]="f.wholeNumber" /> {{ 'Whole numbers only (e.g. years, counts)' | t: 'staff.incentivesAdmin.field.wholeNumber' }}</label>
+                }
               }
               @if (f.type === 'date') {
                 <label for="fd-date-min">{{ 'Earliest date' | t: 'staff.incentivesAdmin.field.dateMin' }}</label>
@@ -198,6 +201,9 @@ export class FieldDialogComponent implements OnInit {
     if (isChoice && (options.length === 0 || options.length > SCHEME_LIMITS.options)) return this.error.set(t('staff.incentivesAdmin.field.error.options', 'Enter 1 to 50 options.'));
     if (f.type === 'copy' && !f.copyOf) return this.error.set(t('staff.incentivesAdmin.field.error.copy', 'Choose the field it copies.'));
     const isNumber = f.type === 'number' || f.type === 'amount';
+    const whole = f.type === 'number' && !!f.wholeNumber;
+    if (whole && [f.min, f.max].some((v) => v != null && !Number.isInteger(Number(v))))
+      return this.error.set(t('staff.incentivesAdmin.field.error.wholeBounds', 'The minimum and maximum of a whole-number field are whole numbers.'));
     const isText = f.type === 'text' || f.type === 'longtext';
     const isFile = f.type === 'document' || f.type === 'photo';
     // Only the limits of the chosen type are kept.
@@ -218,6 +224,7 @@ export class FieldDialogComponent implements OnInit {
       isClaim: f.type === 'amount' && f.isClaim,
       // 2026-11-20 (no duplicate claims): text, number, amount and date fields only.
       unique: UNIQUE_TYPES.includes(f.type) && !!f.unique,
+      wholeNumber: f.type === 'number' && !!f.wholeNumber,
       maxFiles: isFile ? (f.maxFiles ?? 1) : null,
       // Desktop is the default (not stored); a Desktop-only scheme keeps the choice but ignores it.
       checkStage: f.assessorChecks && f.checkStage && f.checkStage !== 'desktop' ? f.checkStage : null,

@@ -29,7 +29,7 @@ public static class SchemeTemplates
     /// to date by <see cref="Upgrade"/> (2: legacy categories, 3 files per document, unique invoice number, amounts from 0.01,
     /// the scheme's own texts).
     /// </summary>
-    public const int Version = 2;
+    public const int Version = 3;
 
     private static readonly IReadOnlyList<string> PaymentModes = ["Offline", "Online"];
 
@@ -76,7 +76,7 @@ public static class SchemeTemplates
                         Text("agency", "Certification Agency", 200, checks: true),
                         Text("certificate_no", "Certificate Number", 50, checks: true),
                         new() { Key = "issued_on", Label = "Date of Issue", Type = "date", DateMin = "date:1990-01-01", DateMax = "today", AssessorChecks = true },
-                        new() { Key = "validity", Label = "Validity (years)", Type = "number", Min = 1, Max = 100 },
+                        new() { Key = "validity", Label = "Validity (years)", Type = "number", Min = 1, Max = 100, WholeNumber = true },
                         new() { Key = "other_info", Label = "Any other information", Type = "longtext", MaxLength = 2000, Required = false },
                         Doc("certificate_copy", "Copy of Certificate", true),
                     ],
@@ -189,6 +189,8 @@ public static class SchemeTemplates
             Options = f.Options.Select(o => RenamedOptions.TryGetValue(o, out var n) && t.Options.Contains(n) ? n : o).Distinct().ToList(),
             MaxFiles = f.Type is "document" or "photo" && (f.MaxFiles ?? 1) < (t.MaxFiles ?? 1) ? t.MaxFiles : f.MaxFiles,
             Unique = f.Unique || t.Unique,
+            // Version 3: the template's whole-number marks added (FA "Validity (years)").
+            WholeNumber = f.WholeNumber || t.WholeNumber,
             Min = f.Type == "amount" && f.Min == 1m && t.Min == MinAmount ? MinAmount : f.Min,
         };
     }

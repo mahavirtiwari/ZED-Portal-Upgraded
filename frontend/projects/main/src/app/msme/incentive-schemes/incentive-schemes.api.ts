@@ -66,6 +66,8 @@ export interface FormField {
   maxFiles?: number | null;
   /** The value cannot repeat across the unit's other applications of the scheme. */
   unique?: boolean;
+  /** Whole numbers only (number fields). */
+  wholeNumber?: boolean;
 }
 
 export interface PickSource {
