@@ -115,6 +115,7 @@ public sealed class SchemeAgencyController(
                 && await SchemeCases.LoadAsync(db, id, ct) is { } back
                 && await Allotment.AllotLockedAsync(back, ct) is not null)
                 return new MessageResponse("Application rejected. It has been allotted to another agency.");
+            await Notifier.ManualAllotAsync(c, SchemeNotifier.DesktopStage, $"Rejected by agency {UserId}: {text}", ct);
             return new MessageResponse("Application rejected. It goes back to the ZED team for allotment.");
         }
     }
@@ -165,7 +166,7 @@ public sealed class SchemeAgencyController(
             c.Status = Verifying;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application sent back to the assessor in QC by agency {UserId}: {remarks}", ct);
-            await Notifier.NoticeAsync(c, c.Assessor, "Sent back from QC", $"Your agency has sent the application back from QC with these remarks:\n{remarks}", ct);
+            await Notifier.QcSentBackAsync(c, remarks, ct);
             return new MessageResponse("Application sent back to the assessor.");
         }
     }

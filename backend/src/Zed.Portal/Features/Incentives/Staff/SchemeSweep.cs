@@ -120,6 +120,7 @@ public sealed partial class SchemeSweep(ISqlExecutor db, IServiceProvider servic
                     if (!await SchemeCases.SaveAsync(db, c, ct)) continue;
                     held++;
                     await SchemeCases.HistoryAsync(db, log, c, $"Scheme application on hold: {c.HoldReason}", ct);
+                    await SchemeServices.Get<SchemeNotifier>(services).OnHoldAsync(c, ct);
                 }
             }
         }
@@ -152,8 +153,7 @@ public sealed partial class SchemeSweep(ISqlExecutor db, IServiceProvider servic
                 await db.ExecuteSqlAsync(OnsiteNotifiedSql, new { d.Id }, ct);
                 if (c is null) continue;
                 if (c.Status == Qc)
-                    await notifier!.NoticeAsync(c, c.OnsiteAgency, "Onsite verification submitted",
-                        "The onsite assessor has submitted the onsite verification with a recommendation. Please do the QC.", ct);
+                    await notifier!.OnsiteSubmittedAsync(c, ct);
                 else if (c.Status == Rejected)
                     await notifier!.RejectedAsync(c, c.ReasonForRejection ?? "", ct);
             }

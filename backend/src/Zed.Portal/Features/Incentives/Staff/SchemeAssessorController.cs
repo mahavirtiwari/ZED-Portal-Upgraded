@@ -79,8 +79,7 @@ public sealed class SchemeAssessorController(
             c.Status = WithAgency;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application returned to the agency by assessor {UserId}: {reason}", ct);
-            await Notifier.NoticeAsync(c, c.Agency, "Returned by the assessor",
-                $"Assessor {UserId} has returned the application with this reason:\n{reason}\nPlease name another assessor.", ct);
+            await Notifier.ReturnedByAssessorAsync(c, UserId, reason, ct);
             return new MessageResponse("Application returned to your agency.");
         }
     }
@@ -183,9 +182,14 @@ public sealed class SchemeAssessorController(
                     await SchemeCases.HistoryAsync(db, log, c,
                         $"Scheme application recommended by assessor {UserId}: verified claim Rs. {SchemeCases.Money(verified)}, eligible Rs. {SchemeCases.Money(eligible)}" +
                         (onsite ? "; it goes for onsite verification" : ""), ct);
-                    if (!onsite) return new MessageResponse("Recommended. It goes to your agency for QC.");
-                    if (await SchemeCases.LoadAsync(db, id, ct) is { } next)
-                        await SchemeServices.Get<Onsite.OnsiteAllotment>(HttpContext.RequestServices).AllotLockedAsync(next, ct);
+                    if (!onsite)
+                    {
+                        await Notifier.QcDueAsync(c, ct);
+                        return new MessageResponse("Recommended. It goes to your agency for QC.");
+                    }
+                    if (await SchemeCases.LoadAsync(db, id, ct) is { } next
+                        && await SchemeServices.Get<Onsite.OnsiteAllotment>(HttpContext.RequestServices).AllotLockedAsync(next, ct) is null)
+                        await Notifier.ManualAllotAsync(next, SchemeNotifier.OnsiteStage, SchemeNotifier.NoOnsiteAgency, ct);
                     return new MessageResponse("Recommended. It goes for onsite verification.");
                 }
                 default:

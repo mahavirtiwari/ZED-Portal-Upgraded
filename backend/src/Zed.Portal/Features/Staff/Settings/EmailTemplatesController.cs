@@ -72,6 +72,8 @@ public sealed partial class EmailTemplatesController(
     ];
 
     private const string General = "MSME and general", Staff = "Staff and agencies", App = "MSME app";
+    /// <summary>2026-11-20 (the user): the incentive mails (FA, TU and the Admin's schemes) kept apart from certification, consultancy and surveillance.</summary>
+    public const string Incentives = "Incentives";
 
     private static readonly PortalSystem[] MainOnly = [PortalSystem.Main];
 
@@ -115,6 +117,26 @@ public sealed partial class EmailTemplatesController(
         ["StaffSchemeFaAgencyRejectedEmail"] = MainOnly,
         ["StaffSchemeFaApprovedEmail"] = MainOnly,
         ["StaffSchemeFaRejectedEmail"] = MainOnly,
+        // 2026-11-20: the incentive schemes framework (phases 1–2) runs on main only.
+        ["MsmeSchemeSubmittedEmail"] = MainOnly,
+        ["MsmeSchemeCorrectionEmail"] = MainOnly,
+        ["MsmeSchemeRejectedEmail"] = MainOnly,
+        ["MsmeSchemeApprovedEmail"] = MainOnly,
+        ["MsmeSchemeVisitDueEmail"] = MainOnly,
+        ["MsmeSchemeOnHoldEmail"] = MainOnly,
+        ["MsmeSchemeResumedEmail"] = MainOnly,
+        ["StaffSchemeAllotAgencyEmail"] = MainOnly,
+        ["StaffSchemeAllotAssessorEmail"] = MainOnly,
+        ["StaffSchemeOnsiteAllotAgencyEmail"] = MainOnly,
+        ["StaffSchemeOnsiteAllotAssessorEmail"] = MainOnly,
+        ["StaffSchemeQcDueEmail"] = MainOnly,
+        ["StaffSchemeOnsiteSubmittedEmail"] = MainOnly,
+        ["StaffSchemeManualAllotEmail"] = MainOnly,
+        ["StaffSchemeOnHoldEmail"] = MainOnly,
+        ["StaffSchemeReturnedByAssessorEmail"] = MainOnly,
+        ["StaffSchemeCorrectionReceivedEmail"] = MainOnly,
+        ["StaffSchemeQcSentBackEmail"] = MainOnly,
+        ["StaffSchemeOnsiteQcSentBackEmail"] = MainOnly,
         ["StaffMonitoringCertificateEmail"] = [PortalSystem.Main, PortalSystem.Surveillance],
         ["StaffMonitoringRejectionEmail"] = [PortalSystem.Main, PortalSystem.Surveillance],
         ["StaffAgencyRegisteredEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
@@ -126,6 +148,25 @@ public sealed partial class EmailTemplatesController(
     private static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         ["StaffBronzeAssessmentEmail"] = "Agency level allocation (a level enabled or disabled)",
+        ["MsmeSchemeSubmittedEmail"] = "Scheme: application submitted (to the unit)",
+        ["MsmeSchemeCorrectionEmail"] = "Scheme: correction needed (to the unit)",
+        ["MsmeSchemeRejectedEmail"] = "Scheme: application rejected (to the unit)",
+        ["MsmeSchemeApprovedEmail"] = "Scheme: application approved (to the unit)",
+        ["MsmeSchemeVisitDueEmail"] = "Scheme: onsite visit due (to the unit)",
+        ["MsmeSchemeOnHoldEmail"] = "Scheme: application on hold (to the unit)",
+        ["MsmeSchemeResumedEmail"] = "Scheme: application resumed (to the unit)",
+        ["StaffSchemeAllotAgencyEmail"] = "Scheme: allotted to the desktop agency",
+        ["StaffSchemeAllotAssessorEmail"] = "Scheme: allotted to the desktop assessor",
+        ["StaffSchemeOnsiteAllotAgencyEmail"] = "Scheme: allotted to the onsite agency",
+        ["StaffSchemeOnsiteAllotAssessorEmail"] = "Scheme: allotted to the onsite assessor",
+        ["StaffSchemeQcDueEmail"] = "Scheme: recommended, QC due (to the desktop agency)",
+        ["StaffSchemeOnsiteSubmittedEmail"] = "Scheme: onsite verification submitted, final QC due (to the onsite agency)",
+        ["StaffSchemeManualAllotEmail"] = "Scheme: waiting for the Master Admin's allotment (to the ZED team)",
+        ["StaffSchemeOnHoldEmail"] = "Scheme: application on hold (to the ZED team)",
+        ["StaffSchemeReturnedByAssessorEmail"] = "Scheme: returned by the assessor (to the desktop agency)",
+        ["StaffSchemeCorrectionReceivedEmail"] = "Scheme: correction received (to the desktop assessor)",
+        ["StaffSchemeQcSentBackEmail"] = "Scheme: sent back from QC (to the desktop assessor)",
+        ["StaffSchemeOnsiteQcSentBackEmail"] = "Scheme: sent back from the onsite QC (to the onsite assessor)",
         ["StaffLoginDetailsEmail"] = "Login details: new login (staff, NEFT Admin, MSME DFO, Dashboard Admin)",
         ["PasswordChangedEmail"] = "Password changed: staff",
     };
@@ -311,8 +352,13 @@ public sealed partial class EmailTemplatesController(
     private static IEnumerable<PropertyInfo> Parameters(Type component) =>
         component.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetCustomAttribute<ParameterAttribute>() is not null);
 
+    /// <summary>An incentive mail: the schemes' (Msme/StaffScheme*: FA, the Admin's schemes), the consultancy portal's TU and the NEFT payment.</summary>
+    public static bool IsIncentive(string name) =>
+        name.Contains("Scheme", StringComparison.Ordinal) || name.StartsWith("ConsultancyTu", StringComparison.Ordinal) || name == "StaffNeftReimbursementEmail";
+
     private static string GroupOf(string name) =>
-        name.StartsWith("Consultancy", StringComparison.Ordinal) ? "Handholding (consultancy)"
+        IsIncentive(name) ? Incentives
+        : name.StartsWith("Consultancy", StringComparison.Ordinal) ? "Handholding (consultancy)"
         : name.StartsWith("Surveillance", StringComparison.Ordinal) ? "Surveillance"
         : name.StartsWith("Staff", StringComparison.Ordinal) ? Staff
         : General;

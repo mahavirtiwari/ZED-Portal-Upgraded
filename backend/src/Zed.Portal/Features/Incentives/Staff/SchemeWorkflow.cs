@@ -19,8 +19,12 @@ public sealed class SchemeWorkflow(ISqlExecutor db, IServiceProvider services, I
             await SchemeCases.HistoryAsync(db, log, c, "Scheme application submitted by the unit", ct);
             await SchemeServices.Get<SchemeNotifier>(services).SubmittedAsync(c, ct);
             var allotment = SchemeServices.Get<SchemeAllotment>(services);
-            if (c.Status == SchemeApplications.Submitted && await allotment.AutoAllotOnAsync(c.Code, ct))
-                await allotment.AutoAllotAsync(id, ct);
+            if (c.Status != SchemeApplications.Submitted) return;
+            var auto = await allotment.AutoAllotOnAsync(c.Code, ct);
+            if (auto && await allotment.AutoAllotAsync(id, ct) is not null) return;
+            // Nobody took it: the ZED team allots it (Scheme Applications).
+            await SchemeServices.Get<SchemeNotifier>(services).ManualAllotAsync(c, SchemeNotifier.DesktopStage,
+                auto ? SchemeNotifier.NoDesktopAgency : SchemeNotifier.AutoAllotOff, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -36,8 +40,7 @@ public sealed class SchemeWorkflow(ISqlExecutor db, IServiceProvider services, I
             if (c is null) { log.LogWarning("Scheme application {Id} not found after its correction", id); return; }
             var round = c.CorrectionRound ?? 1;
             await SchemeCases.HistoryAsync(db, log, c, $"Correction round {round} answered by the unit", ct);
-            await SchemeServices.Get<SchemeNotifier>(services).NoticeAsync(c, c.Assessor, "Correction received",
-                $"The unit has answered correction round {round} of its application. Please check the corrected answers and documents again.", ct);
+            await SchemeServices.Get<SchemeNotifier>(services).CorrectionReceivedAsync(c, round, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -11,6 +11,16 @@ import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { TextPipe, t } from '../../content/page-text';
 
+/** The list's tabs: portal mails, incentive mails (server group "Incentives") and database mails. */
+type MailTab = 'portal' | 'incentives' | 'database';
+
+/** The server's group of the incentive mails (EmailTemplatesController.Incentives). */
+export const INCENTIVE_GROUP = 'Incentives';
+
+function tabOf(item: { database: boolean; group: string }): MailTab {
+  return item.database ? 'database' : item.group === INCENTIVE_GROUP ? 'incentives' : 'portal';
+}
+
 export interface EmailTemplateItem {
   key: string;
   name: string;
@@ -133,9 +143,9 @@ const standardBodySample = (): string =>
 
     <div class="zed-card list-card">
       <div class="et-tabs" role="tablist">
-        @for (t of tabs(); track t.database) {
-          <button type="button" role="tab" class="et-tab" [class.active]="database() === t.database" [attr.aria-selected]="database() === t.database"
-                  (click)="database.set(t.database)">{{ t.label }} ({{ count(t.database) }})</button>
+        @for (t of tabs(); track t.key) {
+          <button type="button" role="tab" class="et-tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key"
+                  (click)="tab.set(t.key)">{{ t.label }} ({{ count(t.key) }})</button>
         }
       </div>
       <div class="list-toolbar">
@@ -379,12 +389,17 @@ export class EmailTemplatesPage {
   private readonly subjectBox = viewChild<ElementRef<HTMLInputElement>>('subjectBox');
   private readonly bodyBox = viewChild<ElementRef<HTMLTextAreaElement>>('bodyBox');
 
+  /**
+   * 2026-11-20 (the user): the incentive mails (FA, TU and the Admin's schemes; group "Incentives" from the server) on a tab of
+   * their own, apart from the certification, consultancy and surveillance mails; shown when this portal has any.
+   */
   protected readonly tabs = computed(() => [
-    { label: t('staff.emailTemplates.tab.portal', 'Portal mails'), database: false },
-    { label: t('staff.emailTemplates.tab.database', 'Database mails'), database: true },
+    { label: t('staff.emailTemplates.tab.portal', 'Portal mails'), key: 'portal' as MailTab },
+    ...(this.count('incentives') > 0 ? [{ label: t('staff.emailTemplates.tab.incentives', 'Incentive mails'), key: 'incentives' as MailTab }] : []),
+    { label: t('staff.emailTemplates.tab.database', 'Database mails'), key: 'database' as MailTab },
   ]);
   protected readonly items = signal<EmailTemplateItem[]>([]);
-  protected readonly database = signal(false);
+  protected readonly tab = signal<MailTab>('portal');
   protected readonly search = signal('');
   protected readonly filters = computed<readonly { key: StatusFilter; label: string }[]>(() => [
     { key: 'all', label: t('staff.emailTemplates.filter.all', 'All') },
@@ -396,13 +411,13 @@ export class EmailTemplatesPage {
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
     const f = this.filter();
-    return this.items().filter((t) => t.database === this.database()
+    return this.items().filter((t) => tabOf(t) === this.tab()
       && (f === 'all' || (f === 'sent' && t.enabled) || (f === 'off' && !t.enabled) || (f === 'changed' && t.customised))
       && (!q || `${t.name} ${t.group} ${t.subject ?? ''}`.toLowerCase().includes(q)));
   });
   /** The counts of the tab shown. */
   protected readonly stats = computed(() => {
-    const rows = this.items().filter((t) => t.database === this.database());
+    const rows = this.items().filter((t) => tabOf(t) === this.tab());
     return { total: rows.length, sent: rows.filter((t) => t.enabled).length, off: rows.filter((t) => !t.enabled).length, changed: rows.filter((t) => t.customised).length };
   });
   /** The preview at a phone's width. */
@@ -432,8 +447,8 @@ export class EmailTemplatesPage {
     void this.load();
   }
 
-  protected count(database: boolean): number {
-    return this.items().filter((t) => t.database === database).length;
+  protected count(tab: MailTab): number {
+    return this.items().filter((t) => tabOf(t) === tab).length;
   }
 
   protected braces(name: string): string {

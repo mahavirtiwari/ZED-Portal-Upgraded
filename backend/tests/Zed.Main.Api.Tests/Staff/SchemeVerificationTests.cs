@@ -306,6 +306,8 @@ public sealed class SchemeVerificationTests : IDisposable
         Assert.Equal("Submitted", Status);
         Assert.Null(_app["CertificationBodyUserId"]);
         Assert.Equal("AGENCY1", _app["RejectedAgencies"]);
+        // The ZED team inbox is told it waits for the Master Admin's allotment (its own Incentive mail).
+        Assert.Contains(_host.Email.Sent, m => m.Subject.StartsWith("Application waiting for allotment (Desktop verification)") && m.HtmlBody.Contains("Rejected by agency AGENCY1"));
     }
 
     [Fact]
@@ -410,6 +412,7 @@ public sealed class SchemeVerificationTests : IDisposable
         (await agency.PostAsJsonAsync("/api/staff/scheme-verification/agency/900/back", new { remarks = "Check the second invoice" })).EnsureSuccessStatusCode();
         Assert.Equal("Verifying", Status);
         Assert.Contains("Check the second invoice", _app["ReasonForRejectionAgency"]?.ToString());
+        Assert.Contains(_host.Email.Sent, m => m.To == "da1@x.test" && m.Subject.StartsWith("Sent back from QC") && m.HtmlBody.Contains("Check the second invoice"));
 
         At("Qc", "AGENCY1", "DA1", accepted: true);
         (await agency.PostAsJsonAsync("/api/staff/scheme-verification/agency/900/approve", new { amount = 45000m })).EnsureSuccessStatusCode();
@@ -443,12 +446,17 @@ public sealed class SchemeVerificationTests : IDisposable
         using (var scope = _host.Services.CreateScope())
             Assert.Equal(new SchemeSweep.Result(0, 1), await SchemeServices.Get<SchemeSweep>(scope.ServiceProvider).RunAsync(CancellationToken.None));
         Assert.Equal(("OnHold", "Certificate B-1 SUSPENDED (was Verifying)"), (Status, _app["HoldReason"]));
+        // The unit and the ZED team inbox are told (their own Incentive mails).
+        var holds = _host.Email.Sent.Where(m => m.Subject.StartsWith("Application on hold")).ToList();
+        Assert.Equal(2, holds.Count);
+        Assert.Contains(holds, m => m.To == "msme@acme.test" && m.HtmlBody.Contains("Certificate B-1 SUSPENDED"));
 
         // The Master Admin resumes it where it was.
         var admin = await SignIn("MADMIN");
         (await admin.PostAsJsonAsync("/api/staff/scheme-applications/900/resume", new { })).EnsureSuccessStatusCode();
         Assert.Equal("Verifying", Status);
         Assert.Null(_app["HoldReason"]);
+        Assert.Contains(_host.Email.Sent, m => m.To == "msme@acme.test" && m.Subject.StartsWith("Application resumed") && m.HtmlBody.Contains("Desktop verification"));
     }
 
     [Fact]

@@ -131,6 +131,7 @@ public sealed class OnsiteAgencyController(
                 && await SchemeCases.LoadAsync(db, id, ct) is { } back
                 && await Allotment.AllotLockedAsync(back, ct) is not null)
                 return new MessageResponse("Application rejected. It has been allotted to another agency.");
+            await Notifier.ManualAllotAsync(c, SchemeNotifier.OnsiteStage, $"Rejected for onsite verification by agency {UserId}: {text}", ct);
             return new MessageResponse("Application rejected. It goes back to the ZED team for allotment.");
         }
     }
@@ -181,8 +182,7 @@ public sealed class OnsiteAgencyController(
             c.Status = OnsiteWithAssessor;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application sent back to the onsite assessor in QC by agency {UserId}: {remarks}", ct);
-            await Notifier.NoticeAsync(c, c.OnsiteAssessor, "Sent back from onsite QC",
-                $"Your agency has sent the application back from the onsite QC with these remarks:\n{remarks}", ct);
+            await Notifier.OnsiteQcSentBackAsync(c, remarks, ct);
             return new MessageResponse("Application sent back to the assessor.");
         }
     }

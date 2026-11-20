@@ -69,6 +69,32 @@ public sealed class EmailTemplatesTests : IDisposable
     }
 
     [Fact]
+    public async Task Incentive_mails_have_a_group_of_their_own_with_one_template_per_step()
+    {
+        // 2026-11-20 (the user): incentive mails kept apart from certification, consultancy and surveillance; each step editable alone.
+        Stored();
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var items = (await admin.GetFromJsonAsync<List<EmailTemplatesController.TemplateItem>>(Url))!;
+        string[] steps =
+        [
+            "MsmeSchemeSubmittedEmail", "StaffSchemeAllotAgencyEmail", "StaffSchemeAllotAssessorEmail", "StaffSchemeReturnedByAssessorEmail",
+            "MsmeSchemeCorrectionEmail", "StaffSchemeCorrectionReceivedEmail", "StaffSchemeQcDueEmail", "StaffSchemeQcSentBackEmail",
+            "StaffSchemeManualAllotEmail", "StaffSchemeOnsiteAllotAgencyEmail", "StaffSchemeOnsiteAllotAssessorEmail", "MsmeSchemeVisitDueEmail",
+            "StaffSchemeOnsiteSubmittedEmail", "StaffSchemeOnsiteQcSentBackEmail", "MsmeSchemeRejectedEmail", "MsmeSchemeApprovedEmail",
+            "MsmeSchemeOnHoldEmail", "StaffSchemeOnHoldEmail", "MsmeSchemeResumedEmail", "StaffNeftReimbursementEmail",
+        ];
+        foreach (var key in steps)
+            Assert.Equal(EmailTemplatesController.Incentives, Assert.Single(items, i => i.Key == key).Group);
+        Assert.DoesNotContain(items, i => i.Key == "StaffSchemeNoticeEmail");
+        Assert.Equal("Scheme: onsite visit due (to the unit)", items.Single(i => i.Key == "MsmeSchemeVisitDueEmail").Name);
+        Assert.Contains("AssessorMobile", items.Single(i => i.Key == "MsmeSchemeVisitDueEmail").Placeholders);
+        Assert.NotEqual(EmailTemplatesController.Incentives, items.Single(i => i.Key == "ContactQueryEmail").Group);
+        Assert.True(EmailTemplatesController.IsIncentive("ConsultancyTuAllotAgencyEmail"));
+        Assert.False(EmailTemplatesController.IsIncentive("ConsultancyAllocationEmail"));
+        Assert.False(EmailTemplatesController.IsIncentive("SurveillanceSiteAllotmentUnitEmail"));
+    }
+
+    [Fact]
     public async Task Opens_the_standard_mail_with_its_fields_as_placeholders()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

@@ -81,6 +81,21 @@ describe('EmailTemplatesPage', () => {
     expect(rows()[0]).toContain('Subject: ZED: {{StandardSubject}}');
   });
 
+  it('keeps the incentive mails on a tab of their own', async () => {
+    fixture.destroy();
+    fixture = TestBed.createComponent(EmailTemplatesPage);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne(url).flush([...items, item('MsmeSchemeVisitDueEmail', 'Scheme: onsite visit due (to the unit)', false, { group: 'Incentives' })]);
+    await settle();
+    expect([...el.querySelectorAll('[role=tab]')].map((t) => t.textContent!.trim())).toEqual(['Portal mails (2)', 'Incentive mails (1)', 'Database mails (1)']);
+    expect(rows().some((r) => r.includes('onsite visit due'))).toBe(false);
+    (el.querySelectorAll('[role=tab]')[1] as HTMLElement).click();
+    await settle();
+    expect(rows().length).toBe(1);
+    expect(rows()[0]).toContain('Scheme: onsite visit due (to the unit)');
+  });
+
   it('searches the mails', async () => {
     const box = el.querySelector('input[aria-label="Search e-mails"]') as HTMLInputElement;
     box.value = 'payment';

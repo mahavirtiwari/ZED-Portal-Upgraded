@@ -101,3 +101,34 @@ Built (2026-11-20): backend `Features/Incentives/Onsite/` (OnsiteAgencies, Onsit
 governs the onsite round robin; the sweep retries `OnsiteAllot` (not after a Master Admin reason). Assessment agencies are
 ticked Desktop only, onsite agencies Onsite only. Onsite photos are served from `FinancialAssistancePhotos` rows of the
 application with `Name LIKE 'onsite/%'`, file in the mobile API's `Photos/{ZedId}/SchemeOnsite`, `PhotoId` = file name.
+
+# Mails (2026-11-20)
+
+Every step mails the person who acts next, each with **its own template** (Razor, `backend/src/Zed.Portal/Templates`), so the
+Admin can switch it off or change its subject and body (placeholders) in **Admin → Email Templates → Incentive mails**. The
+incentive mails are kept apart from the certification, consultancy and surveillance mails: `EmailTemplatesController.IsIncentive`
+(names with "Scheme", the consultancy portal's `ConsultancyTu*`, `StaffNeftReimbursementEmail`) → group `Incentives` → its own
+tab. Framework templates are listed on the main portal only. Sent by `Features/Incentives/Staff/SchemeNotifier.cs`.
+
+| Step | Template | To |
+|---|---|---|
+| Submitted | MsmeSchemeSubmittedEmail | Unit |
+| Allotted to the desktop agency | StaffSchemeAllotAgencyEmail | Desktop agency |
+| Waiting for the Master Admin (agency rejected with a "Master Admin" reason, no eligible agency, AutoAllot off) | StaffSchemeManualAllotEmail | ZED team inbox (Admin → Settings → E-mail addresses) |
+| Desktop assessor named | StaffSchemeAllotAssessorEmail | Desktop assessor |
+| Returned by the assessor | StaffSchemeReturnedByAssessorEmail | Desktop agency |
+| Correction asked / answered | MsmeSchemeCorrectionEmail / StaffSchemeCorrectionReceivedEmail | Unit / desktop assessor |
+| Recommended (Desktop flow) | StaffSchemeQcDueEmail | Desktop agency |
+| Sent back from QC | StaffSchemeQcSentBackEmail | Desktop assessor |
+| Allotted to the onsite agency | StaffSchemeOnsiteAllotAgencyEmail | Onsite agency |
+| Onsite assessor named | StaffSchemeOnsiteAllotAssessorEmail + MsmeSchemeVisitDueEmail | Onsite assessor + unit (assessor's name and mobile) |
+| Onsite recommended (app; sent by the sweep) | StaffSchemeOnsiteSubmittedEmail | Onsite agency |
+| Sent back from onsite QC | StaffSchemeOnsiteQcSentBackEmail | Onsite assessor |
+| Rejected (desktop, onsite, late correction, Master Admin) | MsmeSchemeRejectedEmail | Unit |
+| Approved | MsmeSchemeApprovedEmail | Unit |
+| Paid by NEFT | StaffNeftReimbursementEmail | Unit |
+| On hold / resumed | MsmeSchemeOnHoldEmail + StaffSchemeOnHoldEmail / MsmeSchemeResumedEmail | Unit + ZED team inbox / unit |
+
+**Rule for future incentives (the user):** any new incentive flow, or a step added to one, gets a mail at each step with its own
+template in the `Incentives` group (and its row in this table). Schemes defined by the Admin in the framework get these mails
+automatically; a separately coded incentive must replicate them.

@@ -140,7 +140,7 @@ internal static class SchemeCases
 
     public const string UnitSql = "SELECT TOP 1 EnterpriseName, EmailId, PUnitName, PAddress, PCity, PStateName FROM dbo.Msme WHERE ZedId = @ZedId;";
 
-    public const string UserSql = "SELECT TOP 1 UserId, UserName, Email, RoleId, IsActive, CreatedBy, SchemeVerification, AgencyKind FROM dbo.Users WHERE UserId = @UserId;";
+    public const string UserSql = "SELECT TOP 1 UserId, UserName, Email, MobileNo, RoleId, IsActive, CreatedBy, SchemeVerification, AgencyKind FROM dbo.Users WHERE UserId = @UserId;";
 
     public const string HistorySql =
         "SELECT TOP 100 Descrip, CreatedDate FROM dbo.MsmeHistory WHERE ZedId = @ZedId AND CertificationType = @Code ORDER BY CreatedDate DESC;";
@@ -163,6 +163,7 @@ internal static class SchemeCases
         public string? UserId { get; init; }
         public string? UserName { get; init; }
         public string? Email { get; init; }
+        public string? MobileNo { get; init; }
         public int? RoleId { get; init; }
         public bool? IsActive { get; init; }
         public string? CreatedBy { get; init; }

@@ -1,0 +1,20 @@
+@* 2026-11-20 (incentive schemes): to the MSME when its application is put on hold (certificate suspended or withdrawn). Editable under Admin → Email Templates → Incentive mails. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your application for <b>@SchemeName</b> has been put on hold. The details are as follows:</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0;">The ZED team will resume or close the application. You will be informed by e-mail.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string SchemeName { get; set; } = "";
+    [Parameter] public string HoldReason { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Reason for Hold", HoldReason)];
+}

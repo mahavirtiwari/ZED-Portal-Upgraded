@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9185,
+  "count": 9186,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -48360,6 +48360,18 @@
     {
       "key": "staff.emailTemplates.tab.database",
       "standard": "Database mails",
+      "kind": "label",
+      "portal": "staff",
+      "page": "emailTemplates",
+      "pageName": "Email templates",
+      "placeholders": [],
+      "files": [
+        "staff/settings/email-templates.ts"
+      ]
+    },
+    {
+      "key": "staff.emailTemplates.tab.incentives",
+      "standard": "Incentive mails",
       "kind": "label",
       "portal": "staff",
       "page": "emailTemplates",

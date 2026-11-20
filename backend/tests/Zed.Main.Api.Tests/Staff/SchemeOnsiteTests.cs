@@ -287,6 +287,8 @@ public sealed class SchemeOnsiteTests : IDisposable
         (await (await SignIn("DA1")).PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" })).EnsureSuccessStatusCode();
         Assert.Equal("Qc", Status);
         Assert.Null(_app["OnsiteAgencyId"]);
+        // The agency is told its QC is due (its own Incentive mail).
+        Assert.Contains(_host.Email.Sent, m => m.To == "agency1@x.test" && m.Subject.StartsWith("Application recommended for QC"));
     }
 
     [Fact]
@@ -316,7 +318,9 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, (await onsite.PostAsJsonAsync("/api/staff/scheme-onsite/agency/900/accept", new { assessorUserId = "OSA9" })).StatusCode);
         (await onsite.PostAsJsonAsync("/api/staff/scheme-onsite/agency/900/accept", new { assessorUserId = "OSA1" })).EnsureSuccessStatusCode();
         Assert.Equal(("OnsiteWithAssessor", "OSA1", 2), (Status, _app["OnsiteAssessorId"], (int)_app["VerificationStatus"]!));
-        Assert.Contains(_host.Email.Sent, m => m.To == "osa1@x.test");
+        Assert.Contains(_host.Email.Sent, m => m.To == "osa1@x.test" && m.Subject.StartsWith("Allocation of Application for Onsite Verification"));
+        // The unit is told a visit is due, with the assessor's name.
+        Assert.Contains(_host.Email.Sent, m => m.To == "msme@acme.test" && m.Subject.StartsWith("Onsite verification of your application") && m.HtmlBody.Contains("OSA1 name"));
         // The desktop assessor and agency stay as they were.
         Assert.Equal(("AGENCY1", "DA1"), (_app["CertificationBodyUserId"], _app["FinancialAssessorId"]));
 

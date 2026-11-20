@@ -146,6 +146,7 @@ public sealed class SchemeApplicationsController(
             c.HoldReason = null;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application resumed ({next}) by {ActorId}; it was on hold: {reason}", ct);
+            await Notifier.ResumedAsync(c, SchemeNotifier.StageWords(next), ct);
             if (next == Submitted && await Allotment.AutoAllotOnAsync(c.Code, ct))
                 await Allotment.AllotLockedAsync((await SchemeCases.LoadAsync(db, id, ct))!, ct);
             if (next == SchemeApplications.OnsiteAllot && await SchemeCases.LoadAsync(db, id, ct) is { } back)

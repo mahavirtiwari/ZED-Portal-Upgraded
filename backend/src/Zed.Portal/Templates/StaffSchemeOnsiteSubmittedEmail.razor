@@ -1,7 +1,7 @@
-@* 2026-11-20 (incentive schemes): a notice to the agency or assessor (the assessor returned an application, the agency sent it back from QC, the unit answered a correction). *@
+@* 2026-11-20 (incentive schemes): to the onsite agency when its assessor submits the onsite verification with a recommendation (final QC due). Editable under Admin → Email Templates → Incentive mails. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
-    <p style="font-size: 13px; margin-bottom: 0; white-space: pre-line;">@Notice</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Onsite assessor @AssessorUserId has submitted the onsite verification of an application for <b>@SchemeName</b> with a recommendation. Please do the final QC. The details are as follows:</p>
     <StaffSchemeDetailTable Rows="@Rows" />
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
@@ -14,11 +14,14 @@
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";
     [Parameter] public string UnitName { get; set; } = "";
     [Parameter] public string SchemeName { get; set; } = "";
-    [Parameter] public string Notice { get; set; } = "";
+    [Parameter] public string AssessorUserId { get; set; } = "";
+    [Parameter] public string VisitDate { get; set; } = "";
+    [Parameter] public string VerifiedClaim { get; set; } = "";
+    [Parameter] public string EligibleAmount { get; set; } = "";
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 
     private string LoginUrl => PublicBaseUrl.TrimEnd('/') + "/login";
 
     private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
-        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName)];
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Assessor ID", AssessorUserId), new("Date of Verification", VisitDate), new("Verified Claim (Rs.)", VerifiedClaim), new("Eligible Amount (Rs.)", EligibleAmount)];
 }
