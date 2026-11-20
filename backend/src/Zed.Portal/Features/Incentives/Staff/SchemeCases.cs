@@ -54,6 +54,12 @@ internal sealed class SchemeCase
     public string? AllotmentType { get; set; }
     public DateTime? AllotmentDate { get; set; }
     public string? RejectedAgencies { get; set; }
+    // Phase 2 (migration 0106): the onsite agency and assessor of the Desktop + Onsite flow.
+    public string? OnsiteAgency { get; set; }
+    public string? OnsiteAssessor { get; set; }
+    public string? OnsiteAllotmentType { get; set; }
+    public DateTime? OnsiteAllotmentDate { get; set; }
+    public string? OnsiteRejectedAgencies { get; set; }
 
     public int Id => Row.Id;
     public string ZedId => Row.ZedId?.Trim() ?? "";
@@ -79,6 +85,11 @@ internal sealed class SchemeCase
         AllotmentType = r.AllotmentType,
         AllotmentDate = r.AllotmentDate,
         RejectedAgencies = r.RejectedAgencies,
+        OnsiteAgency = Blank(r.OnsiteAgencyId),
+        OnsiteAssessor = Blank(r.OnsiteAssessorId),
+        OnsiteAllotmentType = r.OnsiteAllotmentType,
+        OnsiteAllotmentDate = r.OnsiteAllotmentDate,
+        OnsiteRejectedAgencies = r.OnsiteRejectedAgencies,
     };
 
     public Dictionary<string, FieldCheck> Checks => FieldCheck.Parse(FormChecks);
@@ -95,6 +106,21 @@ internal sealed class SchemeCase
         RejectedAgencies = text.Length <= 2000 ? text : text[^2000..];
     }
 
+    /// <summary>The onsite agencies that rejected the application (never offered it again by the onsite round robin).</summary>
+    public HashSet<string> OnsiteRejected => (OnsiteRejectedAgencies ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    public void AddOnsiteRejected(string agency)
+    {
+        var set = OnsiteRejected;
+        if (!set.Add(agency.Trim())) return;
+        var text = string.Join(',', set);
+        OnsiteRejectedAgencies = text.Length <= 2000 ? text : text[^2000..];
+    }
+
+    /// <summary>In the onsite stage of the Desktop + Onsite flow (waiting for or with the onsite agency, its assessor or its QC).</summary>
+    public bool OnsiteStage => Status is OnsiteAllot or OnsiteWithAgency or OnsiteWithAssessor or OnsiteVisit || (Status == Qc && OnsiteAgency is not null);
+
     public static string? Blank(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 }
 
@@ -106,13 +132,15 @@ internal static class SchemeCases
             EligibleAmount = @EligibleAmount, ApprovedAmount = @ApprovedAmount, CorrectionRound = @CorrectionRound, CorrectionDueOn = @CorrectionDueOn,
             DecidedOn = @DecidedOn, HoldReason = @HoldReason, CertificationBodyUserId = @CertificationBodyUserId, FinancialAssessorId = @FinancialAssessorId,
             AssessorAcceptedOn = @AssessorAcceptedOn, ReasonForRejection = @ReasonForRejection, ReasonForRejectionAgency = @ReasonForRejectionAgency,
-            AllotmentType = @AllotmentType, AllotmentDate = @AllotmentDate, RejectedAgencies = @RejectedAgencies
+            AllotmentType = @AllotmentType, AllotmentDate = @AllotmentDate, RejectedAgencies = @RejectedAgencies,
+            OnsiteAgencyId = @OnsiteAgencyId, OnsiteAssessorId = @OnsiteAssessorId, OnsiteAllotmentType = @OnsiteAllotmentType,
+            OnsiteAllotmentDate = @OnsiteAllotmentDate, OnsiteRejectedAgencies = @OnsiteRejectedAgencies
         WHERE Id = @Id AND SchemeCode IS NOT NULL AND ISNULL(SchemeStatus, 'Draft') = @Expected AND ISNULL(VerificationStatus, 0) <> 6;
         """;
 
     public const string UnitSql = "SELECT TOP 1 EnterpriseName, EmailId, PUnitName, PAddress, PCity, PStateName FROM dbo.Msme WHERE ZedId = @ZedId;";
 
-    public const string UserSql = "SELECT TOP 1 UserId, UserName, Email, RoleId, IsActive, CreatedBy, SchemeVerification FROM dbo.Users WHERE UserId = @UserId;";
+    public const string UserSql = "SELECT TOP 1 UserId, UserName, Email, RoleId, IsActive, CreatedBy, SchemeVerification, AgencyKind FROM dbo.Users WHERE UserId = @UserId;";
 
     public const string HistorySql =
         "SELECT TOP 100 Descrip, CreatedDate FROM dbo.MsmeHistory WHERE ZedId = @ZedId AND CertificationType = @Code ORDER BY CreatedDate DESC;";
@@ -139,6 +167,10 @@ internal static class SchemeCases
         public bool? IsActive { get; init; }
         public string? CreatedBy { get; init; }
         public string? SchemeVerification { get; init; }
+        /// <summary>Migration 0106: 'SchemeOnsite' for an onsite verification agency.</summary>
+        public string? AgencyKind { get; init; }
+
+        public bool IsOnsiteAgency => RoleId == 2 && string.Equals(AgencyKind?.Trim(), OnsiteAgencyKind, StringComparison.OrdinalIgnoreCase);
     }
 
     public sealed class HistoryRow
@@ -147,8 +179,9 @@ internal static class SchemeCases
         public DateTime? CreatedDate { get; init; }
     }
 
+    /// <summary>The case with its onsite columns (migration 0106).</summary>
     public static async Task<SchemeCase?> LoadAsync(ISqlExecutor db, int id, CancellationToken ct) =>
-        await ByIdAsync(db, id, ct) is { } r ? SchemeCase.From(r) : null;
+        (await db.QuerySqlAsync<Row>(ByIdWithOnsiteSql, new { Id = id }, ct)).FirstOrDefault() is { } r ? SchemeCase.From(r) : null;
 
     /// <summary>Writes the case; false when the row changed meanwhile (another status) or is gone.</summary>
     public static async Task<bool> SaveAsync(ISqlExecutor db, SchemeCase c, CancellationToken ct)
@@ -173,6 +206,11 @@ internal static class SchemeCases
             c.AllotmentType,
             c.AllotmentDate,
             c.RejectedAgencies,
+            OnsiteAgencyId = c.OnsiteAgency,
+            OnsiteAssessorId = c.OnsiteAssessor,
+            c.OnsiteAllotmentType,
+            c.OnsiteAllotmentDate,
+            c.OnsiteRejectedAgencies,
             c.Expected,
         }, ct);
         return n > 0;

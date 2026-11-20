@@ -122,4 +122,72 @@ public sealed class SchemeCoreTests
         Assert.Equal(5, SchemeApplications.VerificationStatus(SchemeApplications.Rejected));
         Assert.Equal(SchemeApplications.Paid, SchemeApplications.StatusOf(new SchemeApplications.Row { SchemeStatus = SchemeApplications.Approved, VerificationStatus = 6 }));
     }
+
+    [Fact]
+    public void Onsite_statuses_and_check_stages()
+    {
+        // Phase 2 (2026-11-20): the onsite stage is "under verification" for the legacy pages.
+        foreach (var s in new[] { SchemeApplications.OnsiteAllot, SchemeApplications.OnsiteWithAgency, SchemeApplications.OnsiteWithAssessor, SchemeApplications.OnsiteVisit })
+            Assert.Equal(2, SchemeApplications.VerificationStatus(s));
+
+        var desk = new FormField { Key = "a", Label = "A", Type = "text", AssessorChecks = true };
+        var onsite = desk with { CheckStage = SchemeRules.StageOnsite };
+        var both = desk with { CheckStage = SchemeRules.StageBoth };
+        Assert.Equal(SchemeRules.StageDesktop, SchemeRules.StageOf(desk));
+        // Desktop + Onsite: each stage checks its own fields; "both" is checked twice.
+        Assert.True(SchemeRules.DesktopChecks(desk, SchemeRules.DesktopOnsite));
+        Assert.False(SchemeRules.OnsiteChecks(desk, SchemeRules.DesktopOnsite));
+        Assert.False(SchemeRules.DesktopChecks(onsite, SchemeRules.DesktopOnsite));
+        Assert.True(SchemeRules.OnsiteChecks(onsite, SchemeRules.DesktopOnsite));
+        Assert.True(SchemeRules.DesktopChecks(both, SchemeRules.DesktopOnsite) && SchemeRules.OnsiteChecks(both, SchemeRules.DesktopOnsite));
+        // A Desktop-only scheme checks everything at the desktop, nothing onsite.
+        Assert.True(SchemeRules.DesktopChecks(onsite, SchemeRules.Desktop));
+        Assert.False(SchemeRules.OnsiteChecks(both, SchemeRules.Desktop));
+        Assert.False(SchemeRules.OnsiteChecks(onsite with { AssessorChecks = false }, SchemeRules.DesktopOnsite));
+    }
+
+    [Fact]
+    public void Onsite_places_and_photo_items_follow_the_saved_items()
+    {
+        var tu = SchemeTemplates.TechnologyUpgradation();
+        var section = tu.Form.Sections[0];
+        var first = section.Fields.First(f => f.Type is "text" or "amount");
+        var def = tu with
+        {
+            Verification = tu.Verification with { Flow = SchemeRules.DesktopOnsite },
+            Form = tu.Form with { Sections = [section with { Fields = section.Fields.Select(f => f.Key == first.Key ? f with { AssessorChecks = true, CheckStage = SchemeRules.StageOnsite } : f).ToList() }] },
+        };
+        Assert.Null(SchemeRules.Problem(def, Levels));
+        var answers = new FormAnswers
+        {
+            Sections = new()
+            {
+                [section.Key] =
+                [
+                    new FormItem { Pick = "T1", PickName = "Solar", Saved = true, Values = new() { [first.Key] = "x" } },
+                    new FormItem { Pick = "T2", Saved = false, Values = new() { [first.Key] = "y" } },
+                ],
+            },
+        };
+        var places = SchemeApplications.OnsitePlacesOf(def, answers);
+        Assert.Equal([SchemeApplications.PathOf(section.Key, 0, first.Key)], places.Select(p => p.Path));
+        Assert.Equal("onsite:" + places[0].Path, SchemeApplications.OnsiteKey(places[0].Path));
+        var items = SchemeApplications.OnsiteItemsOf(def, answers);
+        Assert.Single(items);
+        Assert.EndsWith("1 – Solar", items[0].Title);
+        Assert.Equal($"onsite/{section.Key}/0", SchemeApplications.OnsitePhotoName(section.Key, 0));
+        // A Desktop-only scheme has nothing to check onsite.
+        Assert.Empty(SchemeApplications.OnsitePlacesOf(def with { Verification = def.Verification with { Flow = SchemeRules.Desktop } }, answers));
+    }
+
+    [Fact]
+    public void Onsite_settings_are_validated()
+    {
+        var tu = SchemeTemplates.TechnologyUpgradation();
+        Assert.Contains("Onsite photos", SchemeRules.Problem(tu with { Verification = tu.Verification with { OnsitePhotosMin = 4, OnsitePhotosMax = 2 } }, Levels));
+        Assert.Contains("Onsite photos", SchemeRules.Problem(tu with { Verification = tu.Verification with { OnsitePhotosMax = 9 } }, Levels));
+        var s = tu.Form.Sections[0];
+        var bad = tu with { Form = tu.Form with { Sections = [s with { Fields = [.. s.Fields, new FormField { Key = "z", Label = "Z", Type = "text", CheckStage = "site" }] }] } };
+        Assert.Contains("desktop, onsite or both", SchemeRules.Problem(bad, Levels));
+    }
 }

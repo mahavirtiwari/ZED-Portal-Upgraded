@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9056,
+  "count": 9185,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -63496,9 +63496,45 @@
       ]
     },
     {
-      "key": "staff.incentivesAdmin.editor.verification.phase2",
-      "standard": "phase 2: coming with the mobile app",
+      "key": "staff.incentivesAdmin.editor.verification.onsiteHelp",
+      "standard": "Desktop + Onsite: after the desktop recommendation an onsite verification agency of the unit’s state and district is allotted; its assessor visits the unit with the assessor app and the onsite agency does the final QC. Onsite photos per item: 0 to 5 at least, 1 to 5 at most.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.photos",
+      "standard": "Onsite photos per item",
       "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.photosMax",
+      "standard": "at most",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.photosMin",
+      "standard": "at least",
+      "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
@@ -63894,6 +63930,66 @@
     {
       "key": "staff.incentivesAdmin.field.required",
       "standard": "Required",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.stage",
+      "standard": "Checked at",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.stage.both",
+      "standard": "Desktop and onsite",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.stage.desktop",
+      "standard": "Desktop",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.stage.onsite",
+      "standard": "Onsite (at the visit)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.stageHelp",
+      "standard": "Onsite: the onsite assessor marks it Valid / Not valid at the visit in the assessor app; the desktop assessor does not check it.",
       "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",
@@ -70474,6 +70570,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.onsiteVerificationAgenciesLabel",
+      "standard": "Onsite Verification Agencies",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.operationAdminsLabel",
       "standard": "Operation Admins",
       "kind": "label",
@@ -70656,6 +70764,30 @@
     {
       "key": "staff.menu.item.schemeApplicationsLabel",
       "standard": "Scheme Applications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeOnsiteAllotmentLabel",
+      "standard": "Scheme Onsite Allotment",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeOnsiteQcLabel",
+      "standard": "Scheme Onsite QC",
       "kind": "label",
       "portal": "staff",
       "page": "menu",
@@ -97170,6 +97302,883 @@
       ]
     },
     {
+      "key": "staff.schemeOnsite.action.activate",
+      "standard": "Activate",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.action.deactivate",
+      "standard": "Deactivate",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.action.edit",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.action.reset",
+      "standard": "Send set-password link",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.add",
+      "standard": "Add onsite agency",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.empty",
+      "standard": "No onsite verification agency yet.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.search",
+      "standard": "Search agencies",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.searchEmpty",
+      "standard": "No agency matches the search.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.sub",
+      "standard": "Agencies that verify incentive scheme applications at the unit (Desktop + Onsite schemes), by state and district. Assessment agencies are kept on their own page.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.agencies.title",
+      "standard": "Onsite Verification Agencies",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts",
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.agency",
+      "standard": "Agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.area",
+      "standard": "States and districts",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.assessors",
+      "standard": "Assessors",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.schemes",
+      "standard": "Schemes",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.spoc",
+      "standard": "SPOC",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.column.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.activateButton",
+      "standard": "Activate",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.activateMessage",
+      "standard": "The agency can sign in again and is allotted applications of its states and districts.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.activateTitle",
+      "standard": "Activate the agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.deactivateButton",
+      "standard": "Deactivate",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.deactivateMessage",
+      "standard": "The agency can no longer sign in and is not allotted new applications.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.deactivateTitle",
+      "standard": "Deactivate the agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.reasonHint",
+      "standard": "Kept in the history and e-mailed to the agency.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.reasonLabel",
+      "standard": "Reason",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.resetButton",
+      "standard": "Send",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.resetMessage",
+      "standard": "The agency’s SPOC gets an e-mail with a link to set a new password.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.dialog.resetTitle",
+      "standard": "Send a set-password link",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.addState",
+      "standard": "Add state",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.addStateAria",
+      "standard": "Add a state",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.addStatePlaceholder",
+      "standard": "-- Add a state --",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.addTitle",
+      "standard": "Add onsite agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.address",
+      "standard": "Registered address",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.agencyTitle",
+      "standard": "Agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.areaHelp",
+      "standard": "Applications go to the onsite agencies of the unit’s plant state and district by round robin. Choose the whole state or some of its districts.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.areaTitle",
+      "standard": "States and districts",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.back",
+      "standard": "Back",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.cancel",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.coverageAria",
+      "standard": "Coverage of {state}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "state"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.create",
+      "standard": "Create agency",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.editTitle",
+      "standard": "Edit onsite agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.email",
+      "standard": "SPOC e-mail",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.districts",
+      "standard": "{state}: tick at least one district, or choose the whole state.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "state"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.mobile",
+      "standard": "Please enter a valid 10 digit SPOC mobile number.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.pin",
+      "standard": "Please enter a valid 6 digit PIN code.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.required",
+      "standard": "Please fill in every required field.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.schemes",
+      "standard": "Please select at least one scheme the agency verifies onsite.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.states",
+      "standard": "Please add at least one state the agency serves.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.filterAria",
+      "standard": "Filter districts of {state}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "state"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.filterDistricts",
+      "standard": "Filter districts",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.gst",
+      "standard": "GSTIN",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.gstPlaceholder",
+      "standard": "15 characters (optional)",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.loadingDistricts",
+      "standard": "Loading the districts…",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.mobile",
+      "standard": "SPOC mobile",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.name",
+      "standard": "Agency name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.noDistricts",
+      "standard": "No district is listed for this state (Admin → Master → LG Directory).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.noSchemes",
+      "standard": "No scheme has the Desktop + Onsite verification flow yet (Admin → Incentive Schemes → Verification).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.pin",
+      "standard": "PIN code",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.removeState",
+      "standard": "Remove",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.save",
+      "standard": "Save changes",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.schemeOff",
+      "standard": "switched off",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.schemesTitle",
+      "standard": "Schemes verified onsite",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.selected",
+      "standard": "Selected districts",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.selectedCount",
+      "standard": "{n} district(s) selected",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.spoc",
+      "standard": "SPOC name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.spocTitle",
+      "standard": "SPOC contact",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.whole",
+      "standard": "Whole state",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.row.active",
+      "standard": "Active",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.row.districts",
+      "standard": "{n} district(s)",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.row.inactive",
+      "standard": "Inactive",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.row.menuAria",
+      "standard": "More actions for {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.row.wholeState",
+      "standard": "whole state",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/onsite-agencies.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.action.accept",
       "standard": "Accept",
       "kind": "button",
@@ -97223,6 +98232,32 @@
       ]
     },
     {
+      "key": "staff.schemeVerification.action.onsiteAllot",
+      "standard": "Allot onsite",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.onsiteReallot",
+      "standard": "Re-allot onsite",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.action.reallot",
       "standard": "Re-allot",
       "kind": "button",
@@ -97247,6 +98282,19 @@
         "staff/scheme-verification/scheme-detail.ts",
         "staff/scheme-verification/scheme-list.ts",
         "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.rename",
+      "standard": "Change assessor",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
       ]
     },
     {
@@ -97599,6 +98647,18 @@
     {
       "key": "staff.schemeVerification.column.unit",
       "standard": "Unit",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.visit",
+      "standard": "Date of verification",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -98089,6 +99149,116 @@
       ]
     },
     {
+      "key": "staff.schemeVerification.dialog.noOnsiteAgency",
+      "standard": "No onsite verification agency serves this scheme in the unit’s state and district.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.noOnsiteAssessor",
+      "standard": "None of your assessors is ticked for onsite verification of this scheme. Tick one on its page first.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteAcceptMessage",
+      "standard": "No date is fixed: the day the assessor starts the visit in the assessor app is saved as the date of verification.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteAcceptTitle",
+      "standard": "Accept and name the onsite assessor",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteAgencyLabel",
+      "standard": "Onsite agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteAllotTitle",
+      "standard": "Allot to an onsite agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteApproveMessage",
+      "standard": "Eligible amount on the claim verified onsite: Rs. {amount}. The approved amount goes to the MSME DFO for payment by NEFT.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "amount"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteBackMessage",
+      "standard": "Your assessor verifies the application again at the unit in the assessor app.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.onsiteReallotTitle",
+      "standard": "Re-allot to an onsite agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.dialog.reallotButton",
       "standard": "Re-allot",
       "kind": "button",
@@ -98190,6 +99360,30 @@
       "key": "staff.schemeVerification.dialog.remarksLabel",
       "standard": "Remarks",
       "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.renameButton",
+      "standard": "Save",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.renameTitle",
+      "standard": "Name another assessor",
+      "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
       "pageName": "Scheme verification",
@@ -98451,6 +99645,299 @@
       ]
     },
     {
+      "key": "staff.schemeVerification.onsite.agency",
+      "standard": "Onsite agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.allotted",
+      "standard": "Allotted on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.assessor",
+      "standard": "Onsite assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.checks",
+      "standard": "Checked at the visit",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.eligible",
+      "standard": "Eligible on it",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.item",
+      "standard": "Item",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.location",
+      "standard": "Visit location",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.noPhotos",
+      "standard": "No photo yet.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.notStarted",
+      "standard": "Visit not started",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.photos",
+      "standard": "Photos",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.photosRule",
+      "standard": "{min} to {max} per item",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "min",
+        "max"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.rejectedBy",
+      "standard": "Rejected by",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.remarks",
+      "standard": "Assessor’s remarks",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.representative",
+      "standard": "Unit representative",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.selfie",
+      "standard": "Selfie at the unit",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.site",
+      "standard": "Site photo",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.submitted",
+      "standard": "Report submitted on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.title",
+      "standard": "Onsite verification",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.verified",
+      "standard": "Claim verified onsite",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.visit",
+      "standard": "Date of verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsiteAllotment.sub",
+      "standard": "Accept the applications allotted to your agency for onsite verification naming an assessor (no date: the day of the visit is the date of verification), or reject them with a reason.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsiteAllotment.title",
+      "standard": "Scheme Onsite Allotment",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsiteQc.sub",
+      "standard": "Check your assessor’s onsite report and approve the amount, or send the application back to the assessor with remarks.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsiteQc.title",
+      "standard": "Scheme Onsite QC",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
       "key": "staff.schemeVerification.qc.sub",
       "standard": "Approve the amount your assessor recommended, or send the application back with remarks.",
       "kind": "note",
@@ -98484,7 +99971,8 @@
       "pageName": "Scheme verification",
       "placeholders": [],
       "files": [
-        "staff/scheme-verification/scheme-list.ts"
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-parts.ts"
       ]
     },
     {
@@ -98525,7 +100013,8 @@
       "pageName": "Scheme verification",
       "placeholders": [],
       "files": [
-        "staff/scheme-verification/scheme-list.ts"
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-parts.ts"
       ]
     },
     {
@@ -98536,6 +100025,49 @@
       "page": "schemeVerification",
       "pageName": "Scheme verification",
       "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.onsiteAgency",
+      "standard": "Onsite: {name}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.onsiteAssessor",
+      "standard": "Onsite: {name}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.visitOn",
+      "standard": "Verified on {date}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "date"
+      ],
       "files": [
         "staff/scheme-verification/scheme-list.ts"
       ]
@@ -98567,6 +100099,54 @@
     {
       "key": "staff.schemeVerification.status.onHold",
       "standard": "On hold",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.onsiteAllot",
+      "standard": "Waiting for onsite agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.onsiteVisit",
+      "standard": "Onsite visit started",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.onsiteWithAgency",
+      "standard": "With onsite agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.onsiteWithAssessor",
+      "standard": "With onsite assessor",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",

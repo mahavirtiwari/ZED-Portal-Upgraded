@@ -20,7 +20,7 @@ public static class SchemeReview
 
     /// <summary>The statuses of the counts tiles, in the flow's order.</summary>
     public static readonly IReadOnlyList<string> Statuses =
-        [Submitted, WithAgency, WithAssessor, Verifying, Correction, Qc, Approved, Paid, Rejected, OnHold];
+        [Submitted, WithAgency, WithAssessor, Verifying, Correction, OnsiteAllot, OnsiteWithAgency, OnsiteWithAssessor, OnsiteVisit, Qc, Approved, Paid, Rejected, OnHold];
 
     // ----- list -----
 
@@ -28,16 +28,25 @@ public static class SchemeReview
         SELECT F.Id, F.ZedId, F.SchemeCode, F.SchemeLevel, F.SchemeStatus, F.VerificationStatus, F.ClaimAmount, F.EligibleAmount, F.ApprovedAmount,
             F.SubmittedOn, F.DecidedOn, F.CorrectionRound, F.CorrectionDueOn, F.HoldReason, F.CertificationBodyUserId, F.FinancialAssessorId,
             F.AllotmentType, F.ReasonForRejection, F.ReasonForRejectionAgency, F.AssessorAcceptedOn,
-            M.EnterpriseName, M.PStateName, A.UserName AS AgencyName, S.UserName AS AssessorName
+            F.OnsiteAgencyId, F.OnsiteAssessorId, F.OnsiteAllotmentType, F.VisitStartedOn,
+            M.EnterpriseName, M.PStateName, M.PDistrictName, A.UserName AS AgencyName, S.UserName AS AssessorName,
+            OA.UserName AS OnsiteAgencyName, OS.UserName AS OnsiteAssessorName
         FROM dbo.FinancialAssistance F
-        OUTER APPLY (SELECT TOP 1 X.EnterpriseName, X.PStateName FROM dbo.Msme X WHERE X.ZedId = F.ZedId) M
+        OUTER APPLY (SELECT TOP 1 X.EnterpriseName, X.PStateName, X.PDistrictName FROM dbo.Msme X WHERE X.ZedId = F.ZedId) M
         LEFT JOIN dbo.Users A ON A.UserId = F.CertificationBodyUserId AND A.RoleId = 2
         LEFT JOIN dbo.Users S ON S.UserId = F.FinancialAssessorId AND S.RoleId = 3
+        LEFT JOIN dbo.Users OA ON OA.UserId = F.OnsiteAgencyId AND OA.RoleId = 2
+        LEFT JOIN dbo.Users OS ON OS.UserId = F.OnsiteAssessorId AND OS.RoleId = 3
         WHERE F.SchemeCode IS NOT NULL AND ISNULL(F.SchemeStatus, 'Draft') <> 'Draft'
         """;
 
     internal const string ListAllSql = ListSelect + " ORDER BY F.Id DESC;";
-    internal const string ListAgencySql = ListSelect + " AND F.CertificationBodyUserId = @UserId ORDER BY F.Id DESC;";
+    // Phase 2: the desktop agency does not see the onsite stage (the onsite agency's allotment and its final QC).
+    internal const string ListAgencySql = ListSelect + " AND F.CertificationBodyUserId = @UserId " +
+        "AND ISNULL(F.SchemeStatus, '') NOT IN ('OnsiteAllot', 'OnsiteWithAgency', 'OnsiteWithAssessor', 'OnsiteVisit') " +
+        "AND NOT (F.SchemeStatus = 'Qc' AND F.OnsiteAgencyId IS NOT NULL) ORDER BY F.Id DESC;";
+    /// <summary>Phase 2: the onsite agency's applications (allotted to it for the onsite verification).</summary>
+    internal const string ListOnsiteAgencySql = ListSelect + " AND F.OnsiteAgencyId = @UserId ORDER BY F.Id DESC;";
     internal const string ListAssessorSql = ListSelect + " AND F.FinancialAssessorId = @UserId ORDER BY F.Id DESC;";
 
     public sealed class ListRow
@@ -66,6 +75,13 @@ public static class SchemeReview
         public string? PStateName { get; init; }
         public string? AgencyName { get; init; }
         public string? AssessorName { get; init; }
+        public string? PDistrictName { get; init; }
+        public string? OnsiteAgencyId { get; init; }
+        public string? OnsiteAssessorId { get; init; }
+        public string? OnsiteAllotmentType { get; init; }
+        public DateTime? VisitStartedOn { get; init; }
+        public string? OnsiteAgencyName { get; init; }
+        public string? OnsiteAssessorName { get; init; }
 
         public string Status => VerificationStatus == 6 ? Paid : SchemeStatus ?? Draft;
     }
@@ -74,7 +90,9 @@ public static class SchemeReview
         int Id, string ZedId, string? UnitName, string? State, string SchemeCode, string SchemeName, string? Level, string? LevelName, string Status,
         decimal? ClaimAmount, decimal? EligibleAmount, decimal? ApprovedAmount, DateTime? SubmittedOn, DateTime? DecidedOn, int CorrectionRound,
         DateTime? CorrectionDueOn, string? HoldReason, string? Agency, string? AgencyName, string? Assessor, string? AssessorName, string? AllotmentType,
-        string? ReasonForRejection, string? AgencyRemarks, DateTime? AssessorAcceptedOn);
+        string? ReasonForRejection, string? AgencyRemarks, DateTime? AssessorAcceptedOn,
+        string? District = null, string? OnsiteAgency = null, string? OnsiteAgencyName = null, string? OnsiteAssessor = null, string? OnsiteAssessorName = null,
+        string? OnsiteAllotmentType = null, DateTime? VisitStartedOn = null);
 
     public sealed record Option(string Code, string Name);
 
@@ -101,7 +119,9 @@ public static class SchemeReview
                 names.GetValueOrDefault(r.SchemeCode?.Trim() ?? "") ?? r.SchemeCode?.Trim() ?? "", r.SchemeLevel, LevelName(r.SchemeLevel), r.Status,
                 r.ClaimAmount, SchemeCases.ParseMoney(r.EligibleAmount), r.ApprovedAmount, r.SubmittedOn, r.DecidedOn, r.CorrectionRound ?? 0, r.CorrectionDueOn,
                 r.HoldReason, SchemeCase.Blank(r.CertificationBodyUserId), r.AgencyName?.Trim(), SchemeCase.Blank(r.FinancialAssessorId), r.AssessorName?.Trim(),
-                r.AllotmentType, r.ReasonForRejection, r.ReasonForRejectionAgency, r.AssessorAcceptedOn))
+                r.AllotmentType, r.ReasonForRejection, r.ReasonForRejectionAgency, r.AssessorAcceptedOn,
+                r.PDistrictName?.Trim(), SchemeCase.Blank(r.OnsiteAgencyId), r.OnsiteAgencyName?.Trim(), SchemeCase.Blank(r.OnsiteAssessorId), r.OnsiteAssessorName?.Trim(),
+                r.OnsiteAllotmentType, r.VisitStartedOn))
             .ToList();
         if (scope is not null) rows = await scope(rows);
         var states = rows.Select(r => r.State).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s!).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
@@ -150,9 +170,14 @@ public static class SchemeReview
     /// <summary>What the signed-in user may do now (the API checks each action again).</summary>
     public sealed record Actions(
         bool Allot = false, bool Hold = false, bool Respond = false, bool Qc = false, bool Accept = false, bool Check = false,
-        bool Correction = false, bool Reject = false, bool Recommend = false, int RoundsLeft = 0, int Checked = 0, int Checkable = 0, int NotValid = 0);
+        bool Correction = false, bool Reject = false, bool Recommend = false, int RoundsLeft = 0, int Checked = 0, int Checkable = 0, int NotValid = 0,
+        bool OnsiteAllot = false, bool OnsiteRespond = false, bool OnsiteAssessor = false, bool OnsiteQc = false);
 
-    public sealed record Detail(Application Application, IReadOnlyList<Section> Sections, Totals Totals, IReadOnlyList<HistoryItem> History, Actions Actions);
+    public sealed record Detail(Application Application, IReadOnlyList<Section> Sections, Totals Totals, IReadOnlyList<HistoryItem> History, Actions Actions)
+    {
+        /// <summary>Phase 2: the onsite stage of a Desktop + Onsite application (null for a Desktop one).</summary>
+        public global::Zed.Portal.Features.Incentives.Onsite.OnsiteReport? Onsite { get; init; }
+    }
 
     /// <summary>A place in the form the assessor checks: a field with AssessorChecks, or a document / photo with files.</summary>
     public sealed record Checkable(string Path, string Label, string Section, int Index, string Field);
@@ -187,7 +212,8 @@ public static class SchemeReview
                 foreach (var f in s.Fields)
                 {
                     var value = items[i].Values.GetValueOrDefault(f.Key);
-                    if (IsFile(f.Type) ? FilesOf(value).Count > 0 : f.AssessorChecks && (!string.IsNullOrWhiteSpace(value) || f.Required))
+                    // Phase 2: in the Desktop + Onsite flow a field checked only at the visit is not checked at the desktop.
+                    if (IsFile(f.Type) ? FilesOf(value).Count > 0 : SchemeRules.DesktopChecks(f, def!.Verification.Flow) && (!string.IsNullOrWhiteSpace(value) || f.Required))
                         list.Add(new(PathOf(s.Key, i, f.Key), f.Label, s.Key, i, f.Key));
                 }
             }
@@ -233,7 +259,9 @@ public static class SchemeReview
         return SchemeEligibility.Grade(def.Grading, row.SchemeLevel ?? "", facts);
     }
 
-    internal static async Task<Detail> DetailAsync(ISqlExecutor db, SchemeStore store, SchemeCase c, string fileBase, Actions actions, ILogger log, CancellationToken ct)
+    /// <param name="withOnsite">Phase 2: add the onsite stage (the Master Admin and the onsite agency; the photos under "{fileBase}/{id}/onsite-photos/").</param>
+    internal static async Task<Detail> DetailAsync(ISqlExecutor db, SchemeStore store, SchemeCase c, string fileBase, Actions actions, ILogger log, CancellationToken ct,
+        bool withOnsite = false)
     {
         var row = c.Row;
         var def = await store.FindAsync(c.Code, ct);
@@ -302,7 +330,10 @@ public static class SchemeReview
             def?.Verification.CorrectionRounds ?? 0, def?.Verification.CorrectionDays ?? 0, c.CorrectionDueOn, row.SubmittedOn, c.DecidedOn, c.HoldReason,
             agency, assessor, c.AssessorAcceptedOn, c.AllotmentType, c.ReasonForRejection, c.ReasonForRejectionAgency,
             row.AccountNo, row.IfscCode, row.BranchAddress, row.BankName);
-        return new Detail(app, sections, totals, history, actions);
+        var onsite = withOnsite && (def?.Verification.Flow == SchemeRules.DesktopOnsite || c.OnsiteAgency is not null || row.VisitStartedOn is not null)
+            ? await global::Zed.Portal.Features.Incentives.Onsite.OnsiteReports.BuildAsync(db, def, c, fileBase, log, ct)
+            : null;
+        return new Detail(app, sections, totals, history, actions) { Onsite = onsite };
     }
 
     private static string? Display(string? value)

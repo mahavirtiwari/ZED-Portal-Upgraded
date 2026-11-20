@@ -22,6 +22,12 @@ export const STAFF_ROLE_IDS: number[] = Object.values(StaffRole);
 
 export type SubRole = 'DesktopVerification' | 'SiteVerification' | 'FinancialVerification';
 
+/**
+ * 2026-11-20 (incentive schemes, phase 2): the pseudo sub-role of an onsite verification agency (Users.AgencyKind 'SchemeOnsite'),
+ * its sub-users and its assessors, added at sign-in (OnsiteAgencies.SubRole). They see only the entries marked `onsite`.
+ */
+export const ONSITE_SUB_ROLE = 'SchemeOnsite';
+
 export interface StaffMenuItem {
   label: string;
   /** Route in this app once the screen is migrated. */
@@ -52,6 +58,11 @@ export interface StaffMenuItem {
    * Levels, api/public/levels/all, disabled levels too): `{level}` in the label and route is the level's name and code.
    */
   perLevel?: boolean;
+  /**
+   * 2026-11-20 (phase 2): for an onsite verification agency (sub-role {@link ONSITE_SUB_ROLE}): 'only' = only for it (and not for
+   * the assessment agencies), 'also' = for both. Entries without it are not shown to an onsite agency or its assessors.
+   */
+  onsite?: 'only' | 'also';
 }
 
 /** A heading (or none) inside a drop-down, with its links. */
@@ -128,7 +139,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
 
   // Assessment workflow
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Assessment' },
-  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency] },
+  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency], onsite: 'also' },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'], group: 'Allotment' },
   { label: 'SA Allotment', legacyPath: '/Assessment/SaAllotment', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Allotment' },
   { label: 'Desktop Verification', legacyPath: '/Assessment/DaVerification', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
@@ -149,6 +160,11 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes' },
   { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes' },
   { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor] },
+  // 2026-11-20 (phase 2): onsite verification of Desktop + Onsite schemes: the Master Admin's onsite agencies (kept apart from the
+  // assessment agencies) and the onsite verification agency's onsite allotment and final QC (its assessors verify in the app).
+  { label: 'Onsite Verification Agencies', route: '/staff/scheme-onsite/agencies', roles: [R.MasterAdmin], group: 'Schemes' },
+  { label: 'Scheme Onsite Allotment', route: '/staff/scheme-onsite/allotment', roles: [R.Agency], group: 'Schemes', onsite: 'only' },
+  { label: 'Scheme Onsite QC', route: '/staff/scheme-onsite/qc', roles: [R.Agency], group: 'Schemes', onsite: 'only' },
   { label: 'NEFT: New Transactions', legacyPath: '/Neft/NewTransactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
   { label: 'NEFT: Approved Transactions', legacyPath: '/Neft/ApprovedTransactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
@@ -218,7 +234,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
   { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
-  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
+  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency], onsite: 'also' },
 ];
 
 /**
@@ -420,6 +436,9 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Scheme Allotment': () => t('staff.menu.item.schemeAllotmentLabel', 'Scheme Allotment'),
   'Scheme QC': () => t('staff.menu.item.schemeQcLabel', 'Scheme QC'),
   'Scheme Verification': () => t('staff.menu.item.schemeVerificationLabel', 'Scheme Verification'),
+  'Onsite Verification Agencies': () => t('staff.menu.item.onsiteVerificationAgenciesLabel', 'Onsite Verification Agencies'),
+  'Scheme Onsite Allotment': () => t('staff.menu.item.schemeOnsiteAllotmentLabel', 'Scheme Onsite Allotment'),
+  'Scheme Onsite QC': () => t('staff.menu.item.schemeOnsiteQcLabel', 'Scheme Onsite QC'),
   'User Management': () => t('staff.menu.item.userManagementLabel', 'User Management'),
   'Captcha Settings': () => t('staff.menu.item.captchaSettingsLabel', 'Captcha Settings'),
   'Email Settings': () => t('staff.menu.item.emailSettingsLabel', 'Email Settings'),
@@ -576,9 +595,11 @@ export function menuFor(
   system: PortalSystem = PORTAL_SYSTEM,
   permissionRoutes?: readonly string[] | null,
 ): StaffMenuItem[] {
+  const onsite = subRoles.includes(ONSITE_SUB_ROLE);
   return expandLevels(MENUS[system]).filter(
     (i) =>
       i.roles.includes(roleId) &&
+      (i.onsite === 'only' ? onsite : i.onsite === 'also' || !onsite) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&
       (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))) &&
       (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&

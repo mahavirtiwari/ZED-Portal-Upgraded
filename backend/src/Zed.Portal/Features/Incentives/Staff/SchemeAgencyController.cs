@@ -43,7 +43,8 @@ public sealed class SchemeAgencyController(
     public async Task<ActionResult<SchemeReview.Detail>> Detail(int id, CancellationToken ct)
     {
         if (await Mine(id, ct) is not { } c) return NotFound();
-        var actions = new SchemeReview.Actions(Respond: c.Status == WithAgency, Qc: c.Status == Qc);
+        // Phase 2: the onsite agency does the QC of a Desktop + Onsite application, not this (desktop) agency.
+        var actions = new SchemeReview.Actions(Respond: c.Status == WithAgency, Qc: c.Status == Qc && !c.OnsiteStage);
         return await SchemeReview.DetailAsync(db, store, c, Base, actions, log, ct);
     }
 
@@ -127,7 +128,7 @@ public sealed class SchemeAgencyController(
         using (await SchemeCaseLock.EnterAsync(ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
-            if (c.Status != Qc) return this.Problem400("This application is not waiting for QC.");
+            if (c.Status != Qc || c.OnsiteStage) return this.Problem400("This application is not waiting for QC.");
             var def = await store.FindAsync(c.Code, ct);
             var answers = c.Row.Answers;
             var verified = def is null ? c.Row.ClaimAmount ?? 0 : SchemeReview.Verified(def.Form, answers, c.Checks);
@@ -158,7 +159,7 @@ public sealed class SchemeAgencyController(
         using (await SchemeCaseLock.EnterAsync(ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
-            if (c.Status != Qc) return this.Problem400("This application is not waiting for QC.");
+            if (c.Status != Qc || c.OnsiteStage) return this.Problem400("This application is not waiting for QC.");
             c.ReasonForRejectionAgency = $"QC remarks: {remarks}";
             c.EligibleAmount = null;
             c.Status = Verifying;

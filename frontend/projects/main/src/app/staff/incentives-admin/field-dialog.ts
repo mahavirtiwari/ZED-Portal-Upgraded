@@ -2,7 +2,7 @@ import { Component, OnInit, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TextPipe, t } from '../../content/page-text';
-import { FIELD_TYPES, FormField, SCHEME_LIMITS, fieldTypeLabel, keyFrom } from './schemes-admin.api';
+import { CHECK_STAGES, FIELD_TYPES, FormField, SCHEME_LIMITS, checkStageLabel, fieldTypeLabel, keyFrom } from './schemes-admin.api';
 
 type BoundKind = '' | 'today' | 'certified' | 'days' | 'date';
 interface Bound { kind: BoundKind; days: number | null; date: string }
@@ -60,6 +60,13 @@ export function formatBound(b: Bound): string | null {
                   <label><input type="checkbox" id="fd-claim" [(ngModel)]="f.isClaim" /> {{ 'Claim amount (adds up to the claim)' | t: 'staff.incentivesAdmin.field.claim' }}</label>
                 }
               </div>
+              @if (f.assessorChecks && onsiteFlow()) {
+                <label for="fd-stage">{{ 'Checked at' | t: 'staff.incentivesAdmin.field.stage' }}</label>
+                <select id="fd-stage" class="form-select" [(ngModel)]="f.checkStage">
+                  @for (s of stages; track s) { <option [ngValue]="s">{{ stageLabel(s) }}</option> }
+                </select>
+                <small class="muted d-block mt-1">{{ 'Onsite: the onsite assessor marks it Valid / Not valid at the visit in the assessor app; the desktop assessor does not check it.' | t: 'staff.incentivesAdmin.field.stageHelp' }}</small>
+              }
               @if (f.type === 'text' || f.type === 'longtext') {
                 <label for="fd-maxlength">{{ 'Maximum length' | t: 'staff.incentivesAdmin.field.maxLength' }}</label>
                 <input id="fd-maxlength" type="number" class="form-control" min="1" [max]="limits.text" [(ngModel)]="f.maxLength" />
@@ -135,10 +142,13 @@ export class FieldDialogComponent implements OnInit {
   /** The other fields' keys of the section. */
   readonly takenKeys = input<string[]>([]);
   readonly copyChoices = input<{ value: string; label: string }[]>([]);
+  /** Phase 2: the scheme's flow is Desktop + Onsite (then "Checked at" is asked). */
+  readonly onsiteFlow = input(false);
   readonly saved = output<FormField>();
   readonly cancelled = output<void>();
 
   protected readonly types = FIELD_TYPES;
+  protected readonly stages = CHECK_STAGES;
   protected readonly limits = SCHEME_LIMITS;
   protected readonly error = signal('');
   protected f: FormField | null = null;
@@ -149,11 +159,15 @@ export class FieldDialogComponent implements OnInit {
 
   ngOnInit(): void {
     const x = this.field();
-    this.f = { ...x, options: [...(x.options ?? [])] };
+    this.f = { ...x, options: [...(x.options ?? [])], checkStage: x.checkStage ?? 'desktop' };
     this.optionsText = this.f.options.join('\n');
     this.dateMin = parseBound(x.dateMin);
     this.dateMax = parseBound(x.dateMax);
     this.keyTouched = !!x.key;
+  }
+
+  protected stageLabel(stage: (typeof CHECK_STAGES)[number]): string {
+    return checkStageLabel(stage);
   }
 
   protected typeLabel(type: string): string {
@@ -195,6 +209,8 @@ export class FieldDialogComponent implements OnInit {
       copyOf: f.type === 'copy' ? f.copyOf : null,
       isClaim: f.type === 'amount' && f.isClaim,
       maxFiles: isFile ? (f.maxFiles ?? 1) : null,
+      // Desktop is the default (not stored); a Desktop-only scheme keeps the choice but ignores it.
+      checkStage: f.assessorChecks && f.checkStage && f.checkStage !== 'desktop' ? f.checkStage : null,
     });
   }
 }

@@ -25,6 +25,11 @@ public static class SubUserPermissions
     private static readonly PortalSystem[] Consultancy = [PortalSystem.Consultancy];
     private static readonly string[] None = [];
     private static readonly string[] SiteOrDesktop = [SubRoles.SiteVerification, SubRoles.DesktopVerification];
+    /// <summary>2026-11-20 (incentive schemes, phase 2): an onsite verification agency (its sign-in carries this pseudo sub-role).</summary>
+    private static readonly string[] OnsiteAgency = [Incentives.Onsite.OnsiteAgencies.SubRole];
+
+    /// <summary>The only screens an onsite verification agency has (and gives its sub-users): its assessors and its scheme onsite work.</summary>
+    public static readonly IReadOnlySet<string> OnsiteAgencyKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "assessors", "scheme-onsite" };
 
     /// <summary>The Desktop Assessment details page, opened from monitoring, allotment and the result lists.</summary>
     private const string DaDetails = "/api/staff/assessment/da/";
@@ -70,6 +75,9 @@ public static class SubUserPermissions
         // 2026-11-20: the incentive schemes (Features/Incentives).
         new("scheme-applications", "Scheme Applications", UserRole.MasterAdmin, Main, None,
             ["/staff/schemes-verify/applications"], ["/api/staff/scheme-applications"]),
+        // 2026-11-20 (phase 2): the onsite verification agencies of the incentive schemes.
+        new("scheme-onsite-agencies", "Onsite Verification Agencies", UserRole.MasterAdmin, Main, None,
+            ["/staff/scheme-onsite/agencies"], ["/api/staff/scheme-onsite/agencies"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
 
@@ -100,6 +108,9 @@ public static class SubUserPermissions
              "/api/staff/expenditure/po", "/api/staff/expenditure/tax"]),
         new("scheme-verification", "Scheme allotment and QC", UserRole.Agency, Main, None,
             ["/staff/schemes-verify/allotment", "/staff/schemes-verify/qc"], ["/api/staff/scheme-verification/agency"]),
+        // 2026-11-20 (phase 2): an onsite verification agency's scheme onsite allotment and onsite QC.
+        new("scheme-onsite", "Scheme onsite allotment and QC", UserRole.Agency, Main, OnsiteAgency,
+            ["/staff/scheme-onsite/allotment", "/staff/scheme-onsite/qc"], ["/api/staff/scheme-onsite/agency"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.Agency, Consultancy, [SubRoles.FinancialVerification],
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
     ];
@@ -108,9 +119,14 @@ public static class SubUserPermissions
     public static bool CanOwn(int roleId) => roleId is (int)UserRole.MasterAdmin or (int)UserRole.Agency;
 
     /// <summary>What an owner with this role and these sub-roles can give, on this system.</summary>
-    public static IReadOnlyList<SubUserPermission> For(int roleId, IReadOnlyCollection<string> subRoles, PortalSystem system) =>
-        Catalogue.Where(p => (int)p.OwnerRole == roleId && p.Systems.Contains(system)
-                             && (p.AnySubRole.Length == 0 || p.AnySubRole.Any(subRoles.Contains))).ToList();
+    public static IReadOnlyList<SubUserPermission> For(int roleId, IReadOnlyCollection<string> subRoles, PortalSystem system)
+    {
+        // An onsite verification agency has only its own screens (never the assessment ones, nor the desktop scheme ones).
+        var onsite = roleId == (int)UserRole.Agency && subRoles.Contains(Incentives.Onsite.OnsiteAgencies.SubRole);
+        return Catalogue.Where(p => (int)p.OwnerRole == roleId && p.Systems.Contains(system)
+                                    && (p.AnySubRole.Length == 0 || p.AnySubRole.Any(subRoles.Contains))
+                                    && (!onsite || OnsiteAgencyKeys.Contains(p.Key))).ToList();
+    }
 
     /// <summary>The permissions among <paramref name="keys"/> that the owner can give (unknown or no longer available keys drop out).</summary>
     public static IReadOnlyList<SubUserPermission> Granted(string? keys, int roleId, IReadOnlyCollection<string> subRoles, PortalSystem system)

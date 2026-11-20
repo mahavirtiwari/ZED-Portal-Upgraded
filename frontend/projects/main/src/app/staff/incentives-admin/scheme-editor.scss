@@ -33,3 +33,5 @@
 .se-rule { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
 .se-count { max-width: 80px; }
 @media (max-width: 991.98px) { .se-form { grid-template-columns: minmax(0, 1fr); } }
+.se-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.se-photos label { font-weight: 400; margin: 0; }

@@ -14,6 +14,10 @@ export function statusLabel(status: SchemeStatus | string): string {
     case 'WithAssessor': return t('staff.schemeVerification.status.withAssessor', 'With assessor');
     case 'Verifying': return t('staff.schemeVerification.status.verifying', 'Verifying');
     case 'Correction': return t('staff.schemeVerification.status.correction', 'Correction with unit');
+    case 'OnsiteAllot': return t('staff.schemeVerification.status.onsiteAllot', 'Waiting for onsite agency');
+    case 'OnsiteWithAgency': return t('staff.schemeVerification.status.onsiteWithAgency', 'With onsite agency');
+    case 'OnsiteWithAssessor': return t('staff.schemeVerification.status.onsiteWithAssessor', 'With onsite assessor');
+    case 'OnsiteVisit': return t('staff.schemeVerification.status.onsiteVisit', 'Onsite visit started');
     case 'Qc': return t('staff.schemeVerification.status.qc', 'Agency QC');
     case 'Approved': return t('staff.schemeVerification.status.approved', 'Approved');
     case 'Paid': return t('staff.schemeVerification.status.paid', 'Paid');
@@ -28,7 +32,7 @@ export function statusTone(status: SchemeStatus | string): string {
   switch (status) {
     case 'Approved': case 'Paid': return 'is-good';
     case 'Rejected': return 'is-bad';
-    case 'OnHold': case 'Correction': return 'is-warn';
+    case 'OnHold': case 'Correction': case 'OnsiteAllot': return 'is-warn';
     default: return 'is-info';
   }
 }
@@ -105,8 +109,33 @@ function subtitle(a: SchemeRef): string {
   return [a.zedId, a.unitName, a.schemeName].filter((x) => !!x).join(' · ');
 }
 
-/** The pop-ups of each role's actions (wording: staff.schemeVerification.dialog.*). */
+/**
+ * The pop-ups of each role's actions (wording: staff.schemeVerification.dialog.*). Phase 2: with <code>onsite</code> the same pop-ups
+ * serve the onsite verification (the Master Admin's onsite allotment, the onsite agency's accept / reject / QC).
+ */
 export const schemeAsks = {
+  async onsiteAllot(api: SchemeVerificationApi, a: SchemeRef & { onsiteAgency?: string | null }): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
+    const options = await firstValueFrom(api.onsiteAgencies(a.id));
+    return {
+      ask: {
+        title: a.onsiteAgency ? t('staff.schemeVerification.dialog.onsiteReallotTitle', 'Re-allot to an onsite agency') : t('staff.schemeVerification.dialog.onsiteAllotTitle', 'Allot to an onsite agency'),
+        subtitle: subtitle(a),
+        message: options.length ? null : t('staff.schemeVerification.dialog.noOnsiteAgency', 'No onsite verification agency serves this scheme in the unit’s state and district.'),
+        choice: {
+          label: t('staff.schemeVerification.dialog.onsiteAgencyLabel', 'Onsite agency'),
+          options: options.map((o) => ({
+            value: o.userId,
+            label: `${o.userName} (${o.userId})`,
+            note: o.rejectedBefore ? t('staff.schemeVerification.dialog.rejectedBefore', 'This agency returned the application before.') : null,
+          })),
+          requiredMessage: t('staff.schemeVerification.dialog.agencyRequired', 'Please select an agency.'),
+        },
+        confirmLabel: a.onsiteAgency ? t('staff.schemeVerification.dialog.reallotButton', 'Re-allot') : t('staff.schemeVerification.dialog.allotButton', 'Allot'),
+      },
+      run: async (r) => (await firstValueFrom(api.onsiteAllot(a.id, r.choice))).message,
+    };
+  },
+
   async allot(api: SchemeVerificationApi, a: SchemeRef): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
     const options = await firstValueFrom(api.agencies(a.id));
     return {
@@ -156,26 +185,33 @@ export const schemeAsks = {
     };
   },
 
-  async accept(api: SchemeVerificationApi, a: SchemeRef): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
-    const options = await firstValueFrom(api.assessors(a.id));
+  /** <code>onsite</code>: the onsite agency names its assessor (no date: the day of the visit is the date of verification); <code>rename</code>: another one. */
+  async accept(api: SchemeVerificationApi, a: SchemeRef, onsite = false, rename = false): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
+    const role = onsite ? 'onsite' : 'agency';
+    const options = await firstValueFrom(api.assessors(a.id, role));
     return {
       ask: {
-        title: t('staff.schemeVerification.dialog.acceptTitle', 'Accept and name an assessor'),
+        title: rename ? t('staff.schemeVerification.dialog.renameTitle', 'Name another assessor')
+          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptTitle', 'Accept and name the onsite assessor')
+          : t('staff.schemeVerification.dialog.acceptTitle', 'Accept and name an assessor'),
         subtitle: subtitle(a),
-        message: options.length ? null : t('staff.schemeVerification.dialog.noAssessor', 'None of your assessors is ticked for this scheme. Tick one on its page first.'),
+        message: !options.length
+          ? (onsite ? t('staff.schemeVerification.dialog.noOnsiteAssessor', 'None of your assessors is ticked for onsite verification of this scheme. Tick one on its page first.')
+            : t('staff.schemeVerification.dialog.noAssessor', 'None of your assessors is ticked for this scheme. Tick one on its page first.'))
+          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptMessage', 'No date is fixed: the day the assessor starts the visit in the assessor app is saved as the date of verification.') : null,
         choice: {
           label: t('staff.schemeVerification.dialog.assessorLabel', 'Assessor'),
           options: options.map((o) => ({ value: o.userId, label: `${o.userName} (${o.userId})` })),
           requiredMessage: t('staff.schemeVerification.dialog.assessorRequired', 'Please select an assessor.'),
         },
-        confirmLabel: t('staff.schemeVerification.dialog.acceptButton', 'Accept'),
+        confirmLabel: rename ? t('staff.schemeVerification.dialog.renameButton', 'Save') : t('staff.schemeVerification.dialog.acceptButton', 'Accept'),
       },
-      run: async (r) => (await firstValueFrom(api.accept(a.id, r.choice))).message,
+      run: async (r) => (await firstValueFrom(onsite ? api.accept(a.id, r.choice, 'onsite') : api.accept(a.id, r.choice))).message,
     };
   },
 
-  async agencyReject(api: SchemeVerificationApi, a: SchemeRef): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
-    const reasons = await firstValueFrom(api.rejectionReasons());
+  async agencyReject(api: SchemeVerificationApi, a: SchemeRef, onsite = false): Promise<{ ask: ConfirmAsk; run: DialogRun }> {
+    const reasons = await firstValueFrom(onsite ? api.rejectionReasons('onsite') : api.rejectionReasons());
     return {
       ask: {
         title: t('staff.schemeVerification.dialog.agencyRejectTitle', 'Reject the allotment'),
@@ -196,17 +232,22 @@ export const schemeAsks = {
         confirmLabel: t('staff.schemeVerification.dialog.rejectButton', 'Reject'),
         danger: true,
       },
-      run: async (r) => (await firstValueFrom(api.agencyReject(a.id, r.choice, r.reason.trim() || null))).message,
+      run: async (r) => (await firstValueFrom(onsite
+        ? api.agencyReject(a.id, r.choice, r.reason.trim() || null, 'onsite')
+        : api.agencyReject(a.id, r.choice, r.reason.trim() || null))).message,
     };
   },
 
-  approve(api: SchemeVerificationApi, a: SchemeRef): { ask: ConfirmAsk; run: DialogRun } {
+  approve(api: SchemeVerificationApi, a: SchemeRef, onsite = false): { ask: ConfirmAsk; run: DialogRun } {
     return {
       ask: {
         title: t('staff.schemeVerification.dialog.approveTitle', 'Approve the application'),
         subtitle: subtitle(a),
-        message: t('staff.schemeVerification.dialog.approveMessage', 'Eligible amount on the verified claim: Rs. {amount}. The approved amount goes to the MSME DFO for payment by NEFT.',
-          { amount: money(a.eligibleAmount) }),
+        message: onsite
+          ? t('staff.schemeVerification.dialog.onsiteApproveMessage', 'Eligible amount on the claim verified onsite: Rs. {amount}. The approved amount goes to the MSME DFO for payment by NEFT.',
+            { amount: money(a.eligibleAmount) })
+          : t('staff.schemeVerification.dialog.approveMessage', 'Eligible amount on the verified claim: Rs. {amount}. The approved amount goes to the MSME DFO for payment by NEFT.',
+            { amount: money(a.eligibleAmount) }),
         reason: {
           label: t('staff.schemeVerification.dialog.amountLabel', 'Approved amount (Rs.)'),
           maxLength: 15,
@@ -219,20 +260,21 @@ export const schemeAsks = {
       run: async (r) => {
         const amount = Number(r.reason.replace(/,/g, '').trim());
         if (!Number.isFinite(amount) || amount <= 0) throw new Error(t('staff.schemeVerification.dialog.amountInvalid', 'Please enter a valid amount.'));
-        return (await firstValueFrom(api.approve(a.id, amount))).message;
+        return (await firstValueFrom(onsite ? api.approve(a.id, amount, 'onsite') : api.approve(a.id, amount))).message;
       },
     };
   },
 
-  back(api: SchemeVerificationApi, a: SchemeRef): { ask: ConfirmAsk; run: DialogRun } {
+  back(api: SchemeVerificationApi, a: SchemeRef, onsite = false): { ask: ConfirmAsk; run: DialogRun } {
     return {
       ask: {
         title: t('staff.schemeVerification.dialog.backTitle', 'Back to the assessor'),
         subtitle: subtitle(a),
+        message: onsite ? t('staff.schemeVerification.dialog.onsiteBackMessage', 'Your assessor verifies the application again at the unit in the assessor app.') : null,
         reason: { label: t('staff.schemeVerification.dialog.backLabel', 'Remarks for the assessor'), maxLength: 1000 },
         confirmLabel: t('staff.schemeVerification.dialog.backButton', 'Send back'),
       },
-      run: async (r) => (await firstValueFrom(api.back(a.id, r.reason))).message,
+      run: async (r) => (await firstValueFrom(onsite ? api.back(a.id, r.reason, 'onsite') : api.back(a.id, r.reason))).message,
     };
   },
 

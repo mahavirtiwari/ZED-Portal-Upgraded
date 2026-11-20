@@ -13,7 +13,7 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0105 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0106 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
   2026-11-19: migration 0102 (surveillance rounds go by round robin to another agency, never the certifying one; one
   agency login serves Bronze, Silver and Gold surveillance; blocked agencies are not offered on Allot Surveillance); 0103 (agency rejection reasons and automatic re-allotment); 0104 (My Documents with two records of a level).
@@ -175,6 +175,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0103 rejection reasons'; Test = (Has-Col 'dbo.MsmeCertifications' 'RejectionReasonId') + ' AND ' + (Has-Col 'dbo.MsmeCertifications' 'RejectedAgencies') }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0104 My Documents one row per level'; Test = (Has-Text 'dbo.SP_MSME_GET_MY_DOCUMENTS' 'AS V4OneRow') }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0105 incentive schemes'; Test = (Has-Col 'dbo.Incentives' 'SchemeJson') + ' AND ' + (Has-Col 'dbo.FinancialAssistance' 'SchemeCode') + ' AND ' + (Has-Col 'dbo.Users' 'SchemeVerification') }
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0106 incentive onsite'; Test = (Has-Col 'dbo.Users' 'AgencyKind') + ' AND ' + (Has-Col 'dbo.AgencyUserStates' 'Districts') + ' AND ' + (Has-Col 'dbo.FinancialAssistance' 'OnsiteAgencyId') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

@@ -7,11 +7,13 @@ import { PageHead } from '../../msme/shared/page-head';
 import { ConfirmDialog } from '../confirm-dialog';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
-import { SchemeAnswers, SchemeSummary } from './scheme-parts';
+import { SchemeAnswers, SchemeOnsiteReportView, SchemeSummary } from './scheme-parts';
 import { SchemeDialogs, day, schemeAsks } from './scheme-shared';
 import { SchemeDetail, SchemeVerificationApi } from './scheme-verification.api';
 
-type Mode = 'admin' | 'allotment' | 'qc';
+/** Phase 2: 'onsiteAllotment' / 'onsiteQc' are the onsite verification agency's. */
+type Mode = 'admin' | 'allotment' | 'qc' | 'onsiteAllotment' | 'onsiteQc';
+type DetailAction = 'allot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'approve' | 'back' | 'onsiteAllot' | 'onsiteRename';
 
 /**
  * 2026-11-20 (incentive schemes, approved): one scheme application for the Master Admin (allot / re-allot, resume or reject one on
@@ -20,7 +22,7 @@ type Mode = 'admin' | 'allotment' | 'qc';
  */
 @Component({
   selector: 'zed-staff-scheme-detail',
-  imports: [RouterLink, PageHead, SchemeSummary, SchemeAnswers, ConfirmDialog, TextPipe],
+  imports: [RouterLink, PageHead, SchemeSummary, SchemeAnswers, SchemeOnsiteReportView, ConfirmDialog, TextPipe],
   host: { class: 'd-block' },
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="detail()?.application?.schemeName ?? ('Scheme application' | t: 'staff.schemeVerification.detail.title')"
@@ -32,6 +34,20 @@ type Mode = 'admin' | 'allotment' | 'qc';
         <span class="me-auto"></span>
         @if (d.actions.allot) {
           <button type="button" class="btn btn-primary" (click)="act('allot')">{{ d.application.agency ? ('Re-allot' | t: 'staff.schemeVerification.action.reallot') : ('Allot' | t: 'staff.schemeVerification.action.allot') }}</button>
+        }
+        @if (d.actions.onsiteAllot) {
+          <button type="button" class="btn btn-primary" (click)="act('onsiteAllot')">{{ d.onsite?.agency ? ('Re-allot onsite' | t: 'staff.schemeVerification.action.onsiteReallot') : ('Allot onsite' | t: 'staff.schemeVerification.action.onsiteAllot') }}</button>
+        }
+        @if (d.actions.onsiteRespond) {
+          <button type="button" class="btn btn-outline-danger" (click)="act('reject')">{{ 'Reject' | t: 'staff.schemeVerification.action.reject' }}</button>
+          <button type="button" class="btn btn-primary" (click)="act('accept')">{{ 'Accept' | t: 'staff.schemeVerification.action.accept' }}</button>
+        }
+        @if (d.actions.onsiteAssessor) {
+          <button type="button" class="btn btn-outline-primary" (click)="act('onsiteRename')">{{ 'Change assessor' | t: 'staff.schemeVerification.action.rename' }}</button>
+        }
+        @if (d.actions.onsiteQc) {
+          <button type="button" class="btn btn-outline-primary" (click)="act('back')">{{ 'Back to assessor' | t: 'staff.schemeVerification.action.back' }}</button>
+          <button type="button" class="btn btn-primary" (click)="act('approve')">{{ 'Approve' | t: 'staff.schemeVerification.action.approve' }}</button>
         }
         @if (d.actions.hold) {
           <button type="button" class="btn btn-outline-danger" (click)="act('rejectHold')">{{ 'Reject' | t: 'staff.schemeVerification.action.reject' }}</button>
@@ -47,6 +63,7 @@ type Mode = 'admin' | 'allotment' | 'qc';
         }
       </div>
       <zed-scheme-summary [detail]="d" />
+      @if (d.onsite; as o) { <zed-scheme-onsite-report [report]="o" [status]="d.application.status" /> }
       <zed-scheme-answers [sections]="d.sections" />
       @if (d.history.length) {
         <section class="zed-card sd-hist" aria-labelledby="sd-hist-h">
@@ -82,9 +99,13 @@ export class SchemeDetailPage {
   protected readonly dialogs = new SchemeDialogs(inject(ToastService), () => this.load());
   protected readonly day = day;
 
+  private readonly onsite = this.mode === 'onsiteAllotment' || this.mode === 'onsiteQc';
+
   protected readonly crumbs = computed(() => {
     const list = this.mode === 'allotment' ? t('staff.schemeVerification.allotment.title', 'Scheme Allotment')
       : this.mode === 'qc' ? t('staff.schemeVerification.qc.title', 'Scheme QC')
+      : this.mode === 'onsiteAllotment' ? t('staff.schemeVerification.onsiteAllotment.title', 'Scheme Onsite Allotment')
+      : this.mode === 'onsiteQc' ? t('staff.schemeVerification.onsiteQc.title', 'Scheme Onsite QC')
       : t('staff.schemeVerification.admin.title', 'Scheme Applications');
     return staffCrumbs({ label: list, link: '..' }, { label: this.detail()?.application.zedId ?? String(this.id) });
   });
@@ -97,7 +118,7 @@ export class SchemeDetailPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      this.detail.set(await firstValueFrom(this.api.detail(this.mode === 'admin' ? 'admin' : 'agency', this.id)));
+      this.detail.set(await firstValueFrom(this.api.detail(this.mode === 'admin' ? 'admin' : this.onsite ? 'onsite' : 'agency', this.id)));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
@@ -105,20 +126,26 @@ export class SchemeDetailPage {
     }
   }
 
-  protected async act(key: 'allot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'approve' | 'back'): Promise<void> {
+  protected async act(key: DetailAction): Promise<void> {
     const d = this.detail();
     if (!d) return;
     const a = d.application;
-    const ref = { id: a.id, zedId: a.zedId, unitName: a.unitName, schemeName: a.schemeName, agency: a.agency?.userId ?? null, eligibleAmount: d.totals.eligible };
+    const o = this.onsite;
+    // The onsite QC approves on the claim verified onsite.
+    const eligible = o ? (d.onsite?.eligible ?? d.totals.eligible) : d.totals.eligible;
+    const ref = { id: a.id, zedId: a.zedId, unitName: a.unitName, schemeName: a.schemeName, agency: a.agency?.userId ?? null, eligibleAmount: eligible,
+      onsiteAgency: d.onsite?.agency?.userId ?? null };
     this.loading.set(true);
     try {
       const dlg = key === 'allot' ? await schemeAsks.allot(this.api, ref)
+        : key === 'onsiteAllot' ? await schemeAsks.onsiteAllot(this.api, ref)
         : key === 'resume' ? schemeAsks.resume(this.api, ref)
         : key === 'rejectHold' ? schemeAsks.rejectOnHold(this.api, ref)
-        : key === 'accept' ? await schemeAsks.accept(this.api, ref)
-        : key === 'reject' ? await schemeAsks.agencyReject(this.api, ref)
-        : key === 'approve' ? schemeAsks.approve(this.api, ref)
-        : schemeAsks.back(this.api, ref);
+        : key === 'accept' ? (o ? await schemeAsks.accept(this.api, ref, true) : await schemeAsks.accept(this.api, ref))
+        : key === 'onsiteRename' ? await schemeAsks.accept(this.api, ref, true, true)
+        : key === 'reject' ? (o ? await schemeAsks.agencyReject(this.api, ref, true) : await schemeAsks.agencyReject(this.api, ref))
+        : key === 'approve' ? (o ? schemeAsks.approve(this.api, ref, true) : schemeAsks.approve(this.api, ref))
+        : o ? schemeAsks.back(this.api, ref, true) : schemeAsks.back(this.api, ref);
       this.dialogs.open(dlg.ask, dlg.run);
     } catch (err) {
       this.error.set(apiErrorMessage(err));

@@ -133,6 +133,11 @@ public sealed record FormField
     public string? CopyOf { get; init; }
     public bool IsClaim { get; init; }
     public int? MaxFiles { get; init; }
+    /// <summary>
+    /// 2026-11-20 (phase 2): who checks the answer when <see cref="AssessorChecks"/>: "desktop" (default), "onsite" (the onsite
+    /// assessor in the app) or "both" (<see cref="SchemeRules.CheckStages"/>).
+    /// </summary>
+    public string? CheckStage { get; init; }
 }
 
 /// <summary>
@@ -153,6 +158,9 @@ public sealed record SchemeVerification
     public int CorrectionRounds { get; init; } = 2;
     public int CorrectionDays { get; init; } = 30;
     public bool AutoAllot { get; init; } = true;
+    /// <summary>2026-11-20 (phase 2): the onsite assessor's photos of each "Add more" item (or of a plain section): 0–5 / 1–5.</summary>
+    public int OnsitePhotosMin { get; init; } = 1;
+    public int OnsitePhotosMax { get; init; } = 3;
 }
 
 /// <summary>The fixed vocabulary of the definitions, the JSON options and the Admin's checks.</summary>
@@ -169,6 +177,20 @@ public static partial class SchemeRules
 
     public const string Desktop = "Desktop";
     public const string DesktopOnsite = "DesktopOnsite";
+
+    public const string StageDesktop = "desktop";
+    public const string StageOnsite = "onsite";
+    public const string StageBoth = "both";
+    public static readonly IReadOnlyList<string> CheckStages = [StageDesktop, StageOnsite, StageBoth];
+
+    /// <summary>The stage that checks a field (desktop when not set).</summary>
+    public static string StageOf(FormField f) => CheckStages.Contains(f.CheckStage ?? "") ? f.CheckStage! : StageDesktop;
+
+    /// <summary>The desktop assessor checks the field (Desktop flow: every checked field).</summary>
+    public static bool DesktopChecks(FormField f, string flow) => f.AssessorChecks && (flow == Desktop || StageOf(f) != StageOnsite);
+
+    /// <summary>The onsite assessor checks the field (Desktop + Onsite flow only).</summary>
+    public static bool OnsiteChecks(FormField f, string flow) => f.AssessorChecks && flow == DesktopOnsite && StageOf(f) != StageDesktop;
 
     public const string PickTechnologies = "Technologies";
     public const string PickOptions = "Options";
@@ -241,6 +263,8 @@ public static partial class SchemeRules
         if (d.Verification?.Flow is not (Desktop or DesktopOnsite)) return "Choose the verification flow.";
         if (d.Verification.CorrectionRounds is < 0 or > 5) return "Correction rounds: 0 to 5.";
         if (d.Verification.CorrectionDays is < 1 or > 180) return "Correction days: 1 to 180.";
+        if (d.Verification.OnsitePhotosMin is < 0 or > 5 || d.Verification.OnsitePhotosMax is < 1 or > 5 || d.Verification.OnsitePhotosMin > d.Verification.OnsitePhotosMax)
+            return "Onsite photos per item: 0–5 at least, 1–5 at most, the minimum not above the maximum.";
 
         return FormProblem(d.Form);
     }
@@ -280,6 +304,7 @@ public static partial class SchemeRules
                 if (x.Type == "copy" && string.IsNullOrWhiteSpace(x.CopyOf)) return $"\"{x.Label}\": choose the field it copies.";
                 if (x.Type is "document" or "photo" && x.MaxFiles is < 1 or > 3) return $"\"{x.Label}\": 1–3 files.";
                 if (x.IsClaim && x.Type != "amount") return $"\"{x.Label}\": only an amount can be the claim.";
+                if (x.CheckStage is { } stage && !CheckStages.Contains(stage)) return $"\"{x.Label}\": checked at desktop, onsite or both.";
                 if (x.IsClaim) claims++;
             }
         }

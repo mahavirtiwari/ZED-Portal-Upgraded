@@ -26,6 +26,20 @@ public static class SchemeApplications
     public const string Rejected = "Rejected";
     public const string OnHold = "OnHold";
 
+    // 2026-11-20 (phase 2, Desktop + Onsite flow): after the desktop recommendation the application waits for an onsite agency
+    // (by the unit's state and district), whose assessor verifies it in the app; the onsite agency then does the QC.
+    public const string OnsiteAllot = "OnsiteAllot";
+    public const string OnsiteWithAgency = "OnsiteWithAgency";
+    public const string OnsiteWithAssessor = "OnsiteWithAssessor";
+    /// <summary>The visit started in the app (VisitStartedOn = the date of verification).</summary>
+    public const string OnsiteVisit = "OnsiteVisit";
+
+    /// <summary>Users.AgencyKind of an onsite verification agency (migration 0106).</summary>
+    public const string OnsiteAgencyKind = "SchemeOnsite";
+
+    /// <summary>The key prefix of the onsite assessor's checks in FormChecks ("onsite:{section}/{item}/{field}").</summary>
+    public const string OnsiteCheckPrefix = "onsite:";
+
     /// <summary>Finished: a new application may follow a rejected one; a paid one closes the claim.</summary>
     public static readonly IReadOnlySet<string> Final = new HashSet<string> { Rejected, Paid };
 
@@ -33,7 +47,7 @@ public static class SchemeApplications
     public static int VerificationStatus(string status) => status switch
     {
         Draft or Submitted or WithAgency => 1,
-        WithAssessor or Verifying or Correction or OnHold => 2,
+        WithAssessor or Verifying or Correction or OnHold or OnsiteAllot or OnsiteWithAgency or OnsiteWithAssessor or OnsiteVisit => 2,
         Qc => 3,
         Approved => 4,
         Rejected => 5,
@@ -49,6 +63,13 @@ public static class SchemeApplications
         "MaxAmount, EligibleAmount, ApprovedAmount, CorrectionRound, CorrectionDueOn, SubmittedOn, DecidedOn, HoldReason, CertificationBodyUserId, " +
         "FinancialAssessorId, AssessorAcceptedOn, ReasonForRejection, ReasonForRejectionAgency, AccountNo, IfscCode, BranchAddress, BankName, " +
         "CreatedDate, AllotmentType, AllotmentDate, RejectedAgencies, ApproverAmount, ApproverReferenceNo, ApproverDateOfReceiptOfPayment, Comments";
+
+    /// <summary>The onsite columns (migration 0106); added to <see cref="Columns"/> by the onsite readers.</summary>
+    public const string OnsiteColumns =
+        "OnsiteAgencyId, OnsiteAssessorId, OnsiteAllotmentType, OnsiteAllotmentDate, OnsiteRejectedAgencies, VisitStartedOn, VisitLatitude, " +
+        "VisitLongitude, VisitSubmittedOn, RepresentativeName, RepresentativeMobile, OnsiteRemarks, OnsiteVerifiedClaim";
+
+    public const string ByIdWithOnsiteSql = "SELECT " + Columns + ", " + OnsiteColumns + " FROM dbo.FinancialAssistance WHERE Id = @Id AND SchemeCode IS NOT NULL;";
 
     /// <summary>The unit's applications of a scheme, newest first.</summary>
     public const string OfUnitSql = "SELECT " + Columns + " FROM dbo.FinancialAssistance WHERE ZedId = @ZedId AND SchemeCode = @SchemeCode ORDER BY Id DESC;";
@@ -107,6 +128,20 @@ public static class SchemeApplications
         public string? ApproverReferenceNo { get; init; }
         public DateTime? ApproverDateOfReceiptOfPayment { get; init; }
         public string? Comments { get; init; }
+        // Phase 2 (read only by the onsite queries, OnsiteColumns; null otherwise).
+        public string? OnsiteAgencyId { get; init; }
+        public string? OnsiteAssessorId { get; init; }
+        public string? OnsiteAllotmentType { get; init; }
+        public DateTime? OnsiteAllotmentDate { get; init; }
+        public string? OnsiteRejectedAgencies { get; init; }
+        public DateTime? VisitStartedOn { get; init; }
+        public string? VisitLatitude { get; init; }
+        public string? VisitLongitude { get; init; }
+        public DateTime? VisitSubmittedOn { get; init; }
+        public string? RepresentativeName { get; init; }
+        public string? RepresentativeMobile { get; init; }
+        public string? OnsiteRemarks { get; init; }
+        public decimal? OnsiteVerifiedClaim { get; init; }
 
         public string Status => StatusOf(this);
         public Incentives.FormAnswers Answers => Incentives.FormAnswers.Parse(FormAnswers);
@@ -121,6 +156,52 @@ public static class SchemeApplications
 
     /// <summary>A path of an answer or document in the form: "{section}/{item}/{field}" (item 0 in a plain section).</summary>
     public static string PathOf(string section, int item, string field) => $"{section}/{item}/{field}";
+
+    // ---- Phase 2: what the onsite assessor checks and photographs (shared by the portal and the mobile API, which links this file).
+
+    /// <summary>An answer the onsite assessor checks (Valid / Not valid), stored in FormChecks under <see cref="OnsiteKey"/>.</summary>
+    public sealed record OnsitePlace(string Path, string Label, string Section, int Index, string Field);
+
+    /// <summary>An item the onsite assessor photographs (photos "onsite/{section}/{item}"): each saved "Add more" item, or a plain section.</summary>
+    public sealed record OnsiteItem(string Section, int Index, string Title);
+
+    public static string OnsiteKey(string path) => OnsiteCheckPrefix + path;
+
+    public static string OnsitePhotoName(string section, int index) => $"onsite/{section}/{index}";
+
+    private static bool CountedItem(FormSection s, FormItem item) => item.Saved || !s.Repeating;
+
+    /// <summary>The answers checked at the visit (fields with "checked at" onsite or both, answered or required), in the form's order.</summary>
+    public static IReadOnlyList<OnsitePlace> OnsitePlacesOf(SchemeDefinition def, FormAnswers answers)
+    {
+        var list = new List<OnsitePlace>();
+        foreach (var s in def.Form.Sections)
+        {
+            var items = answers.Sections.GetValueOrDefault(s.Key) ?? [];
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (!CountedItem(s, items[i])) continue;
+                foreach (var f in s.Fields.Where(f => SchemeRules.OnsiteChecks(f, def.Verification.Flow)))
+                    if (!string.IsNullOrWhiteSpace(items[i].Values.GetValueOrDefault(f.Key)) || f.Required)
+                        list.Add(new(PathOf(s.Key, i, f.Key), f.Label, s.Key, i, f.Key));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>The items photographed at the visit (<see cref="SchemeVerification.OnsitePhotosMin"/>–Max photos each).</summary>
+    public static IReadOnlyList<OnsiteItem> OnsiteItemsOf(SchemeDefinition def, FormAnswers answers)
+    {
+        var list = new List<OnsiteItem>();
+        foreach (var s in def.Form.Sections)
+        {
+            var items = answers.Sections.GetValueOrDefault(s.Key) ?? [];
+            for (var i = 0; i < items.Count; i++)
+                if (CountedItem(s, items[i]))
+                    list.Add(new(s.Key, i, s.Repeating ? $"{s.Title} {i + 1}{(string.IsNullOrWhiteSpace(items[i].PickName) ? "" : " – " + items[i].PickName)}" : s.Title));
+        }
+        return list;
+    }
 
     public static Dapper.DbString Ansi(string? v, int length) => new() { Value = v, IsAnsi = true, Length = length };
 }

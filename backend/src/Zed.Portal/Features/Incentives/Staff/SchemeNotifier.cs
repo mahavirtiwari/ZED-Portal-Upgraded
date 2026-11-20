@@ -77,6 +77,28 @@ internal sealed class SchemeNotifier(
         }, ct);
     }, c.Id);
 
+    /// <summary>Phase 2: to the onsite agency the application is allotted to for the onsite verification (round robin or the Master Admin).</summary>
+    public Task OnsiteAllottedToAgencyAsync(SchemeCase c, CancellationToken ct) => SafeAsync(async () =>
+    {
+        var (unit, scheme) = await BasicsAsync(c, ct);
+        await Mailer.SendAsync<StaffSchemeAllotAgencyEmail>(await EmailOfAsync(c.OnsiteAgency, ct), $"Allocation of Application for Onsite Verification: {scheme} – {c.ZedId}", new()
+        {
+            [nameof(StaffSchemeAllotAgencyEmail.ZedId)] = c.ZedId,
+            [nameof(StaffSchemeAllotAgencyEmail.UnitName)] = unit?.Name ?? "",
+            [nameof(StaffSchemeAllotAgencyEmail.Address)] = unit?.Address ?? "",
+            [nameof(StaffSchemeAllotAgencyEmail.SchemeName)] = scheme,
+        }, ct);
+    }, c.Id);
+
+    /// <summary>
+    /// Phase 2: to the onsite assessor the onsite agency named (the allotment template speaks of the desktop verification, so the
+    /// notice template carries the text). The visit is done in the assessor app; its day is the date of verification.
+    /// </summary>
+    public Task OnsiteAllottedToAssessorAsync(SchemeCase c, CancellationToken ct) =>
+        NoticeAsync(c, c.OnsiteAssessor, "Allocation of Application for Onsite Verification",
+            $"Your agency has allocated this application to you (assessor {c.OnsiteAssessor}) for onsite verification. Please visit the unit and " +
+            "verify it in the ZED assessor app; the day you start the visit is saved as the date of verification.", ct);
+
     /// <summary>A short notice to a staff user (the assessor returned it, the agency sent it back, the unit answered a correction).</summary>
     public Task NoticeAsync(SchemeCase c, string? toUserId, string subject, string notice, CancellationToken ct) => SafeAsync(async () =>
     {

@@ -194,7 +194,7 @@
                       <td><span class="type-name">{{ typeLabel(f.type) }}</span></td>
                       <td>
                         @if (f.required) { <span class="req-chip is-yes">{{ 'Required' | t: 'staff.incentivesAdmin.editor.fields.required' }}</span> }
-                        @if (f.assessorChecks) { <span class="req-chip">{{ 'Checked' | t: 'staff.incentivesAdmin.editor.fields.checked' }}</span> }
+                        @if (f.assessorChecks) { <span class="req-chip">{{ 'Checked' | t: 'staff.incentivesAdmin.editor.fields.checked' }}@if (d.verification.flow === 'DesktopOnsite' && f.checkStage && f.checkStage !== 'desktop') { · {{ stageLabel(f.checkStage) }} }</span> }
                         @if (f.isClaim) { <span class="req-chip is-yes">{{ 'Claim' | t: 'staff.incentivesAdmin.editor.fields.claim' }}</span> }
                       </td>
                       <td class="text-end se-row-actions">
@@ -243,8 +243,17 @@
         <span class="label top">{{ 'Flow' | t: 'staff.incentivesAdmin.editor.verification.flow' }}</span>
         <div class="se-checks">
           <label><input type="radio" name="se-flow" value="Desktop" [checked]="d.verification.flow === 'Desktop'" (change)="setFlow(d, 'Desktop')" /> {{ 'Desktop' | t: 'staff.incentivesAdmin.flow.desktop' }}</label>
-          <label><input type="radio" name="se-flow" value="DesktopOnsite" [checked]="d.verification.flow === 'DesktopOnsite'" (change)="setFlow(d, 'DesktopOnsite')" /> {{ 'Desktop + Onsite' | t: 'staff.incentivesAdmin.flow.desktopOnsite' }} <span class="zed-chip">{{ 'phase 2: coming with the mobile app' | t: 'staff.incentivesAdmin.editor.verification.phase2' }}</span></label>
+          <label><input type="radio" name="se-flow" value="DesktopOnsite" [checked]="d.verification.flow === 'DesktopOnsite'" (change)="setFlow(d, 'DesktopOnsite')" /> {{ 'Desktop + Onsite' | t: 'staff.incentivesAdmin.flow.desktopOnsite' }}</label>
         </div>
+        @if (d.verification.flow === 'DesktopOnsite') {
+          <span class="label">{{ 'Onsite photos per item' | t: 'staff.incentivesAdmin.editor.verification.photos' }}</span>
+          <div class="se-photos">
+            <label for="se-photos-min">{{ 'at least' | t: 'staff.incentivesAdmin.editor.verification.photosMin' }}</label>
+            <input id="se-photos-min" type="number" class="form-control se-narrow" min="0" [max]="limits.photos" [(ngModel)]="d.verification.onsitePhotosMin" />
+            <label for="se-photos-max">{{ 'at most' | t: 'staff.incentivesAdmin.editor.verification.photosMax' }}</label>
+            <input id="se-photos-max" type="number" class="form-control se-narrow" min="1" [max]="limits.photos" [(ngModel)]="d.verification.onsitePhotosMax" />
+          </div>
+        }
         <label for="se-rounds">{{ 'Correction rounds' | t: 'staff.incentivesAdmin.editor.verification.rounds' }}</label>
         <input id="se-rounds" type="number" class="form-control se-narrow" min="0" [max]="limits.rounds" [(ngModel)]="d.verification.correctionRounds" />
         <label for="se-days">{{ 'Days to answer a correction' | t: 'staff.incentivesAdmin.editor.verification.days' }}</label>
@@ -256,6 +265,9 @@
         </label>
       </div>
       <small class="muted d-block mt-2">{{ 'Correction rounds 0 to 5, days 1 to 180. When the days run out, or the last round is still not valid, the application is rejected.' | t: 'staff.incentivesAdmin.editor.verification.help' }}</small>
+      @if (d.verification.flow === 'DesktopOnsite') {
+        <small class="muted d-block mt-1">{{ 'Desktop + Onsite: after the desktop recommendation an onsite verification agency of the unit’s state and district is allotted; its assessor visits the unit with the assessor app and the onsite agency does the final QC. Onsite photos per item: 0 to 5 at least, 1 to 5 at most.' | t: 'staff.incentivesAdmin.editor.verification.onsiteHelp' }}</small>
+      }
     </section>
   }
 } @else if (!busy()) {
@@ -265,7 +277,7 @@
 @if (fieldEdit(); as e) {
   @if (def(); as d) {
     <zed-scheme-field-dialog [field]="e.field" [isNew]="e.isNew" [takenKeys]="e.taken" [copyChoices]="e.copies"
-                             (saved)="fieldSaved(d, e, $event)" (cancelled)="fieldEdit.set(null)" />
+                             [onsiteFlow]="d.verification.flow === 'DesktopOnsite'" (saved)="fieldSaved(d, e, $event)" (cancelled)="fieldEdit.set(null)" />
   }
 }
 @if (busy()) { <div class="loadingdiv"><div class="loader"></div></div> }

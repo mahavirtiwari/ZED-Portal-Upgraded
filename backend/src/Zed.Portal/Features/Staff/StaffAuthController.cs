@@ -92,6 +92,9 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
         var userId = row.Text("UserId");
         var sub = (await db.QueryProcMultipleAsync("SP_GET_SUB_ROLE", new { UserId = userId, RoleId = roleId.ToString() }, ct))[0].FirstOrDefault();
         var subRoles = SubRoles.All.Where(s => sub?.Text(s) == "1").ToList();
+        // 2026-11-20 (incentive schemes, phase 2): an onsite verification agency and its assessors carry their kind (staff menu).
+        if (HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main)
+            subRoles.AddRange(await Incentives.Onsite.OnsiteAgencies.SubRolesAsync(db, userId, roleId, log, ct));
 
         await db.ExecuteProcAsync("SP_UPDATE_LOGIN",
             new { UserId = userId, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), RoleId = roleId.ToString() }, ct);
@@ -195,6 +198,8 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
         var ownerId = owner.Text("UserId");
         var subRow = (await db.QueryProcMultipleAsync("SP_GET_SUB_ROLE", new { UserId = ownerId, RoleId = roleId.ToString() }, ct))[0].FirstOrDefault();
         var subRoles = SubRoles.All.Where(s => subRow?.Text(s) == "1").ToList();
+        if (HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main)
+            subRoles.AddRange(await Incentives.Onsite.OnsiteAgencies.SubRolesAsync(db, ownerId, roleId, log, ct));
         var routes = SubUserPermissions.Granted(sub.Permissions, roleId, subRoles, HttpContext.RequestServices.GetRequiredService<PortalHost>().System)
             .SelectMany(p => p.Routes).Distinct().ToList();
         await store.LoginSucceededAsync(sub.UserId, ct);

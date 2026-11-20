@@ -22,6 +22,7 @@ public sealed class SchemeApplicationsController(
 
     private SchemeAllotment Allotment => SchemeServices.Get<SchemeAllotment>(HttpContext.RequestServices);
     private SchemeNotifier Notifier => SchemeServices.Get<SchemeNotifier>(HttpContext.RequestServices);
+    private Onsite.OnsiteAllotment OnsiteAllotment => SchemeServices.Get<Onsite.OnsiteAllotment>(HttpContext.RequestServices);
 
     /// <summary>GET api/staff/scheme-applications?scheme=&amp;status=&amp;state=&amp;from=&amp;to=</summary>
     [HttpGet]
@@ -38,13 +39,49 @@ public sealed class SchemeApplicationsController(
     public async Task<ActionResult<SchemeReview.Detail>> Detail(int id, CancellationToken ct)
     {
         if (await Find(id, ct) is not { } c) return NotFound();
-        var actions = new SchemeReview.Actions(Allot: c.Status is Submitted or WithAgency, Hold: c.Status == OnHold);
-        return await SchemeReview.DetailAsync(db, store, c, Base, actions, log, ct);
+        var actions = new SchemeReview.Actions(Allot: c.Status is Submitted or WithAgency, Hold: c.Status == OnHold,
+            OnsiteAllot: c.Status is OnsiteAllot or OnsiteWithAgency);
+        return await SchemeReview.DetailAsync(db, store, c, Base, actions, log, ct, withOnsite: true);
     }
 
     [HttpGet("{id:int}/files/{name}")]
     public async Task<IActionResult> File(int id, string name, CancellationToken ct) =>
         await Find(id, ct) is { } c ? SchemeReview.File(this, c, name, env, portal.Value) : NotFound();
+
+    [HttpGet("{id:int}/onsite-photos/{photoId}")]
+    public async Task<IActionResult> Photo(int id, string photoId, CancellationToken ct) =>
+        await Find(id, ct) is { } c ? await Onsite.OnsiteReports.PhotoAsync(this, db, c, photoId, env, portal.Value, log, ct) : NotFound();
+
+    /// <summary>GET api/staff/scheme-applications/{id}/onsite-agencies — phase 2: the onsite agencies of the unit's state and district.</summary>
+    [HttpGet("{id:int}/onsite-agencies")]
+    public async Task<ActionResult<IReadOnlyList<SchemeAllotment.AgencyOption>>> OnsiteAgencyOptions(int id, CancellationToken ct)
+    {
+        if (await Find(id, ct) is not { } c) return NotFound();
+        return (await OnsiteAllotment.EligibleAsync(c.ZedId, c.Code, c.OnsiteRejected, ct)).ToList();
+    }
+
+    /// <summary>
+    /// POST api/staff/scheme-applications/{id}/onsite-allot — phase 2: allot (OnsiteAllot) or re-allot (with an onsite agency, not yet
+    /// with an assessor) to an onsite agency of the unit's state and district.
+    /// </summary>
+    [HttpPost("{id:int}/onsite-allot")]
+    public async Task<ActionResult<MessageResponse>> AllotOnsite(int id, AllotRequest req, CancellationToken ct)
+    {
+        using (await SchemeCaseLock.EnterAsync(ct))
+        {
+            if (await Find(id, ct) is not { } c) return NotFound();
+            if (c.Status is not (SchemeApplications.OnsiteAllot or OnsiteWithAgency)) return this.Problem400("This application can no longer be allotted for onsite verification.");
+            var agency = (await OnsiteAllotment.EligibleAsync(c.ZedId, c.Code, c.OnsiteRejected, ct))
+                .FirstOrDefault(a => string.Equals(a.UserId, req.AgencyUserId?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (agency is null) return this.Problem400("Please select an onsite agency serving this scheme in the unit's state and district.");
+            var before = c.OnsiteAgency;
+            if (!await OnsiteAllotment.SaveAllotmentAsync(c, agency.UserId, Onsite.OnsiteAllotment.Manual, ct)) return Changed();
+            await SchemeCases.HistoryAsync(db, log, c, before is null
+                ? $"Scheme application allotted for onsite verification to agency {agency.UserId} by {ActorId}"
+                : $"Scheme application re-allotted for onsite verification from agency {before} to {agency.UserId} by {ActorId}", ct);
+            return new MessageResponse(before is null ? "Application allotted." : "Application re-allotted.");
+        }
+    }
 
     /// <summary>GET api/staff/scheme-applications/{id}/agencies — the agencies it may be allotted to.</summary>
     [HttpGet("{id:int}/agencies")]
@@ -93,7 +130,12 @@ public sealed class SchemeApplicationsController(
             var next = SchemeSweep.ResumeStatus(c.HoldReason);
             // Back to the agency stage it was at; a missing agency or assessor means an earlier stage.
             if (next is WithAgency && c.Agency is null) next = Submitted;
-            if (next is WithAssessor or Verifying or Correction or Qc && c.Assessor is null) next = c.Agency is null ? Submitted : WithAgency;
+            if (next is WithAssessor or Verifying or Correction && c.Assessor is null) next = c.Agency is null ? Submitted : WithAgency;
+            // Phase 2: the onsite stage resumes at its own steps (no onsite agency → OnsiteAllot, no onsite assessor → OnsiteWithAgency).
+            if (next is OnsiteWithAgency && c.OnsiteAgency is null) next = SchemeApplications.OnsiteAllot;
+            if (next is OnsiteWithAssessor or OnsiteVisit && c.OnsiteAssessor is null) next = c.OnsiteAgency is null ? SchemeApplications.OnsiteAllot : OnsiteWithAgency;
+            if (next == Qc && (c.OnsiteAgency is null ? c.Assessor is null : c.OnsiteAssessor is null))
+                next = c.OnsiteAgency is not null ? OnsiteWithAgency : c.Agency is null ? Submitted : WithAgency;
             if (next == Correction)
             {
                 var days = (await store.FindAsync(c.Code, ct))?.Verification.CorrectionDays ?? 30;
@@ -106,6 +148,8 @@ public sealed class SchemeApplicationsController(
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application resumed ({next}) by {ActorId}; it was on hold: {reason}", ct);
             if (next == Submitted && await Allotment.AutoAllotOnAsync(c.Code, ct))
                 await Allotment.AllotLockedAsync((await SchemeCases.LoadAsync(db, id, ct))!, ct);
+            if (next == SchemeApplications.OnsiteAllot && await SchemeCases.LoadAsync(db, id, ct) is { } back)
+                await OnsiteAllotment.AllotLockedAsync(back, ct);
             return new MessageResponse("Application resumed.");
         }
     }

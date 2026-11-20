@@ -168,11 +168,25 @@ public sealed class SchemeAssessorController(
                     var verified = def is null ? c.Row.ClaimAmount ?? 0 : SchemeReview.Verified(def.Form, c.Row.Answers, checks);
                     var eligible = SchemeEligibility.Eligible(verified, await SchemeReview.GradeAsync(db, def, c.Row, log, ct));
                     c.EligibleAmount = SchemeCases.Money(eligible);
-                    c.Status = Qc;
+                    // Phase 2 (the user, 2026-11-20): in the Desktop + Onsite flow there is no desktop-agency QC; the application goes
+                    // to an onsite agency (round robin by the unit's state and district) and the onsite agency does the final QC.
+                    var onsite = def?.Verification.Flow == SchemeRules.DesktopOnsite;
+                    c.Status = onsite ? OnsiteAllot : Qc;
+                    if (onsite)
+                    {
+                        c.OnsiteAgency = null;
+                        c.OnsiteAssessor = null;
+                        c.OnsiteAllotmentType = null;
+                        c.OnsiteAllotmentDate = null;
+                    }
                     if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
                     await SchemeCases.HistoryAsync(db, log, c,
-                        $"Scheme application recommended by assessor {UserId}: verified claim Rs. {SchemeCases.Money(verified)}, eligible Rs. {SchemeCases.Money(eligible)}", ct);
-                    return new MessageResponse("Recommended. It goes to your agency for QC.");
+                        $"Scheme application recommended by assessor {UserId}: verified claim Rs. {SchemeCases.Money(verified)}, eligible Rs. {SchemeCases.Money(eligible)}" +
+                        (onsite ? "; it goes for onsite verification" : ""), ct);
+                    if (!onsite) return new MessageResponse("Recommended. It goes to your agency for QC.");
+                    if (await SchemeCases.LoadAsync(db, id, ct) is { } next)
+                        await SchemeServices.Get<Onsite.OnsiteAllotment>(HttpContext.RequestServices).AllotLockedAsync(next, ct);
+                    return new MessageResponse("Recommended. It goes for onsite verification.");
                 }
                 default:
                     return this.Problem400("Choose correction, reject or recommend.");

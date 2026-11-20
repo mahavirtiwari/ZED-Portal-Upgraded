@@ -7,7 +7,7 @@ import { TextPipe, t } from '../../content/page-text';
 import { FieldDialogComponent } from './field-dialog';
 import {
   ActivationMode, CARD_ICONS, DocumentRule, FormField, FormSection, GradingMode, LevelOption, SCHEME_LIMITS, SchemeDefinition, SchemesAdminApi,
-  VerificationFlow, fieldTypeLabel, gradeKeyLabel, keyFrom,
+  VerificationFlow, CheckStage, checkStageLabel, fieldTypeLabel, gradeKeyLabel, keyFrom,
 } from './schemes-admin.api';
 
 export type EditorTab = 'card' | 'grading' | 'form' | 'verification';
@@ -30,7 +30,7 @@ export function normalise(d: SchemeDefinition): SchemeDefinition {
       })),
       rules: (d.form?.rules ?? []).map((r) => ({ ...r, fields: [...(r.fields ?? [])] })),
     },
-    verification: { flow: 'Desktop', correctionRounds: 2, correctionDays: 30, autoAllot: true, ...(d.verification as Partial<SchemeDefinition['verification']> | undefined) },
+    verification: { flow: 'Desktop', correctionRounds: 2, correctionDays: 30, autoAllot: true, onsitePhotosMin: 1, onsitePhotosMax: 3, ...(d.verification as Partial<SchemeDefinition['verification']> | undefined) },
   };
 }
 
@@ -287,6 +287,10 @@ export class SchemeEditorPage {
 
   // ----- Verification -----
 
+  protected stageLabel(stage: CheckStage | null | undefined): string {
+    return checkStageLabel(stage);
+  }
+
   protected setFlow(d: SchemeDefinition, flow: VerificationFlow): void {
     d.verification.flow = flow;
   }
@@ -312,7 +316,10 @@ export class SchemeEditorPage {
           sections: d.form.sections.map((s) => ({ ...s, minItems: n(s.minItems), maxItems: n(s.maxItems) })),
           rules: d.form.rules.map((r) => ({ ...r, count: n(r.count), message: r.message?.trim() || null })),
         },
-        verification: { ...d.verification, correctionRounds: n(d.verification.correctionRounds), correctionDays: n(d.verification.correctionDays) },
+        verification: {
+          ...d.verification, correctionRounds: n(d.verification.correctionRounds), correctionDays: n(d.verification.correctionDays),
+          onsitePhotosMin: n(d.verification.onsitePhotosMin), onsitePhotosMax: d.verification.onsitePhotosMax ?? 1,
+        },
       };
       this.success.set((await firstValueFrom(this.api.save(body))).message);
       this.fresh = new WeakSet<object>();

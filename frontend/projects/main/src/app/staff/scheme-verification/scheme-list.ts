@@ -16,19 +16,27 @@ import {
   NO_SCHEME_FILTER, SCHEME_STATUSES, SchemeFilter, SchemeList, SchemeListItem, SchemeOption, SchemeRole, SchemeStatus, SchemeVerificationApi,
 } from './scheme-verification.api';
 
-type Action = 'allot' | 'reallot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'approve' | 'back' | 'assessorAccept' | 'return' | 'open';
+type Action = 'allot' | 'reallot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'approve' | 'back' | 'assessorAccept' | 'return' | 'open'
+  | 'onsiteAllot' | 'onsiteReallot' | 'onsiteRename';
 
-/** Which list the route opens (route data): the Master Admin's, the agency's allotment or QC, the assessor's. */
-type Mode = 'admin' | 'allotment' | 'qc' | 'assessor';
+/**
+ * Which list the route opens (route data): the Master Admin's, the agency's allotment or QC, the assessor's; phase 2: the onsite
+ * verification agency's onsite allotment and onsite QC.
+ */
+type Mode = 'admin' | 'allotment' | 'qc' | 'assessor' | 'onsiteAllotment' | 'onsiteQc';
 
 const TILES: Record<Mode, readonly SchemeStatus[]> = {
   admin: SCHEME_STATUSES,
   allotment: ['WithAgency', 'WithAssessor', 'Verifying', 'Correction', 'Qc', 'Approved', 'Paid', 'Rejected', 'OnHold'],
   qc: ['Qc', 'Approved', 'Paid', 'Rejected'],
   assessor: ['WithAssessor', 'Verifying', 'Correction', 'Qc', 'Approved', 'Paid', 'Rejected', 'OnHold'],
+  onsiteAllotment: ['OnsiteWithAgency', 'OnsiteWithAssessor', 'OnsiteVisit', 'Qc', 'Approved', 'Paid', 'Rejected', 'OnHold'],
+  onsiteQc: ['Qc', 'Approved', 'Paid', 'Rejected'],
 };
 
-const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Qc', assessor: '' };
+const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Qc', assessor: '', onsiteAllotment: 'OnsiteWithAgency', onsiteQc: 'Qc' };
+
+const ONSITE_MODES: readonly Mode[] = ['onsiteAllotment', 'onsiteQc'];
 
 /**
  * 2026-11-20 (incentive schemes, approved): the scheme applications' lists of the staff, in the staff lists' look (counts tiles that
@@ -82,6 +90,7 @@ const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Q
               <th class="text-end">{{ 'Eligible / approved (Rs.)' | t: 'staff.schemeVerification.column.eligible' }}</th>
               @if (mode() === 'admin') { <th>{{ 'Agency' | t: 'staff.schemeVerification.column.agency' }}</th> }
               @if (mode() !== 'assessor') { <th>{{ 'Assessor' | t: 'staff.schemeVerification.column.assessor' }}</th> }
+              @if (onsite()) { <th>{{ 'Date of verification' | t: 'staff.schemeVerification.column.visit' }}</th> }
               <th>{{ 'Status' | t: 'staff.schemeVerification.column.status' }}</th>
               <th class="text-end">{{ 'Action' | t: 'staff.schemeVerification.column.action' }}</th>
             </tr>
@@ -90,7 +99,7 @@ const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Q
             @for (r of view.page(); track r.id) {
               @let acts = actions(r);
               <tr>
-                <td class="unit-cell"><b>{{ r.unitName || r.zedId }}</b><small>{{ r.zedId }}@if (r.state) { · {{ r.state }} }</small></td>
+                <td class="unit-cell"><b>{{ r.unitName || r.zedId }}</b><small>{{ r.zedId }}@if (onsite() && r.district) { · {{ r.district }} }@if (r.state) { · {{ r.state }} }</small></td>
                 <td class="unit-cell"><b>{{ r.schemeName }}</b>@if (r.levelName) { <small>{{ r.levelName }}</small> }</td>
                 <td class="text-nowrap">{{ day(r.submittedOn) }}</td>
                 <td class="text-end">{{ money(r.claimAmount) }}</td>
@@ -99,14 +108,27 @@ const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Q
                   <td class="unit-cell">
                     @if (r.agency) { <b>{{ r.agencyName || r.agency }}</b><small>{{ r.agency }}@if (r.allotmentType === 'RoundRobin') { <span class="zed-chip sv-auto">{{ 'Auto' | t: 'staff.schemeVerification.row.auto' }}</span> }</small> }
                     @else { <span class="sub">{{ 'Not yet allotted' | t: 'staff.schemeVerification.row.notAllotted' }}</span> }
+                    @if (r.onsiteAgency) {
+                      <small class="d-block sv-onsite">{{ 'Onsite: {name}' | t: 'staff.schemeVerification.row.onsiteAgency' : { name: r.onsiteAgencyName || r.onsiteAgency } }}@if (r.onsiteAllotmentType === 'RoundRobin') { <span class="zed-chip sv-auto">{{ 'Auto' | t: 'staff.schemeVerification.row.auto' }}</span> }</small>
+                    }
                   </td>
                 }
                 @if (mode() !== 'assessor') {
                   <td class="unit-cell">
-                    @if (r.assessor) { <b>{{ r.assessorName || r.assessor }}</b><small>{{ r.assessor }}</small> }
-                    @else { <span class="sub">{{ 'Not yet named' | t: 'staff.schemeVerification.row.notNamed' }}</span> }
+                    @if (onsite()) {
+                      @if (r.onsiteAssessor) { <b>{{ r.onsiteAssessorName || r.onsiteAssessor }}</b><small>{{ r.onsiteAssessor }}</small> }
+                      @else { <span class="sub">{{ 'Not yet named' | t: 'staff.schemeVerification.row.notNamed' }}</span> }
+                    } @else {
+                      @if (r.assessor) { <b>{{ r.assessorName || r.assessor }}</b><small>{{ r.assessor }}</small> }
+                      @else { <span class="sub">{{ 'Not yet named' | t: 'staff.schemeVerification.row.notNamed' }}</span> }
+                      @if (mode() === 'admin' && r.onsiteAssessor) {
+                        <small class="d-block sv-onsite">{{ 'Onsite: {name}' | t: 'staff.schemeVerification.row.onsiteAssessor' : { name: r.onsiteAssessorName || r.onsiteAssessor } }}</small>
+                        @if (r.visitStartedOn) { <small class="d-block sv-onsite">{{ 'Verified on {date}' | t: 'staff.schemeVerification.row.visitOn' : { date: day(r.visitStartedOn) } }}</small> }
+                      }
+                    }
                   </td>
                 }
+                @if (onsite()) { <td class="text-nowrap">{{ r.visitStartedOn ? day(r.visitStartedOn) : '–' }}</td> }
                 <td>
                   <span class="chip" [class]="'chip ' + statusTone(r.status)" [attr.title]="r.holdReason || r.reasonForRejection || r.agencyRemarks || null">{{ statusLabel(r.status) }}</span>
                   @if (r.status === 'Correction' && r.correctionDueOn) {
@@ -130,7 +152,7 @@ const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Q
               </tr>
             } @empty {
               @if (!loading()) {
-                <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ search() || filtering() ? ('No application matches the search or filter.' | t: 'staff.schemeVerification.list.searchEmpty') : ('No application here.' | t: 'staff.schemeVerification.list.empty') }}</div></td></tr>
+                <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ search() || filtering() ? ('No application matches the search or filter.' | t: 'staff.schemeVerification.list.searchEmpty') : ('No application here.' | t: 'staff.schemeVerification.list.empty') }}</div></td></tr>
               }
             }
           </tbody>
@@ -154,6 +176,7 @@ const FIRST: Record<Mode, string> = { admin: '', allotment: 'WithAgency', qc: 'Q
     .sv-row .form-select, .sv-row .form-control { height: 38px; border: 1.2px solid #b9cdcf; border-radius: 9px; font-size: 13px; }
     .sv-act { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
     .sv-auto { background: #e7f3f4; color: #2f6f75; margin-left: 4px; }
+    .sv-onsite { color: #5f6f70; margin-top: 2px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -161,13 +184,17 @@ export class SchemeListPage {
   private readonly api = inject(SchemeVerificationApi);
   private readonly toast = inject(ToastService);
   protected readonly mode = signal<Mode>((inject(ActivatedRoute).snapshot.data['mode'] as Mode) ?? 'admin');
-  protected readonly role = computed<SchemeRole>(() => (this.mode() === 'admin' ? 'admin' : this.mode() === 'assessor' ? 'assessor' : 'agency'));
+  protected readonly onsite = computed(() => ONSITE_MODES.includes(this.mode()));
+  protected readonly role = computed<SchemeRole>(() =>
+    this.mode() === 'admin' ? 'admin' : this.mode() === 'assessor' ? 'assessor' : this.onsite() ? 'onsite' : 'agency');
 
   protected readonly title = computed(() => {
     switch (this.mode()) {
       case 'allotment': return t('staff.schemeVerification.allotment.title', 'Scheme Allotment');
       case 'qc': return t('staff.schemeVerification.qc.title', 'Scheme QC');
       case 'assessor': return t('staff.schemeVerification.assessor.title', 'Scheme Verification');
+      case 'onsiteAllotment': return t('staff.schemeVerification.onsiteAllotment.title', 'Scheme Onsite Allotment');
+      case 'onsiteQc': return t('staff.schemeVerification.onsiteQc.title', 'Scheme Onsite QC');
       default: return t('staff.schemeVerification.admin.title', 'Scheme Applications');
     }
   });
@@ -176,6 +203,8 @@ export class SchemeListPage {
       case 'allotment': return t('staff.schemeVerification.allotment.sub', 'Accept the applications allotted to your agency naming an assessor, or reject them with a reason.');
       case 'qc': return t('staff.schemeVerification.qc.sub', 'Approve the amount your assessor recommended, or send the application back with remarks.');
       case 'assessor': return t('staff.schemeVerification.assessor.sub', 'Accept the applications your agency named you for and verify each answer and document.');
+      case 'onsiteAllotment': return t('staff.schemeVerification.onsiteAllotment.sub', 'Accept the applications allotted to your agency for onsite verification naming an assessor (no date: the day of the visit is the date of verification), or reject them with a reason.');
+      case 'onsiteQc': return t('staff.schemeVerification.onsiteQc.sub', 'Check your assessor’s onsite report and approve the amount, or send the application back to the assessor with remarks.');
       default: return t('staff.schemeVerification.admin.sub', 'Applications go to agencies by round robin as they are submitted; you can allot, re-allot and decide on those on hold.');
     }
   });
@@ -248,9 +277,23 @@ export class SchemeListPage {
       case 'admin':
         if (r.status === 'Submitted') add('allot', t('staff.schemeVerification.action.allot', 'Allot'), 'people');
         if (r.status === 'WithAgency') add('reallot', t('staff.schemeVerification.action.reallot', 'Re-allot'), 'refresh');
+        if (r.status === 'OnsiteAllot') add('onsiteAllot', t('staff.schemeVerification.action.onsiteAllot', 'Allot onsite'), 'people');
+        if (r.status === 'OnsiteWithAgency') add('onsiteReallot', t('staff.schemeVerification.action.onsiteReallot', 'Re-allot onsite'), 'refresh');
         if (r.status === 'OnHold') {
           add('resume', t('staff.schemeVerification.action.resume', 'Resume'), 'unlock');
           add('rejectHold', t('staff.schemeVerification.action.reject', 'Reject'), 'trash', true);
+        }
+        break;
+      case 'onsiteAllotment':
+      case 'onsiteQc':
+        if (r.status === 'OnsiteWithAgency') {
+          add('accept', t('staff.schemeVerification.action.accept', 'Accept'), 'people');
+          add('reject', t('staff.schemeVerification.action.reject', 'Reject'), 'trash', true);
+        }
+        if (r.status === 'OnsiteWithAssessor' && !r.visitStartedOn) add('onsiteRename', t('staff.schemeVerification.action.rename', 'Change assessor'), 'people');
+        if (r.status === 'Qc') {
+          add('approve', t('staff.schemeVerification.action.approve', 'Approve'), 'award');
+          add('back', t('staff.schemeVerification.action.back', 'Back to assessor'), 'refresh');
         }
         break;
       case 'allotment':
@@ -277,17 +320,20 @@ export class SchemeListPage {
   }
 
   protected async act(r: SchemeListItem, key: string): Promise<void> {
-    const ref = { id: r.id, zedId: r.zedId, unitName: r.unitName, schemeName: r.schemeName, agency: r.agency, eligibleAmount: r.eligibleAmount };
+    const ref = { id: r.id, zedId: r.zedId, unitName: r.unitName, schemeName: r.schemeName, agency: r.agency, eligibleAmount: r.eligibleAmount, onsiteAgency: r.onsiteAgency ?? null };
+    const onsite = this.onsite();
     try {
       let d;
       switch (key as Action) {
         case 'allot': case 'reallot': this.loading.set(true); d = await schemeAsks.allot(this.api, ref); break;
+        case 'onsiteAllot': case 'onsiteReallot': this.loading.set(true); d = await schemeAsks.onsiteAllot(this.api, ref); break;
         case 'resume': d = schemeAsks.resume(this.api, ref); break;
         case 'rejectHold': d = schemeAsks.rejectOnHold(this.api, ref); break;
-        case 'accept': this.loading.set(true); d = await schemeAsks.accept(this.api, ref); break;
-        case 'reject': this.loading.set(true); d = await schemeAsks.agencyReject(this.api, ref); break;
-        case 'approve': d = schemeAsks.approve(this.api, ref); break;
-        case 'back': d = schemeAsks.back(this.api, ref); break;
+        case 'accept': this.loading.set(true); d = onsite ? await schemeAsks.accept(this.api, ref, true) : await schemeAsks.accept(this.api, ref); break;
+        case 'onsiteRename': this.loading.set(true); d = await schemeAsks.accept(this.api, ref, true, true); break;
+        case 'reject': this.loading.set(true); d = onsite ? await schemeAsks.agencyReject(this.api, ref, true) : await schemeAsks.agencyReject(this.api, ref); break;
+        case 'approve': d = onsite ? schemeAsks.approve(this.api, ref, true) : schemeAsks.approve(this.api, ref); break;
+        case 'back': d = onsite ? schemeAsks.back(this.api, ref, true) : schemeAsks.back(this.api, ref); break;
         case 'assessorAccept': d = schemeAsks.assessorAccept(this.api, ref); break;
         case 'return': d = schemeAsks.assessorReturn(this.api, ref); break;
         default: return;

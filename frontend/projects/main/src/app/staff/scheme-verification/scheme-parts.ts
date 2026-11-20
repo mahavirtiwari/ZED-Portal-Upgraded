@@ -1,8 +1,8 @@
 import { Component, input, model } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TextPipe } from '../../content/page-text';
+import { TextPipe, t } from '../../content/page-text';
 import { day, money, statusLabel, statusTone } from './scheme-shared';
-import { SchemeDetail, SchemeField, SchemeSection } from './scheme-verification.api';
+import { SchemeDetail, SchemeField, SchemeOnsitePhoto, SchemeOnsiteReport, SchemeSection } from './scheme-verification.api';
 
 /** An assessor's mark not yet saved. */
 export interface CheckEdit {
@@ -178,5 +178,125 @@ export class SchemeAnswers {
 
   protected amount(v: string): string {
     return money(Number(v));
+  }
+}
+
+/**
+ * Phase 2 (2026-11-20): the onsite stage of a Desktop + Onsite application, as the Master Admin and the onsite agency (its final QC)
+ * see it: the onsite agency and assessor, the date of verification (the day the visit started in the assessor app), the unit's
+ * representative (shown in full on this signed-in page), where the visit started, the claim verified onsite and its eligible amount,
+ * the photos (selfie, site, each item's), the answers checked at the visit and the assessor's remarks.
+ */
+@Component({
+  selector: 'zed-scheme-onsite-report',
+  imports: [TextPipe],
+  template: `
+    @let o = report();
+    <section class="zed-card so" aria-labelledby="so-h">
+      <h4 id="so-h">{{ 'Onsite verification' | t: 'staff.schemeVerification.onsite.title' }}</h4>
+      <dl class="so-facts">
+        <div><dt>{{ 'Onsite agency' | t: 'staff.schemeVerification.onsite.agency' }}</dt>
+          <dd>@if (o.agency) { {{ (o.agency.name || o.agency.userId) + ' (' + o.agency.userId + ')' }}@if (o.allotmentType === 'RoundRobin') { <span class="zed-chip so-auto">{{ 'Auto' | t: 'staff.schemeVerification.row.auto' }}</span> } } @else { {{ 'Not yet allotted' | t: 'staff.schemeVerification.row.notAllotted' }} }</dd></div>
+        <div><dt>{{ 'Allotted on' | t: 'staff.schemeVerification.onsite.allotted' }}</dt><dd>{{ day(o.allotmentDate) || '–' }}</dd></div>
+        <div><dt>{{ 'Onsite assessor' | t: 'staff.schemeVerification.onsite.assessor' }}</dt>
+          <dd>{{ o.assessor ? (o.assessor.name || o.assessor.userId) + ' (' + o.assessor.userId + ')' : ('Not yet named' | t: 'staff.schemeVerification.row.notNamed') }}</dd></div>
+        <div><dt>{{ 'Date of verification' | t: 'staff.schemeVerification.onsite.visit' }}</dt><dd data-visit>{{ o.visitStartedOn ? day(o.visitStartedOn) + ' ' + time(o.visitStartedOn) : ('Visit not started' | t: 'staff.schemeVerification.onsite.notStarted') }}</dd></div>
+        @if (o.visitSubmittedOn) { <div><dt>{{ 'Report submitted on' | t: 'staff.schemeVerification.onsite.submitted' }}</dt><dd>{{ day(o.visitSubmittedOn) }}</dd></div> }
+        @if (o.representativeName || o.representativeMobile) {
+          <div><dt>{{ 'Unit representative' | t: 'staff.schemeVerification.onsite.representative' }}</dt><dd>{{ o.representativeName }}@if (o.representativeMobile) { · {{ o.representativeMobile }} }</dd></div>
+        }
+        @if (o.latitude && o.longitude) {
+          <div><dt>{{ 'Visit location' | t: 'staff.schemeVerification.onsite.location' }}</dt><dd>{{ o.latitude }}, {{ o.longitude }}</dd></div>
+        }
+        @if (o.rejectedAgencies) { <div><dt>{{ 'Rejected by' | t: 'staff.schemeVerification.onsite.rejectedBy' }}</dt><dd>{{ o.rejectedAgencies }}</dd></div> }
+      </dl>
+      @if (o.verifiedClaim !== null) {
+        <div class="so-totals" role="list">
+          <div role="listitem"><small>{{ 'Claim verified onsite' | t: 'staff.schemeVerification.onsite.verified' }}</small><b data-onsite="verified">Rs. {{ money(o.verifiedClaim) }}</b></div>
+          <div role="listitem"><small>{{ 'Eligible on it' | t: 'staff.schemeVerification.onsite.eligible' }}</small><b data-onsite="eligible">Rs. {{ money(o.eligible) }}</b></div>
+        </div>
+      }
+      @if (o.remarks) {
+        <p class="so-remarks"><b>{{ 'Assessor’s remarks' | t: 'staff.schemeVerification.onsite.remarks' }}:</b> {{ o.remarks }}</p>
+      }
+      @if (o.photos.length) {
+        <h5>{{ 'Photos' | t: 'staff.schemeVerification.onsite.photos' }} <small>{{ '{min} to {max} per item' | t: 'staff.schemeVerification.onsite.photosRule' : { min: o.photosMin, max: o.photosMax } }}</small></h5>
+        <ul class="so-photos">
+          @for (p of o.photos; track p.photoId) {
+            <li>
+              <a [href]="p.url" target="_blank" rel="noopener"><img [src]="p.url" [alt]="photoLabel(p)" loading="lazy" /></a>
+              <span>{{ photoLabel(p) }}</span>
+              @if (p.latitude && p.longitude) { <small>{{ p.latitude }}, {{ p.longitude }}</small> }
+              @if (p.timeStamp || p.on) { <small>{{ p.timeStamp || day(p.on) }}</small> }
+            </li>
+          }
+        </ul>
+      } @else if (o.visitStartedOn) {
+        <p class="sub">{{ 'No photo yet.' | t: 'staff.schemeVerification.onsite.noPhotos' }}</p>
+      }
+      @if (o.checks.length) {
+        <h5>{{ 'Checked at the visit' | t: 'staff.schemeVerification.onsite.checks' }}</h5>
+        <table class="table so-table">
+          <tbody>
+            @for (c of o.checks; track c.path) {
+              <tr [class.so-no]="c.status === 'No'">
+                <th scope="row">{{ c.label }}</th>
+                <td>{{ c.value || '–' }}</td>
+                <td>
+                  @if (c.status) {
+                    <span [class]="'chip ' + (c.status === 'Yes' ? 'is-good' : 'is-bad')">{{ c.status === 'Yes' ? ('Valid' | t: 'staff.schemeVerification.answers.valid') : ('Not valid' | t: 'staff.schemeVerification.answers.notValid') }}</span>
+                    @if (c.remarks) { <small class="d-block">{{ c.remarks }}</small> }
+                  } @else {
+                    <span class="sub">{{ 'Not checked' | t: 'staff.schemeVerification.answers.unchecked' }}</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+  `,
+  styles: `
+    .so { padding: 16px 20px; margin-bottom: 16px; }
+    .so h4 { font-size: 16px; margin-bottom: 10px; }
+    .so h5 { font-size: 14px; color: #24666b; margin: 14px 0 8px; }
+    .so h5 small { color: #5f6f70; font-weight: 400; margin-left: 6px; }
+    .so-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 20px; margin: 0 0 12px; }
+    .so-facts dt { font-size: 12px; color: #5f6f70; font-weight: 500; }
+    .so-facts dd { margin: 0; font-size: 13.5px; color: #17373b; }
+    .so-auto { background: #e7f3f4; color: #2f6f75; margin-left: 4px; }
+    .so-totals { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+    .so-totals > div { flex: 1 1 160px; border: 1px solid #dde7e8; border-radius: 10px; padding: 10px 14px; background: #f7fbfb; }
+    .so-totals small { display: block; font-size: 12px; color: #5f6f70; }
+    .so-totals b { font-size: 17px; color: #17373b; }
+    .so-remarks { font-size: 13px; white-space: pre-wrap; margin: 8px 0; }
+    .so-photos { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .so-photos li { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+    .so-photos img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid #dde7e8; }
+    .so-photos small { color: #5f6f70; }
+    .so-table { margin: 0; font-size: 13px; }
+    .so-table th { width: 34%; font-weight: 500; color: #5f6f70; }
+    tr.so-no > th { box-shadow: inset 3px 0 0 #d64532; }
+  `,
+})
+export class SchemeOnsiteReportView {
+  readonly report = input.required<SchemeOnsiteReport>();
+  readonly status = input<string>('');
+  protected readonly money = money;
+  protected readonly day = day;
+
+  protected time(v: string | null): string {
+    if (!v) return '';
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  protected photoLabel(p: SchemeOnsitePhoto): string {
+    switch (p.kind) {
+      case 'selfie': return t('staff.schemeVerification.onsite.selfie', 'Selfie at the unit');
+      case 'site': return t('staff.schemeVerification.onsite.site', 'Site photo');
+      default: return p.title ?? t('staff.schemeVerification.onsite.item', 'Item');
+    }
   }
 }

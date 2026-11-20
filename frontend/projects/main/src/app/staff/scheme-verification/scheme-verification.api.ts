@@ -4,16 +4,22 @@ import { Observable } from 'rxjs';
 import { MessageResponse } from '@zed/shared';
 
 /** SchemeApplications statuses (backend Features/Incentives/SchemeApplications.cs), in the flow's order. */
-export const SCHEME_STATUSES = ['Submitted', 'WithAgency', 'WithAssessor', 'Verifying', 'Correction', 'Qc', 'Approved', 'Paid', 'Rejected', 'OnHold'] as const;
+export const SCHEME_STATUSES = [
+  'Submitted', 'WithAgency', 'WithAssessor', 'Verifying', 'Correction',
+  // Phase 2 (Desktop + Onsite flow): waiting for an onsite agency, with it, with its assessor, the visit started in the app.
+  'OnsiteAllot', 'OnsiteWithAgency', 'OnsiteWithAssessor', 'OnsiteVisit',
+  'Qc', 'Approved', 'Paid', 'Rejected', 'OnHold',
+] as const;
 export type SchemeStatus = (typeof SCHEME_STATUSES)[number];
 
-/** Who sees which list: the Master Admin all, the agency its own, the assessor its own. */
-export type SchemeRole = 'admin' | 'agency' | 'assessor';
+/** Who sees which list: the Master Admin all, the agency its own, the assessor its own, the onsite agency its own (phase 2). */
+export type SchemeRole = 'admin' | 'agency' | 'assessor' | 'onsite';
 
 export const SCHEME_API: Record<SchemeRole, string> = {
   admin: '/api/staff/scheme-applications',
   agency: '/api/staff/scheme-verification/agency',
   assessor: '/api/staff/scheme-verification/assessor',
+  onsite: '/api/staff/scheme-onsite/agency',
 };
 
 export interface SchemeListItem {
@@ -42,6 +48,14 @@ export interface SchemeListItem {
   reasonForRejection: string | null;
   agencyRemarks: string | null;
   assessorAcceptedOn: string | null;
+  /** Phase 2: the unit's plant district and the onsite stage (agency, assessor, the date of verification). */
+  district?: string | null;
+  onsiteAgency?: string | null;
+  onsiteAgencyName?: string | null;
+  onsiteAssessor?: string | null;
+  onsiteAssessorName?: string | null;
+  onsiteAllotmentType?: string | null;
+  visitStartedOn?: string | null;
 }
 
 export interface SchemeOption {
@@ -159,6 +173,57 @@ export interface SchemeActions {
   checked: number;
   checkable: number;
   notValid: number;
+  /** Phase 2: the Master Admin allots an onsite agency; the onsite agency accepts / rejects, names (another) assessor, does the QC. */
+  onsiteAllot?: boolean;
+  onsiteRespond?: boolean;
+  onsiteAssessor?: boolean;
+  onsiteQc?: boolean;
+}
+
+/** A photo of the onsite visit: the selfie, the site photo or an item's photo (with the item's title). */
+export interface SchemeOnsitePhoto {
+  photoId: string;
+  kind: 'selfie' | 'site' | 'item';
+  title: string | null;
+  url: string;
+  timeStamp: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  on: string | null;
+}
+
+/** An answer the onsite assessor checks at the visit, with the check once made. */
+export interface SchemeOnsiteCheck {
+  path: string;
+  label: string;
+  value: string | null;
+  status: 'Yes' | 'No' | null;
+  remarks: string | null;
+  by: string | null;
+  on: string | null;
+}
+
+/** Phase 2: the onsite stage of a Desktop + Onsite application (the Master Admin's and the onsite agency's detail). */
+export interface SchemeOnsiteReport {
+  agency: SchemePerson | null;
+  assessor: SchemePerson | null;
+  allotmentType: string | null;
+  allotmentDate: string | null;
+  rejectedAgencies: string | null;
+  /** The date of verification: when the assessor started the visit in the app. */
+  visitStartedOn: string | null;
+  visitSubmittedOn: string | null;
+  latitude: string | null;
+  longitude: string | null;
+  representativeName: string | null;
+  representativeMobile: string | null;
+  remarks: string | null;
+  verifiedClaim: number | null;
+  eligible: number | null;
+  photosMin: number;
+  photosMax: number;
+  photos: SchemeOnsitePhoto[];
+  checks: SchemeOnsiteCheck[];
 }
 
 export interface SchemeDetail {
@@ -167,6 +232,7 @@ export interface SchemeDetail {
   totals: { claimed: number; verified: number; eligible: number; sharePercent: number | null; maxAmount: number | null };
   history: { on: string | null; text: string }[];
   actions: SchemeActions;
+  onsite?: SchemeOnsiteReport | null;
 }
 
 export interface AgencyOption {
@@ -241,29 +307,38 @@ export class SchemeVerificationApi {
     return this.http.post<MessageResponse>(`${SCHEME_API.admin}/${id}/reject`, { reason });
   }
 
-  // Agency
-  assessors(id: number): Observable<UserOption[]> {
-    return this.http.get<UserOption[]>(`${SCHEME_API.agency}/${id}/assessors`);
+  /** Phase 2: the onsite agencies of the unit's state and district. */
+  onsiteAgencies(id: number): Observable<AgencyOption[]> {
+    return this.http.get<AgencyOption[]>(`${SCHEME_API.admin}/${id}/onsite-agencies`);
   }
 
-  rejectionReasons(): Observable<RejectionReasonOption[]> {
-    return this.http.get<RejectionReasonOption[]>(`${SCHEME_API.agency}/rejection-reasons`);
+  onsiteAllot(id: number, agencyUserId: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${SCHEME_API.admin}/${id}/onsite-allot`, { agencyUserId });
   }
 
-  accept(id: number, assessorUserId: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${SCHEME_API.agency}/${id}/accept`, { assessorUserId });
+  // Agency (desktop), or with role 'onsite' the onsite verification agency (phase 2: the same calls under its own API)
+  assessors(id: number, role: 'agency' | 'onsite' = 'agency'): Observable<UserOption[]> {
+    return this.http.get<UserOption[]>(`${SCHEME_API[role]}/${id}/assessors`);
   }
 
-  agencyReject(id: number, reasonId: string, remarks: string | null): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${SCHEME_API.agency}/${id}/reject`, { reasonId, remarks });
+  rejectionReasons(role: 'agency' | 'onsite' = 'agency'): Observable<RejectionReasonOption[]> {
+    return this.http.get<RejectionReasonOption[]>(`${SCHEME_API[role]}/rejection-reasons`);
   }
 
-  approve(id: number, amount: number): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${SCHEME_API.agency}/${id}/approve`, { amount });
+  accept(id: number, assessorUserId: string, role: 'agency' | 'onsite' = 'agency'): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${SCHEME_API[role]}/${id}/accept`, { assessorUserId });
   }
 
-  back(id: number, remarks: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${SCHEME_API.agency}/${id}/back`, { remarks });
+  agencyReject(id: number, reasonId: string, remarks: string | null, role: 'agency' | 'onsite' = 'agency'): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${SCHEME_API[role]}/${id}/reject`, { reasonId, remarks });
+  }
+
+  approve(id: number, amount: number, role: 'agency' | 'onsite' = 'agency'): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${SCHEME_API[role]}/${id}/approve`, { amount });
+  }
+
+  back(id: number, remarks: string, role: 'agency' | 'onsite' = 'agency'): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${SCHEME_API[role]}/${id}/back`, { remarks });
   }
 
   // Assessor

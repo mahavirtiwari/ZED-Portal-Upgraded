@@ -16,7 +16,7 @@ export type FieldType = (typeof FIELD_TYPES)[number];
 /** The dashboard's card icons a scheme can use. */
 export const CARD_ICONS = ['star', 'rupee', 'zap', 'award', 'users', 'building', 'bank', 'trend', 'pin'] as const;
 
-export const SCHEME_LIMITS = { sections: 10, fields: 40, items: 50, options: 50, text: 4000, amount: 100_000_000, rounds: 5, days: 180 } as const;
+export const SCHEME_LIMITS = { sections: 10, fields: 40, items: 50, options: 50, text: 4000, amount: 100_000_000, rounds: 5, days: 180, photos: 5 } as const;
 
 export interface SchemeCard { title: string; highlight?: string | null; details?: string | null; icon: string }
 export interface SchemeActivation { mode: ActivationMode; levels: string[] }
@@ -41,6 +41,20 @@ export interface FormField {
   copyOf?: string | null;
   isClaim: boolean;
   maxFiles?: number | null;
+  /** Phase 2: who checks the answer (when assessorChecks) in the Desktop + Onsite flow; desktop when not set. */
+  checkStage?: CheckStage | null;
+}
+
+/** Phase 2 (FormField.CheckStage): checked at the desktop, at the onsite visit, or both. */
+export type CheckStage = 'desktop' | 'onsite' | 'both';
+export const CHECK_STAGES: readonly CheckStage[] = ['desktop', 'onsite', 'both'];
+
+export function checkStageLabel(stage: CheckStage | null | undefined): string {
+  switch (stage) {
+    case 'onsite': return t('staff.incentivesAdmin.field.stage.onsite', 'Onsite (at the visit)');
+    case 'both': return t('staff.incentivesAdmin.field.stage.both', 'Desktop and onsite');
+    default: return t('staff.incentivesAdmin.field.stage.desktop', 'Desktop');
+  }
 }
 
 export interface FormSection {
@@ -56,7 +70,15 @@ export interface FormSection {
 
 export interface DocumentRule { kind: 'AtLeast'; count: number; fields: string[]; message?: string | null }
 export interface SchemeForm { blocks: SchemeBlocks; sections: FormSection[]; rules: DocumentRule[] }
-export interface SchemeVerification { flow: VerificationFlow; correctionRounds: number; correctionDays: number; autoAllot: boolean }
+export interface SchemeVerification {
+  flow: VerificationFlow;
+  correctionRounds: number;
+  correctionDays: number;
+  autoAllot: boolean;
+  /** Phase 2: the onsite assessor's photos of each item (0–5 at least, 1–5 at most). */
+  onsitePhotosMin?: number;
+  onsitePhotosMax?: number;
+}
 
 export interface SchemeDefinition {
   code: string;

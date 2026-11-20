@@ -77,7 +77,7 @@ public sealed class SchemeVerificationTests : IDisposable
             ["CreatedDate"] = new DateTime(2026, 11, 17), ["AllotmentType"] = null, ["AllotmentDate"] = null, ["RejectedAgencies"] = null,
         };
         var q = _host.Sql.Queries;
-        q[SchemeApplications.ByIdSql] = args => FakeSql.Arg(args, "Id") == "900" ? [new Dictionary<string, object?>(_app)] : [];
+        q[SchemeApplications.ByIdWithOnsiteSql] = args => FakeSql.Arg(args, "Id") == "900" ? [new Dictionary<string, object?>(_app)] : [];
         q[SchemeStore.AllSql] = _ => [new { Id = 1L, SchemeCode = Code, SchemeJson = SchemeRules.Serialize(Definition), Active = true, OrderNo = (int?)1 }];
         _host.Sql.Procs[SchemeCases.SaveSql] = args =>
         {
@@ -472,9 +472,11 @@ public sealed class SchemeVerificationTests : IDisposable
         var admin = await SignIn("MADMIN");
         var t = await admin.GetFromJsonAsync<JsonElement>("/api/staff/users/agencies/AGENCY1/schemes");
         Assert.True(t.GetProperty("schemes")[0].GetProperty("desktop").GetBoolean());
-        (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCY2/schemes", new { ticks = new[] { new { code = Code, desktop = true, onsite = true } } })).EnsureSuccessStatusCode();
+        // Phase 2: an assessment agency verifies at the desktop only (onsite is for the onsite verification agencies).
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCY2/schemes", new { ticks = new[] { new { code = Code, desktop = true, onsite = true } } })).StatusCode);
+        (await admin.PutAsJsonAsync("/api/staff/users/agencies/AGENCY2/schemes", new { ticks = new[] { new { code = Code, desktop = true, onsite = false } } })).EnsureSuccessStatusCode();
         var save = _host.Sql.Calls.Last(c => c.Name == SchemeTicksController.SaveSql);
-        Assert.Equal(($"{Code}:D,{Code}:O", "2"), (FakeSql.Arg(save.Args, "Value"), FakeSql.Arg(save.Args, "RoleId")));
+        Assert.Equal(($"{Code}:D", "2"), (FakeSql.Arg(save.Args, "Value"), FakeSql.Arg(save.Args, "RoleId")));
 
         var agency = await SignIn("AGENCY1");
         // AGENCY1 is ticked Desktop only: its assessor cannot be ticked Onsite.

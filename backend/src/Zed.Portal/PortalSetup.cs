@@ -80,6 +80,8 @@ public static class PortalSetup
         services.AddScoped<Features.Incentives.Staff.SchemeAllotment>();
         services.AddScoped<Features.Incentives.Staff.SchemeSweep>();
         services.AddScoped<Features.Incentives.Staff.SchemeNotifier>();
+        // 2026-11-20 (incentive schemes, phase 2): the onsite round robin by state and district.
+        services.AddScoped<Features.Incentives.Onsite.OnsiteAllotment>();
         // Corrections past their due date and applications whose certificate was suspended / withdrawn (main only).
         if (system == PortalSystem.Main) services.AddHostedService<Features.Incentives.Staff.SchemeSweepService>();
         // States of the LG Directory masters for every drop-down and check (2026-11-08).

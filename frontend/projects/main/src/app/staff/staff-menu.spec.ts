@@ -1,4 +1,4 @@
-import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
@@ -122,7 +122,7 @@ describe('staff menu', () => {
       menuEntries(menuFor(roleId, [], system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
 
     it('groups the long menus into a few drop-downs (V4)', () => {
-      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (3)', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (4)', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
         'All settings', 'Master (7)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (6)', 'User Management', 'Administration (17)', 'Expenditure',
       ]);
@@ -161,6 +161,33 @@ describe('staff menu', () => {
       expect(menuEntries(menuFor(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'], 'main')).every((e) => 'item' in e)).toBe(true);
     });
   });
+  describe('onsite verification agencies (2026-11-20, incentive schemes phase 2)', () => {
+    it('gives an onsite agency only its assessors, sub-users and the scheme onsite allotment and QC', () => {
+      expect(labels(StaffRole.Agency, [ONSITE_SUB_ROLE])).toEqual(['Assessors', 'Scheme Onsite Allotment', 'Scheme Onsite QC', 'Sub-Users']);
+      expect(menuFor(StaffRole.Agency, [ONSITE_SUB_ROLE]).map((i) => i.route)).toEqual([
+        '/staff/users/my-assessors', '/staff/scheme-onsite/allotment', '/staff/scheme-onsite/qc', '/staff/sub-users',
+      ]);
+    });
+
+    it('keeps the onsite screens away from the assessment agencies, and the assessment screens away from onsite agencies', () => {
+      const normal = labels(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification']);
+      expect(normal).not.toContain('Scheme Onsite Allotment');
+      expect(normal).not.toContain('Scheme Onsite QC');
+      expect(normal).toContain('Scheme Allotment');
+      const onsite = labels(StaffRole.Agency, [ONSITE_SUB_ROLE]);
+      for (const l of ['DA Allotment', 'SA Allotment', 'Monitoring', 'Scheme Allotment', 'Scheme QC', 'Reports', 'Expenditure', 'Financial Assistance']) expect(onsite).not.toContain(l);
+      // Its assessors verify in the assessor app: no assessment screen on the web.
+      expect(labels(StaffRole.DesktopAssessor, [ONSITE_SUB_ROLE])).toEqual([]);
+    });
+
+    it('gives the master admin the Onsite Verification Agencies page under Schemes', () => {
+      expect(menuFor(StaffRole.MasterAdmin, []).filter((i) => i.group === 'Schemes').map((i) => i.label)).toContain('Onsite Verification Agencies');
+      // A sub-user of an onsite agency given the onsite screens.
+      expect(menuFor(StaffRole.Agency, [ONSITE_SUB_ROLE], 'main', ['/staff/scheme-onsite/allotment', '/staff/scheme-onsite/qc']).map((i) => i.label))
+        .toEqual(['Scheme Onsite Allotment', 'Scheme Onsite QC']);
+    });
+  });
+
   describe('sub-users', () => {
     it('get only the screens their owner gave them, without user management', () => {
       const labels = (role: number, subs: string[], routes: string[], system: 'main' | 'consultancy' | 'surveillance' = 'main') =>

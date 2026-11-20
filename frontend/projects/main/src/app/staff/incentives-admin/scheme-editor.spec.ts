@@ -144,14 +144,17 @@ describe('SchemeEditorPage', () => {
 
   it('sets the verification and shows the server message on save', async () => {
     await tab('verification');
-    expect(el.textContent).toContain('phase 2: coming with the mobile app');
     type('#se-rounds', '4');
+    expect(el.querySelector('#se-photos-max')).toBeNull();
     (el.querySelector('input[value="DesktopOnsite"]') as HTMLInputElement).click();
+    await settle();
+    // Phase 2: the onsite photos per item (min / max) of the Desktop + Onsite flow.
+    type('#se-photos-max', '4');
     await settle();
     (el.querySelector('#se-save') as HTMLButtonElement).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT');
-    expect(put.request.body.verification).toEqual({ flow: 'DesktopOnsite', correctionRounds: 4, correctionDays: 30, autoAllot: true });
+    expect(put.request.body.verification).toEqual({ flow: 'DesktopOnsite', correctionRounds: 4, correctionDays: 30, autoAllot: true, onsitePhotosMin: 1, onsitePhotosMax: 4 });
     put.flush({ message: 'Scheme saved.' });
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Scheme saved.');

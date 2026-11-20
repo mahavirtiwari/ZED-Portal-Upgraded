@@ -162,6 +162,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   { path: 'incentives/dashboard-cards', title: 'ZED | Main Dashboard Cards', loadComponent: () => import('./staff/schemes/dashboard-cards').then((m) => m.DashboardCardsPage) },
   // 2026-11-20: the incentive schemes' verification (Master Admin, agency, assessor).
   { path: 'schemes-verify', loadChildren: () => import('./staff/scheme-verification/scheme-verification.routes').then((m) => m.SCHEME_VERIFICATION_ROUTES) },
+  // 2026-11-20 (phase 2): onsite verification — the Master Admin's onsite agencies, the onsite agency's onsite allotment and QC.
+  { path: 'scheme-onsite', loadChildren: () => import('./staff/scheme-onsite/scheme-onsite.routes').then((m) => m.SCHEME_ONSITE_ROUTES) },
   // 2026-11-20: Admin → Incentive Schemes (before 'incentives/:group', which would catch it).
   { path: 'incentives/schemes', loadChildren: () => import('./staff/incentives-admin/incentives-admin.routes').then((m) => m.INCENTIVES_ADMIN_ROUTES) },
   { path: 'incentives/:group', title: 'ZED | Incentives', canActivate: [staffScreenGuard([R.Admin])], loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },

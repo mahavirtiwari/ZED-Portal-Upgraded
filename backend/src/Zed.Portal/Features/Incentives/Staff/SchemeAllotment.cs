@@ -22,7 +22,9 @@ public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IService
     public const string Manual = "Manual";
 
     internal const string CandidatesSql =
-        "SELECT Id, UserId, UserName, SchemeVerification, CreatedBy FROM dbo.Users WHERE RoleId = @RoleId AND IsActive = 1 AND SchemeVerification IS NOT NULL;";
+        "SELECT Id, UserId, UserName, SchemeVerification, CreatedBy FROM dbo.Users WHERE RoleId = @RoleId AND IsActive = 1 AND SchemeVerification IS NOT NULL " +
+        // Phase 2: an onsite verification agency (migration 0106) never takes the desktop verification.
+        "AND ISNULL(AgencyKind, '') <> 'SchemeOnsite';";
 
     internal const string UnitPlaceSql = "SELECT TOP 1 PStateName, TwoDigitActivity FROM dbo.Msme WHERE ZedId = @ZedId;";
 
