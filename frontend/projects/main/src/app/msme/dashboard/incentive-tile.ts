@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { t } from '../../content/page-text';
 import { DashIcon } from './dash-icon';
 
-export type IncentiveState = 'availed' | 'open' | 'progress' | 'locked';
+export type IncentiveState = 'availed' | 'open' | 'progress' | 'onhold' | 'locked';
 
 /** What one card of "My Incentives" shows; the dashboard works it out from the unit's eligibility and statuses. */
 export interface IncentiveTileVm {
@@ -27,6 +27,7 @@ function chipOf(state: IncentiveState): string {
     case 'availed': return t('msme.dashboard.incentive.chip.availed', 'Availed');
     case 'open': return t('msme.dashboard.incentive.chip.open', 'Open');
     case 'progress': return t('msme.dashboard.incentive.chip.inProgress', 'In progress');
+    case 'onhold': return t('msme.dashboard.incentive.chip.onHold', 'On hold');
     default: return t('msme.dashboard.incentive.chip.locked', 'Locked');
   }
 }
@@ -75,6 +76,7 @@ function chipOf(state: IncentiveState): string {
     .inc-chip.is-open { color: var(--zt-dark, #24666b); background: #e6f2f3; }
     .inc-chip.is-progress { color: #9a5f06; background: #fdf2dc; }
     .inc-chip.is-locked { color: #6f8487; background: #ecf0f0; }
+    .inc-chip.is-onhold { color: #8a4b08; background: #fbe9d7; }
     h4 { margin: 0 0 3px; font-size: 15.5px; font-weight: 700; color: #17373b; }
     .inc-hl { margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: var(--zt-dark, #24666b); }
     .inc-txt { margin: 0 0 12px; font-size: 12px; font-weight: 500; line-height: 16px; color: #6f8487; white-space: pre-line; }

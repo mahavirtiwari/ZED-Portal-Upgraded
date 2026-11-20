@@ -1,0 +1,28 @@
+@* 2026-11-20 (incentive schemes): to the MSME when the assessor asks for a correction (round n of the scheme's rounds). *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your application for <b>@SchemeName</b> needs corrections (round @Round of @Rounds). Please log in, correct the points below and submit the application again by <b>@DueOn</b>; otherwise it will be rejected automatically.</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0; white-space: pre-line;">@Remarks</p>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string SchemeName { get; set; } = "";
+    [Parameter] public string Round { get; set; } = "";
+    [Parameter] public string Rounds { get; set; } = "";
+    [Parameter] public string DueOn { get; set; } = "";
+    [Parameter] public string Remarks { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private string LoginUrl => PublicBaseUrl.TrimEnd('/') + "/login";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Correct by", DueOn)];
+}

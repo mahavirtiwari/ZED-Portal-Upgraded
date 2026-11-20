@@ -167,6 +167,13 @@ public sealed partial class NeftController(
                 SchemeRows.Int(row, "TransactionStatus") is TransactionApproved or TransactionRejected)
                 return this.Problem400("This transaction has already been processed.");
 
+            // 2026-11-20: an incentive scheme's application is paid at most the amount its agency approved (ApprovedAmount).
+            if (row.Text("SchemeCode").Length > 0)
+            {
+                var approved = SchemeRows.Decimal(row, "ApprovedAmount");
+                if (approved is >= 0 && amount > approved)
+                    return this.Problem400($"The amount cannot be more than the amount approved by the agency (Rs. {approved.Value.ToString("0.##", CultureInfo.InvariantCulture)}).");
+            }
             var paid = SchemeRows.Decimal(row, "AmountPaid");
             if (paid is > 0 && amount > paid)
                 return this.Problem400($"The amount cannot be more than the amount paid by the unit (Rs. {paid.Value.ToString("0.##", CultureInfo.InvariantCulture)}).");
@@ -197,14 +204,30 @@ public sealed partial class NeftController(
 
             var mailer = new SchemeMailer(db, email, templates, portal, emailOptions, log);
             var details = await mailer.DetailsAsync(zedId, certification, ct);
+            var scheme = host.System == PortalSystem.Consultancy ? "Technology Upgradation" : "Financial Assistance";
+            var category = details?.Text("CategoryOfCertificate") ?? "";
+            var schemeCode = row.Text("SchemeCode").Trim();
+            if (schemeCode.Length > 0)
+            {
+                // 2026-11-20 (incentive schemes): a scheme application names its scheme and the level it claims for.
+                var definition = await HttpContext.RequestServices.GetRequiredService<Features.Incentives.SchemeStore>().FindAsync(schemeCode, ct);
+                scheme = definition?.Name is { Length: > 0 } n ? n : schemeCode;
+                var level = row.Text("SchemeLevel").Trim();
+                category = level.Length == 0 ? "" : LevelRegistry.Find(level)?.Name ?? level;
+                certification = category;
+                if (string.IsNullOrWhiteSpace(details?.Text("EmailId")) && await Features.Incentives.Staff.SchemeCases.UnitAsync(db, zedId, ct) is { } unit)
+                    details = new Dictionary<string, object?> { ["EmailId"] = unit.EmailId, ["EnterpriseName"] = unit.Name };
+            }
             await mailer.SendAsync<StaffNeftReimbursementEmail>(details?.Text("EmailId"),
-                $"Reimbursement towards the Certification Cost for {(host.System == PortalSystem.Consultancy ? "Technology Upgradation" : "Financial Assistance")} on {details?.Text("CategoryOfCertificate")} - {zedId}",
+                schemeCode.Length > 0
+                    ? $"Reimbursement towards {scheme}{(category.Length > 0 ? " on " + category : "")} - {zedId}"
+                    : $"Reimbursement towards the Certification Cost for {scheme} on {category} - {zedId}",
                 new()
                 {
-                    [nameof(StaffNeftReimbursementEmail.Scheme)] = host.System == PortalSystem.Consultancy ? "Technology Upgradation" : "Financial Assistance",
+                    [nameof(StaffNeftReimbursementEmail.Scheme)] = scheme,
                     [nameof(StaffNeftReimbursementEmail.ZedId)] = zedId,
                     [nameof(StaffNeftReimbursementEmail.UnitName)] = details?.Text("EnterpriseName") ?? "",
-                    [nameof(StaffNeftReimbursementEmail.CategoryOfCertificate)] = details?.Text("CategoryOfCertificate") ?? "",
+                    [nameof(StaffNeftReimbursementEmail.CategoryOfCertificate)] = category,
                     [nameof(StaffNeftReimbursementEmail.Certification)] = certification,
                     [nameof(StaffNeftReimbursementEmail.Amount)] = amount.ToString("0.00", CultureInfo.InvariantCulture),
                     [nameof(StaffNeftReimbursementEmail.PaymentDate)] = paidOn.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture),

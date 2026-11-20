@@ -1,0 +1,125 @@
+using Zed.Portal.Features.Incentives;
+using static Zed.Portal.Features.Incentives.SchemeEligibility;
+
+namespace Zed.Main.Api.Tests;
+
+/// <summary>2026-11-20 (approved design): the incentive schemes' core rules (definitions, claim window, grading, amounts).</summary>
+public sealed class SchemeCoreTests
+{
+    private static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
+
+    [Fact]
+    public void The_two_templates_are_valid_definitions()
+    {
+        Assert.Null(SchemeRules.Problem(SchemeTemplates.FinancialAssistance(), Levels));
+        Assert.Null(SchemeRules.Problem(SchemeTemplates.TechnologyUpgradation(), Levels));
+        // Round trip through the stored JSON.
+        var tu = SchemeRules.Parse(SchemeRules.Serialize(SchemeTemplates.TechnologyUpgradation()))!;
+        Assert.Equal(SchemeTemplates.DirectTuCode, tu.Code);
+        Assert.True(tu.Form.Sections[0].Repeating);
+        Assert.Equal(SchemeRules.PickTechnologies, tu.Form.Sections[0].Pick!.Kind);
+    }
+
+    [Fact]
+    public void Bad_definitions_are_refused_with_the_reason()
+    {
+        var tu = SchemeTemplates.TechnologyUpgradation();
+        Assert.Contains("code", SchemeRules.Problem(tu with { Code = "tu direct" }, Levels));
+        Assert.Contains("level", SchemeRules.Problem(tu with { Activation = new() { Mode = SchemeRules.Levels, Levels = [] } }, Levels));
+        Assert.Contains("Unknown level", SchemeRules.Problem(tu with { Activation = new() { Mode = SchemeRules.Levels, Levels = ["Platinum"] } }, Levels));
+        Assert.Contains("0–100", SchemeRules.Problem(tu with { Grading = new() { Mode = SchemeRules.BySize, Rows = [new("Micro", 120, 1000)] } }, Levels));
+        var noClaim = tu with { Form = tu.Form with { Sections = [tu.Form.Sections[0] with { Fields = tu.Form.Sections[0].Fields.Select(f => f with { IsClaim = false }).ToList() }] } };
+        Assert.Equal("Mark one amount field as the claim.", SchemeRules.Problem(noClaim, Levels));
+        var badDate = tu with { Form = tu.Form with { Sections = [tu.Form.Sections[0] with { Fields = [.. tu.Form.Sections[0].Fields, new FormField { Key = "x", Label = "X", Type = "date", DateMin = "yesterday" }] }] } };
+        Assert.Contains("earliest date", SchemeRules.Problem(badDate, Levels));
+    }
+
+    private static UnitFacts Unit(params Certificate[] certs) =>
+        new("ZEDM000005", "Micro", "24", true, new DateTime(2026, 1, 1), certs, [], null);
+
+    private static Certificate Cert(string level, string no, int rank, DateTime? on = null) => new(level, no, on ?? new DateTime(2026, 11, 14), null, rank);
+
+    [Fact]
+    public void The_window_is_the_highest_active_level_the_scheme_covers()
+    {
+        var activation = new SchemeActivation { Mode = SchemeRules.Levels, Levels = ["Bronze", "Silver"] };
+        var grading = new SchemeGrading { Mode = SchemeRules.ByLevel, Rows = [new("Bronze", 75, 50000), new("Silver", 60, 50000)] };
+
+        var w = Window(activation, grading, Unit(Cert("Bronze", "B-1", 1)), out var locked);
+        Assert.Equal(("Bronze", "B-1", 75m), (w!.Level, w.CertRef, w.Grade!.SharePercent));
+        Assert.Null(locked);
+
+        // An upgrade closes the lower level's window and opens the higher one.
+        w = Window(activation, grading, Unit(Cert("Bronze", "B-1", 1), Cert("Silver", "S-1", 2)), out _);
+        Assert.Equal(("Silver", "S-1"), (w!.Level, w.CertRef));
+
+        // A level the scheme does not cover (here Gold) closes it.
+        Assert.Null(Window(activation, grading, Unit(Cert("Bronze", "B-1", 1), Cert("Gold", "G-1", 3)), out locked));
+        Assert.Equal("levelNotCovered", locked);
+
+        Assert.Null(Window(activation, grading, Unit(), out locked));
+        Assert.Equal("notCertified", locked);
+        Assert.Null(Window(activation, grading, Unit(Cert("Bronze", "B-1", 1)) with { Benefits = false }, out locked));
+        Assert.Equal("notEligible", locked);
+    }
+
+    [Fact]
+    public void Registration_and_handholding_windows_and_size_grading()
+    {
+        var bySize = new SchemeGrading { Mode = SchemeRules.BySize, Rows = [new("Micro", 80, 300000), new("Small", 60, 300000)] };
+        var w = Window(new SchemeActivation { Mode = SchemeRules.Registration }, bySize, Unit(), out _);
+        Assert.Equal((SchemeRules.Registration, "ZEDM000005", 80m), (w!.Level, w.CertRef, w.Grade!.SharePercent));
+
+        Assert.Null(Window(new SchemeActivation { Mode = SchemeRules.Handholding }, bySize, Unit(), out var locked));
+        Assert.Equal("handholding", locked);
+        var withHh = Unit() with { Handholding = new HandholdingRow("77", new DateTime(2026, 10, 1)) };
+        w = Window(new SchemeActivation { Mode = SchemeRules.Handholding }, bySize, withHh, out _);
+        Assert.Equal((SchemeRules.Handholding, "77"), (w!.Level, w.CertRef));
+    }
+
+    [Theory]
+    [InlineData(300000.75, 80, 300000, 240000)]   // whole rupees, then the share
+    [InlineData(500000, 80, 300000, 300000)]      // capped
+    [InlineData(0, 80, 300000, 0)]
+    public void The_eligible_amount_is_the_share_of_the_claim_up_to_the_cap(decimal claim, decimal share, decimal cap, decimal expected) =>
+        Assert.Equal(expected, Eligible(claim, new SchemeGrade("Micro", share, cap)));
+
+    [Fact]
+    public void The_claim_adds_the_claim_amounts_of_the_saved_items()
+    {
+        var form = SchemeTemplates.TechnologyUpgradation().Form;
+        var answers = new FormAnswers
+        {
+            Sections = new()
+            {
+                ["technologies"] =
+                [
+                    new FormItem { Pick = "T1", Saved = true, Values = new() { ["amount_paid"] = "240000" } },
+                    new FormItem { Pick = "T2", Saved = true, Values = new() { ["amount_paid"] = "60000.50" } },
+                    new FormItem { Pick = "T3", Saved = false, Values = new() { ["amount_paid"] = "99999" } },
+                ],
+            },
+        };
+        Assert.Equal(300000.50m, answers.Claim(form));
+        // Through the stored JSON.
+        Assert.Equal(300000.50m, FormAnswers.Parse(answers.Serialize()).Claim(form));
+    }
+
+    [Fact]
+    public void Card_settings_become_an_activation()
+    {
+        Assert.Equal(SchemeRules.Registration, FromCardSetting(["Registration"], ["Bronze"]).Mode);
+        var a = FromCardSetting([], ["Bronze", "Silver", "Gold"]);
+        Assert.Equal(["Bronze", "Silver", "Gold"], a.Levels);
+    }
+
+    [Fact]
+    public void The_status_maps_to_the_legacy_verification_status()
+    {
+        Assert.Equal(1, SchemeApplications.VerificationStatus(SchemeApplications.Submitted));
+        Assert.Equal(3, SchemeApplications.VerificationStatus(SchemeApplications.Qc));
+        Assert.Equal(4, SchemeApplications.VerificationStatus(SchemeApplications.Approved));
+        Assert.Equal(5, SchemeApplications.VerificationStatus(SchemeApplications.Rejected));
+        Assert.Equal(SchemeApplications.Paid, SchemeApplications.StatusOf(new SchemeApplications.Row { SchemeStatus = SchemeApplications.Approved, VerificationStatus = 6 }));
+    }
+}

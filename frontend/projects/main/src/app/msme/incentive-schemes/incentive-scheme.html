@@ -1,0 +1,371 @@
+<!-- 2026-11-20 (incentive schemes, approved design): one scheme's page, in the look of the Financial Assistance page. -->
+<div class="container fa-page is-page" id="zed_user_form">
+  @if (page(); as p) {
+    @let s = p.scheme;
+    <zed-page-head [crumbs]="crumbs" [title]="title()" [subtitle]="s.card.highlight ?? ''">
+      <a class="btn btn-ph" routerLink="/msme/dashboard"><span aria-hidden="true">&larr;</span> {{ 'Back' | t: 'msme.incentiveScheme.backButton' }}</a>
+      <button type="button" class="btn btn-ph refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.incentiveScheme.refreshButton' }}</button>
+    </zed-page-head>
+
+    @switch (mode()) {
+      @case ('closed') {
+        <div class="fa-message" role="status" id="isMessage">{{ lockedText() }}</div>
+        @if (app(); as a) {
+          <section class="fa-card">
+            <header class="fa-card-head"><h3>{{ 'Your application' | t: 'msme.incentiveScheme.application.title' }}</h3><span class="fa-chip">{{ statusLabel(a.status) }}</span></header>
+            <div class="fa-card-body"><zed-scheme-answers [code]="code" [sections]="s.sections" [answers]="a.answers" /></div>
+          </section>
+        }
+        <ng-container [ngTemplateOutlet]="historyTpl" />
+        <div class="fa-actions"><a routerLink="/msme/dashboard" class="fa-btn fa-btn-soft"><span aria-hidden="true">&larr;</span> {{ 'Back to dashboard' | t: 'msme.incentiveScheme.dashboardButton' }}</a></div>
+      }
+
+      @case ('form') {
+        <zed-step-tracker class="fa-track" [steps]="trackerSteps()" [current]="stepIndex()" [label]="'Application steps' | t: 'msme.incentiveScheme.trackerAria'" />
+        <div class="fa-grid">
+          <div class="fa-main">
+            @if (step(); as st) {
+              @switch (st.kind) {
+                @case ('disclaimer') {
+                  <section class="fa-card" aria-labelledby="isDisclaimerTitle">
+                    <header class="fa-card-head"><h3 id="isDisclaimerTitle">{{ 'Disclaimer' | t: 'msme.incentiveScheme.disclaimer.title' }}</h3></header>
+                    <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.disclaimer"><zed-text key="msme.schemes.disclaimer" /></zed-text></div>
+                    <div class="fa-consent">
+                      <label class="fa-check">
+                        <input type="checkbox" id="isConsent" [checked]="consent()" (change)="consent.set(!consent())" />
+                        <span>{{ 'I have read and understood the disclaimer and accept it.' | t: 'msme.incentiveScheme.disclaimer.consent' }}</span>
+                      </label>
+                      <div class="fa-actions">
+                        <a routerLink="/msme/dashboard" class="fa-btn fa-btn-soft"><span aria-hidden="true">&larr;</span> {{ 'Back to dashboard' | t: 'msme.incentiveScheme.dashboardButton' }}</a>
+                        <button type="button" class="fa-btn fa-btn-main" id="isNext" [disabled]="!consent()" (click)="next()">{{ 'Accept & proceed' | t: 'msme.incentiveScheme.acceptButton' }} <span aria-hidden="true">&rarr;</span></button>
+                      </div>
+                    </div>
+                  </section>
+                }
+                @case ('instructions') {
+                  <section class="fa-card" aria-labelledby="isInstructionsTitle">
+                    <header class="fa-card-head"><h3 id="isInstructionsTitle">{{ 'Instructions' | t: 'msme.incentiveScheme.instructions.title' }}</h3></header>
+                    <div class="fa-card-body fa-clauses"><zed-text key="msme.scheme.instructions"><zed-text key="msme.schemes.instructions" /></zed-text></div>
+                    <ng-container [ngTemplateOutlet]="stepActions" [ngTemplateOutletContext]="{ $implicit: 'Accept & proceed' }" />
+                  </section>
+                }
+                @case ('unit') {
+                  <section class="fa-card" aria-labelledby="isUnitTitle">
+                    <header class="fa-card-head"><h3 id="isUnitTitle">{{ 'Confirm your unit' | t: 'msme.incentiveScheme.unit.title' }}</h3></header>
+                    <div class="fa-card-body">
+                      <dl class="fa-dl">
+                        <div><dt>{{ 'Enterprise' | t: 'msme.incentiveScheme.unit.enterprise' }}</dt><dd>{{ unit()['EnterpriseName'] }}</dd></div>
+                        <div><dt>{{ 'ZED ID' | t: 'msme.incentiveScheme.unit.zedId' }}</dt><dd>{{ unit()['ZedId'] }}</dd></div>
+                        <div><dt>{{ 'Udyam number' | t: 'msme.incentiveScheme.unit.udyam' }}</dt><dd>{{ unit()['UdyogAadharNo'] }}</dd></div>
+                        <div><dt>{{ 'Enterprise size' | t: 'msme.incentiveScheme.unit.size' }}</dt><dd>{{ unit()['EnterpriseType'] }}</dd></div>
+                        <div><dt>{{ 'Unit' | t: 'msme.incentiveScheme.unit.unit' }}</dt><dd>{{ unit()['PUnitName'] }}</dd></div>
+                        <div><dt>{{ 'Activity' | t: 'msme.incentiveScheme.unit.activity' }}</dt><dd>{{ unit()['Activity'] }} {{ unit()['TwoDigitActivity'] }}</dd></div>
+                        <div class="fa-wide"><dt>{{ 'Address' | t: 'msme.incentiveScheme.unit.address' }}</dt><dd>{{ unit()['PAddress'] }} {{ unit()['PDistrictName'] }} {{ unit()['PStateName'] }} {{ unit()['PPin'] }}</dd></div>
+                      </dl>
+                    </div>
+                    <div class="fa-consent">
+                      @if (s.blocks.unitConfirm) {
+                        <label class="fa-check">
+                          <input type="checkbox" id="isUnitConfirm" [checked]="unitConfirmed()" (change)="unitConfirmed.set(!unitConfirmed())" />
+                          <span>{{ 'I confirm that the unit details above are correct and the claim is for this unit.' | t: 'msme.incentiveScheme.unit.confirm' }}</span>
+                        </label>
+                      }
+                      <div class="fa-actions">
+                        <button type="button" class="fa-btn fa-btn-soft" [disabled]="stepIndex() === 0" (click)="back()"><span aria-hidden="true">&larr;</span> {{ 'Back' | t: 'msme.incentiveScheme.backButton' }}</button>
+                        <button type="button" class="fa-btn fa-btn-main" id="isNext" [disabled]="s.blocks.unitConfirm && !unitConfirmed()" (click)="next()">{{ 'Proceed' | t: 'msme.incentiveScheme.proceedButton' }} <span aria-hidden="true">&rarr;</span></button>
+                      </div>
+                    </div>
+                  </section>
+                }
+                @case ('section') {
+                  @let sec = st.section!;
+                  <section class="fa-card" [attr.aria-labelledby]="'isSec-' + sec.key">
+                    <header class="fa-card-head">
+                      <h3 [id]="'isSec-' + sec.key">{{ sec.title }}</h3>
+                      @if (sec.repeating) { <span class="fa-chip">{{ '{n} of up to {max}' | t: 'msme.incentiveScheme.items.count' : { n: items(sec).length, max: sec.maxItems } }}</span> }
+                    </header>
+                    <div class="fa-card-body">
+                      @if (sec.help) { <p class="is-help">{{ sec.help }}</p> }
+                      @if (sec.repeating) {
+                        <div class="is-items">
+                          @for (item of items(sec); track $index; let i = $index) {
+                            @if (editor()?.index !== i) {
+                              <article class="is-item">
+                                <div class="is-item-main">
+                                  <b>{{ i + 1 }}. {{ item.pickName || item.pick || ('Item' | t: 'msme.incentiveScheme.items.item') }}</b>
+                                  <small>₹ {{ inr(itemClaim(sec, item)) }} · {{ '{n} document(s)' | t: 'msme.incentiveScheme.items.docs' : { n: itemDocs(sec, item) } }}</small>
+                                </div>
+                                @if (!editor()) {
+                                  <div class="is-item-actions">
+                                    <button type="button" class="fa-view" (click)="openItem(sec, i)">{{ 'Edit' | t: 'msme.incentiveScheme.items.editButton' }}</button>
+                                    <button type="button" class="fa-view is-danger" (click)="removeItem(sec, i)">{{ 'Remove' | t: 'msme.incentiveScheme.items.removeButton' }}</button>
+                                  </div>
+                                }
+                              </article>
+                            }
+                          }
+                        </div>
+                      }
+                      @if (editor(); as e) {
+                        <div class="is-editor" [class.is-editor-item]="sec.repeating" id="isEditor">
+                          @if (sec.repeating) { <h4 class="fa-sec">{{ sec.title }} {{ e.index + 1 }}</h4> }
+                          <div class="fa-fields">
+                            @if (sec.pick; as pk) {
+                              <div class="fa-field fa-wide">
+                                <label for="isPick">{{ pk.label || ('Choose' | t: 'msme.incentiveScheme.items.pickLabel') }}<span class="req" aria-hidden="true">*</span></label>
+                                <select id="isPick" class="form-select" (change)="setPick($any($event.target).value)">
+                                  <option value="" [selected]="!e.pick">{{ '-Select-' | t: 'msme.incentiveScheme.field.select' }}</option>
+                                  @for (o of picks(sec, e.index); track o.code) { <option [value]="o.code" [selected]="e.pick === o.code">{{ o.name }}</option> }
+                                </select>
+                              </div>
+                            }
+                            @for (f of sec.fields; track f.key) {
+                              <zed-scheme-field [field]="f" [code]="code" [section]="sec.key" [item]="e.index" [value]="e.values[f.key]" [copy]="copyOf(f, e.values)"
+                                [minDate]="min(f)" [maxDate]="max(f)" (valueChange)="setValue(f.key, $event)" (failed)="fail($event)" />
+                            }
+                          </div>
+                          @if (sec.repeating) {
+                            <div class="fa-actions is-editor-actions">
+                              <button type="button" class="fa-btn fa-btn-soft" (click)="cancelItem()">{{ 'Cancel' | t: 'msme.incentiveScheme.items.cancelButton' }}</button>
+                              <button type="button" class="fa-btn fa-btn-main" id="isSaveItem" [disabled]="busy()" (click)="saveEditor()">{{ 'Save item' | t: 'msme.incentiveScheme.items.saveButton' }}</button>
+                            </div>
+                          }
+                        </div>
+                      }
+                      @if (sec.repeating && !editor() && items(sec).length < sec.maxItems) {
+                        <button type="button" class="is-add" id="isAddMore" (click)="openItem(sec, items(sec).length)">{{ '+ Add more {section}' | t: 'msme.incentiveScheme.items.addButton' : { section: sec.title } }}</button>
+                      }
+                    </div>
+                    <ng-container [ngTemplateOutlet]="stepActions" [ngTemplateOutletContext]="{ $implicit: sec.repeating ? 'Proceed' : 'Save & proceed' }" />
+                  </section>
+                }
+                @case ('bank') {
+                  <section class="fa-card" aria-labelledby="isBankTitle">
+                    <header class="fa-card-head"><h3 id="isBankTitle">{{ 'Account details of reimbursement' | t: 'msme.incentiveScheme.bank.title' }}</h3></header>
+                    <div class="fa-card-body"><ng-container [ngTemplateOutlet]="bankFields" /></div>
+                    <ng-container [ngTemplateOutlet]="stepActions" [ngTemplateOutletContext]="{ $implicit: 'Proceed' }" />
+                  </section>
+                }
+                @case ('summary') {
+                  <section class="fa-card" aria-labelledby="isSummaryTitle">
+                    <header class="fa-card-head"><h3 id="isSummaryTitle">{{ 'Review & submit' | t: 'msme.incentiveScheme.summary.title' }}</h3></header>
+                    <div class="fa-card-body">
+                      @if (app(); as a) { <zed-scheme-answers [code]="code" [sections]="s.sections" [answers]="a.answers" /> }
+                      @if (s.blocks.bankAccount) {
+                        <h4 class="fa-sec">{{ 'Account details of reimbursement' | t: 'msme.incentiveScheme.bank.title' }}</h4>
+                        <table class="table table-bordered detail-table">
+                          <tbody>
+                            <tr><td>{{ 'Account No.' | t: 'msme.incentiveScheme.bank.accountNo' }}</td><td><b>{{ account.accountNo }}</b></td></tr>
+                            <tr><td>{{ 'IFSC Code' | t: 'msme.incentiveScheme.bank.ifsc' }}</td><td><b>{{ account.ifscCode.toUpperCase() }}</b></td></tr>
+                            <tr><td>{{ 'Bank / branch' | t: 'msme.incentiveScheme.bank.bankBranch' }}</td><td><b>{{ account.bankName }}, {{ account.branchAddress }}</b></td></tr>
+                          </tbody>
+                        </table>
+                      }
+                    </div>
+                    <div class="fa-consent">
+                      @if (s.blocks.declaration) {
+                        <label class="fa-check">
+                          <input type="checkbox" id="isDeclaration" [checked]="declaration()" (change)="declaration.set(!declaration())" />
+                          <zed-text key="msme.scheme.declaration" [inline]="true"><zed-text key="msme.schemes.declaration.checkbox" [inline]="true" /></zed-text>
+                        </label>
+                      }
+                      <div class="fa-actions">
+                        <button type="button" class="fa-btn fa-btn-soft" (click)="back()"><span aria-hidden="true">&larr;</span> {{ 'Back' | t: 'msme.incentiveScheme.backButton' }}</button>
+                        <button type="button" class="fa-btn fa-btn-main" id="isSubmit" [disabled]="busy() || (s.blocks.declaration && !declaration())" (click)="submit()">{{ 'Submit application' | t: 'msme.incentiveScheme.submitButton' }}</button>
+                      </div>
+                    </div>
+                  </section>
+                }
+              }
+            }
+          </div>
+          <aside class="fa-rail"><ng-container [ngTemplateOutlet]="claimTpl" /></aside>
+        </div>
+      }
+
+      @case ('status') {
+        @if (app(); as a) {
+          <zed-step-tracker class="fa-track" [steps]="statusSteps()" [current]="statusIndex()" [label]="'Application status' | t: 'msme.incentiveScheme.statusAria'" />
+          @if (a.status === 'OnHold') {
+            <div class="fa-message is-warn" role="status" id="isHold">{{ 'The application is on hold.' | t: 'msme.incentiveScheme.onHold' }} {{ a.holdReason }}</div>
+          }
+          <div class="fa-grid">
+            <div class="fa-main">
+              <section class="fa-card" id="isStatus">
+                <header class="fa-card-head"><h3>{{ 'Application no. {id}' | t: 'msme.incentiveScheme.application.number' : { id: a.id } }}</h3><span class="fa-chip">{{ statusLabel(a.status) }}</span></header>
+                <div class="fa-card-body"><zed-scheme-answers [code]="code" [sections]="s.sections" [answers]="a.answers" /></div>
+              </section>
+              <ng-container [ngTemplateOutlet]="historyTpl" />
+            </div>
+            <aside class="fa-rail"><ng-container [ngTemplateOutlet]="claimTpl" /></aside>
+          </div>
+        }
+      }
+
+      @case ('rejected') {
+        @if (app(); as a) {
+          <div class="fa-message is-warn" role="status" id="isRejected">
+            <b>{{ 'Your application was rejected.' | t: 'msme.incentiveScheme.rejected.title' }}</b>
+            @if (a.reason) { {{ 'Reason: {reason}' | t: 'msme.incentiveScheme.rejected.reason' : { reason: a.reason } }} }
+          </div>
+          @if (p.canApply) {
+            <div class="fa-actions is-gap"><button type="button" class="fa-btn fa-btn-main" id="isApplyAgain" (click)="applyAgain()">{{ 'Apply again' | t: 'msme.incentiveScheme.applyAgainButton' }}</button></div>
+          } @else if (lockedText()) {
+            <div class="fa-message">{{ lockedText() }}</div>
+          }
+          <section class="fa-card">
+            <header class="fa-card-head"><h3>{{ 'Application no. {id}' | t: 'msme.incentiveScheme.application.number' : { id: a.id } }}</h3><span class="fa-chip">{{ statusLabel(a.status) }}</span></header>
+            <div class="fa-card-body"><zed-scheme-answers [code]="code" [sections]="s.sections" [answers]="a.answers" /></div>
+          </section>
+          <ng-container [ngTemplateOutlet]="historyTpl" />
+        }
+      }
+
+      @case ('correction') {
+        @if (app(); as a) {
+          <zed-step-tracker class="fa-track" [steps]="statusSteps()" [current]="statusIndex()" [label]="'Application status' | t: 'msme.incentiveScheme.statusAria'" />
+          <div class="fa-message is-warn" role="status" id="isCorrection">
+            {{ 'Please correct the answers marked below and submit the corrections by {date}.' | t: 'msme.incentiveScheme.correction.intro' : { date: date(a.correctionDueOn) } }}
+            @if (!a.correctionOpen) { <b>{{ 'The date for the corrections has passed.' | t: 'msme.incentiveScheme.correction.closed' }}</b> }
+          </div>
+          @for (key of flaggedItems(); track key) {
+            @let sec = sectionOf(key)!;
+            @let e = fixes()[key];
+            @if (sec && e) {
+              <section class="fa-card is-fix">
+                <header class="fa-card-head"><h3>{{ sec.title }}@if (sec.repeating) { {{ e.index + 1 }}. {{ a.answers.sections[sec.key][e.index].pickName }} }</h3></header>
+                <div class="fa-card-body">
+                  <div class="fa-fields">
+                    @for (f of sec.fields; track f.key) {
+                      @let path = sec.key + '/' + e.index + '/' + f.key;
+                      <zed-scheme-field [field]="f" [code]="code" [section]="sec.key" [item]="e.index" [value]="e.values[f.key]" [copy]="copyOf(f, e.values)"
+                        [minDate]="min(f)" [maxDate]="max(f)" [readonly]="!flagged().has(path) || !a.correctionOpen" [remark]="remark(path)"
+                        (valueChange)="setFix(key, f.key, $event)" (failed)="fail($event)" />
+                    }
+                  </div>
+                  <div class="fa-actions is-editor-actions">
+                    <button type="button" class="fa-btn fa-btn-main" [disabled]="busy() || !a.correctionOpen" (click)="saveFix(key)">{{ 'Save' | t: 'msme.incentiveScheme.correction.saveButton' }}</button>
+                  </div>
+                </div>
+              </section>
+            }
+          }
+          @if (bankFlagged() || chequeFlagged()) {
+            <section class="fa-card is-fix">
+              <header class="fa-card-head"><h3>{{ 'Account details of reimbursement' | t: 'msme.incentiveScheme.bank.title' }}</h3></header>
+              <div class="fa-card-body"><ng-container [ngTemplateOutlet]="bankFields" /></div>
+            </section>
+          }
+          <div class="fa-actions is-gap">
+            <button type="button" class="fa-btn fa-btn-main" id="isSubmitCorrections" [disabled]="busy() || !a.correctionOpen" (click)="submitCorrections()">{{ 'Submit corrections' | t: 'msme.incentiveScheme.correction.submitButton' }}</button>
+          </div>
+          <section class="fa-card">
+            <header class="fa-card-head"><h3>{{ 'Application no. {id}' | t: 'msme.incentiveScheme.application.number' : { id: a.id } }}</h3><span class="fa-chip">{{ statusLabel(a.status) }}</span></header>
+            <div class="fa-card-body"><zed-scheme-answers [code]="code" [sections]="s.sections" [answers]="a.answers" [checks]="a.checks" /></div>
+          </section>
+        }
+      }
+    }
+
+    <!-- Back / proceed under a step. -->
+    <ng-template #stepActions let-label>
+      <div class="fa-consent">
+        <div class="fa-actions">
+          <button type="button" class="fa-btn fa-btn-soft" [disabled]="stepIndex() === 0" (click)="back()"><span aria-hidden="true">&larr;</span> {{ 'Back' | t: 'msme.incentiveScheme.backButton' }}</button>
+          <button type="button" class="fa-btn fa-btn-main" id="isNext" [disabled]="busy()" (click)="next()">
+            @switch (label) {
+              @case ('Accept & proceed') { {{ 'Accept & proceed' | t: 'msme.incentiveScheme.acceptButton' }} }
+              @case ('Save & proceed') { {{ 'Save & proceed' | t: 'msme.incentiveScheme.saveProceedButton' }} }
+              @default { {{ 'Proceed' | t: 'msme.incentiveScheme.proceedButton' }} }
+            }
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- The bank block: the account twice, IFSC, branch, bank and the cancelled cheque. -->
+    <ng-template #bankFields>
+      @let editable = mode() === 'form' || bankFlagged();
+      <div class="fa-fields">
+        <div class="fa-field">
+          <label for="isAccount">{{ 'Account No.' | t: 'msme.incentiveScheme.bank.accountNo' }}<span class="req">*</span></label>
+          <input id="isAccount" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" [disabled]="!editable" [value]="account.accountNo" (input)="setAccount('accountNo', $any($event.target).value)" />
+        </div>
+        <div class="fa-field">
+          <label for="isAccount2">{{ 'Re-Enter Account No.' | t: 'msme.incentiveScheme.bank.accountAgain' }}<span class="req">*</span></label>
+          <input id="isAccount2" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" [disabled]="!editable" [value]="account.confirmAccountNo" (input)="setAccount('confirmAccountNo', $any($event.target).value)" />
+          @if (account.confirmAccountNo && account.accountNo !== account.confirmAccountNo) { <span class="help-block">{{ 'Account Numbers must match.' | t: 'msme.incentiveScheme.bank.mismatch' }}</span> }
+        </div>
+        <div class="fa-field">
+          <label for="isIfsc">{{ 'IFSC Code' | t: 'msme.incentiveScheme.bank.ifsc' }}<span class="req">*</span></label>
+          <input id="isIfsc" class="form-control text-uppercase" maxlength="11" [disabled]="!editable" [value]="account.ifscCode" (input)="setAccount('ifscCode', $any($event.target).value)" />
+        </div>
+        <div class="fa-field">
+          <label for="isBank">{{ 'Name of the Bank' | t: 'msme.incentiveScheme.bank.bank' }}<span class="req">*</span></label>
+          <input id="isBank" class="form-control" maxlength="200" [disabled]="!editable" [value]="account.bankName" (input)="setAccount('bankName', $any($event.target).value)" />
+        </div>
+        <div class="fa-field fa-wide">
+          <label for="isBranch">{{ 'Branch Address' | t: 'msme.incentiveScheme.bank.branch' }}<span class="req">*</span></label>
+          <input id="isBranch" class="form-control" maxlength="500" [disabled]="!editable" [value]="account.branchAddress" (input)="setAccount('branchAddress', $any($event.target).value)" />
+        </div>
+        <zed-scheme-field [field]="chequeField()" [code]="code" [section]="bankSection" [item]="0" [value]="chequeValue()"
+          [readonly]="mode() !== 'form' && !chequeFlagged()" [remark]="mode() === 'correction' ? remark(bankSection + '/0/cheque') : null"
+          (valueChange)="setCheque($event)" (failed)="fail($event)" />
+      </div>
+    </ng-template>
+
+    <!-- The claim and the eligible amount (live while the form is filled). -->
+    <ng-template #claimTpl>
+      <section class="fa-card is-claim" aria-labelledby="isClaimTitle" id="isClaim">
+        <header class="fa-card-head"><h3 id="isClaimTitle">{{ 'Your claim' | t: 'msme.incentiveScheme.claim.title' }}</h3></header>
+        <div class="fa-card-body">
+          <p class="is-claim-line">
+            <span>{{ 'Claimed' | t: 'msme.incentiveScheme.claim.claimed' }} <b>₹ {{ inr(mode() === 'form' ? claim() : (app()?.claimAmount ?? 0)) }}</b></span>
+            <span aria-hidden="true">&rarr;</span>
+            <span>{{ 'eligible' | t: 'msme.incentiveScheme.claim.eligible' }} <b>₹ {{ inr(mode() === 'form' ? eligible() : (app()?.eligibleAmount ?? 0)) }}</b></span>
+          </p>
+          @if (grade(); as g) {
+            <small class="is-claim-note">{{ '{share}% of the claim, up to ₹ {cap}' | t: 'msme.incentiveScheme.claim.grade' : { share: g.sharePercent, cap: inr(g.maxAmount) } }}</small>
+          }
+          @if (app()?.approvedAmount; as approved) {
+            <p class="fa-ok is-approved">{{ 'Approved: ₹ {amount}' | t: 'msme.incentiveScheme.claim.approved' : { amount: inr(approved) } }}</p>
+          }
+          @if (p.window; as w) {
+            <ul class="fa-dots is-window">
+              <li>{{ 'Claim for: {level}' | t: 'msme.incentiveScheme.claim.level' : { level: w.level } }}</li>
+              @if (w.openedOn) { <li>{{ 'Open since {date}' | t: 'msme.incentiveScheme.claim.openedOn' : { date: date(w.openedOn) } }}</li> }
+            </ul>
+          }
+        </div>
+      </section>
+    </ng-template>
+
+    <!-- Earlier applications of the scheme. -->
+    <ng-template #historyTpl>
+      @if (p.history.length) {
+        <section class="fa-card" id="isHistory">
+          <header class="fa-card-head"><h3>{{ 'Earlier applications' | t: 'msme.incentiveScheme.history.title' }}</h3></header>
+          <div class="fa-card-body table-responsive">
+            <table class="table table-bordered detail-table mb-0">
+              <thead><tr><th>{{ 'Date' | t: 'msme.incentiveScheme.history.date' }}</th><th>{{ 'Status' | t: 'msme.incentiveScheme.history.status' }}</th><th>{{ 'Amount' | t: 'msme.incentiveScheme.history.amount' }}</th><th>{{ 'Reason' | t: 'msme.incentiveScheme.history.reason' }}</th></tr></thead>
+              <tbody>
+                @for (h of p.history; track h.id) {
+                  <tr><td>{{ date(h.date) }}</td><td>{{ statusLabel(h.status) }}</td><td>@if (h.amount !== null) { ₹ {{ inr(h.amount) }} }</td><td>{{ h.reason }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    </ng-template>
+  }
+</div>
+
+@if (loading() || busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite">
+    <div class="text-center text-white"><div class="loader"></div><small>{{ 'Please wait ...' | t: 'msme.incentiveScheme.waitText' }}</small></div>
+  </div>
+}
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

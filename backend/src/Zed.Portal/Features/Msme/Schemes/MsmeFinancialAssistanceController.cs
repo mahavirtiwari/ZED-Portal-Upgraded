@@ -34,6 +34,7 @@ public sealed class MsmeFinancialAssistanceController(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
+    Incentives.SchemeStore schemes,
     ILogger<MsmeFinancialAssistanceController> log) : MsmeApiController
 {
     public const string CertificateCopy = "Copy of Certificate";
@@ -257,9 +258,13 @@ public sealed class MsmeFinancialAssistanceController(
         if (unit.FaSubmitted) return (unit, null, "Data already submitted.");
         var certification = FaApplications.Canonical(
             (await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_CURRENT_CERTIFICATE", new { ZedId }, ct)).Scalar(0));
-        return certification is null
-            ? (unit, null, "Financial assistance can be applied for after the unit is ZED certified.")
-            : (unit, certification, null);
+        if (certification is null) return (unit, null, "Financial assistance can be applied for after the unit is ZED certified.");
+        // 2026-11-20 (incentive schemes, approved): the card's "Activates after" (Bronze / Silver / Gold; none ticked = all three).
+        var levels = Incentives.Applicant.MsmeIncentiveSchemesController.FaLevels(
+            (await schemes.CardSettingsAsync(ct)).GetValueOrDefault(Incentives.Applicant.MsmeIncentiveSchemesController.FaCard));
+        if (levels.Count > 0 && !levels.Contains(certification, StringComparer.OrdinalIgnoreCase))
+            return (unit, null, $"Financial assistance opens after {string.Join(" / ", levels)} certification.");
+        return (unit, certification, null);
     }
 
     private ApplicationDto ToDto(FaApplication a) => new(

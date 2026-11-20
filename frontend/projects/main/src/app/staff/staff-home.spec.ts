@@ -32,7 +32,7 @@ describe('StaffHomePage', () => {
     expect(el.querySelector('.group-card')!.textContent).toContain('Sectors');
     // The incentives in their four groups.
     const incentives = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Incentives')!;
-    expect([...incentives.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Ministry of MSME', 'State Government', 'Financial Institution', 'Others', 'Main Dashboard Cards']);
+    expect([...incentives.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Ministry of MSME', 'State Government', 'Financial Institution', 'Others', 'Main Dashboard Cards', 'Incentive Schemes']);
   });
 
   it('shows the single screens of a role as tiles', async () => {

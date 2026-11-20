@@ -31,7 +31,8 @@ public sealed class FaAutoAllotment(
 
     internal const string LastSql =
         "SELECT TOP (1) CertificationBodyUserId FROM dbo.FinancialAssistance WHERE AllotmentType = 'RoundRobin' " +
-        "AND CertificationBodyUserId IS NOT NULL ORDER BY AllotmentDate DESC, Id DESC;";
+        // 2026-11-20: Financial Assistance's own rotation (an incentive scheme's application has CertificationType = its code).
+        "AND CertificationBodyUserId IS NOT NULL AND CertificationType IN ('Bronze', 'Silver', 'Gold') ORDER BY AllotmentDate DESC, Id DESC;";
 
     internal const string RejectedSql =
         "SELECT TOP (1) RejectedAgencies FROM dbo.FinancialAssistance WHERE ZedId = @ZedId AND CertificationType = @Certification " +

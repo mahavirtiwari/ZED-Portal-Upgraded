@@ -9,10 +9,17 @@ describe('DashboardCardsPage', () => {
   let http: HttpTestingController;
   let el: HTMLElement;
   const api = '/api/staff/schemes/incentive-master/dashboard';
+  const settingsApi = '/api/staff/settings/schemes/cards';
+  const settings = () => ({
+    financialAssistance: { activatesAfter: ['Bronze', 'Silver', 'Gold'] },
+    technologyUpgradation: { recommendationRequired: true, directSchemeCode: null, schemes: [{ code: 'TU_DIRECT', name: 'Technology Upgradation (direct)', active: false }] },
+  });
   const cards = (handholdingShown: boolean) => ({
     builtIn: [
       { id: 2, card: 'HANDHOLDING', title: 'Handholding Support', highlight: 'Rs. 2,00,000/-', details: 'for improving systems', active: handholdingShown },
       { id: 3, card: 'JOINING_REWARD', title: 'Joining Reward', highlight: 'Rs. 10,000/-', details: 'Limited purpose reward', active: true },
+      { id: 4, card: 'FINANCIAL_ASSISTANCE', title: 'Financial Assistance', highlight: null, details: 'For certification', active: true },
+      { id: 5, card: 'TECHNOLOGY_UPGRADATION', title: 'Technology Upgradation', highlight: null, details: 'Zero effect', active: true },
     ],
     incentives: [
       { id: 57, incentiveType: 'ASSAM', title: 'Export Booster', highlight: null, active: true, applicableForBronze: false, applicableForSilver: true, applicableForGold: false },
@@ -40,13 +47,14 @@ describe('DashboardCardsPage', () => {
     el = fixture.nativeElement;
     await settle();
     http.expectOne(api).flush(cards(true));
+    http.expectOne(settingsApi).flush(settings());
     await settle();
   });
 
   afterEach(() => http.verify());
 
   it('lists the built-in cards and the incentives on the main dashboard', () => {
-    expect(el.querySelector('#dc-builtin-h')!.textContent).toContain('2 of 2 shown');
+    expect(el.querySelector('#dc-builtin-h')!.textContent).toContain('4 of 4 shown');
     expect(builtIn('Handholding Support').querySelector('.status-badge')!.textContent!.trim()).toBe('Shown');
     const card = el.querySelector('.dc-inc') as HTMLElement;
     expect(card.querySelector('h6')!.textContent).toContain('Export Booster');
@@ -60,7 +68,7 @@ describe('DashboardCardsPage', () => {
 
   it('counts the cards MSMEs see and filters the incentive cards by level', () => {
     const stats = [...el.querySelectorAll('.dc-stats .stat-value')].map((v) => v.textContent!.replace(/\s+/g, ''));
-    expect(stats).toEqual(['7', '2/2', '1/1', '0']);
+    expect(stats).toEqual(['9', '4/4', '1/1', '0']);
     (el.querySelector('[data-level="bronze"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el.querySelector('.dc-inc')).toBeNull();
@@ -125,5 +133,31 @@ describe('DashboardCardsPage', () => {
     http.expectOne(api).flush(cards(false));
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
+  });
+
+  it('sets when Financial Assistance opens and the Technology Upgradation flow', async () => {
+    const fa = builtIn('Financial Assistance');
+    (fa.querySelector('[data-level="Bronze"]') as HTMLInputElement).click();
+    await settle();
+    const tu = builtIn('Technology Upgradation');
+    expect(tu.textContent).toContain('as today');
+    (tu.querySelector('#cs-recommendation') as HTMLInputElement).click();
+    await settle();
+    expect(tu.textContent).toContain('apply directly');
+    const select = tu.querySelector('#cs-direct') as HTMLSelectElement;
+    select.value = select.options[1].value;
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    button(tu, 'Save setting').click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === settingsApi);
+    expect(put.request.body).toEqual({
+      financialAssistance: { activatesAfter: ['Silver', 'Gold'] },
+      technologyUpgradation: { recommendationRequired: false, directSchemeCode: 'TU_DIRECT' },
+    });
+    put.flush({ message: 'Card settings saved. Technology Upgradation (direct) is off: switch it on so units can apply.' });
+    await settle();
+    expect(tu.textContent).toContain('switch it on');
+    expect(fa.textContent).not.toContain('switch it on');
   });
 });

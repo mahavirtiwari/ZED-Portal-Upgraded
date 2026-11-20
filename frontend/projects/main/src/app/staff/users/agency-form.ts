@@ -11,6 +11,7 @@ import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
+import { SchemeTicksPanel } from '../scheme-verification/scheme-ticks-panel';
 
 /** The server's formats (StaffUserRules): shown as you type, so they are fixed before submit. */
 const PIN = /^\d{6}$/;
@@ -49,7 +50,7 @@ function emptyAgency(): AgencyRequest {
  */
 @Component({
   selector: 'zed-staff-agency-form',
-  imports: [FormsModule, RouterLink, MultiSelect, PageHead, TextPipe],
+  imports: [FormsModule, RouterLink, MultiSelect, PageHead, TextPipe, SchemeTicksPanel],
   templateUrl: './agency-form.html',
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-02 values. */

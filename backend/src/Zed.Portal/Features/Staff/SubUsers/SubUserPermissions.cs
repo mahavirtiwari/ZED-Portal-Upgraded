@@ -67,6 +67,9 @@ public static class SubUserPermissions
         // 2026-11-18 (approved): Expenditure (cases, payable, POs, the monthly invoices' review).
         new("expenditure", "Expenditure", UserRole.MasterAdmin, [PortalSystem.Main, PortalSystem.Consultancy], None,
             ["/staff/expenditure"], ["/api/staff/expenditure"]),
+        // 2026-11-20: the incentive schemes (Features/Incentives).
+        new("scheme-applications", "Scheme Applications", UserRole.MasterAdmin, Main, None,
+            ["/staff/schemes-verify/applications"], ["/api/staff/scheme-applications"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
 
@@ -95,6 +98,8 @@ public static class SubUserPermissions
             ["/staff/expenditure/invoices"],
             ["/api/staff/expenditure/my", "/api/staff/expenditure/invoices", "/api/staff/expenditure/summary", "/api/staff/expenditure/cases",
              "/api/staff/expenditure/po", "/api/staff/expenditure/tax"]),
+        new("scheme-verification", "Scheme allotment and QC", UserRole.Agency, Main, None,
+            ["/staff/schemes-verify/allotment", "/staff/schemes-verify/qc"], ["/api/staff/scheme-verification/agency"]),
         new("technology-upgradation", "Technology Upgradation", UserRole.Agency, Consultancy, [SubRoles.FinancialVerification],
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
     ];

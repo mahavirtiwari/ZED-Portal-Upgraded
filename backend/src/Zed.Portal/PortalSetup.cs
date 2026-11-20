@@ -74,6 +74,14 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.Schemes.FaAutoAllotment>();
         // 2026-11-19: an agency's rejection of an allotment with a reason; re-allotted by round robin when the reason says so.
         services.AddScoped<Features.Staff.Assessment.AgencyRejections>();
+        // 2026-11-20: incentive schemes the Admin defines (Features/Incentives, migration 0105).
+        services.AddScoped<Features.Incentives.SchemeStore>();
+        services.AddScoped<Features.Incentives.ISchemeWorkflow, Features.Incentives.Staff.SchemeWorkflow>();
+        services.AddScoped<Features.Incentives.Staff.SchemeAllotment>();
+        services.AddScoped<Features.Incentives.Staff.SchemeSweep>();
+        services.AddScoped<Features.Incentives.Staff.SchemeNotifier>();
+        // Corrections past their due date and applications whose certificate was suspended / withdrawn (main only).
+        if (system == PortalSystem.Main) services.AddHostedService<Features.Incentives.Staff.SchemeSweepService>();
         // States of the LG Directory masters for every drop-down and check (2026-11-08).
         services.AddHostedService<Features.Staff.Masters.StateMasterRefresher>();
         if (system == PortalSystem.Main) services.AddHostedService<Features.Staff.Schemes.FaAutoAllotmentSweep>();

@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { TextPipe, t } from '../../content/page-text';
+import { CardSettingsBlockComponent, CardSettingsState } from '../incentives-admin/card-settings';
 import { BuiltInCard, BuiltInCardForm, DashboardIncentive, INCENTIVE_GROUPS, IncentivesApi, groupOfType, groupText } from './incentives.api';
 
 /** The pictures of the built-in cards on the MSME dashboard. */
@@ -45,7 +46,8 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
  */
 @Component({
   selector: 'zed-staff-dashboard-cards',
-  imports: [FormsModule, RouterLink, TextPipe],
+  imports: [FormsModule, RouterLink, TextPipe, CardSettingsBlockComponent],
+  providers: [CardSettingsState],
   template: `
     <div class="page-head">
       <div>
@@ -95,6 +97,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                 </div>
               </div>
               <small class="muted dc-action">{{ action(b.card) }}</small>
+              @if (b.card === 'FINANCIAL_ASSISTANCE' || b.card === 'TECHNOLOGY_UPGRADATION') { <zed-card-settings-block [card]="b.card" /> }
               <div class="dc-actions">
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="edit(b)">{{ 'Edit' | t: 'staff.dashboardCards.card.editButton' }}</button>
                 <button type="button" class="btn btn-sm" [class.btn-outline-danger]="b.active" [class.btn-outline-success]="!b.active"
@@ -302,6 +305,8 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
 })
 export class DashboardCardsPage {
   private readonly api = inject(IncentivesApi);
+  /** 2026-11-20: when Financial Assistance opens, and whether Technology Upgradation needs the consultant's recommendation. */
+  private readonly cardSettings = inject(CardSettingsState);
 
   protected readonly stakeholderCards = STAKEHOLDER_CARDS;
   protected readonly subLine = computed(() =>
@@ -337,6 +342,7 @@ export class DashboardCardsPage {
 
   constructor() {
     void this.load();
+    void this.cardSettings.load();
   }
 
   protected image(card: string): string {

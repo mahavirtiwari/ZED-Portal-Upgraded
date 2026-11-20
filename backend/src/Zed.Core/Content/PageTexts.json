@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 8592,
+  "count": 9056,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -6021,6 +6021,18 @@
       ]
     },
     {
+      "key": "msme.dashboard.incentive.applyButton",
+      "standard": "Apply",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
       "key": "msme.dashboard.incentive.availButton",
       "standard": "Avail",
       "kind": "button",
@@ -6083,6 +6095,18 @@
       ]
     },
     {
+      "key": "msme.dashboard.incentive.chip.onHold",
+      "standard": "On hold",
+      "kind": "label",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
       "key": "msme.dashboard.incentive.chip.open",
       "standard": "Open",
       "kind": "label",
@@ -6092,6 +6116,18 @@
       "placeholders": [],
       "files": [
         "msme/dashboard/incentive-tile.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.continueButton",
+      "standard": "Continue",
+      "kind": "button",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
       ]
     },
     {
@@ -6148,6 +6184,32 @@
       "key": "msme.dashboard.incentive.notEligible",
       "standard": "Not yet available for your unit",
       "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.opensAfter",
+      "standard": "Opens after {levels} certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/dashboard/dashboard.ts"
+      ]
+    },
+    {
+      "key": "msme.dashboard.incentive.viewButton",
+      "standard": "View",
+      "kind": "button",
       "portal": "msme",
       "page": "dashboard",
       "pageName": "Dashboard",
@@ -12185,6 +12247,1414 @@
       "placeholders": [],
       "files": [
         "msme/payment/consultancy-result.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.acceptButton",
+      "standard": "Accept & proceed",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.answers.item",
+      "standard": "Item",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-answers.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.answers.none",
+      "standard": "Nothing added.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-answers.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.answers.view",
+      "standard": "View",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-answers.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.application.number",
+      "standard": "Application no. {id}",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "id"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.application.title",
+      "standard": "Your application",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.applyAgainButton",
+      "standard": "Apply again",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.availed",
+      "standard": "You have availed this scheme for your current certification.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.backButton",
+      "standard": "Back",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.accountAgain",
+      "standard": "Re-Enter Account No.",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.accountNo",
+      "standard": "Account No.",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.bank",
+      "standard": "Name of the Bank",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.bankBranch",
+      "standard": "Bank / branch",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.branch",
+      "standard": "Branch Address",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.chequeLabel",
+      "standard": "Cancelled cheque copy",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.ifsc",
+      "standard": "IFSC Code",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.mismatch",
+      "standard": "Account Numbers must match.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.bank.title",
+      "standard": "Account details of reimbursement",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.approved",
+      "standard": "Approved: ₹ {amount}",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "amount"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.claimed",
+      "standard": "Claimed",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.eligible",
+      "standard": "eligible",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.grade",
+      "standard": "{share}% of the claim, up to ₹ {cap}",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "share",
+        "cap"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.level",
+      "standard": "Claim for: {level}",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "level"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.openedOn",
+      "standard": "Open since {date}",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.claim.title",
+      "standard": "Your claim",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.correction.closed",
+      "standard": "The date for the corrections has passed.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.correction.intro",
+      "standard": "Please correct the answers marked below and submit the corrections by {date}.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.correction.saveButton",
+      "standard": "Save",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.correction.submitButton",
+      "standard": "Submit corrections",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.crumb.home",
+      "standard": "Home",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.crumb.incentives",
+      "standard": "Incentives",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.dashboardButton",
+      "standard": "Back to dashboard",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.disclaimer.consent",
+      "standard": "I have read and understood the disclaimer and accept it.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.disclaimer.title",
+      "standard": "Disclaimer",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.accountMismatch",
+      "standard": "Account Number and Re-Enter Account Number must match.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.accountNo",
+      "standard": "Please enter a valid account number (9 to 18 digits).",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.bankRequired",
+      "standard": "Please enter the account details.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.cheque",
+      "standard": "Please upload the cancelled cheque.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.consent",
+      "standard": "Please accept the disclaimer.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.declaration",
+      "standard": "Please accept the declaration.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.ifsc",
+      "standard": "Invalid IFSC Code format. Please enter the correct 11-digit code.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.minItems",
+      "standard": "Please add at least {n}.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.pick",
+      "standard": "Please choose {label}.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "label"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.required",
+      "standard": "Please fill in \"{label}\".",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "label"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.unit",
+      "standard": "Please confirm the unit details.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.error.unsaved",
+      "standard": "Please save or cancel the item you are editing.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.documentHint",
+      "standard": "PDF / JPG / PNG ≤ 5 MB, up to {n} file(s)",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.image",
+      "standard": "Image",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.no",
+      "standard": "No",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.noFile",
+      "standard": "No file uploaded",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.notValid",
+      "standard": "Not valid",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-answers.ts",
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.pdf",
+      "standard": "PDF document",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.photoError",
+      "standard": "Please upload a photo (JPG / PNG).",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.photoHint",
+      "standard": "JPG / PNG ≤ 5 MB, up to {n} file(s)",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.removeAria",
+      "standard": "Remove {label}",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "label"
+      ],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.select",
+      "standard": "-Select-",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html",
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.uploadButton",
+      "standard": "+ Upload",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.field.yes",
+      "standard": "Yes",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/scheme-field.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.history.amount",
+      "standard": "Amount",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.history.date",
+      "standard": "Date",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.history.reason",
+      "standard": "Reason",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.history.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.history.title",
+      "standard": "Earlier applications",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.instructions.title",
+      "standard": "Instructions",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.addButton",
+      "standard": "+ Add more {section}",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "section"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.count",
+      "standard": "{n} of up to {max}",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "n",
+        "max"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.docs",
+      "standard": "{n} document(s)",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.item",
+      "standard": "Item",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.pickLabel",
+      "standard": "Choose",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.removeButton",
+      "standard": "Remove",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.items.saveButton",
+      "standard": "Save item",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.handholding",
+      "standard": "Opens once your Handholding support is completed",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.levelNotCovered",
+      "standard": "For units certified at {levels}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.notCertified",
+      "standard": "Opens after your unit is ZED certified",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.notCertifiedLevels",
+      "standard": "Opens after {levels} certification",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "levels"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.locked.notEligible",
+      "standard": "You are not eligible for benefits. Please contact ZED team.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-schemes.api.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.onHold",
+      "standard": "The application is on hold.",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.pickFallback",
+      "standard": "an entry",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.proceedButton",
+      "standard": "Proceed",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.refreshButton",
+      "standard": "Refresh",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.rejected.reason",
+      "standard": "Reason: {reason}",
+      "kind": "text",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.rejected.title",
+      "standard": "Your application was rejected.",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.saveProceedButton",
+      "standard": "Save & proceed",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.approved",
+      "standard": "Approved",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.correction",
+      "standard": "Correction",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.desktop",
+      "standard": "Desktop verification",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.draft",
+      "standard": "Draft",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.onHold",
+      "standard": "On hold",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.paid",
+      "standard": "Paid",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.qc",
+      "standard": "Agency QC",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.rejected",
+      "standard": "Rejected",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.status.submitted",
+      "standard": "Submitted",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.statusAria",
+      "standard": "Application status",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.step.bank",
+      "standard": "Bank account",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.step.disclaimer",
+      "standard": "Disclaimer",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.step.instructions",
+      "standard": "Instructions",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.step.summary",
+      "standard": "Review & submit",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.step.unit",
+      "standard": "Confirm unit",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.submitButton",
+      "standard": "Submit application",
+      "kind": "button",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.summary.title",
+      "standard": "Review & submit",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.title",
+      "standard": "Incentive scheme",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.ts"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.trackerAria",
+      "standard": "Application steps",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.activity",
+      "standard": "Activity",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.address",
+      "standard": "Address",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.confirm",
+      "standard": "I confirm that the unit details above are correct and the claim is for this unit.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.enterprise",
+      "standard": "Enterprise",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.size",
+      "standard": "Enterprise size",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.title",
+      "standard": "Confirm your unit",
+      "kind": "heading",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.udyam",
+      "standard": "Udyam number",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.unit",
+      "standard": "Unit",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.unit.zedId",
+      "standard": "ZED ID",
+      "kind": "label",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
+      ]
+    },
+    {
+      "key": "msme.incentiveScheme.waitText",
+      "standard": "Please wait ...",
+      "kind": "note",
+      "portal": "msme",
+      "page": "incentiveScheme",
+      "pageName": "Incentive scheme",
+      "placeholders": [],
+      "files": [
+        "msme/incentive-schemes/incentive-scheme.html"
       ]
     },
     {
@@ -60752,6 +62222,2262 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.activation.handholding",
+      "standard": "Handholding completed",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.activation.registration",
+      "standard": "Registration",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.faActivatesAfter",
+      "standard": "Activates after",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.faHelp",
+      "standard": "None ticked = all three levels.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.saveButton",
+      "standard": "Save setting",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuChoose",
+      "standard": "Choose the scheme…",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuDirectAria",
+      "standard": "Direct scheme",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuOff",
+      "standard": " (off)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuOffHelp",
+      "standard": "Off: units apply directly through the scheme chosen here.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuOnHelp",
+      "standard": "On: units apply after the consultant recommends technologies in Handholding (as today).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.cards.tuRecommendation",
+      "standard": "Needs the consultant's recommendation",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.backLink",
+      "standard": "Back to schemes",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.activatesAfter",
+      "standard": "Activates after",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.activationHelp",
+      "standard": "Levels: one claim per level and certificate; Registration: one claim; Handholding: one claim per completed handholding.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.active",
+      "standard": "Active",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.details",
+      "standard": "Details",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.highlight",
+      "standard": "Highlight",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.highlightPlaceholder",
+      "standard": "e.g. Support of up to Rs. 3,00,000/-",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.icon",
+      "standard": "Icon",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.name",
+      "standard": "Scheme name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.off",
+      "standard": "Off: units do not see it",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.on",
+      "standard": "On: eligible units see the card",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.orLevels",
+      "standard": "or certified at",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.order",
+      "standard": "Order on the dashboard",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.card.title",
+      "standard": "Card title",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.delete",
+      "standard": "Delete",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.addButton",
+      "standard": "Add field",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.checked",
+      "standard": "Checked",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.claim",
+      "standard": "Claim",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.empty",
+      "standard": "No field yet.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.label",
+      "standard": "Label",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.marks",
+      "standard": "Marks",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.required",
+      "standard": "Required",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.title",
+      "standard": "Fields",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.fields.type",
+      "standard": "Type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.addRepeating",
+      "standard": "Add \"Add more\" section",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.addSection",
+      "standard": "Add section",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.block.bankAccount",
+      "standard": "Bank account and cancelled cheque",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.block.declaration",
+      "standard": "Declaration",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.block.disclaimer",
+      "standard": "Disclaimer",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.block.instructions",
+      "standard": "Instructions",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.block.unitConfirm",
+      "standard": "Unit details and confirmation",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.blocksHelp",
+      "standard": "Their wording is in Admin → Texts.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.blocksTitle",
+      "standard": "Standard blocks",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.repeatingChip",
+      "standard": "Add more",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.sectionsAria",
+      "standard": "Sections",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.form.sectionsTitle",
+      "standard": "Sections",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.actionColumn",
+      "standard": "Action",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.addButton",
+      "standard": "Add row",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.levelColumn",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.levelHelp",
+      "standard": "The level of the claim picks the row; All covers the levels without a row of their own.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.maxColumn",
+      "standard": "Maximum (₹)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.modeAria",
+      "standard": "Graded",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.removeButton",
+      "standard": "Remove",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.rowAria",
+      "standard": "Row",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.shareColumn",
+      "standard": "Share %",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.sizeColumn",
+      "standard": "Enterprise size",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.sizeHelp",
+      "standard": "The unit's enterprise size picks the row.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.loadError",
+      "standard": "The scheme could not be loaded.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.moveDown",
+      "standard": "Move down",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.moveUp",
+      "standard": "Move up",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.label",
+      "standard": "Pick label",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.noRepeat",
+      "standard": "An entry can be picked once",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.none",
+      "standard": "Nothing",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.options",
+      "standard": "An option of a list",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.optionsList",
+      "standard": "Options (one per line)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.rules",
+      "standard": "Rules",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.sectorFilter",
+      "standard": "Only the technologies of the unit's sector",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.technologies",
+      "standard": "A technology (of the unit's sector)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.pick.technologyLabel",
+      "standard": "Technology",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.addButton",
+      "standard": "Add document rule",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.among",
+      "standard": "files among these documents:",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.atLeast",
+      "standard": "At least",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.countAria",
+      "standard": "Number of files",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.messagePlaceholder",
+      "standard": "Message to the applicant (optional)",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.removeButton",
+      "standard": "Remove",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.rules.title",
+      "standard": "Document rules",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.saveButton",
+      "standard": "Save",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.help",
+      "standard": "Help",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.items",
+      "standard": "Items",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.itemsTo",
+      "standard": "to",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.key",
+      "standard": "Key",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.maxItems",
+      "standard": "Most items",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.minItems",
+      "standard": "Fewest items",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.newPlain",
+      "standard": "New section",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.newRepeating",
+      "standard": "Items",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.pick",
+      "standard": "Each item picks",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.repeating",
+      "standard": "\"Add more\" items",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.repeatingOff",
+      "standard": "One set of answers",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.repeatingOn",
+      "standard": "The applicant adds items one by one",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.section.title",
+      "standard": "Title",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.sub",
+      "standard": "Change the scheme, then Save. The code cannot be changed.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.tab.card",
+      "standard": "Card and activation",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.tab.form",
+      "standard": "Form",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.tab.grading",
+      "standard": "Grading",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.tab.verification",
+      "standard": "Verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.tabsAria",
+      "standard": "Parts of the scheme",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.title",
+      "standard": "Incentive scheme",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.allotment",
+      "standard": "Allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.autoOff",
+      "standard": "By the Master Admin",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.autoOn",
+      "standard": "Automatic (round robin among the agencies ticked for the scheme)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.days",
+      "standard": "Days to answer a correction",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.flow",
+      "standard": "Flow",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.help",
+      "standard": "Correction rounds 0 to 5, days 1 to 180. When the days run out, or the last round is still not valid, the application is rejected.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.phase2",
+      "standard": "phase 2: coming with the mobile app",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.verification.rounds",
+      "standard": "Correction rounds",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.addTitle",
+      "standard": "Add field",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.assessorChecks",
+      "standard": "The assessor checks it",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.certified",
+      "standard": "Certification date",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.date",
+      "standard": "A fixed date",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.dateAria",
+      "standard": "Date",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.days",
+      "standard": "Some days back",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.daysAria",
+      "standard": "Days back",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.none",
+      "standard": "No limit",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.bound.today",
+      "standard": "Today",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.choose",
+      "standard": "Choose…",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.claim",
+      "standard": "Claim amount (adds up to the claim)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.closeAria",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.copyOf",
+      "standard": "Copies the field",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.dateMax",
+      "standard": "Latest date",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.dateMin",
+      "standard": "Earliest date",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.editTitle",
+      "standard": "Edit field",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.error.copy",
+      "standard": "Choose the field it copies.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.error.key",
+      "standard": "The key: small letters, digits and _, starting with a letter.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.error.keyTaken",
+      "standard": "Another field of the section has this key.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.error.label",
+      "standard": "Enter the label.",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.error.options",
+      "standard": "Enter 1 to 50 options.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.help",
+      "standard": "Help",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.key",
+      "standard": "Key",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.label",
+      "standard": "Label",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.max",
+      "standard": "Maximum",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.maxFiles",
+      "standard": "Files (at most)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.maxLength",
+      "standard": "Maximum length",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.min",
+      "standard": "Minimum",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.okButton",
+      "standard": "OK",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.options",
+      "standard": "Options (one per line)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.required",
+      "standard": "Required",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.field.type",
+      "standard": "Type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/field-dialog.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.flow.desktop",
+      "standard": "Desktop",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.flow.desktopOnsite",
+      "standard": "Desktop + Onsite",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.grading.allKey",
+      "standard": "All",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.grading.byLevel",
+      "standard": "By level",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.grading.bySize",
+      "standard": "By enterprise size",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html",
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.cardsLink",
+      "standard": "Main Dashboard Cards",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.active",
+      "standard": "Active",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.card",
+      "standard": "Card title",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.flow",
+      "standard": "Verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.grading",
+      "standard": "Grading",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.name",
+      "standard": "Scheme",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.column.opens",
+      "standard": "Opens after",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.editButton",
+      "standard": "Edit",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.empty",
+      "standard": "No scheme yet. The database may need migration 0105.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.gradeRow",
+      "standard": "{key}: {share}% up to {max}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "key",
+        "share",
+        "max"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.newButton",
+      "standard": "New scheme",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.note",
+      "standard": "A scheme is never deleted: switch it off. Applications already made continue.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.off",
+      "standard": "Off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.on",
+      "standard": "On",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.sub",
+      "standard": "The schemes units apply for from their dashboard: when each opens, the benefit, the form and the verification.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.switchAria",
+      "standard": "Switch {name} on or off",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.title",
+      "standard": "Incentive Schemes",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.closeAria",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.codeHelp",
+      "standard": "Capital letters, digits and _ . It cannot be changed later.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.codeLabel",
+      "standard": "Code",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.createButton",
+      "standard": "Create",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.nameLabel",
+      "standard": "Name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.requiredError",
+      "standard": "Enter the name and the code.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.templateBlank",
+      "standard": "Blank (one section)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.templateFa",
+      "standard": "Financial Assistance (certificate and expenditure)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.templateLabel",
+      "standard": "Start from",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.templateTu",
+      "standard": "Technology Upgradation (technologies, \"Add more\")",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.new.title",
+      "standard": "New scheme",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.amount",
+      "standard": "Amount (₹)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.choice",
+      "standard": "One choice",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.copy",
+      "standard": "Copy of an earlier field",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.date",
+      "standard": "Date",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.document",
+      "standard": "Document",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.longtext",
+      "standard": "Long text",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.multichoice",
+      "standard": "Several choices",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.number",
+      "standard": "Number",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.photo",
+      "standard": "Photo",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.text",
+      "standard": "Short text",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.type.yesno",
+      "standard": "Yes / No",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
       "key": "staff.layout.crumb.home",
       "standard": "Home",
       "kind": "label",
@@ -66544,6 +70270,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.incentiveSchemesLabel",
+      "standard": "Incentive Schemes",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.incentiveSubmissionsLabel",
       "standard": "Incentive Submissions",
       "kind": "label",
@@ -66894,6 +70632,54 @@
     {
       "key": "staff.menu.item.saAllotmentLabel",
       "standard": "SA Allotment",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeAllotmentLabel",
+      "standard": "Scheme Allotment",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeApplicationsLabel",
+      "standard": "Scheme Applications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeQcLabel",
+      "standard": "Scheme QC",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.item.schemeVerificationLabel",
+      "standard": "Scheme Verification",
       "kind": "label",
       "portal": "staff",
       "page": "menu",
@@ -93381,6 +97167,1896 @@
       "placeholders": [],
       "files": [
         "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.accept",
+      "standard": "Accept",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.allot",
+      "standard": "Allot",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.approve",
+      "standard": "Approve",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.back",
+      "standard": "Back to assessor",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.reallot",
+      "standard": "Re-allot",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.reject",
+      "standard": "Reject",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.resume",
+      "standard": "Resume",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.return",
+      "standard": "Return to agency",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.verify",
+      "standard": "Verify",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.action.view",
+      "standard": "View details",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.admin.sub",
+      "standard": "Applications go to agencies by round robin as they are submitted; you can allot, re-allot and decide on those on hold.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.admin.title",
+      "standard": "Scheme Applications",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.allotment.sub",
+      "standard": "Accept the applications allotted to your agency naming an assessor, or reject them with a reason.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.allotment.title",
+      "standard": "Scheme Allotment",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.checkAria",
+      "standard": "Check of {label}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "label"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.empty",
+      "standard": "No answers.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.image",
+      "standard": "View image",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.item",
+      "standard": "Item {n}",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.notValid",
+      "standard": "Not valid",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.pdf",
+      "standard": "View PDF",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.remarkAria",
+      "standard": "Remark for {label}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "label"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.remarkPlaceholder",
+      "standard": "What is not valid (the unit corrects it)",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.unchecked",
+      "standard": "Not checked",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.answers.valid",
+      "standard": "Valid",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.assessor.sub",
+      "standard": "Accept the applications your agency named you for and verify each answer and document.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.assessor.title",
+      "standard": "Scheme Verification",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.agency",
+      "standard": "Agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.assessor",
+      "standard": "Assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.claimed",
+      "standard": "Claimed (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.eligible",
+      "standard": "Eligible / approved (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.scheme",
+      "standard": "Scheme",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.submitted",
+      "standard": "Submitted on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.column.unit",
+      "standard": "Unit",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.agency",
+      "standard": "Agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.assessor",
+      "standard": "Assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.back",
+      "standard": "Back to the list",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.bank",
+      "standard": "Bank account",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.due",
+      "standard": "due {due}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "due"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.history",
+      "standard": "History",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.hold",
+      "standard": "On hold: {reason}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.level",
+      "standard": "Claim for",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.rejected",
+      "standard": "Reason for rejection: {reason}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "reason"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.rounds",
+      "standard": "Correction rounds",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.roundsValue",
+      "standard": "{used} of {total}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "used",
+        "total"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.scheme",
+      "standard": "Scheme",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.submitted",
+      "standard": "Submitted on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.detail.title",
+      "standard": "Scheme application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.acceptButton",
+      "standard": "Accept",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.acceptTitle",
+      "standard": "Accept and name an assessor",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.agencyLabel",
+      "standard": "Agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.agencyRejectMessage",
+      "standard": "The application leaves your agency. The reason you pick decides where it goes next.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.agencyRejectTitle",
+      "standard": "Reject the allotment",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.agencyRequired",
+      "standard": "Please select an agency.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.allotButton",
+      "standard": "Allot",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.allotTitle",
+      "standard": "Allot to an agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.amountInvalid",
+      "standard": "Please enter a valid amount.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.amountLabel",
+      "standard": "Approved amount (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.amountRequired",
+      "standard": "Please enter the approved amount.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.approveButton",
+      "standard": "Approve",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.approveMessage",
+      "standard": "Eligible amount on the verified claim: Rs. {amount}. The approved amount goes to the MSME DFO for payment by NEFT.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "amount"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.approveTitle",
+      "standard": "Approve the application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.assessorAcceptMessage",
+      "standard": "You verify the application’s answers and documents at the desktop.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.assessorAcceptTitle",
+      "standard": "Accept for verification",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.assessorLabel",
+      "standard": "Assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.assessorRequired",
+      "standard": "Please select an assessor.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.autoNote",
+      "standard": "With this reason the application goes to another agency automatically.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.backButton",
+      "standard": "Send back",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.backLabel",
+      "standard": "Remarks for the assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.backTitle",
+      "standard": "Back to the assessor",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.masterAdminNote",
+      "standard": "With this reason the application goes back to the ZED team (Master Admin) for allotment.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.noAgency",
+      "standard": "No agency is ticked for this scheme in the unit’s state and sector.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.noAssessor",
+      "standard": "None of your assessors is ticked for this scheme. Tick one on its page first.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.reallotButton",
+      "standard": "Re-allot",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.reallotTitle",
+      "standard": "Re-allot to an agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.reasonLabel",
+      "standard": "Reason for rejection",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.reasonRequired",
+      "standard": "Please select the reason for rejection.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.rejectButton",
+      "standard": "Reject",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts",
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.rejectHoldMessage",
+      "standard": "The unit is told by e-mail; it may apply again when the scheme is open for it.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.rejectHoldTitle",
+      "standard": "Reject the application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.rejectedBefore",
+      "standard": "This agency returned the application before.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.remarksLabel",
+      "standard": "Remarks",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.resumeButton",
+      "standard": "Resume",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.resumeMessage",
+      "standard": "The application continues where it was put on hold.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.resumeTitle",
+      "standard": "Resume the application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.returnButton",
+      "standard": "Return",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.returnLabel",
+      "standard": "Reason",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.returnMessage",
+      "standard": "Your agency names another assessor.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.dialog.returnTitle",
+      "standard": "Return to the agency",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.allSchemes",
+      "standard": "All schemes",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.allStates",
+      "standard": "All states",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.clear",
+      "standard": "Clear filters",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.countsAria",
+      "standard": "Applications by status",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.datesAria",
+      "standard": "Submitted between",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.datesError",
+      "standard": "The 'from' date is after the 'to' date.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.empty",
+      "standard": "No application here.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.fromAria",
+      "standard": "Submitted from",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.schemeAria",
+      "standard": "Scheme",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.search",
+      "standard": "Search applications",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.searchEmpty",
+      "standard": "No application matches the search or filter.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.stateAria",
+      "standard": "State",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.to",
+      "standard": "to",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.list.toAria",
+      "standard": "Submitted to",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.qc.sub",
+      "standard": "Approve the amount your assessor recommended, or send the application back with remarks.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.qc.title",
+      "standard": "Scheme QC",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-detail.ts",
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.auto",
+      "standard": "Auto",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.correctionDue",
+      "standard": "Round {round} · due {due}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "round",
+        "due"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.menuAria",
+      "standard": "More actions for {name}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.notAllotted",
+      "standard": "Not yet allotted",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.row.notNamed",
+      "standard": "Not yet named",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-list.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.approved",
+      "standard": "Approved",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.correction",
+      "standard": "Correction with unit",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.onHold",
+      "standard": "On hold",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.paid",
+      "standard": "Paid",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.qc",
+      "standard": "Agency QC",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.rejected",
+      "standard": "Rejected",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.submitted",
+      "standard": "Waiting for allotment",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.verifying",
+      "standard": "Verifying",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.withAgency",
+      "standard": "With agency",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.status.withAssessor",
+      "standard": "With assessor",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-shared.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.agencyHelp",
+      "standard": "Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s states and sectors).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.assessorHelp",
+      "standard": "The agency can name this assessor for the schemes ticked here (within the agency’s own ticks).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.desktop",
+      "standard": "Desktop verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.hide",
+      "standard": "Hide",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.none",
+      "standard": "No incentive scheme is active.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.onsite",
+      "standard": "Onsite verification",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.phase2",
+      "standard": "(phase 2)",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.save",
+      "standard": "Save schemes",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.scheme",
+      "standard": "Scheme",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.show",
+      "standard": "Show",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.ticks.title",
+      "standard": "Incentive schemes verified",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-ticks-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.totals.approved",
+      "standard": "Approved",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.totals.claimed",
+      "standard": "Claimed",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.totals.eligible",
+      "standard": "Eligible",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.totals.max",
+      "standard": "max",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.totals.verified",
+      "standard": "Verified",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.acceptText",
+      "standard": "Your agency named you for this application. Accept it to verify it, or return it to your agency.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.correction",
+      "standard": "Send for correction (round {n} of {total})",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "n",
+        "total"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.correctionButton",
+      "standard": "Send for correction",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.correctionMessage",
+      "standard": "Round {n} of {total}: the unit is e-mailed the {count} point(s) marked Not valid and must answer within {days} days, or the application is rejected.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "n",
+        "total",
+        "count",
+        "days"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.correctionTitle",
+      "standard": "Send for correction",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.noRounds",
+      "standard": "No correction round is left.",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.progress",
+      "standard": "Checked {done} of {all} · not valid {no}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "done",
+        "all",
+        "no"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.recommend",
+      "standard": "Recommend",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.recommendMessage",
+      "standard": "Verified claim Rs. {verified}; eligible amount Rs. {eligible}. It goes to your agency for QC.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "verified",
+        "eligible"
+      ],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.recommendTitle",
+      "standard": "Recommend the application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.rejectMessage",
+      "standard": "The unit is told by e-mail; it may apply again while the scheme is open for it.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.rejectTitle",
+      "standard": "Reject the application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.remarkRequired",
+      "standard": "Please write what is not valid for each answer or document marked Not valid.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.save",
+      "standard": "Save checks",
+      "kind": "button",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.title",
+      "standard": "Verify application",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.verify.unsaved",
+      "standard": "Not saved yet.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-verify.ts"
       ]
     },
     {

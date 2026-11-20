@@ -144,6 +144,11 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.Agency, R.DesktopAssessor], subRoles: ['FinancialVerification'] },
   { label: 'Incentive Submissions', legacyPath: '/Incentive/Submissions', route: '/staff/incentives/submissions', roles: [R.SuperAdmin] },
   { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes' },
+  // 2026-11-20: the incentive schemes the Admin defines (verified like the assessment; who sees what is decided by the scheme ticks).
+  { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes' },
+  { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes' },
+  { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes' },
+  { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor] },
   { label: 'NEFT: New Transactions', legacyPath: '/Neft/NewTransactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
   { label: 'NEFT: Approved Transactions', legacyPath: '/Neft/ApprovedTransactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
@@ -173,6 +178,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   ...INCENTIVE_GROUPS.map((g) => ({ label: g.label, legacyPath: '/Incentive/Index', route: `/staff/incentives/${g.key}`, roles: [R.Admin as number], group: 'Incentives' })),
   // New in V4: "My Incentives" of the MSME dashboard (the built-in cards and the incentives put there).
   { label: 'Main Dashboard Cards', route: '/staff/incentives/dashboard-cards', roles: [R.Admin], group: 'Incentives' },
+  { label: 'Incentive Schemes', route: '/staff/incentives/schemes', roles: [R.Admin], group: 'Incentives' },
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
@@ -409,6 +415,11 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Categories': () => t('staff.menu.item.categoriesLabel', 'Categories'),
   'Technologies': () => t('staff.menu.item.technologiesLabel', 'Technologies'),
   'Main Dashboard Cards': () => t('staff.menu.item.mainDashboardCardsLabel', 'Main Dashboard Cards'),
+  'Incentive Schemes': () => t('staff.menu.item.incentiveSchemesLabel', 'Incentive Schemes'),
+  'Scheme Applications': () => t('staff.menu.item.schemeApplicationsLabel', 'Scheme Applications'),
+  'Scheme Allotment': () => t('staff.menu.item.schemeAllotmentLabel', 'Scheme Allotment'),
+  'Scheme QC': () => t('staff.menu.item.schemeQcLabel', 'Scheme QC'),
+  'Scheme Verification': () => t('staff.menu.item.schemeVerificationLabel', 'Scheme Verification'),
   'User Management': () => t('staff.menu.item.userManagementLabel', 'User Management'),
   'Captcha Settings': () => t('staff.menu.item.captchaSettingsLabel', 'Captcha Settings'),
   'Email Settings': () => t('staff.menu.item.emailSettingsLabel', 'Email Settings'),

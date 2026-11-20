@@ -76,6 +76,52 @@ public sealed class FinancialAssistanceController(
     private static readonly (int Status, string Key)[] CountKeys =
         [(FaStatus.New, "New"), (FaStatus.InProgress, "InProgress"), (FaStatus.Qc, "Qc"), (FaStatus.Approved, "Approved"), (FaStatus.Rejected, "Rejected")];
 
+    /// <summary>
+    /// 2026-11-20 (incentive schemes): the scheme applications are rows of the same table (SchemeCode, CertificationType = the
+    /// scheme's code) verified on their own pages; the FA lists show Bronze / Silver / Gold applications only.
+    /// </summary>
+    internal static bool IsFaRow(IDictionary<string, object?> r) =>
+        FaApplications.Canonical(r.Text("CertificationType")) is not null && string.IsNullOrWhiteSpace(r.Text("SchemeCode"));
+
+    /// <summary>The scheme rows the procedure's counts include, per VerificationStatus, in the same scope (all, the agency's, the assessor's).</summary>
+    internal const string SchemeCountsSql =
+        "SELECT VerificationStatus, COUNT(*) AS Cnt FROM dbo.FinancialAssistance " +
+        "WHERE (SchemeCode IS NOT NULL OR ISNULL(CertificationType, '') NOT IN ('Bronze', 'Silver', 'Gold')) " +
+        "AND (@Scope = 'all' OR (@Scope = 'agency' AND CertificationBodyUserId = @UserId) OR (@Scope = 'assessor' AND FinancialAssessorId = @UserId)) " +
+        "GROUP BY VerificationStatus;";
+
+    private sealed class StatusCount
+    {
+        public int? VerificationStatus { get; init; }
+        public int Cnt { get; init; }
+    }
+
+    /// <summary>Takes the scheme rows out of the procedure's counts (which count every FinancialAssistance row).</summary>
+    private async Task WithoutSchemeRowsAsync(Dictionary<string, object?> counts, CancellationToken ct)
+    {
+        var scope = RoleId switch { (int)UserRole.Agency => "agency", (int)UserRole.DesktopAssessor => "assessor", _ => "all" };
+        IReadOnlyList<StatusCount> other;
+        try
+        {
+            other = await db.QuerySqlAsync<StatusCount>(SchemeCountsSql, new { Scope = scope, UserId }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "FA counts: scheme rows not counted (is migration 0105 applied?)");
+            return;
+        }
+        foreach (var o in other)
+        {
+            var key = o.VerificationStatus switch
+            {
+                FaStatus.New => "New", FaStatus.InProgress => "InProgress", FaStatus.Qc => "Qc", FaStatus.Approved => "Approved",
+                FaStatus.Reimbursed when scope != "assessor" => "Approved", FaStatus.Rejected => "Rejected", _ => null,
+            };
+            if (key is null || !int.TryParse(counts.GetValueOrDefault(key)?.ToString(), out var n)) continue;
+            counts[key] = Math.Max(0, n - o.Cnt);
+        }
+    }
+
     internal const string FaAgenciesSql =
         "SELECT UserId, UserName FROM dbo.Users WHERE RoleId = 2 AND FinancialVerification = 1 ORDER BY UserName;";
 
@@ -98,8 +144,9 @@ public sealed class FinancialAssistanceController(
         // The procedure scopes by the user: master admin all, agency CertificationBodyUserId, assessor FinancialAssessorId.
         var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
             new { UserId, Status = status, CertificationType = (string?)null, ZedId = (string?)null }, ct);
-        var rows = (await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Where(filter.Matches).Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
+        var rows = (await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Where(IsFaRow).Where(filter.Matches).Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
         var counts = sets[1].FirstOrDefault() is { } c ? SchemeRows.Pick(c, ["New", "InProgress", "Qc", "Approved", "Rejected"]) : null;
+        if (counts is not null && !filter.Any) await WithoutSchemeRowsAsync(counts, ct);
         if (filter.Any)
         {
             // The counts of the filtered lists, one list at a time.
@@ -108,7 +155,7 @@ public sealed class FinancialAssistanceController(
             {
                 var list = s == status ? null : (await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
                     new { UserId, Status = s, CertificationType = (string?)null, ZedId = (string?)null }, ct))[0];
-                counts[key] = list is null ? rows.Count : (await ScopeFilter.ApplyAsync(HttpContext, list, ct)).Count(filter.Matches);
+                counts[key] = list is null ? rows.Count : (await ScopeFilter.ApplyAsync(HttpContext, list, ct)).Where(IsFaRow).Count(filter.Matches);
             }
         }
         IReadOnlyList<Option>? agencies = null;

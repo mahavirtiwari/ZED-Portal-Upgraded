@@ -160,6 +160,10 @@ const MAIN_STAFF_CHILDREN: Routes = [
   { path: 'incentives', pathMatch: 'full', redirectTo: ({ queryParams }) => incentivesOfType(queryParams['type']) },
   // New in V4: the cards of "My Incentives" on the MSME dashboard (before :group, which would take the name).
   { path: 'incentives/dashboard-cards', title: 'ZED | Main Dashboard Cards', loadComponent: () => import('./staff/schemes/dashboard-cards').then((m) => m.DashboardCardsPage) },
+  // 2026-11-20: the incentive schemes' verification (Master Admin, agency, assessor).
+  { path: 'schemes-verify', loadChildren: () => import('./staff/scheme-verification/scheme-verification.routes').then((m) => m.SCHEME_VERIFICATION_ROUTES) },
+  // 2026-11-20: Admin → Incentive Schemes (before 'incentives/:group', which would catch it).
+  { path: 'incentives/schemes', loadChildren: () => import('./staff/incentives-admin/incentives-admin.routes').then((m) => m.INCENTIVES_ADMIN_ROUTES) },
   { path: 'incentives/:group', title: 'ZED | Incentives', canActivate: [staffScreenGuard([R.Admin])], loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
   {
     path: 'incentives/:group/new',
@@ -289,6 +293,8 @@ const MAIN_ROUTES: Routes = [
         loadComponent: () => import('./msme/payment/consultancy-result').then((m) => m.ConsultancyResultPage),
       },
       ...MSME_SCHEME_ROUTES,
+      // 2026-11-20: the incentive schemes the Admin defines (Features/Incentives).
+      { path: 'incentive-schemes', loadChildren: () => import('./msme/incentive-schemes/incentive-schemes.routes').then((m) => m.INCENTIVE_SCHEME_ROUTES) },
       { path: 'contact', title: 'ZED | Contact', loadComponent: () => import('./msme/contact/contact').then((m) => m.ContactPage) },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
     ],

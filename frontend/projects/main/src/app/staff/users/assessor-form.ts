@@ -11,6 +11,7 @@ import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { staffCrumbs } from '../staff-crumbs';
 import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { ToastService } from '../toast';
+import { SchemeTicksPanel } from '../scheme-verification/scheme-ticks-panel';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { HistoryItem, UserHistoryPanel, blockHistoryItems } from './history-panel';
@@ -93,7 +94,7 @@ function emptyAssessor(): AssessorModel {
  */
 @Component({
   selector: 'zed-staff-assessor-form',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel, TextPipe],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel, PageHead, ConfirmDialog, ReasonDialog, UserHistoryPanel, TextPipe, SchemeTicksPanel],
   styleUrls: ['./assessor-form-scope.scss', './assessor-form-view.scss'],
   templateUrl: './assessor-form.html',
 })

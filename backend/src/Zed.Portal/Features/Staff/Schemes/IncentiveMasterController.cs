@@ -190,7 +190,8 @@ public sealed partial class IncentiveMasterController(
     // ----- The built-in cards of "My Incentives" on the MSME dashboard (Incentives.DashboardCard, migration 0026) -----
 
     /// <summary>The built-in cards, in the dashboard's order (their buttons are the portal's own).</summary>
-    /// <summary>MSME KAWACH was removed (2026-11-06): its row (migration 0026) is left in the table and never listed.</summary>
+    /// <summary>MSME KAWACH was removed (2026-11-06): its row (migration 0026) is left in the table and never listed. The incentive
+    /// schemes' rows (DashboardCard 'SCHEME', migration 0105) are managed on Admin → Incentive Schemes and never listed here.</summary>
     public static readonly string[] BuiltInCards = ["JOINING_REWARD", "FINANCIAL_ASSISTANCE", "HANDHOLDING", "TECHNOLOGY_UPGRADATION"];
 
     public sealed record BuiltInCard(long Id, string Card, string? Title, string? Highlight, string? Details, bool Active);
@@ -203,7 +204,7 @@ public sealed partial class IncentiveMasterController(
 
     internal const string BuiltInSql =
         "SELECT Id, DashboardCard AS Card, Incentive AS Title, CardHighlight AS Highlight, Details, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active " +
-        "FROM dbo.Incentives WHERE DashboardCard IS NOT NULL AND DashboardCard <> 'KAWACH' ORDER BY OrderNo, Id;";
+        "FROM dbo.Incentives WHERE DashboardCard IS NOT NULL AND DashboardCard NOT IN ('KAWACH', 'SCHEME') ORDER BY OrderNo, Id;";
 
     internal const string DashboardIncentivesSql =
         "SELECT Id, IncentiveType, Incentive AS Title, CardHighlight AS Highlight, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active, " +

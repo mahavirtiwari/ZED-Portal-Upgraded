@@ -12,6 +12,7 @@ import { isLegacyLevel, levelLogo, levelName } from '../shared/levels';
 import { PageHead } from '../shared/page-head';
 import { DashExtras } from './dash-extras';
 import { DashIcon } from './dash-icon';
+import { SchemeTile, SchemesDashboard, lockedNote } from '../incentive-schemes/incentive-schemes.api';
 import { IncentiveTile, IncentiveTileVm } from './incentive-tile';
 import { LevelCard, LevelCardVm, LevelFact } from './level-card';
 
@@ -240,6 +241,8 @@ export class DashboardPage {
   /** "My Incentives" as the Admin set it: the built-in cards' wording (or hidden) and the incentives put on the dashboard. */
   protected readonly builtInCards = signal<BuiltInCard[]>([]);
   protected readonly incentiveCards = signal<IncentiveCard[]>([]);
+  /** 2026-11-20 (incentive schemes): the Admin's schemes, the Technology Upgradation card's direct scheme, the FA card's levels. */
+  protected readonly schemes = signal<SchemesDashboard | null>(null);
 
   /** True once any level is certified; unlocks most incentives. */
   protected readonly anyCertified = computed(() =>
@@ -271,6 +274,7 @@ export class DashboardPage {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
     void this.load();
     void this.loadIncentiveCards();
+    firstValueFrom(this.http.get<SchemesDashboard>('/api/msme/incentive-schemes')).then((s) => this.schemes.set(s)).catch(() => undefined);
     firstValueFrom(this.http.get<PublicLevel[]>('/api/public/levels')).then((l) => this.publicLevels.set(l)).catch(() => undefined)
       .finally(() => this.levelsLoaded.set(true));
     // The unit's own fee of each level, from Master → Payments (2026-11-08).
@@ -571,9 +575,15 @@ export class DashboardPage {
       const blocked = this.is(this.basic(), 'IsEligibleForFinancial', 0);
       const certified = this.anyCertified();
       const availed = !blocked && certified && this.faApplied();
+      // 2026-11-20 (incentive schemes): the card's "Activates after" levels (none ticked: Bronze, Silver and Gold).
+      const faLevels = this.schemes()?.fa.activatesAfter ?? [];
+      const faLevel = this.schemes()?.fa.level ?? null;
+      const faClosed = faLevels.length > 0 && !!faLevel && !faLevels.some((l) => l.toLowerCase() === faLevel.toLowerCase());
+      const opensAfter = t('msme.dashboard.incentive.opensAfter', 'Opens after {levels} certification', { levels: faLevels.map((l) => this.levelName(l)).join(' / ') });
       tiles.push(blocked || !certified ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: blocked ? notEligible : notCertified }
         : availed ? { ...base('fa', 'rupee', fa), state: 'availed', action: { label: details }, modal: { kind: 'fa' } }
-          : { ...base('fa', 'rupee', fa), state: 'open', action: { label: avail, link: '/msme/financial-assistance' } });
+          : faClosed ? { ...base('fa', 'rupee', fa), state: 'locked', action: null, note: opensAfter }
+            : { ...base('fa', 'rupee', fa), state: 'open', action: { label: avail, link: '/msme/financial-assistance' } });
     }
     const hh = this.card('HANDHOLDING');
     if (hh) {
@@ -583,12 +593,20 @@ export class DashboardPage {
         : { ...base('hh', 'users', hh), state: running ? 'progress' : 'open', action: { label: running ? t('msme.dashboard.incentive.milestonesButton', 'View milestones') : avail, link: '/msme/handholding' } });
     }
     const tu = this.card('TECHNOLOGY_UPGRADATION');
-    if (tu) {
+    const direct = this.schemes()?.tu;
+    if (tu && direct?.direct) {
+      // 2026-11-20: without the consultant's recommendation the card opens the direct scheme (its state and page).
+      tiles.push(direct.scheme ? this.schemeTile('tu', base('tu', 'zap', tu), direct.scheme)
+        : { ...base('tu', 'zap', tu), state: 'locked', action: null, note: notEligible });
+    } else if (tu) {
       const availed = this.is(this.cert(), 'TechnologyUpgradationStatus', 0);
       const open = (availed || this.is(this.cert(), 'TechnologyUpgradationStatus', 1)) && benefits;
       tiles.push(!open ? { ...base('tu', 'zap', tu), state: 'locked', action: null, note: notEligible }
         : availed ? { ...base('tu', 'zap', tu), state: 'availed', action: { label: details }, modal: { kind: 'tu' } }
           : { ...base('tu', 'zap', tu), state: 'open', action: { label: avail, link: '/msme/technology-upgradation' } });
+    }
+    for (const s of this.schemes()?.schemes ?? []) {
+      tiles.push(this.schemeTile(`scheme-${s.code}`, { key: '', icon: s.icon || 'star', title: s.title, highlight: s.highlight, details: s.details, note: null }, s));
     }
     for (const c of this.incentiveCards()) {
       const ok = this.eligibleFor(c);
@@ -608,6 +626,22 @@ export class DashboardPage {
     }
     return tiles;
   });
+
+  /** A scheme's tile (2026-11-20, incentive schemes): its state, Apply / Continue / View to its page, or why it is locked. */
+  private schemeTile(key: string, base: Omit<IncentiveTileVm, 'state' | 'action'>, s: SchemeTile): IncentiveTileVm {
+    const link = `/msme/incentive-schemes/${s.code}`;
+    const tile = { ...base, key };
+    switch (s.state) {
+      case 'open':
+        return { ...tile, state: 'open', action: { label: s.applicationId ? t('msme.dashboard.incentive.continueButton', 'Continue')
+          : t('msme.dashboard.incentive.applyButton', 'Apply'), link } };
+      case 'locked':
+        return { ...tile, state: 'locked', action: null,
+          note: lockedNote(s.note, s.activationLevels) ?? s.message ?? t('msme.dashboard.incentive.notEligible', 'Not yet available for your unit') };
+      default:
+        return { ...tile, state: s.state, action: { label: t('msme.dashboard.incentive.viewButton', 'View'), link } };
+    }
+  }
 
   /** "Your next steps": up to three cards from the unit's state, most urgent first. */
   protected readonly nextSteps = computed<NextStepVm[]>(() => {

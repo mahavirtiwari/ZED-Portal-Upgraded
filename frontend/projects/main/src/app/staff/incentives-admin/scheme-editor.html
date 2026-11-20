@@ -1,0 +1,271 @@
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">{{ def()?.name || ('Incentive scheme' | t: 'staff.incentivesAdmin.editor.title') }}</h3>
+    <p class="page-sub">
+      @if (def(); as d) { <span class="se-code">{{ d.code }}</span> · }
+      {{ 'Change the scheme, then Save. The code cannot be changed.' | t: 'staff.incentivesAdmin.editor.sub' }}
+    </p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-default" routerLink="..">{{ 'Back to schemes' | t: 'staff.incentivesAdmin.editor.backLink' }}</a>
+    <button type="button" class="btn btn-primary" id="se-save" [disabled]="busy() || !def()" (click)="save()">{{ 'Save' | t: 'staff.incentivesAdmin.editor.saveButton' }}</button>
+  </div>
+</div>
+@if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+@if (success()) { <div class="alert alert-success" role="status">{{ success() }}</div> }
+
+@if (def(); as d) {
+  <div class="seg se-tabs" role="tablist" [attr.aria-label]="'Parts of the scheme' | t: 'staff.incentivesAdmin.editor.tabsAria'">
+    @for (x of tabs; track x; let n = $index) {
+      <button type="button" role="tab" [attr.data-tab]="x" [class.active]="tab() === x" [attr.aria-selected]="tab() === x" (click)="tab.set(x)">{{ n + 1 }}. {{ tabLabel(x) }}</button>
+    }
+  </div>
+
+  <!-- 1. Card and activation -->
+  @if (tab() === 'card') {
+    <section class="zed-card" role="tabpanel">
+      <div class="form-grid">
+        <label for="se-name">{{ 'Scheme name' | t: 'staff.incentivesAdmin.editor.card.name' }}<span class="req">*</span></label>
+        <input id="se-name" class="form-control" maxlength="200" [(ngModel)]="d.name" />
+        <label for="se-title">{{ 'Card title' | t: 'staff.incentivesAdmin.editor.card.title' }}<span class="req">*</span></label>
+        <input id="se-title" class="form-control" maxlength="200" [(ngModel)]="d.card.title" />
+        <label for="se-highlight">{{ 'Highlight' | t: 'staff.incentivesAdmin.editor.card.highlight' }}</label>
+        <input id="se-highlight" class="form-control" maxlength="300" [placeholder]="'e.g. Support of up to Rs. 3,00,000/-' | t: 'staff.incentivesAdmin.editor.card.highlightPlaceholder'" [(ngModel)]="d.card.highlight" />
+        <label for="se-details" class="top">{{ 'Details' | t: 'staff.incentivesAdmin.editor.card.details' }}</label>
+        <textarea id="se-details" class="form-control" rows="3" maxlength="2000" [(ngModel)]="d.card.details"></textarea>
+        <label for="se-icon">{{ 'Icon' | t: 'staff.incentivesAdmin.editor.card.icon' }}</label>
+        <select id="se-icon" class="form-select se-narrow" [(ngModel)]="d.card.icon">
+          @for (i of icons; track i) { <option [value]="i">{{ i }}</option> }
+        </select>
+        <label for="se-order">{{ 'Order on the dashboard' | t: 'staff.incentivesAdmin.editor.card.order' }}</label>
+        <input id="se-order" type="number" class="form-control se-narrow" min="0" [(ngModel)]="d.orderNo" />
+        <span class="label">{{ 'Active' | t: 'staff.incentivesAdmin.editor.card.active' }}</span>
+        <label class="af-switch" [class.off]="!d.active">
+          <input type="checkbox" role="switch" id="se-active" [(ngModel)]="d.active" />
+          <span class="af-track" aria-hidden="true"></span>{{ d.active ? ('On: eligible units see the card' | t: 'staff.incentivesAdmin.editor.card.on') : ('Off: units do not see it' | t: 'staff.incentivesAdmin.editor.card.off') }}
+        </label>
+        <span class="label top">{{ 'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter' }}<span class="req">*</span></span>
+        <div>
+          <div class="se-chips" role="group" [attr.aria-label]="'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter'">
+            <button type="button" class="se-chip" data-mode="Registration" [class.on]="d.activation.mode === 'Registration'" [attr.aria-pressed]="d.activation.mode === 'Registration'" (click)="setMode(d, 'Registration')">{{ 'Registration' | t: 'staff.incentivesAdmin.activation.registration' }}</button>
+            <button type="button" class="se-chip" data-mode="Handholding" [class.on]="d.activation.mode === 'Handholding'" [attr.aria-pressed]="d.activation.mode === 'Handholding'" (click)="setMode(d, 'Handholding')">{{ 'Handholding completed' | t: 'staff.incentivesAdmin.activation.handholding' }}</button>
+            <span class="se-or">{{ 'or certified at' | t: 'staff.incentivesAdmin.editor.card.orLevels' }}</span>
+            @for (l of levels(); track l.code) {
+              <button type="button" class="se-chip" [attr.data-level]="l.code" [class.on]="hasLevel(d, l.code)" [attr.aria-pressed]="hasLevel(d, l.code)" (click)="toggleLevel(d, l.code)">{{ l.name }}</button>
+            }
+          </div>
+          <small class="muted d-block mt-1">{{ 'Levels: one claim per level and certificate; Registration: one claim; Handholding: one claim per completed handholding.' | t: 'staff.incentivesAdmin.editor.card.activationHelp' }}</small>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- 2. Grading -->
+  @if (tab() === 'grading') {
+    <section class="zed-card" role="tabpanel">
+      <div class="seg mb-3" role="group" [attr.aria-label]="'Graded' | t: 'staff.incentivesAdmin.editor.grading.modeAria'">
+        <button type="button" data-grading="Level" [class.active]="d.grading.mode === 'Level'" [attr.aria-pressed]="d.grading.mode === 'Level'" (click)="setGradingMode(d, 'Level')">{{ 'By level' | t: 'staff.incentivesAdmin.grading.byLevel' }}</button>
+        <button type="button" data-grading="Size" [class.active]="d.grading.mode === 'Size'" [attr.aria-pressed]="d.grading.mode === 'Size'" (click)="setGradingMode(d, 'Size')">{{ 'By enterprise size' | t: 'staff.incentivesAdmin.grading.bySize' }}</button>
+      </div>
+      <p class="muted">{{ d.grading.mode === 'Size' ? ('The unit\'s enterprise size picks the row.' | t: 'staff.incentivesAdmin.editor.grading.sizeHelp') : ('The level of the claim picks the row; All covers the levels without a row of their own.' | t: 'staff.incentivesAdmin.editor.grading.levelHelp') }}</p>
+      <div class="table-responsive">
+        <table class="table table-zed se-grades">
+          <thead>
+            <tr>
+              <th>{{ d.grading.mode === 'Size' ? ('Enterprise size' | t: 'staff.incentivesAdmin.editor.grading.sizeColumn') : ('Level' | t: 'staff.incentivesAdmin.editor.grading.levelColumn') }}</th>
+              <th>{{ 'Share %' | t: 'staff.incentivesAdmin.editor.grading.shareColumn' }}</th>
+              <th>{{ 'Maximum (₹)' | t: 'staff.incentivesAdmin.editor.grading.maxColumn' }}</th>
+              <th class="text-end">{{ 'Action' | t: 'staff.incentivesAdmin.editor.grading.actionColumn' }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (g of d.grading.rows; track $index; let i = $index) {
+              <tr>
+                <td>
+                  <select class="form-select" [attr.aria-label]="'Row' | t: 'staff.incentivesAdmin.editor.grading.rowAria'" [(ngModel)]="g.key">
+                    @for (k of freeKeys(d, g.key); track k) { <option [value]="k">{{ keyLabel(k) }}</option> }
+                  </select>
+                </td>
+                <td><input type="number" class="form-control" min="0" max="100" [attr.aria-label]="'Share %' | t: 'staff.incentivesAdmin.editor.grading.shareColumn'" [(ngModel)]="g.sharePercent" /></td>
+                <td><input type="number" class="form-control" min="0" [max]="limits.amount" [attr.aria-label]="'Maximum (₹)' | t: 'staff.incentivesAdmin.editor.grading.maxColumn'" [(ngModel)]="g.maxAmount" /></td>
+                <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" [disabled]="d.grading.rows.length < 2" (click)="removeGrade(d, i)">{{ 'Remove' | t: 'staff.incentivesAdmin.editor.grading.removeButton' }}</button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-outline-primary btn-sm" id="se-add-grade" [disabled]="!freeKeys(d).length" (click)="addGrade(d)">{{ 'Add row' | t: 'staff.incentivesAdmin.editor.grading.addButton' }}</button>
+    </section>
+  }
+
+  <!-- 3. Form -->
+  @if (tab() === 'form') {
+    <section class="zed-card" role="tabpanel">
+      <h5 class="se-h">{{ 'Standard blocks' | t: 'staff.incentivesAdmin.editor.form.blocksTitle' }}</h5>
+      <div class="se-blocks">
+        <label class="af-switch" [class.off]="!d.form.blocks.disclaimer"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.disclaimer" /><span class="af-track" aria-hidden="true"></span>{{ 'Disclaimer' | t: 'staff.incentivesAdmin.editor.form.block.disclaimer' }}</label>
+        <label class="af-switch" [class.off]="!d.form.blocks.instructions"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.instructions" /><span class="af-track" aria-hidden="true"></span>{{ 'Instructions' | t: 'staff.incentivesAdmin.editor.form.block.instructions' }}</label>
+        <label class="af-switch" [class.off]="!d.form.blocks.unitConfirm"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.unitConfirm" /><span class="af-track" aria-hidden="true"></span>{{ 'Unit details and confirmation' | t: 'staff.incentivesAdmin.editor.form.block.unitConfirm' }}</label>
+        <label class="af-switch" [class.off]="!d.form.blocks.bankAccount"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.bankAccount" /><span class="af-track" aria-hidden="true"></span>{{ 'Bank account and cancelled cheque' | t: 'staff.incentivesAdmin.editor.form.block.bankAccount' }}</label>
+        <label class="af-switch" [class.off]="!d.form.blocks.declaration"><input type="checkbox" role="switch" [(ngModel)]="d.form.blocks.declaration" /><span class="af-track" aria-hidden="true"></span>{{ 'Declaration' | t: 'staff.incentivesAdmin.editor.form.block.declaration' }}</label>
+      </div>
+      <small class="muted d-block">{{ 'Their wording is in Admin → Texts.' | t: 'staff.incentivesAdmin.editor.form.blocksHelp' }}</small>
+
+      <div class="se-form">
+        <aside class="se-sections" [attr.aria-label]="'Sections' | t: 'staff.incentivesAdmin.editor.form.sectionsAria'">
+          <h5 class="se-h">{{ 'Sections' | t: 'staff.incentivesAdmin.editor.form.sectionsTitle' }}</h5>
+          @for (s of d.form.sections; track s; let i = $index, last = $last) {
+            <div class="se-sec" [class.active]="sectionIndex() === i">
+              <button type="button" class="se-sec-name" (click)="sectionIndex.set(i)">
+                {{ s.title || '—' }}
+                @if (s.repeating) { <span class="zed-chip">{{ 'Add more' | t: 'staff.incentivesAdmin.editor.form.repeatingChip' }}</span> }
+              </button>
+              <button type="button" class="af-icon" [attr.aria-label]="'Move up' | t: 'staff.incentivesAdmin.editor.moveUp'" [disabled]="i === 0" (click)="moveSection(d, i, -1)">↑</button>
+              <button type="button" class="af-icon" [attr.aria-label]="'Move down' | t: 'staff.incentivesAdmin.editor.moveDown'" [disabled]="last" (click)="moveSection(d, i, 1)">↓</button>
+              <button type="button" class="af-icon" [attr.aria-label]="'Delete' | t: 'staff.incentivesAdmin.editor.delete'" [disabled]="d.form.sections.length < 2" (click)="deleteSection(d, i)">✕</button>
+            </div>
+          }
+          <div class="se-add">
+            <button type="button" class="btn btn-outline-primary btn-sm" id="se-add-section" [disabled]="d.form.sections.length >= limits.sections" (click)="addSection(d, false)">{{ 'Add section' | t: 'staff.incentivesAdmin.editor.form.addSection' }}</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="se-add-repeating" [disabled]="d.form.sections.length >= limits.sections" (click)="addSection(d, true)">{{ 'Add "Add more" section' | t: 'staff.incentivesAdmin.editor.form.addRepeating' }}</button>
+          </div>
+        </aside>
+
+        @if (section(d); as s) {
+          <div class="se-section">
+            <div class="form-grid">
+              <label for="se-sec-title">{{ 'Title' | t: 'staff.incentivesAdmin.editor.section.title' }}<span class="req">*</span></label>
+              <input id="se-sec-title" class="form-control" maxlength="200" [(ngModel)]="s.title" (ngModelChange)="titleChanged(d, s)" />
+              <label for="se-sec-key">{{ 'Key' | t: 'staff.incentivesAdmin.editor.section.key' }}</label>
+              <input id="se-sec-key" class="form-control se-mono" maxlength="40" [disabled]="!isFresh(s)" [(ngModel)]="s.key" />
+              <label for="se-sec-help">{{ 'Help' | t: 'staff.incentivesAdmin.editor.section.help' }}</label>
+              <input id="se-sec-help" class="form-control" maxlength="300" [(ngModel)]="s.help" />
+              <span class="label">{{ '"Add more" items' | t: 'staff.incentivesAdmin.editor.section.repeating' }}</span>
+              <label class="af-switch" [class.off]="!s.repeating">
+                <input type="checkbox" role="switch" id="se-sec-repeating" [ngModel]="s.repeating" (ngModelChange)="setRepeating(s, $event)" />
+                <span class="af-track" aria-hidden="true"></span>{{ s.repeating ? ('The applicant adds items one by one' | t: 'staff.incentivesAdmin.editor.section.repeatingOn') : ('One set of answers' | t: 'staff.incentivesAdmin.editor.section.repeatingOff') }}
+              </label>
+              @if (s.repeating) {
+                <span class="label">{{ 'Items' | t: 'staff.incentivesAdmin.editor.section.items' }}</span>
+                <div class="se-pair">
+                  <input id="se-sec-min" type="number" class="form-control" min="0" [max]="limits.items" [attr.aria-label]="'Fewest items' | t: 'staff.incentivesAdmin.editor.section.minItems'" [(ngModel)]="s.minItems" />
+                  <span>{{ 'to' | t: 'staff.incentivesAdmin.editor.section.itemsTo' }}</span>
+                  <input id="se-sec-max" type="number" class="form-control" min="1" [max]="limits.items" [attr.aria-label]="'Most items' | t: 'staff.incentivesAdmin.editor.section.maxItems'" [(ngModel)]="s.maxItems" />
+                </div>
+                <label for="se-sec-pick">{{ 'Each item picks' | t: 'staff.incentivesAdmin.editor.section.pick' }}</label>
+                <select id="se-sec-pick" class="form-select" [ngModel]="pickKind(s)" (ngModelChange)="setPick(s, $event)">
+                  <option value="">{{ 'Nothing' | t: 'staff.incentivesAdmin.editor.pick.none' }}</option>
+                  <option value="Technologies">{{ 'A technology (of the unit\'s sector)' | t: 'staff.incentivesAdmin.editor.pick.technologies' }}</option>
+                  <option value="Options">{{ 'An option of a list' | t: 'staff.incentivesAdmin.editor.pick.options' }}</option>
+                </select>
+                @if (s.pick; as p) {
+                  <label for="se-pick-label">{{ 'Pick label' | t: 'staff.incentivesAdmin.editor.pick.label' }}</label>
+                  <input id="se-pick-label" class="form-control" maxlength="100" [(ngModel)]="p.label" />
+                  @if (p.kind === 'Options') {
+                    <label for="se-pick-options" class="top">{{ 'Options (one per line)' | t: 'staff.incentivesAdmin.editor.pick.optionsList' }}</label>
+                    <textarea id="se-pick-options" class="form-control" rows="4" [value]="lines(p.options)" (change)="setPickOptions(s, $any($event.target).value)"></textarea>
+                  }
+                  <span class="label">{{ 'Rules' | t: 'staff.incentivesAdmin.editor.pick.rules' }}</span>
+                  <div class="se-checks">
+                    <label><input type="checkbox" [(ngModel)]="p.noRepeat" /> {{ 'An entry can be picked once' | t: 'staff.incentivesAdmin.editor.pick.noRepeat' }}</label>
+                    @if (p.kind === 'Technologies') {
+                      <label><input type="checkbox" [(ngModel)]="p.sectorFilter" /> {{ 'Only the technologies of the unit\'s sector' | t: 'staff.incentivesAdmin.editor.pick.sectorFilter' }}</label>
+                    }
+                  </div>
+                }
+              }
+            </div>
+
+            <h5 class="se-h mt-3">{{ 'Fields' | t: 'staff.incentivesAdmin.editor.fields.title' }}</h5>
+            <div class="table-responsive">
+              <table class="table table-zed se-fields">
+                <thead>
+                  <tr>
+                    <th>{{ 'Label' | t: 'staff.incentivesAdmin.editor.fields.label' }}</th>
+                    <th>{{ 'Type' | t: 'staff.incentivesAdmin.editor.fields.type' }}</th>
+                    <th>{{ 'Marks' | t: 'staff.incentivesAdmin.editor.fields.marks' }}</th>
+                    <th class="text-end">{{ 'Action' | t: 'staff.incentivesAdmin.editor.fields.action' }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (f of s.fields; track f; let i = $index, last = $last) {
+                    <tr [attr.data-key]="f.key">
+                      <td>{{ f.label }}<small class="d-block muted se-mono">{{ f.key }}</small></td>
+                      <td><span class="type-name">{{ typeLabel(f.type) }}</span></td>
+                      <td>
+                        @if (f.required) { <span class="req-chip is-yes">{{ 'Required' | t: 'staff.incentivesAdmin.editor.fields.required' }}</span> }
+                        @if (f.assessorChecks) { <span class="req-chip">{{ 'Checked' | t: 'staff.incentivesAdmin.editor.fields.checked' }}</span> }
+                        @if (f.isClaim) { <span class="req-chip is-yes">{{ 'Claim' | t: 'staff.incentivesAdmin.editor.fields.claim' }}</span> }
+                      </td>
+                      <td class="text-end se-row-actions">
+                        <button type="button" class="af-icon" [attr.aria-label]="'Move up' | t: 'staff.incentivesAdmin.editor.moveUp'" [disabled]="i === 0" (click)="moveField(s, i, -1)">↑</button>
+                        <button type="button" class="af-icon" [attr.aria-label]="'Move down' | t: 'staff.incentivesAdmin.editor.moveDown'" [disabled]="last" (click)="moveField(s, i, 1)">↓</button>
+                        <button type="button" class="af-edit" (click)="editField(d, s, i)">{{ 'Edit' | t: 'staff.incentivesAdmin.editor.fields.editButton' }}</button>
+                        <button type="button" class="af-icon" [attr.aria-label]="'Delete' | t: 'staff.incentivesAdmin.editor.delete'" (click)="deleteField(d, s, i)">✕</button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="4" class="no-data">{{ 'No field yet.' | t: 'staff.incentivesAdmin.editor.fields.empty' }}</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="se-add-field" [disabled]="s.fields.length >= limits.fields" (click)="addField(d, s)">{{ 'Add field' | t: 'staff.incentivesAdmin.editor.fields.addButton' }}</button>
+          </div>
+        }
+      </div>
+
+      <h5 class="se-h mt-4">{{ 'Document rules' | t: 'staff.incentivesAdmin.editor.rules.title' }}</h5>
+      @for (r of d.form.rules; track r; let i = $index) {
+        <div class="se-rule">
+          <div class="se-pair">
+            <span>{{ 'At least' | t: 'staff.incentivesAdmin.editor.rules.atLeast' }}</span>
+            <input type="number" class="form-control se-count" min="1" max="20" [attr.aria-label]="'Number of files' | t: 'staff.incentivesAdmin.editor.rules.countAria'" [(ngModel)]="r.count" />
+            <span>{{ 'files among these documents:' | t: 'staff.incentivesAdmin.editor.rules.among' }}</span>
+            <button type="button" class="btn btn-outline-danger btn-sm ms-auto" (click)="removeRule(d, i)">{{ 'Remove' | t: 'staff.incentivesAdmin.editor.rules.removeButton' }}</button>
+          </div>
+          <div class="se-checks">
+            @for (df of documentFields(d); track df.key) {
+              <label><input type="checkbox" [checked]="r.fields.includes(df.key)" (change)="toggleRuleField(r, df.key)" /> {{ df.label }}</label>
+            }
+          </div>
+          <input class="form-control" maxlength="300" [placeholder]="'Message to the applicant (optional)' | t: 'staff.incentivesAdmin.editor.rules.messagePlaceholder'" [(ngModel)]="r.message" />
+        </div>
+      }
+      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!documentFields(d).length" (click)="addRule(d)">{{ 'Add document rule' | t: 'staff.incentivesAdmin.editor.rules.addButton' }}</button>
+    </section>
+  }
+
+  <!-- 4. Verification -->
+  @if (tab() === 'verification') {
+    <section class="zed-card" role="tabpanel">
+      <div class="form-grid">
+        <span class="label top">{{ 'Flow' | t: 'staff.incentivesAdmin.editor.verification.flow' }}</span>
+        <div class="se-checks">
+          <label><input type="radio" name="se-flow" value="Desktop" [checked]="d.verification.flow === 'Desktop'" (change)="setFlow(d, 'Desktop')" /> {{ 'Desktop' | t: 'staff.incentivesAdmin.flow.desktop' }}</label>
+          <label><input type="radio" name="se-flow" value="DesktopOnsite" [checked]="d.verification.flow === 'DesktopOnsite'" (change)="setFlow(d, 'DesktopOnsite')" /> {{ 'Desktop + Onsite' | t: 'staff.incentivesAdmin.flow.desktopOnsite' }} <span class="zed-chip">{{ 'phase 2: coming with the mobile app' | t: 'staff.incentivesAdmin.editor.verification.phase2' }}</span></label>
+        </div>
+        <label for="se-rounds">{{ 'Correction rounds' | t: 'staff.incentivesAdmin.editor.verification.rounds' }}</label>
+        <input id="se-rounds" type="number" class="form-control se-narrow" min="0" [max]="limits.rounds" [(ngModel)]="d.verification.correctionRounds" />
+        <label for="se-days">{{ 'Days to answer a correction' | t: 'staff.incentivesAdmin.editor.verification.days' }}</label>
+        <input id="se-days" type="number" class="form-control se-narrow" min="1" [max]="limits.days" [(ngModel)]="d.verification.correctionDays" />
+        <span class="label">{{ 'Allotment' | t: 'staff.incentivesAdmin.editor.verification.allotment' }}</span>
+        <label class="af-switch" [class.off]="!d.verification.autoAllot">
+          <input type="checkbox" role="switch" id="se-auto" [(ngModel)]="d.verification.autoAllot" />
+          <span class="af-track" aria-hidden="true"></span>{{ d.verification.autoAllot ? ('Automatic (round robin among the agencies ticked for the scheme)' | t: 'staff.incentivesAdmin.editor.verification.autoOn') : ('By the Master Admin' | t: 'staff.incentivesAdmin.editor.verification.autoOff') }}
+        </label>
+      </div>
+      <small class="muted d-block mt-2">{{ 'Correction rounds 0 to 5, days 1 to 180. When the days run out, or the last round is still not valid, the application is rejected.' | t: 'staff.incentivesAdmin.editor.verification.help' }}</small>
+    </section>
+  }
+} @else if (!busy()) {
+  <div class="no-data">{{ 'The scheme could not be loaded.' | t: 'staff.incentivesAdmin.editor.loadError' }}</div>
+}
+
+@if (fieldEdit(); as e) {
+  @if (def(); as d) {
+    <zed-scheme-field-dialog [field]="e.field" [isNew]="e.isNew" [takenKeys]="e.taken" [copyChoices]="e.copies"
+                             (saved)="fieldSaved(d, e, $event)" (cancelled)="fieldEdit.set(null)" />
+  }
+}
+@if (busy()) { <div class="loadingdiv"><div class="loader"></div></div> }

@@ -256,6 +256,10 @@
     </div>
   }
 </form>
+<!-- 2026-11-20 (incentive schemes, Part C): the schemes the assessor verifies (its agency ticks them, within its own), saved on its own. -->
+@if (!isNew && !consultancy && userId) {
+  <zed-scheme-ticks-panel kind="assessors" [userId]="userId" />
+}
 
 </div>
 

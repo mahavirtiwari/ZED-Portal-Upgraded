@@ -6,6 +6,15 @@ import { Router, provideRouter } from '@angular/router';
 import { setPageTexts } from '../../content/page-text';
 import { DashboardPage } from './dashboard';
 
+/** GET api/msme/incentive-schemes without schemes (the built-in cards keep their own rules). */
+const NO_SCHEMES = { schemes: [], tu: { direct: false, scheme: null }, fa: { activatesAfter: [], level: null } };
+
+const schemeTile = (code: string, state = 'open', more: object = {}) => ({
+  code, title: `Scheme ${code}`, highlight: 'Up to Rs. 1,00,000', details: 'For certified units', icon: 'star', state, note: null, message: null,
+  applicationId: null, status: null, level: 'Bronze', grade: { sharePercent: 50, maxAmount: 100000 }, activationMode: 'Levels', activationLevels: ['Bronze', 'Silver'],
+  ...more,
+});
+
 describe('DashboardPage', () => {
   let fixture: ComponentFixture<DashboardPage>;
   let http: HttpTestingController;
@@ -20,7 +29,7 @@ describe('DashboardPage', () => {
 
   async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
                         incentives: object = { builtIn: [], incentives: [] }, levels: object[] = [], basic: Record<string, unknown> = {},
-                        levelFees: Record<string, number | null> = {}, certifiedOn?: Record<string, string>) {
+                        levelFees: Record<string, number | null> = {}, certifiedOn?: Record<string, string>, schemes: object = NO_SCHEMES) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -35,6 +44,7 @@ describe('DashboardPage', () => {
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
     for (const r of http.match('/api/public/levels')) r.flush(levels);
     for (const r of http.match('/api/msme/dashboard/level-fees')) r.flush(levelFees);
+    for (const r of http.match('/api/msme/incentive-schemes')) r.flush(schemes);
     await settle();
   }
 
@@ -503,5 +513,58 @@ describe('DashboardPage', () => {
     } finally {
       setPageTexts([]);
     }
+  });
+
+  // 2026-11-20 (incentive schemes): the Admin's schemes after the built-in cards, the direct Technology Upgradation scheme and
+  // the Financial Assistance card's "Activates after".
+  it('shows each scheme with its state and action after the built-in cards', async () => {
+    const tile = (title: string) => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === title) as HTMLElement;
+    await render({ BronzeStatus: 6 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined, {
+      ...NO_SCHEMES,
+      schemes: [
+        schemeTile('OPEN'), schemeTile('DRAFT', 'open', { applicationId: 4 }), schemeTile('RUN', 'progress', { applicationId: 5 }),
+        schemeTile('HOLD', 'onhold', { applicationId: 6 }), schemeTile('PAID', 'availed', { applicationId: 7 }),
+        schemeTile('LOCK', 'locked', { note: 'notCertified', activationLevels: ['Silver', 'Gold'] }),
+      ],
+    });
+    const titles = [...el.querySelectorAll('.inc-card h4')].map((h) => h.textContent!.trim());
+    expect(titles.indexOf('Scheme OPEN')).toBe(titles.indexOf('Technology Upgradation') + 1);
+    const action = (title: string) => tile(title).querySelector('.inc-foot a') as HTMLAnchorElement | null;
+    expect(action('Scheme OPEN')!.textContent).toContain('Apply');
+    expect(action('Scheme OPEN')!.getAttribute('href')).toBe('/msme/incentive-schemes/OPEN');
+    expect(action('Scheme DRAFT')!.textContent).toContain('Continue');
+    expect(action('Scheme RUN')!.textContent).toContain('View');
+    expect(tile('Scheme RUN').querySelector('.inc-chip')!.textContent!.trim()).toBe('In progress');
+    expect(tile('Scheme HOLD').querySelector('.inc-chip')!.textContent!.trim()).toBe('On hold');
+    expect(tile('Scheme PAID').querySelector('.inc-chip')!.textContent!.trim()).toBe('Availed');
+    expect(tile('Scheme LOCK').classList).toContain('is-locked');
+    expect(action('Scheme LOCK')).toBeNull();
+    expect(tile('Scheme LOCK').textContent).toContain('Opens after Silver, Gold certification');
+  });
+
+  it('opens the direct Technology Upgradation scheme when the card needs no recommendation', async () => {
+    const tu = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Technology Upgradation') as HTMLElement;
+    // Without a recommendation (TechnologyUpgradationStatus empty) the old rule locks it; the direct scheme opens it.
+    await render({ BronzeStatus: 6 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined,
+      { ...NO_SCHEMES, tu: { direct: true, scheme: schemeTile('TU_DIRECT', 'open') } });
+    expect(tu().querySelector('.inc-chip')!.textContent!.trim()).toBe('Open');
+    expect(tu().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/incentive-schemes/TU_DIRECT');
+    fixture.destroy();
+
+    await render({ BronzeStatus: 6, TechnologyUpgradationStatus: 1 }, {}, 0, undefined, [], { IsEligibleForBenefits: 1 }, {}, undefined, NO_SCHEMES);
+    expect(tu().querySelector('.inc-foot a')!.getAttribute('href')).toBe('/msme/technology-upgradation');
+  });
+
+  it('locks financial assistance until a level the card activates after', async () => {
+    const fa = () => [...el.querySelectorAll('.inc-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Financial Assistance') as HTMLElement;
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, {}, 0, undefined, [], {}, {}, undefined,
+      { ...NO_SCHEMES, fa: { activatesAfter: ['Silver', 'Gold'], level: 'Bronze' } });
+    expect(fa().classList).toContain('is-locked');
+    expect(fa().textContent).toContain('Opens after Silver / Gold certification');
+    fixture.destroy();
+
+    await render({ BronzeStatus: 6, FinancialAssistanceStatus: 1 }, {}, 0, undefined, [], {}, {}, undefined,
+      { ...NO_SCHEMES, fa: { activatesAfter: ['Bronze'], level: 'Bronze' } });
+    expect(fa().querySelector('.inc-chip')!.textContent!.trim()).toBe('Open');
   });
 });

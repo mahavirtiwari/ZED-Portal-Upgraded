@@ -308,6 +308,7 @@ describe('Surveillance payment entry points', () => {
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush({ builtIn: [], incentives: [] });
     for (const r of http.match('/api/public/levels')) r.flush([]);
     for (const r of http.match('/api/msme/dashboard/level-fees')) r.flush({});
+    for (const r of http.match('/api/msme/incentive-schemes')) r.flush({ schemes: [], tu: { direct: false, scheme: null }, fa: { activatesAfter: [] } });
     await settle(fixture);
 
     const el = fixture.nativeElement as HTMLElement;
