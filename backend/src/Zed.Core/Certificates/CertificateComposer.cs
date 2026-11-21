@@ -20,7 +20,10 @@ public sealed class CertificateField
     public int? MaxLines { get; set; }
     /// <summary>V4: the smallest font size (points) <see cref="MaxLines"/> may shrink to.</summary>
     public float? MinFont { get; set; }
-    /// <summary>V4, QR fields: pixels per QR module (3 when not given).</summary>
+    /// <summary>
+    /// V4, QR fields: the legacy encoder's QRCodeScale (3 when not given). As in the old sites the QR is drawn at
+    /// 300/96 of it (see <see cref="CertificateComposer.QrModulePixels"/>).
+    /// </summary>
     public float? Module { get; set; }
     /// <summary>V4: the font family when not Arial (a word set into the artwork's own text, e.g. "Times New Roman").</summary>
     public string? Family { get; set; }
@@ -116,7 +119,7 @@ public static class CertificateComposer
 
             if (request.QrField is not null && !string.IsNullOrEmpty(request.QrContent) &&
                 request.Layout.TryGetValue(request.QrField, out var qr))
-                DrawQr(canvas, request.QrContent, qr.X, qr.Y, qr.Module ?? 3);
+                DrawQr(canvas, request.QrContent, qr.X, qr.Y, qr.Module);
 
             doc.EndPage();
             doc.Close();
@@ -215,13 +218,32 @@ public static class CertificateComposer
         return lines;
     }
 
-    /// <summary>Version 4, error correction M, <paramref name="moduleSize"/> px per module (3 unless the layout says otherwise).</summary>
-    private static void DrawQr(SKCanvas canvas, string content, float x, float y, float moduleSize)
+    /// <summary>
+    /// The old sites' QR (ThoughtWorks QRCodeEncoder: version 4, error correction M, byte mode, QRCodeScale 3) was a
+    /// 96 dpi bitmap of (33 x scale + 1) px, white, without a quiet zone, which Graphics.DrawImage(image, PointF) drew at
+    /// its physical size on the 300 dpi artwork: 300/96 larger, about 312 px (2026-11-21, measured on the old portal's
+    /// certificates: 308 px of modules). This is that size: template pixels per module.
+    /// </summary>
+    public static float QrModulePixels(float? scale) => (scale ?? LegacyQrScale) * LegacyDpiRatio;
+
+    /// <summary>The side of the white square the QR sits on (the legacy bitmap's 33 x scale + 1 px, at 300/96).</summary>
+    public static float QrSidePixels(float? scale) => (QrModules * (scale ?? LegacyQrScale) + 1) * LegacyDpiRatio;
+
+    private const float LegacyQrScale = 3, LegacyDpiRatio = 300f / 96f;
+    /// <summary>Modules of a version 4 QR code.</summary>
+    public const int QrModules = 33;
+
+    /// <summary>Version 4, error correction M, at (x, y) on a white square, as the old sites drew it (see <see cref="QrModulePixels"/>).</summary>
+    private static void DrawQr(SKCanvas canvas, string content, float x, float y, float? scale)
     {
         const int quietZone = 4;
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M, requestedVersion: 4);
+        using var white = new SKPaint { Color = SKColors.White, IsAntialias = false };
         using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = false };
+        var moduleSize = QrModulePixels(scale);
+        var side = QrSidePixels(scale);
+        canvas.DrawRect(x, y, side, side, white);
         var matrix = data.ModuleMatrix;
         for (var row = quietZone; row < matrix.Count - quietZone; row++)
             for (var col = quietZone; col < matrix[row].Length - quietZone; col++)

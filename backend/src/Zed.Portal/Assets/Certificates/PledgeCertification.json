@@ -1,5 +1,5 @@
 ﻿{
-  "QrCode": { "x": 1184, "y": 2818, "font": 5.5, "color": "#696969", "module": 9 },
+  "QrCode": { "x": 1184, "y": 2818, "font": 5.5, "color": "#696969" },
   "CertificateNo": { "x": 1335, "y": 3141, "font": 8, "color": "#504F4F" },
   "IssuedOn": { "x": 0, "y": 0, "font": 5.5, "color": "#504F4F" },
   "DateOfPledge": { "x": 1335, "y": 2616, "font": 10, "color": "#504F4F" },

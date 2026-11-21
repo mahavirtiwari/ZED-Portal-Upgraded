@@ -109,8 +109,8 @@ public sealed class PledgeCertificateService(IOptions<PortalOptions> portal)
         Add("CertificateNo");
         if (layout.TryGetValue("QrCode", out var qr) && !string.IsNullOrEmpty(d.QrCodeNo))
         {
-            // Version 4: 33 modules at the layout's module size, as the PDF draws it.
-            var size = 33 * (qr.Module ?? 3);
+            // Version 4: 33 modules at the old sites' size (2026-11-21: 300/96 of the encoder's scale), as the PDF draws it.
+            var size = CertificateComposer.QrModules * CertificateComposer.QrModulePixels(qr.Module);
             fields.Add(new("QrCode", qr.X / PageWidth * 100, qr.Y / PageHeight * 100, size / PageWidth * 100, size / PageHeight * 100, 0, "#000000", false, "image"));
         }
         return new PledgeCertificateView(d.ZedId, d.UnitOrEnterpriseName, d.CertificateNo, d.DateOfPledge, d.Address, d.UdyamNo,

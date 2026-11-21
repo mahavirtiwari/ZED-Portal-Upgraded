@@ -89,4 +89,53 @@ public sealed class CertificateTests
         Assert.Contains("/Type /Page", text);
         Assert.InRange(pdf.Length, 100_000, 3_000_000); // template JPEG embedded once, not re-rasterised
     }
+
+    /// <summary>
+    /// 2026-11-21 (the user: the QR "is not as per the original one"): the old sites drew the ThoughtWorks QR (scale 3, a
+    /// 96 dpi bitmap) at its physical size on the 300 dpi artwork, 300/96 larger: 308 px of modules on the old portal's
+    /// certificates, on a white square of about 312 px. V4 had drawn 3 px modules (99 px) on the assessment certificates.
+    /// </summary>
+    [Fact]
+    public void The_qr_is_drawn_at_the_old_sites_size_on_every_certificate()
+    {
+        Assert.Equal(9.375f, CertificateComposer.QrModulePixels(null));
+        Assert.InRange(CertificateComposer.QrModules * CertificateComposer.QrModulePixels(null), 305, 312);
+        Assert.Equal(312.5f, CertificateComposer.QrSidePixels(null));
+
+        var assets = Path.Combine(AppContext.BaseDirectory, "Assets");
+        string[] layouts =
+        [
+            Path.Combine("Certificates", "PledgeCertification.json"),
+            Path.Combine("Documents", "DaCertification.json"), Path.Combine("Documents", "SaCertification.json"),
+            Path.Combine("Documents", "Surveillance", "DaCertification.json"), Path.Combine("Documents", "Surveillance", "SaCertification.json"),
+        ];
+        foreach (var layout in layouts)
+        {
+            var qr = CertificateComposer.LoadLayout(Path.Combine(assets, layout))["QrCode"];
+            Assert.True(qr.Module is null or 3, layout); // the legacy encoder's scale; no layout draws its own size
+        }
+
+        // ZED_DUMP_CERTS=<folder>: writes every certificate with a QR, to look at them (and decode the QR) by eye.
+        if (Environment.GetEnvironmentVariable("ZED_DUMP_CERTS") is { Length: > 0 } dump)
+        {
+            Directory.CreateDirectory(dump);
+            (string Template, string Layout, string Url)[] all =
+            [
+                ("Certificates/Pledge.jpg", "Certificates/PledgeCertification.json", "https://zedv3.qci.org.in/Verify/PC/400953111112T5Q"),
+                ("Documents/DaBronze.jpg", "Documents/DaCertification.json", "https://zedv3.qci.org.in/Verify/BC/40095311112ab3d"),
+                ("Documents/SaSilver.jpg", "Documents/SaCertification.json", "https://zedv3.qci.org.in/Verify/SC/40095311113ab3d"),
+                ("Documents/SaGold.jpg", "Documents/SaCertification.json", "https://zedv3.qci.org.in/Verify/GC/40095311114ab3d"),
+                ("Documents/SaZEDX.jpg", "Documents/SaCertification.json", "https://zedv3.qci.org.in/Verify/XC/40095311115ab3d"),
+                ("Documents/Surveillance/DaBronze.jpg", "Documents/Surveillance/DaCertification.json", "https://zedv3.qci.org.in/Verify/BC/40095311112ab3d"),
+                ("Documents/Surveillance/SaGold.jpg", "Documents/Surveillance/SaCertification.json", "https://zedv3.qci.org.in/Verify/GC/40095311114ab3d"),
+                ("Documents/Surveillance/SaZEDX.jpg", "Documents/Surveillance/SaCertification.json", "https://zedv3.qci.org.in/Verify/XC/40095311115ab3d"),
+            ];
+            foreach (var (template, layout, url) in all)
+            {
+                var pdf = CertificateComposer.RenderPdf(new CertificateRequest(Path.Combine(assets, template),
+                    CertificateComposer.LoadLayout(Path.Combine(assets, layout)), [new("Name", "Acme Unit 1", Bold: true)], "QrCode", url));
+                File.WriteAllBytes(Path.Combine(dump, template.Replace('/', '_').Replace(".jpg", ".pdf")), pdf);
+            }
+        }
+    }
 }
