@@ -84,10 +84,15 @@ const settle = () =>
   });
 
 let alerts: string[] = [];
+let buttons: Array<{ text?: string; onPress?: () => unknown }> = [];
 let alertSpy: jest.SpyInstance;
 beforeEach(() => {
   alerts = [];
-  alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, m) => void alerts.push(String(m ?? '')));
+  buttons = [];
+  alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, m, b) => {
+    alerts.push(String(m ?? ''));
+    buttons = (b as typeof buttons | undefined) ?? [];
+  });
 });
 afterEach(() => {
   alertSpy.mockRestore();
@@ -116,7 +121,8 @@ describe('Handholding Support in the app', () => {
     expect(texts(r)).toEqual(expect.arrayContaining(['Silver Handholding Support', 'ZED-X Handholding Support', 'Waiting for your acceptance']));
     expect(handler(r, 'handholding-Silver-pay').props.title ?? 'Pay Milestone 1').toMatch(/Pay Milestone 1/i);
     expect(has(r, 'handholding-ZEDX-pay')).toBe(false);
-    expect(texts(r)).toContain('Milestone 1 must be completed and accepted before Milestone 2 can be paid.');
+    // Waiting for the unit's acceptance: the Accept button instead of the reason.
+    expect(has(r, 'handholding-ZEDX-accept')).toBe(true);
   });
 
   it('no level open: a message instead of an empty page', async () => {
@@ -199,6 +205,55 @@ describe('Handholding Support in the app', () => {
     expect(zero.AssistedByCo).toBeUndefined();
     expect(s.last('ConsultancyPay/GetToken')).toBeUndefined();
     expect(has(r, 'handholding-payment-success')).toBe(true);
+  });
+
+  describe('Accept Milestone (2026-11-21)', () => {
+    const WAITING: Level = {
+      certification: 'Silver', name: 'Silver', milestonesStarted: 1, nextMilestone: 2, canPay: false,
+      refusal: 'Milestone 1 must be completed and accepted before Milestone 2 can be paid.', awaitingAcceptance: 1,
+    };
+
+    async function acceptWith(answer: Record<string, unknown>, fee: Record<string, unknown> = { ...FEE, MileStone: 2 }) {
+      let accepted = false;
+      const s = new FakeServer(req => {
+        if (req.url.endsWith('ConsultancyPay/GetHandholdingStatus'))
+          return { status: '1', levels: [accepted ? { ...WAITING, awaitingAcceptance: null, milestonesStarted: answer.next === 'Started' ? 2 : 1 } : WAITING] };
+        if (req.url.endsWith('ConsultancyPay/AcceptMilestone')) return ((accepted = true), answer);
+        if (req.url.endsWith('Msme/GetConsultancyPaymentDetailsByType')) return { WithOutCoupon: [fee], WithCoupon: [], CouponStatus: [{ IsCouponUsed: 1 }] };
+        return { status: '1' };
+      });
+      const r = render(await signedInApp(s));
+      await settle();
+      expect(has(r, 'handholding-Silver-pay')).toBe(false);
+      await press(r, 'handholding-Silver-accept');
+      expect(alerts[0]).toBe('I accept the activities conducted & recommendations given in Milestone-1');
+      await act(async () => {
+        await buttons.find(b => b.text === 'Accept')!.onPress!();
+      });
+      await settle();
+      expect(s.last('ConsultancyPay/AcceptMilestone')!.json).toEqual({ certification: 'Silver', milestone: 1, zedId: ZED_ID });
+      return { r, s };
+    }
+
+    it('each milestone paid: accepting opens the payment of the next milestone', async () => {
+      const { r, s } = await acceptWith({ status: '1', message: 'Milestone 1 accepted. Please pay for Milestone 2 to start it.', next: 'Pay', nextMilestone: 2 });
+      expect(has(r, 'handholding-payment')).toBe(true);
+      expect(s.last('Msme/GetConsultancyPaymentDetailsByType')!.json).toEqual({ certification: 'Silver', zedId: ZED_ID });
+      await press(r, 'payment-proceed');
+      await press(r, 'payment-proceed');
+      expect(texts(r)).toContain('Milestone 2: Implementation & Progress Review 1');
+      expect(has(r, 'co-question')).toBe(false);
+    });
+
+    it('one payment for all milestones: accepting starts the next milestone, no payment screen', async () => {
+      const { r, s } = await acceptWith({
+        status: '1', message: 'Milestone 1 accepted. Milestone 2 has started with your Consultant Organisation (already paid with milestone 1).', next: 'Started', nextMilestone: 2,
+      });
+      expect(has(r, 'handholding-payment')).toBe(false);
+      expect(alerts).toContain('Milestone 1 accepted. Milestone 2 has started with your Consultant Organisation (already paid with milestone 1).');
+      expect(s.last('Msme/GetConsultancyPaymentDetailsByType')).toBeUndefined();
+      expect(s.requests.filter(q => q.url.endsWith('ConsultancyPay/GetHandholdingStatus')).length).toBe(2);
+    });
   });
 
   it("the summary's notes follow the fee row as the web page", () => {

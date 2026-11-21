@@ -303,6 +303,16 @@ export interface HandholdingStatusResponse extends BaseServiceResponse {
   levels?: HandholdingLevel[] | null;
 }
 
+/**
+ * "Accept Milestone n" (2026-11-21): Started = one payment for all milestones, the next milestone has started; Pay = open the
+ * payment of nextMilestone; Completed = the level's three milestones are done.
+ */
+export interface AcceptMilestoneResponse extends BaseServiceResponse {
+  message?: string | null;
+  next?: 'Completed' | 'Started' | 'Pay' | null;
+  nextMilestone?: number | null;
+}
+
 export class MsmeApi {
   readonly http: HttpClient;
   /** The portal site (pledge certificate, Msme/ViewStatus). */
@@ -719,6 +729,11 @@ export class MsmeApi {
   /** The unit's handholding levels: milestones started, the milestone due, whether it can be paid now. */
   getHandholdingStatus(zedId: string) {
     return this.http.postJson<HandholdingStatusResponse>(this.consultancyPay + 'GetHandholdingStatus', { zedId });
+  }
+
+  /** "Accept Milestone n" of a level (the milestone waiting for the unit's acceptance). */
+  acceptHandholdingMilestone(certification: string, milestone: number, zedId: string) {
+    return this.http.postJson<AcceptMilestoneResponse>(this.consultancyPay + 'AcceptMilestone', { certification, milestone, zedId });
   }
 
   /** The handholding fee rows of the level's milestone due (WithCoupon / WithOutCoupon / CouponStatus). */

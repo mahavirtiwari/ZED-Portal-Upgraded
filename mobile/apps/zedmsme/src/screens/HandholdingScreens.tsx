@@ -65,6 +65,43 @@ export function HandholdingScreen() {
   const [levels, setLevels] = useState<HandholdingLevel[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The milestone is filled per button (the placeholder is kept here).
+  const confirmText = useAppText('app.msme.handholding.acceptMilestone.confirm', { Milestone: '{{Milestone}}' });
+
+  /**
+   * 2026-11-21 (the user): "Accept Milestone n". Each milestone paid: then the payment of the next milestone opens; one payment
+   * for all milestones (made at milestone 1): the server has started the next milestone, nothing to pay.
+   */
+  const accept = (level: HandholdingLevel, milestone: number) => {
+    const text = confirmText?.html
+      ? htmlToPlain(confirmText.html.replace(/\{\{\s*Milestone\s*\}\}/g, String(milestone))).trim()
+      : `I accept the activities conducted & recommendations given in Milestone-${milestone}`;
+    ui.alert(`Accept Milestone ${milestone}`, text, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Accept',
+        onPress: async () => {
+          ui.showLoading();
+          try {
+            const r = await app.api.acceptHandholdingMilestone(level.certification, milestone, zedId);
+            if (!isSuccess(r)) return ui.showAlert(r.errorMessage?.trim() || 'The milestone could not be accepted. Please try again.');
+            if (r.next === 'Pay' && r.nextMilestone) {
+              ui.toast(r.message?.trim() || `Milestone ${milestone} accepted.`, { long: true });
+              nav.push('HandholdingPayment', { certification: level.certification, name: level.name, milestone: r.nextMilestone });
+              return;
+            }
+            ui.showAlert(r.message?.trim() || `Milestone ${milestone} accepted.`);
+            await load();
+          } catch (e) {
+            ui.showAlert(e instanceof Error && e.message.trim() ? e.message : 'The milestone could not be accepted. Please try again.');
+          } finally {
+            ui.hideLoading();
+          }
+        },
+      },
+    ]);
+  };
+
   const load = useCallback(async () => {
     ui.showLoading();
     setError(null);
@@ -107,6 +144,7 @@ export function HandholdingScreen() {
             <LevelCard
               key={l.certification}
               level={l}
+              onAccept={() => l.awaitingAcceptance && accept(l, l.awaitingAcceptance)}
               onPay={() => nav.push('HandholdingPayment', { certification: l.certification, name: l.name, milestone: l.nextMilestone })}
             />
           ))}
@@ -116,7 +154,7 @@ export function HandholdingScreen() {
   );
 }
 
-function LevelCard({ level, onPay }: { level: HandholdingLevel; onPay: () => void }) {
+function LevelCard({ level, onPay, onAccept }: { level: HandholdingLevel; onPay: () => void; onAccept: () => void }) {
   const id = `handholding-${level.certification}`;
   const allPaid = level.milestonesStarted >= 3;
   return (
@@ -140,7 +178,9 @@ function LevelCard({ level, onPay }: { level: HandholdingLevel; onPay: () => voi
           </View>
         );
       })}
-      {level.canPay ? (
+      {level.awaitingAcceptance ? (
+        <ZedButton title={`Accept Milestone ${level.awaitingAcceptance}`} onPress={onAccept} style={{ marginTop: dimens.padding2 }} testID={`${id}-accept`} />
+      ) : level.canPay ? (
         <ZedButton title={`Pay Milestone ${level.nextMilestone}`} onPress={onPay} style={{ marginTop: dimens.padding2 }} testID={`${id}-pay`} />
       ) : (
         <Text style={styles.refusal} testID={`${id}-refusal`}>
