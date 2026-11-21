@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Data.Common;
 using Zed.Core.Data;
 
@@ -111,6 +112,17 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
     private static readonly SemaphoreSlim BuiltInLock = new(1, 1);
 
     /// <summary>
+    /// 2026-11-21 (review): after a failed insert or upgrade the built-ins are not tried again for a while, so a database
+    /// problem is logged once per <see cref="RetryAfterFailure"/>, not on every applicant page (the file log caps a day).
+    /// </summary>
+    internal static readonly TimeSpan RetryAfterFailure = TimeSpan.FromMinutes(10);
+
+    /// <summary>When the built-ins may be tried again, per database executor (one in production; each test host its own).</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ISqlExecutor, StrongBox<DateTime>> RetryAt = new();
+
+    private DateTime RetryTime { get => RetryAt.GetOrCreateValue(db).Value; set => RetryAt.GetOrCreateValue(db).Value = value; }
+
+    /// <summary>
     /// Every scheme, after making sure the two built-in ones exist and are up to date (2026-11-20): <see cref="SchemeTemplates.FaCode"/>
     /// (the Financial Assistance card's scheme: added switched on, opening after the card's "Activates after" levels, Bronze /
     /// Silver / Gold when none) and <see cref="SchemeTemplates.DirectTuCode"/> (added switched off); a built-in scheme stored with
@@ -121,7 +133,7 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
     public async Task<IReadOnlyList<SchemeDefinition>> EnsureBuiltInAsync(CancellationToken ct)
     {
         var all = await AllAsync(ct);
-        if (UpToDate(all)) return all;
+        if (UpToDate(all) || DateTime.UtcNow < RetryTime) return all;
         await BuiltInLock.WaitAsync(ct);
         try
         {
@@ -144,7 +156,8 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
                     catch (DbException ex)
                     {
                         // 2026-11-21: an error, not a debug line (a failing insert hid the built-in schemes on production).
-                        log.LogError(ex, "Built-in scheme {Code} could not be added to dbo.Incentives", code);
+                        log.LogError(ex, "Built-in scheme {Code} could not be added to dbo.Incentives (tried again in {Minutes} minutes)", code, RetryAfterFailure.TotalMinutes);
+                        RetryTime = DateTime.UtcNow + RetryAfterFailure;
                         return list;
                     }
                     log.LogInformation("Built-in scheme {Code} added ({State})", code, d.Active ? "on" : "off");
@@ -165,7 +178,8 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
                     }
                     catch (DbException ex)
                     {
-                        log.LogWarning(ex, "Built-in scheme {Code} not upgraded", code);
+                        log.LogWarning(ex, "Built-in scheme {Code} not upgraded (tried again in {Minutes} minutes)", code, RetryAfterFailure.TotalMinutes);
+                        RetryTime = DateTime.UtcNow + RetryAfterFailure;
                         continue;
                     }
                     log.LogInformation("Built-in scheme {Code} upgraded from template version {From} to {To}", code, list[index].TemplateVersion, SchemeTemplates.Version);

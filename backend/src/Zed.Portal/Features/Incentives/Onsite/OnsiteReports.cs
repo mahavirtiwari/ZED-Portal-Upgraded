@@ -31,7 +31,7 @@ public static class OnsiteReports
     public static readonly IReadOnlyList<string> PhotoFolders = ["Schemes", "SchemeOnsite"];
 
     internal const string PhotosSql =
-        "SELECT PhotoId, Name, TimeStamp, Latitude, Longitude, CreatedDate FROM dbo.FinancialAssistancePhotos " +
+        "SELECT PhotoId, Name, TimeStamp, Latitude, Longitude, CreatedDate, PhotoType FROM dbo.FinancialAssistancePhotos " +
         "WHERE FinancialAssistanceId = @Id AND Name LIKE 'onsite/%' ORDER BY Id;";
 
     public sealed class PhotoRow
@@ -42,6 +42,8 @@ public static class OnsiteReports
         public string? Latitude { get; init; }
         public string? Longitude { get; init; }
         public DateTime? CreatedDate { get; init; }
+        /// <summary>'OnsiteEarlier': a photo of an earlier visit (the visit was started again after the onsite QC sent it back).</summary>
+        public string? PhotoType { get; init; }
     }
 
     internal static async Task<IReadOnlyList<PhotoRow>> PhotoRowsAsync(ISqlExecutor db, int id, ILogger log, CancellationToken ct)
@@ -69,9 +71,13 @@ public static class OnsiteReports
         var photos = (await PhotoRowsAsync(db, c.Id, log, ct)).Select(p =>
         {
             var name = p.Name?.Trim() ?? "";
-            var kind = name.Equals("onsite/selfie", StringComparison.OrdinalIgnoreCase) ? "selfie"
+            var earlier = string.Equals(p.PhotoType?.Trim(), "OnsiteEarlier", StringComparison.OrdinalIgnoreCase);
+            var kind = earlier ? "earlier"
+                : name.Equals("onsite/selfie", StringComparison.OrdinalIgnoreCase) ? "selfie"
                 : name.Equals("onsite/site", StringComparison.OrdinalIgnoreCase) ? "site" : "item";
-            var title = kind == "item" ? items.GetValueOrDefault(name) ?? name["onsite/".Length..] : null;
+            var what = name.Equals("onsite/selfie", StringComparison.OrdinalIgnoreCase) ? "Selfie"
+                : name.Equals("onsite/site", StringComparison.OrdinalIgnoreCase) ? "Site photo" : items.GetValueOrDefault(name) ?? name["onsite/".Length..];
+            var title = earlier ? what : kind == "item" ? what : null;
             return new OnsitePhoto(p.PhotoId!.Trim(), kind, title, $"{fileBase}/{c.Id}/onsite-photos/{Uri.EscapeDataString(p.PhotoId!.Trim())}",
                 p.TimeStamp, p.Latitude, p.Longitude, p.CreatedDate);
         }).ToList();

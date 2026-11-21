@@ -185,7 +185,7 @@ export interface SchemeActions {
 /** A photo of the onsite visit: the selfie, the site photo or an item's photo (with the item's title). */
 export interface SchemeOnsitePhoto {
   photoId: string;
-  kind: 'selfie' | 'site' | 'item';
+  kind: 'selfie' | 'site' | 'item' | 'earlier';
   title: string | null;
   url: string;
   timeStamp: string | null;

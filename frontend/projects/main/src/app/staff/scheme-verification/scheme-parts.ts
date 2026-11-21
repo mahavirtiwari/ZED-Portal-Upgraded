@@ -317,6 +317,8 @@ export class SchemeOnsiteReportView {
     switch (p.kind) {
       case 'selfie': return t('staff.schemeVerification.onsite.selfie', 'Selfie at the unit');
       case 'site': return t('staff.schemeVerification.onsite.site', 'Site photo');
+      // 2026-11-21: a photo of an earlier visit (the visit was started again after the onsite QC sent it back), kept as evidence.
+      case 'earlier': return t('staff.schemeVerification.onsite.earlier', 'Earlier visit: {what}', { what: p.title ?? '' });
       default: return p.title ?? t('staff.schemeVerification.onsite.item', 'Item');
     }
   }

@@ -24,7 +24,17 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
 
     public sealed record ListResponse(string Source, IReadOnlyList<SourceDto> Sources, IReadOnlyList<LogEntry> Entries, bool More, string From, string To);
 
-    private IReadOnlyList<FileLogReader.Source> Sources() => FileLogReader.Sources(files.Folder, files.Source);
+    /// <summary>2026-11-21 (review): the folders are scanned once a minute, not on every search.</summary>
+    private static (DateTime At, IReadOnlyList<FileLogReader.Source> List)? _sources;
+
+    private IReadOnlyList<FileLogReader.Source> Sources()
+    {
+        var kept = _sources;
+        if (kept is { } k && DateTime.UtcNow - k.At < TimeSpan.FromMinutes(1) && k.List.Count > 0 && k.List[0].Folder == files.Folder) return k.List;
+        var list = FileLogReader.Sources(files.Folder, files.Source);
+        _sources = (DateTime.UtcNow, list);
+        return list;
+    }
 
     private static IReadOnlyList<string> DaysOf(string folder)
     {
@@ -50,7 +60,7 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
     /// newest first (at most <see cref="PageSize"/>; More when there are others: narrow the dates or the text). Days are UTC.
     /// </summary>
     [HttpGet]
-    public ActionResult<ListResponse> List(string? source, string? from, string? to, string? level, string? q)
+    public ActionResult<ListResponse> List(string? source, string? from, string? to, string? level, string? q, CancellationToken ct = default)
     {
         var today = DateTime.UtcNow.Date;
         if (!TryDay(to, today, out var toDay) || !TryDay(from, toDay, out var fromDay) || fromDay > toDay)
@@ -64,7 +74,7 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
         if (chosen is null) return this.Problem400("Unknown log.");
         try
         {
-            var (entries, more) = FileLogReader.Read(chosen.Folder, new FileLogReader.Query(fromDay, toDay, min.Value, q, PageSize));
+            var (entries, more) = FileLogReader.Read(chosen.Folder, new FileLogReader.Query(fromDay, toDay, min.Value, q, PageSize), ct);
             return new ListResponse(chosen.Name, sources.Select(s => new SourceDto(s.Name, DaysOf(s.Folder))).ToList(), entries, more,
                 fromDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), toDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         }

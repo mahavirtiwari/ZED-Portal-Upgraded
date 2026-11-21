@@ -95,19 +95,23 @@ public sealed class AdminFollowUpsTests : IDisposable
         var map = RequirementTexts.From([
             new(" 6 ", "1", " Roles and responsibilities are defined "), new("6", "1", "a second row of the same requirement"),
             new("7", "1", "Process control is in place"), new("8", null, "no code"), new("9", "1", "  "),
-        ]);
+            // 2026-11-21 (review): another level's texts of the same codes: a stored copy of one of them is replaced.
+            new("6", "1", "All energy sources are identified") { SectionType = "Bronze" }, new("7", "1", "Bronze text") { SectionType = "Bronze" },
+        ], level: "Silver");
         Assert.Equal(2, map.Count);
         var rows = new List<Dictionary<string, object?>>
         {
             new() { ["SectionCode"] = "6", ["RequirementCode"] = "1", ["RequirementName"] = "All energy sources are identified" },
             new() { ["SectionCode"] = "7", ["RequirementCode"] = 1, ["RequirementName"] = "Bronze text" },
             new() { ["SectionCode"] = "9", ["RequirementCode"] = "1", ["RequirementName"] = "kept when the questionnaire has none" },
+            new() { ["SectionCode"] = "7", ["RequirementCode"] = "1", ["RequirementName"] = "Silver wording before the Admin's edit" },
         };
         map.AttachTo(rows);
+        Assert.Equal("Silver wording before the Admin's edit", rows[3]["RequirementName"]);   // history, kept
         Assert.Equal("Roles and responsibilities are defined", rows[0]["RequirementName"]);
         Assert.Equal("Process control is in place", rows[1]["RequirementName"]);
         Assert.Equal("kept when the questionnaire has none", rows[2]["RequirementName"]);
-        Assert.Contains("FROM dbo.Requirements WHERE SectionType = @SectionType", RequirementTexts.Sql("dbo"));
+        Assert.Contains("FROM dbo.Requirements WHERE NULLIF(", RequirementTexts.Sql("dbo"));
     }
 
     [Fact]
@@ -117,7 +121,8 @@ public sealed class AdminFollowUpsTests : IDisposable
         var map = RequirementTexts.From([], [
             new("O", "7", "1", " 1 ", null, " Silver checkpoint 1 "), new("O", "7", "1", "1", null, "a later row of the same code"),
             new("O", "7", "1", "2", null, "  "), new("S", "7", "1", "1", "1", "Silver sub-point 1.1"), new("S", "7", "1", "1", null, "no code"),
-        ]);
+            new("O", "7", "1", "1", null, "Bronze checkpoint") { SectionType = "Bronze" }, new("S", "7", "1", "1", "1", "Bronze") { SectionType = "Bronze" },
+        ], "Silver");
         Assert.Equal(1, map.CheckpointCount);
         Assert.Equal(1, map.SubPointCount);
         var options = new List<Dictionary<string, object?>>
@@ -145,8 +150,8 @@ public sealed class AdminFollowUpsTests : IDisposable
         };
         var named = map.AttachTo(checkpoints, requirementRows);
         Assert.Equal(["Silver checkpoint 1", "other requirement"], named.Select(c => c.Text));
-        Assert.Contains("FROM dbo.Options WHERE SectionType = @SectionType", RequirementTexts.CheckpointSql("dbo"));
-        Assert.Contains("FROM dbo.SubOptions WHERE SectionType = @SectionType", RequirementTexts.CheckpointSql("dbo"));
+        Assert.Contains("FROM dbo.Options WHERE NULLIF(", RequirementTexts.CheckpointSql("dbo"));
+        Assert.Contains("FROM dbo.SubOptions WHERE NULLIF(", RequirementTexts.CheckpointSql("dbo"));
     }
 
     // ------------------------------------------------------------------ e-mail templates

@@ -109,12 +109,15 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         "WHERE LTRIM(RTRIM(P.Certification)) IN ('Silver', 'Gold', 'ZEDX') AND ISNULL(P.MileStoneNum, 1) BETWEEN 1 AND 3 AND P.ZedId NOT LIKE '%[_]D%' " +
         "AND @AgencyId IS NULL AND @ConsultantId IS NULL AND (@State IS NULL OR M.StateId = @State) " +
         "AND (@IncludeTestUnits = 1 OR NOT EXISTS (SELECT 1 FROM dbo.MsmeBasicInformation B WHERE B.ZedId = P.ZedId AND B.UdyogAadharNo IN (" + TestUdyamNumbers + ")))) " +
+        // 2026-11-21 (review): a unit has one milestone row per level whose NcCount is the milestone it has reached (1 -> 3), so
+        // milestone n is paid when the unit reached n or beyond, and completed when it moved past n (or n is completed: status
+        // 100; milestone 3: 100 or certified 16). Payment records (no status) count as paid only.
         "SELECT Level, COUNT(DISTINCT ZedId) AS Total, " +
-        "COUNT(DISTINCT CASE WHEN MileStone = 1 THEN ZedId END) AS M1Paid, " +
-        "COUNT(DISTINCT CASE WHEN MileStone = 2 THEN ZedId END) AS M2Paid, " +
-        "COUNT(DISTINCT CASE WHEN MileStone = 3 THEN ZedId END) AS M3Paid, " +
-        "COUNT(DISTINCT CASE WHEN MileStone = 1 AND CertificationStatus = 100 THEN ZedId END) AS M1Done, " +
-        "COUNT(DISTINCT CASE WHEN MileStone = 2 AND CertificationStatus = 100 THEN ZedId END) AS M2Done, " +
+        "COUNT(DISTINCT CASE WHEN MileStone >= 1 THEN ZedId END) AS M1Paid, " +
+        "COUNT(DISTINCT CASE WHEN MileStone >= 2 THEN ZedId END) AS M2Paid, " +
+        "COUNT(DISTINCT CASE WHEN MileStone >= 3 THEN ZedId END) AS M3Paid, " +
+        "COUNT(DISTINCT CASE WHEN CertificationStatus IS NOT NULL AND (MileStone > 1 OR CertificationStatus = 100) THEN ZedId END) AS M1Done, " +
+        "COUNT(DISTINCT CASE WHEN CertificationStatus IS NOT NULL AND (MileStone > 2 OR (MileStone = 2 AND CertificationStatus = 100)) THEN ZedId END) AS M2Done, " +
         "COUNT(DISTINCT CASE WHEN MileStone = 3 AND CertificationStatus IN (100, 16) THEN ZedId END) AS M3Done " +
         "FROM HandholdingMilestones GROUP BY Level;";
 
@@ -174,8 +177,9 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
     /// </summary>
     internal const string ConsultantMilestonesSql =
         "SELECT X.ConsultantId AS UserId, " +
-        "SUM(CASE WHEN C.NcCount = 1 AND C.CertificationStatus = 100 THEN 1 ELSE 0 END) AS M1, " +
-        "SUM(CASE WHEN C.NcCount = 2 AND C.CertificationStatus = 100 THEN 1 ELSE 0 END) AS M2, " +
+        // 2026-11-21 (review): milestone n completed = the unit moved past n, or n is completed (one row per level, NcCount 1 -> 3).
+        "SUM(CASE WHEN C.NcCount > 1 OR (C.NcCount = 1 AND C.CertificationStatus = 100) THEN 1 ELSE 0 END) AS M1, " +
+        "SUM(CASE WHEN C.NcCount > 2 OR (C.NcCount = 2 AND C.CertificationStatus = 100) THEN 1 ELSE 0 END) AS M2, " +
         "SUM(CASE WHEN C.NcCount = 3 AND C.CertificationStatus IN (100, 16) THEN 1 ELSE 0 END) AS M3, " +
         "SUM(CASE WHEN ISNULL(C.CertificationStatus, 0) NOT IN (16, 99, 100) AND ISNULL(C.IdDisabled, '') <> 'Yes' THEN 1 ELSE 0 END) AS InProgress " +
         "FROM dbo.MsmeCertifications C " +

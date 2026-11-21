@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9455,
+  "count": 9456,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -101117,6 +101117,20 @@
       "page": "schemeVerification",
       "pageName": "Scheme verification",
       "placeholders": [],
+      "files": [
+        "staff/scheme-verification/scheme-parts.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeVerification.onsite.earlier",
+      "standard": "Earlier visit: {what}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "schemeVerification",
+      "pageName": "Scheme verification",
+      "placeholders": [
+        "what"
+      ],
       "files": [
         "staff/scheme-verification/scheme-parts.ts"
       ]

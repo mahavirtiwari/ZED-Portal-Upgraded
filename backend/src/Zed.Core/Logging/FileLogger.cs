@@ -275,13 +275,26 @@ public static class FileLogReader
         while (reader.ReadLine() is { } line) yield return line;
     }
 
-    public sealed record Query(DateTime FromDay, DateTime ToDay, LogLevel MinLevel, string? Text, int Take);
+    /// <param name="MaxBytes">2026-11-21 (review): the most text read for one search (then More: narrow the days or the text).</param>
+    public sealed record Query(DateTime FromDay, DateTime ToDay, LogLevel MinLevel, string? Text, int Take, long MaxBytes = 200L * 1024 * 1024);
 
-    /// <summary>The entries of the days (newest first) at or above the level and containing the text (message, error, path, user, trace id, category).</summary>
-    public static (IReadOnlyList<LogEntry> Entries, bool More) Read(string folder, Query q)
+    /// <summary>The level names at or above <paramref name="min"/> as they appear in a line (<c>"l":"Error"</c>).</summary>
+    private static string[] LevelTokens(LogLevel min) =>
+        Enum.GetValues<LogLevel>().Where(l => l >= min && l != LogLevel.None).Select(l => $"\"l\":\"{l}\"").ToArray();
+
+    /// <summary>
+    /// The entries of the days (newest first) at or above the level and containing the text (message, error, path, user, trace
+    /// id, category). Lines that cannot match are skipped before they are decoded; the search stops after
+    /// <see cref="Query.MaxBytes"/> or when <paramref name="ct"/> is cancelled.
+    /// </summary>
+    public static (IReadOnlyList<LogEntry> Entries, bool More) Read(string folder, Query q, CancellationToken ct = default)
     {
         var result = new List<LogEntry>();
         var text = q.Text?.Trim();
+        var levels = LevelTokens(q.MinLevel);
+        // The text is looked for in the raw line first only when JSON writes it as it is (no quotes, backslashes or non-ASCII).
+        var rawText = !string.IsNullOrEmpty(text) && text.All(c => c >= ' ' && c < 127 && c != '"' && c != '\\') ? text : null;
+        long read = 0;
         for (var day = q.ToDay.Date; day >= q.FromDay.Date; day = day.AddDays(-1))
         {
             var file = Path.Combine(folder, FileLog.FileName(day));
@@ -289,6 +302,11 @@ public static class FileLogReader
             var dayEntries = new List<LogEntry>();
             foreach (var line in ReadLines(file))
             {
+                ct.ThrowIfCancellationRequested();
+                read += line.Length + 1;
+                if (read > q.MaxBytes) { dayEntries.Reverse(); result.AddRange(dayEntries.Take(Math.Max(0, q.Take - result.Count))); return (result, true); }
+                if (!levels.Any(t => line.Contains(t, StringComparison.Ordinal))) continue;
+                if (rawText is not null && !line.Contains(rawText, StringComparison.OrdinalIgnoreCase)) continue;
                 if (Parse(line) is not { } e) continue;
                 if (!Enum.TryParse<LogLevel>(e.Level, out var level) || level < q.MinLevel) continue;
                 if (!string.IsNullOrEmpty(text) && !Matches(e, text)) continue;

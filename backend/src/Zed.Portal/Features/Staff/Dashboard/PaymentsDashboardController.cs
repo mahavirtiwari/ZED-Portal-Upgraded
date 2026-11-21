@@ -117,7 +117,9 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         "AND (ISNULL(LTRIM(RTRIM(P.Certification)), '') NOT IN ('Silver', 'Gold', 'ZEDX') OR ISNULL(P.MileStoneNum, 0) NOT BETWEEN 1 AND 3) " +
         "AND ABS(DATEDIFF(SECOND, C.CreatedDate, P.CreatedDate)) <= 600)) " +
         "ORDER BY CASE WHEN C.Id = P.MsmePmtCertId THEN 0 ELSE 1 END, ABS(DATEDIFF(SECOND, C.CreatedDate, P.CreatedDate))) H " +
-        "WHERE P.Id IN @Ids;";
+        // 2026-11-21 (review): only records whose own level or milestone is not a handholding one are mapped. A unit has one
+        // milestone row per level whose NcCount grows 1 -> 3, so a valid record (e.g. Silver milestone 1) keeps its own values.
+        "WHERE P.Id IN @Ids AND (ISNULL(LTRIM(RTRIM(P.Certification)), '') NOT IN ('Silver', 'Gold', 'ZEDX') OR ISNULL(P.MileStoneNum, 0) NOT BETWEEN 1 AND 3);";
 
     public sealed record HandholdingMilestoneRow(int Id, string? Level, int MileStone);
 

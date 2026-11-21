@@ -113,4 +113,19 @@ public sealed class ConsultancyAuditTests : IDisposable
         await co.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/consultant-milestones");
         Assert.Equal("CO1", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name.StartsWith("SELECT X.ConsultantId", StringComparison.Ordinal)).Args, "AgencyId"));
     }
+
+    [Fact]
+    public void Milestones_count_from_the_level_row_that_moves_one_to_three()
+    {
+        // 2026-11-21 (review): one milestone row per unit and level, NcCount = the milestone reached (1 -> 3).
+        var cards = Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.HandholdingCardsSql;
+        Assert.Contains("CASE WHEN MileStone >= 1 THEN ZedId END) AS M1Paid", cards);
+        Assert.Contains("(MileStone > 1 OR CertificationStatus = 100) THEN ZedId END) AS M1Done", cards);
+        Assert.Contains("(MileStone > 2 OR (MileStone = 2 AND CertificationStatus = 100)) THEN ZedId END) AS M2Done", cards);
+        var consultants = Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.ConsultantMilestonesSql;
+        Assert.Contains("C.NcCount > 1 OR (C.NcCount = 1 AND C.CertificationStatus = 100)", consultants);
+        // A payment record with a handholding level and milestone keeps its own values; only broken ones are mapped.
+        Assert.Contains("WHERE P.Id IN @Ids AND (ISNULL(LTRIM(RTRIM(P.Certification)), '') NOT IN ('Silver', 'Gold', 'ZEDX') OR ISNULL(P.MileStoneNum, 0) NOT BETWEEN 1 AND 3)",
+            Zed.Portal.Features.Staff.Dashboard.PaymentsDashboardController.HandholdingMilestoneSql);
+    }
 }

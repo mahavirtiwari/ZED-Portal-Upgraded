@@ -67,7 +67,7 @@ public sealed class SchemeVisitsController(ISqlExecutor db, MobileStorage storag
 
     public const string PhotosSql =
         "SELECT PhotoId, Name, TimeStamp, Latitude, Longitude FROM dbo.FinancialAssistancePhotos " +
-        "WHERE FinancialAssistanceId = @Id AND Name LIKE 'onsite/%' ORDER BY Id;";
+        "WHERE FinancialAssistanceId = @Id AND Name LIKE 'onsite/%' AND ISNULL(PhotoType, 'Onsite') <> 'OnsiteEarlier' ORDER BY Id;";
 
     private const string Allotted =
         "Id = @Id AND SchemeCode IS NOT NULL AND OnsiteAssessorId = @UserId AND ISNULL(VerificationStatus, 0) <> 6";
@@ -80,7 +80,10 @@ public sealed class SchemeVisitsController(ISqlExecutor db, MobileStorage storag
         "UPDATE dbo.FinancialAssistance SET SchemeStatus = 'OnsiteVisit', VerificationStatus = 2, VisitStartedOn = GETDATE(), " +
         "VisitLatitude = @Latitude, VisitLongitude = @Longitude, VisitSubmittedOn = NULL WHERE " + Allotted + " AND SchemeStatus = 'OnsiteWithAssessor';\n" +
         "DECLARE @Updated int = @@ROWCOUNT;\nIF @Updated = 1\nBEGIN\n" +
-        "DELETE FROM dbo.FinancialAssistancePhotos WHERE FinancialAssistanceId = @Id AND Name IN ('onsite/selfie', 'onsite/site');\n" +
+        // 2026-11-21 (review): a visit started again (after the onsite QC sent it back) keeps the earlier visit's photos as evidence,
+        // marked 'OnsiteEarlier'; the new visit starts with none (limits and checks count the current visit only).
+        "UPDATE dbo.FinancialAssistancePhotos SET PhotoType = 'OnsiteEarlier' WHERE FinancialAssistanceId = @Id AND Name LIKE 'onsite/%' " +
+        "AND ISNULL(PhotoType, 'Onsite') <> 'OnsiteEarlier';\n" +
         InsertPhoto + "VALUES (@ZedId, @SelfieId, 'onsite/selfie', @SelfieTime, @Latitude, @Longitude, 'Onsite', GETDATE(), @SchemeCode, @Id), " +
         "(@ZedId, @SiteId, 'onsite/site', @SiteTime, @SiteLatitude, @SiteLongitude, 'Onsite', GETDATE(), @SchemeCode, @Id);\nEND\n" +
         "COMMIT;\nSELECT @Updated;";
@@ -89,13 +92,13 @@ public sealed class SchemeVisitsController(ISqlExecutor db, MobileStorage storag
     public const string AddPhotoSql =
         "SET XACT_ABORT ON;\nBEGIN TRAN;\n" +
         "DECLARE @Open int = (SELECT COUNT(*) FROM dbo.FinancialAssistance WITH (UPDLOCK, HOLDLOCK) WHERE " + Allotted + " AND SchemeStatus = 'OnsiteVisit');\n" +
-        "DECLARE @Taken int = (SELECT COUNT(*) FROM dbo.FinancialAssistancePhotos WHERE FinancialAssistanceId = @Id AND Name = @Name);\n" +
+        "DECLARE @Taken int = (SELECT COUNT(*) FROM dbo.FinancialAssistancePhotos WHERE FinancialAssistanceId = @Id AND Name = @Name AND ISNULL(PhotoType, 'Onsite') <> 'OnsiteEarlier');\n" +
         "DECLARE @Done int = CASE WHEN @Open = 1 AND @Taken < @Max THEN 1 ELSE 0 END;\n" +
         "IF @Done = 1\n" + InsertPhoto + "VALUES (@ZedId, @PhotoId, @Name, @TimeStamp, @Latitude, @Longitude, 'Onsite', GETDATE(), @SchemeCode, @Id);\n" +
         "COMMIT;\nSELECT @Done;";
 
     public const string DeletePhotoSql =
-        "DELETE FROM dbo.FinancialAssistancePhotos WHERE FinancialAssistanceId = @Id AND PhotoId = @PhotoId AND Name LIKE 'onsite/%/%' " +
+        "DELETE FROM dbo.FinancialAssistancePhotos WHERE FinancialAssistanceId = @Id AND PhotoId = @PhotoId AND Name LIKE 'onsite/%/%' AND ISNULL(PhotoType, 'Onsite') <> 'OnsiteEarlier' " +
         "AND EXISTS (SELECT 1 FROM dbo.FinancialAssistance WHERE " + Allotted + " AND SchemeStatus = 'OnsiteVisit');\nSELECT @@ROWCOUNT;";
 
     public const string SaveSql =

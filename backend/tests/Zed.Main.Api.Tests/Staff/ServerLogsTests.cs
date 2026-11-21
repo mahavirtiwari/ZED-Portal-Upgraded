@@ -71,6 +71,21 @@ public sealed class ServerLogsTests : IDisposable
     }
 
     [Fact]
+    public void A_search_stops_after_its_byte_budget_and_skips_lines_of_other_levels()
+    {
+        Directory.CreateDirectory(_folder);
+        var now = DateTime.UtcNow;
+        File.WriteAllLines(Path.Combine(_folder, FileLog.FileName(now)), Enumerable.Range(0, 50).Select(i =>
+            JsonSerializer.Serialize(new LogEntry(now, i % 2 == 0 ? "Warning" : "Error", "main", "c", 0, "entry " + i, null, null, null, null))));
+        var today = now.Date;
+        Assert.Equal(25, FileLogReader.Read(_folder, new(today, today, LogLevel.Error, null, 100)).Entries.Count);
+        var (few, more) = FileLogReader.Read(_folder, new(today, today, LogLevel.Warning, null, 100, MaxBytes: 1000));
+        Assert.True(more);
+        Assert.InRange(few.Count, 1, 49);
+        Assert.Single(FileLogReader.Read(_folder, new(today, today, LogLevel.Warning, "entry 7", 100)).Entries);
+    }
+
+    [Fact]
     public void A_full_day_stops_at_the_size_limit_with_one_line_saying_so()
     {
         var provider = new FileLoggerProvider(Microsoft.Extensions.Options.Options.Create(new FileLogOptions { Folder = _folder, MaxFileBytes = 300 }),
