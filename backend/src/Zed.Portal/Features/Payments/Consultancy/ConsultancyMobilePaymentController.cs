@@ -183,6 +183,39 @@ public sealed partial class ConsultancyMobilePaymentController(
         return LegacyContent(Serialize(new ServiceResponse { status = "1" }));
     }
 
+    // ----- status -----
+
+    /// <summary>
+    /// 2026-11-21 (the user: "add handholding payment screens" to the ZED MSME app), new: the unit's handholding levels as the web
+    /// page evaluates them (<see cref="HandholdingEligibility"/>): every level open to it or already started, with the milestones
+    /// started, the milestone the next payment is for, whether it can be paid now (else why not) and a milestone waiting for the
+    /// unit's acceptance. The payment itself checks the same again.
+    /// </summary>
+    [HttpPost("/ConsultancyPay/GetHandholdingStatus")]
+    [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> GetHandholdingStatus(string? zedId, CancellationToken ct)
+    {
+        zedId = zedId?.Trim();
+        if (string.IsNullOrEmpty(zedId) || zedId.Length > 50) return Refuse(InvalidDetails);
+        var row = await ConsultancyPaymentController.StatusRowAsync(db, zedId, ct);
+        var levels = HandholdingEligibility.Levels
+            .Select(l => HandholdingEligibility.Evaluate(row, l))
+            .Where(s => s.Enabled || s.MilestonesStarted > 0)
+            .Select(s => new
+            {
+                certification = s.Certification,
+                name = HandholdingEligibility.Display(s.Certification),
+                milestonesStarted = s.MilestonesStarted,
+                nextMilestone = s.NextMilestone,
+                canPay = s.CanPay,
+                refusal = s.Refusal,
+                awaitingAcceptance = s.AwaitingAcceptance,
+            })
+            .ToList();
+        return LegacyJson(new { status = "1", errorMessage = (string?)null, levels });
+    }
+
     // ----- Consultant Organisation (milestone 1) -----
 
     /// <summary>

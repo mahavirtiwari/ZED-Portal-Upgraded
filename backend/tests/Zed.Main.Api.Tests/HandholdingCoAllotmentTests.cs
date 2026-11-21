@@ -330,6 +330,38 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
         Assert.Equal(["zedId"], bound!.UserFields);
     }
 
+    /// <summary>2026-11-21: the app's handholding screen asks which levels are open and which milestone can be paid.</summary>
+    [Fact]
+    public async Task The_app_reads_the_handholding_levels_and_the_milestone_due()
+    {
+        var app = App().CreateClient();
+        async Task<JsonElement> Silver()
+        {
+            var r = await Json(await app.PostAsync("/ConsultancyPay/GetHandholdingStatus",
+                new FormUrlEncodedContent(new Dictionary<string, string> { ["zedId"] = Me, ["deviceInfo.deviceId"] = "device-1" })));
+            Assert.Equal("1", r.GetProperty("status").GetString());
+            return r.GetProperty("levels").EnumerateArray().Single(l => l.GetProperty("certification").GetString() == "Silver");
+        }
+
+        var due = await Silver();
+        Assert.Equal("Silver", due.GetProperty("name").GetString());
+        Assert.Equal(1, due.GetProperty("nextMilestone").GetInt32());
+        Assert.True(due.GetProperty("canPay").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, due.GetProperty("refusal").ValueKind);
+
+        // Milestone 1 waits for the unit's acceptance: milestone 2 cannot be paid yet.
+        _host.Sql.Procs["SP_CONSULTANCY_APP_MSME_STATUS"] = _ => FakeSql.Sets([HandholdingTests.Status(silverStarted: 1, silverCompletion: [16, 0, 0])]);
+        var waiting = await Silver();
+        Assert.Equal(2, waiting.GetProperty("nextMilestone").GetInt32());
+        Assert.False(waiting.GetProperty("canPay").GetBoolean());
+        Assert.Contains("Milestone 1 must be completed and accepted", waiting.GetProperty("refusal").GetString());
+        Assert.Equal(1, waiting.GetProperty("awaitingAcceptance").GetInt32());
+
+        var bound = typeof(ConsultancyMobilePaymentController).GetMethod(nameof(ConsultancyMobilePaymentController.GetHandholdingStatus))!
+            .GetCustomAttribute<DeviceBoundAttribute>();
+        Assert.Equal(["zedId"], bound!.UserFields);
+    }
+
     private sealed class MobileGateway : ICcAvenueMobileClient
     {
         public Task<SecureTokenResponse?> GetSecureTokenAsync(string orderId, CancellationToken ct) =>

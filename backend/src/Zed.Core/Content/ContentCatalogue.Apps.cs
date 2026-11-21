@@ -180,6 +180,26 @@ public static partial class ContentCatalogue
         // 2026-11-21 (the product owner's rule): the handholding milestone 1 payment asks who assisted the unit (Yes = pick the organisation).
         App("app.msme.handholding.payment.coQuestion", "Handholding payment: Consultant Organisation question (milestone 1)", MsmeApp, Main,
             "Did any Consultant Organisation assist you?"),
+        // 2026-11-21 (the user: handholding payment screens in the app): the web page's disclaimer and instructions.
+        App("app.msme.handholding.payment.disclaimer", "Handholding payment: disclaimer", MsmeApp, Main, """
+            <ol>
+              <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this activity on their own volition.</li>
+              <li>The applicant has read and understood the requirements of the handholding process for which the payment is being made and take full responsibility for the outcome of the process.</li>
+              <li>The amount once remitted is non-refundable, non-adjustable &amp; non-transferable irrespective of the outcome of the process.</li>
+              <li>Submission of relevant documents/evidences/responses in a timely manner is essential.</li>
+              <li>Complete support to the Consultant Organisation must be provided by the applicant in order to achieve the desired result.</li>
+              <li>The payment being made is only the “beneficiary contribution”; the subsidies applicable for this activity is pre-applied.</li>
+            </ol>
+            """),
+        App("app.msme.handholding.payment.instructions", "Handholding payment: instructions", MsmeApp, Main, """
+            <ol>
+              <li>There are 3 milestones in the handholding process. Payment will be made at the beginning of each milestone.</li>
+              <li>A Consultant Organisation will be allocated to the applicant after payment of the first milestone.</li>
+              <li>The applicant would need to submit necessary information/documents as and when sought and extend full support to the consultant organisation.</li>
+              <li>Applicant must coordinate closely with the Consultant Organisation to close each milestone and move to the next.</li>
+              <li>Activity for each milestone would commence only after payment of that milestone and acceptance of activities performed in the previous milestone, if &amp; as applicable.</li>
+            </ol>
+            """),
         App("app.msme.fa.eligibleAmountNote", "Financial Assistance: eligible amount note", MsmeApp, Main,
             "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
         App("app.msme.evidences.finalSubmit.confirm", "Evidences: final submit confirmation", MsmeApp, MainAndSurveillance,
