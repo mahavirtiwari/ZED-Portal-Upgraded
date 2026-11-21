@@ -22,6 +22,8 @@ public sealed class SaBronzeCase
     public int status { get; set; }
     /// <summary>When the unit reached that status (CertificationStatusDate, else CreatedDate), ISO 8601; null when unknown.</summary>
     public string? statusDate { get; set; }
+    /// <summary>2026-11-21: the NC round waiting for the assessor's reply (1-5), null before the final submit (status 1).</summary>
+    public int? ncRound { get; set; }
 }
 
 /// <summary>SA/BronzeSurveillance: the assessor's Bronze surveillance cases.</summary>

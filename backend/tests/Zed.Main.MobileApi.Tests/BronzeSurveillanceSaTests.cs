@@ -19,6 +19,8 @@ public sealed class BronzeSurveillanceSaTests : IDisposable
     private const string OtherUnit = "ZEDMSME000002";
     private readonly SurveillanceAppHost _t = new();
     private bool _hasCases = true;
+    /// <summary>2026-11-21: the unit is in its NC round 1 (status 4): the procedure's set 4 (status 1 only) is empty.</summary>
+    private bool _ncOpen;
     private const string InvalidCredentials = "Invalid credetials.";
     private const string NotAllocated = "Bronze Surveillance Assessment data not yet allocated for the ZEDID: ";
 
@@ -37,7 +39,7 @@ public sealed class BronzeSurveillanceSaTests : IDisposable
                 ? [new Dictionary<string, object?> { ["UserId"] = user, ["Password"] = Password, ["RoleId"] = 3, ["IsActive"] = true, ["UserName"] = "Desk Assessor" }]
                 : [];
             if (zed is null) return FakeSql.Sets(users, [], [], [new { BronzeStatus = 1 }], []);
-            var mine = user == Assessor && zed == Zed;
+            var mine = user == Assessor && zed == Zed && !_ncOpen;
             return FakeSql.Sets(users,
                 [new { MsmeId = "11", ZedId = zed, PledgeCertificateNo = zed, PUnitName = "Plant 1" }],
                 [new { EnterpriseName = "Acme Forgings", OwnerName = "Owner", MobileNo = "9876543210", EmailId = "unit@acme.test" }],
@@ -47,6 +49,9 @@ public sealed class BronzeSurveillanceSaTests : IDisposable
         _t.Fake.Queries[BronzeSurveillanceData.CasesSql] = args => FakeSql.Arg(args, "UserId") == Assessor && _hasCases
             ? [new { ZedId = Zed, Certification = "Bronze", CertificationStatus = 1, StatusDate = new DateTime(2026, 11, 2, 10, 0, 0),
                      EnterpriseName = "Acme Forgings", UnitName = "Plant 1", Address = "12, MG Road", District = "Pune", State = "Maharashtra", Pincode = "411001" }]
+            : [];
+        _t.Fake.Queries[BronzeSurveillanceData.UnitCaseSql] = args => FakeSql.Arg(args, "UserId") == Assessor && FakeSql.Arg(args, "ZedId") == Zed && _ncOpen
+            ? [new { ZedId = Zed, Certification = "Bronze", CertificationStatus = 4, NcCount = 1, Nc1Status = 1, Nc2Status = 0, NcRound = 1 }]
             : [];
         _t.Fake.Queries[SaAppData.AssessorSql] = args => FakeSql.Arg(args, "UserId") is Assessor or OtherAssessor
             ? [new { UserId = FakeSql.Arg(args, "UserId"), RoleId = 3, IsActive = true, SiteVerification = (bool?)null }]
@@ -146,6 +151,37 @@ public sealed class BronzeSurveillanceSaTests : IDisposable
         // The ZED SA token is not a SURV token, and the SURV token is for this unit only.
         Assert.Equal(AppTokens.ExpiredMessage, Error(await Post("/Surveillance/GetMyDocuments", new { zedId = Zed, deviceInfo = new { deviceId = "dev-1" } }, token)));
         Assert.Single(_t.CallsTo("SP_MSME_GET_MY_DOCUMENTS"));
+    }
+
+    /// <summary>2026-11-21 (the owner): a unit whose NC round is open opens too, with its NC round, so the NC replies can be made.</summary>
+    [Fact]
+    public async Task A_unit_in_its_open_nc_round_opens_with_its_nc_round()
+    {
+        _ncOpen = true;
+        var (_, token) = await SignIn();
+        var e = await Post("/SA/BronzeSurveillanceSession", new { saId = Assessor, zedId = Zed, deviceInfo = new { deviceId = "dev-1" } }, token);
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        var st = e.GetProperty("MsmeDetails").GetProperty("msmeStatus");
+        Assert.Equal(2, st.GetProperty("BronzeStatus").GetInt32());
+        Assert.Equal(1, st.GetProperty("BronzeStatusOfNc").GetInt32());
+        Assert.Equal(1, st.GetProperty("bronze").GetProperty("nc1Status").GetInt32());
+        Assert.Equal("Raised: please reply", st.GetProperty("bronze").GetProperty("nc1StatusText").GetString());
+        Assert.Equal(0, st.GetProperty("bronze").GetProperty("nc2Status").GetInt32());
+        Assert.False(string.IsNullOrEmpty(e.GetProperty("appToken").GetString()));
+        Assert.Equal(Assessor, FakeSql.Arg(_t.CallsTo(BronzeSurveillanceData.UnitCaseSql).Single().Args, "UserId"));
+
+        // Closed (no open round, not status 1): refused as before.
+        _t.Fake.Queries[BronzeSurveillanceData.UnitCaseSql] = _ => [];
+        var closed = await Post("/SA/BronzeSurveillanceSession", new { saId = Assessor, zedId = Zed, deviceInfo = new { deviceId = "dev-1" } }, token);
+        Assert.Equal(NotAllocated + Zed, Error(closed));
+    }
+
+    [Fact]
+    public void The_case_list_takes_units_at_status_1_or_in_an_open_nc_round()
+    {
+        Assert.Contains("C.CertificationStatus = 1 OR (C.CertificationStatus IN (4, 14) AND C.NcCount BETWEEN 1 AND 5", BronzeSurveillanceData.CasesSql);
+        Assert.Contains("AND C.ZedId = @ZedId", BronzeSurveillanceData.UnitCaseSql);
+        Assert.Equal(1, BronzeSurveillanceData.Case(new BronzeSurveillanceData.CaseRow { ZedId = Zed, NcRound = 1 }).ncRound);
     }
 
     [Fact]

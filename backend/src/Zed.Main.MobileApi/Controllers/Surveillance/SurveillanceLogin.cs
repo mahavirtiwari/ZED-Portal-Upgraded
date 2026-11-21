@@ -20,8 +20,11 @@ internal static class SurveillanceLogin
     /// </summary>
     public static bool Allotted(ResultSets sets) => sets.Count >= 5 && sets[4].Count > 0 && sets[1].Count > 0;
 
-    /// <summary>The login answer (MsmeLoginResponse) from sets 1 to 3; the token is added by <see cref="StartAsync"/>.</summary>
-    public static MsmeLoginResponse Answer(ResultSets sets)
+    /// <summary>
+    /// The login answer (MsmeLoginResponse) from sets 1 to 3; the token is added by <see cref="StartAsync"/>. <paramref name="status"/>
+    /// replaces set 3 (the button states) when given (2026-11-21: a unit in its NC round opened from ZED SA).
+    /// </summary>
+    public static MsmeLoginResponse Answer(ResultSets sets, IDictionary<string, object?>? status = null)
     {
         var msme = sets.FirstRow(1);
         var basic = sets.FirstRow(2);
@@ -97,7 +100,7 @@ internal static class SurveillanceLogin
                     Five_DigitActivity = msme.Text("FiveDigitActivity"),
                     ActivityDetail_Id = msme.Text("ActivityDetailId"),
                 },
-                msmeStatus = MsmeController.StatusFrom(sets.FirstRow(3)),
+                msmeStatus = MsmeController.StatusFrom(status ?? sets.FirstRow(3)),
             },
             TwilioToken = null, // video calls were removed; the field stays for the installed apps
         };

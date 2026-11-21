@@ -244,6 +244,7 @@ public static partial class ContentCatalogue
             "Units allotted to you as the Bronze surveillance desktop assessor"),
         App("app.assessor.bronze.case.label", "Bronze surveillance: case card: label", AssessorApp, Main, "Bronze Surveillance"),
         App("app.assessor.bronze.case.status", "Bronze surveillance: case card: status (with the desktop assessor)", AssessorApp, Main, "Desktop assessment"),
+        App("app.assessor.bronze.case.ncRound", "Bronze surveillance: case card: status (NC round open for the reply)", AssessorApp, Main, "NC {{Round}}: reply due", "Round"),
         App("app.assessor.bronze.case.allotted", "Bronze surveillance: case card: since", AssessorApp, Main, "Since {{Date}}", "Date"),
         App("app.assessor.bronze.case.open", "Bronze surveillance: case card: open button", AssessorApp, Main, "Open"),
         App("app.assessor.bronze.open.offline", "Bronze surveillance: opening offline a case never opened on the phone", AssessorApp, Main,

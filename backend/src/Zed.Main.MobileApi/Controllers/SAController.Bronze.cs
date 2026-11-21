@@ -68,13 +68,24 @@ public sealed partial class SAController
             new { AssessorId = saId, ZedId = zedId, Password = PasswordStore.RefusedValue }, ct);
         // The ZED Surveillance app's login rule (set 4: DesktopAssessorId = the assessor, status 1; set 1: the Msme row),
         // and Bronze, the only level the app had steps for.
-        if (!SurveillanceLogin.Allotted(sets) || !sets[4].Any(r => Same(r.Text("Certification"), "Bronze")))
+        MsmeLoginResponse response;
+        if (SurveillanceLogin.Allotted(sets) && sets[4].Any(r => Same(r.Text("Certification"), "Bronze")))
+            response = SurveillanceLogin.Answer(sets);
+        else if (sets.Count >= 4 && sets[1].Count > 0 &&
+                 (await db.QuerySqlAsync<BronzeSurveillanceData.CaseRow>(BronzeSurveillanceData.UnitCaseSql, new { UserId = Ansi(saId), ZedId = Ansi(zedId) }, ct))
+                 .FirstOrDefault(r => r.NcRound is >= 1 and <= 5) is { } nc)
+        {
+            // 2026-11-21 (the owner): a unit whose NC round is open (the server already accepts its replies) opens too. The
+            // procedure's button states are fixed (status 1, no NC), so the unit's own NC round is put in: the basic information
+            // read-only (status 2), its NC rounds with the open one at 1, so the app offers "Non-conformances".
+            response = SurveillanceLogin.Answer(sets, BronzeSurveillanceData.NcStatus(sets.FirstRow(3), nc));
+        }
+        else
         {
             log.LogWarning("Refused SA/BronzeSurveillanceSession: {ZedId} is not a Bronze surveillance case of {SaId}", zedId, saId);
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = BronzeNotAllocated + zedId });
         }
 
-        var response = SurveillanceLogin.Answer(sets);
         if (await SurveillanceLogin.StartAsync(HttpContext, devices, mobile.Value, tokens, saId, zedId, request.deviceInfo, request.version,
                 response, log, ct) is { } phone)
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = phone });
@@ -136,16 +147,53 @@ public static class BronzeSurveillanceData
     /// DesktopAssessorId = the assessor and CertificationStatus = 1; set 1: the unit's Msme row, without which the login was
     /// refused) for every unit at once, Bronze only (the only level the app had steps for).
     /// </summary>
-    public const string CasesSql = """
-        SELECT TOP (200) C.ZedId, C.Certification, C.CertificationStatus, ISNULL(C.CertificationStatusDate, C.CreatedDate) AS StatusDate,
+    public const string CasesSql = "SELECT TOP (200)" + Select + "\n" + Where + "\nORDER BY C.ZedId;";
+
+    /// <summary>One unit of <see cref="CasesSql"/> (the session exchange's check of a unit in its NC round).</summary>
+    public const string UnitCaseSql = "SELECT TOP (1)" + Select + "\n" + Where + " AND C.ZedId = @ZedId;";
+
+    private const string Select = """
+         C.ZedId, C.Certification, C.CertificationStatus, ISNULL(C.CertificationStatusDate, C.CreatedDate) AS StatusDate,
                ISNULL(B.EnterpriseName, M.EnterpriseName) AS EnterpriseName, M.PUnitName AS UnitName, M.PAddress AS Address,
-               M.PDistrictName AS District, M.PStateName AS State, M.PPin AS Pincode
+               M.PDistrictName AS District, M.PStateName AS State, M.PPin AS Pincode,
+               C.NcCount, C.Nc1Status, C.Nc2Status, C.Nc3Status, C.Nc4Status, C.Nc5Status,
+               CASE WHEN C.CertificationStatus IN (4, 14) AND C.NcCount BETWEEN 1 AND 5 THEN C.NcCount END AS NcRound
         FROM dbo.MsmeCertifications C
         CROSS APPLY (SELECT TOP (1) EnterpriseName, PUnitName, PAddress, PDistrictName, PStateName, PPin FROM dbo.Msme WHERE ZedId = C.ZedId) M
         OUTER APPLY (SELECT TOP (1) EnterpriseName FROM dbo.MsmeBasicInformation WHERE ZedId = C.ZedId) B
-        WHERE C.DesktopAssessorId = @UserId AND C.CertificationStatus = 1 AND C.Certification = 'Bronze'
-        ORDER BY C.ZedId;
         """;
+
+    /// <summary>
+    /// Status 1 (with the desktop assessor before the final submit, the old login's rule) or, 2026-11-21 (the owner), an open NC
+    /// round as the Surveillance/* writes accept it (SurveillanceUnit.NcOpen: NC 1 to 5, that round's status 1, status 4 or 14).
+    /// </summary>
+    private const string Where = """
+        WHERE C.DesktopAssessorId = @UserId AND C.Certification = 'Bronze'
+          AND (C.CertificationStatus = 1 OR (C.CertificationStatus IN (4, 14) AND C.NcCount BETWEEN 1 AND 5
+               AND CASE C.NcCount WHEN 1 THEN C.Nc1Status WHEN 2 THEN C.Nc2Status WHEN 3 THEN C.Nc3Status
+                                  WHEN 4 THEN C.Nc4Status WHEN 5 THEN C.Nc5Status END = 1))
+        """;
+
+    /// <summary>
+    /// The button states of a unit in its NC round: the procedure's row with Bronze's status and NC rounds from the unit's
+    /// record (status 2: basic information read-only; each round's status, the open one 1; a short text per round).
+    /// </summary>
+    public static Dictionary<string, object?> NcStatus(IDictionary<string, object?>? procedureRow, CaseRow unit)
+    {
+        var st = new Dictionary<string, object?>(procedureRow ?? new Dictionary<string, object?>(), StringComparer.OrdinalIgnoreCase)
+        {
+            ["BronzeStatus"] = 2,
+            ["BronzeStatusOfNc"] = unit.NcCount ?? 0,
+        };
+        int?[] rounds = [unit.Nc1Status, unit.Nc2Status, unit.Nc3Status, unit.Nc4Status, unit.Nc5Status];
+        for (var n = 1; n <= 5; n++)
+        {
+            var s = n <= (unit.NcCount ?? 0) ? rounds[n - 1] ?? 0 : 0;
+            st[$"BronzeStatusOfNc{n}"] = s;
+            st[$"Nc{n}StatusTextBronze"] = s == 1 ? "Raised: please reply" : s == 0 ? "" : "Replied";
+        }
+        return st;
+    }
 
     public sealed class CaseRow
     {
@@ -159,6 +207,14 @@ public static class BronzeSurveillanceData
         public string? District { get; init; }
         public string? State { get; init; }
         public string? Pincode { get; init; }
+        public int? NcCount { get; init; }
+        public int? Nc1Status { get; init; }
+        public int? Nc2Status { get; init; }
+        public int? Nc3Status { get; init; }
+        public int? Nc4Status { get; init; }
+        public int? Nc5Status { get; init; }
+        /// <summary>The open NC round (status 4 or 14), else null.</summary>
+        public int? NcRound { get; init; }
     }
 
     private static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
@@ -175,5 +231,6 @@ public static class BronzeSurveillanceData
         pincode = Clean(r.Pincode),
         status = r.CertificationStatus ?? 0,
         statusDate = r.StatusDate?.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
+        ncRound = r.NcRound,
     };
 }
