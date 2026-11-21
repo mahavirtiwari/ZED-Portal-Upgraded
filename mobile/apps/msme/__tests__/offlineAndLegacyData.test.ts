@@ -1,6 +1,6 @@
 import { isHashedCredential } from '@zed/shared';
-import { certificationDetailsOf, Status, updateCertificationDetails } from '../src/models';
-import { queueOutstanding } from '../src/sync/queue';
+import { certificationDetailsOf, Status, updateCertificationDetails } from '@zed/bronze-surveillance/src/models';
+import { queueOutstanding } from '@zed/bronze-surveillance/src/sync/queue';
 import { FakeServer, makeApp, DEVICE } from './helpers/harness';
 import { memoryDb } from './helpers/sqljs';
 import { writeLegacyLoginRow, writeLegacyPhotoRows, ZED_ID } from './helpers/legacyFixture';

@@ -6,8 +6,9 @@ applicationId and signing key, so installed apps update in place). Requirements:
 | Workspace | What | Legacy source (read only) | applicationId | State |
 |---|---|---|---|---|
 | `packages/shared` (`@zed/shared`) | Foundation shared by all apps | — | — | done |
+| `packages/bronze-surveillance` (`@zed/bronze-surveillance`) | Bronze surveillance steps of the desktop assessor (screens, models, API, sync), used by ZED SA and the retired ZED Surveillance build (2026-11-21) | `ZED_MSME_Bronze` | — | done |
 | `apps/zedmsme` (`@zed/zedmsme`) | **ZED MSME** (the applicant: registration, certifications, documents) | the MSME code base in `ZED_MSME_Bronze` | `com.qci.zed.msmeapp` (new; installs next to the store app) | first test release, see below |
-| `apps/msme` (`@zed/msme`) | **ZED Surveillance** (Bronze surveillance desktop assessor) | `ZED_MSME_Bronze` | `com.qci.zed.bronzesurveillance` | done, see [docs/MSME-PARITY.md](docs/MSME-PARITY.md) |
+| `apps/msme` (`@zed/msme`) | **ZED Surveillance** (Bronze surveillance desktop assessor) | `ZED_MSME_Bronze` | `com.qci.zed.bronzesurveillance` | **retired 2026-11-21**: Bronze surveillance is in ZED SA; the build (from `@zed/bronze-surveillance`) is kept for installed copies, see [docs/MSME-PARITY.md](docs/MSME-PARITY.md) |
 | `apps/assessor` (`@zed/assessor`) | **ZED SA** (site assessment, lead and co-assessor) | `ZED_SA_Studio` | `com.qci.zed.siteassessment` | done, see [docs/SA-PARITY.md](docs/SA-PARITY.md); no source for a surveillance build |
 | `apps/consultant` (`@zed/consultant`) | **ZED Consultancy** (handholding: lead and co-consultant, DFO technology upgradation) | `ZEDConsultant` | `com.qci.zed.consultancy` | done, see [docs/CONSULTANT-PARITY.md](docs/CONSULTANT-PARITY.md) |
 | `apps/desktop-assessment` | Desktop assessment | `ZED_DA/ZED_DA_App` | `com.zed.zeddaapplication` | later |
@@ -217,11 +218,11 @@ cd mobile/apps/msme/android
 
 - **Texts** (docs/mobile/APP-TEXTS.md): `Content/Texts` on the app's mobile host. `AppTexts` (shared) loads the
   answer at start and after login, keeps the last one in the `ZedCache` table for offline use and falls back to the
-  app's built-in wording (`apps/msme/src/content/builtInTexts.ts`, generated from the server's standard catalogue with
+  app's built-in wording (`packages/bronze-surveillance/src/content/builtInTexts.ts`, generated from the server's standard catalogue with
   `python mobile/tools/gen-app-texts.py app.msme`, which is the legacy wording). Screens read a text with
   `useAppText(key, fields)`; `HtmlText` shows its simple HTML; a text the Admin switched off is not shown.
 - **Forms** (docs/mobile/APP-FORMS.md): `Forms/Definition?form=msme.basicInfo`. `AppForms` (shared) keeps the last
-  definition for offline use, with the app's built-in form (`apps/msme/src/forms.ts`, the legacy labels) until one
+  definition for offline use, with the app's built-in form (`packages/bronze-surveillance/src/forms.ts`, the legacy labels) until one
   arrives. The Basic Information screen is built from it: standard fields keep their legacy controls (photo stamping,
   product and raw-material dialogs, the 0–100 % check, the countries list), labels/help/order/required come from the
   definition, disabled fields are not shown and not sent, and the Admin's own fields (`CustomFormField`: text, whole

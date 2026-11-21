@@ -1,0 +1,31 @@
+{
+  "name": "@zed/bronze-surveillance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bronze surveillance steps of the unit's desktop assessor (formerly the ZED Surveillance app, com.qci.zed.bronzesurveillance): screens, models, API, sync, forms and ESG checklist, used by ZED SA and by the retired ZED Surveillance build",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@zed/shared": "1.0.0"
+  },
+  "peerDependencies": {
+    "@op-engineering/op-sqlite": "*",
+    "@react-native-community/netinfo": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": "*",
+    "react-native-svg": "*"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.20.5",
+    "typescript": "^6.0.3"
+  }
+}

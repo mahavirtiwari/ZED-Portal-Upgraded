@@ -1,5 +1,5 @@
-import type { EsgResponse } from '../src/api';
-import { areAllFieldsFilled, buildEsgJson, sectionKey, toSubmitRequest } from '../src/esg';
+import type { EsgResponse } from '@zed/bronze-surveillance/src/api';
+import { areAllFieldsFilled, buildEsgJson, sectionKey, toSubmitRequest } from '@zed/bronze-surveillance/src/esg';
 
 /** The shape V4 returns (EsgChecklistJson): no section_key, dependent fields with selected_option. */
 const esg: EsgResponse = {

@@ -12,12 +12,12 @@ import {
   SESSION_EXPIRED_PARAM,
   textStyles,
   UNKNOWN_ERROR,
-  useNavigation,
   useRoute,
   useUi,
   ZedButton,
   zedDevice,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { updateCertificationDetails, type LoginResponse } from '../models';

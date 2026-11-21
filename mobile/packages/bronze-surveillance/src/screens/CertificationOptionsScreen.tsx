@@ -1,6 +1,7 @@
 import React from 'react';
 import { Linking, ScrollView, View } from 'react-native';
-import { BackBar, colors, dimens, htmlToPlain, isToday, ScreenFrame, sharedIcons, shapes, useAppText, useNavigation, useRoute, useUi } from '@zed/shared';
+import { BackBar, colors, dimens, htmlToPlain, isToday, ScreenFrame, sharedIcons, shapes, useAppText, useRoute, useUi } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';

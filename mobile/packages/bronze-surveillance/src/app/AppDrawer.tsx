@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, dimens, Drawer, Icon, sharedIcons, useNavigation, useUi, zedDevice } from '@zed/shared';
+import { colors, dimens, Drawer, Icon, sharedIcons, useUi, zedDevice } from '@zed/shared';
+import { useNavigation } from './nav';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from './context';
@@ -28,9 +29,10 @@ export function AppDrawerOverlay() {
   return <AppDrawer open={ctx.state.open} checked={ctx.state.checked} onClose={ctx.close} />;
 }
 
-export function useOpenDrawer(checked: DrawerKey) {
+/** The header's menu button; none (undefined) without the drawer (the screens shown inside ZED SA, 2026-11-21). */
+export function useOpenDrawer(checked: DrawerKey): (() => void) | undefined {
   const ctx = useContext(DrawerContext);
-  return () => ctx?.open(checked);
+  return ctx ? () => ctx.open(checked) : undefined;
 }
 
 function enterpriseTypeImage(type: string | null | undefined) {

@@ -1,7 +1,7 @@
 import { NetworkError } from '@zed/shared';
-import { certificationDetailsOf, newBasicInformation, Status, type BasicInformation } from '../src/models';
-import { queueNcProduct, queueNcRequirement } from '../src/sync/queue';
-import { submitBasicInformation, submitNcRequirement, submitSurveillance, syncEvidence } from '../src/sync/submissions';
+import { certificationDetailsOf, newBasicInformation, Status, type BasicInformation } from '@zed/bronze-surveillance/src/models';
+import { queueNcProduct, queueNcRequirement } from '@zed/bronze-surveillance/src/sync/queue';
+import { submitBasicInformation, submitNcRequirement, submitSurveillance, syncEvidence } from '@zed/bronze-surveillance/src/sync/submissions';
 import { FakeServer, makeApp } from './helpers/harness';
 import { legacyLoginResponse, legacyPhoto, ZED_ID, writeLegacyLoginRow, writeLegacyPhotoRows } from './helpers/legacyFixture';
 import { memoryDb } from './helpers/sqljs';

@@ -18,7 +18,6 @@ import {
   textStyles,
   UNKNOWN_ERROR,
   useFocusEffect,
-  useNavigation,
   useRoute,
   useUi,
   YesNo,
@@ -28,6 +27,7 @@ import {
   htmlToPlain,
   useAppText,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { useOnline } from '../app/online';

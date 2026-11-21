@@ -16,6 +16,8 @@ import {
   type PhotoData,
   type RequestContext,
 } from '@zed/shared';
+import type { LoginResponse } from '@zed/bronze-surveillance';
+import type { BronzeCasesResponse } from './bronze/cases';
 import type { AssessmentsResponse, NotificationsResponse, ReportsResponse, SignInResponse } from './portfolio';
 import type { SchemeCheckInput, SchemePhotoInput, SchemeVisitDetailResponse, SchemeVisitListResponse, SchemeVisitWriteResponse } from './schemes/visits';
 import type { Attendance, AssessmentDetails, BaseServiceRequest, BasicInformation, ParametersDetails, AllottedParameters, PhotoInformation, ServiceResponse, SubmitAssessmentRequest, SubmitSelfieImageRequest } from './models';
@@ -84,6 +86,19 @@ export class SaApi {
   /** New (redesign): the units the assessor is lead or co-assessor of. */
   assessments(saId: string) {
     return this.retrofit.postJson<AssessmentsResponse>(this.base + 'Assessments', this.body({ saId }));
+  }
+
+  /** 2026-11-21 (surveillance host): the assessor's Bronze surveillance cases (desktop assessor). */
+  bronzeSurveillance(saId: string) {
+    return this.retrofit.postJson<BronzeCasesResponse>(this.base + 'BronzeSurveillance', this.body({ saId }));
+  }
+
+  /**
+   * 2026-11-21 (surveillance host): one Bronze surveillance case opened with this sign-in instead of the password: the answer
+   * of Surveillance/Login for that unit, with its "SURV" app token (the Bronze steps' calls carry that one).
+   */
+  bronzeSurveillanceSession(request: { saId: string; zedId: string }) {
+    return this.retrofit.postJson<LoginResponse>(this.base + 'BronzeSurveillanceSession', this.body(request));
   }
 
   /** New (redesign): the Login answer for one unit, without the password. */

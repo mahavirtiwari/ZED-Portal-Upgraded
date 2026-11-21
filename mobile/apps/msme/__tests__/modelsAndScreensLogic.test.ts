@@ -1,4 +1,4 @@
-import { certificationCardState } from '../src/components/CertificationCard';
+import { certificationCardState } from '@zed/bronze-surveillance/src/components/CertificationCard';
 import {
   associatedIdOf,
   basicInformationIsValid,
@@ -12,9 +12,9 @@ import {
   updateCertificationDetails,
   type CertificationDetails,
   type MsmeStatus,
-} from '../src/models';
-import { bronzeAction } from '../src/screens/MyCertificationsScreen';
-import { paymentSummary } from '../src/screens/PaymentScreen';
+} from '@zed/bronze-surveillance/src/models';
+import { bronzeAction } from '@zed/bronze-surveillance/src/screens/MyCertificationsScreen';
+import { paymentSummary } from '@zed/bronze-surveillance/src/screens/PaymentScreen';
 
 const cert = (over: Partial<CertificationDetails> = {}): CertificationDetails => ({
   status: 1,

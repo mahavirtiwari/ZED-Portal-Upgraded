@@ -3,7 +3,9 @@ import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary, AppStartError, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
+import { registerHandlers as registerBronzeHandlers } from '@zed/bronze-surveillance';
 import { SaAppProvider, useSa } from './src/app/context';
+import { BRONZE_ROUTES, BronzeExpiryGate, syncBronze } from './src/bronze/BronzeSurveillance';
 import { SaApp } from './src/app/SaApp';
 import { registerHandlers, syncNow } from './src/sync/queue';
 import { AlertScreen, AllocationScreen } from './src/screens/AllocationScreens';
@@ -75,6 +77,8 @@ export const SCREENS: ScreenMap = {
   Attendance: withAssessment(AttendanceScreen),
   PunchIn: withAssessment(PunchInScreen),
   AttendanceLog: withAssessment(AttendanceLogScreen),
+  // 2026-11-21: Bronze surveillance (the retired ZED Surveillance app's steps), as "Bronze.<page>".
+  ...BRONZE_ROUTES,
 };
 
 /** Retry of queued sends whose back-off has passed, while the app is open. */
@@ -94,6 +98,7 @@ export default function App() {
     SaApp.open(openDatabase)
       .then(a => {
         registerHandlers(a);
+        registerBronzeHandlers(a.bronze);
         if (alive) setApp(a);
         // New: Admin texts and the Basic Information form at start (the last answer is used offline).
         a.refreshServerContent().catch(() => undefined);
@@ -111,7 +116,11 @@ export default function App() {
   // Offline sync triggers: the connection returns, the app comes to the foreground, and a periodic retry.
   useEffect(() => {
     if (!app) return;
-    const run = () => syncNow(app).catch(() => undefined);
+    const run = () => {
+      syncNow(app).catch(() => undefined);
+      // 2026-11-21: the open Bronze surveillance unit's queue.
+      syncBronze(app).catch(() => undefined);
+    };
     const unwatch = watchConnectivity(() => undefined, run);
     // 2026-11-08: the Admin's texts and forms again when the app comes back (at most every five minutes), not only at start.
     let refreshedAt = Date.now();
@@ -140,7 +149,12 @@ export default function App() {
         {app ? (
           <AppErrorBoundary>
             <SaAppProvider app={app}>
-              <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
+              <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={
+                  <>
+                    <SessionExpiryGate session={app.session} loginRoute="Login" />
+                    <BronzeExpiryGate />
+                  </>
+                } />
             </SaAppProvider>
           </AppErrorBoundary>
         ) : startFailed ? (

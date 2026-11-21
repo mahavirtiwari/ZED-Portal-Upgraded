@@ -12,11 +12,11 @@ import {
   SingleChoice,
   textStyles,
   useBackHandler,
-  useNavigation,
   useRoute,
   useUi,
   ZedButton,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import type { EsgField, EsgResponse } from '../api';
 import { useMsme } from '../app/context';
 import { areAllFieldsFilled, buildEsgJson, toSubmitRequest } from '../esg';

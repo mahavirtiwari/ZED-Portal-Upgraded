@@ -3,52 +3,25 @@ import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppErrorBoundary, AppStartError, colors, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
-import { AppDrawerHost, AppDrawerOverlay } from './src/app/AppDrawer';
-import { MsmeAppProvider } from './src/app/context';
-import { MsmeApp } from './src/app/MsmeApp';
-import { registerHandlers, syncNow } from './src/sync/queue';
-import { BasicInformationScreen } from './src/screens/BasicInformationScreen';
-import { CertificationOptionsScreen } from './src/screens/CertificationOptionsScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
-import { EsgChecklistScreen } from './src/screens/EsgChecklistScreen';
-import { EvidencesScreen } from './src/screens/EvidencesScreen';
-import { LauncherScreen } from './src/screens/LauncherScreen';
-import { MyAccountScreen } from './src/screens/MyAccountScreen';
-import { MyCertificationsScreen } from './src/screens/MyCertificationsScreen';
 import {
-  NcDetailsScreen,
-  NcProductScreen,
-  NcRequirementScreen,
-  NcSitePhotosScreen,
-  NonConformancesScreen,
-} from './src/screens/NonConformanceScreens';
-import { PaymentScreen } from './src/screens/PaymentScreen';
-import { PendingUploadsScreen } from './src/screens/PendingUploadsScreen';
-import {
-  RemoteAssessmentDetailsScreen,
-  RemoteAssessmentInitialScreen,
-  SurveillanceScreen,
-} from './src/screens/SurveillanceScreens';
+  AppDrawerHost,
+  AppDrawerOverlay,
+  BRONZE_SCREENS,
+  LauncherScreen,
+  MsmeApp,
+  MsmeAppProvider,
+  registerHandlers,
+  syncNow,
+} from '@zed/bronze-surveillance';
 
+/**
+ * 2026-11-21: retired. Bronze surveillance is done in ZED SA (com.qci.zed.siteassessment); this build keeps working for the
+ * copies already installed. Its screens, models, API and sync live in @zed/bronze-surveillance (mobile/packages), which ZED SA
+ * uses too.
+ */
 export const SCREENS: ScreenMap = {
   Launcher: LauncherScreen,
-  Dashboard: DashboardScreen,
-  MyAccount: MyAccountScreen,
-  MyCertifications: MyCertificationsScreen,
-  CertificationOptions: CertificationOptionsScreen,
-  BasicInformation: BasicInformationScreen,
-  EsgChecklist: EsgChecklistScreen,
-  Evidences: EvidencesScreen,
-  NonConformances: NonConformancesScreen,
-  NcDetails: NcDetailsScreen,
-  NcSitePhotos: NcSitePhotosScreen,
-  NcProduct: NcProductScreen,
-  NcRequirement: NcRequirementScreen,
-  Surveillance: SurveillanceScreen,
-  RemoteAssessmentInitial: RemoteAssessmentInitialScreen,
-  RemoteAssessmentDetails: RemoteAssessmentDetailsScreen,
-  Payment: PaymentScreen,
-  PendingUploads: PendingUploadsScreen,
+  ...BRONZE_SCREENS,
 };
 
 /** Retry of queued sends whose back-off has passed, while the app is open. */

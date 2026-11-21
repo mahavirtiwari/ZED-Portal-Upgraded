@@ -62,6 +62,26 @@ legacy code only.
 | Meetings, selfie, evidences, site photos (BaseActivity.displayImageWithUri): camera → scale to 1280 → EXIF → stamp (time, Lat, Long) → base64 JPEG 75 (Base64.DEFAULT) in the JSON, camera file deleted | native `processImageInline` (same steps), `useInlineCapture` with the legacy location dialogs; the camera writes to the app's cache instead of the public gallery (deleted the same way) | E |
 | Basic information and attendance (PhotoCaptureHelper): MSME pipeline (1080, file `filesDir/<UUID>.jpg`, base64 in photos_table), ids `<saId><millis>`, owner `<zedId><saId>` | shared pipeline (`useSaPhotoCapture`) | E |
 
+## Bronze surveillance in ZED SA (2026-11-21)
+
+Decided by the product owner: Bronze surveillance is done in ZED SA, with the steps the ZED Surveillance app had (no process
+change), and the ZED Surveillance app (`com.qci.zed.bronzesurveillance`, `mobile/apps/msme`) is retired. Its screens,
+models, API, sync, forms and ESG checklist moved to the workspace package `mobile/packages/bronze-surveillance`
+(`@zed/bronze-surveillance`), which both apps use; nothing was copied.
+
+| What | Where | Tested |
+|---|---|---|
+| Sign-in: the surveillance host's `SA/SignIn` also answers the assessor's Bronze surveillance cases (`bronzeSurveillance`); refused by Main, the app signs in on the surveillance host alone (a Bronze desktop assessor known there only) and then asks nothing of Main | `flows/login.ts` (`signIn`, `surveillanceSignIn`), `SaApp.refreshAssessments`, `formCorrections` | U |
+| Case list: a "Bronze Surveillance" section on Home and My assessments (ZED ID, Bronze Surveillance label, unit name and address, status, Open), kept per assessor for offline use, refreshed with `SA/BronzeSurveillance` | `bronze/BronzeSurveillance.tsx` (`BronzeCasesSection`), `SaApp.bronzeCases` | U |
+| Open: `SA/BronzeSurveillanceSession` with ZED SA's surveillance token, then the old app's Dashboard with My Certifications and the Enterprise Profile on top; the steps (certification options, basic information and documents, ESG checklist, evidences and photos, financial assistance availed, NC replies, Surveillance Assessment photos, final submit, pending uploads) are the old screens as `Bronze.<page>` routes, each in the module's own context (`MsmeAppProvider`, `app.msme.*` texts) | `bronze/cases.ts` (`openBronzeCase`), `BRONZE_ROUTES` in `App.tsx` | U |
+| Calls of the steps: the old `surveillancemobileapi/surveillance/*` and `msme/SubmitSurveillancePhoto` with the unit's `SURV` token (the session's answer) | `MsmeApi` / `MsmeApp.session` of the package | U |
+| Back: the module's first page returns to ZED SA's list (no drawer, no "exit?" question); a reset to the old Dashboard (after a final submit) goes to Home | `BronzeHost` (`exits`, `embedded`) in the package's `app/nav.tsx` | U |
+| Offline: the module's own databases in this app (`QCI_MSME_DB`, `ZED_MSME_Media_DB`), queue sent by the old sync logic on ZED SA's triggers; a case opened before on the phone by the same assessor opens offline with its last session | `SaApp.bronze`, `MsmeApp.openedWithSession` / `resumeKept`, `syncBronze` | U |
+| The surveillance host ends the unit's session: back to Home with its text; opened again from the list | `BronzeExpiryGate` | U |
+
+The `SURV` one-phone rule applies to the session: if the assessor's ZED Surveillance app was registered on another phone,
+the Master Admin releases it first.
+
 ## Deliberate differences
 
 1. `deviceInfo` and `version` on every request (the legacy built them but never sent them).

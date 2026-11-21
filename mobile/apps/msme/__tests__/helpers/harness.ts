@@ -1,8 +1,8 @@
 import { pbkdf2Sync, randomBytes } from 'crypto';
 import { ENVIRONMENTS, HttpClient, NetworkError, setZedDeviceForTesting, type SqlDb } from '@zed/shared';
-import { MsmeApi } from '../../src/api';
-import { MsmeApp } from '../../src/app/MsmeApp';
-import { registerHandlers } from '../../src/sync/queue';
+import { MsmeApi } from '@zed/bronze-surveillance/src/api';
+import { MsmeApp } from '@zed/bronze-surveillance/src/app/MsmeApp';
+import { registerHandlers } from '@zed/bronze-surveillance/src/sync/queue';
 import { memoryDb } from './sqljs';
 
 export const DEVICE = {

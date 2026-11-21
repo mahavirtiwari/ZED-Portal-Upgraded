@@ -26,6 +26,7 @@ export const LOGIN_DB_NAME = 'QCI_MSME_DB';
 export const MEDIA_DB_NAME = 'ZED_MSME_Media_DB';
 
 export type MsmeAppDeps = {
+  /** QCI_MSME_DB (in ZED SA: a database of its own with the same name, apart from ZED SA's assessment data). */
   loginDb: SqlDb;
   mediaDb: SqlDb;
   environment: Environment;
@@ -182,6 +183,36 @@ export class MsmeApp {
     update(local, response);
     await this.session.signedIn(username, token);
     await this.persist();
+  }
+
+  /**
+   * 2026-11-21 (Bronze surveillance in ZED SA): a unit opened with the answer of SA/BronzeSurveillanceSession, the same JSON as
+   * Surveillance/Login, without a password (ZED SA's sign-in checked it). As {@link onlineLoginSucceeded}: the first time the
+   * answer is stored, later the local data (offline work) is kept and only the server's statuses are taken; the token is
+   * kept for the unit. No offline credential is stored (`offlineLogin` of the old app never matches such a row): the unit
+   * is opened again offline by {@link resumeKept}, which ZED SA calls after its own offline sign-in.
+   */
+  async openedWithSession(zedId: string, response: LoginResponse, update: (local: LoginResponse, server: LoginResponse) => void) {
+    const token = takeAppToken(response);
+    normalizeLoginResponse(response);
+    if ((await this.loginStore.load(zedId)) == null) await this.loginStore.save(zedId, '', response);
+    const local = normalizeLoginResponse((await this.loginStore.load(zedId))!);
+    this._user = local;
+    this._loginId = zedId;
+    update(local, response);
+    await this.session.signedIn(zedId, token);
+    await this.persist();
+  }
+
+  /** 2026-11-21: the unit kept on the phone by an earlier {@link openedWithSession}, opened offline with its last token. */
+  async resumeKept(zedId: string): Promise<boolean> {
+    const data = await this.loginStore.load(zedId);
+    if (data == null) return false;
+    await this.session.resumed(zedId);
+    this._user = normalizeLoginResponse(data);
+    this._loginId = zedId;
+    this.touch();
+    return true;
   }
 
   /** LauncherActivity.handleOfflineLogin: stored credential (equals ignoring case) and stored data. */

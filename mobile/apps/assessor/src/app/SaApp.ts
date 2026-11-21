@@ -17,7 +17,9 @@ import {
   type Environment,
   type SqlDb,
 } from '@zed/shared';
+import { LOGIN_DB_NAME as BRONZE_DB_NAME, MEDIA_DB_NAME as BRONZE_MEDIA_DB_NAME, MsmeApp } from '@zed/bronze-surveillance';
 import { SaApi, type FormCorrection, type SaSystem } from '../api';
+import type { BronzeCase } from '../bronze/cases';
 import { carryOverLocalWork, caseSections, loadCaseData, photosIn, photosInUse, planClear, removePhotos, type ClearSection } from '../clearData';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
@@ -32,6 +34,9 @@ import { base64Decode, base64EncodeDefault } from '../util/base64';
 const ASSESSOR_KEY = 'sa.assessor.';
 const NOTIFICATIONS_KEY = 'sa.notifications.';
 const REPORTS_KEY = 'sa.reports.';
+/** 2026-11-21: the Bronze surveillance cases kept per assessor, and which assessor opened a Bronze unit on this phone. */
+const BRONZE_CASES_KEY = 'sa.bronze.cases.';
+const BRONZE_OWNER_KEY = 'sa.bronze.owner.';
 
 export type SaAppDeps = {
   db: SqlDb;
@@ -43,6 +48,11 @@ export type SaAppDeps = {
   /** 2026-11-14: the surveillance host's API (tests); built from the environment otherwise. */
   surveillanceApi?: SaApi;
   system?: SaSystem;
+  /**
+   * 2026-11-21: the Bronze surveillance module, on databases of its own (its texts cache, queue and photo tables have the
+   * same names as this app's).
+   */
+  bronze: MsmeApp;
 };
 
 /** The local Main MobileApi (launch profile "http", port 5104) seen from the emulator. */
@@ -82,6 +92,12 @@ export class SaApp {
   readonly versionName: string;
   /** 2026-11-20 (incentive schemes, phase 2): the onsite assessor's scheme visits (main host). */
   readonly schemes: SchemeVisits;
+  /**
+   * 2026-11-21: Bronze surveillance (the retired ZED Surveillance app's steps, @zed/bronze-surveillance) for the case opened
+   * last: its own databases (QCI_MSME_DB, ZED_MSME_Media_DB of this app), queue, texts (app.msme.*) and "SURV" session.
+   */
+  readonly bronze: MsmeApp;
+  private _bronzeCases: BronzeCase[] = [];
 
   private _details: AssessmentDetails | null = null;
   private _assessor: AssessorProfile | null = null;
@@ -114,6 +130,7 @@ export class SaApp {
     this.mainApi.retrofit.useSession(this.mainSession);
     this.surveillanceApi.rest.useSession(this.surveillanceSession);
     this.surveillanceApi.retrofit.useSession(this.surveillanceSession);
+    this.bronze = deps.bronze;
     this.schemes = new SchemeVisits({
       cache: this.cache,
       photos: this.photos,
@@ -124,6 +141,14 @@ export class SaApp {
       touch: () => this.touch(),
       newId: () => `${this._assessor?.assessorId ?? 'SA'}-${randomUuid()}`,
     });
+  }
+
+  /**
+   * 2026-11-21: signed in on the surveillance host only (a Bronze surveillance desktop assessor the main host refused): no
+   * main token, so nothing is asked of the main host.
+   */
+  get surveillanceOnly(): boolean {
+    return !this.mainSession.appToken && !!this.surveillanceSession.appToken;
   }
 
   /** The main host's API and sign-in token (scheme visits and their documents are on the main host only). */
@@ -161,7 +186,10 @@ export class SaApp {
 
   static async open(openDatabase: (name: string) => SqlDb): Promise<SaApp> {
     const info = getAppInfo();
-    const app = new SaApp({ db: openDatabase(ASSESSMENT_DB_NAME), mediaDb: openDatabase(MEDIA_DB_NAME), environment: info.environment, versionName: info.versionName });
+    const environment = saEnvironment(info.environment);
+    // 2026-11-21: the Bronze module on databases of its own (its queue and photo tables would mix with this app's).
+    const bronze = new MsmeApp({ loginDb: openDatabase(BRONZE_DB_NAME), mediaDb: openDatabase(BRONZE_MEDIA_DB_NAME), environment, versionName: info.versionName });
+    const app = new SaApp({ db: openDatabase(ASSESSMENT_DB_NAME), mediaDb: openDatabase(MEDIA_DB_NAME), environment: info.environment, versionName: info.versionName, bronze });
     await app.init();
     return app;
   }
@@ -178,6 +206,7 @@ export class SaApp {
     await this.forms.load([ASSESSOR_BASIC_INFO]);
     // Before the first screen: an offline start shows the Admin's last logo and colours at once.
     await this.branding.load();
+    await this.bronze.init();
   }
 
   /**
@@ -195,6 +224,8 @@ export class SaApp {
     await Promise.all([
       this.texts.refresh(() => this.api.getTexts()),
       this.forms.refresh(ASSESSOR_BASIC_INFO, () => this.api.getFormDefinition(ASSESSOR_BASIC_INFO)),
+      // 2026-11-21: the Bronze steps' own texts (app.msme.*) and Basic Information form, from the surveillance host.
+      this.bronze.refreshServerContent(),
     ]);
   }
 
@@ -253,12 +284,44 @@ export class SaApp {
   // ----- the signed-in assessor (redesign) -----
 
   /** After a sign-in: the profile and the list are kept per assessor for the offline sign-in. */
-  async signedInAs(profile: AssessorProfile, assessments: AssessmentSummary[] | null): Promise<void> {
+  async signedInAs(profile: AssessorProfile, assessments: AssessmentSummary[] | null, bronzeCases?: BronzeCase[] | null): Promise<void> {
     if (this._assessor?.assessorId !== profile.assessorId) await this.loadKept(profile.assessorId);
     this._assessor = profile;
     if (assessments) this._assessments = assessments;
     await this.cache.set(ASSESSOR_KEY + profile.assessorId, { profile, assessments: this._assessments });
+    if (bronzeCases) await this.setBronzeCases(bronzeCases);
     this.touch();
+  }
+
+  // ----- Bronze surveillance (2026-11-21) -----
+
+  /** The assessor's Bronze surveillance cases (last answer of the surveillance host, kept for offline use). */
+  get bronzeCases(): BronzeCase[] {
+    return this._bronzeCases;
+  }
+
+  private async setBronzeCases(list: BronzeCase[]): Promise<void> {
+    this._bronzeCases = list.filter(c => !!c?.zedId);
+    const a = this._assessor;
+    if (a) await this.cache.set(BRONZE_CASES_KEY + a.assessorId, this._bronzeCases);
+    this.touch();
+  }
+
+  /** SA/BronzeSurveillance on the surveillance host, when signed in there; a failure keeps the last list. */
+  async refreshBronzeCases(): Promise<void> {
+    const a = this._assessor;
+    if (!a || !this.surveillanceSession.appToken) return;
+    const r = await this.surveillanceApi.bronzeSurveillance(a.assessorId);
+    if (r && String(r.status ?? '') === '1' && Array.isArray(r.cases)) await this.setBronzeCases(r.cases);
+  }
+
+  /** The assessor who last opened a Bronze unit on this phone (a unit opens offline only for that assessor). */
+  async bronzeOwner(zedId: string): Promise<string | null> {
+    return (await this.cache.get<string>(BRONZE_OWNER_KEY + zedId)) ?? null;
+  }
+
+  async setBronzeOwner(zedId: string, assessorId: string): Promise<void> {
+    await this.cache.set(BRONZE_OWNER_KEY + zedId, assessorId);
   }
 
   /** The offline sign-in: the profile and list kept by the last online sign-in of this assessor. */
@@ -275,7 +338,8 @@ export class SaApp {
   /** 2026-11-16: the answers the agency sent back to this assessor (every unit under its review; main portal only). */
   async formCorrections(): Promise<FormCorrection[]> {
     const id = this._assessor?.assessorId;
-    if (!id) return [];
+    // 2026-11-21: not for an assessor signed in on the surveillance host only.
+    if (!id || this.surveillanceOnly) return [];
     const r = await this.mainApi.formCorrections({ saId: id });
     return r && String(r.status ?? '') === '1' && Array.isArray(r.corrections) ? r.corrections : [];
   }
@@ -291,8 +355,14 @@ export class SaApp {
   async refreshAssessments(): Promise<void> {
     const a = this._assessor;
     if (!a) return;
-    const r = await this.mainApi.assessments(a.assessorId);
-    if (!(r && String(r.status ?? '') === '1' && Array.isArray(r.assessments))) return;
+    // 2026-11-21: the Bronze surveillance cases too (surveillance host); an assessor signed in there only has no main list.
+    await this.refreshBronzeCases().catch(() => undefined);
+    let main: AssessmentSummary[] = this._assessments.filter(x => x.system !== 'surveillance');
+    if (!this.surveillanceOnly) {
+      const r = await this.mainApi.assessments(a.assessorId);
+      if (!(r && String(r.status ?? '') === '1' && Array.isArray(r.assessments))) return;
+      main = r.assessments.map(x => ({ ...x, system: 'main' as const }));
+    }
     // 2026-11-14: the surveillance host's units too, when the assessor is signed in there.
     let surveillance: AssessmentSummary[] = this._assessments.filter(x => x.system === 'surveillance');
     if (this.surveillanceSession.appToken) {
@@ -303,7 +373,7 @@ export class SaApp {
         // keep the last surveillance list
       }
     }
-    await this.signedInAs(a, [...r.assessments.map(x => ({ ...x, system: 'main' as const })), ...surveillance]);
+    await this.signedInAs(a, [...main, ...surveillance]);
   }
 
   get notifications(): AppNotification[] {
@@ -359,6 +429,9 @@ export class SaApp {
     this._notifications = n?.list ?? [];
     this._read = new Set(n?.read ?? []);
     this._reports = (await this.cache.get<ReportSummary[]>(REPORTS_KEY + assessorId)) ?? [];
+    this._bronzeCases = (await this.cache.get<BronzeCase[]>(BRONZE_CASES_KEY + assessorId)) ?? [];
+    // Another assessor's Bronze unit is not left open (its queue is sent when that assessor opens it again).
+    if (this.bronze.loginId && (await this.bronzeOwner(this.bronze.loginId)) !== assessorId) this.bronze.resetUser();
     await this.schemes.load(assessorId);
   }
 
@@ -543,8 +616,10 @@ export class SaApp {
     this._notifications = [];
     this._read = new Set();
     this._reports = [];
+    this._bronzeCases = [];
     this.schemes.reset();
     this.session.clear();
+    this.bronze.resetUser();
     this.touch();
   }
 

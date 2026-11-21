@@ -13,7 +13,6 @@ import {
   shapes,
   TextField,
   UNKNOWN_ERROR,
-  useNavigation,
   useRoute,
   useUi,
   valueOrNull,
@@ -22,6 +21,7 @@ import {
   type BaseServiceResponse,
   type PhotoData,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { useMsme } from '../app/context';
 import { useScreenCapture } from '../components/capture';
 import { certificationDetailsOf, remoteAssessmentIsValid, surveillanceInfo, type CertificationType } from '../models';

@@ -1,5 +1,6 @@
 import { pbkdf2Sync, randomBytes } from 'crypto';
 import { ENVIRONMENTS, HttpClient, NetworkError, setZedDeviceForTesting, type SqlDb } from '@zed/shared';
+import { MsmeApi, MsmeApp, registerHandlers as registerBronzeHandlers } from '@zed/bronze-surveillance';
 import { SaApi } from '../../src/api';
 import { SaApp, saEnvironment } from '../../src/app/SaApp';
 import { memoryPrefs } from '../../src/db/stores';
@@ -104,21 +105,32 @@ export function installFakeDevice() {
   } as never);
 }
 
-export async function makeApp(server: FakeServer, dbs?: { db: SqlDb; mediaDb: SqlDb }, prefs = memoryPrefs()) {
+export async function makeApp(server: FakeServer, dbs?: { db: SqlDb; mediaDb: SqlDb; bronzeDb?: SqlDb; bronzeMediaDb?: SqlDb }, prefs = memoryPrefs()) {
   installFakeDevice();
   const db = dbs?.db ?? (await memoryDb());
   const mediaDb = dbs?.mediaDb ?? (await memoryDb());
   const http = new HttpClient({ fetchImpl: server.fetch });
   const api = new SaApi(saEnvironment(ENVIRONMENTS.local), () => ({ version: '1.3', deviceInfo: DEVICE }), { rest: http, retrofit: http });
-  const survHttp = new HttpClient({
-    fetchImpl: async (url: string, init?: RequestInit) => {
-      if (!server.surveillanceOnline) throw new TypeError('Network request failed');
-      return server.fetch(url, init);
-    },
-  });
+  const survFetch = async (url: string, init?: RequestInit) => {
+    if (!server.surveillanceOnline) throw new TypeError('Network request failed');
+    return server.fetch(url, init);
+  };
+  const survHttp = new HttpClient({ fetchImpl: survFetch });
   const surveillanceApi = new SaApi(saEnvironment(ENVIRONMENTS.local), () => ({ version: '1.3', deviceInfo: DEVICE }), { rest: survHttp, retrofit: survHttp }, 'surveillance');
-  const app = new SaApp({ db, mediaDb, environment: ENVIRONMENTS.local, versionName: '1.3', api, surveillanceApi, prefs });
+  // 2026-11-21: the Bronze surveillance module on its own databases, sending through the surveillance host.
+  const bronzeDb = dbs?.bronzeDb ?? (await memoryDb());
+  const bronzeMediaDb = dbs?.bronzeMediaDb ?? (await memoryDb());
+  const bronze = new MsmeApp({
+    loginDb: bronzeDb,
+    mediaDb: bronzeMediaDb,
+    environment: saEnvironment(ENVIRONMENTS.local),
+    versionName: '1.3',
+    // Its own client (as on the phone): the client carries the module's own session (the unit's SURV token).
+    api: new MsmeApi(saEnvironment(ENVIRONMENTS.local), () => ({ version: '1.3', deviceInfo: DEVICE }), new HttpClient({ fetchImpl: survFetch })),
+  });
+  const app = new SaApp({ db, mediaDb, environment: ENVIRONMENTS.local, versionName: '1.3', api, surveillanceApi, prefs, bronze });
   await app.init();
   registerHandlers(app);
-  return { app, db, mediaDb, prefs };
+  registerBronzeHandlers(app.bronze);
+  return { app, db, mediaDb, prefs, bronzeDb, bronzeMediaDb };
 }

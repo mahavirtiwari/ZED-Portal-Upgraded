@@ -1,6 +1,6 @@
 import { APP_TOKEN_HEADER, SESSION_EXPIRED_MESSAGE } from '@zed/shared';
-import { certificationDetailsOf, Status, type LoginResponse } from '../src/models';
-import { queueOutstanding } from '../src/sync/queue';
+import { certificationDetailsOf, Status, type LoginResponse } from '@zed/bronze-surveillance/src/models';
+import { queueOutstanding } from '@zed/bronze-surveillance/src/sync/queue';
 import { FakeServer, makeApp } from './helpers/harness';
 import { memoryDb } from './helpers/sqljs';
 import { legacyLoginResponse, writeLegacyLoginRow, writeLegacyPhotoRows, ZED_ID } from './helpers/legacyFixture';

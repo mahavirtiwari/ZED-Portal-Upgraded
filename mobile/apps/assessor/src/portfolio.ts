@@ -4,6 +4,7 @@
  * SA/Assessments, SA/Notifications and SA/Reports (docs/MOBILE-API.md). Dates are ISO text in server time.
  */
 import type { BaseServiceResponse } from '@zed/shared';
+import type { BronzeCase } from './bronze/cases';
 import { COMPLETED, SUBMITTED, type AssessmentDetails } from './models';
 
 export type AssessorProfile = {
@@ -65,7 +66,13 @@ export type AssessmentSummary = {
   longitude?: string | null;
 };
 
-export type SignInResponse = BaseServiceResponse & { appToken?: string | null; profile?: AssessorProfile | null; assessments?: AssessmentSummary[] | null };
+export type SignInResponse = BaseServiceResponse & {
+  appToken?: string | null;
+  profile?: AssessorProfile | null;
+  assessments?: AssessmentSummary[] | null;
+  /** 2026-11-21, surveillance host: the assessor's Bronze surveillance cases (bronze/cases.ts). */
+  bronzeSurveillance?: BronzeCase[] | null;
+};
 
 export type AssessmentsResponse = BaseServiceResponse & { assessments?: AssessmentSummary[] | null };
 

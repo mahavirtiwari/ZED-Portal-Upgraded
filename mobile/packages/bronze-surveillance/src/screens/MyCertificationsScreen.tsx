@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { BackBar, colors, dimens, ScreenFrame, useNavigation } from '@zed/shared';
+import { BackBar, colors, dimens, ScreenFrame } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';

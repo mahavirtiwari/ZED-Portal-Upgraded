@@ -1,4 +1,5 @@
-import { usePhotoCapture, useNavigation, zedDevice } from '@zed/shared';
+import { usePhotoCapture, zedDevice } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { useMsme } from '../app/context';
 
 /**

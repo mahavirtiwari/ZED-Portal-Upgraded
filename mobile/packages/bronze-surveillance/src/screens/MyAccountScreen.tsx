@@ -1,6 +1,7 @@
 import React from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, dimens, Icon, ScreenFrame, shapes, textStyles, useNavigation, useRoute, useUi, ZedButton } from '@zed/shared';
+import { colors, dimens, Icon, ScreenFrame, shapes, textStyles, useRoute, useUi, ZedButton } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { icons } from '../assets/icons';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';

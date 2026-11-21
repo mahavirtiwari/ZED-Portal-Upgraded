@@ -27,6 +27,7 @@ import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, GradientFill, Her
 import { viewAssessment } from './assessmentActions';
 import { ClearDataSheet } from './ClearDataSheet';
 import { SchemeVisitsHomeCard } from './SchemeVisitScreens';
+import { BronzeCasesSection } from '../bronze/BronzeSurveillance';
 import { showExitAlert } from './common';
 
 /** The units kept on the phone (their AssessorData rows), for the progress and "Clear data". */
@@ -82,7 +83,9 @@ export function HomeScreen() {
 
   const refresh = useCallback(async () => {
     if (!(await isNetworkAvailable())) return;
-    await Promise.all([app.refreshAssessments(), app.refreshNotifications(), app.refreshReports(), app.schemes.refreshList()].map(p => p.catch(() => undefined)));
+    // 2026-11-21: scheme visits are on the main host (not asked for an assessor signed in on the surveillance host only).
+    const schemes = app.surveillanceOnly ? Promise.resolve(false) : app.schemes.refreshList();
+    await Promise.all([app.refreshAssessments(), app.refreshNotifications(), app.refreshReports(), schemes].map(p => p.catch(() => undefined)));
   }, [app]);
 
   useEffect(() => {
@@ -186,7 +189,9 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
         <CorrectionsCard />
         {/* 2026-11-20: the incentive scheme applications allotted to the assessor for onsite verification. */}
         <SchemeVisitsHomeCard />
-        {list.length === 0 ? (
+        {/* 2026-11-21: the Bronze surveillance cases (desktop assessor, surveillance host). */}
+        <BronzeCasesSection />
+        {list.length === 0 && app.bronzeCases.length === 0 ? (
           <EmptyState
             icon="clipboard"
             headline="No assessments yet"
@@ -410,7 +415,8 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
         {shown.map(a => (
           <AssessmentCard key={keyOf(a)} a={a} d={stored[a.zedId]} onView={onView} onClean={onClean} />
         ))}
-        {list.length === 0 ? (
+        <BronzeCasesSection testID="bronze-cases-list" />
+        {list.length === 0 && app.bronzeCases.length === 0 ? (
           <EmptyState icon="clipboard" headline="No assessments assigned" lines={['When QCI allots an assessment to you, it appears here.']} testID="list-empty" />
         ) : shown.length === 0 ? (
           <EmptyState icon="search" headline="No matching assessments" lines={['Try another name, ZED ID or level.']} testID="list-no-match" />

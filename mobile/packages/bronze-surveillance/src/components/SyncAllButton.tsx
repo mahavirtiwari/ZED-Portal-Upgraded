@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, Icon, sharedIcons, useNavigation } from '@zed/shared';
+import { colors, Icon, sharedIcons } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { useMsme } from '../app/context';
 
 /** Number of queued sends of the signed-in user, kept up to date. */

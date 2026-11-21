@@ -7,6 +7,22 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.assessor.siteTour.tourInstruction": "Here you can capture Site Photos which can later be used as evidences",
   // Login: two days before the site assessment (Main)
   "app.assessor.login.windowNote": "You can only login 2 days prior to your allocated Site Assessment date",
+  // Bronze surveillance: Home and list: section heading (Main)
+  "app.assessor.bronze.home.title": "Bronze Surveillance",
+  // Bronze surveillance: Home and list: section note (Main)
+  "app.assessor.bronze.home.subtitle": "Units allotted to you as the Bronze surveillance desktop assessor",
+  // Bronze surveillance: case card: label (Main)
+  "app.assessor.bronze.case.label": "Bronze Surveillance",
+  // Bronze surveillance: case card: status (with the desktop assessor) (Main)
+  "app.assessor.bronze.case.status": "Desktop assessment",
+  // Bronze surveillance: case card: since (Main)
+  "app.assessor.bronze.case.allotted": "Since {{Date}}",
+  // Bronze surveillance: case card: open button (Main)
+  "app.assessor.bronze.case.open": "Open",
+  // Bronze surveillance: opening offline a case never opened on the phone (Main)
+  "app.assessor.bronze.open.offline": "This case has not been opened on this phone yet. Please connect to the internet and open it once.",
+  // Bronze surveillance: not signed in to the surveillance server (Main)
+  "app.assessor.bronze.open.notSignedIn": "Please sign out and sign in again while online to open Bronze surveillance cases.",
   // Scheme visits: Home: quick action (Main)
   "app.assessor.schemes.home.quickAction": "Scheme visits",
   // Scheme visits: Home: visits waiting (Main)

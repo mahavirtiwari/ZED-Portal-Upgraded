@@ -11,10 +11,10 @@ import {
   shapes,
   textStyles,
   useBackHandler,
-  useNavigation,
   useRoute,
   useUi,
 } from '@zed/shared';
+import { useBronzeHost, useNavigation } from '../app/nav';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
@@ -29,6 +29,7 @@ export function DashboardScreen() {
   const ui = useUi();
   const route = useRoute<{ fromLogin?: boolean }>();
   const openDrawer = useOpenDrawer('dashboard');
+  const host = useBronzeHost();
   const started = useRef(false);
   const details = app.user?.MsmeDetails;
 
@@ -40,14 +41,21 @@ export function DashboardScreen() {
     if (route.params?.fromLogin) nav.push('MyAccount', { showProceed: true, hideHeaderMenu: true });
   }, [nav, route.params?.fromLogin]);
 
-  // onBackPressed with no fragment: "Are you sure you want to exit?"
+  // onBackPressed with no fragment: "Are you sure you want to exit?" Inside ZED SA: back to its list (2026-11-21).
   useBackHandler(() => {
+    if (host.embedded) return false;
     ui.alert(null, 'Are you sure you want to exit?', [{ text: 'No' }, { text: 'Yes', onPress: () => BackHandler.exitApp() }]);
     return true;
   });
 
   return (
-    <ScreenFrame title="Dashboard" onMenu={openDrawer} headerRight={<SyncAllButton />} testID="dashboard">
+    <ScreenFrame
+      title="Dashboard"
+      onMenu={openDrawer}
+      headerRight={<SyncAllButton />}
+      // Inside ZED SA: BACK returns to its list (no drawer there).
+      backBar={host.embedded ? { zedId: details?.ZedId, onBack: () => nav.pop() } : undefined}
+      testID="dashboard">
       <ScrollView>
         <View style={styles.container}>
           <Text style={[textStyles.subheading, { marginTop: 0, color: colors.appColor }]}>Welcome</Text>

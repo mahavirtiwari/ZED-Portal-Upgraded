@@ -17,7 +17,6 @@ import {
   TextField,
   textStyles,
   UNKNOWN_ERROR,
-  useNavigation,
   useRoute,
   useUi,
   valueOrNull,
@@ -26,6 +25,7 @@ import {
   HtmlText,
   useAppText,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { useScreenCapture } from '../components/capture';

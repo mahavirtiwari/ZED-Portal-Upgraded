@@ -1,5 +1,12 @@
 # ZED Surveillance (`ZED_MSME_Bronze`) → React Native: parity checklist
 
+> **Retired (2026-11-21, product owner).** Bronze surveillance is done in **ZED SA** (`com.qci.zed.siteassessment`,
+> `mobile/apps/assessor`; mobile/docs/SA-PARITY.md, "Bronze surveillance in ZED SA"), with the same steps. The screens,
+> models, API, sync, forms and ESG checklist below moved to `mobile/packages/bronze-surveillance`
+> (`@zed/bronze-surveillance`), used by ZED SA and by this build, which stays buildable (its tests pass from the package)
+> for the copies already installed. The server keeps `Surveillance/Login` and every `Surveillance/*` call unchanged for
+> them (docs/MOBILE-API.md, "Surveillance"). File references below (`LauncherScreen`, `MsmeApp`, …) are now in the package.
+
 Legacy: `ZED Mobile App Source Code\ZED\ZED_MSME_Bronze` (applicationId `com.qci.zed.bronzesurveillance`, versionName 1.8,
 versionCode 12, label "ZED Surveillance"). React Native: `mobile/apps/msme` (same applicationId, 1.9 / 13).
 

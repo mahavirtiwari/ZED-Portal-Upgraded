@@ -2,7 +2,8 @@ import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
 import { PREFS } from '../db/stores';
 import { mergeRequirementVideos, normalizeDetails, setAllParametersToCompleted, Status, type AssessmentDetails, type RequirementDetails } from '../models';
-import type { AssessmentSummary } from '../portfolio';
+import type { BronzeCase } from '../bronze/cases';
+import type { AssessmentSummary, SignInResponse } from '../portfolio';
 
 export const LOGIN_SUCCESSFUL = 'Login Successful.';
 export const INVALID_USER = 'Invalid Username or Password';
@@ -140,6 +141,8 @@ export async function signIn(app: SaApp, input: { assessorId: string; password: 
     app.useSystem('main');
     await app.session.resumed(input.assessorId);
     await app.surveillanceSession.resumed('SURV:' + input.assessorId);
+    // 2026-11-21: an assessor signed in on the surveillance host only (see below) stays on that host.
+    if (!app.session.appToken && app.surveillanceSession.appToken) app.useSystem('surveillance');
     return { kind: 'proceed' };
   };
   if (!online) return offline();
@@ -157,24 +160,46 @@ export async function signIn(app: SaApp, input: { assessorId: string; password: 
     await app.session.signedIn(input.assessorId, token);
     app.saveCredentials(input.assessorId, input.password, '');
     // 2026-11-14 (Onsite surveillance): the same sign-in on the surveillance host; its units join the list.
+    // 2026-11-21: with the Bronze surveillance cases of the assessor (bronze/cases.ts).
     const surveillance = await surveillanceSignIn(app, input);
     await app.signedInAs({ ...(resp.profile ?? {}), assessorId: resp.profile?.assessorId || input.assessorId },
-      [...(resp.assessments ?? []).map(x => ({ ...x, system: 'main' as const })), ...surveillance]);
+      [...(resp.assessments ?? []).map(x => ({ ...x, system: 'main' as const })), ...surveillance.assessments], surveillance.bronzeCases);
     return { kind: 'proceed', toast: LOGIN_SUCCESSFUL };
   }
   if (resp && status === '2') return { kind: 'update' };
+  // 2026-11-21: refused by the main host: a Bronze surveillance desktop assessor may be known on the surveillance host only
+  // (no site assessments on main). Signed in there, the app works with that host alone (no main token).
+  const only = await surveillanceSignIn(app, input);
+  if (only.signedIn) {
+    // Its notices and reports come from the surveillance host; nothing is asked of the main host (no token there).
+    app.useSystem('surveillance');
+    app.saveCredentials(input.assessorId, input.password, '');
+    await app.signedInAs({ ...(only.profile ?? {}), assessorId: only.profile?.assessorId || input.assessorId }, only.assessments, only.bronzeCases);
+    return { kind: 'proceed', toast: LOGIN_SUCCESSFUL };
+  }
   return { kind: 'toast', message: resp?.errorMessage ? resp.errorMessage : INVALID_USER };
 }
 
-/** The surveillance host's sign-in (2026-11-14); its units, or none when it refuses or cannot be reached. */
-async function surveillanceSignIn(app: SaApp, input: { assessorId: string; password: string }): Promise<AssessmentSummary[]> {
+type SurveillanceSignIn = { signedIn: boolean; profile?: SignInResponse['profile']; assessments: AssessmentSummary[]; bronzeCases: BronzeCase[] | null };
+
+/**
+ * The surveillance host's sign-in (2026-11-14); its units (and, 2026-11-21, the Bronze surveillance cases), or none when it
+ * refuses or cannot be reached.
+ */
+async function surveillanceSignIn(app: SaApp, input: { assessorId: string; password: string }): Promise<SurveillanceSignIn> {
+  const none: SurveillanceSignIn = { signedIn: false, assessments: [], bronzeCases: null };
   try {
     const r = await app.surveillanceApi.signIn(input);
-    if (!r || String(r.status ?? '') !== '1') return [];
+    if (!r || String(r.status ?? '') !== '1') return none;
     await app.surveillanceSession.signedIn('SURV:' + input.assessorId, takeAppToken(r));
-    return (r.assessments ?? []).map(x => ({ ...x, system: 'surveillance' as const }));
+    return {
+      signedIn: true,
+      profile: r.profile,
+      assessments: (r.assessments ?? []).map(x => ({ ...x, system: 'surveillance' as const })),
+      bronzeCases: Array.isArray(r.bronzeSurveillance) ? r.bronzeSurveillance : [],
+    };
   } catch {
-    return [];
+    return none;
   }
 }
 

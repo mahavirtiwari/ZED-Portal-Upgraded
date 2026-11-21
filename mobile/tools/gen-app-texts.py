@@ -1,6 +1,6 @@
 """Writes an app's built-in Admin texts (the fallback wording) from the server's standard catalogue.
 
-    python mobile/tools/gen-app-texts.py app.msme > mobile/apps/msme/src/content/builtInTexts.ts
+    python mobile/tools/gen-app-texts.py app.msme > mobile/packages/bronze-surveillance/src/content/builtInTexts.ts
 
 Source: backend/src/Zed.Core/Content/ContentCatalogue.Apps.cs (docs/mobile/APP-TEXTS.md). Run from the repository root.
 """

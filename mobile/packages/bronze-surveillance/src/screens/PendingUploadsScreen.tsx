@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { colors, dimens, OutlinedButton, ScreenFrame, shapes, TextButton, useNavigation, useUi, ZedButton, type SyncJob } from '@zed/shared';
+import { colors, dimens, OutlinedButton, ScreenFrame, shapes, TextButton, useUi, ZedButton, type SyncJob } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { useOnline } from '../app/online';

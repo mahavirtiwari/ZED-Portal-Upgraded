@@ -12,7 +12,6 @@ import {
   shapes,
   textStyles,
   useBackHandler,
-  useNavigation,
   useRoute,
   useUi,
   YesNo,
@@ -22,6 +21,7 @@ import {
   htmlToPlain,
   useAppText,
 } from '@zed/shared';
+import { useNavigation } from '../app/nav';
 import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest } from '../api';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
