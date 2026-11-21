@@ -161,7 +161,7 @@ describe('MilestoneDetailsPage', () => {
     await tab('Parameters');
     const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav-item'));
     expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Partial', 'Yes', 'Exempt']);
-    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirements', '2 of 2 requirements', 'Exempted']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirement', '2 of 2 requirements', 'Exempted']);
     expect(el.querySelector('.zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 3 complete');
     expect(el.querySelector('.zp-main .zp-req .zp-foot .zp-chip')!.textContent!.trim()).toBe('Partial');
     expect(Array.from(el.querySelectorAll('.zp-main .zp-milestone .zp-block-head')).map((h) => h.textContent!.trim())).toEqual([

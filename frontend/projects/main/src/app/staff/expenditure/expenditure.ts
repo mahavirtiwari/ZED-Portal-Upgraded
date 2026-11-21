@@ -17,6 +17,7 @@ import {
 import { InvoiceReviewDialog } from './invoice-review';
 import { TaxDetailsCard } from './tax-details';
 import { TextPipe, t } from '../../content/page-text';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 
 /** A view of the page: the assessment agencies (main) or the consultant organisations (Consultancy). */
 type View = 'agencies' | 'organisations';
@@ -30,7 +31,7 @@ type View = 'agencies' | 'organisations';
  */
 @Component({
   selector: 'zed-staff-expenditure',
-  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard, TextPipe],
+  imports: [FormsModule, PageHead, ListCounts, PagerComponent, ExpenditureCasesDialog, InvoiceReviewDialog, TaxDetailsCard, TextPipe, DashIcon],
   templateUrl: './expenditure.html',
   styles: `
     .xp-tabs { display: inline-flex; border: 1px solid #dde7e8; border-radius: 9px; overflow: hidden; }
@@ -88,7 +89,8 @@ export class ExpenditurePage {
   protected readonly invoices = signal<Invoice[]>([]);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly rowsView = new PagedView<ExpenditureRow>(computed(() => this.data()?.rows ?? []), 20);
+  // 2026-11-21 (UI audit C4): 10 rows per page, as the other staff lists.
+  protected readonly rowsView = new PagedView<ExpenditureRow>(computed(() => this.data()?.rows ?? []), 10);
   protected readonly casesOf = signal<{ row: ExpenditureRow; filter: ExpenditureFilter } | null>(null);
   protected readonly reviewing = signal<number | null>(null);
 
@@ -105,7 +107,8 @@ export class ExpenditurePage {
       );
     list.push(
       { label: t('staff.expenditure.count.payable', 'Payable (excl. GST)'), value: rupeesShort(c.payable) },
-      { label: t('staff.expenditure.count.approved', 'Invoices approved'), value: rupeesShort(c.approved), tone: 'good', sub: t('staff.expenditure.count.approvedNote', 'excl. GST') },
+      // 2026-11-21 (UI audit L6): worded as the Payable tile, "(excl. GST)" in the label.
+      { label: t('staff.expenditure.count.approvedExclGst', 'Invoices approved (excl. GST)'), value: rupeesShort(c.approved), tone: 'good' },
     );
     return list;
   });

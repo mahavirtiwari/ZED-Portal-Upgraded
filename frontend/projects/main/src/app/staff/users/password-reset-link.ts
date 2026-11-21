@@ -47,13 +47,11 @@ const API = '/api/staff/password-reset/';
         <form class="prl-form" (ngSubmit)="step() === 0 ? lookUp() : send()" novalidate>
           <label class="form-label" for="resetUserId">{{ 'User ID' | t: 'staff.passwordResetLink.userIdLabel' }}<span class="req">*</span></label>
           <div class="prl-id">
-            <input id="resetUserId" name="userId" class="form-control" [(ngModel)]="userId" required maxlength="50" autocomplete="off"
+            <input id="resetUserId" name="userId" class="form-control" [ngModel]="userId" (ngModelChange)="typed($event)" required maxlength="50" autocomplete="off"
                    [placeholder]="'e.g. ZEDAA0001' | t: 'staff.passwordResetLink.userIdPlaceholder'" aria-describedby="resetUserIdHelp" [readonly]="step() > 0" />
             @if (step() > 0) { <button type="button" class="btn btn-link prl-change" (click)="restart()">{{ 'Change' | t: 'staff.passwordResetLink.changeButton' }}</button> }
           </div>
           <small id="resetUserIdHelp" class="prl-help">{{ 'The login ID of any staff account: agency, assessor, Master Admin, Ministry, MSME DFO or dashboard.' | t: 'staff.passwordResetLink.userIdHelp' }}</small>
-          @if (error()) { <div class="alert alert-danger prl-alert" role="alert">{{ error() }}</div> }
-
           @if (target(); as tg) {
             <div class="prl-who" [class.is-blocked]="!tg.canSend">
               <span class="prl-av" aria-hidden="true">{{ initials(tg.userName) }}</span>
@@ -84,6 +82,8 @@ const API = '/api/staff/password-reset/';
             }
             <small class="prl-help ms-auto">{{ 'Works once, for a short time.' | t: 'staff.passwordResetLink.worksOnceNote' }}</small>
           </div>
+          <!-- 2026-11-21 (UI audit F6): the error under the buttons, so it never pushes "Find user" down; typing clears it. -->
+          @if (error()) { <div class="alert alert-danger prl-alert" role="alert">{{ error() }}</div> }
         </form>
       </section>
 
@@ -125,7 +125,7 @@ const API = '/api/staff/password-reset/';
     .prl-id input { flex: 0 1 360px; height: 40px; border-radius: 9px; font-size: 13px; }
     .prl-change { min-height: 0; padding: 0; font-size: 13px; font-weight: 700; color: #17373b; text-decoration: none; }
     .prl-help { display: block; margin-top: 8px; font-size: 12px; font-weight: 500; color: #6f8487; }
-    .prl-alert { margin: 12px 0 0; }
+    .prl-alert { margin: 16px 0 0; }
     .prl-who { display: flex; align-items: flex-start; gap: 14px; margin-top: 18px; padding: 18px 20px; border: 1px solid #cfe3e5; border-radius: 12px; background: #f6fbfb; }
     .prl-who.is-blocked { border-color: #f1d9a6; background: #fffaf0; }
     .prl-av { flex: none; width: 44px; height: 44px; margin-top: 4px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-size: 13px; font-weight: 800; }
@@ -190,6 +190,12 @@ export class PasswordResetLinkPage {
   /** The role as this portal names it (Consultancy: Consultant Organisation, Consultant/Expert). */
   protected roleName(r: ResetTarget): string {
     return r.roleId === 2 ? this.labels.agency : r.roleId === 3 ? this.labels.assessor : r.role;
+  }
+
+  /** 2026-11-21 (UI audit F6): a new User ID clears the last error. */
+  protected typed(value: string): void {
+    this.userId = value;
+    if (this.error()) this.error.set('');
   }
 
   /** Step 1 → 2: who the User ID belongs to (read-only; nothing is sent). */

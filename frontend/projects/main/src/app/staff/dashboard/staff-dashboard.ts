@@ -186,7 +186,7 @@ export function cardText(label: string): string {
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['dash-registered', 'dash-certified']" />
     <div class="dash-export" #exportArea>
-    <zed-page-head [crumbs]="crumbs()" [title]="'Dashboard' | t: 'staff.dashboard.title'" [subtitle]="updated()">
+    <zed-page-head [crumbs]="crumbs()" [title]="'Dashboard' | t: 'staff.dashboard.title'" [subtitle]="updated()" [level]="1">
       @if (analytics(); as an) {
         @if (an.views.length > 1) {
           <div class="dash-basis" role="tablist" [attr.aria-label]="'Count by' | t: 'staff.dashboard.basis.aria'">

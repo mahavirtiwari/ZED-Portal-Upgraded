@@ -303,7 +303,8 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
     .an .form-label { display: block; margin-bottom: 5px; font-size: 11.5px; font-weight: 600; line-height: 14px; color: #6f8487; }
     .an .form-select, .an .form-control { min-height: 38px; height: 38px; padding: 0 28px 0 12px; font-size: 13px; font-weight: 500; color: #17373b; border-color: #b9cdcf; }
     .an .form-select:disabled { background-color: #f3f6f6; border-color: #dde7e8; color: #6f8487; }
-    .an-more { margin-top: 12px; padding: 12px; background: #f7fafa; border-radius: 10px; }
+    /* 2026-11-21 (UI audit L6): the More Filters panel's fields start under the first row's (its tint reaches out instead). */
+    .an-more { margin: 12px -12px 0; padding: 12px; background: #f7fafa; border-radius: 10px; }
     .an-more[hidden] { display: none; }
     .an-range-inputs { display: flex; align-items: center; gap: 12px; }
     .an-range-inputs .form-control { flex: 1 1 150px; min-width: 0; padding-right: 8px; }
@@ -312,7 +313,7 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
       background: #e7eeee; color: #17373b; font-size: 13.5px; font-weight: 700; border: 0; border-radius: 9px; text-transform: none; }
     .an-more-toggle:hover { background: #dbe7e8; }
     svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .an-clear { margin-left: auto; align-self: center; padding-top: 19px; }
+    .an-clear { margin-left: auto; align-self: flex-end; display: flex; align-items: center; height: 38px; }
     .dash-reset { font-size: 12.5px; font-weight: 700; color: #6f8487; white-space: nowrap; padding: 4px; text-decoration: none; text-transform: none; }
     .dash-reset:disabled { color: #6f8487; opacity: .6; }
     .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

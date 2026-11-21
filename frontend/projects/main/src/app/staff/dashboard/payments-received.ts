@@ -12,6 +12,7 @@ import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { levelName } from '../../msme/shared/levels';
 import { LevelMedal } from '../assessment/level-medal';
+import { shortDate } from '../assessment/allot';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
 
@@ -84,7 +85,7 @@ export function rupees(n: number): string {
   imports: [ListFiltersBar, PagerComponent, PageHead, LevelMedal, DashIcon, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs()" [title]="'MSME Payment Received' | t: 'staff.paymentsReceived.title'"
+    <zed-page-head [crumbs]="crumbs()" [title]="'Payment Received' | t: 'staff.paymentsReceived.title'"
       [subtitle]="'Payments received from the units, with the TDS, subsidy and amount paid.' | t: 'staff.paymentsReceived.sub'">
       <button type="button" class="btn btn-outline-primary pr-btn" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
         <zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.paymentsReceived.exportingButton') : ('Export' | t: 'staff.paymentsReceived.exportButton') }}</button>
@@ -179,7 +180,8 @@ export function rupees(n: number): string {
     .pr-filters { padding: 12px 14px; margin-bottom: 14px; }
     .pr-filters .form-label { font-size: 11.5px; font-weight: 600; color: #6f8487; }
     .pr-filters .filter { flex: 0 1 170px; }
-    .pr-filters .filter.pr-search { order: -1; flex: 0 1 280px; position: relative; }
+    /* 2026-11-21 (UI audit L5): wide enough for the whole placeholder; it shrinks only below the phone width. */
+    .pr-filters .filter.pr-search { order: -1; flex: 0 0 330px; max-width: 100%; position: relative; }
     .pr-filters .filter.pr-paid { flex-basis: 200px; }
     .pr-search .pr-ico { position: absolute; left: 12px; bottom: 12px; color: #6f8487; }
     .pr-search input { padding-left: 36px; background-image: none !important; }
@@ -213,7 +215,8 @@ export class PaymentsReceivedPage {
   protected readonly paidRanges = PAID_RANGES;
   /** The "Paid between" choice ('' any date). */
   protected readonly paid = signal('');
-  protected readonly day = (v: unknown) => shortDay(v);
+  // 2026-11-21 (UI audit C2): the staff pages' date format, "13 Nov 2025" (shortDate), with the year also for this year.
+  protected readonly day = (v: unknown) => shortDate(v) || '—';
 
   /** The four totals of the rows shown (the filters and the search apply). */
   protected readonly tiles = computed(() => {

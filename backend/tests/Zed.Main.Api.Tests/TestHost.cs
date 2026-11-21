@@ -37,6 +37,8 @@ public sealed class TestHost : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Main", "Server=unused;Database=unused");
         builder.UseSetting("Recaptcha:Enabled", "false");
         builder.UseSetting("Portal:StorageRoot", StorageRoot);
+        // 2026-11-21: the file log (Zed.Core.Logging) in the test's own folder, never in the source tree.
+        builder.UseSetting("Logging:File:Folder", Path.Combine(StorageRoot, "logs"));
         if (AssessmentStorageRoot is not null) builder.UseSetting("Portal:AssessmentStorageRoot", AssessmentStorageRoot);
         builder.UseSetting("Email:ContactInbox", "zed.support@example.test");
         foreach (var (k, v) in Settings) builder.UseSetting(k, v);

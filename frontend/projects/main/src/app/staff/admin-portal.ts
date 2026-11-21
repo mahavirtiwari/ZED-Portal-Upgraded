@@ -44,6 +44,8 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/settings/texts', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/email', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/email-templates', portals: ALL_PORTALS },
+  // 2026-11-21: each portal keeps its own server log (Admin → Server Logs).
+  { prefix: '/api/staff/settings/server-logs', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/site-tour-sections', portals: SITE_TOUR_PORTALS },
   // 2026-11-17 (approved): each portal keeps its own submission checklists and observation reasons.

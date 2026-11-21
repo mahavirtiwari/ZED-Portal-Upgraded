@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { SamePanUnits } from './same-pan';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { dashboardSetting } from '../admin-portal';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { TextPipe, t } from '../../content/page-text';
+import { cleanAddress, joinAddress } from '../address';
 
 export type ProfileRow = Record<string, string | number | boolean | null>;
 
@@ -180,7 +181,8 @@ export class StaffMsmeProfilePage {
 
   protected readonly unitAddress = computed(() => {
     const u = this.profile()?.unit ?? {};
-    return ['PAddress', 'PDistrictName', 'PStateName', 'PPin'].map((f) => this.text(u, f)).filter((x) => x.trim()).join(', ') || '-';
+    // 2026-11-21 (UI audit W8): the empty parts of the stored address ("Block:- ,") are left out.
+    return joinAddress(...['PAddress', 'PDistrictName', 'PStateName', 'PPin'].map((f) => this.text(u, f))) || '-';
   });
 
   constructor() {
@@ -191,8 +193,11 @@ export class StaffMsmeProfilePage {
     try {
       this.profile.set(await firstValueFrom(this.http.get<StaffMsmeProfile>(this.url)));
     } catch (err) {
-      this.error.set(apiErrorMessage(err) === 'Unexpected error occurred. Please try after some time.'
-        ? t('staff.msmeProfile.notFoundError', 'This unit was not found or is not allotted to you.') : apiErrorMessage(err));
+      // 2026-11-21 (UI audit W6): a 404 (the API's bare "Not Found") says which ZED ID was not found.
+      this.error.set(err instanceof HttpErrorResponse && err.status === 404
+        ? t('staff.msmeProfile.notFoundIdError', 'No unit with ZED ID {zedId} was found, or it is not allotted to you.', { zedId: this.zedId })
+        : apiErrorMessage(err) === 'Unexpected error occurred. Please try after some time.'
+          ? t('staff.msmeProfile.notFoundError', 'This unit was not found or is not allotted to you.') : apiErrorMessage(err));
     } finally {
       this.loading.set(false);
     }
@@ -256,6 +261,7 @@ export class StaffMsmeProfilePage {
   /** A field's value; the unit address is put together from its parts. */
   protected value(p: StaffMsmeProfile, r: InfoRow): string {
     if (r.field === 'PAddress') return this.unitAddress();
+    if (r.field === 'Address') return cleanAddress(this.text(r.source === 'unit' ? p.unit : p.enterprise, r.field)) || '-';
     const row = r.source === 'unit' ? p.unit : p.enterprise;
     if (r.also) return [this.text(row, r.field), this.text(row, r.also)].filter((x) => x.trim()).join(' · ') || '-';
     return this.show(row, r.field);

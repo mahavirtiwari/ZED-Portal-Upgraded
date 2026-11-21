@@ -216,11 +216,13 @@ public sealed partial class DesktopAssessmentController(
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         // The Admin's requirement videos (2026-11-08).
         var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
+        // 2026-11-21 (UI audit W1): the requirement texts of the record's level, by parameter and requirement code.
+        var texts = await RequirementTexts.LoadAsync(db, "dbo", level, log, ct);
         // A record with NC rounds and no site assessor is in its desktop NC rounds whatever the level's flow says now (the Admin
         // may change a level's flow while records are under way; 2026-11-15, an App Forms NC on Gold Desktop only lost its tab).
         var desktopNcs = desktopOnly || (!surveillance && string.IsNullOrWhiteSpace(record.SiteAssessorId));
         var rounds = desktopNcs && ncCount > 0
-            ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, videos, ct)))
+            ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, videos, texts, ct)))
             : [];
 
         var status = record.Status;
@@ -237,7 +239,7 @@ public sealed partial class DesktopAssessmentController(
             Products(da[1], zedId, level, moved, system),
             Pick(da[2], RawMaterialFields),
             Pick(da[3], SectionFields),
-            WithVideos(Pick(da[4], RequirementFields), videos),
+            WithVideos(Pick(da[4], RequirementFields), videos, texts),
             Pick(da[5], OptionFields),
             Pick(da[6], SubOptionFields),
             evidences,
@@ -255,13 +257,14 @@ public sealed partial class DesktopAssessmentController(
         { Checkpoints = checkpoints, Allotment = allotment };
     }
 
-    private static List<Dictionary<string, object?>> WithVideos(List<Dictionary<string, object?>> rows, RequirementVideos.Map videos)
+    private static List<Dictionary<string, object?>> WithVideos(List<Dictionary<string, object?>> rows, RequirementVideos.Map videos, RequirementTexts.Map texts)
     {
         videos.AttachTo(rows);
+        texts.AttachTo(rows);
         return rows;
     }
 
-    private async Task<NcRound> Round(string zedId, string level, int n, bool moved, RequirementVideos.Map videos, CancellationToken ct)
+    private async Task<NcRound> Round(string zedId, string level, int n, bool moved, RequirementVideos.Map videos, RequirementTexts.Map texts, CancellationToken ct)
     {
         var nc = await db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS_NC",
             new { UserId, RoleId = RoleText, ZedId = zedId, Certification = level, NcCount = n }, ct);
@@ -270,7 +273,7 @@ public sealed partial class DesktopAssessmentController(
             Products(nc[0], zedId, level, moved, host.System),
             Products(nc[8], zedId, level, moved, host.System),
             Pick(nc[1], SectionFields),
-            WithVideos(Pick(nc[2], RequirementFields), videos),
+            WithVideos(Pick(nc[2], RequirementFields), videos, texts),
             Pick(nc[3], OptionFields),
             Pick(nc[4], SubOptionFields),
             Evidences(nc[5], zedId, level, moved, host.System),

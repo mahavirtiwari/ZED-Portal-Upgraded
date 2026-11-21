@@ -121,6 +121,13 @@ describe('PasswordResetLinkPage', () => {
     expect(el.querySelector('.alert-danger')!.textContent).toContain('User not found.');
     expect(current()).toBe(0);
     expect(el.querySelector('.prl-none')!.textContent).toContain('Links you send are listed here');
+    // 2026-11-21 (UI audit F6): the message is under "Find user" (it does not push it down) and typing clears it.
+    expect(el.querySelector('.prl-actions + .alert-danger')).not.toBeNull();
+    const input = el.querySelector('#resetUserId') as HTMLInputElement;
+    input.value = 'NOBODY2';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    expect(el.querySelector('.alert-danger')).toBeNull();
   });
 
   it('shows a refusal of the send and stays on the confirmation', async () => {

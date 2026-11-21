@@ -40,8 +40,8 @@
   </section>
 }
 
-<!-- 2026-11-17: the other ZED units of the same PAN, for tracing repeat registrations. -->
-<zed-same-pan [zedId]="zedId" />
+<!-- 2026-11-17: the other ZED units of the same PAN, for tracing repeat registrations (2026-11-21: only once the unit is found). -->
+@if (profile()) { <zed-same-pan [zedId]="zedId" /> }
 
 @if (profile(); as p) {
   <div class="pf-grid">

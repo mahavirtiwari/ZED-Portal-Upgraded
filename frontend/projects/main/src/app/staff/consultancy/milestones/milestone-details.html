@@ -286,7 +286,7 @@
                     <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                      <span class="zp-nav-meta">{{ pn.exempted(s) ? ('Exempted' | t: 'staff.milestoneDetails.parameters.exemptedTag') : ('{done} of {total} requirements' | t: 'staff.milestoneDetails.parameters.progressText' : { done: pg.done, total: pg.total }) }}</span>
+                      <span class="zp-nav-meta">{{ pn.exempted(s) ? ('Exempted' | t: 'staff.milestoneDetails.parameters.exemptedTag') : (pg.total === 1 ? ('{done} of {total} requirement' | t: 'staff.milestoneDetails.parameters.progressTextOne' : { done: pg.done, total: pg.total }) : ('{done} of {total} requirements' | t: 'staff.milestoneDetails.parameters.progressText' : { done: pg.done, total: pg.total })) }}</span>
                       <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
                     </span>
                     <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>

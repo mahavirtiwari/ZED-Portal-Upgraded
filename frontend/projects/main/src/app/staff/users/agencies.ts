@@ -57,7 +57,8 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): staff-01 / staff-03 column widths (fixed layout, the
        agency column takes the rest), 320px search, the skin's buttons, avatars and pills (no page overrides). */
     .ag-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; min-height: 62px; padding: 12px 16px; margin-bottom: 16px; }
-    .ag-search { position: relative; flex: 0 1 320px; }
+    /* 2026-11-21 (UI audit L5): wide enough for "Search ID, name, SPOC, mobile or e-mail" (no longer shrunk by the chips). */
+    .ag-search { position: relative; flex: 0 0 360px; max-width: 100%; }
     .ag-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
     .ag-search input { padding-left: 36px; height: 38px; border-radius: 9px; background-image: none; }
     .ag-card { padding: 0; overflow: hidden; }
@@ -67,7 +68,8 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
     .ag-table th.c-alloc { width: 200px; }
     .ag-table th.c-spoc { width: 240px; }
     .ag-table th.c-cat { width: 270px; }
-    .ag-table th.c-n { width: 90px; }
+    /* 2026-11-21 (UI audit L4): room for "ASSESSORS" on one line (headings no longer break inside a word). */
+    .ag-table th.c-n { width: 116px; }
     .ag-table th.c-st { width: 110px; }
     .ag-table th.c-act { width: 220px; }
     .ag-table.is-levels th.c-cat { width: 280px; }

@@ -20,3 +20,6 @@ dist-*/
 *.eml
 # Release packages (deploy/Publish-Zed.ps1)
 publish/
+
+# 2026-11-21: the server log files (Zed.Core.Logging) written next to a host when run locally
+backend/src/*/logs/

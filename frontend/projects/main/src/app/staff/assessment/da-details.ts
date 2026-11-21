@@ -32,6 +32,7 @@ import { RoundState, TrackItem, aboveCapacity, basicRaised, ncTracker } from './
 import { LevelMedal } from './level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { DaAllotmentBanner } from './da-allotment-banner';
+import { cleanAddress } from '../address';
 
 /**
  * 2026-11-17 (the user's staff design 14): the tab bar's names. 2026-11-18 (the new staff-14 series): five tabs: the NC 1 … NC 5
@@ -102,6 +103,8 @@ export class DaDetailsPage {
   /** Surveillance build: the ESG tab as on that portal's page (S.No column, black panel headings, tab numbers). */
   protected readonly surveillanceSystem = inject(ASSESSMENT_SYSTEM) === 'surveillance';
   protected readonly t = text;
+  /** 2026-11-21 (UI audit W8): addresses without their empty parts ("Block:- ,"). */
+  protected readonly address = cleanAddress;
   protected readonly f = flag;
   protected readonly n = num;
   protected readonly tabTitle = tabTitle;
@@ -152,8 +155,15 @@ export class DaDetailsPage {
     const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || t('staff.daDetails.head.fallbackTitle', 'Assessment details');
     return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
   });
+  /**
+   * 2026-11-21 (UI audit C1): Home › Assessment details › the unit (as the browser tab, "Assessment Details"); the desktop
+   * assessor, whose menu has Desktop verification, also gets that list before it. Other logins open the page from their own
+   * lists (monitoring, completed, ...), so it no longer says "Desktop verification" for them.
+   */
   protected readonly headCrumbs = computed(() => staffCrumbs(
-    { label: t('staff.daDetails.crumb.verification', 'Desktop verification'), link: '/staff/assessment/da-verification' },
+    ...(this.data()?.role === 'DesktopAssessor'
+      ? [{ label: t('staff.daDetails.crumb.verification', 'Desktop verification'), link: '/staff/assessment/da-verification' }] : []),
+    { label: t('staff.daDetails.crumb.details', 'Assessment details') },
     { label: text(this.msme(), 'ZedId') || this.data()?.zedId || t('staff.daDetails.crumb.unit', 'Unit') },
   ));
   /** 2026-11-17 (design 14): the result beside the title, the stage tracker and the NC rounds, from the record's columns. */

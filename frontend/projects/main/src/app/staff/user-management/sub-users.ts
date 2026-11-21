@@ -144,8 +144,8 @@ const API = '/api/staff/sub-users';
                 </td>
                 <td class="su-scope" [attr.data-label]="'Scope' | t: 'staff.subUsers.column.scope'"><span class="su-scope-pill" data-scope>{{ scopeText(u) }}</span></td>
                 <td class="su-login" [attr.data-label]="'Last Login' | t: 'staff.subUsers.row.lastLoginLabel'">
-                  @if (u.lastLoginAt) { {{ u.lastLoginAt | indianTime }} } @else { <span class="su-never">{{ 'Never signed in' | t: 'staff.subUsers.row.never' }}</span> }
-                  <small class="d-block muted">{{ 'Added {date}' | t: 'staff.subUsers.row.added' : { date: u.createdAt | date: 'dd-MM-yyyy' } }}</small>
+                  @if (u.lastLoginAt) { {{ u.lastLoginAt | indianTime: 'dd MMM yyyy, HH:mm' }} } @else { <span class="su-never">{{ 'Never signed in' | t: 'staff.subUsers.row.never' }}</span> }
+                  <small class="d-block muted">{{ 'Added {date}' | t: 'staff.subUsers.row.added' : { date: u.createdAt | date: 'dd MMM yyyy' } }}</small>
                 </td>
                 <td class="text-center su-status-cell"><ng-container *ngTemplateOutlet="badge; context: { $implicit: u }" /></td>
                 <td class="text-end su-actions-cell">
@@ -256,9 +256,10 @@ const API = '/api/staff/sub-users';
                     }
                   </div>
                   <p class="su-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 16v-4 M12 8h.01" /></svg><span>{{ 'Work done by {who} is recorded under your login. You can change the screens or block the login at any time.' | t: 'staff.subUsers.form.note' : { who: whoWord() } }}</span></p>
-                  @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
                 </div>
               </div>
+              <!-- 2026-11-21 (UI audit F2): the error above the footer, outside the scrolling body, so it is always in view. -->
+              @if (formError()) { <div class="alert alert-danger su-form-error" role="alert">{{ formError() }}</div> }
               <div class="modal-footer su-foot">
                 <span class="su-foot-note">{{ 'Fields marked * are required.' | t: 'staff.subUsers.form.requiredNote' }}</span>
                 <span class="su-foot-actions">
@@ -296,7 +297,9 @@ const API = '/api/staff/sub-users';
     tr.is-blocked .su-avatar { background: #fbe9e7; color: #c8473c; }
     .su-name { display: block; font-size: 13.5px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; }
     .su-id { display: block; font-size: 11.5px; font-weight: 600; color: #6f8487; }
-    .su-badge-phone { display: none; }
+    /* 2026-11-21 (UI audit L7): the badge beside the name is for phones only (the skin's .staff-page.staff-page .status-badge
+       outranked the plain rule, so ACTIVE showed twice on desktop). */
+    .status-badge.su-badge-phone { display: none !important; }
     .su-lock { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; fill: none; stroke: currentColor; stroke-width: 2.4; }
     .su-contact { min-width: 150px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
     .su-contact span { display: block; line-height: 17px; overflow-wrap: anywhere; }
@@ -329,7 +332,7 @@ const API = '/api/staff/sub-users';
       .su-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11.5px; font-weight: 700; color: #6f8487; margin-bottom: 2px; }
       .su-user { min-width: 0; }
       .su-who { flex: 1 1 auto; }
-      .su-badge-phone { display: inline-block; }
+      .status-badge.su-badge-phone { display: inline-flex !important; }
       .su-status-cell { display: none !important; }
       .su-contact, .su-screens { min-width: 0; }
       .su-login { white-space: normal; }
@@ -587,9 +590,11 @@ export class SubUsersPage {
     try {
       const r = await firstValueFrom(id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, f) : this.http.post<MessageResponse>(API, f));
       this.close();
-      this.toast.success(id ? t('staff.subUsers.toast.updated', '{type} updated', { type: this.accountType() })
-        : t('staff.subUsers.toast.added', '{type} added', { type: this.accountType() }), r.message);
+      // 2026-11-21 (UI audit): the success message once the list is loaded again (the loading veil hid it while the list
+      // reloaded), and for 8 seconds; with the user's name when the API sends no message.
       await this.load();
+      this.toast.success(id ? t('staff.subUsers.toast.updated', '{type} updated', { type: this.accountType() })
+        : t('staff.subUsers.toast.added', '{type} added', { type: this.accountType() }), r?.message || f.userName, 8000);
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
     } finally {

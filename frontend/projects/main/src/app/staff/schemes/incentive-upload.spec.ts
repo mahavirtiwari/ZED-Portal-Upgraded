@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { INCENTIVE_APPLY_API, INCENTIVE_CHECK_API, IncentiveCheck, IncentiveUploadPage } from './incentive-upload';
+import { INCENTIVE_APPLY_API, INCENTIVE_CHECK_API, INCENTIVE_TEMPLATE_API, IncentiveCheck, IncentiveUploadPage } from './incentive-upload';
 import { TableExport } from '../table-export';
 
 describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', () => {
@@ -54,6 +54,35 @@ describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', ()
     expect(el.textContent).not.toContain('Recent uploads');
   });
 
+  it('downloads the template with HttpClient as a blob, not by a link to the API (UI audit B5)', async () => {
+    expect(el.querySelector('a[href*="/api/"]')).toBeNull();
+    const createUrl = vi.fn(() => 'blob:template');
+    const revoke = vi.fn();
+    const was = { createObjectURL: URL.createObjectURL, revokeObjectURL: URL.revokeObjectURL };
+    Object.assign(URL, { createObjectURL: createUrl, revokeObjectURL: revoke });
+    const clicks = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    button('Download template')!.click();
+    await settle();
+    const req = http.expectOne(INCENTIVE_TEMPLATE_API);
+    expect(req.request.responseType).toBe('blob');
+    req.flush(new Blob(['PK'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    await settle();
+    expect(createUrl).toHaveBeenCalled();
+    expect(clicks).toHaveBeenCalled();
+    clicks.mockRestore();
+    Object.assign(URL, was);
+  });
+
+  it('shows the error of a failed template download', async () => {
+    button('Download template')!.click();
+    await settle();
+    http.expectOne(INCENTIVE_TEMPLATE_API).flush(new Blob([JSON.stringify({ title: 'The service is unavailable.' })]), { status: 503, statusText: 'Service Unavailable' });
+    await settle();
+    await new Promise((r) => setTimeout(r, 10));
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('The service is unavailable.');
+  });
+
   it('refuses a file that is not .xlsx before sending it', async () => {
     choose(new File(['x'], 'old.xls'));
     await settle();
@@ -99,7 +128,7 @@ describe('IncentiveUploadPage (2026-11-17: check, then save the valid rows)', ()
     const cells = [...el.querySelectorAll('.uploaded tbody td')].map((td) => td.textContent!.trim());
     expect(cells).toContain('05-01-2026');
     expect(cells).toContain('20260105'); // ApplicationId is not a date
-    expect(el.querySelector('#skippedRows')!.textContent).toContain('06-01-2026');
+    expect(el.querySelector('#skippedRows')!.textContent).toContain('06 Jan 2026');
     expect(el.querySelectorAll('.st-done').length).toBe(3);
 
     button('Upload another file')!.click();

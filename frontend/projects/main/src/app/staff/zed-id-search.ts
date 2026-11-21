@@ -31,11 +31,12 @@ export const ZED_ID_PATTERN = /^ZED[A-Z0-9_]{2,47}$/;
   `,
   styles: `
     :host { position: relative; display: inline-flex; }
-    .zs-box { display: flex; align-items: center; gap: 7px; height: 32px; width: 164px; padding: 0 6px 0 10px; border: 1px solid transparent;
+    /* 2026-11-21 (UI audit L5): wider, with room on the right of the text for the "Ctrl K" badge, so the placeholder is not cut. */
+    .zs-box { display: flex; align-items: center; gap: 7px; height: 32px; width: 196px; padding: 0 6px 0 10px; border: 1px solid transparent;
       border-radius: 8px; background: rgba(0, 0, 0, 0.2); color: #bcd8da; }
     .zs-box:focus-within { border-color: rgba(255, 255, 255, 0.45); background: rgba(0, 0, 0, 0.28); }
     .zs-icon { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-    .zs-input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; color: #fff; font-size: 12px; font-weight: 500; }
+    .zs-input { flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 0; border: 0; text-overflow: ellipsis; outline: none; background: transparent; color: #fff; font-size: 12px; font-weight: 500; }
     .zs-input::placeholder { color: #bcd8da; opacity: 1; }
     .zs-input::-webkit-search-cancel-button { display: none; }
     .zs-key { flex: none; display: grid; place-items: center; height: 20px; padding: 0 5px; border-radius: 5px;
@@ -57,11 +58,11 @@ export class ZedIdSearch {
     const input = this.box().nativeElement;
     const id = input.value.trim().toUpperCase();
     if (!id) {
-      this.note.set(t('staff.zedIdSearch.emptyError', 'Type a ZED ID, e.g. ZEDMSME000001.'));
+      this.note.set(t('staff.zedIdSearch.emptyError', 'Type a ZED ID, e.g. ZEDM000005.'));
       return;
     }
     if (!ZED_ID_PATTERN.test(id)) {
-      this.note.set(t('staff.zedIdSearch.invalidError', 'This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDMSME000001.'));
+      this.note.set(t('staff.zedIdSearch.invalidError', 'This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDM000005.'));
       return;
     }
     this.note.set('');

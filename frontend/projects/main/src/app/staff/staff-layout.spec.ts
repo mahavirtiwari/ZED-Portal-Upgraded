@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService, PORTAL_LINK_DEFAULTS, PortalLinkKey, PortalLinksService } from '@zed/shared';
 import { ATTENTION_API } from './attention';
-import { StaffLayout } from './staff-layout';
+import { StaffLayout, closeButtonOf, topDialog } from './staff-layout';
 
 /** jsdom has no ResizeObserver (the menu row measures its entries on resize). */
 class NoResizeObserver {
@@ -84,5 +84,21 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     const agency = await render({}, { userId: 'ZEDAA0001', userName: 'AGENCY', roleId: 2, role: 'Agency' });
     expect(agency.classList).toContain('zed-v4');
     expect(agency.classList).not.toContain('zed-admin');
+  });
+});
+
+describe('Esc on staff pop-ups (UI audit F1/F2/F5)', () => {
+  it('finds the pop-up on top and its close button', () => {
+    const root = document.createElement('div');
+    root.innerHTML = `
+      <div class="modal d-block" id="a"><button class="btn btn-primary">Save</button><button class="btn-close" aria-label="Close"></button></div>
+      <div class="modal d-block" id="b"><button class="btn btn-default">Cancel</button><button class="su-x" aria-label="Close">x</button></div>`;
+    const top = topDialog(root)!;
+    expect(top.id).toBe('b');
+    expect(closeButtonOf(top)!.className).toBe('su-x');
+    const labelled = document.createElement('div');
+    labelled.innerHTML = '<div role="dialog" aria-modal="true"><button>Save</button><button class="btn btn-link p-0" aria-label="Close">x</button></div>';
+    expect(closeButtonOf(topDialog(labelled)!)!.getAttribute('aria-label')).toBe('Close');
+    expect(topDialog(document.createElement('div'))).toBeNull();
   });
 });

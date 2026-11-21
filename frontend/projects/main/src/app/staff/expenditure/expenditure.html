@@ -6,8 +6,9 @@
       <button type="button" [class.on]="view() === 'organisations'" [attr.aria-pressed]="view() === 'organisations'" (click)="setView('organisations')">{{ 'Consultant organisations' | t: 'staff.expenditure.view.organisations' }}</button>
     </div>
   }
-  <button type="button" class="btn btn-default" [disabled]="loading()" (click)="load()">{{ 'Refresh' | t: 'staff.expenditure.refreshButton' }}</button>
-  <button type="button" class="btn btn-primary" [disabled]="!data()" (click)="export()">{{ 'Export' | t: 'staff.expenditure.exportButton' }}</button>
+  <!-- 2026-11-21 (UI audit L6): Export and Refresh as on the other staff pages (grey header buttons with their icons). -->
+  <button type="button" class="btn btn-ph xp-hb" [disabled]="!data()" (click)="export()"><zed-dash-icon name="download" [size]="16" />{{ 'Export' | t: 'staff.expenditure.exportButton' }}</button>
+  <button type="button" class="btn btn-ph xp-hb" [disabled]="loading()" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.expenditure.refreshButton' }}</button>
 </zed-page-head>
 
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }

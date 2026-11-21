@@ -40,6 +40,21 @@ describe('buildTimeline', () => {
     expect(bronze.events.map((e) => e.actor)).toEqual(['MSME', 'ZED', 'Agency', 'Assessor', null, null, 'ZED', null]);
   });
 
+  it('reads who acted from the legacy lines and shows "Alotted" as "Allotted" (UI audit W7)', () => {
+    const [bronze] = buildTimeline([
+      row({ CertificationType: 'Bronze', Description: 'SA for Bronze Alotted toLEAD01 and CO01' }),
+      row({ CertificationType: 'Bronze', Description: 'MasterAdmin send back to Assessor On March 1, 2024' }),
+      row({ CertificationType: 'Bronze', Description: 'Agency send back to Assessor On March 2, 2024' }),
+      row({ CertificationType: 'Bronze', Description: 'Assessor Rejected On March 3, 2024' }),
+      row({ CertificationType: 'Bronze', Description: 'Submitted on  March 4, 2024' }),
+      row({ CertificationType: 'Bronze', StatusType: 'Quality Observation', Description: 'Observation raised' }),
+      row({ CertificationType: 'Bronze', StatusType: 'AgencyAlloted', Description: 'DA for Bronze Alotted to Agency AG01' }),
+    ]);
+    expect(bronze.events.map((e) => e.actor)).toEqual(['Agency', 'ZED', 'Agency', 'Assessor', 'MSME', 'ZED', 'ZED']);
+    expect(bronze.events[0].Description).toBe('SA for Bronze Allotted to LEAD01 and CO01');
+    expect(bronze.events[6].Description).toBe('DA for Bronze Allotted to Agency AG01');
+  });
+
   it('lists the key dates the history has', () => {
     const events = buildTimeline([
       row({ CreatedDate: '2026-11-13T10:00:00', Description: 'Registered on portal' }),

@@ -33,7 +33,7 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="'Incentive Verification Agencies' | t: 'staff.incentiveAgencies.title'"
                    [subtitle]="'Agencies that verify incentive scheme applications, at the desktop or onsite, by state and district. Desktop and onsite are always different agencies; assessment agencies are kept on their own page.' | t: 'staff.incentiveAgencies.sub'">
-      <a routerLink="new" class="btn btn-primary" data-add>{{ 'Add agency' | t: 'staff.incentiveAgencies.add' }}</a>
+      <a routerLink="new" class="btn btn-primary" data-add>{{ '+ Add agency' | t: 'staff.incentiveAgencies.add' }}</a>
     </zed-page-head>
     <div class="zed-card oa-filters">
       <input type="search" class="form-control oa-q" maxlength="50" [placeholder]="'Search agencies' | t: 'staff.incentiveAgencies.search'"
@@ -97,9 +97,16 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
     @if (loading()) { <div class="loadingdiv"><div class="loader"></div></div> }
   `,
   styles: `
-    .oa-filters { padding: 11px 15px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 10px; }
-    .oa-type { max-width: 220px; height: 38px; font-size: 13px; }
-    .oa-q { max-width: 300px; height: 38px; border: 1.2px solid #b9cdcf; border-radius: 9px; font-size: 13px; }
+    /* 2026-11-21 (UI audit L6): the search and the type side by side on one row (stacked on phones), as on the other lists. */
+    .oa-filters { padding: 11px 15px; margin-bottom: 16px; display: flex; flex-wrap: nowrap; align-items: center; gap: 10px; }
+    .oa-filters > .oa-q { flex: 0 1 320px; max-width: 320px; }
+    .oa-filters > .oa-type { flex: 0 0 220px; width: 220px; max-width: 220px; }
+    .oa-type { height: 38px; font-size: 13px; }
+    .oa-q { height: 38px; border: 1.2px solid #b9cdcf; border-radius: 9px; font-size: 13px; }
+    @media (max-width: 575.98px) {
+      .oa-filters { flex-wrap: wrap; }
+      .oa-filters > .oa-q, .oa-filters > .oa-type { flex: 1 1 100%; max-width: none; width: auto; }
+    }
     .oa-area small { color: #5f6f70; }
     .oa-act { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

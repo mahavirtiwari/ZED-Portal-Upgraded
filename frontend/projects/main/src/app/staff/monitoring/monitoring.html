@@ -80,7 +80,7 @@
           <th>{{ 'Milestone' | t: 'staff.monitoring.column.milestone' }}</th>
           <th>{{ 'Consultants / expert' | t: 'staff.monitoring.column.consultants' }}</th>
           <th>{{ 'Site visit dates' | t: 'staff.monitoring.column.siteVisitDates' }}</th>
-          <th class="text-end">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
+          <th class="text-end mo-act">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
         </tr>
       } @else {
         <tr>
@@ -95,7 +95,7 @@
           <th [attr.aria-sort]="dueSort() === 1 ? 'ascending' : dueSort() === -1 ? 'descending' : 'none'">
             <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? ('Sorted by days left' | t: 'staff.monitoring.due.sortedTooltip') : dueSort() === -1 ? ('Most days left first' | t: 'staff.monitoring.due.reverseTooltip') : ('Sort by days left' | t: 'staff.monitoring.due.sortTooltip')" (click)="toggleDueSort()">{{ showDelays() ? ('Delay' | t: 'staff.monitoring.column.delay') : ('Due' | t: 'staff.monitoring.column.due') }}</button>
           </th>
-          <th class="text-end">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
+          <th class="text-end mo-act">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
         </tr>
       }
     </thead>
@@ -106,7 +106,7 @@
           <td class="unit-cell">
             <b>{{ s['PUnitName'] }}</b>
             <span class="dash-text-clr mo-id">{{ s['ZedId'] }}</span>
-            <small [title]="col(s, 'UnitAddress')">{{ s['UnitAddress'] }}</small>
+            <small [title]="address(s)">{{ address(s) }}</small>
           </td>
           <td>
             <zed-level-medal [level]="col(s, 'Certification')" />
@@ -159,7 +159,7 @@
             }
             <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span>@if (s['TatRule']) { <small class="mo-rule">{{ s['TatRule'] }}</small> } }</td>
           }
-          <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.monitoring.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" /></td>
+          <td class="text-end mo-act"><zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.monitoring.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" /></td>
         </tr>
       } @empty {
         <tr>

@@ -312,7 +312,7 @@ const EXPORT_LIMIT = 10_000;
               </tr>
             }
           } @empty {
-            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.assessmentResults.loading') : completed() ? ('No completed assessment matches these filters.' | t: 'staff.assessmentResults.completed.empty') : ('No rejected certification matches these filters.' | t: 'staff.assessmentResults.rejected.empty') }}</div></td></tr>
+            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.assessmentResults.loading') : completed() ? ('No completed assessment matches these filters.' | t: 'staff.assessmentResults.completed.empty') : (anyFilter() ? ('No rejected certification matches these filters.' | t: 'staff.assessmentResults.rejected.empty') : ('No rejected certification yet.' | t: 'staff.assessmentResults.rejected.none')) }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -389,7 +389,8 @@ export class AssessmentResultsPage {
   /**
    * Paged by the procedure, as the old pages: main 20 per page (up to 200), consultancy and surveillance 10 (up to 100).
    */
-  protected readonly sizes = this.system === 'main' ? [10, 20, 50, 100, 200] : [10, 20, 50, 100];
+  // 2026-11-21 (UI audit C4): 10 / 20 / 50 / 100 on every portal, as the other staff lists (200 is no longer offered).
+  protected readonly sizes = [10, 20, 50, 100];
   /** 2026-11-18: 10 per page everywhere, as the designs and the other lists. */
   protected readonly pager = new ServerPager(10, () => void this.load());
   /** The count cards' figures for the current filter (null until loaded or when the counts could not be read). */
@@ -408,7 +409,7 @@ export class AssessmentResultsPage {
     this.consultancy ? t('staff.assessmentResults.consultancy.title', 'Consultancy Completed')
     : this.surveillance ? (this.completed() ? t('staff.assessmentResults.surveillanceCompleted.title', 'Completed Surveillance')
       : t('staff.assessmentResults.surveillanceRejected.title', 'Rejected Surveillance'))
-    : this.completed() ? t('staff.assessmentResults.completed.title', 'Completed Assessment') : t('staff.assessmentResults.rejected.title', 'Rejected Certification'));
+    : this.completed() ? t('staff.assessmentResults.completed.title', 'Assessment Completed') : t('staff.assessmentResults.rejected.title', 'Rejected Certification'));
   /** The export's file name (the standard heading, whatever wording the Admin gave the page). */
   private readonly fileName = computed(() =>
     this.consultancy ? 'consultancy-completed' : this.surveillance ? (this.completed() ? 'completed-surveillance' : 'rejected-surveillance')
@@ -635,6 +636,11 @@ export class AssessmentResultsPage {
   protected reallotted(): void {
     void this.attention.refresh().catch(() => undefined);
     void this.loadAllotRows();
+  }
+
+  /** 2026-11-21 (UI audit C4): some filter is set (else the empty list says there is none yet). */
+  protected anyFilter(): boolean {
+    return !!(this.state || this.level || this.size || this.gender || this.searchText.trim());
   }
 
   private filter(pageNo: number, pageSize: number): ResultsFilter & { gender?: string } {

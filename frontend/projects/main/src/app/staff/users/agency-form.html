@@ -32,12 +32,12 @@
           <div class="fld">
             <label for="userName">{{ consultancy ? ('Consultant organisation name' | t: 'staff.agencyForm.org.organisationNameLabel') : ('Agency name' | t: 'staff.agencyForm.org.agencyNameLabel') }}<span class="req">*</span></label>
             <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
-            @if (missing(model.userName)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
+            @if (missing(model.userName)) { <span class="help-block">{{ consultancy ? ('Please enter the organisation name.' | t: 'staff.agencyForm.error.organisationNameRequired') : ('Please enter the agency name.' | t: 'staff.agencyForm.error.agencyNameRequired') }}</span> }
           </div>
           <div class="fld">
             <label for="address">{{ 'Registered address' | t: 'staff.agencyForm.org.addressLabel' }}<span class="req">*</span></label>
             <textarea id="address" name="address" class="form-control" maxlength="2000" rows="2" [placeholder]="'Building, street, city, state' | t: 'staff.agencyForm.org.addressPlaceholder'" [(ngModel)]="model.address" required></textarea>
-            @if (missing(model.address)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
+            @if (missing(model.address)) { <span class="help-block">{{ 'Please enter the registered address.' | t: 'staff.agencyForm.error.addressRequired' }}</span> }
           </div>
           <div class="fld-row pin-row">
             <div class="fld">
@@ -61,7 +61,7 @@
             <div class="fld">
               <label for="spocName">{{ 'SPOC name' | t: 'staff.agencyForm.spoc.nameLabel' }}<span class="req">*</span></label>
               <input id="spocName" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
-              @if (missing(model.spocName)) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
+              @if (missing(model.spocName)) { <span class="help-block">{{ 'Please enter the SPOC name.' | t: 'staff.agencyForm.error.spocNameRequired' }}</span> }
             </div>
             <div class="fld">
               <label for="emailId">{{ 'SPOC e-mail ID' | t: 'staff.agencyForm.spoc.emailLabel' }}<span class="req">*</span></label>
@@ -102,16 +102,23 @@
                   }
                 </div>
                 <small class="fs-hint">{{ 'Which MSMEs the agency assesses. Its assessors cannot cover more.' | t: 'staff.agencyForm.cover.sectorTypeNote' }}</small>
-                @if (submitted() && !model.sectorActivity) { <span class="help-block">{{ 'This is required.' | t: 'staff.agencyForm.requiredError' }}</span> }
+                @if (submitted() && !model.sectorActivity) { <span class="help-block">{{ 'Please select the sector type.' | t: 'staff.agencyForm.error.sectorTypeRequired' }}</span> }
               </div>
               <div class="fld">
                 <label for="orgPartnerId">{{ 'Organising partner' | t: 'staff.agencyForm.cover.partnerLabel' }}</label>
-                <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
-                  <option value="">{{ '-- Select Organising Partner --' | t: 'staff.agencyForm.cover.partnerPlaceholder' }}</option>
-                  @for (p of sortedPartners(); track p.userId) {
-                    <option [value]="p.userId">{{ partnerLabel(p) }}</option>
-                  }
-                </select>
+                <!-- 2026-11-21 (UI audit F3): with no organising partner to choose, a note instead of an empty drop-down. -->
+                @if (sortedPartners().length) {
+                  <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
+                    <option value="">{{ '-- Select Organising Partner --' | t: 'staff.agencyForm.cover.partnerPlaceholder' }}</option>
+                    @for (p of sortedPartners(); track p.userId) {
+                      <option [value]="p.userId">{{ partnerLabel(p) }}</option>
+                    }
+                  </select>
+                } @else if (isEdit) {
+                  <p class="fs-hint mb-0" id="orgPartnerId">{{ 'None' | t: 'staff.agencyForm.cover.partnerNone' }}</p>
+                } @else {
+                  <p class="fs-hint mb-0" id="orgPartnerId" data-no-partners>{{ 'No organising partner has been added yet, so the agency is saved without one (optional).' | t: 'staff.agencyForm.cover.partnerEmpty' }}</p>
+                }
                 @if (isEdit) { <small class="fs-hint">{{ 'An existing agency keeps its organising partner.' | t: 'staff.agencyForm.cover.partnerNote' }}</small> }
               </div>
             </div>
@@ -141,6 +148,7 @@
               </label>
             </div>
             <small class="fs-hint">{{ consultancy ? ('Handholding Support or Technology Intervention (not both).' | t: 'staff.agencyForm.cover.consultancyCategoryNote') : ('The work it may take up; choose at least one.' | t: 'staff.agencyForm.cover.categoryNote') }}</small>
+            @if (submitted() && noCategory()) { <span class="help-block" data-category-error>{{ consultancy ? ('Please select a category.' | t: 'staff.agencyForm.error.categoryRequired') : ('Please select at least one assessment category.' | t: 'staff.agencyForm.error.assessmentCategoryRequired') }}</span> }
           </div>
           @if (consultancy && model.financialVerification) {
             <div class="fld-row">

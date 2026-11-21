@@ -61,6 +61,11 @@ describe('AgencyFormPage', () => {
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter valid data.');
     // The error is repeated in the save bar at the bottom of the window.
     expect(el.querySelector('.save-bar .save-error')!.textContent).toContain('Please enter valid data.');
+    // 2026-11-21 (UI audit F3): each required field says "Please enter …" / "Please select …", the category too.
+    const messages = [...el.querySelectorAll('.help-block')].map((h) => h.textContent!.trim());
+    expect(messages).toEqual(expect.arrayContaining(['Please enter the agency name.', 'Please enter the registered address.', 'Please enter the PIN code.',
+      'Please enter the SPOC name.', 'Please enter the SPOC e-mail ID.', 'Please enter the SPOC mobile number.', 'Please select the sector type.',
+      'Please select at least one assessment category.']));
 
     await type('#userName', 'New Agency');
     await type('#spocName', 'Spoc');
@@ -70,7 +75,8 @@ describe('AgencyFormPage', () => {
     await type('#pinCode', '110001');
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please select atleast one verification.');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please select at least one category.');
+    expect(el.querySelector('[data-category-error]')).not.toBeNull();
 
     (el.querySelector('input[name=desktopVerification]') as HTMLInputElement).click();
     const goa = [...el.querySelectorAll('zed-multi-select label')].find((l) => l.textContent!.trim() === 'GOA')!;
@@ -94,6 +100,14 @@ describe('AgencyFormPage', () => {
     req.flush({ message: 'User created successfully.', userId: 'ZEDAA0099' });
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/staff/users/agencies'], { state: { message: 'User created successfully.' } });
+  });
+
+  it('says why there is no organising partner to choose instead of an empty drop-down (UI audit F3)', async () => {
+    await create(null);
+    http.expectOne('/api/staff/users/agencies/options').flush({ ...options, orgPartners: [] });
+    await settle();
+    expect(el.querySelector('select#orgPartnerId')).toBeNull();
+    expect(el.querySelector('[data-no-partners]')!.textContent).toContain('No organising partner has been added yet');
   });
 
   it('consultancy: the old Category boxes, Handholding Support and Technology Intervention excluding each other', async () => {

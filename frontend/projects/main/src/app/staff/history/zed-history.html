@@ -7,7 +7,7 @@
   <div class="hs-box">
     <label class="visually-hidden" for="zedId">{{ 'ZED ID' | t: 'staff.history.search.label' }}</label>
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-    <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" [placeholder]="'ZED ID, e.g. ZEDMSME000123' | t: 'staff.history.search.placeholder'" autocomplete="off" [(ngModel)]="zedId" />
+    <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" [placeholder]="'ZED ID, e.g. ZEDM000123' | t: 'staff.history.search.placeholder'" autocomplete="off" [(ngModel)]="zedId" />
   </div>
   <button type="submit" class="btn btn-primary hs-go" [disabled]="loading()">{{ 'Search' | t: 'staff.history.searchButton' }}</button>
   @if (recentShown().length) {

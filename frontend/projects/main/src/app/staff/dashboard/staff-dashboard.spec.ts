@@ -88,6 +88,8 @@ describe('StaffDashboardPage', () => {
     // 2026-11-17: the shared page head: Home > Dashboard, the Updated time under the title, the date basis, Refresh and Export.
     expect([...el.querySelectorAll('zed-page-head .ph-crumb a, zed-page-head .ph-crumb [aria-current]')].map(text)).toEqual(['Home', 'Dashboard']);
     expect(text(el.querySelector('zed-page-head .ph-title'))).toBe('Dashboard');
+    // 2026-11-21 (UI audit C1): the landing page's title is its h1.
+    expect(el.querySelector('zed-page-head h1.ph-title')).not.toBeNull();
     expect(text(el.querySelector('zed-page-head .ph-sub'))).toMatch(/^Updated 27-10-2026 \d\d:\d\d$/);
     expect([...el.querySelectorAll('zed-page-head .ph-actions .btn')].map(text)).toEqual(['Refresh', 'Export']);
     expect(el.querySelector('.an h4')).toBeNull();

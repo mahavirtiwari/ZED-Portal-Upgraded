@@ -24,6 +24,24 @@ import { TextPipe } from '../content/page-text';
  * lighter tabs and no separators, so the Master Admin's whole menu fits on the row from 1440px), the footer's four links.
  * The shared blocks of the pages (buttons, tables, pills, cards) are in styles/_v4-skin.scss.
  */
+/** An open pop-up of the staff pages (the Bootstrap-style modals and the dialogs marked aria-modal). */
+export const DIALOG_SELECTOR = '.modal.d-block, .modal.show, [role="dialog"][aria-modal="true"]';
+
+/** The pop-up on top (the last open one in the page), or null. */
+export function topDialog(root: ParentNode): HTMLElement | null {
+  const open = [...root.querySelectorAll<HTMLElement>(DIALOG_SELECTOR)].filter((el) => !el.closest('[hidden]') && getComputedStyle(el).display !== 'none');
+  return open.at(-1) ?? null;
+}
+
+/** A pop-up's close button: its ×, by class (btn-close, *-x, *-close, data-dismiss) or by its "Close" label. */
+export function closeButtonOf(dialog: HTMLElement): HTMLButtonElement | null {
+  const scope = dialog.closest<HTMLElement>('.modal') ?? dialog;
+  const buttons = [...scope.querySelectorAll<HTMLButtonElement>('button')];
+  return buttons.find((b) => b.hasAttribute('data-dismiss') || /(^|\s)(btn-close|[\w]+-x|[\w]+-close)(\s|$)/.test(b.className))
+    ?? buttons.find((b) => /close/i.test(b.getAttribute('aria-label') ?? ''))
+    ?? null;
+}
+
 @Component({
   selector: 'zed-staff-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, ZedIdSearch, AttentionBell, ToastHost, ConfirmHost, TextPipe],
@@ -390,6 +408,23 @@ export class StaffLayout {
   protected groupActive(items: readonly StaffMenuItem[]): boolean {
     const url = this.router.url.split(/[?#]/)[0];
     return items.some((i) => !!i.route && (url === i.route || url.startsWith(i.route + '/')));
+  }
+
+  /**
+   * 2026-11-21 (UI audit F1/F2/F5): Esc closes the pop-up on top on every staff page. Pop-ups that handle Esc themselves are
+   * gone by the next tick; any other one (Expenditure "Cases", Add NEFT admin, Add / Edit Operation Admin, …) is closed with
+   * its own close button, so it closes the way its × does (nothing happens while that button is disabled).
+   */
+  @HostListener('document:keydown.escape', ['$event'])
+  protected escapeDialog(event?: Event): void {
+    // Esc that closed something inside the pop-up (a row menu, an open drop-down) does not close the pop-up too.
+    const target = event?.target as Element | null;
+    if (event?.defaultPrevented || target?.closest?.('[aria-expanded="true"]')) return;
+    const dialog = topDialog(document);
+    if (!dialog) return;
+    setTimeout(() => {
+      if (dialog.isConnected && topDialog(document) === dialog) closeButtonOf(dialog)?.click();
+    });
   }
 
   @HostListener('document:click')

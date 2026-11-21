@@ -40,7 +40,7 @@ export interface ListCount {
     </div>
     <ng-template #body let-c>
       <b [class]="c.tone ? 'is-' + c.tone : ''">{{ c.value }}</b>&ngsp;
-      <span class="lc-label">{{ c.label }}@if (c.sub) {&ngsp;<small class="lc-sub">{{ c.sub }}</small> }</span>
+      <span class="lc-label">{{ c.label }}@if (c.sub) {&ngsp;<small class="lc-sub">@for (p of parts(c.sub); track $index) {<span class="lc-part">{{ p }}</span>&ngsp;}</small> }</span>
       @if (c.delta !== null && c.delta !== undefined && c.delta !== '') {
         <span class="lc-delta" [class.down]="('' + c.delta).startsWith('-')">{{ c.delta }}</span>
       }
@@ -64,6 +64,8 @@ export interface ListCount {
     .lc-item b.is-info { color: var(--zt-dark, #24666b); }
     .lc-label { font-size: 12.5px; color: #3d5559; font-weight: 500; line-height: 1.4; overflow-wrap: break-word; }
     .lc-sub { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); }
+    /* 2026-11-21 (UI audit L2): "Desktop 1 · Site 0" breaks only between its parts, never inside "Desktop 1". */
+    .lc-part { white-space: nowrap; }
     .lc-delta { position: absolute; right: 16px; bottom: 14px; font-size: 12px; font-weight: 700; color: #2f9e58; }
     .lc-delta.down { color: #c8473c; }
     @media (max-width: 575.98px) {
@@ -74,6 +76,11 @@ export interface ListCount {
   `,
 })
 export class ListCounts {
+  /** A line's parts ("Desktop 1 · Site 0" → "Desktop 1", "· Site 0"), each kept on one line. */
+  protected parts(sub: string): string[] {
+    return sub.split(' · ').map((p, i) => (i ? '· ' + p : p));
+  }
+
   readonly counts = input.required<ListCount[]>();
   /** The tiles are buttons that filter the list (also when `selected` is given). */
   readonly clickable = input(false);

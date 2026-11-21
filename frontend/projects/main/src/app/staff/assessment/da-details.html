@@ -116,7 +116,7 @@
               }
               <div class="fact wide">
                 <dt>{{ 'Unit address' | t: 'staff.daDetails.summary.address.label' }}</dt>
-                <dd>{{ t(msme(), 'PlantAddress') || '—' }}</dd>
+                <dd>{{ address(t(msme(), 'PlantAddress')) || '—' }}</dd>
               </div>
             </dl>
           </section>
@@ -461,9 +461,9 @@
                     <span class="zp-nav-body">
                       <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
                       @if (previewMode()) {
-                        <span class="zp-nav-meta">{{ '{count} requirements' | t: 'staff.daDetails.params.nav.requirements.label' : { count: requirementsOf(s, d.requirements).length } }}</span>
+                        <span class="zp-nav-meta">{{ requirementsOf(s, d.requirements).length === 1 ? ('{count} requirement' | t: 'staff.daDetails.params.nav.requirementOne.label' : { count: 1 }) : ('{count} requirements' | t: 'staff.daDetails.params.nav.requirements.label' : { count: requirementsOf(s, d.requirements).length }) }}</span>
                       } @else {
-                        <span class="zp-nav-meta">{{ exempted(s) ? ('Exempted' | t: 'staff.daDetails.params.nav.exempted.label') : ('{done} of {total} requirements' | t: 'staff.daDetails.params.nav.reqDone.label' : { done: pg.done, total: pg.total }) }}</span>
+                        <span class="zp-nav-meta">{{ exempted(s) ? ('Exempted' | t: 'staff.daDetails.params.nav.exempted.label') : (pg.total === 1 ? ('{done} of {total} requirement' | t: 'staff.daDetails.params.nav.reqDoneOne.label' : { done: pg.done, total: pg.total }) : ('{done} of {total} requirements' | t: 'staff.daDetails.params.nav.reqDone.label' : { done: pg.done, total: pg.total })) }}</span>
                         <span class="zp-bar" aria-hidden="true"><span [style.width.%]="exempted(s) ? 100 : pg.percent"></span></span>
                       }
                     </span>
@@ -481,7 +481,7 @@
                     <div class="zp-head-title">
                       <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                       <h5>{{ t(s, 'SectionName') }}</h5>
-                      <small class="zp-head-sub">{{ 'Parameter {number} of {total} · {count} requirements' | t: 'staff.daDetails.params.head.sub' : { number: sectionIndex(), total: d.sections.length, count: requirementsOf(s, d.requirements).length } }}</small>
+                      <small class="zp-head-sub">{{ requirementsOf(s, d.requirements).length === 1 ? ('Parameter {number} of {total} · {count} requirement' | t: 'staff.daDetails.params.head.subOne' : { number: sectionIndex(), total: d.sections.length, count: 1 }) : ('Parameter {number} of {total} · {count} requirements' | t: 'staff.daDetails.params.head.sub' : { number: sectionIndex(), total: d.sections.length, count: requirementsOf(s, d.requirements).length }) }}</small>
                       @if (t(s, 'iButton')) {
                         <span class="zp-info" tabindex="0">
                           <span class="zp-info-i" role="img" [attr.aria-label]="'Information' | t: 'staff.daDetails.params.infoAria'">i</span>
@@ -912,7 +912,7 @@
                       <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
                       <span class="zp-nav-body">
                         <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
-                        <span class="zp-nav-meta">{{ '{done} of {total} requirements' | t: 'staff.daDetails.params.nav.reqDone.label' : { done: pg.done, total: pg.total } }}</span>
+                        <span class="zp-nav-meta">{{ pg.total === 1 ? ('{done} of {total} requirement' | t: 'staff.daDetails.params.nav.reqDoneOne.label' : { done: pg.done, total: pg.total }) : ('{done} of {total} requirements' | t: 'staff.daDetails.params.nav.reqDone.label' : { done: pg.done, total: pg.total }) }}</span>
                         <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pg.percent"></span></span>
                       </span>
                       <span class="zp-chip" [attr.data-v]="st">{{ chipText(st) }}</span>

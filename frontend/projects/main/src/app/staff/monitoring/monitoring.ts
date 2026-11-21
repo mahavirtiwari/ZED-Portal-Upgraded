@@ -21,6 +21,7 @@ import { daysUntil, shortDate } from '../assessment/allot';
 import { LevelMedal } from '../assessment/level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
+import { cleanAddress } from '../address';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -58,7 +59,9 @@ const DEFAULT_STATUS = 3;
   templateUrl: './monitoring.html',
   styles: `
     .mo-hb { display: inline-flex; align-items: center; gap: 8px; }
-    .mo-stages ::ng-deep .lc-btn { padding-right: 36px; }
+    /* 2026-11-21 (UI audit L2): room for the chevron also on the chosen tile, and the tracks on their own line. */
+    .mo-stages ::ng-deep .lc-btn, .mo-stages ::ng-deep .lc-btn.on { padding-right: 36px !important; }
+    .mo-stages ::ng-deep .lc-sub { display: block; margin: 2px 0 0; }
     .mo-stages ::ng-deep .lc-btn:not(:last-child)::after { content: ''; position: absolute; right: 18px; top: 50%; width: 8px; height: 8px; margin-top: -4px;
       border: solid #9aadaf; border-width: 1.6px 1.6px 0 0; transform: rotate(45deg); }
     .mo-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; }
@@ -108,6 +111,11 @@ const DEFAULT_STATUS = 3;
     tr.mo-d2 > td:first-child { box-shadow: inset 3px 0 0 #e0782b; }
     tr.mo-d3 > td:first-child, tr.mo-d4 > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
     tr.mo-d4 > td { background: #fdf3f1; }
+    /* 2026-11-21 (UI audit L3): the actions (⋮) stay on the right while the table scrolls sideways (tablets and phones). */
+    .mo-act { position: sticky; right: 0; z-index: 2; }
+    td.mo-act { background: #fff; }
+    tr.mo-d4 > td.mo-act { background: #fdf3f1; }
+    @media (max-width: 991.98px) { .mo-act { box-shadow: -8px 0 8px -8px rgba(16, 61, 64, 0.35); } }
   `,
 })
 export class MonitoringPage {
@@ -385,6 +393,11 @@ export class MonitoringPage {
 
   protected num(r: Row, field: string): number {
     return Number(r[field] ?? 0) || 0;
+  }
+
+  /** 2026-11-21 (UI audit W8): the unit's address without its empty parts ("Block:- ,"). */
+  protected address(r: Row): string {
+    return cleanAddress(r['UnitAddress']);
   }
 
   protected col(r: Row, field: string): string {

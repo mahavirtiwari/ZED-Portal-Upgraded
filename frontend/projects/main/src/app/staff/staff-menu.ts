@@ -223,6 +223,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the CCAvenue account and the invoice switch (main portal only: payments run there).
   { label: 'Payment Gateway and Invoices', route: '/staff/settings/payment-gateway', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-21 (the user: "add logger"): the portal's warnings and errors, readable without access to the server.
+  { label: 'Server Logs', route: '/staff/settings/server-logs', roles: [R.Admin], menu: 'Administration' },
   // 2026-11-15: each portal and app up or down (main portal only).
   { label: 'Maintenance mode', route: '/staff/settings/maintenance', roles: [R.Admin], menu: 'Administration' },
   // 2026-11-15: the logos and colour themes of each portal and app (main portal only).
@@ -283,6 +285,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   // 2026-11-13: how agencies' certified professionals are verified (per portal).
   { label: 'Professional Verification', route: '/staff/settings/professional-verification', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-21 (the user: "add logger"): the portal's warnings and errors, readable without access to the server.
+  { label: 'Server Logs', route: '/staff/settings/server-logs', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
 
@@ -355,6 +359,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   // 2026-11-13: how agencies' certified professionals are verified (per portal).
   { label: 'Professional Verification', route: '/staff/settings/professional-verification', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-21 (the user: "add logger"): the portal's warnings and errors, readable without access to the server.
+  { label: 'Server Logs', route: '/staff/settings/server-logs', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the site tour sections of the site assessor app (main and surveillance only).
@@ -464,6 +470,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Professional Verification': () => t('staff.menu.item.professionalVerificationLabel', 'Professional Verification'),
   'Payment Gateway and Invoices': () => t('staff.menu.item.paymentGatewayAndInvoicesLabel', 'Payment Gateway and Invoices'),
   'Email Templates': () => t('staff.menu.item.emailTemplatesLabel', 'Email Templates'),
+  'Server Logs': () => t('staff.menu.item.serverLogsLabel', 'Server Logs'),
   'Maintenance mode': () => t('staff.menu.item.maintenanceModeLabel', 'Maintenance mode'),
   'Branding': () => t('staff.menu.item.brandingLabel', 'Branding'),
   'Texts': () => t('staff.menu.item.textsLabel', 'Texts'),

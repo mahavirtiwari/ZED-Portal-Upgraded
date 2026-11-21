@@ -11,12 +11,15 @@ import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
+import { revealError } from '../reveal-error';
 
 /** The server's formats (StaffUserRules): shown as you type, so they are fixed before submit. */
 const PIN = /^\d{6}$/;
 const MOBILE = /^\d{10}$/;
 const GST = /^[0-9A-Za-z]{1,20}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** The first field message of the form (2026-11-21, UI audit F3/F4: scrolled into view on a failed submit). */
+const FIELD_ERROR = '.help-block, [aria-invalid="true"]';
 
 /** One section of the progress list on the left. */
 interface FormSection {
@@ -333,9 +336,10 @@ export class AgencyFormPage {
     if (!v) {
       if (!this.submitted()) return '';
       switch (field) {
-        case 'pinCode': return t('staff.agencyForm.requiredError', 'This is required.');
-        case 'emailId': return t('staff.agencyForm.error.emailRequired', 'Email required.');
-        case 'mobileNo': return t('staff.agencyForm.error.mobileRequired', 'Mobile No required.');
+        // 2026-11-21 (UI audit F3): "Please enter …", as on the other forms.
+        case 'pinCode': return t('staff.agencyForm.error.pinRequired', 'Please enter the PIN code.');
+        case 'emailId': return t('staff.agencyForm.error.spocEmailRequired', 'Please enter the SPOC e-mail ID.');
+        case 'mobileNo': return t('staff.agencyForm.error.spocMobileRequired', 'Please enter the SPOC mobile number.');
         default: return '';
       }
     }
@@ -351,6 +355,11 @@ export class AgencyFormPage {
     return this.submitted() && !value.trim();
   }
 
+  /** No assessment category ticked (2026-11-21, UI audit F3: its own message under the boxes). */
+  protected noCategory(): boolean {
+    return !this.model.desktopVerification && !this.model.siteVerification && !this.model.financialVerification;
+  }
+
   protected async submit(): Promise<void> {
     this.submitted.set(true);
     this.error.set('');
@@ -358,14 +367,17 @@ export class AgencyFormPage {
     if ([m.userName, m.spocName, m.emailId, m.mobileNo, m.address, m.pinCode].some((v) => !v.trim()) ||
         (['pinCode', 'gstNumber', 'emailId', 'mobileNo'] as const).some((f) => this.fieldError(f))) {
       this.error.set(t('staff.agencyForm.error.invalid', 'Please enter valid data.'));
+      revealError(document, FIELD_ERROR);
       return;
     }
-    if (!m.desktopVerification && !m.siteVerification && !m.financialVerification) {
-      this.error.set(t('staff.agencyForm.error.noCategory', 'Please select atleast one verification.'));
+    if (this.noCategory()) {
+      this.error.set(t('staff.agencyForm.error.noCategory', 'Please select at least one category.'));
+      revealError(document, FIELD_ERROR);
       return;
     }
     if (!this.consultancy && !m.sectorActivity) {
       this.error.set(t('staff.agencyForm.error.noSectorType', 'Please select whether the agency assesses Manufacturing, Services or Both.'));
+      revealError(document, FIELD_ERROR);
       return;
     }
     const body: AgencyRequest = this.consultancy

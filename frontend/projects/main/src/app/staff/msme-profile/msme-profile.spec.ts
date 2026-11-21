@@ -81,6 +81,17 @@ describe('staff MSME profile', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('not allotted to you');
   });
 
+  it('names the ZED ID that was not found and does not ask for the same-PAN units (UI audit W6)', async () => {
+    const { fixture, http } = create('ZEDM000099');
+    http.expectOne('/api/staff/msme-profile/ZEDM000099').flush({ title: 'Not Found', status: 404 }, { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const alert = (fixture.nativeElement as HTMLElement).querySelector('.alert-danger')!;
+    expect(alert.textContent).toContain('No unit with ZED ID ZEDM000099 was found');
+    expect(alert.textContent).not.toMatch(/^\s*Not Found\s*$/);
+    http.expectNone('/api/staff/msme-profile/ZEDM000099/same-pan');
+  });
+
   it('lays the facts out as four cards, two fields per row', async () => {
     const { fixture, http } = create('ZEDMSME000001');
     http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({

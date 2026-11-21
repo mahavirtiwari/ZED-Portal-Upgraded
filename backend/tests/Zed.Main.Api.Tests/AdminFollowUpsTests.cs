@@ -88,6 +88,28 @@ public sealed class AdminFollowUpsTests : IDisposable
         Assert.Contains("FROM dbo.Requirements WHERE SectionType = @SectionType", RequirementVideos.Sql("dbo"));
     }
 
+    [Fact]
+    public void Requirement_texts_come_from_the_levels_questionnaire_by_parameter_and_requirement_code()
+    {
+        // 2026-11-21 (UI audit W1): a Silver unit's copied rows held one Bronze text for 7.1 to 14.1.
+        var map = RequirementTexts.From([
+            new(" 6 ", "1", " Roles and responsibilities are defined "), new("6", "1", "a second row of the same requirement"),
+            new("7", "1", "Process control is in place"), new("8", null, "no code"), new("9", "1", "  "),
+        ]);
+        Assert.Equal(2, map.Count);
+        var rows = new List<Dictionary<string, object?>>
+        {
+            new() { ["SectionCode"] = "6", ["RequirementCode"] = "1", ["RequirementName"] = "All energy sources are identified" },
+            new() { ["SectionCode"] = "7", ["RequirementCode"] = 1, ["RequirementName"] = "Bronze text" },
+            new() { ["SectionCode"] = "9", ["RequirementCode"] = "1", ["RequirementName"] = "kept when the questionnaire has none" },
+        };
+        map.AttachTo(rows);
+        Assert.Equal("Roles and responsibilities are defined", rows[0]["RequirementName"]);
+        Assert.Equal("Process control is in place", rows[1]["RequirementName"]);
+        Assert.Equal("kept when the questionnaire has none", rows[2]["RequirementName"]);
+        Assert.Contains("FROM dbo.Requirements WHERE SectionType = @SectionType", RequirementTexts.Sql("dbo"));
+    }
+
     // ------------------------------------------------------------------ e-mail templates
 
     [Fact]

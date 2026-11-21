@@ -756,10 +756,11 @@ describe('AssessorListPage', () => {
     req.flush(Array.from({ length: 25 }, (_, i) => ({ RowNumber: i + 1, Id: i, UserId: `ZEDAS${i}`, UserName: `A${i}`, IsActive: true })));
     await settle(fixture);
     expect(el.querySelector('h2')!.textContent).toBe('Assessors of ZEDAA0001');
-    expect(el.querySelectorAll('tbody tr').length).toBe(20);
+    // 2026-11-21 (UI audit C4): 10 per page, as the other lists.
+    expect(el.querySelectorAll('tbody tr').length).toBe(10);
     ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Next') as HTMLButtonElement).click();
     await settle(fixture);
-    expect(el.querySelectorAll('tbody tr').length).toBe(5);
+    expect(el.querySelectorAll('tbody tr').length).toBe(10);
     http.verify();
   });
 

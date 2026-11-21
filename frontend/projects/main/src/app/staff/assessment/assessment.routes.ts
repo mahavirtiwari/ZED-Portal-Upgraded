@@ -33,7 +33,7 @@ export const ASSESSMENT_ROUTES: Routes = [
   },
   {
     path: 'assessment/completed',
-    title: 'ZED | Completed Assessment',
+    title: 'ZED | Assessment Completed',
     data: { kind: 'completed' },
     canActivate: [staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor])],
     loadComponent: () => import('./assessment-results').then((m) => m.AssessmentResultsPage),

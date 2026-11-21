@@ -24,6 +24,7 @@ public sealed class MobileTestHost : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Main", "Server=unused;Database=unused");
         builder.UseSetting("Mobile:StorageRoot", StorageRoot);
+        builder.UseSetting("Logging:File:Folder", Path.Combine(StorageRoot, "logs"));
         builder.UseSetting("Mobile:MaxFileBytes", "1000");
         foreach (var (k, v) in Settings) builder.UseSetting(k, v);
         builder.ConfigureServices(s =>

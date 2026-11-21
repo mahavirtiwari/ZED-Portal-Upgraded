@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PageHead } from '../shared/page-head';
+import { staffCrumbs } from '../../staff/staff-crumbs';
 import { ProfileShell } from '../profile/profile-shell';
 import { TextPipe, t } from '../../content/page-text';
 
@@ -29,8 +30,10 @@ const weakPassword = () => t('common.changePassword.weakError', 'Password must b
         <zed-profile-shell active="security"><ng-container [ngTemplateOutlet]="card" /></zed-profile-shell>
       </div>
     } @else {
+      <!-- 2026-11-21 (UI audit C1): the staff page too has the breadcrumb header (Home › Change password). -->
       <div class="container form-page" id="zed_user_form">
-        <div class="row justify-content-center mt-4">
+        <zed-page-head [crumbs]="staffCrumbs()" [title]="'Change password' | t: 'common.changePassword.title'" />
+        <div class="row justify-content-center">
           <div class="col-md-8 col-lg-6"><ng-container [ngTemplateOutlet]="card" /></div>
         </div>
       </div>
@@ -42,7 +45,6 @@ const weakPassword = () => t('common.changePassword.weakError', 'Password must b
                 <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
               </span>
               <div>
-                @if (!applicant) { <h2 class="cp-title">{{ 'Change password' | t: 'common.changePassword.title' }}</h2> }
                 <div class="cp-sub">@if (userId()) { {{ userId() }} · }{{ "you'll be signed out and log in again with the new password" | t: 'common.changePassword.sub' }}</div>
               </div>
             </div>
@@ -131,6 +133,7 @@ export class ChangePasswordPage {
   protected confirmPassword = '';
   /** The signed-in ID in the heading. */
   protected readonly userId = computed(() => this.auth.currentUser()?.userId ?? '');
+  protected readonly staffCrumbs = computed(() => staffCrumbs({ label: t('staff.changePassword.crumb', 'Change password') }));
   protected readonly crumbs = computed(() => [
     { label: t('msme.changePassword.crumb.home', 'Home'), link: '/msme/dashboard' },
     { label: t('msme.changePassword.crumb.profile', 'Profile'), link: '/msme/profile' },

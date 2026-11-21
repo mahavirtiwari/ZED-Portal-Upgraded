@@ -253,6 +253,8 @@ describe('DaDetailsPage', () => {
     expect(button('Validate')).toBeUndefined();
     expect(button('Final Submit')).toBeUndefined();
     expect(el.querySelector('input[type=radio]')).toBeNull();
+    // 2026-11-21 (UI audit C1): Home › Assessment details › the unit (no "Desktop verification" for other logins).
+    expect([...el.querySelectorAll('.ph-crumb a, .ph-crumb span:not(.ph-sep)')].map((c) => c.textContent!.trim())).toEqual(['Home', 'Assessment details', 'ZEDMSME000001']);
   });
 
   it('runs the final-submit check before the pop-up and shows its message', async () => {
@@ -380,7 +382,8 @@ describe('DaDetailsPage', () => {
   });
 
   it('shows the assessment summary as a three-column card of key facts with the location', async () => {
-    await open(details({ msme: { ...details().msme, PlantAddress: 'Plot 4, Industrial Area', Certification: 'Bronze' } }));
+    // 2026-11-21 (UI audit W8): the empty parts of the stored address ("Block:- ,") are left out.
+    await open(details({ msme: { ...details().msme, PlantAddress: 'Plot 4, Block:- , Industrial Area, Road: ', Certification: 'Bronze' } }));
     const factEls = Array.from(el.querySelectorAll('.summary .fact'));
     const facts = new Map(factEls.map((f) => [f.querySelector('dt')!.textContent!.trim(), f.querySelector('dd')!.textContent!.replace(/\s+/g, ' ').trim()]));
     expect(facts.get('ZED ID')).toBe('ZEDMSME000001');
@@ -520,7 +523,7 @@ describe('DaDetailsPage', () => {
     expect(items.map((i) => i.querySelector('.zp-num')!.textContent!.trim())).toEqual(['1', '2', '3', '4']);
     expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Pending', 'Exempt', 'No', 'Partial']);
     // Progress: requirements with a conformance out of all; an exempted parameter says so and counts as complete.
-    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirements', 'Exempted', '2 of 2 requirements', '1 of 2 requirements']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirement', 'Exempted', '2 of 2 requirements', '1 of 2 requirements']);
     expect(items.map((i) => i.querySelector<HTMLElement>('.zp-bar > span')!.style.width)).toEqual(['0%', '100%', '100%', '50%']);
     expect(el.querySelector('.zp-nav .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters 2 of 4 complete');
 

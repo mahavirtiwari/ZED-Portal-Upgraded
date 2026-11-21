@@ -82,6 +82,38 @@ function meta(row: HistoryRow): Meta {
   return UNKNOWN;
 }
 
+/**
+ * 2026-11-21 (UI audit W7): who acted, from the line itself, for the lines whose status names no actor (16 of 31 events of a
+ * unit fell under "Other"): the site assessors' allotment (by the agency), the ZED team's and the system's actions (send
+ * back, resets, payment status updates, quality observations, automatic rejections, certificate generation), the agency's
+ * send back, and the assessor's rejections, NC closures, schedules and section allocation. Checked in this order.
+ */
+const ACTOR_PATTERNS: [RegExp, HistoryActor][] = [
+  [/^(quality observation|staffaction)$/i, 'ZED'],
+  [/\bsa for\b.*\bal+ot+ed\b|\bsite assessor allot/i, 'Agency'],
+  [/\bmaster ?admin\b|\bqci\b|manual update|neft admin|certificate & report generated|\breset\b|auto rejected|closed automatically|system job|unit rejected|moved to rejection|recertification/i, 'ZED'],
+  [/^agency send back|\bco send back\b/i, 'Agency'],
+  [/assessor rejected|sections allocation|nc\(s\) closed|^scheduled on|accepted by assessor/i, 'Assessor'],
+  [/^submitted|^registered/i, 'MSME'],
+];
+
+/** The actor of a line whose status names none (null when the line does not say). */
+export function actorOf(row: Pick<HistoryRow, 'Description' | 'StatusType'>): HistoryActor | null {
+  const status = (row.StatusType ?? '').trim();
+  const d = (row.Description ?? '').trim();
+  for (const [re, actor] of ACTOR_PATTERNS) if ((status && re.test(status)) || re.test(d)) return actor;
+  return null;
+}
+
+/**
+ * 2026-11-21 (UI audit W7): the legacy procedures write "Alotted" (and "Alotted to" with no space before the user ID) into the
+ * stored history; shown as "Allotted to …". V4 itself does not write these lines.
+ */
+export function cleanDescription(text: string | null): string | null {
+  if (!text) return text;
+  return text.replace(/\bAl+ot+ed\b/gi, (w) => (w[0] === 'a' ? 'allotted' : 'Allotted')).replace(/\b(Allotted to)(?=[A-Z0-9])/g, '$1 ');
+}
+
 /** An actor (MSME, Agency, Assessor, ZED, Other) as shown; the code value stays for the filter and data-actor. */
 export function actorText(actor: string | null | undefined): string {
   switch (actor) {
@@ -139,7 +171,8 @@ export function buildTimeline(rows: HistoryRow[]): TimelineGroup[] {
       groups.push(g);
     }
     g.end = r.CreatedDate;
-    g.events.push({ ...r, kind: m.kind, label: m.label(), icon: m.icon, alert: !!m.alert, done: r.StatusType === 'GetCertified' || r.StatusType === 'Completed', actor: m.actor ?? null });
+    g.events.push({ ...r, Description: cleanDescription(r.Description), kind: m.kind, label: m.label(), icon: m.icon, alert: !!m.alert,
+      done: r.StatusType === 'GetCertified' || r.StatusType === 'Completed', actor: m.actor ?? actorOf(r) });
   }
   return groups;
 }

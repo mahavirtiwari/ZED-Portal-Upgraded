@@ -71,6 +71,11 @@ public static class ZedHostingExtensions
     {
         services.AddProblemDetails();
         services.AddOpenApi();
+        // 2026-11-21 (the user: "add logger"): warnings and errors also go to {content root}\logs\zed-yyyyMMdd.jsonl, readable
+        // in Admin → Server Logs without access to the server (Zed.Core.Logging).
+        services.Configure<Zed.Core.Logging.FileLogOptions>(config.GetSection(Zed.Core.Logging.FileLogOptions.Section));
+        services.AddSingleton<Zed.Core.Logging.FileLoggerProvider>();
+        services.AddSingleton<ILoggerProvider>(sp => sp.GetRequiredService<Zed.Core.Logging.FileLoggerProvider>());
         services.Configure<PortalOptions>(config.GetSection(PortalOptions.Section));
 
         ZedDatabaseNames.Configure(config);
@@ -185,6 +190,7 @@ public static class ZedHostingExtensions
         app.UseStaticFiles();
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseZedLogUser();
         app.UseAuthorization();
         app.UseXsrfCookie();
 
@@ -195,6 +201,20 @@ public static class ZedHostingExtensions
         app.MapFallbackToFile("index.html");
         return app;
     }
+
+    /// <summary>
+    /// 2026-11-21: the signed-in user on every log entry of the request ("ZEDV4AD01 (Admin)"; a sub-user as "owner / sub-user"),
+    /// for Admin → Server Logs.
+    /// </summary>
+    public static IApplicationBuilder UseZedLogUser(this IApplicationBuilder app) => app.Use(async (ctx, next) =>
+    {
+        var user = Zed.Core.Security.ZedUser.FromPrincipal(ctx.User);
+        if (user is null) { await next(); return; }
+        var logger = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Zed.Request");
+        var who = user.IsSubUser && !string.IsNullOrEmpty(user.ActingUserId) ? $"{user.UserId} / {user.ActingUserId}" : user.UserId;
+        using (logger.BeginScope(new Dictionary<string, object?> { ["ZedUser"] = $"{who} ({user.RoleId})" }))
+            await next();
+    });
 
     /// <summary>
     /// In the Staging environment, and wherever <c>Portal:EnvironmentLabel</c> is set: every response says

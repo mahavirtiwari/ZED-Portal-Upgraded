@@ -371,6 +371,26 @@ describe('User management', () => {
       expect(el.querySelectorAll('tbody tr').length).toBe(2);
     });
 
+    it('marks each missing or wrong field of the NEFT admin form before posting (UI audit F5)', async () => {
+      await create(AccountsPage, 'neft');
+      http.expectOne('/api/staff/neft-admins').flush({ types, states: [], accounts: [] });
+      await settle();
+      button('+ Add the first login').click();
+      await settle();
+      type('#acc-email', 'not-an-email');
+      type('#acc-mobile', '12345');
+      await settle();
+      submit();
+      await settle();
+      http.expectNone((r) => r.method === 'POST' && r.url === '/api/staff/neft-admins');
+      const invalid = [...el.querySelectorAll('.nf-dialog .is-invalid')].map((i) => i.id);
+      expect(invalid).toEqual(['acc-name', 'acc-email', 'acc-mobile', 'acc-id']);
+      expect(el.querySelector('#acc-mobile + .invalid-feedback')!.textContent).toContain('10 digit mobile number');
+      type('#acc-name', 'Neft Two');
+      await settle();
+      expect(el.querySelector('#acc-name')!.classList.contains('is-invalid')).toBe(false);
+    });
+
     it('shows the contact in full, keeps Edit on the row and sends a new password from the row menu after a confirmation', async () => {
       await create(AccountsPage, 'neft');
       http.expectOne('/api/staff/neft-admins').flush(neftList);
@@ -541,6 +561,22 @@ describe('User management', () => {
       expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please select at least one screen.');
     });
 
+    it('confirms a saved edit once the list is back, for 8 seconds (UI audit)', async () => {
+      await create(SubUsersPage);
+      http.expectOne('/api/staff/sub-users').flush(list);
+      await settle();
+      button('Edit').click();
+      await settle();
+      submit();
+      await settle();
+      http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/sub-users/AG1S01').flush({ message: '' });
+      await settle();
+      expect(toasts()).toEqual([]);
+      http.expectOne('/api/staff/sub-users').flush(list);
+      await settle();
+      expect(toasts()).toContain('Sub-User updated: Ravi');
+    });
+
     it('counts the logins by status, filters with the tiles and shows initials and screen chips', async () => {
       await create(SubUsersPage);
       const user = list.users[0];
@@ -565,7 +601,7 @@ describe('User management', () => {
       expect(rows()[1].querySelector('.su-screens')!.textContent!.trim()).toBe('All 6 screens');
       expect(rows()[0].querySelector('.su-never')!.textContent).toBe('Never signed in');
       // The last sign-in (UTC) in Indian time.
-      expect(rows()[1].textContent).toContain('29-10-2026 15:12');
+      expect(rows()[1].textContent).toContain('29 Oct 2026, 15:12');
 
       (el.querySelectorAll('zed-list-counts .lc-btn')[3] as HTMLButtonElement).click();
       await settle();

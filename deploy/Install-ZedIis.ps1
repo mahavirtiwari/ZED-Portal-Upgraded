@@ -464,6 +464,13 @@ foreach ($name in $Apps) {
             if ($LASTEXITCODE -ne 0) { throw "icacls failed on $folder" }
         }
     }
+    # 2026-11-21 (server logs): every app pool may read the logs folders, so Admin → Server Logs on a portal also lists the
+    # mobile API hosts' logs (Zed.Core.Logging; read-only for the others, Modify for the app's own pool above).
+    Step "let the app pools read $(Join-Path $dest 'logs')" {
+        & icacls (Join-Path $dest 'logs') /grant 'IIS_IUSRS:(OI)(CI)RX' /Q | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Host "    could not grant IIS_IUSRS read on the logs folder (exit code $LASTEXITCODE)" -ForegroundColor Yellow }
+        $global:LASTEXITCODE = 0
+    }
     Step "restrict $keys to Administrators, SYSTEM and $identity" {
         & icacls $keys /inheritance:r /grant:r 'Administrators:(OI)(CI)F' 'SYSTEM:(OI)(CI)F' "$($identity):(OI)(CI)M" /Q | Out-Null
     }

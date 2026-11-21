@@ -23,12 +23,22 @@ export class TableExport {
   /** Downloads the sheets as one .xlsx workbook. */
   async xlsx(fileName: string, sheets: ExportSheet[]): Promise<void> {
     const blob = await firstValueFrom(this.http.post(EXPORT_XLSX_API, { fileName, sheets: sheets.map(clean) }, { responseType: 'blob' }));
-    save(blob, ensureExt(fileName, '.xlsx'));
+    saveBlob(blob, ensureExt(fileName, '.xlsx'));
+  }
+
+  /**
+   * 2026-11-21 (UI audit B5): downloads a file the API serves (a template, a report) with HttpClient and saves it, instead of
+   * a plain <a href="/api/..."> page navigation (which was answered 503 on production while the same call from the page got
+   * the file). The calls go through the portal's interceptors (the base path, the Admin's portal switch, the session).
+   */
+  async file(url: string, fileName: string): Promise<void> {
+    const blob = await firstValueFrom(this.http.get(url, { responseType: 'blob' }));
+    saveBlob(blob, fileName);
   }
 
   /** Downloads one sheet as CSV. */
   csv(fileName: string, sheet: ExportSheet): void {
-    save(new Blob(['﻿' + toCsv(sheet)], { type: 'text/csv;charset=utf-8' }), ensureExt(fileName, '.csv'));
+    saveBlob(new Blob(['﻿' + toCsv(sheet)], { type: 'text/csv;charset=utf-8' }), ensureExt(fileName, '.csv'));
   }
 }
 
@@ -55,7 +65,8 @@ function ensureExt(name: string, ext: string): string {
   return base + ext;
 }
 
-function save(blob: Blob, name: string): void {
+/** Saves a blob as a file (a temporary link with download=name). */
+export function saveBlob(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

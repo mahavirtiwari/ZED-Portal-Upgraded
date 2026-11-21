@@ -10,11 +10,13 @@ import { StepTracker, TrackerStep } from '../../msme/shared/step-tracker';
 import { staffCrumbs } from '../staff-crumbs';
 import { PagedView, PagerComponent } from '../pager';
 import { TableExport } from '../table-export';
+import { blobErrorMessage } from '../excel-tools';
 import { ToastService } from '../toast';
 
 export const MAX_INCENTIVE_FILE_BYTES = 5 * 1024 * 1024;
 export const INCENTIVE_CHECK_API = '/api/staff/schemes/incentives/upload/check';
 export const INCENTIVE_APPLY_API = '/api/staff/schemes/incentives/upload/apply';
+export const INCENTIVE_TEMPLATE_API = '/api/staff/schemes/incentives/template';
 
 const COLUMNS = [
   'UdyamNo', 'Certificateno', 'Pin', 'ApplicationId', 'UnitName', 'District', 'FCI', 'ServiceName', 'ApprovalId',
@@ -74,9 +76,9 @@ export interface IncentiveApplied {
   imports: [DatePipe, DecimalPipe, PageHead, StepTracker, PagerComponent, TextPipe],
   host: { class: 'list-v2 d-block' },
   template: `
-    <zed-page-head [crumbs]="crumbs()" [title]="'Incentives Upload' | t: 'staff.incentiveUpload.title'" [subtitle]="'Upload the API incentives workbook; every row is checked before anything is saved.' | t: 'staff.incentiveUpload.sub'">
-      <a class="btn btn-outline-primary" href="/api/staff/schemes/incentives/template"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{{ 'Download template' | t: 'staff.incentiveUpload.templateButton' }}</a>
+    <zed-page-head [crumbs]="crumbs()" [title]="'Upload API Incentives' | t: 'staff.incentiveUpload.title'" [subtitle]="'Upload the API incentives workbook; every row is checked before anything is saved.' | t: 'staff.incentiveUpload.sub'">
+      <button type="button" class="btn btn-outline-primary" id="templateButton" [disabled]="templateBusy()" (click)="downloadTemplate()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>{{ 'Download template' | t: 'staff.incentiveUpload.templateButton' }}</button>
     </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
@@ -112,7 +114,7 @@ export interface IncentiveApplied {
                     <thead><tr><th>{{ 'Row' | t: 'staff.incentiveUpload.skipped.column.row' }}</th><th>{{ 'Udyam No' | t: 'staff.incentiveUpload.skipped.column.udyam' }}</th><th>{{ 'First uploaded' | t: 'staff.incentiveUpload.skipped.column.firstUploaded' }}</th></tr></thead>
                     <tbody>
                       @for (s of skippedRows(); track s.row) {
-                        <tr><td>{{ s.row }}</td><td>{{ s.udyamNo }}</td><td>{{ s.uploadedOn ? (s.uploadedOn | date: 'dd-MM-yyyy') : '' }}</td></tr>
+                        <tr><td>{{ s.row }}</td><td>{{ s.udyamNo }}</td><td>{{ s.uploadedOn ? (s.uploadedOn | date: 'dd MMM yyyy') : '' }}</td></tr>
                       }
                     </tbody>
                   </table>
@@ -296,6 +298,7 @@ export class IncentiveUploadPage {
   protected readonly file = signal<File | null>(null);
   protected readonly dragging = signal(false);
   protected readonly busy = signal(false);
+  protected readonly templateBusy = signal(false);
   protected readonly error = signal('');
   protected readonly applyError = signal('');
   protected readonly result = signal<IncentiveCheck | null>(null);
@@ -330,6 +333,22 @@ export class IncentiveUploadPage {
       return;
     }
     this.file.set(f);
+  }
+
+  /**
+   * 2026-11-21 (UI audit B5): the template is fetched with HttpClient and saved, not opened by a plain link to the API (a page
+   * navigation to it was answered 503 on production while the same call from the page returned the workbook).
+   */
+  protected async downloadTemplate(): Promise<void> {
+    this.error.set('');
+    this.templateBusy.set(true);
+    try {
+      await this.exporter.file(INCENTIVE_TEMPLATE_API, 'IncentiveTemplate.xlsx');
+    } catch (err) {
+      this.error.set(await blobErrorMessage(err));
+    } finally {
+      this.templateBusy.set(false);
+    }
   }
 
   /** Step 2: the server checks every row; nothing is saved. */

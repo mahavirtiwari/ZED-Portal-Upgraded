@@ -7,6 +7,7 @@ import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
+import { revealError } from '../reveal-error';
 import { agencyTypeLabel } from './incentive-agencies';
 import { IncentiveAgencyType, OnsiteAgencyRequest, OnsiteDistrict, OnsiteSchemeOption, SchemeOnsiteApi } from './scheme-onsite.api';
 
@@ -46,6 +47,7 @@ interface AreaEdit {
             <label><input type="radio" name="agencyType" value="Onsite" [checked]="type() === 'Onsite'" (change)="setType('Onsite')" /> {{ 'Onsite verification' | t: 'staff.incentiveAgencies.type.onsite' }}</label>
           </div>
           <p class="sub m-0">{{ 'Desktop and onsite verification are always done by different agencies: an agency is of one type only.' | t: 'staff.incentiveAgencies.form.typeHelp' }}</p>
+          @if (err('type'); as e) { <span class="help-block">{{ e }}</span> }
         }
       </section>
       <section class="zed-card of-sec" aria-labelledby="of-org-h">
@@ -53,7 +55,8 @@ interface AreaEdit {
         <div class="of-grid">
           <div class="fld">
             <label for="of-name">{{ 'Agency name' | t: 'staff.schemeOnsite.form.name' }}<span class="req">*</span></label>
-            <input id="of-name" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
+            <input id="of-name" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required [attr.aria-invalid]="!!err('userName')" />
+            @if (err('userName'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
           <div class="fld">
             <label for="of-gst">{{ 'GSTIN' | t: 'staff.schemeOnsite.form.gst' }}</label>
@@ -61,11 +64,13 @@ interface AreaEdit {
           </div>
           <div class="fld of-wide">
             <label for="of-address">{{ 'Registered address' | t: 'staff.schemeOnsite.form.address' }}<span class="req">*</span></label>
-            <textarea id="of-address" name="address" class="form-control" rows="2" maxlength="2000" [(ngModel)]="model.address" required></textarea>
+            <textarea id="of-address" name="address" class="form-control" rows="2" maxlength="2000" [(ngModel)]="model.address" required [attr.aria-invalid]="!!err('address')"></textarea>
+            @if (err('address'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
           <div class="fld">
             <label for="of-pin">{{ 'PIN code' | t: 'staff.schemeOnsite.form.pin' }}<span class="req">*</span></label>
-            <input id="of-pin" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required />
+            <input id="of-pin" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required [attr.aria-invalid]="!!err('pinCode')" />
+            @if (err('pinCode'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
         </div>
       </section>
@@ -75,15 +80,18 @@ interface AreaEdit {
         <div class="of-grid">
           <div class="fld">
             <label for="of-spoc">{{ 'SPOC name' | t: 'staff.schemeOnsite.form.spoc' }}<span class="req">*</span></label>
-            <input id="of-spoc" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
+            <input id="of-spoc" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required [attr.aria-invalid]="!!err('spocName')" />
+            @if (err('spocName'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
           <div class="fld">
             <label for="of-email">{{ 'SPOC e-mail' | t: 'staff.schemeOnsite.form.email' }}<span class="req">*</span></label>
-            <input id="of-email" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required />
+            <input id="of-email" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required [attr.aria-invalid]="!!err('emailId')" />
+            @if (err('emailId'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
           <div class="fld">
             <label for="of-mobile">{{ 'SPOC mobile' | t: 'staff.schemeOnsite.form.mobile' }}<span class="req">*</span></label>
-            <input id="of-mobile" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required />
+            <input id="of-mobile" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required [attr.aria-invalid]="!!err('mobileNo')" />
+            @if (err('mobileNo'); as e) { <span class="help-block">{{ e }}</span> }
           </div>
         </div>
       </section>
@@ -126,6 +134,7 @@ interface AreaEdit {
           </select>
           <button type="button" class="btn btn-outline-primary" [disabled]="!pick" (click)="addState()">{{ 'Add state' | t: 'staff.schemeOnsite.form.addState' }}</button>
         </div>
+        @if (err('states'); as e) { <span class="help-block">{{ e }}</span> }
       </section>
 
       <section class="zed-card of-sec" aria-labelledby="of-schemes-h">
@@ -141,6 +150,7 @@ interface AreaEdit {
               : ('No scheme has the Desktop + Onsite verification flow yet (Admin → Incentive Schemes → Verification).' | t: 'staff.schemeOnsite.form.noSchemes') }}</p>
           }
         }
+        @if (err('schemes'); as e) { <span class="help-block">{{ e }}</span> }
       </section>
 
       <div class="of-bar">
@@ -157,6 +167,7 @@ interface AreaEdit {
     .of-wide { grid-column: 1 / -1; }
     .fld label { display: block; font-weight: 600; margin-bottom: 4px; }
     .req { color: #d64532; margin-left: 2px; }
+    .help-block { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 600; color: #c8473c; }
     .of-area { border: 1px solid #dde7e8; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
     .of-area-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
     .of-radios { display: flex; gap: 14px; margin-right: auto; }
@@ -200,6 +211,8 @@ export class IncentiveAgencyFormPage {
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
+  /** 2026-11-21 (UI audit F4): set by the first submit; the field messages show from then on. */
+  protected readonly submitted = signal(false);
 
   constructor() {
     void this.load();
@@ -287,22 +300,48 @@ export class IncentiveAgencyFormPage {
     this.areas.set(this.areas().map((x) => (x.state === a.state ? { ...x, ...change } : x)));
   }
 
-  protected async submit(): Promise<void> {
-    this.error.set('');
+  /**
+   * 2026-11-21 (UI audit F4): the message of each field after the first submit ("" when it is right). The type's error showed
+   * only at the top of the page, off-screen; now every field says what is wrong and the first one is scrolled into view.
+   */
+  protected err(field: 'type' | 'userName' | 'address' | 'pinCode' | 'spocName' | 'emailId' | 'mobileNo' | 'states' | 'schemes'): string {
+    return this.submitted() ? this.problems()[field] ?? '' : '';
+  }
+
+  private problems(): Partial<Record<string, string>> {
     const m = this.model;
     const type = this.type();
-    if (!type) return this.error.set(t('staff.incentiveAgencies.form.error.type', 'Please select the type of agency: desktop verification or onsite verification.'));
-    if (!m.userName.trim() || !m.spocName.trim() || !m.emailId.trim() || !m.mobileNo.trim() || !m.address.trim() || !m.pinCode.trim())
-      return this.error.set(t('staff.schemeOnsite.form.error.required', 'Please fill in every required field.'));
-    if (!/^\d{10}$/.test(m.mobileNo.trim())) return this.error.set(t('staff.schemeOnsite.form.error.mobile', 'Please enter a valid 10 digit SPOC mobile number.'));
-    if (!/^\d{6}$/.test(m.pinCode.trim())) return this.error.set(t('staff.schemeOnsite.form.error.pin', 'Please enter a valid 6 digit PIN code.'));
-    if (this.areas().length === 0) return this.error.set(t('staff.schemeOnsite.form.error.states', 'Please add at least one state the agency serves.'));
+    const out: Partial<Record<string, string>> = {};
+    if (!type) out['type'] = t('staff.incentiveAgencies.form.error.type', 'Please select the type of agency: desktop verification or onsite verification.');
+    if (!m.userName.trim()) out['userName'] = t('staff.schemeOnsite.form.error.nameRequired', 'Please enter the agency name.');
+    if (!m.address.trim()) out['address'] = t('staff.schemeOnsite.form.error.addressRequired', 'Please enter the registered address.');
+    if (!/^\d{6}$/.test(m.pinCode.trim())) out['pinCode'] = m.pinCode.trim()
+      ? t('staff.schemeOnsite.form.error.pin', 'Please enter a valid 6 digit PIN code.') : t('staff.schemeOnsite.form.error.pinRequired', 'Please enter the PIN code.');
+    if (!m.spocName.trim()) out['spocName'] = t('staff.schemeOnsite.form.error.spocRequired', 'Please enter the SPOC name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.emailId.trim())) out['emailId'] = m.emailId.trim()
+      ? t('staff.schemeOnsite.form.error.email', 'Please enter a valid SPOC e-mail address.') : t('staff.schemeOnsite.form.error.emailRequired', 'Please enter the SPOC e-mail.');
+    if (!/^\d{10}$/.test(m.mobileNo.trim())) out['mobileNo'] = m.mobileNo.trim()
+      ? t('staff.schemeOnsite.form.error.mobile', 'Please enter a valid 10 digit SPOC mobile number.') : t('staff.schemeOnsite.form.error.mobileRequired', 'Please enter the SPOC mobile number.');
     const noDistrict = this.areas().find((a) => !a.whole && a.districts.size === 0);
-    if (noDistrict) return this.error.set(t('staff.schemeOnsite.form.error.districts', '{state}: tick at least one district, or choose the whole state.', { state: noDistrict.state }));
-    if (this.picked().size === 0)
-      return this.error.set(type === 'Desktop'
-        ? t('staff.incentiveAgencies.form.error.desktopSchemes', 'Please select at least one scheme the agency verifies at the desktop.')
-        : t('staff.schemeOnsite.form.error.schemes', 'Please select at least one scheme the agency verifies onsite.'));
+    if (this.areas().length === 0) out['states'] = t('staff.schemeOnsite.form.error.states', 'Please add at least one state the agency serves.');
+    else if (noDistrict) out['states'] = t('staff.schemeOnsite.form.error.districts', '{state}: tick at least one district, or choose the whole state.', { state: noDistrict.state });
+    if (type && this.picked().size === 0) out['schemes'] = type === 'Desktop'
+      ? t('staff.incentiveAgencies.form.error.desktopSchemes', 'Please select at least one scheme the agency verifies at the desktop.')
+      : t('staff.schemeOnsite.form.error.schemes', 'Please select at least one scheme the agency verifies onsite.');
+    return out;
+  }
+
+  protected async submit(): Promise<void> {
+    this.error.set('');
+    this.submitted.set(true);
+    const m = this.model;
+    const type = this.type();
+    const problems = Object.values(this.problems());
+    if (problems.length || !type) {
+      this.error.set(problems.length > 1 ? t('staff.schemeOnsite.form.error.several', 'Please correct the fields marked below.') : problems[0] ?? '');
+      revealError(document, '.help-block');
+      return;
+    }
     const body: OnsiteAgencyRequest = {
       userName: m.userName.trim(), spocName: m.spocName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim(), address: m.address.trim(),
       pinCode: m.pinCode.trim(), gstNumber: m.gstNumber.trim() || null,

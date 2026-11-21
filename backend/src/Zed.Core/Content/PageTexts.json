@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9226,
+  "count": 9296,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -25352,9 +25352,33 @@
       ]
     },
     {
+      "key": "staff.agencyForm.cover.partnerEmpty",
+      "standard": "No organising partner has been added yet, so the agency is saved without one (optional).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
       "key": "staff.agencyForm.cover.partnerLabel",
       "standard": "Organising partner",
       "kind": "label",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.cover.partnerNone",
+      "standard": "None",
+      "kind": "note",
       "portal": "staff",
       "page": "agencyForm",
       "pageName": "Agency form",
@@ -25620,20 +25644,56 @@
       ]
     },
     {
-      "key": "staff.agencyForm.error.email",
-      "standard": "Enter a valid e-mail address.",
+      "key": "staff.agencyForm.error.addressRequired",
+      "standard": "Please enter the registered address.",
       "kind": "message",
       "portal": "staff",
       "page": "agencyForm",
       "pageName": "Agency form",
       "placeholders": [],
       "files": [
-        "staff/users/agency-form.ts"
+        "staff/users/agency-form.html"
       ]
     },
     {
-      "key": "staff.agencyForm.error.emailRequired",
-      "standard": "Email required.",
+      "key": "staff.agencyForm.error.agencyNameRequired",
+      "standard": "Please enter the agency name.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.assessmentCategoryRequired",
+      "standard": "Please select at least one assessment category.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.categoryRequired",
+      "standard": "Please select a category.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.email",
+      "standard": "Enter a valid e-mail address.",
       "kind": "message",
       "portal": "staff",
       "page": "agencyForm",
@@ -25680,20 +25740,8 @@
       ]
     },
     {
-      "key": "staff.agencyForm.error.mobileRequired",
-      "standard": "Mobile No required.",
-      "kind": "message",
-      "portal": "staff",
-      "page": "agencyForm",
-      "pageName": "Agency form",
-      "placeholders": [],
-      "files": [
-        "staff/users/agency-form.ts"
-      ]
-    },
-    {
       "key": "staff.agencyForm.error.noCategory",
-      "standard": "Please select atleast one verification.",
+      "standard": "Please select at least one category.",
       "kind": "message",
       "portal": "staff",
       "page": "agencyForm",
@@ -25716,6 +25764,18 @@
       ]
     },
     {
+      "key": "staff.agencyForm.error.organisationNameRequired",
+      "standard": "Please enter the organisation name.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
       "key": "staff.agencyForm.error.pin",
       "standard": "Enter the 6 digit PIN code.",
       "kind": "message",
@@ -25725,6 +25785,66 @@
       "placeholders": [],
       "files": [
         "staff/users/agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.pinRequired",
+      "standard": "Please enter the PIN code.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.sectorTypeRequired",
+      "standard": "Please select the sector type.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.spocEmailRequired",
+      "standard": "Please enter the SPOC e-mail ID.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.spocMobileRequired",
+      "standard": "Please enter the SPOC mobile number.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.agencyForm.error.spocNameRequired",
+      "standard": "Please enter the SPOC name.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "agencyForm",
+      "pageName": "Agency form",
+      "placeholders": [],
+      "files": [
+        "staff/users/agency-form.html"
       ]
     },
     {
@@ -26186,19 +26306,6 @@
       "placeholders": [],
       "files": [
         "staff/users/agency-form.html"
-      ]
-    },
-    {
-      "key": "staff.agencyForm.requiredError",
-      "standard": "This is required.",
-      "kind": "message",
-      "portal": "staff",
-      "page": "agencyForm",
-      "pageName": "Agency form",
-      "placeholders": [],
-      "files": [
-        "staff/users/agency-form.html",
-        "staff/users/agency-form.ts"
       ]
     },
     {
@@ -30902,7 +31009,7 @@
     },
     {
       "key": "staff.assessmentResults.completed.title",
-      "standard": "Completed Assessment",
+      "standard": "Assessment Completed",
       "kind": "heading",
       "portal": "staff",
       "page": "assessmentResults",
@@ -31811,6 +31918,18 @@
     {
       "key": "staff.assessmentResults.rejected.empty",
       "standard": "No rejected certification matches these filters.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "assessmentResults",
+      "pageName": "Assessment results",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/assessment-results.ts"
+      ]
+    },
+    {
+      "key": "staff.assessmentResults.rejected.none",
+      "standard": "No rejected certification yet.",
       "kind": "note",
       "portal": "staff",
       "page": "assessmentResults",
@@ -36349,6 +36468,18 @@
       ]
     },
     {
+      "key": "staff.changePassword.crumb",
+      "standard": "Change password",
+      "kind": "label",
+      "portal": "staff",
+      "page": "changePassword",
+      "pageName": "Change password",
+      "placeholders": [],
+      "files": [
+        "msme/change-password/change-password.ts"
+      ]
+    },
+    {
       "key": "staff.checkpointDialog.actions.heading",
       "standard": "Actions needed – tick the ones that apply",
       "kind": "heading",
@@ -39159,6 +39290,18 @@
       ]
     },
     {
+      "key": "staff.daDetails.crumb.details",
+      "standard": "Assessment details",
+      "kind": "label",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-details.ts"
+      ]
+    },
+    {
       "key": "staff.daDetails.crumb.unit",
       "standard": "Unit",
       "kind": "label",
@@ -40745,6 +40888,22 @@
       ]
     },
     {
+      "key": "staff.daDetails.params.head.subOne",
+      "standard": "Parameter {number} of {total} · {count} requirement",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [
+        "number",
+        "total",
+        "count"
+      ],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
       "key": "staff.daDetails.params.infoAria",
       "standard": "Information",
       "kind": "tooltip",
@@ -40847,6 +41006,35 @@
       "placeholders": [
         "done",
         "total"
+      ],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
+      "key": "staff.daDetails.params.nav.reqDoneOne.label",
+      "standard": "{done} of {total} requirement",
+      "kind": "label",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [
+        "done",
+        "total"
+      ],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
+      "key": "staff.daDetails.params.nav.requirementOne.label",
+      "standard": "{count} requirement",
+      "kind": "label",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [
+        "count"
       ],
       "files": [
         "staff/assessment/da-details.html"
@@ -49729,21 +49917,9 @@
       ]
     },
     {
-      "key": "staff.expenditure.count.approved",
-      "standard": "Invoices approved",
+      "key": "staff.expenditure.count.approvedExclGst",
+      "standard": "Invoices approved (excl. GST)",
       "kind": "label",
-      "portal": "staff",
-      "page": "expenditure",
-      "pageName": "Expenditure",
-      "placeholders": [],
-      "files": [
-        "staff/expenditure/expenditure.ts"
-      ]
-    },
-    {
-      "key": "staff.expenditure.count.approvedNote",
-      "standard": "excl. GST",
-      "kind": "note",
       "portal": "staff",
       "page": "expenditure",
       "pageName": "Expenditure",
@@ -58810,7 +58986,7 @@
     },
     {
       "key": "staff.history.search.placeholder",
-      "standard": "ZED ID, e.g. ZEDMSME000123",
+      "standard": "ZED ID, e.g. ZEDM000123",
       "kind": "placeholder",
       "portal": "staff",
       "page": "history",
@@ -59442,7 +59618,7 @@
     },
     {
       "key": "staff.incentiveAgencies.add",
-      "standard": "Add agency",
+      "standard": "+ Add agency",
       "kind": "button",
       "portal": "staff",
       "page": "incentiveAgencies",
@@ -61715,7 +61891,7 @@
     },
     {
       "key": "staff.incentiveUpload.title",
-      "standard": "Incentives Upload",
+      "standard": "Upload API Incentives",
       "kind": "heading",
       "portal": "staff",
       "page": "incentiveUpload",
@@ -71351,6 +71527,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.serverLogsLabel",
+      "standard": "Server Logs",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.siteTourSectionsLabel",
       "standard": "Site Tour Sections",
       "kind": "label",
@@ -73655,6 +73843,21 @@
     {
       "key": "staff.milestoneDetails.parameters.progressText",
       "standard": "{done} of {total} requirements",
+      "kind": "text",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [
+        "done",
+        "total"
+      ],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
+      "key": "staff.milestoneDetails.parameters.progressTextOne",
+      "standard": "{done} of {total} requirement",
       "kind": "text",
       "portal": "staff",
       "page": "milestoneDetails",
@@ -76412,6 +76615,20 @@
       "page": "msmeProfile",
       "pageName": "Msme profile",
       "placeholders": [],
+      "files": [
+        "staff/msme-profile/msme-profile.ts"
+      ]
+    },
+    {
+      "key": "staff.msmeProfile.notFoundIdError",
+      "standard": "No unit with ZED ID {zedId} was found, or it is not allotted to you.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "msmeProfile",
+      "pageName": "Msme profile",
+      "placeholders": [
+        "zedId"
+      ],
       "files": [
         "staff/msme-profile/msme-profile.ts"
       ]
@@ -79936,6 +80153,18 @@
       ]
     },
     {
+      "key": "staff.neftAdmins.form.emailError",
+      "standard": "Please enter a valid e-mail address.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "neftAdmins",
+      "pageName": "Neft admins",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/accounts.ts"
+      ]
+    },
+    {
       "key": "staff.neftAdmins.form.emailLabel",
       "standard": "E-mail",
       "kind": "label",
@@ -79960,6 +80189,18 @@
       ]
     },
     {
+      "key": "staff.neftAdmins.form.mobileError",
+      "standard": "Please enter a valid 10 digit mobile number.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "neftAdmins",
+      "pageName": "Neft admins",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/accounts.ts"
+      ]
+    },
+    {
       "key": "staff.neftAdmins.form.mobileLabel",
       "standard": "Mobile number",
       "kind": "label",
@@ -79975,6 +80216,18 @@
       "key": "staff.neftAdmins.form.mobilePlaceholder",
       "standard": "10 digits",
       "kind": "placeholder",
+      "portal": "staff",
+      "page": "neftAdmins",
+      "pageName": "Neft admins",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/accounts.ts"
+      ]
+    },
+    {
+      "key": "staff.neftAdmins.form.nameError",
+      "standard": "Please enter the name.",
+      "kind": "message",
       "portal": "staff",
       "page": "neftAdmins",
       "pageName": "Neft admins",
@@ -80035,6 +80288,18 @@
       "key": "staff.neftAdmins.form.typeLabel",
       "standard": "Login type",
       "kind": "label",
+      "portal": "staff",
+      "page": "neftAdmins",
+      "pageName": "Neft admins",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/accounts.ts"
+      ]
+    },
+    {
+      "key": "staff.neftAdmins.form.userIdError",
+      "standard": "Please enter a User ID of 4 to 50 letters and digits.",
+      "kind": "message",
       "portal": "staff",
       "page": "neftAdmins",
       "pageName": "Neft admins",
@@ -80139,6 +80404,42 @@
       "placeholders": [],
       "files": [
         "staff/user-management/accounts.ts"
+      ]
+    },
+    {
+      "key": "staff.noAccess.home",
+      "standard": "Back to home",
+      "kind": "button",
+      "portal": "staff",
+      "page": "noAccess",
+      "pageName": "No access",
+      "placeholders": [],
+      "files": [
+        "staff/sub-user-screens.ts"
+      ]
+    },
+    {
+      "key": "staff.noAccess.text",
+      "standard": "This screen was not given to your login. Please ask your administrator if you need it.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "noAccess",
+      "pageName": "No access",
+      "placeholders": [],
+      "files": [
+        "staff/sub-user-screens.ts"
+      ]
+    },
+    {
+      "key": "staff.noAccess.title",
+      "standard": "No access to this screen",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "noAccess",
+      "pageName": "No access",
+      "placeholders": [],
+      "files": [
+        "staff/sub-user-screens.ts"
       ]
     },
     {
@@ -84773,7 +85074,7 @@
     },
     {
       "key": "staff.paymentsReceived.title",
-      "standard": "MSME Payment Received",
+      "standard": "Payment Received",
       "kind": "heading",
       "portal": "staff",
       "page": "paymentsReceived",
@@ -98229,6 +98530,18 @@
       ]
     },
     {
+      "key": "staff.schemeOnsite.form.error.addressRequired",
+      "standard": "Please enter the registered address.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
       "key": "staff.schemeOnsite.form.error.districts",
       "standard": "{state}: tick at least one district, or choose the whole state.",
       "kind": "message",
@@ -98243,8 +98556,56 @@
       ]
     },
     {
+      "key": "staff.schemeOnsite.form.error.email",
+      "standard": "Please enter a valid SPOC e-mail address.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.emailRequired",
+      "standard": "Please enter the SPOC e-mail.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
       "key": "staff.schemeOnsite.form.error.mobile",
       "standard": "Please enter a valid 10 digit SPOC mobile number.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.mobileRequired",
+      "standard": "Please enter the SPOC mobile number.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.nameRequired",
+      "standard": "Please enter the agency name.",
       "kind": "message",
       "portal": "staff",
       "page": "schemeOnsite",
@@ -98267,8 +98628,8 @@
       ]
     },
     {
-      "key": "staff.schemeOnsite.form.error.required",
-      "standard": "Please fill in every required field.",
+      "key": "staff.schemeOnsite.form.error.pinRequired",
+      "standard": "Please enter the PIN code.",
       "kind": "message",
       "portal": "staff",
       "page": "schemeOnsite",
@@ -98281,6 +98642,30 @@
     {
       "key": "staff.schemeOnsite.form.error.schemes",
       "standard": "Please select at least one scheme the agency verifies onsite.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.several",
+      "standard": "Please correct the fields marked below.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.error.spocRequired",
+      "standard": "Please enter the SPOC name.",
       "kind": "message",
       "portal": "staff",
       "page": "schemeOnsite",
@@ -102082,6 +102467,482 @@
       ],
       "files": [
         "staff/masters/code-names.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.category",
+      "standard": "Source",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.close",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.action",
+      "standard": "Action",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.level",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.message",
+      "standard": "Message",
+      "kind": "message",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.path",
+      "standard": "Address",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.time",
+      "standard": "Time (IST)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.column.user",
+      "standard": "User",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.copied",
+      "standard": "Copied",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.copy",
+      "standard": "Copy",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.count.errors",
+      "standard": "{n} errors",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.count.warnings",
+      "standard": "{n} warnings",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.details",
+      "standard": "Error details",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.download",
+      "standard": "Download day",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.empty",
+      "standard": "Nothing logged for these filters.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.from",
+      "standard": "From",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.level",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.search",
+      "standard": "Search",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.searchPlaceholder",
+      "standard": "Text, address, user or reference",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.source",
+      "standard": "Log",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.filter.to",
+      "standard": "To",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.level.critical",
+      "standard": "Critical only",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.level.error",
+      "standard": "Errors only",
+      "kind": "message",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.level.warning",
+      "standard": "Warnings and errors",
+      "kind": "message",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.levelName.critical",
+      "standard": "Critical",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.levelName.error",
+      "standard": "Error",
+      "kind": "message",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.levelName.warning",
+      "standard": "Warning",
+      "kind": "message",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.loading",
+      "standard": "Loading…",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.more",
+      "standard": "Showing the newest {n}: narrow the days or the search to see older ones.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.noFile",
+      "standard": "Nothing was logged on that day.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.reference",
+      "standard": "Reference",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.show",
+      "standard": "Show",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.source.consultancy",
+      "standard": "Consultancy portal",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.source.main",
+      "standard": "ZED Certification portal",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.source.mobile",
+      "standard": "Mobile apps server ({system})",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "system"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.source.surveillance",
+      "standard": "Surveillance portal",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.sub",
+      "standard": "The portal's warnings and errors, with the full error, the address, the user and the reference shown in error messages. Kept for 30 days.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.title",
+      "standard": "Server Logs",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.view",
+      "standard": "View",
+      "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
       ]
     },
     {
@@ -113871,7 +114732,7 @@
     },
     {
       "key": "staff.zedIdSearch.emptyError",
-      "standard": "Type a ZED ID, e.g. ZEDMSME000001.",
+      "standard": "Type a ZED ID, e.g. ZEDM000005.",
       "kind": "message",
       "portal": "staff",
       "page": "zedIdSearch",
@@ -113883,7 +114744,7 @@
     },
     {
       "key": "staff.zedIdSearch.invalidError",
-      "standard": "This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDMSME000001.",
+      "standard": "This is not a ZED ID. A ZED ID starts with ZED, e.g. ZEDM000005.",
       "kind": "message",
       "portal": "staff",
       "page": "zedIdSearch",

@@ -18,6 +18,14 @@ $line: #dde7e8;
   overflow-wrap: break-word;
   word-break: normal;
 }
+// 2026-11-21 (UI audit L4: "ASSESSOR / S"): a column heading breaks between words only, never inside one; a heading wider
+// than its column widens it (or, in a fixed-layout table, its column is given room).
+.table > thead > tr > th,
+.table > thead > tr > td {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: manual;
+}
 .ph-title, .registration-title, .modal-title, .zed-card, .list-card { overflow-wrap: break-word; word-break: normal; }
 
 // Things read as one unit stay on one line: buttons, pills, chips, switches, dates and amounts.

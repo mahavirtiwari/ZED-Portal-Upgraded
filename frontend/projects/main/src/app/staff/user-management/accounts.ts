@@ -16,6 +16,7 @@ import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { ToastService } from '../toast';
 import { staffCrumbs } from '../staff-crumbs';
 import { plain } from '../users/user-display';
+import { revealError } from '../reveal-error';
 
 interface AccountType {
   roleId: number;
@@ -121,6 +122,20 @@ function typeHintOf(roleId: number): string {
  * initials, the login type with its state under it, contact with icons, a card per login on phones, a confirmation before
  * Block and Reset Password, and the pop-up with a choice card per login type.
  */
+/**
+ * 2026-11-21 (UI audit F5): the checks of the NEFT admin API (NeftAdminsController.Validate), made in the browser so each field is
+ * marked before anything is sent: the name, a valid e-mail, a 10 digit mobile number and, for a new login, a User ID of 4 to 50
+ * letters and digits.
+ */
+export function neftFieldErrors(f: { userName: string; email: string; mobileNo: string; userId: string }, adding: boolean): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!f.userName?.trim()) out['userName'] = t('staff.neftAdmins.form.nameError', 'Please enter the name.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email?.trim() ?? '')) out['email'] = t('staff.neftAdmins.form.emailError', 'Please enter a valid e-mail address.');
+  if (!/^\d{10}$/.test(f.mobileNo?.trim() ?? '')) out['mobileNo'] = t('staff.neftAdmins.form.mobileError', 'Please enter a valid 10 digit mobile number.');
+  if (adding && !/^[A-Za-z0-9]{4,50}$/.test(f.userId?.trim() ?? '')) out['userId'] = t('staff.neftAdmins.form.userIdError', 'Please enter a User ID of 4 to 50 letters and digits.');
+  return out;
+}
+
 @Component({
   selector: 'zed-staff-accounts',
   imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog, PageHead, ListCounts, RowMenu, ConfirmDialog, TextPipe],
@@ -282,15 +297,21 @@ function typeHintOf(roleId: number): string {
                 <div class="acc-fields">
                   <div class="acc-field nf-wide">
                     <label for="acc-name">{{ 'Name' | t: 'staff.neftAdmins.form.nameLabel' }}<span class="req">*</span></label>
-                    <input class="form-control" id="acc-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.neftAdmins.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                    <input class="form-control" id="acc-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.neftAdmins.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)"
+                           [class.is-invalid]="!!fieldErrors()['userName']" [attr.aria-invalid]="!!fieldErrors()['userName']" />
+                    @if (fieldErrors()['userName']; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
                   </div>
                   <div class="acc-field nf-wide">
                     <label for="acc-email">{{ 'E-mail' | t: 'staff.neftAdmins.form.emailLabel' }}<span class="req">*</span></label>
-                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.neftAdmins.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.neftAdmins.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)"
+                           [class.is-invalid]="!!fieldErrors()['email']" [attr.aria-invalid]="!!fieldErrors()['email']" />
+                    @if (fieldErrors()['email']; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
                   </div>
                   <div class="acc-field">
                     <label for="acc-mobile">{{ 'Mobile number' | t: 'staff.neftAdmins.form.mobileLabel' }}<span class="req">*</span></label>
-                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits' | t: 'staff.neftAdmins.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits' | t: 'staff.neftAdmins.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)"
+                           [class.is-invalid]="!!fieldErrors()['mobileNo']" [attr.aria-invalid]="!!fieldErrors()['mobileNo']" />
+                    @if (fieldErrors()['mobileNo']; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
                   </div>
                   <div class="acc-field">
                     <label class="nf-quiet" for="nf-type">{{ 'Login type' | t: 'staff.neftAdmins.form.typeLabel' }}</label>
@@ -300,7 +321,8 @@ function typeHintOf(roleId: number): string {
                     <div class="acc-field nf-wide">
                       <label for="acc-id">{{ 'User ID' | t: 'staff.neftAdmins.form.userIdLabel' }}<span class="req">*</span></label>
                       <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" [placeholder]="'4 to 50 letters and digits' | t: 'staff.neftAdmins.form.userIdPlaceholder'"
-                             [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
+                             [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" [class.is-invalid]="!!fieldErrors()['userId']" [attr.aria-invalid]="!!fieldErrors()['userId']" />
+                      @if (fieldErrors()['userId']; as e) { <div class="invalid-feedback d-block">{{ e }}</div> }
                     </div>
                   }
                 </div>
@@ -707,6 +729,8 @@ export class AccountsPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly formError = signal('');
+  /** 2026-11-21 (UI audit F5): the NEFT admin form's own checks, by field, before anything is sent. */
+  protected readonly fieldErrors = signal<Record<string, string>>({});
 
   constructor() {
     void this.load();
@@ -857,32 +881,47 @@ export class AccountsPage {
   protected close(): void {
     this.form.set(null);
     this.editing.set(null);
+    this.fieldErrors.set({});
   }
 
   protected patch<K extends keyof AccountForm>(key: K, value: AccountForm[K]): void {
     this.form.update((f) => (f ? { ...f, [key]: value } : f));
+    if (this.fieldErrors()[key]) this.fieldErrors.update(({ [key]: _, ...rest }) => rest);
   }
 
   protected async save(): Promise<void> {
     const f = this.form();
     if (!f) return;
     const id = this.editing();
+    if (this.neft) {
+      const errors = neftFieldErrors(f, !id);
+      this.fieldErrors.set(errors);
+      if (Object.keys(errors).length) {
+        this.formError.set('');
+        revealError(document.querySelector('.nf-dialog'));
+        return;
+      }
+    }
     const scope = this.scopeType();
     if (scope && this.levels().length && !f.levels.length) {
       this.formError.set(t('staff.userManagement.error.noLevel', 'Please choose at least one certification level.'));
+      revealError(document.querySelector('.modal .acc-content'), '.alert-danger');
       return;
     }
     if (this.screensType() && !f.screens.some((x) => !x.endsWith(':hide-names'))) {
       this.formError.set(t('staff.userManagement.error.noScreen', 'Please tick at least one screen for the Dashboard Admin.'));
+      revealError(document.querySelector('.modal .acc-content'), '.alert-danger');
       return;
     }
     const dfo = this.types().find((t) => t.roleId === f.roleId)?.hasDistricts;
     if (dfo && !f.states.length) {
       this.formError.set(t('staff.userManagement.error.noStates', "Please choose the MSME DFO's states."));
+      revealError(document.querySelector('.modal .acc-content'), '.alert-danger');
       return;
     }
     if (dfo && !f.neftLists.length) {
       this.formError.set(t('staff.userManagement.error.noNeftList', 'Please tick Financial Assistance and / or Handholding.'));
+      revealError(document.querySelector('.modal .acc-content'), '.alert-danger');
       return;
     }
     const { sectorActivity, levels, states, screens, districts, neftLists, ...details } = f;
@@ -986,6 +1025,8 @@ export class AccountsPage {
       await this.load();
     } catch (err) {
       this.formError.set(apiErrorMessage(err));
+      // 2026-11-21 (UI audit F2): the pop-up's error at the end of its body is scrolled into view.
+      revealError(document.querySelector('.modal .acc-content'), '.alert-danger');
     } finally {
       this.busy.set(false);
     }

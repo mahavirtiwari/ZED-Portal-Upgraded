@@ -326,4 +326,16 @@ public sealed class SubUsersTests : IDisposable
         Assert.True(SubUserPermissions.Under("/api/staff/assessment/da/Z1/Bronze", "/api/staff/assessment/da/"));
         Assert.False(SubUserPermissions.Under("/api/staff/assessment/da-allotment", "/api/staff/assessment/da/"));
     }
+
+    [Fact]
+    public void Every_sub_user_reads_the_home_dashboard_and_the_msme_views()
+    {
+        // 2026-11-21 (production: an Operation Admin given only Expenditure saw "You do not have access" on the dashboard).
+        Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/dashboard/analytics"));
+        Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/msme-edit-history/ZEDM000005"));
+        Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/msme-profile/ZEDM000005"));
+        Assert.False(SubUserPermissions.AlwaysReadable("POST", "/api/staff/dashboard/analytics"));
+        Assert.False(SubUserPermissions.AlwaysReadable("GET", "/api/staff/monitoring"));
+        Assert.False(SubUserPermissions.AlwaysReadable("GET", "/api/staff/dashboard/analyticsx"));
+    }
 }

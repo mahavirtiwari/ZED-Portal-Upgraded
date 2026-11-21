@@ -155,6 +155,11 @@ public static class SubUserPermissions
         HttpMethods.IsGet(method) && (
             path.Equals("/api/staff/dashboard", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/api/staff/dashboard/counts", StringComparison.OrdinalIgnoreCase)
+            // 2026-11-21 (production: an Operation Admin's dashboard showed "You do not have access"): the dashboard's figures
+            // come from /analytics now (StaffDashboardController applies the sub-user's states).
+            || path.Equals("/api/staff/dashboard/analytics", StringComparison.OrdinalIgnoreCase)
+            // 2026-11-21: the MSME profile's "Edit history" section (read-only, as the profile itself).
+            || Under(path, "/api/staff/msme-edit-history")
             // 2026-11-17: the header's bell; it lists only the screens the sub-user was given (AttentionController).
             || path.Equals("/api/staff/attention", StringComparison.OrdinalIgnoreCase)
             || Under(path, "/api/staff/msme-profile")

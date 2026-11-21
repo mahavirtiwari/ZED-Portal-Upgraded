@@ -51,6 +51,13 @@ export const SETTINGS_ROUTES: Routes = [
     loadComponent: () => import('./email-settings').then((m) => m.EmailSettingsPage),
   },
   {
+    // 2026-11-21: the server's own log (Zed.Core.Logging), each portal's through the portal switch.
+    path: 'server-logs',
+    title: 'ZED | Server Logs',
+    canActivate: [admin],
+    loadComponent: () => import('./server-logs').then((m) => m.ServerLogsPage),
+  },
+  {
     path: 'email-templates',
     title: 'ZED | Email Templates',
     canActivate: [admin],

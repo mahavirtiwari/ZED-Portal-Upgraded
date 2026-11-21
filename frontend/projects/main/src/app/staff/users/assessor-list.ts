@@ -399,8 +399,8 @@ export class AssessorListPage {
   protected readonly level = signal('');
   protected readonly sector = signal<SectorFilter>('');
   protected readonly agency = signal('');
-  /** Paged (20 per page) and searched (any value of the row) in the browser, as before. */
-  protected readonly pager = new ClientPager<AssessorRow>(20);
+  /** Paged and searched (any value of the row) in the browser; 2026-11-21 (UI audit C4): 10 per page, as the other lists. */
+  protected readonly pager = new ClientPager<AssessorRow>(10);
   protected readonly search = this.pager.search;
   protected readonly page = this.pager.page;
   protected readonly loading = signal(true);

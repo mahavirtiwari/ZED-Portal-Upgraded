@@ -224,6 +224,8 @@ describe('scheme onsite verification pages', () => {
     (el.querySelector('#of-save') as HTMLButtonElement).click();
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('type of agency');
+    // 2026-11-21 (UI audit F4): the message is also under the field (scrolled into view), and only there.
+    expect([...el.querySelectorAll('.help-block')].map((h) => h.textContent!.trim())).toEqual([expect.stringContaining('type of agency')]);
 
     (el.querySelector('input[name="agencyType"][value="Desktop"]') as HTMLInputElement).click();
     await settle();

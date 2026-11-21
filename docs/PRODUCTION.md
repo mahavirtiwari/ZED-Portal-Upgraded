@@ -110,3 +110,15 @@ release.
 - New units: ZEDM000001… (Manufacturing) and ZEDS000001… (Services), the sector from Masters → Sectors.
 - Certificate numbers: date_M000123 / date_S000045.
 - Invoices (when switched on): ZEDM/2627/n and ZEDS/2627/n.
+
+## Server logs (2026-11-21)
+
+Every portal and mobile API host writes its warnings and errors (with the full exception, the request address, the signed-in
+user and the request's trace id) to `<InstallRoot>\<app>\logs\zed-yyyyMMdd.jsonl`, one JSON entry per line, besides the Windows
+Application event log. The `logs` folder is kept by every deploy and the pool may write it (Install-ZedIis.ps1). Files are kept
+30 days and capped at 50 MB a day. Settings (all optional): `Logging:File:Enabled`, `Folder`, `MinLevel` (Warning),
+`RetentionDays` (30), `MaxFileBytes`, `Source`.
+
+Read them without server access in **Admin → Administration → Server Logs** (each portal through the portal switch; the mobile
+hosts' logs are listed when the portal's pool can read their folder). A server error shown to a user ends with
+"(Reference: xxxxxxxx)": search that reference on the page to find the full error.

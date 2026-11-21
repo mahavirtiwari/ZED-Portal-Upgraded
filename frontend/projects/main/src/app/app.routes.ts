@@ -3,6 +3,7 @@ import { authGuard } from '@zed/shared';
 import { STAFF_ROLE_IDS, StaffRole as R } from './staff/staff-menu';
 import { staffScreenGuard } from './staff/assessment/assessment-shared';
 import { STAFF_UNKNOWN_ROUTE, staffHomeRedirect, unknownAddressRedirect } from './staff/staff-home.guard';
+import { subUserScreenGuard } from './staff/sub-user-screens';
 import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessment/assessment.routes';
 import { VERIFY_ROUTES } from './verify/verify.routes';
 import { SITE_REVIEW_LEGACY_REDIRECTS, SITE_REVIEW_ROUTES } from './staff/site-review/site-review.routes';
@@ -52,6 +53,9 @@ function incentivesOfType(type: unknown): string {
   return group ? `/staff/incentives/${group}` : `/staff/incentives/state?state=${encodeURIComponent(t.toUpperCase())}`;
 }
 
+/** 2026-11-21: the clean refusal of a screen a sub-user was not given (staff/sub-user-screens.ts). */
+const NO_ACCESS_ROUTE = { path: 'no-access', title: 'ZED | No access', loadComponent: () => import('./staff/sub-user-screens').then((m) => m.NoAccessPage) };
+
 const MAIN_STAFF_CHILDREN: Routes = [
   // The NEFT Admin's Technology Upgradation rows (2026-11-07): the Consultancy portal's TU page, its API reached through the switch.
   {
@@ -91,7 +95,7 @@ const MAIN_STAFF_CHILDREN: Routes = [
     loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
   },
   { path: 'reports', title: 'ZED | Reports', canActivate: [REPORTS], loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
-  { path: 'history', title: 'ZED | Certification History', canActivate: [HISTORY], loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
+  { path: 'history', title: 'ZED | ZED ID History', canActivate: [HISTORY], loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
   ...ASSESSMENT_ROUTES,
@@ -197,6 +201,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   },
   STAFF_MSME_PROFILE,
   // 2026-11-19: last, an address under /staff that is no screen here opens the user's home (it fell through to /msme/login).
+  // 2026-11-21: a sub-user's screen it was not given (subUserScreenGuard).
+  NO_ACCESS_ROUTE,
   STAFF_UNKNOWN_ROUTE,
 ];
 
@@ -311,6 +317,7 @@ const MAIN_ROUTES: Routes = [
   {
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
+    canActivateChild: [subUserScreenGuard],
     loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
     children: MAIN_STAFF_CHILDREN,
   },
@@ -619,8 +626,9 @@ const SYSTEM_ROUTES: Routes = [
   {
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
+    canActivateChild: [subUserScreenGuard],
     loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
-    children: [...(PORTAL_SYSTEM === 'consultancy' ? CONSULTANCY_STAFF_CHILDREN : SURVEILLANCE_STAFF_CHILDREN), STAFF_UNKNOWN_ROUTE],
+    children: [...(PORTAL_SYSTEM === 'consultancy' ? CONSULTANCY_STAFF_CHILDREN : SURVEILLANCE_STAFF_CHILDREN), NO_ACCESS_ROUTE, STAFF_UNKNOWN_ROUTE],
   },
   // Old addresses with query parameters (links in mails and lists).
   ...ASSESSMENT_LEGACY_REDIRECTS.filter((r) => r.path === 'Assessment/DaDetails'),
