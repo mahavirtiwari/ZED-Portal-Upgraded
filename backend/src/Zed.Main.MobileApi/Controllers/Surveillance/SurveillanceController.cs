@@ -101,96 +101,17 @@ public sealed partial class SurveillanceController(
 
         // Set 4 has a row only when this assessor is the unit's desktop assessor and the unit is at status 1.
         // The old code then read set 1 unchecked; a unit without an Msme row failed with an error page.
-        if (sets.Count < 5 || sets[4].Count == 0 || sets[1].Count == 0)
+        if (!SurveillanceLogin.Allotted(sets))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = NotAllocated + request.zedId });
 
-        var msme = sets.FirstRow(1);
-        var basic = sets.FirstRow(2);
-        var response = new MsmeLoginResponse
-        {
-            status = "1",
-            MsmeDetails = new MsmeViewModel
-            {
-                MsmeId = msme.Text("MsmeId"),
-                ZedId = msme.Text("ZedId"),
-                CertificateNo = msme.Text("PledgeCertificateNo"),
-                DateOfPledge = msme.Text("DateOfPledge"),
-                PledgeEmailId = msme.Text("PledgeEmailId"),
-                BasicDetails = new BasicDetails
-                {
-                    ApplicationId = basic.Text("ApplicationId"),
-                    UdyogAadharNo = basic.Text("UdyogAadharNo"),
-                    OwnerName = basic.Text("OwnerName"),
-                    EnterpriseName = basic.Text("EnterpriseName"),
-                    OrganisationType = basic.Text("OrganisationType"),
-                    OrganisationTypeName = basic.Text("OrganisationTypeName"),
-                    SocialCategory = basic.Text("SocialCategory"),
-                    SocialCategoryName = basic.Text("SocialCategoryName"),
-                    Gender = basic.Text("Gender"),
-                    PH = basic.Text("PH"),
-                    PanNo = basic.Text("PanNo"),
-                    Address = basic.Text("Address"),
-                    State_Id = basic.Text("StateId"),
-                    state_name = basic.Text("StateName"),
-                    District_Id = basic.Text("DistrictId"),
-                    DISTRICT_NAME = basic.Text("DistrictName"),
-                    LG_DT_Code = basic.Text("LgDistrictCode"),
-                    PINCode = basic.Text("PinCode"),
-                    MobileNo = basic.Text("MobileNo"),
-                    EmailId = basic.Text("EmailId"),
-                    MajorActivity = basic.Text("MajorActivity"),
-                    MajorActivityName = basic.Text("MajorActivityName"),
-                    EnterpriseType = basic.Text("EnterpriseType"),
-                    EnterpriseTypee = basic.Text("EnterpriseTypee"),
-                    CommmenceDate = basic.Text("CommmenceDate"),
-                    PreviousEMType = basic.Text("PreviousEMType"),
-                    PreviousEMNumber = basic.Text("PreviousEMNumber"),
-                    TotalEmp = basic.Text("TotalEmp"),
-                    InvestmentCost = basic.Text("InvestmentCost"),
-                    Dic_Name = basic.Text("DicName"),
-                    AppliedDate = basic.Text("AppliedDate"),
-                    IncorporationDate = msme.Text("IncorporationDate"),
-                    WhetherProdCommenced = msme.Text("WhetherProdCommenced"),
-                },
-                PlantDetails = new PlantDetails
-                {
-                    ApplicationId = msme.Text("ApplicationId"),
-                    UnitName = msme.Text("PUnitName"),
-                    PFlat = msme.Text("PFlat"),
-                    PBuilding = msme.Text("PBuilding"),
-                    PRoad = msme.Text("PRoad"),
-                    PArea = msme.Text("PArea"),
-                    PCity = msme.Text("PCity"),
-                    PPin = msme.Text("PPin"),
-                    PAddress = msme.Text("PAddress"),
-                    state_id = msme.Text("PStateId"),
-                    state_name = msme.Text("PStateName"),
-                    DISTRICT_NAME = msme.Text("PDistrictName"),
-                    LG_DT_Code = msme.Text("PLgDistrictCode"),
-                    PlantDetail_Id = msme.Text("PPlantDetailId"),
-                },
-                ActivityDetails = new ActivityDetails
-                {
-                    ApplicationId = msme.Text("ApplicationId"),
-                    Activity = msme.Text("Activity"),
-                    Two_DigitActivity = msme.Text("TwoDigitActivity"),
-                    Four_DigitActivity = msme.Text("FourDigitActivity"),
-                    Five_DigitActivity = msme.Text("FiveDigitActivity"),
-                    ActivityDetail_Id = msme.Text("ActivityDetailId"),
-                },
-                msmeStatus = MsmeController.StatusFrom(sets.FirstRow(3)),
-            },
-            TwilioToken = null, // video calls were removed; the field stays for the installed apps
-        };
-
+        var response = SurveillanceLogin.Answer(sets);
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
         // 2026-11-18: one phone per assessor (OnePhoneRule; SURV is enforced by default). The installed app sends no
         // deviceInfo, so its sign-in is not refused unless Mobile:RefuseMissingDevice is set.
-        if (await OnePhoneRule.SignInRefusalAsync(HttpContext, devices, options.Value, App, userKey, request.deviceInfo, log, ct) is { } phone)
+        // 2026-11-21: shared with ZED SA's per-unit session (SA/BronzeSurveillanceSession), see SurveillanceLogin.
+        if (await SurveillanceLogin.StartAsync(HttpContext, devices, options.Value, tokens, userKey, zedId, request.deviceInfo, request.version,
+                response, log, ct) is { } phone)
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = phone });
-        await OnePhoneRule.RegisterAsync(HttpContext, devices, options.Value, App, userKey, request.deviceInfo, request.version, ct);
-        // The token binds the assessor and the unit the login was checked for (set 4).
-        response.appToken = await tokens.IssueAsync(App, userKey, msme.Text("ZedId") is { Length: > 0 } unitId ? unitId : zedId, ct);
         log.LogInformation("Surveillance app login for {UserId} on {ZedId}", userKey, zedId);
         return LegacyJson(response);
     }

@@ -75,6 +75,19 @@ Files under `app/src/main/java/com/geostat/assessment/activities/`.
 | `app.assessor.siteTour.pickInstruction` | Site tour: pick a photo | `SiteTourActivity.java:71` (alert, built in code) | | Main |
 | `app.assessor.siteTour.tourInstruction` | Site tour: capture photos | `SiteTourActivity.java:85` (alert) | | Main |
 | `app.assessor.login.windowNote` | Login: two days before the site assessment | `LoginActivity.java:109` (alert) | | Main |
+| `app.assessor.bronze.home.title` | Bronze surveillance: Home and list: section heading | new (2026-11-21, `src/bronze/BronzeSurveillance.tsx`) | | Main |
+| `app.assessor.bronze.home.subtitle` | Bronze surveillance: Home and list: section note | new | | Main |
+| `app.assessor.bronze.case.label` | Bronze surveillance: case card: label | new | | Main |
+| `app.assessor.bronze.case.status` | Bronze surveillance: case card: status (with the desktop assessor) | new | | Main |
+| `app.assessor.bronze.case.allotted` | Bronze surveillance: case card: since | new | `Date` | Main |
+| `app.assessor.bronze.case.open` | Bronze surveillance: case card: open button | new | | Main |
+| `app.assessor.bronze.open.offline` | Bronze surveillance: opening offline a case never opened on the phone | new | | Main |
+| `app.assessor.bronze.open.notSignedIn` | Bronze surveillance: not signed in to the surveillance server | new | | Main |
+
+2026-11-21: the Bronze surveillance steps opened from ZED SA are the retired ZED Surveillance app's screens
+(`@zed/bronze-surveillance`): they keep showing their `app.msme.*` texts (built-ins `packages/bronze-surveillance/src/content/builtInTexts.ts`,
+the server's from the surveillance host), through their own `AppTextsProvider app="app.msme"`; ZED SA's case list uses the
+`app.assessor.bronze.*` texts above.
 
 ## Consultant app (`ZEDConsultant`, package `com.geostat.assessment`)
 

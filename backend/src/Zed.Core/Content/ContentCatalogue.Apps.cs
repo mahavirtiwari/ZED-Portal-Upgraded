@@ -237,6 +237,20 @@ public static partial class ContentCatalogue
         App("app.assessor.login.windowNote", "Login: two days before the site assessment", AssessorApp, Main,
             "You can only login 2 days prior to your allocated Site Assessment date"),
 
+        // Assessor app: Bronze surveillance (2026-11-21: the retired ZED Surveillance app's steps in ZED SA; the steps themselves
+        // keep the app.msme.* texts above, from the surveillance host)
+        App("app.assessor.bronze.home.title", "Bronze surveillance: Home and list: section heading", AssessorApp, Main, "Bronze Surveillance"),
+        App("app.assessor.bronze.home.subtitle", "Bronze surveillance: Home and list: section note", AssessorApp, Main,
+            "Units allotted to you as the Bronze surveillance desktop assessor"),
+        App("app.assessor.bronze.case.label", "Bronze surveillance: case card: label", AssessorApp, Main, "Bronze Surveillance"),
+        App("app.assessor.bronze.case.status", "Bronze surveillance: case card: status (with the desktop assessor)", AssessorApp, Main, "Desktop assessment"),
+        App("app.assessor.bronze.case.allotted", "Bronze surveillance: case card: since", AssessorApp, Main, "Since {{Date}}", "Date"),
+        App("app.assessor.bronze.case.open", "Bronze surveillance: case card: open button", AssessorApp, Main, "Open"),
+        App("app.assessor.bronze.open.offline", "Bronze surveillance: opening offline a case never opened on the phone", AssessorApp, Main,
+            "This case has not been opened on this phone yet. Please connect to the internet and open it once."),
+        App("app.assessor.bronze.open.notSignedIn", "Bronze surveillance: not signed in to the surveillance server", AssessorApp, Main,
+            "Please sign out and sign in again while online to open Bronze surveillance cases."),
+
         // Assessor app: scheme visits (2026-11-20, incentive schemes phase 2: the onsite verification of an application)
         App("app.assessor.schemes.home.quickAction", "Scheme visits: Home: quick action", AssessorApp, Main, "Scheme visits"),
         App("app.assessor.schemes.home.card", "Scheme visits: Home: visits waiting", AssessorApp, Main, "{{Count}} scheme visit(s) to do", "Count"),

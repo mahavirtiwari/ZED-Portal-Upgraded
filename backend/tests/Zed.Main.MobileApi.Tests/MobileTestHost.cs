@@ -18,13 +18,15 @@ public sealed class MobileTestHost : WebApplicationFactory<Program>
     public FakeDevices Devices { get; } = new();
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "zed-mobile-tests-" + Guid.NewGuid().ToString("N"));
     public Dictionary<string, string?> Settings { get; } = new();
+    /// <summary>The server's log files: beside the storage root, not in it (the tests check what the app's actions stored there).</summary>
+    public string LogFolder { get; } = Path.Combine(Path.GetTempPath(), "zed-mobile-test-logs-" + Guid.NewGuid().ToString("N"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Main", "Server=unused;Database=unused");
         builder.UseSetting("Mobile:StorageRoot", StorageRoot);
-        builder.UseSetting("Logging:File:Folder", Path.Combine(StorageRoot, "logs"));
+        builder.UseSetting("Logging:File:Folder", LogFolder);
         builder.UseSetting("Mobile:MaxFileBytes", "1000");
         foreach (var (k, v) in Settings) builder.UseSetting(k, v);
         builder.ConfigureServices(s =>
@@ -41,6 +43,14 @@ public sealed class MobileTestHost : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         if (Directory.Exists(StorageRoot)) Directory.Delete(StorageRoot, recursive: true);
+        try
+        {
+            if (Directory.Exists(LogFolder)) Directory.Delete(LogFolder, recursive: true);
+        }
+        catch (IOException)
+        {
+            // the logger may still hold today's file for a moment; the temp folder is cleaned by the system
+        }
     }
 }
 

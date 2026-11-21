@@ -153,6 +153,9 @@ public sealed partial class SAController(
         // Set 0 is the Users row (RoleId 3, SiteVerification 1, active). The procedure family has
         // hard-coded master passwords, so the typed password must equal the row's own.
         var user = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
+        // 2026-11-21: on the Surveillance host, the sign-in without a unit (SA/SignIn) also lets in a Bronze surveillance desktop
+        // assessor who is not a site assessor, by the ZED Surveillance app's user check (SAController.Bronze.cs).
+        if (user is null && zedId is null) user = await BronzeSurveillanceUserAsync(assessorId, login.ProcedurePassword, ct);
         var masterPassword = user is not null && !await passwords.CompleteLoginAsync(login, user, ct);
         if (user is null || masterPassword || user.Text("RoleId") != "3")
         {
@@ -432,6 +435,8 @@ public sealed partial class SAController(
         RequireCertification(request.certificationType);
         if (!await IsAllottedAsync(request.saId, request.zedId, request.certificationType, Role.LeadOrCo, ct))
             return NotAllotted(nameof(SubmitAttendance), request.saId, request.zedId);
+        // 2026-11-21: one onsite assessment at a time (AssessorBusyDays).
+        if (await BusyElsewhereAsync(request.saId, request.zedId, request.certificationType, ct) is { } busyAttendance) return busyAttendance;
         if (files is null || files.Length <= 0) return Fail("Assessor selfie data not found.");
         if (request.attendanceType?.Length > 50 || request.comments?.Length > 4000) return Fail("Invalid Data.");
 
@@ -673,6 +678,8 @@ public sealed partial class SAController(
         RequireCertification(request.certificationType);
         if (!await IsAllottedAsync(request.saId, request.zedId, request.certificationType, Role.LeadOrCo, ct))
             return NotAllotted(nameof(SubmitStartAssessment), request.saId, request.zedId);
+        // 2026-11-21: one onsite assessment at a time (AssessorBusyDays).
+        if (await BusyElsewhereAsync(request.saId, request.zedId, request.certificationType, ct) is { } busyStart) return busyStart;
 
         var st = await CheckSaStatusAsync(request.zedId, request.certificationType, request.saId, ct);
         if (st.ClosingMeetingSubmitted) return Fail(Closed + request.zedId);

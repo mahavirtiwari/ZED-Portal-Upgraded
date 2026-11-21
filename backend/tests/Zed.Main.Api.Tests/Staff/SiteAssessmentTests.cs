@@ -175,6 +175,40 @@ public sealed class SiteAssessmentTests : IDisposable
 
     // ----- allotment -----
 
+    /// <summary>
+    /// 2026-11-21 (the product owner): one onsite assessment at a time. The new allotment's days (the date and the level's man-days)
+    /// must be free for both assessors; a re-allotment of the same unit does not clash with itself.
+    /// </summary>
+    /// <summary>2026-11-21 (the product owner): "Bronze onsite assessment can be done multiple in a day": Bronze cases block nobody.</summary>
+    [Fact]
+    public void Bronze_onsite_assessments_are_not_counted_as_busy_days()
+    {
+        var sql = Zed.Core.Assessment.AssessorBusyDays.Sql;
+        Assert.Equal(2, sql.Split("C.Certification <> 'Bronze'").Length - 1); // main and surveillance
+    }
+
+    [Fact]
+    public async Task Allotment_is_refused_when_an_assessor_has_another_onsite_assessment_on_those_days()
+    {
+        _host.Sql.Queries[Zed.Core.Assessment.AssessorBusyDays.DaysSql] = _ => [2];
+        _host.Sql.Queries[Zed.Core.Assessment.AssessorBusyDays.Sql] = args => FakeSql.Arg(args, "UserId") == "ASR2"
+            ? [new { Source = "Surveillance", ZedId = "ZEDMSME000555", Certification = "Gold", AssessmentDate = DateTime.Today.AddDays(2), Days = 2 }]
+            : [];
+        var client = await SignIn("AGENCY1");
+        var r = await client.PostAsJsonAsync("/api/staff/site-assessment/allotments", Allotment());
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.StartsWith("ASR2 already has the onsite assessment of ZEDMSME000555 (Gold onsite surveillance visit,", await r.ProblemTitle());
+        Assert.Empty(CallsTo("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA"));
+        var asked = _host.Sql.Calls.Where(c => c.Name == Zed.Core.Assessment.AssessorBusyDays.Sql).Select(c => c.Args).ToList();
+        Assert.Equal(DateTime.Today.AddDays(1), FakeSql.Arg(asked[0], "From") is { } f ? DateTime.Parse(f, System.Globalization.CultureInfo.CurrentCulture) : default);
+        Assert.Equal(DateTime.Today.AddDays(2), FakeSql.Arg(asked[0], "To") is { } t ? DateTime.Parse(t, System.Globalization.CultureInfo.CurrentCulture) : default);
+
+        // Free: the unit's own allotment (a re-allotment) is left out.
+        _host.Sql.Queries[Zed.Core.Assessment.AssessorBusyDays.Sql] = _ => [new { Source = "Assessment", ZedId = "ZEDMSME000001", Certification = "Silver", AssessmentDate = DateTime.Today.AddDays(1), Days = 1 }];
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/site-assessment/allotments", Allotment())).StatusCode);
+        Assert.Single(CallsTo("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA"));
+    }
+
     [Fact]
     public async Task Agency_allots_its_unit_and_mails_go_out_without_passwords()
     {

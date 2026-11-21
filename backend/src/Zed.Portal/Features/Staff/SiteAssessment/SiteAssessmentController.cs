@@ -246,6 +246,20 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             }
         }
 
+        // 2026-11-21 (the product owner): one onsite assessment at a time. An onsite allotment keeps its assessors busy from the
+        // date for the level's man-days (the surveillance visit's on the Surveillance portal); both must be free on all of them.
+        if (!remote && (!Surveillance || onsiteVisit))
+        {
+            var days = await Zed.Core.Assessment.AssessorBusyDays.DaysAsync(db, certification!, Surveillance, log, ct);
+            var from = date.Value.ToDateTime(TimeOnly.MinValue);
+            var source = Surveillance ? Zed.Core.Assessment.AssessorBusyDays.SurveillanceSource : Zed.Core.Assessment.AssessorBusyDays.MainSource;
+            foreach (var id in new[] { lead, co }.OfType<string>())
+            {
+                var busy = await Zed.Core.Assessment.AssessorBusyDays.ForAsync(db, id, from, from.AddDays(days - 1), source, zedId, certification, log, ct);
+                if (busy.Count > 0) return this.Problem400(Zed.Core.Assessment.AssessorBusyDays.AllotRefusal(id, busy[0]));
+            }
+        }
+
         try
         {
             var assessmentDate = date.Value.ToString("yyyy-MM-dd");

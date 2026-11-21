@@ -59,6 +59,8 @@ public sealed partial class SAController
             siteTourSections = (await SiteTourSections.LoadAsync(settings, ct)).Where(t => t.Active)
                 .Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, 0)).ToList(),
         };
+        // 2026-11-21: the Bronze surveillance cases ZED SA opens with SA/BronzeSurveillanceSession (SAController.Bronze.cs).
+        if (portal.System == PortalSystem.Surveillance) response.bronzeSurveillance = await BronzeCasesAsync(userKey, ct);
 
         await RegisterPhoneAsync(userKey, request.deviceInfo, request.version, ct);
         // No unit: every SA call checks the allotment of the unit it names against the token's assessor.
@@ -166,6 +168,8 @@ public sealed partial class SAController
         var user = string.IsNullOrWhiteSpace(saId) ? null
             : (await db.QuerySqlAsync<SaAppData.UserRow>(SaAppData.AssessorSql, new { UserId = Ansi(saId.Trim()) }, ct)).FirstOrDefault();
         if (user is { RoleId: 3, IsActive: true, SiteVerification: true }) return null;
+        // 2026-11-21: on the Surveillance host, also a Bronze surveillance desktop assessor (SAController.Bronze.cs).
+        if (await IsBronzeSurveillanceAssessorAsync(user, ct)) return null;
         log.LogWarning("Refused SA/{Action}: {SaId} is not an active site assessor", action, saId);
         return Fail(AppTokens.ExpiredMessage);
     }

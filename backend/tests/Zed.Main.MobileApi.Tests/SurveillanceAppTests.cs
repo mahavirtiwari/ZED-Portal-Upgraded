@@ -105,8 +105,9 @@ public sealed class SurveillanceSql(FakeSql inner) : ISqlExecutor
 
     public async Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {
-        await inner.QuerySqlAsync<T>(sql, parameters, ct);
-        if (typeof(T) != typeof(SurveillanceUnit)) return [];
+        var answered = await inner.QuerySqlAsync<T>(sql, parameters, ct);
+        // Other inline queries: the rows registered in FakeSql.Queries (none by default).
+        if (typeof(T) != typeof(SurveillanceUnit)) return answered;
         if (!Units.TryGetValue(FakeSql.Arg(parameters, "ZedId") ?? "", out var rows)) return [];
         IEnumerable<SurveillanceUnit> result = rows;
         if (sql.Contains("SiteAssessorId IS NOT NULL", StringComparison.Ordinal))

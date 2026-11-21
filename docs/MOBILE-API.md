@@ -134,6 +134,7 @@ What a call is checked against (the identity the action acts on):
 | Site assessor app 2.0 reads `SA/Assessments`, `SA/Assessment`, `SA/Notifications`, `SA/Reports` (Main and Surveillance mobile hosts) | `SA` | user = `saId`; **always enforced** (`TokenRequired`), see "Site assessor app 2.0" |
 | Portal `GET SA/AppReport`, `GET SA/AppReportLink` (Main and Surveillance portals) | `SA` | the token's assessor must be the record's lead or co-assessor; always required |
 | Bronze surveillance app, every call after login that names a unit (`Surveillance/*`) | `SURV` | user = the unit's allotted desktop assessor, unit = the ZED ID of the call |
+| ZED SA's Bronze surveillance calls `SA/BronzeSurveillance`, `SA/BronzeSurveillanceSession` (Surveillance mobile host, 2026-11-21) | `SA` | user = `saId`; **always enforced** (`TokenRequired`); the session answers a `SURV` token for the unit, used on `Surveillance/*` as above |
 | Consultancy portal `FinancialAssistance/GetDetails`, `ValidateEvidence`, `updatetechnology`, `FinalSubmit` (consultant app, DFO) | `SA` | user = the application's allotted DFO, unit = the ZED ID of the call |
 | `Msme/SubmitSurveillancePhoto` (Surveillance mobile host) | `MSME` | unit; no MSME signs in on that deployment, so it can only be monitored |
 | `Msme/GetMsmeStatus`, `GetNcDetailsByType`, `SubmitNcRequirement`, `SubmitNcProduct`, `SubmitSiteExteriorInfo`, `FinalSubmit` (Surveillance mobile host, the ZED MSME app's surveillance NC replies) | `MSME`, **issued by Main** | unit = the ZED ID of the call; **always enforced** (below, "Surveillance") |
@@ -468,6 +469,42 @@ unit's data, the unit being the request's `userName`.
   accounts here), `ResetPassword` ("Sorry, no User exists with these details."), `GetMsmeStatus` (HTTP 500: the
   procedure lacks six columns the old code read). Refused: `SubmitFinancialData`, `SubmitFinancialPhotos` (the MSME's
   own claim, made on main). `SubmitVideo` as on Main.
+- 2026-11-21: the ZED Surveillance app is **retired**: Bronze surveillance is done in ZED SA (below). `Surveillance/Login`
+  and every `Surveillance/*` call are kept unchanged for the copies still installed; the login's answer, phone
+  registration and `SURV` token are now built by `Controllers/Surveillance/SurveillanceLogin.cs`, shared with ZED SA's
+  session exchange.
+
+### ZED SA: Bronze surveillance (`SA/BronzeSurveillance`, `SA/BronzeSurveillanceSession`; 2026-11-21)
+
+Bronze surveillance moved into ZED SA (`mobile/apps/assessor`) with **the same steps** as the ZED Surveillance app (its
+screens, now `mobile/packages/bronze-surveillance`). No procedure or table change. Served by `SAController`
+(`Controllers/SAController.Bronze.cs`, models `Models/BronzeSurveillanceModels.cs`) on the **Surveillance** mobile host
+only (elsewhere: `{"status":"0","errorMessage":"Bronze surveillance is served by the surveillance host only."}`); tests
+`BronzeSurveillanceSaTests`.
+
+- **Sign-in.** `SP_APP_SA_CHECK_LOGIN` asks for `SiteVerification = 1`, which a Bronze surveillance desktop assessor
+  usually lacks (often the assessor exists on ZED_SURVEILLANCE only). On the Surveillance host, `SA/SignIn` (no unit) then
+  takes the Users row of `SP_APP_SURVEILLANCE_CHECK_LOGIN` set 0 (RoleId 3, active, the password: `Surveillance/Login`'s own
+  user check, with the same PasswordStore and master-password block) **when at least one Bronze surveillance case is
+  allotted to the assessor** (the old login also needed one); otherwise "Invalid credetials.". `SA/SignIn` on Surveillance
+  also answers `"bronzeSurveillance": [ case, ... ]`. The dashboard reads (`SA/Assessments`, `SA/Notifications`,
+  `SA/Reports`) let in such an assessor on Surveillance too (their site lists are empty). ZED SA, refused by Main, signs
+  in on the Surveillance host alone.
+- **"My Bronze surveillance cases"** (`BronzeSurveillanceData.CasesSql`): the old login's rule for every unit at once —
+  `MsmeCertifications.DesktopAssessorId = the assessor AND CertificationStatus = 1` (set 4 of
+  `SP_APP_SURVEILLANCE_CHECK_LOGIN`) with the unit's `Msme` row present (set 1), level Bronze, at most 200.
+- **`SA/BronzeSurveillance`** `{ "saId", "deviceInfo" }` + `X-Zed-App-Token` (ZED SA's surveillance token, required,
+  device-bound `SA`; the Users row must be RoleId 3 and active) →
+  `{ status, cases: [ { "zedId", "certificationType": "Bronze", "enterpriseName", "unitName", "address", "district",
+  "state", "pincode", "status": 1, "statusDate" } ] }`.
+- **`SA/BronzeSurveillanceSession`** `{ "saId", "zedId", "version", "deviceInfo" }` + the same token: runs
+  `SP_APP_SURVEILLANCE_CHECK_LOGIN` for the assessor and unit with a password nothing matches (set 0 stays empty; sets 1
+  to 4 are the unit's), refuses with "Bronze Surveillance Assessment data not yet allocated for the ZEDID: …" unless set 4
+  (desktop assessor, status 1, Bronze) and set 1 have a row, then answers **exactly `Surveillance/Login`'s JSON** for that
+  unit, after the `SURV` one-phone rule (a phone other than the one registered for `SURV` is refused until released),
+  registers the phone for `SURV` and puts the `SURV` `appToken` (assessor + unit) in it. No password is asked: the ZED SA
+  sign-in on this host checked it and its token proves it. Every later `Surveillance/*` / `Msme/SubmitSurveillancePhoto`
+  call of the unit is checked exactly as for the old app (allotment, stage, `SURV` token for that unit, `SURV` device).
 
 ### The MSME's replies to a surveillance NC (`Msme/*`, ZED MSME app)
 

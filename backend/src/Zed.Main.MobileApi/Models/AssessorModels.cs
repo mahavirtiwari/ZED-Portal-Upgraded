@@ -463,6 +463,12 @@ public sealed class SaSignInResponse : ServiceResponse
     public SaCounts? counts { get; set; }
     public List<SaAssessment>? assessments { get; set; }
     public List<SiteTourSectionInfo>? siteTourSections { get; set; }
+    /// <summary>
+    /// 2026-11-21, Surveillance deployment only: the assessor's Bronze surveillance cases (desktop assessor), which ZED SA
+    /// opens with SA/BronzeSurveillanceSession. Left out of Main's answer.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<SaBronzeCase>? bronzeSurveillance { get; set; }
 }
 
 public sealed class SaProfile

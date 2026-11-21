@@ -464,6 +464,30 @@ public sealed class SaWriteTests : IDisposable
         Assert.Equal("", AssessorTestHost.Tvp(args, "ParticipantsList")!.Rows[0]["Designation"]);
     }
 
+    /// <summary>2026-11-21 (the product owner): one onsite assessment at a time; another one's days covering today block the start.</summary>
+    [Fact]
+    public async Task Starting_is_refused_while_another_onsite_assessment_covers_today()
+    {
+        _flags["OpenMeetingSubmitted"] = false;
+        _t.Fake.Queries[AssessorBusyDays.Sql] = args => AssessorTestHost.Arg(args, "UserId") == Lead
+            ? [new { Source = "Assessment", ZedId = "ZEDMSME000777", Certification = "Gold", AssessmentDate = DateTime.Today.AddDays(-1), Days = 3 },
+               new { Source = "Assessment", ZedId = Zed, Certification = "Silver", AssessmentDate = DateTime.Today, Days = 1 }]
+            : [];
+        AssertFail(await _t.Json("/SA/SubmitStartAssessment", new { saId = Lead, zedId = Zed, certificationType = "Silver" }),
+            "You cannot start this assessment today: you are allotted the onsite assessment of ZEDMSME000777 (Gold onsite assessment, " +
+            DateTime.Today.AddDays(-1).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) + " to " +
+            DateTime.Today.AddDays(1).ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) + "). An assessor can do only one onsite assessment at a time.");
+        Assert.DoesNotContain(_t.Fake.Calls, c => c.Name == "SP_SA_APP_INSERT_OPEN_MEETING");
+
+        // Only the unit's own assessment covers today (it is left out): the start goes through.
+        _t.Fake.Queries[AssessorBusyDays.Sql] = _ => [new { Source = "Assessment", ZedId = Zed, Certification = "Silver", AssessmentDate = DateTime.Today, Days = 1 }];
+        AssertOk(await _t.Json("/SA/SubmitStartAssessment", new
+        {
+            userType = 1, saId = Lead, zedId = Zed, certificationType = "Silver", latitude = "1", longitude = "2", inputComment = "start",
+            assessmentPhotos = new[] { Photo("m1", "Exterior") }, startParticipants = new[] { new { name = "A", designation = (string?)null } },
+        }));
+    }
+
     [Fact]
     public async Task Open_meeting_twice_gets_the_old_message_and_traversal_is_refused()
     {
