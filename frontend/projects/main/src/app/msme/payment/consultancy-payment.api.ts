@@ -37,6 +37,16 @@ export interface ConsultancyOptions extends PaymentOptions {
 export interface ConsultancyCheckoutRequest extends CheckoutRequest {
   /** The milestone the page showed; the server refuses when another one is due. */
   milestone: number;
+  /** 2026-11-21, milestone 1 only (required there): "Did any Consultant Organisation assist you?" */
+  assistedByCo?: boolean | null;
+  /** With Yes: the organisation's user id (one of consultantOrganisations). */
+  assistedCoId?: string | null;
+}
+
+/** 2026-11-21: a Consultant Organisation the unit may name at the milestone 1 payment (active, purchase order not used up). */
+export interface ConsultantOrganisation {
+  userId: string;
+  name: string;
 }
 
 /** Client for api/msme/consultancy-payments (Zed.Main.Api ConsultancyPaymentController). */
@@ -59,6 +69,11 @@ export class ConsultancyPaymentApi {
 
   correctPan(certification: string, gstin: string, pan: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/pan`, { certification, gstin, pan });
+  }
+
+  /** The organisations for "Did any Consultant Organisation assist you?" (milestone 1 only; the server refuses otherwise). */
+  consultantOrganisations(certification: string): Observable<ConsultantOrganisation[]> {
+    return this.http.get<ConsultantOrganisation[]>(`${this.base}/${encodeURIComponent(certification)}/consultant-organisations`);
   }
 
   checkout(certification: string, req: ConsultancyCheckoutRequest): Observable<CheckoutResponse> {

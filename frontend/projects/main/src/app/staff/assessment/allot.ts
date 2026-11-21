@@ -470,11 +470,14 @@ type Tab = 'allot' | 'reallot';
                 <td class="text-nowrap">{{ paidOn(s) }}</td>
                 <td>@if (waitDays(s); as w) { <span class="chip" [class.is-warn]="w.days >= 5 && w.days < 10" [class.is-bad]="w.days >= 10">{{ w.label }}</span> }</td>
                 @if (tab() === 'allot') {
-                  <td><span class="status-badge" [class]="'status-badge ' + status(s).cls">{{ status(s).label }}</span></td>
+                  <td><span class="status-badge" [class]="'status-badge ' + status(s).cls">{{ status(s).label }}</span>
+                    @if (coAllot(s); as how) { <span class="chip al-how" [class.is-warn]="how.warn" data-testid="co-allot">{{ how.label }}</span> }
+                  </td>
                 } @else {
                   <td>
                     <b>{{ col(s, 'AgencyName') }}</b><small class="sub">{{ col(s, 'CertificationBodyUserId') }}</small>
                     <span class="status-badge" [class]="'status-badge ' + status(s).cls">{{ status(s).label }}</span>
+                    @if (coAllot(s); as how) { <span class="chip al-how" [class.is-warn]="how.warn" data-testid="co-allot">{{ how.label }}</span> }
                     @if (col(s, 'TimeDuration')) { <span class="chip is-warn">{{ 'No answer in 72 hours' | t: 'staff.allot.row.chip.noAnswer' }}</span> }
                     @if (surveillance && col(s, 'CertificationBodyUserId') && col(s, 'AutoAllocationDate')) {
                       <small class="sub">{{ 'Auto Alloted on: {date}' | t: 'staff.allot.row.autoAllottedLabel' : { date: col(s, 'AutoAllocationDate') } }}</small>
@@ -511,6 +514,7 @@ type Tab = 'allot' | 'reallot';
   `,
   styles: `
     .al-tabs { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+    .al-how { display: inline-block; margin: 4px 0 0 6px; }
     .al-sort { font-weight: 600; color: var(--zt-dark, #1f5c61); text-decoration: none; padding: 0; }
     .al-tabs ::ng-deep .cf-label { display: none; }
     .al-filters { display: grid; grid-template-columns: 320px 190px 170px 150px 150px; gap: 12px; padding: 12px 14px; margin-bottom: 12px; }
@@ -691,6 +695,21 @@ export class AllotPage {
     if (text(s, 'DesktopAssessorId')) return { label: t('staff.allot.status.acceptedLabel', '{party} Accepted', { party }), cls: 'is-success' };
     if (text(s, 'ReasonForRejection')) return { label: t('staff.allot.status.rejectedLabel', '{party} Rejected', { party }), cls: 'is-rejected' };
     return { label: t('staff.allot.status.allocatedLabel', 'Allocated to {party}', { party }), cls: 'is-info' };
+  }
+
+  /**
+   * 2026-11-21 (the product owner's milestone 1 rule): how the milestone got its Consultant Organisation, or why it waits
+   * (CoAllotType): chosen by the unit at payment, round robin, or no eligible organisation (then the Master Admin allots).
+   */
+  protected coAllot(s: Row): { label: string; warn: boolean } | null {
+    if (!this.consultancy) return null;
+    const allotted = !!text(s, 'CertificationBodyUserId');
+    switch (text(s, 'CoAllotType')) {
+      case 'Chosen': return allotted ? { label: t('staff.allot.row.chip.coChosen', 'Chosen by the unit'), warn: false } : null;
+      case 'RoundRobin': return allotted ? { label: t('staff.allot.row.chip.coRoundRobin', 'Round robin'), warn: false } : null;
+      case 'NoEligible': return allotted ? null : { label: t('staff.allot.row.chip.coNoEligible', 'No eligible organisation'), warn: true };
+      default: return null;
+    }
   }
 
   protected menu(s: Row): RowMenuItem[] {

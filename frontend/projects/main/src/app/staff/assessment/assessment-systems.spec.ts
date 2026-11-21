@@ -178,6 +178,26 @@ describe('assessment pages per system', () => {
     expect(rows[1].querySelector('.al-act')!.textContent!.trim()).toBe('Allot');
   });
 
+  it('consultancy Allot: how milestone 1 was allotted, or why it waits', async () => {
+    await setup('consultancy');
+    const fixture = await create(AllotPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({
+      rows: [
+        { ZedId: 'ZEDMSME000001', Certification: 'Silver', NcCount: 1, CoAllotType: 'NoEligible' },
+        { ZedId: 'ZEDMSME000002', Certification: 'Silver', NcCount: 1, CertificationBodyUserId: 'CO1', AgencyName: 'CO One', CoAllotType: 'Chosen' },
+        { ZedId: 'ZEDMSME000003', Certification: 'Gold', NcCount: 1, CertificationBodyUserId: 'CO2', AgencyName: 'CO Two', CoAllotType: 'RoundRobin' },
+        { ZedId: 'ZEDMSME000004', Certification: 'Gold', NcCount: 1, CertificationBodyUserId: 'CO2', AgencyName: 'CO Two', CoAllotType: 'Manual' },
+      ],
+    });
+    await settle(fixture);
+    const chips = () => [...el.querySelectorAll('[data-testid="co-allot"]')].map((c) => c.textContent!.trim());
+    expect(chips()).toEqual(['No eligible organisation']);
+    reallotTab(el).click();
+    await settle(fixture);
+    expect(chips()).toEqual(['Chosen by the unit', 'Round robin']);
+  });
+
   it('consultancy Completed: milestone reports and recommended technologies', async () => {
     await setup('consultancy');
     TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });

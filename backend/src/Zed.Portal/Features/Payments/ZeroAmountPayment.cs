@@ -40,8 +40,13 @@ public static class ZeroAmountPayment
     /// fee row the checkout chose) for an order id. Null when recorded; otherwise the message for the user.
     /// </summary>
     /// <param name="milestone">Handholding: the order must be for this milestone (the procedure's MerchantParam3).</param>
+    /// <param name="onOrder">
+    /// Run with the order id once the order is created and checked, before it is recorded as paid (2026-11-21: the handholding
+    /// milestone 1 answer about the Consultant Organisation is kept with the order). Its message, when not null, refuses the
+    /// payment and nothing is recorded.
+    /// </param>
     public static async Task<string?> RecordAsync(ISqlExecutor db, Module module, string zedId, string certification, Func<string, object> orderArgs,
-        string? ip, ILogger log, CancellationToken ct, int? milestone = null)
+        string? ip, ILogger log, CancellationToken ct, int? milestone = null, Func<string, Task<string?>>? onOrder = null)
     {
         var orderId = Guid.NewGuid().ToString();
 
@@ -66,6 +71,8 @@ public static class ZeroAmountPayment
                 zedId, certification, amountText, order.Text("MerchantParam3"), milestone);
             return "The payment amount could not be confirmed. Please contact zed.support@qcin.org.";
         }
+
+        if (onOrder is not null && await onOrder(orderId) is { } refused) return refused;
 
         try
         {

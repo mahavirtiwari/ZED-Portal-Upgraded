@@ -90,6 +90,54 @@
               </div>
             </section>
 
+            @if (askCo()) {
+              <!-- 2026-11-21 (the product owner's rule): milestone 1 asks who assisted the unit; the milestone then goes to that organisation. -->
+              <section class="pst-card" aria-labelledby="coTitle" data-testid="co-question">
+                <header class="pst-head"><span class="pst-ico" aria-hidden="true">◎</span><h3 id="coTitle">{{ 'Consultant Organisation' | t: 'msme.handholdingPayment.co.title' }}</h3></header>
+                <div class="pst-q">
+                  <div class="pst-qtext">
+                    <p class="pst-qlabel" id="coLabel">{{ 'Did any Consultant Organisation assist you?' | t: 'msme.handholdingPayment.co.questionLabel' }}</p>
+                    <p class="pst-help">{{ 'If yes, choose it: milestone 1 is allotted to it. If no, a Consultant Organisation is allotted to you.' | t: 'msme.handholdingPayment.co.help' }}</p>
+                  </div>
+                  <div class="seg" role="radiogroup" aria-labelledby="coLabel">
+                    <label [class.on]="assisted() === 'Yes'"><input type="radio" name="assistedByCo" value="Yes" [checked]="assisted() === 'Yes'" (change)="answerAssisted('Yes')" /><span>{{ 'Yes' | t: 'msme.payment.option.yes' }}</span></label>
+                    <label [class.on]="assisted() === 'No'"><input type="radio" name="assistedByCo" value="No" [checked]="assisted() === 'No'" (change)="answerAssisted('No')" /><span>{{ 'No' | t: 'msme.payment.option.no' }}</span></label>
+                  </div>
+                  @if (submitted() && !assisted()) { <span class="pst-err">{{ 'This is required.' | t: 'msme.payment.requiredError' }}</span> }
+                  @if (assisted() === 'Yes') {
+                    <div class="pst-field">
+                      <div class="pst-co" #coBox (focusout)="coLeft($event, coBox)">
+                        <label for="coSearch">{{ 'Consultant Organisation' | t: 'msme.handholdingPayment.co.pickLabel' }}</label>
+                        <input id="coSearch" type="text" class="form-control" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="coList"
+                               [attr.aria-expanded]="coOpen()" [value]="coQuery()" maxlength="100"
+                               [placeholder]="'Type a name or ID to search' | t: 'msme.handholdingPayment.co.searchPlaceholder'"
+                               (input)="searchCo($any($event.target).value)" (focus)="coOpen.set(true)" (keydown.escape)="coOpen.set(false)" />
+                        @if (coOpen()) {
+                          <ul id="coList" class="pst-co-list" role="listbox" [attr.aria-label]="'Consultant Organisations' | t: 'msme.handholdingPayment.co.listAria'">
+                            @if (organisationsError(); as e) {
+                              <li class="pst-co-note">{{ e }} <button type="button" class="btn btn-link btn-sm p-0" (click)="retryOrganisations()">{{ 'Try again' | t: 'msme.handholdingPayment.co.retryButton' }}</button></li>
+                            } @else if (organisations() === null) {
+                              <li class="pst-co-note">{{ 'Loading the Consultant Organisations…' | t: 'msme.handholdingPayment.co.loading' }}</li>
+                            } @else {
+                              @for (o of shownOrganisations(); track o.userId) {
+                                <li role="option" [attr.aria-selected]="coId() === o.userId">
+                                  <button type="button" (click)="pickCo(o)"><b>{{ o.name }}</b><small>{{ o.userId }}</small></button>
+                                </li>
+                              } @empty {
+                                <li class="pst-co-note">{{ organisations()!.length ? ('No Consultant Organisation matches the search.' | t: 'msme.handholdingPayment.co.noMatch') : ('No Consultant Organisation can be chosen now.' | t: 'msme.handholdingPayment.co.none') }}</li>
+                              }
+                            }
+                          </ul>
+                        }
+                        @if (chosenCo(); as c) { <p class="pst-help" data-testid="co-chosen">{{ 'Chosen: {name} ({id})' | t: 'msme.handholdingPayment.co.chosenText' : { name: c.name, id: c.userId } }}</p> }
+                        @if (submitted() && !coId()) { <span class="pst-err">{{ 'Please choose the Consultant Organisation that assisted you.' | t: 'msme.handholdingPayment.co.requiredError' }}</span> }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+
             @if (billing(); as b) {
               <section class="pst-card" aria-labelledby="billTitle">
                 <header class="pst-head">

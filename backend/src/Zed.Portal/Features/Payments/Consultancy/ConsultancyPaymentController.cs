@@ -93,6 +93,27 @@ public sealed class ConsultancyPaymentController(
             ConsultancyFees.CoversAllMilestones(fees.WithoutReward), ConsultancyFees.IsPaidAtMilestone1(fees.WithoutReward));
     }
 
+    // ----- Consultant Organisation (milestone 1) -----
+
+    /// <summary>
+    /// 2026-11-21 (the product owner's rule): the organisations a unit may name at the milestone 1 payment ("Did any Consultant
+    /// Organisation assist you?" Yes): every active one whose purchase order for the level is not used up, by name. Only while
+    /// milestone 1 is the milestone due.
+    /// </summary>
+    [HttpGet("{certification}/consultant-organisations")]
+    public async Task<ActionResult<IReadOnlyList<HandholdingCoChoice.Organisation>>> ConsultantOrganisations(string certification, CancellationToken ct)
+    {
+        if (HandholdingEligibility.Canonical(certification) is not { } level) return this.Problem400("Invalid certification.");
+        var state = HandholdingEligibility.Evaluate(await StatusRowAsync(db, ZedId, ct), level);
+        if (!state.CanPay) return this.Problem400(state.Refusal!);
+        if (state.NextMilestone != 1) return this.Problem400(NotMilestone1);
+        if (ConsultancyDatabase.Open(HttpContext.RequestServices) is not { } consultancy)
+            return Problem(title: "The Consultant Organisations could not be loaded. Please try again later.", statusCode: StatusCodes.Status502BadGateway);
+        return (await HandholdingCoChoice.ListAsync(consultancy, level, log, ct)).ToList();
+    }
+
+    internal const string NotMilestone1 = "The Consultant Organisation is asked only at the payment of milestone 1.";
+
     // ----- GSTIN and PAN -----
 
     /// <summary>Verifies the unit's GSTIN with Protean (as Msme/ValidateGstinProtean); remembered for 30 minutes for checkout.</summary>
@@ -154,7 +175,10 @@ public sealed class ConsultancyPaymentController(
     // ----- checkout -----
 
     /// <param name="Milestone">The milestone the page showed; refused when another one is due now.</param>
-    public sealed record CheckoutRequest(bool UseReward, bool GstinApplicable, string? Gstin, bool TdsDeductible, string? Tds, string? Tan, int? Milestone);
+    /// <param name="AssistedByCo">Milestone 1 (required there; ignored for milestones 2 and 3): "Did any Consultant Organisation assist you?"</param>
+    /// <param name="AssistedCoId">With Yes: the organisation's user id, one of <see cref="ConsultantOrganisations"/>.</param>
+    public sealed record CheckoutRequest(bool UseReward, bool GstinApplicable, string? Gstin, bool TdsDeductible, string? Tds, string? Tan, int? Milestone,
+        bool? AssistedByCo = null, string? AssistedCoId = null);
 
     [HttpPost("{certification}/checkout")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
@@ -186,6 +210,11 @@ public sealed class ConsultancyPaymentController(
         if (req.Milestone is { } shown && shown != state.NextMilestone)
             return this.Problem400("The milestone due has changed. Please open the payment page again.");
 
+        // 2026-11-21: milestone 1's answer about the Consultant Organisation, checked on the server (active, PO not used up).
+        var consultancy = state.NextMilestone == 1 ? ConsultancyDatabase.Open(HttpContext.RequestServices) : null;
+        var (assisted, coRefusal) = await HandholdingCoChoice.CheckAsync(consultancy, level, state.NextMilestone, req.AssistedByCo, req.AssistedCoId, log, ct);
+        if (coRefusal is not null) return this.Problem400(coRefusal);
+
         var fees = await ConsultancyFees.LoadAsync(db, ZedId, level, ct);
         if (req.UseReward && !fees.RewardAvailable) return this.Problem400("The joining reward is not available.");
         var fee = req.UseReward ? fees.WithReward : fees.WithoutReward;
@@ -207,11 +236,14 @@ public sealed class ConsultancyPaymentController(
         // row with nothing to pay (a 100% subsidy) goes to no gateway either, recorded as a paid order of Rs 0.
         if (due <= 0)
         {
-            var refused = ConsultancyFees.IsStateRow(fee) || ConsultancyFees.IsPaidAtMilestone1(fee)
+            var withoutOrder = ConsultancyFees.IsStateRow(fee) || ConsultancyFees.IsPaidAtMilestone1(fee);
+            var refused = withoutOrder
                 ? await ConsultancyZeroPayment.RecordAsync(db, choices, state.NextMilestone, log, ct)
                 : await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Handholding, ZedId, level, choices.Args,
-                    HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, state.NextMilestone);
+                    HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, state.NextMilestone,
+                    orderId => HandholdingCoChoice.KeepOnOrderAsync(consultancy, assisted, ZedId, orderId, log, ct));
             if (refused is not null) return this.Problem400(refused);
+            if (withoutOrder) await HandholdingCoChoice.KeepOnPaymentAsync(consultancy, assisted, ZedId, level, log, ct);
             await ConsultancyPaymentCompletion.Create(HttpContext.RequestServices).CompleteAsync(ZedId, level, gateway: false, ct);
             return new MsmePaymentController.CheckoutResponse("paid");
         }
@@ -234,6 +266,7 @@ public sealed class ConsultancyPaymentController(
                 ZedId, level, amountText, row.Text("MerchantParam3"), expected, state.NextMilestone);
             return this.Problem400("The payment amount could not be confirmed. Please contact zed.support@qcin.org.");
         }
+        if (await HandholdingCoChoice.KeepOnOrderAsync(consultancy, assisted, ZedId, orderId, log, ct) is { } notSaved) return this.Problem400(notSaved);
 
         var o = ccavenue.Value;
         var responseUrl = portal.Value.PublicBaseUrl.TrimEnd('/') + ResponsePath;

@@ -47,7 +47,9 @@ public sealed partial class DesktopAssessmentController
 
     /// <summary>The last allotment of the unit's level to this agency (manual, auto or the applicant's choice).</summary>
     internal const string AllottedOnSql =
-        "SELECT TOP 1 CreatedDate FROM AgencyAllotmentHistory WHERE AgencyId = @AgencyId AND ZedId = @ZedId AND CertificationType = @Certification ORDER BY CreatedDate DESC";
+        "SELECT TOP 1 CreatedDate FROM AgencyAllotmentHistory WHERE AgencyId = @AgencyId AND ZedId = @ZedId AND CertificationType = @Certification " +
+        // 2026-11-21: not a handholding milestone 1 allotment (the same table keeps the Consultant Organisations' round robin).
+        "AND ISNULL(AllotType, '') NOT LIKE 'Handholding%' ORDER BY CreatedDate DESC";
 
     internal const string PanSql = "SELECT TOP 1 PanNo FROM MsmeBasicInformation WHERE ZedId = @ZedId";
 

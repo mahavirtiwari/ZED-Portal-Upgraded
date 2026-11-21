@@ -8,7 +8,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { TextPipe, t } from '../../content/page-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { handholdingLevel, handholdingLevelName } from '../handholding/handholding.api';
-import { ConsultancyOptions, ConsultancyPaymentApi, milestoneTitle } from './consultancy-payment.api';
+import { ConsultancyOptions, ConsultancyPaymentApi, ConsultantOrganisation, milestoneTitle } from './consultancy-payment.api';
 import { FeeRow, postToGateway } from './payment.api';
 import { PageHead } from '../shared/page-head';
 import { StepTracker, TrackerStep } from '../shared/step-tracker';
@@ -30,6 +30,9 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  * 2026-11-17 (the user's apply-and-pay designs, as the certification apply flow): page head with "Step n of 4", the four-step
  * tracker, the disclaimer card with an explicit consent tick and "You are paying for" (the milestone) on the right, then the fee
  * and tax step (Yes / No toggles, billing details, the fee summary card beside the form).
+ * 2026-11-21 (the product owner's rule): milestone 1 also asks "Did any Consultant Organisation assist you?" (required); Yes opens a
+ * searchable list of the organisations the unit may name (active, purchase order not used up) and one must be chosen. The paid
+ * milestone then goes straight to that organisation, else by round robin (the server).
  */
 @Component({
   selector: 'zed-consultancy-payment',
@@ -112,6 +115,26 @@ export class ConsultancyPaymentPage implements OnInit {
   protected tan = '';
   protected readonly useReward = signal(false);
   protected correctedPan = '';
+
+  /** Milestone 1: "Did any Consultant Organisation assist you?" (null until answered). */
+  protected readonly assisted = signal<'Yes' | 'No' | null>(null);
+  /** The organisations offered with Yes (loaded once, when Yes is first chosen). */
+  protected readonly organisations = signal<ConsultantOrganisation[] | null>(null);
+  protected readonly organisationsError = signal<string | null>(null);
+  protected readonly coId = signal<string | null>(null);
+  protected readonly coQuery = signal('');
+  protected readonly coOpen = signal(false);
+  /** The question is asked for milestone 1 only. */
+  protected readonly askCo = computed(() => this.options()?.milestone === 1);
+  protected readonly chosenCo = computed(() => this.organisations()?.find((o) => o.userId === this.coId()) ?? null);
+  /** The list filtered by name or ID (all of it while the box shows the chosen one). */
+  protected readonly shownOrganisations = computed(() => {
+    const all = this.organisations() ?? [];
+    const q = this.coQuery().trim().toLowerCase();
+    const chosen = this.chosenCo();
+    if (!q || (chosen && q === chosen.name.toLowerCase())) return all;
+    return all.filter((o) => o.name.toLowerCase().includes(q) || o.userId.toLowerCase().includes(q));
+  });
   private gstinPan = '';
 
   protected readonly fee = computed<FeeRow>(() => {
@@ -161,8 +184,57 @@ export class ConsultancyPaymentPage implements OnInit {
     this.tds = null;
     this.tan = '';
     this.useReward.set(false);
+    this.assisted.set(null);
+    this.coId.set(null);
+    this.coQuery.set('');
+    this.coOpen.set(false);
     this.submitted.set(false);
     this.goStep('payment');
+  }
+
+  /** The answer to the milestone 1 question; Yes loads the organisations the first time. */
+  protected async answerAssisted(answer: 'Yes' | 'No'): Promise<void> {
+    this.assisted.set(answer);
+    if (answer === 'No') {
+      this.coId.set(null);
+      this.coQuery.set('');
+      this.coOpen.set(false);
+      return;
+    }
+    if (this.organisations() !== null) return;
+    this.organisationsError.set(null);
+    try {
+      this.organisations.set(await firstValueFrom(this.api.consultantOrganisations(this.level()!)));
+    } catch (err) {
+      this.organisationsError.set(apiErrorMessage(err));
+    }
+  }
+
+  protected retryOrganisations(): void {
+    this.organisations.set(null);
+    void this.answerAssisted('Yes');
+  }
+
+  protected searchCo(text: string): void {
+    this.coQuery.set(text);
+    this.coOpen.set(true);
+    // Typing over the chosen name starts a new choice.
+    if (this.chosenCo() && text.trim().toLowerCase() !== this.chosenCo()!.name.toLowerCase()) this.coId.set(null);
+  }
+
+  protected pickCo(o: ConsultantOrganisation): void {
+    this.coId.set(o.userId);
+    this.coQuery.set(o.name);
+    this.coOpen.set(false);
+  }
+
+  /** The list closes when the focus leaves the search box and the list. */
+  protected coLeft(event: FocusEvent, box: HTMLElement): void {
+    if (!box.contains(event.relatedTarget as Node | null)) this.coOpen.set(false);
+  }
+
+  protected coInvalid(): boolean {
+    return this.askCo() && (!this.assisted() || (this.assisted() === 'Yes' && !this.coId()));
   }
 
   protected n(field: string): number {
@@ -199,6 +271,7 @@ export class ConsultancyPaymentPage implements OnInit {
     return (
       !!this.gstinApplicable &&
       !!this.tdsDeductible &&
+      !this.coInvalid() &&
       !this.gstinInvalid() &&
       (this.tdsDeductible === 'No' || (!!this.tds && !this.tanInvalid()))
     );
@@ -252,6 +325,8 @@ export class ConsultancyPaymentPage implements OnInit {
         tds: this.tdsDeductible === 'Yes' ? this.tds : null,
         tan: this.tdsDeductible === 'Yes' ? this.tan.trim().toUpperCase() : null,
         milestone: this.milestone(),
+        // Milestone 1 only; milestones 2 and 3 send what they always sent.
+        ...(this.askCo() ? { assistedByCo: this.assisted() === 'Yes', assistedCoId: this.assisted() === 'Yes' ? this.coId() : null } : {}),
       }),
     );
     if (!res) return;

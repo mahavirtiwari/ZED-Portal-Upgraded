@@ -26,6 +26,12 @@ public sealed class PaymentsViewModel
     public string? UtrNumber { get; set; }
     public string? Amount { get; set; }
     public string? ZedId { get; set; }
+    /// <summary>
+    /// 2026-11-21, handholding milestone 1 only (ConsultancyPay/GetToken and SubmitZeroPaymentDetails): "Did any Consultant
+    /// Organisation assist you?" "Yes"/"No", and with Yes the organisation's user id (ConsultancyPay/GetConsultantOrganisations).
+    /// </summary>
+    public string? AssistedByCo { get; set; }
+    public string? AssistedCoId { get; set; }
 }
 
 /// <summary>DataModels.RequestHashResponse: what Pay/GetToken returns (MVC Json(), so application/json).</summary>

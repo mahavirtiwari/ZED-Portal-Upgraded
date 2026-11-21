@@ -31,6 +31,7 @@ public sealed class ConsultancyPaymentCompletion(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     EmailAddresses addresses,
+    IServiceProvider services,
     ILogger<ConsultancyPaymentCompletion> log)
 {
     public const string ModuleName = "CONSULTANCY";
@@ -46,6 +47,9 @@ public sealed class ConsultancyPaymentCompletion(
     {
         // One Admin (V4): the parameters not used in consultancy come out of the milestone's copy first.
         await ConsultancyParameters.ApplyAsync(db, zedId, certification, log, ct);
+        // 2026-11-21 (the product owner's rule): milestone 1 goes at once to the organisation the unit named, else by round robin
+        // (milestones 2 and 3 are left to the procedures, which follow the previous milestone's organisation). Never throws.
+        await HandholdingAutoAllotment.Create(services).RunAsync(zedId, certification, ct);
         string? milestone = null;
         try
         {

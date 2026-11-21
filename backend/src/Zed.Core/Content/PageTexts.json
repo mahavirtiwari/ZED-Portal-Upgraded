@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9456,
+  "count": 9471,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -11749,6 +11749,153 @@
       "key": "msme.handholdingPayment.backLink",
       "standard": "← Back to Handholding support",
       "kind": "button",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.chosenText",
+      "standard": "Chosen: {name} ({id})",
+      "kind": "note",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [
+        "name",
+        "id"
+      ],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.help",
+      "standard": "If yes, choose it: milestone 1 is allotted to it. If no, a Consultant Organisation is allotted to you.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.listAria",
+      "standard": "Consultant Organisations",
+      "kind": "tooltip",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.loading",
+      "standard": "Loading the Consultant Organisations…",
+      "kind": "note",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.noMatch",
+      "standard": "No Consultant Organisation matches the search.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.none",
+      "standard": "No Consultant Organisation can be chosen now.",
+      "kind": "note",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.pickLabel",
+      "standard": "Consultant Organisation",
+      "kind": "label",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.questionLabel",
+      "standard": "Did any Consultant Organisation assist you?",
+      "kind": "label",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.requiredError",
+      "standard": "Please choose the Consultant Organisation that assisted you.",
+      "kind": "message",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.retryButton",
+      "standard": "Try again",
+      "kind": "button",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.searchPlaceholder",
+      "standard": "Type a name or ID to search",
+      "kind": "placeholder",
+      "portal": "msme",
+      "page": "handholdingPayment",
+      "pageName": "Handholding payment",
+      "placeholders": [],
+      "files": [
+        "msme/payment/consultancy-payment.html"
+      ]
+    },
+    {
+      "key": "msme.handholdingPayment.co.title",
+      "standard": "Consultant Organisation",
+      "kind": "heading",
       "portal": "msme",
       "page": "handholdingPayment",
       "pageName": "Handholding payment",
@@ -27437,6 +27584,42 @@
       "placeholders": [
         "date"
       ],
+      "files": [
+        "staff/assessment/allot.ts"
+      ]
+    },
+    {
+      "key": "staff.allot.row.chip.coChosen",
+      "standard": "Chosen by the unit",
+      "kind": "label",
+      "portal": "staff",
+      "page": "allot",
+      "pageName": "Allot",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/allot.ts"
+      ]
+    },
+    {
+      "key": "staff.allot.row.chip.coNoEligible",
+      "standard": "No eligible organisation",
+      "kind": "label",
+      "portal": "staff",
+      "page": "allot",
+      "pageName": "Allot",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/allot.ts"
+      ]
+    },
+    {
+      "key": "staff.allot.row.chip.coRoundRobin",
+      "standard": "Round robin",
+      "kind": "label",
+      "portal": "staff",
+      "page": "allot",
+      "pageName": "Allot",
+      "placeholders": [],
       "files": [
         "staff/assessment/allot.ts"
       ]

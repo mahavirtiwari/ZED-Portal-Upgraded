@@ -49,6 +49,8 @@ public sealed class TestHost : WebApplicationFactory<Program>
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<ISqlExecutor>(); s.AddSingleton<ISqlExecutor>(Sql);
+            // 2026-11-21: ZED_CONSULTANT of the handholding milestone 1 allotment (written from main after the payment) is the same fake.
+            s.AddKeyedSingleton<ISqlExecutor>(Zed.Portal.Features.Payments.Consultancy.ConsultancyDatabase.WriteKey, Sql);
             // As in production, the Admin's Email Templates apply before the message reaches the (fake) SMTP sender.
             s.RemoveAll<IEmailSender>(); s.AddSingleton<IEmailSender>(sp => new TemplatedEmailSender(Email, sp.GetRequiredService<ILogger<TemplatedEmailSender>>()));
             s.RemoveAll<IUdyamClient>(); s.AddSingleton<IUdyamClient>(Udyam);

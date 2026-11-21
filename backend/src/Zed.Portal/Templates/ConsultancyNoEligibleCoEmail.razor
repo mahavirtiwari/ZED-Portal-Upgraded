@@ -1,0 +1,46 @@
+@* 2026-11-21 (the product owner's milestone 1 rule): to the ZED team inbox when a unit has paid handholding milestone 1, did not
+   name a Consultant Organisation (or its choice can no longer be allotted), and no organisation is eligible for the round robin
+   (active, site verification, the unit's state, NIC sector and kind, purchase order not used up). The case waits on Allot
+   Consultancy. Editable under Admin → Email Templates → Handholding (consultancy). *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">An MSME Unit has paid for Handholding Support (Milestone @Milestone), but no Consultant Organisation could be allotted to it automatically. The details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">MSME ZED ID</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@ZedId</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Unit Name</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@UnitName</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Level</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@Level</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Reason</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@Reason</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0;">Please allot a Consultant Organisation from Allot Consultancy.</p>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string Level { get; set; } = "";
+    [Parameter] public string Milestone { get; set; } = "1";
+    [Parameter] public string Reason { get; set; } = "";
+    /// <summary>The Consultancy portal's address (its sign-in for the Master Admin).</summary>
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private string LoginUrl => PublicBaseUrl.TrimEnd('/') + "/login";
+}

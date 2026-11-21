@@ -96,6 +96,9 @@ public sealed partial class EmailTemplatesController(
         ["ConsultancyTuRejectedEmail"] = [PortalSystem.Consultancy],
         ["ConsultancyPaymentConfirmationEmail"] = MainOnly,
         ["ConsultancyAllocationEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
+        // 2026-11-21: handholding milestone 1 with no eligible organisation (sent by main after the payment; by Consultancy after the
+        // staff "update payment status").
+        ["ConsultancyNoEligibleCoEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
         ["SurveillanceSiteAllotmentUnitEmail"] = [PortalSystem.Surveillance],
         ["SurveillanceSiteAllotmentAssessorEmail"] = [PortalSystem.Surveillance],
         ["StaffPasswordResetMainPortalEmail"] = [PortalSystem.Surveillance],
@@ -148,6 +151,7 @@ public sealed partial class EmailTemplatesController(
     private static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         ["StaffBronzeAssessmentEmail"] = "Agency level allocation (a level enabled or disabled)",
+        ["ConsultancyNoEligibleCoEmail"] = "Handholding milestone 1: no eligible Consultant Organisation (to the ZED team)",
         ["MsmeSchemeSubmittedEmail"] = "Scheme: application submitted (to the unit)",
         ["MsmeSchemeCorrectionEmail"] = "Scheme: correction needed (to the unit)",
         ["MsmeSchemeRejectedEmail"] = "Scheme: application rejected (to the unit)",

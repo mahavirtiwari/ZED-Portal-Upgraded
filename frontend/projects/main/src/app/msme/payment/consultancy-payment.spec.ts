@@ -248,4 +248,108 @@ describe('ConsultancyPaymentPage', () => {
     await settled();
     expect(el.textContent).toContain('The milestone due has changed.');
   });
+  describe('milestone 1: "Did any Consultant Organisation assist you?"', () => {
+    const ORGS = [
+      { userId: 'CO_A', name: 'Alpha Consultants' },
+      { userId: 'CO_C', name: 'Gamma Partners' },
+    ];
+    const coSearch = () => el.querySelector('#coSearch') as HTMLInputElement;
+    const shown = () => [...el.querySelectorAll('#coList [role="option"] b')].map((b) => b.textContent!.trim());
+
+    async function toMilestone1() {
+      await toPayment(options({ milestone: 1 }));
+      choose('unitGstin', 'No');
+      choose('tdsDeductible', 'No');
+      await settled();
+    }
+
+    it('is not asked for milestones 2 and 3', async () => {
+      await toPayment();
+      expect(el.querySelector('[data-testid="co-question"]')).toBeNull();
+    });
+
+    it('is required: nothing is paid until it is answered', async () => {
+      await toMilestone1();
+      expect(el.querySelector('[data-testid="co-question"]')!.textContent).toContain('Did any Consultant Organisation assist you?');
+      payButton().click();
+      await settled();
+      expect(el.textContent).toContain('Please enter required data.');
+      expect(el.querySelector('[data-testid="co-question"]')!.textContent).toContain('This is required.');
+      http.expectNone(`${API}/Silver/checkout`);
+    });
+
+    it('with Yes loads the organisations once, filters them by name or ID and needs one chosen', async () => {
+      await toMilestone1();
+      choose('assistedByCo', 'Yes');
+      await settled();
+      http.expectOne(`${API}/Silver/consultant-organisations`).flush(ORGS);
+      await settled();
+
+      coSearch().dispatchEvent(new Event('focus'));
+      await settled();
+      expect(shown()).toEqual(['Alpha Consultants', 'Gamma Partners']);
+      type('#coSearch', 'gamma');
+      await settled();
+      expect(shown()).toEqual(['Gamma Partners']);
+      type('#coSearch', 'co_a');
+      await settled();
+      expect(shown()).toEqual(['Alpha Consultants']);
+      type('#coSearch', 'zeta');
+      await settled();
+      expect(el.querySelector('#coList')!.textContent).toContain('No Consultant Organisation matches the search.');
+
+      // Yes without a choice is refused here.
+      payButton().click();
+      await settled();
+      expect(el.textContent).toContain('Please choose the Consultant Organisation that assisted you.');
+      http.expectNone(`${API}/Silver/checkout`);
+
+      type('#coSearch', 'gam');
+      await settled();
+      (el.querySelector('#coList [role="option"] button') as HTMLButtonElement).click();
+      await settled();
+      expect(el.querySelector('#coList')).toBeNull();
+      expect(coSearch().value).toBe('Gamma Partners');
+      expect(el.querySelector('[data-testid="co-chosen"]')!.textContent).toContain('Chosen: Gamma Partners (CO_C)');
+
+      // No and Yes again: the list is not asked for again.
+      choose('assistedByCo', 'No');
+      await settled();
+      choose('assistedByCo', 'Yes');
+      await settled();
+      http.expectNone(`${API}/Silver/consultant-organisations`);
+      coSearch().dispatchEvent(new Event('focus'));
+      type('#coSearch', 'alpha');
+      await settled();
+      (el.querySelector('#coList [role="option"] button') as HTMLButtonElement).click();
+      await settled();
+
+      const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => undefined);
+      payButton().click();
+      await settled();
+      const req = http.expectOne(`${API}/Silver/checkout`);
+      expect(req.request.body).toEqual({
+        useReward: false, gstinApplicable: false, gstin: null, tdsDeductible: false, tds: null, tan: null, milestone: 1,
+        assistedByCo: true, assistedCoId: 'CO_A',
+      });
+      req.flush({ status: 'gateway', gatewayUrl: 'https://test.ccavenue.com/transaction', encRequest: 'abc', accessCode: 'AV' });
+      await settled();
+      document.querySelector('form[action="https://test.ccavenue.com/transaction"]')?.remove();
+      submit.mockRestore();
+    });
+
+    it('with No sends no organisation', async () => {
+      await toMilestone1();
+      choose('assistedByCo', 'No');
+      await settled();
+      http.expectNone(`${API}/Silver/consultant-organisations`);
+      payButton().click();
+      await settled();
+      const req = http.expectOne(`${API}/Silver/checkout`);
+      expect(req.request.body.assistedByCo).toBe(false);
+      expect(req.request.body.assistedCoId).toBeNull();
+      req.flush({ title: 'stop here' }, { status: 400, statusText: 'Bad Request' });
+      await settled();
+    });
+  });
 });

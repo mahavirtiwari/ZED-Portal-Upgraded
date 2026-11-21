@@ -39,6 +39,13 @@ public sealed class DesktopAssessmentEmails(
 
     public static DesktopAssessmentEmails Create(IServiceProvider sp) => ActivatorUtilities.CreateInstance<DesktopAssessmentEmails>(sp);
 
+    /// <summary>
+    /// The mails of another system's allotment (2026-11-21: the handholding milestone 1 allotment, run on main after the payment):
+    /// that system's database, host and portal address instead of this host's.
+    /// </summary>
+    public static DesktopAssessmentEmails Create(IServiceProvider sp, ISqlExecutor db, PortalHost host, IOptions<PortalOptions> portal) =>
+        ActivatorUtilities.CreateInstance<DesktopAssessmentEmails>(sp, db, host, portal);
+
     public async Task SendAsync(Kind kind, string zedId, string certification, string? reason, CancellationToken ct)
     {
         try

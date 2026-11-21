@@ -665,6 +665,35 @@ public sealed class ConsultancyStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task A_milestone_1_payment_fixed_by_the_master_admin_is_allotted_to_the_organisation_the_unit_named()
+    {
+        // 2026-11-21 (the product owner's rule): the staff "update payment status" is a recorded payment like the gateway's.
+        _host.Sql.Procs["SP_DASHBOARD_PAYMENT_FAILED_TRANSACTIONS"] = _ => FakeSql.Sets([new
+        {
+            ZedId = "ZEDMSME1", TransactionId = "T1", Certification = "Silver", AllowManualUpdate = 1, IsCouponUsed = 0, MileStoneNumber = 1,
+        }]);
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Consultancy.ConsultancyGateway.MilestoneQuery] = _ => [new { OrderMilestone = (int?)1, DueMilestone = 1, Payments = 0 }];
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Consultancy.HandholdingAutoAllotment.MilestoneSql] = _ =>
+            [new { NcCount = (int?)1, CertificationBodyUserId = (string?)null, CoAllotType = (string?)null }];
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Consultancy.HandholdingAutoAllotment.AnswerSql] = _ => [new { AssistedByCo = (bool?)true, AssistedCoId = "CO1" }];
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Consultancy.HandholdingCoChoice.ActiveSql] = _ => [new { UserId = "CO1", UserName = "Consult One" }];
+        var master = await ConsultancyLogin.SignInAsync(_host, "MASTER1");
+
+        var r = await master.PostAsJsonAsync("/api/staff/dashboard/failed-transactions/update-payment", new
+        {
+            zedId = "ZEDMSME1", transactionId = "T1", certification = "Silver", pgType = "Net Banking", trackingId = "123456789012",
+            bankRefNumber = "B1", paymentReceivedDate = DateTime.UtcNow.ToString("yyyy-MM-dd"), paymentRemarks = "Bank confirmed",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var allot = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_ASSESSMENT_ALLOT_TO_AGENCY");
+        Assert.Equal("ZEDMSME1", FakeSql.Arg(allot.Args, "ZedId"));
+        Assert.Equal("CO1", FakeSql.Arg(allot.Args, "CertificationBodyUserId"));
+        var mark = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.HandholdingAutoAllotment.MarkSql);
+        Assert.Equal("Chosen", FakeSql.Arg(mark.Args, "Type"));
+    }
+
+    [Fact]
     public async Task Reports_are_the_consultancy_catalogue_and_depend_on_the_sub_role()
     {
         var super = await ConsultancyLogin.SignInAsync(_host, "SUPER1");

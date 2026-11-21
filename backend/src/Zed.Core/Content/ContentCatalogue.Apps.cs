@@ -177,6 +177,9 @@ public static partial class ContentCatalogue
         // 2026-11-08: the applicant's facilitator question on Documents Upload (Yes opens Facilitator Details).
         App("app.msme.evidences.facilitator.question", "Evidences: ZED Facilitator question", MsmeApp, Main,
             "Were you assisted by a ZED Facilitator?"),
+        // 2026-11-21 (the product owner's rule): the handholding milestone 1 payment asks who assisted the unit (Yes = pick the organisation).
+        App("app.msme.handholding.payment.coQuestion", "Handholding payment: Consultant Organisation question (milestone 1)", MsmeApp, Main,
+            "Did any Consultant Organisation assist you?"),
         App("app.msme.fa.eligibleAmountNote", "Financial Assistance: eligible amount note", MsmeApp, Main,
             "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
         App("app.msme.evidences.finalSubmit.confirm", "Evidences: final submit confirmation", MsmeApp, MainAndSurveillance,

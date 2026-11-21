@@ -58,4 +58,29 @@ internal static class AllotmentAgencies
             .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category))
             .ToList();
     }
+
+    /// <summary>
+    /// The allotment itself, once the agency is known to be allowed: SP_ASSESSMENT_ALLOT_TO_AGENCY (its MsmeHistory line), on main
+    /// the desktop skip of Remote only / Onsite only levels (migration 0074), and the allotment mail. Shared by the Master Admin's
+    /// Allot (<see cref="AssessmentAllotmentController"/>) and the handholding milestone 1 allotment after the payment
+    /// (Payments.Consultancy.HandholdingAutoAllotment, 2026-11-21), so both leave the same statuses, history and mail. A failure of
+    /// the procedure throws (nothing was allotted); a later step that fails is logged, the unit stays allotted.
+    /// </summary>
+    internal static async Task AllotAsync(ISqlExecutor db, PortalHost host, DesktopAssessmentEmails emails, string zedId, string level, string agencyUserId,
+        ILogger log, CancellationToken ct)
+    {
+        await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
+            new { ZedId = zedId, Certification = level, CertificationBodyUserId = agencyUserId }, ct);
+        try
+        {
+            // 2026-11-14: Remote only / Onsite only levels go straight to the agency's SA allotment (migration 0074).
+            if (host.System == PortalSystem.Main) await DesktopSkip.TryAsync(db, zedId, level, log, ct);
+            await emails.SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, zedId, level, null, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The unit is allotted: a later step that fails is logged, not reported as a refusal.
+            log.LogError(ex, "After allotting {ZedId} {Certification}: the desktop skip or the mail failed", zedId, level);
+        }
+    }
 }

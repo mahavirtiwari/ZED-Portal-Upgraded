@@ -71,6 +71,7 @@ public sealed partial class ConsultancyMobilePaymentController(
         var orderId = Guid.NewGuid().ToString();
         var row = (await db.QueryProcMultipleAsync("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS", p.Choices.Args(orderId), ct))[0].FirstOrDefault();
         if (row is null) return Refuse("Payment is already done for this milestone.");
+        if (await HandholdingCoChoice.KeepOnOrderAsync(p.Consultancy, p.Assisted, p.Choices.ZedId, orderId, log, ct) is { } notSaved) return Refuse(notSaved);
 
         var amountText = row.Text("AmountToBePaid");
         if (!decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount) || amount != expected ||
@@ -170,13 +171,38 @@ public sealed partial class ConsultancyMobilePaymentController(
             return Refuse("Payment is due for this milestone. Please pay online.");
         }
 
-        var refusal = ConsultancyFees.IsStateRow(p.Choices.Fee) || ConsultancyFees.IsPaidAtMilestone1(p.Choices.Fee)
+        var withoutOrder = ConsultancyFees.IsStateRow(p.Choices.Fee) || ConsultancyFees.IsPaidAtMilestone1(p.Choices.Fee);
+        var refusal = withoutOrder
             ? await ConsultancyZeroPayment.RecordAsync(db, p.Choices, p.Milestone, log, ct)
             : await ZeroAmountPayment.RecordAsync(db, ZeroAmountPayment.Handholding, p.Choices.ZedId, p.Choices.Level, p.Choices.Args,
-                HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, p.Milestone);
+                HttpContext.Connection.RemoteIpAddress?.ToString(), log, ct, p.Milestone,
+                orderId => HandholdingCoChoice.KeepOnOrderAsync(p.Consultancy, p.Assisted, p.Choices.ZedId, orderId, log, ct));
         if (refusal is not null) return Refuse(refusal);
+        if (withoutOrder) await HandholdingCoChoice.KeepOnPaymentAsync(p.Consultancy, p.Assisted, p.Choices.ZedId, p.Choices.Level, log, ct);
         await ConsultancyPaymentCompletion.Create(HttpContext.RequestServices).CompleteAsync(p.Choices.ZedId, p.Choices.Level, gateway: false, ct);
         return LegacyContent(Serialize(new ServiceResponse { status = "1" }));
+    }
+
+    // ----- Consultant Organisation (milestone 1) -----
+
+    /// <summary>
+    /// 2026-11-21 (the product owner's rule), new for the ZED MSME app: the organisations the unit may name at the milestone 1
+    /// payment ("Did any Consultant Organisation assist you?" Yes), as the web page's list: every active one whose purchase order
+    /// for the level is not used up, by name. Only while milestone 1 is the milestone due.
+    /// </summary>
+    [HttpPost("/ConsultancyPay/GetConsultantOrganisations")]
+    [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> GetConsultantOrganisations(string? certification, string? zedId, CancellationToken ct)
+    {
+        zedId = zedId?.Trim();
+        if (string.IsNullOrEmpty(zedId) || zedId.Length > 50 || HandholdingEligibility.Canonical(certification) is not { } level) return Refuse(InvalidDetails);
+        var state = HandholdingEligibility.Evaluate(await ConsultancyPaymentController.StatusRowAsync(db, zedId, ct), level);
+        if (!state.CanPay) return Refuse(state.Refusal!);
+        if (state.NextMilestone != 1) return Refuse(ConsultancyPaymentController.NotMilestone1);
+        if (ConsultancyDatabase.Open(HttpContext.RequestServices) is not { } consultancy) return Refuse("The Consultant Organisations could not be loaded. Please try again later.");
+        var organisations = (await HandholdingCoChoice.ListAsync(consultancy, level, log, ct)).Select(o => new { userId = o.UserId, userName = o.Name }).ToList();
+        return LegacyJson(new { status = "1", errorMessage = (string?)null, organisations });
     }
 
     // ----- fee list -----
@@ -250,11 +276,18 @@ public sealed partial class ConsultancyMobilePaymentController(
         if (gstin is not null && !string.Equals(fees.UdyamPan, Certifications.PanOf(gstin), StringComparison.OrdinalIgnoreCase))
             return (null, "PAN registered in your Udyam portal is not matching with given GSTIN Number.");
 
+        // 2026-11-21: milestone 1's answer about the Consultant Organisation, checked as the web checkout's (active, PO not used up).
+        var consultancy = state.NextMilestone == 1 ? ConsultancyDatabase.Open(HttpContext.RequestServices) : null;
+        var assistedByCo = IsYes(model.AssistedByCo) ? true : IsNo(model.AssistedByCo) ? false : (bool?)null;
+        var (assisted, coRefusal) = await HandholdingCoChoice.CheckAsync(consultancy, level, state.NextMilestone, assistedByCo, model.AssistedCoId, log, ct);
+        if (coRefusal is not null) return (null, coRefusal);
+
         // Last, as it asks Protean: the GSTIN must be verified, as in the web checkout's GSTIN step.
         if (gstin is not null && await AppGstin.VerifyAsync(gstinVerifier, cache, zedId, level, gstin, log, ct) is { } gstinRefusal)
             return (null, gstinRefusal);
 
-        return (new Prepared(new ConsultancyChoices(zedId, level, fee, useReward, gstinApplicable, gstin, tdsDeductible, tds, tan), state.NextMilestone), null);
+        return (new Prepared(new ConsultancyChoices(zedId, level, fee, useReward, gstinApplicable, gstin, tdsDeductible, tds, tan), state.NextMilestone,
+            consultancy, assisted), null);
     }
 
     /// <summary>UnitGstin "Yes"/"No" with the number in Gst (web page), or the number in UnitGstin with Gst "Yes"/"No".</summary>
@@ -284,7 +317,9 @@ public sealed partial class ConsultancyMobilePaymentController(
     [GeneratedRegex("^[A-Za-z0-9-]{1,50}$")]
     private static partial Regex OrderIdPattern();
 
-    private sealed record Prepared(ConsultancyChoices Choices, int Milestone);
+    /// <param name="Consultancy">ZED_CONSULTANT (milestone 1 only), where the answer is kept.</param>
+    /// <param name="Assisted">Milestone 1's answer about the Consultant Organisation (null for milestones 2 and 3).</param>
+    private sealed record Prepared(ConsultancyChoices Choices, int Milestone, ISqlExecutor? Consultancy, HandholdingCoChoice.Answer? Assisted);
 
     private sealed record OrderState(string TransactionId, string? PaymentStatus);
 }

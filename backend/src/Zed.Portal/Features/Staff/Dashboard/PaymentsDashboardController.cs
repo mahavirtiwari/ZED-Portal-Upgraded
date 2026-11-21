@@ -250,7 +250,12 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         log.LogWarning("{UserId} manually marked payment {TransactionId} of {ZedId}/{Certification} as successful",
             UserId, transactionId, zedId, cert);
         if (host.System == PortalSystem.Main) await Payments.CertificationPaid.RunAsync(db, row.Text("ZedId"), cert, log, ct);
-        if (host.System == PortalSystem.Consultancy) await Payments.Consultancy.ConsultancyParameters.ApplyAsync(db, row.Text("ZedId"), cert, log, ct);
+        if (host.System == PortalSystem.Consultancy)
+        {
+            await Payments.Consultancy.ConsultancyParameters.ApplyAsync(db, row.Text("ZedId"), cert, log, ct);
+            // 2026-11-21: a milestone 1 recorded here is allotted as one paid online (the unit's organisation, else round robin).
+            await Payments.Consultancy.HandholdingAutoAllotment.Create(HttpContext.RequestServices).RunAsync(row.Text("ZedId"), cert, ct);
+        }
         // V4 levels (ZED-X): the surveillance paid steps the legacy procedures do not do (as SurveillancePaymentCompletion).
         if (host.System == PortalSystem.Surveillance) await Payments.LevelSurveillance.PaidAsync(db, row.Text("ZedId"), cert, log, ct);
 

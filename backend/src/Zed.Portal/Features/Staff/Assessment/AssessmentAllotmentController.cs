@@ -64,7 +64,47 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         var rows = AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, listed, ct), [.. AllotmentLists.ListFields, .. extra, .. place]);
         await AddPaidOnAsync(rows, ct);
         if (host.System != PortalSystem.Consultancy) await AddRemarksAsync(rows, ct);
+        else await AddCoAllotTypeAsync(rows, ct);
         return new ListResponse(rows);
+    }
+
+    /// <summary>
+    /// 2026-11-21 (the product owner's milestone 1 rule): how each milestone row got its Consultant Organisation, or why it waits:
+    /// MsmeCertifications.CoAllotType (migration 0111) of the row's milestone: Chosen (by the unit at payment), RoundRobin,
+    /// NoEligible (no organisation could be allotted), Manual (the Master Admin's Allot).
+    /// </summary>
+    internal const string CoAllotTypeSql =
+        "SELECT ZedId, Certification, CAST(NcCount AS varchar(10)) AS Milestone, CoAllotType FROM dbo.MsmeCertifications " +
+        "WHERE ZedId IN @ZedIds AND CoAllotType IS NOT NULL AND IdDisabled IS NULL;";
+
+    public sealed class CoAllotRow
+    {
+        public string? ZedId { get; init; }
+        public string? Certification { get; init; }
+        public string? Milestone { get; init; }
+        public string? CoAllotType { get; init; }
+    }
+
+    /// <summary>CoAllotType on the rows (null when none, or before migration 0111).</summary>
+    private async Task AddCoAllotTypeAsync(List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        foreach (var r in rows) r["CoAllotType"] = null;
+        var ids = rows.Select(r => r.Text("ZedId").Trim()).Where(AssessmentInput.IsId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (ids.Count == 0) return;
+        var types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            foreach (var chunk in ids.Chunk(1000))
+                foreach (var m in await db.QuerySqlAsync<CoAllotRow>(CoAllotTypeSql, new { ZedIds = chunk }, ct))
+                    if (!string.IsNullOrWhiteSpace(m.CoAllotType)) types[PaidKey(m.ZedId, m.Certification, m.Milestone)] = m.CoAllotType.Trim();
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "How the milestones were allotted could not be read (is migration 0111 applied?)");
+            return;
+        }
+        foreach (var r in rows)
+            if (types.TryGetValue(PaidKey(r.Text("ZedId"), r.Text("Certification"), r.Text("NcCount")), out var t)) r["CoAllotType"] = t;
     }
 
     /// <summary>2026-11-19: the agency's remarks with its rejection reason (MsmeCertifications.RejectionRemarks, migration 0103).</summary>
@@ -236,22 +276,28 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         // 2026-11-18 (expenditure monitoring): no allotment beyond the agency's purchase order for the level.
         if (agency.PoStopped) return agency.PoMessage;
 
-        await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
-            new { ZedId = zedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
+        await AllotmentAgencies.AllotAsync(db, host, DesktopAssessmentEmails.Create(HttpContext.RequestServices), zedId!, level, agency.UserId, log, ct);
         log.LogInformation("{UserId} allotted {ZedId} {Certification} to agency {Agency}", UserId, zedId, level, agency.UserId);
+        // 2026-11-21: a handholding milestone allotted automatically (or waiting for want of an organisation) is now the Master Admin's.
+        if (host.System == PortalSystem.Consultancy) await MarkManualAsync(zedId!, level, ct);
+        return null;
+    }
+
+    /// <summary>The milestone row that the procedure has just allotted (its latest NcCount), when it had a CoAllotType (migration 0111).</summary>
+    internal const string ManualSql =
+        "UPDATE dbo.MsmeCertifications SET CoAllotType = 'Manual' WHERE ZedId = @ZedId AND Certification = @Certification AND CoAllotType IS NOT NULL " +
+        "AND NcCount = (SELECT ISNULL(MAX(NcCount), 0) FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification);";
+
+    private async Task MarkManualAsync(string zedId, string level, CancellationToken ct)
+    {
         try
         {
-            // 2026-11-14: Remote only / Onsite only levels go straight to the agency's SA allotment (migration 0074).
-            if (host.System == PortalSystem.Main) await DesktopSkip.TryAsync(db, zedId!, level, log, ct);
-            await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
-                .SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, zedId!, level, null, ct);
+            await db.ExecuteSqlAsync(ManualSql, new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (System.Data.Common.DbException ex)
         {
-            // The unit is allotted: a later step that fails is logged, not reported as a refusal.
-            log.LogError(ex, "After allotting {ZedId} {Certification}: the desktop skip or the mail failed", zedId, level);
+            log.LogWarning(ex, "{ZedId} {Certification}: the manual allotment was not marked (is migration 0111 applied?)", zedId, level);
         }
-        return null;
     }
 
     private Task<IReadOnlyList<Person>> AgenciesFor(string zedId, string level, CancellationToken ct) =>

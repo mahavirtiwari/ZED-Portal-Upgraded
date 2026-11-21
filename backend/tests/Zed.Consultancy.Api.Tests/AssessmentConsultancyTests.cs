@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Zed.Main.Api.Tests;
+using Zed.Portal.Features.Staff.Assessment;
 
 namespace Zed.Consultancy.Api.Tests;
 
@@ -53,6 +54,23 @@ public sealed class AssessmentConsultancyTests : IDisposable
         Assert.StartsWith("Allocation of MSME for Handholding Support (Milestone 2) under", mail.Subject);
         Assert.Contains("Milestone 2", mail.HtmlBody);
         Assert.DoesNotContain("Secret#", mail.HtmlBody);
+    }
+
+    [Fact]
+    public async Task Allot_list_says_how_a_milestone_was_allotted_and_the_master_admins_allotment_becomes_manual()
+    {
+        // 2026-11-21 (the product owner's milestone 1 rule): CoAllotType of the row's milestone (migration 0111).
+        _s.Sql.Queries[AssessmentAllotmentController.CoAllotTypeSql] = _ =>
+            [new { ZedId = Zed, Certification = "Silver", Milestone = "2", CoAllotType = "NoEligible" }, new { ZedId = Zed, Certification = "Silver", Milestone = "1", CoAllotType = "Chosen" }];
+        var client = await _s.SignInAsync("MADMIN", 7);
+
+        var row = (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot")).GetProperty("rows")[0];
+        Assert.Equal("NoEligible", row.GetProperty("CoAllotType").GetString());   // milestone 2's row, not milestone 1's
+
+        (await client.PostAsJsonAsync("/api/staff/assessment/allot", new { zedId = Zed, certification = "Silver", agencyUserId = "CO1" })).EnsureSuccessStatusCode();
+        var manual = Assert.Single(_s.Sql.Calls, c => c.Name == AssessmentAllotmentController.ManualSql);
+        Assert.Equal(Zed, FakeSql.Arg(manual.Args, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(manual.Args, "Certification"));
     }
 
     [Theory]
