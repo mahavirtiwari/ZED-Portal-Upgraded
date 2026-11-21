@@ -1,6 +1,7 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { GENDERS, SIZES, STATES } from './dashboard-filters';
-import { levelOptions } from '../../msme/shared/levels';
+import { HANDHOLDING_LEVEL_CODES, levelOptions } from '../../msme/shared/levels';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { ListFilter } from './dashboard.api';
 import { TextPipe } from '../../content/page-text';
 
@@ -21,7 +22,7 @@ import { TextPipe } from '../../content/page-text';
         </select>
       </div>
       <div class="filter">
-        <label class="form-label" for="f-cert">{{ 'Certification Level' | t: 'staff.listFilters.levelLabel' }}</label>
+        <label class="form-label" for="f-cert">{{ consultancy ? ('Level' | t: 'staff.listFilters.consultancy.levelLabel') : ('Certification Level' | t: 'staff.listFilters.levelLabel') }}</label>
         <select class="form-select" id="f-cert" (change)="set('certification', $event)">
           <option value="">{{ 'Show All' | t: 'staff.listFilters.showAll' }}</option>
           @for (c of certifications(); track c.value) { <option [value]="c.value" [selected]="filter().certification === c.value">{{ c.label }}</option> }
@@ -50,8 +51,11 @@ export class ListFiltersBar {
   readonly filterChange = output<ListFilter>();
 
   protected readonly states = STATES;
-  /** Every level, the Admin's too (Administration → Certification Levels, 2026-11-08). */
-  protected readonly certifications = computed(() => levelOptions());
+  /** 2026-11-21 (UI audit): Consultancy offers the handholding levels only (Silver, Gold, ZED-X), named "Level". */
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
+  /** Every level, the Admin's too (Administration → Certification Levels, 2026-11-08); Consultancy: the handholding levels. */
+  protected readonly certifications = computed(() =>
+    levelOptions().filter((o) => !this.consultancy || HANDHOLDING_LEVEL_CODES.some((c) => c.toLowerCase() === o.value.toLowerCase())));
   protected readonly sizes = SIZES;
   protected readonly genders = GENDERS;
 

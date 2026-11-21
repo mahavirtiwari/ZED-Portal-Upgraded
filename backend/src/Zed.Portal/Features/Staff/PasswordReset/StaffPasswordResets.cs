@@ -115,6 +115,9 @@ public sealed class StaffPasswordResets(
         }
         await SendLinkAsync(account, to, token, o, sentBy: null, ct);
         Audit("link sent", account.UserId, ip);
+        // 2026-11-21: in the account's History, as asked by the user (where it was sent; never the link).
+        await UserBlockHistory.RecordAsync(db, account.UserId, account.RoleId, UserBlockHistory.PasswordLink, UserBlockHistory.SelfService, account.UserId,
+            account.RoleId, audit, ct, AccountChanges.ToJson([new AccountChange("sentTo", New: to)]));
     }
 
     /// <summary>The account of an open link (a Users row, else a sub-user's set-password link), or null.</summary>
@@ -286,6 +289,9 @@ public sealed class StaffPasswordResets(
             return new(null, "The reset link could not be e-mailed. Please try again.");
         }
         audit.LogInformation("Staff password reset: link sent to {UserId} by {Actor} from {Ip}", account.UserId, actor.UserId, ip);
+        // 2026-11-21 (the product owner): in the account's History, by whom and where it was sent (never the link).
+        await UserBlockHistory.RecordAsync(db, account.UserId, account.RoleId, UserBlockHistory.PasswordLink, null, UserBlockHistory.ActorOf(actor, actor.UserId),
+            actor.RoleId, audit, ct, AccountChanges.ToJson([new AccountChange("sentTo", New: to)]));
         // 2026-11-18 (the user): the signed-in administrator sees the address in full (e-mail is never masked on staff pages).
         return new($"A password reset link has been sent to the user's registered e-mail address ({to}).", null);
     }

@@ -111,6 +111,22 @@ export function basicRaised(d: DaDetails | null): number {
   return (text(photo, 'IsVerified') === 'No' ? 1 : 0) + d.products.filter((p) => text(p, 'IsVerified') === 'No').length;
 }
 
+/**
+ * 2026-11-21 (the owner): required basic information items the unit did not give (no representative selfie, no site
+ * exterior photo) need attention too, not "Accepted".
+ */
+export function basicMissing(d: DaDetails | null): { selfie: boolean; siteExterior: boolean; count: number } {
+  if (!d) return { selfie: false, siteExterior: false, count: 0 };
+  const selfie = !d.photos.some((p) => text(p, 'PhotoType') === 'Selfie');
+  const siteExterior = !d.photos.some((p) => text(p, 'PhotoType') === 'SiteExteriorPhotos');
+  return { selfie, siteExterior, count: (selfie ? 1 : 0) + (siteExterior ? 1 : 0) };
+}
+
+/** The basic information items needing attention: raised as NC, or required and missing. */
+export function basicAttention(d: DaDetails | null): number {
+  return basicRaised(d) + basicMissing(d).count;
+}
+
 /** "13 Nov 2026" from the record's dates ("November 13, 2026", ISO…); the value as given when it is not a date. */
 export function shortDay(value: string): string {
   if (!value) return '';

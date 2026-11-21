@@ -16,6 +16,36 @@ internal static class StaffUserActions
 
     private static int? ActorRole(ControllerBase c) => ZedUser.FromPrincipal(c.User)?.RoleId;
 
+    /// <summary>Who acts, for the history: the signed-in login, or its sub-user as "owner / sub-user" (<see cref="UserBlockHistory.ActorOf"/>).</summary>
+    internal static string HistoryActor(ControllerBase c, string fallback) => UserBlockHistory.ActorOf(ZedUser.FromPrincipal(c.User), fallback);
+
+    /// <summary>
+    /// 2026-11-21 (the product owner: profile edits in the History): an account created (<see cref="UserBlockHistory.Created"/>) or a
+    /// profile saved (<see cref="UserBlockHistory.Edited"/>, nothing when nothing changed), with its change list, by the signed-in user.
+    /// A failed write is a warning only.
+    /// </summary>
+    public static Task RecordChangesAsync(ControllerBase c, ISqlExecutor db, string userId, int? roleId, string action, AccountProfile? before,
+        AccountProfile after, ILogger log, CancellationToken ct) =>
+        UserBlockHistory.RecordChangesAsync(db, userId.Trim(), roleId, action, before, after, HistoryActor(c, ZedUser.FromPrincipal(c.User)?.UserId ?? ""),
+            ActorRole(c), log, ct);
+
+    /// <summary>
+    /// A profile for the history built with reads of its own (names of codes, lists in other tables): null when one fails (a warning),
+    /// so the history is skipped and the user's action goes on.
+    /// </summary>
+    public static async Task<AccountProfile?> HistoryProfileAsync(Func<Task<AccountProfile>> build, string userId, ILogger log)
+    {
+        try
+        {
+            return await build();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogWarning(ex, "The profile of {UserId} was not read for its history", userId);
+            return null;
+        }
+    }
+
     /// <summary>
     /// SP_BLOCK_UNBLOCK_USER on Main (Users.IsActive and ReasonForRejection, in ZEDCS and ZED_SURVEILLANCE). On Consultancy,
     /// whose database has no such procedure, the legacy inline UPDATE (<see cref="ConsultancyUsers.SetActiveAsync"/>) and,
@@ -28,7 +58,7 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, false, reason, ct))
             return c.Problem400("The user could not be blocked. Please try again.");
         log.LogInformation("User {UserId} blocked by {Actor}", user.UserId, actor);
-        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Blocked, reason, actor, ActorRole(c), log, ct);
+        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Blocked, reason, HistoryActor(c, actor), ActorRole(c), log, ct);
         // M12: the user's open sessions end too (on main also those of the Surveillance portal, which the procedure blocks as well).
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
@@ -58,7 +88,7 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, true, "", ct))
             return c.Problem400("The user could not be unblocked. Please try again.");
         log.LogInformation("User {UserId} unblocked by {Actor}", user.UserId, actor);
-        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Unblocked, reason, actor, ActorRole(c), log, ct);
+        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Unblocked, reason, HistoryActor(c, actor), ActorRole(c), log, ct);
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
         if (StaffUserRules.IsEmail(user.Row.Text("Email")))
@@ -87,7 +117,7 @@ internal static class StaffUserActions
     public static async Task RecordAndMailLoginAsync(ControllerBase c, ISqlExecutor db, PortalHost host, StaffUserMail mail, string userId, int roleId,
         string? userName, string? email, string roleLabel, bool blocked, string reason, string actor, ILogger log, CancellationToken ct)
     {
-        await UserBlockHistory.RecordAsync(db, userId, roleId, blocked ? UserBlockHistory.Blocked : UserBlockHistory.Unblocked, reason, actor, ActorRole(c), log, ct);
+        await UserBlockHistory.RecordAsync(db, userId, roleId, blocked ? UserBlockHistory.Blocked : UserBlockHistory.Unblocked, reason, HistoryActor(c, actor), ActorRole(c), log, ct);
         if (!StaffUserRules.IsEmail(email)) return;
         if (blocked)
             await mail.SendAsync<StaffAccountBlockedEmail>(email!, $"{roleLabel} Login Details for “MSME Sustainable (ZED) Certification” - {userId}", new()
@@ -121,6 +151,11 @@ internal static class StaffUserActions
         await db.ExecuteSqlAsync("UPDATE Users SET MobileNo = @MobileNo WHERE UserId = @UserId AND RoleId = @RoleId",
             new { MobileNo = mobile, user.UserId, RoleId = (int)role }, ct);
         log.LogInformation("Mobile number of {UserId} changed by {Actor}", user.UserId, actor);
+        // 2026-11-21: kept in the account's history (old -> new; nothing when the number is the same).
+        var was = user.Row.Text("MobileNo").Trim();
+        if (!string.Equals(was, mobile, StringComparison.Ordinal))
+            await UserBlockHistory.RecordAsync(db, user.UserId, (int)role, UserBlockHistory.MobileReset, null, HistoryActor(c, actor), ActorRole(c), log, ct,
+                AccountChanges.ToJson([new AccountChange("mobile", Old: was.Length == 0 ? null : was, New: mobile)]));
         return new MessageResponse("Mobile No updated successful");
     }
 

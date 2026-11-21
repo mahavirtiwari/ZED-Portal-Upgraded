@@ -140,20 +140,31 @@ public sealed class StaffAssessorsController(
         row["BlockedOn"] = b.ActionDate;
     }
 
-    /// <summary>Every block and unblock of the assessor, latest first (MasterAdmin, or the agency that manages it).</summary>
+    /// <summary>
+    /// The assessor's / consultant's history, latest first (MasterAdmin, or the agency that manages it): blocks and unblocks, and since
+    /// 2026-11-21 its creation, profile edits, password links and mobile changes, with its allotments merged in (<see cref="UserBlockHistory"/>).
+    /// </summary>
     [HttpGet("{userId}/history")]
     [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
     public async Task<ActionResult<IReadOnlyList<UserBlockHistory.Entry>>> History(string userId, CancellationToken ct)
     {
         var a = await FindAsync(userId, ct);
         if (a is null) return NotFound();
-        return (await UserBlockHistory.ListAsync(db, a.UserId, log, ct)).ToList();
+        return (await UserBlockHistory.ListAsync(db, a.UserId, log, ct, UserBlockHistory.Allotments.Assessor)).ToList();
     }
 
     /// <summary>Assessments allotted to the assessor that are not certified yet (Bronze below 6, Silver / Gold / ZED-X below 16).</summary>
     internal const string OpenAssessmentsSql =
         "SELECT COUNT(*) FROM dbo.MsmeCertifications WHERE (DesktopAssessorId = @UserId OR SiteAssessorId = @UserId) AND CertificationStatus > 0 " +
         "AND ((Certification = 'Bronze' AND CertificationStatus < 6) OR (Certification <> 'Bronze' AND CertificationStatus < 16));";
+
+    /// <summary>
+    /// 2026-11-21 (Consultancy audit: main's statuses were used on the Consultancy database): a consultant's open cases are the
+    /// allotted handholdings not completed (100) and not closed or rejected (99 and above).
+    /// </summary>
+    internal const string OpenConsultancyCasesSql =
+        "SELECT COUNT(*) FROM dbo.MsmeCertifications WHERE (DesktopAssessorId = @UserId OR SiteAssessorId = @UserId) " +
+        "AND CertificationStatus BETWEEN 1 AND 98;";
 
     public sealed record OpenAssessments(int? Count);
 
@@ -166,7 +177,7 @@ public sealed class StaffAssessorsController(
         if (a is null) return NotFound();
         try
         {
-            return new OpenAssessments((await db.QuerySqlAsync<int>(OpenAssessmentsSql, new { a.UserId }, ct)).FirstOrDefault());
+            return new OpenAssessments((await db.QuerySqlAsync<int>(host.IsConsultancy() ? OpenConsultancyCasesSql : OpenAssessmentsSql, new { a.UserId }, ct)).FirstOrDefault());
         }
         catch (System.Data.Common.DbException ex)
         {
@@ -377,8 +388,11 @@ public sealed class StaffAssessorsController(
             ? ConsultancyParameters(values!, null, ConsultancyUsers.ConsultantRole, professional.Name, professional.Email, professional.MobileNo, stored, cert, mail)
             : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, stored, type, cert, mail);
         log.LogInformation("Assessor being added with professional verification {Mode} by {Actor}", mode, UserId);
+        // 2026-11-21: what the account is created with, for its History.
+        var history = Profile(professional.Name, professional.Email, professional.MobileNo, values!, sectors, cert, host.IsConsultancy() ? ConsultancyUsers.Consultant : type,
+            mail, pan, activity, scope is null ? null : AssessorScope.Parse(scope.Value.Stored));
         return await InsertAsync(parameters, professional.Name, professional.Email, professional.MobileNo, password,
-            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity, pan, scope?.Stored);
+            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity, pan, scope?.Stored, history);
     }
 
     /// <summary>
@@ -399,7 +413,8 @@ public sealed class StaffAssessorsController(
 
         var password = SecureRandom.Password();
         return await InsertAsync(ConsultancyParameters(values!, null, ConsultancyUsers.TechnicalExpertRole, name!, mail!, mobile, Passwords.StoredValueFor(password), null, null),
-            name!, mail!, mobile, password, bronze: false, ConsultancyUsers.TechnicalExpert, ct);
+            name!, mail!, mobile, password, bronze: false, ConsultancyUsers.TechnicalExpert, ct,
+            history: Profile(name!, mail!, mobile, values!, sectors, null, ConsultancyUsers.TechnicalExpert, null, null, null, null));
     }
 
     /// <summary>Hashes for the passwords set here (docs/PASSWORDS.md); <c>password</c> below is the generated one (mailed only when set-password links are off), the procedure gets its stored value.</summary>
@@ -408,7 +423,7 @@ public sealed class StaffAssessorsController(
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
         object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct,
-        string? activity = null, string? pan = null, string? scope = null)
+        string? activity = null, string? pan = null, string? scope = null, AccountProfile? history = null)
     {
         var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", parameters, ct);
         var newId = result.Scalar(0);
@@ -432,6 +447,9 @@ public sealed class StaffAssessorsController(
         if (panSaved && pan is not null && host.System == PortalSystem.Main)
             await ProfessionalVerification.CopyPanToSurveillanceAsync(db, newId!, pan, log, ct);
         var scopeSaved = scope is null || await AssessorScope.SaveAsync(db, newId!, scope, type, log, ct);
+        if (history is not null)
+            await StaffUserActions.RecordChangesAsync(this, db, newId!, host.IsConsultancy() && type == ConsultancyUsers.TechnicalExpert ? ConsultancyUsers.TechnicalExpertRole
+                : (int)UserRole.DesktopAssessor, UserBlockHistory.Created, null, history, log, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
@@ -494,6 +512,12 @@ public sealed class StaffAssessorsController(
             mobile = req.MobileNo.Trim();
             if (!StaffUserRules.MobilePattern().IsMatch(mobile)) return this.Problem400("Please enter a valid 10 digit mobile number.");
         }
+        // 2026-11-21 (the product owner: profile edits in the History): the profile before the save, for the change list.
+        var before = await StaffUserActions.HistoryProfileAsync(async () => Profile(r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"),
+            new AssessorValues(r.Text("Address"), r.Text("Pincode"), r.Text("IdProofType"), r.Text("IdProofNumber"), null, a.States, a.NicSectors, a.AreasOfKnowledge),
+            sectors, null, null, null, null,
+            host.IsConsultancy() ? null : r.Text("SectorActivity") is { Length: > 0 } sa ? sa : await UserSectorActivity.OfUserAsync(db, a.UserId, log, ct),
+            scope is null ? null : await AssessorScope.OfUserAsync(db, a.UserId, log, ct)), a.UserId, log);
         await db.ExecuteProcAsync("SP_UPDATE_USER", host.IsConsultancy()
             ? ConsultancyParameters(values!, a.UserId, int.Parse(r.Text("RoleId")), r.Text("UserName"), r.Text("Email"), mobile, null, null, null)
             : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), mobile, null, null, null, null), ct);
@@ -501,6 +525,10 @@ public sealed class StaffAssessorsController(
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, a.UserId, activity, log, ct);
         var scopeSaved = scope is null || await AssessorScope.SaveAsync(db, a.UserId, scope.Value.Stored, scope.Value.Type, log, ct);
         log.LogInformation("Assessor {UserId} updated by {Actor}", a.UserId, UserId);
+        if (before is not null)
+            await StaffUserActions.RecordChangesAsync(this, db, a.UserId, int.TryParse(r.Text("RoleId"), out var roleId) ? roleId : (int)UserRole.DesktopAssessor,
+                UserBlockHistory.Edited, before, Profile(r.Text("UserName"), r.Text("Email"), mobile, values!, sectors, null, null, null, null,
+                    host.IsConsultancy() ? null : activity, scope is null ? null : AssessorScope.Parse(scope.Value.Stored)), log, ct);
         // M12: a staff user's edit ends its sessions; the next sign-in reads the account as it is now.
         await SessionStamps.EndSessionsAsync(db, host.System, a.UserId, log, ct);
         return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved) + (scopeSaved ? "" : AssessorScope.NotSaved));
@@ -571,6 +599,32 @@ public sealed class StaffAssessorsController(
             ? await StaffUserRules.LoadAnyAsync(db, userId, ConsultancyUsers.AssessorRoles, ct)
             : await StaffUserRules.LoadAsync(db, userId, UserRole.DesktopAssessor, ct);
         return a is not null && StaffUserRules.CanManage(CurrentUser, a, UserRole.DesktopAssessor) ? a : null;
+    }
+
+    /// <summary>
+    /// 2026-11-21: the assessor's / consultant's profile as its History records it (NIC sectors by name, the ID proof number as the
+    /// pages show it, the levels and modes as "Silver: Remote"). The fields given as null (certificate, type, professional e-mail,
+    /// PAN on an edit; activity and levels where not saved) are left out.
+    /// </summary>
+    private static AccountProfile Profile(string name, string? email, string? mobile, AssessorValues v, IReadOnlyList<Sector> sectors, string? certificateNo,
+        string? type, string? professionalEmail, string? pan, string? activity, IReadOnlyDictionary<string, HashSet<char>>? assessments)
+    {
+        var sectorNames = sectors.GroupBy(s => s.SectorCode.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().SectorName, StringComparer.OrdinalIgnoreCase);
+        var p = new AccountProfile().Add("name", name).Add("email", email).Add("mobile", mobile);
+        if (certificateNo is not null) p.Add("certificateNo", certificateNo);
+        if (type is not null) p.Add("assessorType", type);
+        if (professionalEmail is not null) p.Add("professionalEmail", professionalEmail);
+        if (pan is not null) p.Add("pan", pan);
+        p.Add("address", v.Address).Add("pin", v.PinCode).Add("idProofType", v.IdProofType)
+            .Add("idProofNumber", StaffUserRules.ShowIdProof(v.IdProofType, v.IdProofNumber))
+            .Add("states", v.States)
+            .Add("nicSectors", v.NicSectors.Select(c => sectorNames.GetValueOrDefault(c.Trim()) is { Length: > 0 } n ? n : c))
+            .Add("areasOfKnowledge", v.Areas);
+        if (activity is not null) p.Add("activity", activity);
+        if (assessments is not null)
+            p.Add("assessments", AssessorScope.Items(assessments).SelectMany(i => i.Modes.Select(m => $"{LevelRegistry.NameOf(i.Level)}: {m}")));
+        return p;
     }
 
     private async Task<(List<Sector> Sectors, List<string> Areas)> LoadOptionsAsync(CancellationToken ct)

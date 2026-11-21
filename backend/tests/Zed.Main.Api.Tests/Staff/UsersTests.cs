@@ -173,6 +173,20 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task Master_admin_lists_the_agencies_of_every_creator_once()
+    {
+        // 2026-11-21 (Consultancy audit): an agency created by another login was missing from the list.
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.StaffAgenciesController.AgencyCreatorsSql] = _ => [new { CreatedBy = "MASTER1" }, new { CreatedBy = "OLDADMIN" }];
+        _host.Sql.Procs["SP_GET_USERS_BY_ROLE"] = args => UsersMastersLogin.Arg(args, "UserId") == "OLDADMIN"
+            ? FakeSql.Sets([new Dictionary<string, object?>(Agency1) { ["UserId"] = "ZEDAA0009", ["UserName"] = "Older Agency" }, Agency1])
+            : FakeSql.Sets([Agency1]);
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var list = await client.GetFromJsonAsync<List<Dictionary<string, object?>>>("/api/staff/users/agencies");
+        Assert.Equal(["ZEDAA0001", "ZEDAA0009"], list!.Select(r => r["UserId"]?.ToString()).OrderBy(x => x));
+        Assert.Equal(["MASTER1", "OLDADMIN"], _host.Sql.Calls.Where(c => c.Name == "SP_GET_USERS_BY_ROLE").Select(c => UsersMastersLogin.Arg(c.Args, "UserId")).OrderBy(x => x));
+    }
+
+    [Fact]
     public async Task Creating_an_agency_mails_a_set_password_link_and_never_the_password()
     {
         var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);

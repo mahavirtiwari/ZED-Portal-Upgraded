@@ -231,8 +231,9 @@ const API = '/api/staff/sub-users';
                   </div>
                   @if (agencyOptions(); as ag) {
                     <div class="su-field" data-scope-agencies>
-                      <label class="su-label" for="sub-agencies">{{ 'Assessment agencies' | t: 'staff.subUsers.form.agenciesLabel' }} <small>· {{ 'none selected = every agency' | t: 'staff.subUsers.form.agenciesNote' }}</small></label>
-                      <zed-multi-select variant="dropdown" [label]="'Assessment agencies' | t: 'staff.subUsers.form.agenciesLabel'" inputId="sub-agencies" [allText]="'every agency' | t: 'staff.subUsers.form.agenciesAll'" [options]="ag" [value]="f.agencies"
+                      <!-- 2026-11-21 (UI audit): Consultant organisations on the Consultancy portal. -->
+                      <label class="su-label" for="sub-agencies">{{ agenciesLabel() }} <small>· {{ consultancy ? ('none selected = every consultant organisation' | t: 'staff.subUsers.form.consultancy.agenciesNote') : ('none selected = every agency' | t: 'staff.subUsers.form.agenciesNote') }}</small></label>
+                      <zed-multi-select variant="dropdown" [label]="agenciesLabel()" inputId="sub-agencies" [allText]="consultancy ? ('every consultant organisation' | t: 'staff.subUsers.form.consultancy.agenciesAll') : ('every agency' | t: 'staff.subUsers.form.agenciesAll')" [options]="ag" [value]="f.agencies"
                                         (valueChange)="patch('agencies', $event)" />
                     </div>
                   }
@@ -367,8 +368,14 @@ export class SubUsersPage {
   protected readonly agencyOptions = signal<MultiSelectOption[] | null>(null);
   protected readonly scopeNote = computed(() =>
     this.agencyOptions()
-      ? t('staff.subUsers.form.scopeNoteOperation', 'The operation admin sees only the units whose plant is in these states and the applications these agencies assess, on every screen given.')
+      ? this.consultancy
+        ? t('staff.subUsers.form.consultancy.scopeNoteOperation', 'The operation admin sees only the units whose plant is in these states and the handholding cases of these consultant organisations, on every screen given.')
+        : t('staff.subUsers.form.scopeNoteOperation', 'The operation admin sees only the units whose plant is in these states and the applications these agencies assess, on every screen given.')
       : t('staff.subUsers.form.scopeNote', 'The sub-user sees only your units whose plant is in these states, on every screen given.'));
+  /** The scope's second list: assessment agencies, or (Consultancy) consultant organisations. */
+  protected agenciesLabel(): string {
+    return this.consultancy ? t('staff.subUsers.form.consultancy.agenciesLabel', 'Consultant organisations') : t('staff.subUsers.form.agenciesLabel', 'Assessment agencies');
+  }
   protected readonly users = signal<SubUser[]>([]);
   /** The tile chosen above the list. */
   protected readonly status = signal<'all' | LoginStatus>('all');
@@ -408,7 +415,7 @@ export class SubUsersPage {
    * the server checks them: name, e-mail, optional 10-digit mobile, at least one screen), so every wrong field is marked.
    */
   protected readonly fieldErrors = signal<Partial<Record<'userName' | 'email' | 'mobileNo' | 'permissions', string>>>({});
-  private readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
   /** The row menu action waiting for its confirmation, and the server's refusal shown in it. */
   protected readonly pending = signal<PendingAction | null>(null);
   protected readonly pendingError = signal('');
@@ -437,10 +444,10 @@ export class SubUsersPage {
       case 'da-allotment': return t('staff.subUsers.screen.desktopAllotment', 'Desktop allotment');
       case 'users': return c ? t('staff.subUsers.screen.consultantOrganisations', 'Consultant organisations and their consultants') : t('staff.subUsers.screen.agencies', 'Agencies and their assessors');
       case 'monitoring': return t('staff.subUsers.screen.monitoring', 'Monitoring');
-      case 'results': return t('staff.subUsers.screen.results', 'Completed and rejected');
+      case 'results': return c ? t('staff.subUsers.screen.consultancyCompleted', 'Consultancy completed') : t('staff.subUsers.screen.results', 'Completed and rejected');
       case 'reports': return t('staff.subUsers.screen.reports', 'Reports');
       case 'payments': return t('staff.subUsers.screen.payments', 'Payment Received');
-      case 'allot': return t('staff.subUsers.screen.allot', 'Allotment');
+      case 'allot': return c ? t('staff.subUsers.screen.allotConsultancy', 'Allot consultancy') : t('staff.subUsers.screen.allot', 'Allotment');
       case 'password-reset': return t('staff.subUsers.screen.passwordReset', 'Password Reset Link');
       default: return p.label;
     }
@@ -594,8 +601,11 @@ export class SubUsersPage {
     const a = u.agencies?.length ?? 0;
     const states = s === 0 ? t('staff.subUsers.row.allStates', 'All states') : s === 1 ? this.stateName(u.states![0]) : t('staff.subUsers.row.statesCount', '{count} states', { count: s });
     if (!this.agencyOptions()) return states;
-    const agencies = a === 0 ? t('staff.subUsers.row.allAgencies', 'all agencies') : a === 1 ? t('staff.subUsers.row.agencyCount', '{count} agency', { count: a })
-      : t('staff.subUsers.row.agenciesCount', '{count} agencies', { count: a });
+    const agencies = this.consultancy
+      ? a === 0 ? t('staff.subUsers.row.consultancy.allAgencies', 'all consultant organisations') : a === 1 ? t('staff.subUsers.row.consultancy.agencyCount', '{count} consultant organisation', { count: a })
+        : t('staff.subUsers.row.consultancy.agenciesCount', '{count} consultant organisations', { count: a })
+      : a === 0 ? t('staff.subUsers.row.allAgencies', 'all agencies') : a === 1 ? t('staff.subUsers.row.agencyCount', '{count} agency', { count: a })
+        : t('staff.subUsers.row.agenciesCount', '{count} agencies', { count: a });
     return `${states} · ${agencies}`;
   }
 

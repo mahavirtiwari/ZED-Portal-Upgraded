@@ -64,9 +64,9 @@ const EXPORT_LIMIT = 10_000;
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="heading()" [subtitle]="subtitle()">
-      <button type="button" class="btn btn-ph rs-hb" (click)="search()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.assessmentResults.refreshButton' }}</button>
+      <button type="button" class="btn btn-primary rs-hb" (click)="search()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.assessmentResults.refreshButton' }}</button>
       @if (completed()) {
-        <button type="button" class="btn btn-outline-primary rs-hb" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
+        <button type="button" class="btn btn-primary rs-hb" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
           <zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.assessmentResults.exportingButton') : ('Export' | t: 'staff.assessmentResults.exportButton') }}</button>
       }
     </zed-page-head>
@@ -121,7 +121,7 @@ const EXPORT_LIMIT = 10_000;
           </select>
         </div>
         <div class="filter">
-          <label class="form-label" for="resLevel">{{ consultancy ? ('Desired certification' | t: 'staff.assessmentResults.filter.desiredLabel') : ('Certification level' | t: 'staff.assessmentResults.filter.levelLabel') }}</label>
+          <label class="form-label" for="resLevel">{{ consultancy ? ('Level' | t: 'staff.assessmentResults.consultancy.filter.levelLabel') : ('Certification level' | t: 'staff.assessmentResults.filter.levelLabel') }}</label>
           <select class="form-select" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
             <option value="">{{ 'Show all' | t: 'staff.assessmentResults.filter.showAll' }}</option>
             @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
@@ -179,7 +179,7 @@ const EXPORT_LIMIT = 10_000;
             <tr>
               <th>{{ 'Unit' | t: 'staff.assessmentResults.column.unit' }}</th>
               <th>{{ 'Level / Milestone' | t: 'staff.assessmentResults.column.levelMilestone' }}</th>
-              @if (!isAgency()) { <th>{{ 'CO' | t: 'staff.assessmentResults.column.co' }}</th> }
+              @if (!isAgency()) { <th><abbr class="rs-abbr" [title]="'Consultant Organisation' | t: 'staff.assessmentResults.column.coTitle'">{{ 'CO' | t: 'staff.assessmentResults.column.co' }}</abbr></th> }
               @if (!isAssessor()) { <th>{{ 'Consultants' | t: 'staff.assessmentResults.column.consultants' }}</th> }
               <th>{{ 'Allotted / Completed' | t: 'staff.assessmentResults.column.allottedCompleted' }}</th>
               <th class="text-end">{{ 'Actions' | t: 'staff.assessmentResults.column.actions' }}</th>
@@ -200,7 +200,7 @@ const EXPORT_LIMIT = 10_000;
                 @if (!surveillance) { <th>{{ 'Surveillance due' | t: 'staff.assessmentResults.column.surveillanceDue' }}</th> }
               }
               @if (!surveillance) { <th class="text-center" [title]="'Duplicates' | t: 'staff.assessmentResults.column.dupTooltip'">{{ 'Dup.' | t: 'staff.assessmentResults.column.dup' }}</th> }
-              @if (!isAssessor()) { <th class="text-end">{{ 'Actions' | t: 'staff.assessmentResults.column.actions' }}</th> }
+              <th class="text-end">{{ 'Actions' | t: 'staff.assessmentResults.column.actions' }}</th>
             </tr>
           } @else {
             <tr>
@@ -272,8 +272,8 @@ const EXPORT_LIMIT = 10_000;
                     <div>@if (col(s, 'SiteAssessment') === 'S') { {{ col(s, 'ScheduledOn') }} }</div>
                   </td>
                   <td class="stack">
-                    <div>@if (col(s, 'DeskAssessment') === 'D') { {{ col(s, 'DesktopVerificationCompleted') }} }</div>
-                    <div>@if (col(s, 'SiteAssessment') === 'S') { {{ col(s, 'CompletedOn') }} }</div>
+                    <div>@if (col(s, 'DeskAssessment') === 'D') { {{ assessedOn(s, 'desk') }} }</div>
+                    <div>@if (col(s, 'SiteAssessment') === 'S') { {{ assessedOn(s, 'site') }} }</div>
                   </td>
                 } @else {
                   <td class="text-nowrap">{{ shortDate(col(s, 'CertificationStatusDate')) || col(s, 'CertificationStatusDate') }}</td>
@@ -290,9 +290,7 @@ const EXPORT_LIMIT = 10_000;
                 @if (!surveillance) {
                   <td class="text-center"><b class="rs-dupn" [class.rs-dup]="n(s, 'SameUdyamAddress') > 0">{{ col(s, 'SameUdyamAddress') || '0' }}</b></td>
                 }
-                @if (!isAssessor()) {
-                  <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for {id}' | t: 'staff.assessmentResults.row.menuAria' : { id: col(s, 'ZedId') }" (picked)="act(s, $event)" /></td>
-                }
+                <td class="text-end"><zed-row-menu [items]="menu(s)" [label]="'More actions for {id}' | t: 'staff.assessmentResults.row.menuAria' : { id: col(s, 'ZedId') }" (picked)="act(s, $event)" /></td>
               </tr>
             } @else {
               <!-- As the old Rejected list: an open NC (NcStatus 2, status 4 or 14) marked. -->
@@ -312,7 +310,7 @@ const EXPORT_LIMIT = 10_000;
               </tr>
             }
           } @empty {
-            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.assessmentResults.loading') : completed() ? ('No completed assessment matches these filters.' | t: 'staff.assessmentResults.completed.empty') : (anyFilter() ? ('No rejected certification matches these filters.' | t: 'staff.assessmentResults.rejected.empty') : ('No rejected certification yet.' | t: 'staff.assessmentResults.rejected.none')) }}</div></td></tr>
+            <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.assessmentResults.loading') : completed() ? (consultancy ? ('No completed handholding matches these filters.' | t: 'staff.assessmentResults.consultancy.completed.empty') : ('No completed assessment matches these filters.' | t: 'staff.assessmentResults.completed.empty')) : (anyFilter() ? ('No rejected certification matches these filters.' | t: 'staff.assessmentResults.rejected.empty') : ('No rejected certification yet.' | t: 'staff.assessmentResults.rejected.none')) }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -573,6 +571,10 @@ export class AssessmentResultsPage {
       if (!this.surveillance) items.push({ key: 'pledge', label: t('staff.assessmentResults.menu.pledge', 'Pledge certificate'), icon: 'award' });
       items.push({ key: 'certificate', label: t('staff.assessmentResults.menu.certificate', 'Download certificate'), icon: 'download' },
         { key: 'report', label: t('staff.assessmentResults.menu.report', 'View report'), icon: 'file' });
+    } else if (this.isAssessor()) {
+      // 2026-11-21 (Assessor UI audit): the assessor's own completed unit opens read-only (the list has only its units; the
+      // details API serves the desktop, site or co-assessor of the record).
+      items.push(details);
     } else if (this.isAgency()) {
       const cs = num(s, 'CertificationStatus');
       // Surveillance (that portal's Completed.cshtml): SaDetails from status 9; main from 15.
@@ -580,6 +582,17 @@ export class AssessmentResultsPage {
       items.push(profile);
     }
     return items;
+  }
+
+  /**
+   * 2026-11-21 (Assessor UI audit: "Assessment completed on" was blank for a certified Bronze unit): the assessor's completion date,
+   * the desktop verification's or the site assessment's, else the date the record reached its final status (for the desktop line
+   * only on Bronze, which is certified at the desktop; a Silver or Gold record's final status comes after the site assessment).
+   */
+  protected assessedOn(s: Row, part: 'desk' | 'site'): string {
+    const done = part === 'desk' ? text(s, 'DesktopVerificationCompleted') || (text(s, 'Certification') === 'Bronze' ? text(s, 'CompletedOn') : '') : text(s, 'CompletedOn');
+    if (done) return done;
+    return part === 'site' || text(s, 'Certification') === 'Bronze' ? text(s, 'CertificationStatusDate') : '';
   }
 
   /** Where a menu item goes (the old buttons' links). */
@@ -600,6 +613,7 @@ export class AssessmentResultsPage {
           return `/staff/assessment/${cert === 'Bronze' ? 'da-details' : 'sa-details'}/${encodeURIComponent(text(s, 'RejectedZedId') || zedId)}/${encodeURIComponent(cert)}`;
         }
         if (this.isMasterAdmin()) page = cs >= 9 ? 'sa-details' : 'da-details';
+        else if (this.isAssessor()) page = 'da-details';
         else page = cs < 9 ? 'da-details' : 'sa-details';
         return `/staff/assessment/${page}/${encodeURIComponent(zedId)}/${encodeURIComponent(cert)}`;
       }

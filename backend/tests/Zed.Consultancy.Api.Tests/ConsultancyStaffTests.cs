@@ -266,6 +266,9 @@ public sealed class ConsultancyStaffTests : IDisposable
 
         _host.Sql.Queries["SELECT COUNT(*) FROM dbo.Users WHERE RoleId = 3 AND IsActive = 1"] = _ => [1];
         body["pan"] = "pqrst6789z";
+        // 2026-11-21: with PAN Card as the ID proof, its number must be the PAN entered above (asked once).
+        Assert.Equal("The PAN Card number must be the PAN entered above.", await (await client.PostAsJsonAsync("/api/staff/users/assessors", body)).ProblemTitle());
+        body["idProofNumber"] = "PQRST6789Z";
         Assert.Equal("User Already mapped to another agency", await (await client.PostAsJsonAsync("/api/staff/users/assessors", body)).ProblemTitle());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_INSERT_USER");
 
@@ -560,12 +563,25 @@ public sealed class ConsultancyStaffTests : IDisposable
     [Fact]
     public async Task Dashboard_cards_use_the_handholding_columns()
     {
-        _host.Sql.Procs["SP_DASHBOARD_GET_DETAILS"] = _ => FakeSql.Sets([new { AssessmentAgencies = 4, SiteAssessors = 9, SilverM1PaymentDone = 3, BronzeTotal = 99 }]);
+        // 2026-11-21: the level cards come from the milestone rows (the procedure's payment-record counts said 0 for a live case).
+        _host.Sql.Procs["SP_DASHBOARD_GET_DETAILS"] = _ => FakeSql.Sets([new { AssessmentAgencies = 4, SiteAssessors = 9, SilverM1PaymentDone = 0, SilverTotal = 0, BronzeTotal = 99 }]);
+        _host.Sql.Queries["WITH HandholdingMilestones AS ("] = _ => [new { Level = "Silver", Total = 1, M1Paid = 1, M2Paid = 0, M3Paid = 0, M1Done = 0, M2Done = 0, M3Done = 0 }];
         var master = await ConsultancyLogin.SignInAsync(_host, "MASTER1");
         var m = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard");
         Assert.Equal(4, m.GetProperty("AssessmentAgencies").GetInt32());
-        Assert.Equal(3, m.GetProperty("SilverM1PaymentDone").GetInt32());
+        Assert.Equal(1, m.GetProperty("SilverTotal").GetInt32());
+        Assert.Equal(1, m.GetProperty("SilverM1PaymentDone").GetInt32());
+        // ZED-X (not in the legacy procedure) is 0, not empty.
+        Assert.Equal(0, m.GetProperty("ZEDXTotal").GetInt32());
+        Assert.Equal(0, m.GetProperty("SaZEDXCompleted").GetInt32());
         Assert.False(m.TryGetProperty("BronzeTotal", out _));
+        var cards = _host.Sql.Calls.Last(c => c.Name.StartsWith("WITH HandholdingMilestones", StringComparison.Ordinal)).Args;
+        Assert.Null(FakeSql.Arg(cards, "AgencyId"));
+        Assert.Null(FakeSql.Arg(cards, "ConsultantId"));
+        // A consultant organisation counts its own allotments.
+        var co = await ConsultancyLogin.SignInAsync(_host, "CO1");
+        await co.GetFromJsonAsync<JsonElement>("/api/staff/dashboard");
+        Assert.Equal("CO1", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name.StartsWith("WITH HandholdingMilestones", StringComparison.Ordinal)).Args, "AgencyId"));
         var super = await ConsultancyLogin.SignInAsync(_host, "SUPER1");
         Assert.False((await super.GetFromJsonAsync<JsonElement>("/api/staff/dashboard")).TryGetProperty("AssessmentAgencies", out _));
 

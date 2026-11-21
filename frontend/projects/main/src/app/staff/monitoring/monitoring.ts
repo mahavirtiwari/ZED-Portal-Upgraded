@@ -80,6 +80,8 @@ const DEFAULT_STATUS = 3;
     .unit-cell { min-width: 190px; }
     .stack > div + div { margin-top: 6px; }
     .stack b { display: block; }
+    .mo-dates { font-size: 13.5px; color: #17373b; }
+    .mo-dates abbr, th abbr { text-decoration: underline dotted; cursor: help; }
     tr.mo-nc-open > td:first-child { box-shadow: inset 3px 0 0 #d64532; }
     .mo-dupn.mo-dup { color: #c8473c; }
     .mo-due-h { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; }
@@ -178,7 +180,7 @@ export class MonitoringPage {
   protected readonly stepOrder = STEP_ORDER;
   protected readonly stepState = stepState;
   protected readonly delayClass = delayClass;
-  protected readonly dateLabel = computed(() => dateLabel(this.status()));
+  protected readonly dateLabel = computed(() => dateLabel(this.status(), this.system));
   /** The stage tiles (clickable: they choose the stage), with their sub-sections and delayed cases. */
   protected readonly stageCounts = computed<ListCount[]>(() => {
     const c = this.counts();

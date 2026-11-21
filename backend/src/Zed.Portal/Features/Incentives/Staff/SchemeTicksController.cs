@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Incentives.Staff;
 
@@ -114,6 +115,14 @@ public sealed class SchemeTicksController(ISqlExecutor db, SchemeStore store, IL
         if (value?.Length > SchemeTicks.MaxLength) return this.Problem400("Too many schemes ticked.");
         await db.ExecuteSqlAsync(SaveSql, new { Value = value, UserId = SchemeApplications.Ansi(user.UserId!.Trim(), 50), RoleId = (int)role }, ct);
         log.LogInformation("Scheme verification of {UserId} set to '{Value}' by {Actor}", user.UserId, value, ActorId);
+        // 2026-11-21 (the product owner: profile edits in the History): the schemes ticked and unticked, by name.
+        AccountProfile Ticks(string? stored) => new AccountProfile().Add("schemeTicks", SchemeTicks.Parse(stored).Select(t =>
+        {
+            var i = t.LastIndexOf(':');
+            var name = i > 0 ? schemes.FirstOrDefault(s => string.Equals(s.Code, t[..i], StringComparison.OrdinalIgnoreCase))?.Name ?? t[..i] : t;
+            return i > 0 && t[(i + 1)..] == SchemeTicks.Onsite ? $"{name} (Onsite)" : $"{name} (Desktop)";
+        }));
+        await StaffUserActions.RecordChangesAsync(this, db, user.UserId!.Trim(), (int)role, UserBlockHistory.Edited, Ticks(user.SchemeVerification), Ticks(value), log, ct);
         return new MessageResponse("Scheme verification saved.");
     }
 

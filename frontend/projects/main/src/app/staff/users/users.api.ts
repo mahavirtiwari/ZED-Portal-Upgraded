@@ -200,15 +200,28 @@ export interface AssessorRow {
   BlockedOn?: string | null;
 }
 
-/** One block or unblock of a login (2026-11-08). */
+/**
+ * One entry of a login's history (2026-11-08: blocks and unblocks; 2026-11-21: the account's whole history, UserBlockHistory on the
+ * server): Created, Edited (details = its change list, JSON), PasswordLink (reason 'self' = asked by the user, 'newPassword' = a new
+ * password e-mailed), MobileReset, Blocked / Unblocked, and the Allotment entries read from the allotment histories.
+ */
 export interface BlockHistoryEntry {
-  action: 'Blocked' | 'Unblocked';
+  action: 'Blocked' | 'Unblocked' | 'Created' | 'Edited' | 'PasswordLink' | 'MobileReset' | 'SessionsEnded' | 'Allotment' | (string & {});
   reason: string | null;
   actionBy: string | null;
   actionByRole: number | null;
   actionDate: string | null;
   /** 2026-11-21: the name of who did it (Users.UserName), when found; the history shows it instead of the login ID. */
   actionByName?: string | null;
+  /** The change list: [{ field, old, new, added, removed, addedCount, removedCount }] (JSON). */
+  details?: string | null;
+  /** An allotment's ZED ID (or the old scheme's registration number) and level. */
+  zedId?: string | null;
+  level?: string | null;
+  /** An allotment's type (Manual, Auto, Direct, Reallot, …) or the assessor's part (Desktop, Site, SiteCo, Expert, …). */
+  allotment?: string | null;
+  /** An assessor's allotment later given to someone else. */
+  replaced?: boolean | null;
 }
 
 /** Row of SP_GET_USERS_BY_ROLE (RoleId 3): the signed-in agency's assessors. ID proof numbers are masked. */

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { StaffRole as R } from '../staff-menu';
 import { staffScreenGuard } from './assessment-shared';
+import { PORTAL_SYSTEM } from '../../portal-system';
 
 /**
  * Desktop-assessment screens, as children of the `staff` route (paths below `/staff/assessment/...`).
@@ -9,40 +10,41 @@ import { staffScreenGuard } from './assessment-shared';
 export const ASSESSMENT_ROUTES: Routes = [
   {
     path: 'assessment/allot',
-    title: 'ZED | Allot Assessment',
-    canActivate: [staffScreenGuard([R.MasterAdmin])],
+    // 2026-11-21 (UI audit): Consultancy allots consultancy.
+    title: PORTAL_SYSTEM === 'consultancy' ? 'ZED | Allot Consultancy' : 'ZED | Allot Assessment',
+    canActivate: [staffScreenGuard([R.MasterAdmin], [], [], '/staff/assessment/allot')],
     loadComponent: () => import('./allot').then((m) => m.AllotPage),
   },
   {
     path: 'assessment/da-allotment',
     title: 'ZED | DA Allotment',
-    canActivate: [staffScreenGuard([R.Agency], ['DesktopVerification'])],
+    canActivate: [staffScreenGuard([R.Agency], ['DesktopVerification'], [], '/staff/assessment/da-allotment')],
     loadComponent: () => import('./da-allotment').then((m) => m.DaAllotmentPage),
   },
   {
     path: 'assessment/da-verification',
     title: 'ZED | Desktop Verification',
-    canActivate: [staffScreenGuard([R.DesktopAssessor], ['DesktopVerification'])],
+    canActivate: [staffScreenGuard([R.DesktopAssessor], ['DesktopVerification'], [], '/staff/assessment/da-verification')],
     loadComponent: () => import('./da-verification').then((m) => m.DaVerificationPage),
   },
   {
     path: 'assessment/non-conformances',
     title: 'ZED | Non-Conformances',
-    canActivate: [staffScreenGuard([R.DesktopAssessor])],
+    canActivate: [staffScreenGuard([R.DesktopAssessor], [], [], '/staff/assessment/non-conformances')],
     loadComponent: () => import('./non-conformances').then((m) => m.NonConformancesPage),
   },
   {
     path: 'assessment/completed',
-    title: 'ZED | Assessment Completed',
+    title: PORTAL_SYSTEM === 'consultancy' ? 'ZED | Consultancy Completed' : 'ZED | Assessment Completed',
     data: { kind: 'completed' },
-    canActivate: [staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor])],
+    canActivate: [staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor], [], [], '/staff/assessment/completed')],
     loadComponent: () => import('./assessment-results').then((m) => m.AssessmentResultsPage),
   },
   {
     path: 'assessment/rejected',
     title: 'ZED | Rejected Certification',
     data: { kind: 'rejected' },
-    canActivate: [staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor])],
+    canActivate: [staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor], [], [], '/staff/assessment/rejected')],
     loadComponent: () => import('./assessment-results').then((m) => m.AssessmentResultsPage),
   },
   {

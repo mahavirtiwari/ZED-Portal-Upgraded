@@ -87,7 +87,7 @@ export function rupees(n: number): string {
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="'Payment Received' | t: 'staff.paymentsReceived.title'"
       [subtitle]="'Payments received from the units, with the TDS, subsidy and amount paid.' | t: 'staff.paymentsReceived.sub'">
-      <button type="button" class="btn btn-outline-primary pr-btn" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
+      <button type="button" class="btn btn-primary pr-btn" [disabled]="exporting() || !pager.total()" (click)="exportRows()">
         <zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.paymentsReceived.exportingButton') : ('Export' | t: 'staff.paymentsReceived.exportButton') }}</button>
     </zed-page-head>
     <div class="pr-tiles" role="list" [attr.aria-label]="'Totals of the payments shown' | t: 'staff.paymentsReceived.tilesAria'">
@@ -140,7 +140,7 @@ export function rupees(n: number): string {
                 <td><span>{{ t['EnterpriseTypee'] }}</span><small class="sub">{{ t['Gender'] }}</small></td>
                 <td>{{ t['SocialCategoryName'] }}</td>
                 @if (consultancy) {
-                  <td>{{ t['MileStoneNum'] }}</td>
+                  <td>{{ milestone(t) }}</td>
                 } @else {
                   <td><span class="chip" [class.is-good]="flag(t, 'IsCouponUsed')">{{ flag(t, 'IsCouponUsed') ? ('Yes' | t: 'staff.paymentsReceived.reward.yes') : ('No' | t: 'staff.paymentsReceived.reward.no') }}</span></td>
                 }
@@ -224,7 +224,8 @@ export class PaymentsReceivedPage {
     const sum = rows.reduce((s, r) => s + num(r, 'FinalAmountPaid'), 0);
     const tds = rows.filter((r) => num(r, 'Tds') > 0).length;
     const last = this.consultancy
-      ? { label: t('staff.paymentsReceived.tile.zeroAmount', 'Zero amount'), value: rows.filter((r) => text(r, 'PaymentType') === 'ZeroAmount').length.toLocaleString('en-IN'), tone: '' }
+      // 2026-11-21 (UI audit): a zero-amount payment, or any payment with nothing paid (FinalAmountPaid 0).
+      ? { label: t('staff.paymentsReceived.tile.zeroAmount', 'Zero amount'), value: rows.filter((r) => text(r, 'PaymentType') === 'ZeroAmount' || num(r, 'FinalAmountPaid') === 0).length.toLocaleString('en-IN'), tone: '' }
       : { label: t('staff.paymentsReceived.tile.reward', 'Used Joining Reward'), value: rows.filter((r) => flag(r, 'IsCouponUsed')).length.toLocaleString('en-IN'), tone: 'good' };
     return [
       { label: t('staff.paymentsReceived.tile.amount', 'Amount received'), value: rupees(sum), tone: '' },
@@ -262,6 +263,12 @@ export class PaymentsReceivedPage {
     this.paid.set(range);
     this.pager.setSearch('');
     void this.load();
+  }
+
+  /** "MileStone 1" (the procedure's text) as "Milestone 1" (Texts: staff.paymentsReceived.milestoneText). */
+  protected milestone(row: Row): string {
+    const no = /(\d+)/.exec(text(row, 'MileStoneNum'))?.[1];
+    return no ? t('staff.paymentsReceived.milestoneText', 'Milestone {no}', { no }) : text(row, 'MileStoneNum');
   }
 
   protected level(row: Row): string {
@@ -310,7 +317,7 @@ export class PaymentsReceivedPage {
         name: 'Payments received',
         columns,
         rows: rows.map((r, i) => [i + 1, v(r, 'ZedId'), v(r, 'PUnitName'), this.level(r), v(r, 'EnterpriseTypee'), v(r, 'Gender'), v(r, 'SocialCategoryName'),
-          this.consultancy ? v(r, 'MileStoneNum') : flag(r, 'IsCouponUsed') ? yes : no, v(r, 'PStateName'), v(r, 'PDistrictName'),
+          this.consultancy ? this.milestone(r) : flag(r, 'IsCouponUsed') ? yes : no, v(r, 'PStateName'), v(r, 'PDistrictName'),
           v(r, 'Tds'), v(r, 'SubsidyPercentage'), v(r, 'GstinNumber'), v(r, 'TanNumber'), v(r, 'PaidOn').slice(0, 10), this.paymentType(r),
           num(r, 'FinalAmountPaid')]),
       }]);

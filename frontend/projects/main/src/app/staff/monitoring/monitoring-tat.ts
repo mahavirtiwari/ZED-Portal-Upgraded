@@ -38,10 +38,13 @@ export function trackOf(r: Row, system: MonitoringSystem): string {
 }
 
 /** What the date range means on each stage. */
-export function dateLabel(status: number | null): string {
+export function dateLabel(status: number | null, system: MonitoringSystem = 'main'): string {
   switch (status) {
     case 2: return t('staff.monitoring.range.allotted.label', 'Allotted between');
-    case 3: return t('staff.monitoring.range.assessment.label', 'Assessment between');
+    // 2026-11-21 (UI audit): handholding on Consultancy.
+    case 3: return system === 'consultancy'
+      ? t('staff.monitoring.range.consultancy.label', 'Handholding between')
+      : t('staff.monitoring.range.assessment.label', 'Assessment between');
     case 5: return t('staff.monitoring.range.submitted.label', 'Submitted between');
     case 4: return t('staff.monitoring.range.ncRaised.label', 'NC raised between');
     case 7: return t('staff.monitoring.range.rejected.label', 'Rejected between');

@@ -17,6 +17,46 @@ public static class MilestoneFiles
     private static readonly string[] Stores = ["SaPhotos", "Attendance"];
     private const string App = "consultancymobileapi";
 
+    /// <summary>The consultant app's attendance selfies: <c>consultancymobileapi/Attendance/{ZedId}/{Level}/{PhotoId}.jpg</c>.</summary>
+    public const string AttendanceFolder = App + "/Attendance";
+
+    /// <summary>
+    /// 2026-11-21 (UI audit: every consultant-app photo of the milestone page answered 404): the consultant mobile API
+    /// (/Consultancymobileapi, Mobile:System Consultancy) writes its files under its own <c>Mobile:StorageRoot</c>
+    /// (<c>{root}\Attendance\{ZedId}\{Level}\…</c>, <c>{root}\SaPhotos\…</c>, MobileStorage.Folder), while this host looked
+    /// only in <c>{Portal:StorageRoot}\consultancymobileapi\…</c>, which holds them only when that folder is the mobile API's
+    /// root. This setting of the Consultancy host is that root; Install-ZedIis.ps1 sets it from the MobileConsultancy section's
+    /// Mobile__StorageRoot when the Consultancy section does not give it.
+    /// </summary>
+    public const string AppRootSetting = "Consultancy:AppStorageRoot";
+
+    /// <summary>Where to look, in order: (the portal's storage root, the path as given) and (the app's root, the path without
+    /// <c>consultancymobileapi/</c>). Relative roots are under the content root.</summary>
+    public static IReadOnlyList<(string Root, bool AppLayout)> Roots(string contentRoot, string storageRoot, string? appRoot)
+    {
+        string Full(string p) => Path.GetFullPath(Path.IsPathRooted(p) ? p : Path.Combine(contentRoot, p));
+        var list = new List<(string Root, bool AppLayout)> { (Full(storageRoot), false) };
+        if (!string.IsNullOrWhiteSpace(appRoot)) list.Add((Full(appRoot), true));
+        return list;
+    }
+
+    /// <summary>The stored file of a milestone path in any root (the rejected copy's base ZED ID too), or null.</summary>
+    public static string? Find(IReadOnlyList<(string Root, bool AppLayout)> roots, string relative, string zedId)
+    {
+        foreach (var (root, appLayout) in roots)
+            foreach (var candidate in StorageCandidates(relative, zedId))
+            {
+                // The app's own root has no consultancymobileapi folder: Attendance/… directly (and, should it hold one, as given).
+                var paths = appLayout ? new[] { WithoutApp(candidate), candidate } : [candidate];
+                foreach (var p in paths)
+                    if (MsmeFilePaths.Resolve(root, p) is { } full && File.Exists(full)) return full;
+            }
+        return null;
+    }
+
+    private static string WithoutApp(string relative) =>
+        relative.StartsWith(App + "/", StringComparison.OrdinalIgnoreCase) ? relative[(App.Length + 1)..] : relative;
+
     public static string ApiPrefix(string zedId, string level) =>
         $"/api/consultancy/milestones/{Uri.EscapeDataString(zedId)}/{Uri.EscapeDataString(level)}/files/";
 

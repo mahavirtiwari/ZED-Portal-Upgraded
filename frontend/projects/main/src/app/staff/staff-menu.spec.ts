@@ -1,4 +1,4 @@
-import { DESKTOP_SCHEME_SUB_ROLE, ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { DESKTOP_SCHEME_SUB_ROLE, ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, menuScreenAllows, staffRoleName } from './staff-menu';
 import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
@@ -266,6 +266,28 @@ describe('staff menu', () => {
       expect(questionnaire('surveillance')).toContain('Platinum /staff/masters/parameters/PLATINUM');
       // A sub-user given the level's questionnaire sees it.
       expect(menuFor(StaffRole.Admin, [], 'main', ['/staff/masters/parameters/PLATINUM']).map((i) => i.label)).toEqual(['Platinum']);
+    });
+  });
+
+  // 2026-11-21 (Assessor UI audit): the route guards check a menu screen as the menu does.
+  describe('menuScreenAllows', () => {
+    it('needs the sub-roles of the entry', () => {
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['DesktopVerification'], 'main')).toBe(false);
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['FinancialVerification'], 'main')).toBe(true);
+      // The Master Admin's own entry has no sub-role.
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.MasterAdmin, [], 'main')).toBe(true);
+    });
+
+    it('needs the kind of agency of the entry', () => {
+      expect(menuScreenAllows('/staff/schemes-verify/verification', StaffRole.DesktopAssessor, [], 'main')).toBe(false);
+      expect(menuScreenAllows('/staff/schemes-verify/verification', StaffRole.DesktopAssessor, [DESKTOP_SCHEME_SUB_ROLE], 'main')).toBe(true);
+      expect(menuScreenAllows('/staff/scheme-onsite/qc', StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE], 'main')).toBe(false);
+      expect(menuScreenAllows('/staff/scheme-onsite/qc', StaffRole.Agency, [ONSITE_SUB_ROLE], 'main')).toBe(true);
+    });
+
+    it('is null for a screen this portal has no menu entry for', () => {
+      expect(menuScreenAllows('/staff/assessment/site-verification', StaffRole.DesktopAssessor, [], 'main')).toBeNull();
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['FinancialVerification'], 'surveillance')).toBeNull();
     });
   });
 });

@@ -35,6 +35,7 @@ public sealed class MilestoneReviewController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    IConfiguration config,
     ILogger<MilestoneReviewController> log) : StaffApiController
 {
     private const int MaxRemarks = 2000;
@@ -71,7 +72,6 @@ public sealed class MilestoneReviewController(
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] AllotmentFields = ["SectionCode", "AllotedAssessorId", "AllotedAssessorName", "NcCount", "AssessorRank"];
     private static readonly string[] TrainingFields = ["Id", "TrainingType", "TrainingTopic", "TrainingDate", "TrainingTime", "Remarks", "NcCount", "AssessorId", "AssessorRank", "CreatedDate"];
-    private static readonly string[] AttendanceFields = ["ConsultantId", "MileStoneNo", "RowNumber", "TimeStamps", "LoginTime", "LogoutTime", "NoOfHours", "NoOfMinutes"];
 
     /// <summary>ConsultancyBasicInformation, one row per milestone ("Basic Information" tab).</summary>
     private static readonly string[] BasicInfoFields =
@@ -227,13 +227,15 @@ public sealed class MilestoneReviewController(
             return d;
         }).ToList();
 
-        var attendance = da[20].Select(a =>
-        {
-            var d = Pick(a, AttendanceFields);
-            d["LoginPhotoUrl"] = a.Text("LoginPhotoId1").Length > 0 ? MilestoneFiles.Url(z, level, a.Text("LoginPhotoId")) : null;
-            d["LogoutPhotoUrl"] = a.Text("LogoutPhotoId1").Length > 0 ? MilestoneFiles.Url(z, level, a.Text("LogoutPhotoId")) : null;
-            return d;
-        }).ToList();
+        // 2026-11-21 (UI audit): the punches paired here (each punch-out with the latest punch-in before it), not the procedure's
+        // n-th punch-in with n-th punch-out (MilestoneAttendance); the headings carry the consultants' names.
+        var attendance = MilestoneAttendance.Build(await MilestoneAttendance.ReadAsync(db, z, level, log, ct),
+            photoId => MilestoneFiles.Url(z, level, $"{MilestoneFiles.AttendanceFolder}/{z}/{level}/{photoId}.jpg"));
+        var attendanceConsultants = Pick(da[21], ["ConsultantId", "AssessorType"]);
+        foreach (var id in attendance.Select(a => a["ConsultantId"]?.ToString()).Distinct(StringComparer.OrdinalIgnoreCase))
+            if (id is { Length: > 0 } && !attendanceConsultants.Any(c => string.Equals(c["ConsultantId"]?.ToString()?.Trim(), id, StringComparison.OrdinalIgnoreCase)))
+                attendanceConsultants.Add(new() { ["ConsultantId"] = id, ["AssessorType"] = "Consultant" });
+        attendanceConsultants = await MilestoneAttendance.WithNamesAsync(db, attendanceConsultants, log, ct);
 
         var checkpoints = await CheckpointAnswers.LoadAsync(db, z, level, null, Master, log, ct);
         var permissions = new Permissions(
@@ -262,7 +264,7 @@ public sealed class MilestoneReviewController(
             Photos(sa[6], z, level, "src", "PhotoPath"),
             Photos(sa[12], z, level, "PhotoPath", "src"),
             attendance,
-            Pick(da[21], ["ConsultantId", "AssessorType"]),
+            attendanceConsultants,
             // The overview's locations: the consultants' per milestone (set 9) and the unit's ZED certification (set 22).
             Pick(da[9], ["SaLatitude", "SaLongitude"]),
             da[22].FirstOrDefault() is { } zedLocation ? Pick(zedLocation, ["ZedSaLatitude", "ZedSaLongitude"]) : null,
@@ -318,11 +320,16 @@ public sealed class MilestoneReviewController(
         var (ctx, error) = await Context(zedId, certification, ct);
         if (error is not null || ctx is null) return NotFound();
 
-        var root = Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
-        var fullPath = MilestoneFiles.StorageCandidates(requested, ctx.ZedId)
-            .Select(c => MsmeFilePaths.Resolve(root, c))
-            .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
-        if (fullPath is null) return NotFound();
+        // 2026-11-21 (UI audit: every consultant-app photo answered 404): the portal's storage root, then the consultant mobile
+        // API's own folder (Consultancy:AppStorageRoot), where the app writes Attendance/… and SaPhotos/… (MilestoneFiles.Find).
+        var fullPath = MilestoneFiles.Find(MilestoneFiles.Roots(env.ContentRootPath, portal.Value.StorageRoot, config[MilestoneFiles.AppRootSetting]),
+            requested, ctx.ZedId);
+        if (fullPath is null)
+        {
+            log.LogWarning("Milestone file {Path} of {ZedId} not found in the storage roots (set {Setting} to the consultant mobile API's Mobile:StorageRoot)",
+                requested, ctx.ZedId, MilestoneFiles.AppRootSetting);
+            return NotFound();
+        }
 
         var fileName = Path.GetFileName(fullPath);
         var contentType = ContentTypes.TryGetContentType(fileName, out var t) ? t : "application/octet-stream";

@@ -612,6 +612,33 @@ export function expandLevels(items: readonly StaffMenuItem[]): StaffMenuItem[] {
 }
 
 /**
+ * The entry is for this login: its roles, its sub-roles (all of `subRoles`, one of `anySubRole`) and its kinds of agency.
+ * 2026-11-21 (Assessor UI audit): also what the screens' route guards check ({@link menuScreenAllows}).
+ */
+export function menuItemAllows(
+  item: Pick<StaffMenuItem, 'roles' | 'subRoles' | 'anySubRole' | 'agencyKinds'>,
+  roleId: number,
+  subRoles: readonly string[],
+): boolean {
+  return (
+    item.roles.includes(roleId) &&
+    (item.agencyKinds ?? ASSESSMENT_ONLY).includes(agencyKindOf(subRoles)) &&
+    (item.subRoles ?? []).every((s) => subRoles.includes(s)) &&
+    (!item.anySubRole || item.anySubRole.some((s) => subRoles.includes(s)))
+  );
+}
+
+/**
+ * 2026-11-21 (Assessor UI audit: an assessor without the sub-role opened Financial Assistance by its address): whether a menu
+ * entry of this portal for the screen's route is for this login (the same check as the menu); null when this portal's menu has
+ * no entry for it (the screen is opened from links only, and its route keeps its own role check).
+ */
+export function menuScreenAllows(route: string, roleId: number, subRoles: readonly string[], system: PortalSystem = PORTAL_SYSTEM): boolean | null {
+  const entries = expandLevels(MENUS[system]).filter((i) => i.route === route);
+  return entries.length ? entries.some((i) => menuItemAllows(i, roleId, subRoles)) : null;
+}
+
+/**
  * The menu of a role. A sub-user (operation admin, agency sub-user) gets its owner's menu limited to the screens its owner
  * gave it (`permissionRoutes`, from the sign-in); the API checks them again.
  */
@@ -621,13 +648,9 @@ export function menuFor(
   system: PortalSystem = PORTAL_SYSTEM,
   permissionRoutes?: readonly string[] | null,
 ): StaffMenuItem[] {
-  const kind = agencyKindOf(subRoles);
   return expandLevels(MENUS[system]).filter(
     (i) =>
-      i.roles.includes(roleId) &&
-      (i.agencyKinds ?? ASSESSMENT_ONLY).includes(kind) &&
-      (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&
-      (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))) &&
+      menuItemAllows(i, roleId, subRoles) &&
       (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
       (!i.onlyWithout || (!!permissionRoutes && !permissionRoutes.includes(i.onlyWithout))),
   );

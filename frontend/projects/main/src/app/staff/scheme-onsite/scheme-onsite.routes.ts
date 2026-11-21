@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
+import { staffMenuGuard } from '../assessment/assessment-shared';
 
 const masterAdmin = authGuard('/staff', [StaffRole.MasterAdmin]);
 const agency = authGuard('/staff', [StaffRole.Agency]);
@@ -38,7 +39,7 @@ export const SCHEME_ONSITE_ROUTES: Routes = [
     path: 'allotment',
     canActivate: [agency],
     children: [
-      { path: '', title: 'ZED | Scheme Onsite Allotment', data: { mode: 'onsiteAllotment' }, loadComponent: list },
+      { path: '', title: 'ZED | Scheme Onsite Allotment', data: { mode: 'onsiteAllotment' }, canActivate: [staffMenuGuard('/staff/scheme-onsite/allotment')], loadComponent: list },
       { path: ':id', title: 'ZED | Scheme Application', data: { mode: 'onsiteAllotment' }, loadComponent: detail },
     ],
   },
@@ -46,7 +47,7 @@ export const SCHEME_ONSITE_ROUTES: Routes = [
     path: 'qc',
     canActivate: [agency],
     children: [
-      { path: '', title: 'ZED | Scheme Onsite QC', data: { mode: 'onsiteQc' }, loadComponent: list },
+      { path: '', title: 'ZED | Scheme Onsite QC', data: { mode: 'onsiteQc' }, canActivate: [staffMenuGuard('/staff/scheme-onsite/qc')], loadComponent: list },
       { path: ':id', title: 'ZED | Scheme Application', data: { mode: 'onsiteQc' }, loadComponent: detail },
     ],
   },

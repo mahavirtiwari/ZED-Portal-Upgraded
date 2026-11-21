@@ -70,6 +70,9 @@ public sealed class MilestoneReviewTests : IDisposable
         q[MilestoneFields.FinalCommentsSql] = args => FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "NcCount") == "1"
             ? [new { Id = 61L, NcCount = 1 }] : [];
 
+        // 2026-11-21: the attendance is read from ConsultantDailyAttendance and paired in the portal (MilestoneAttendance).
+        q[MilestoneAttendance.Sql] = args => FakeSql.Arg(args, "ZedId") != Zed ? [] :
+            [new { ConsultantId = Lead, MileStoneNo = "1", AttendanceType = "LOGIN", Stamp = "Nov 17, 2026 9:00 AM", PhotoId = "77" }];
         _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
             [new { ZedId = Zed, Certification = "Silver", NcCount = 1, CertificationStatus = _status, PUnitName = "ACME", Password = "secret", BdsFromDate = "May 1, 2025", CoAssessorName = "CO-CONSULTANT" }],
             [], [],

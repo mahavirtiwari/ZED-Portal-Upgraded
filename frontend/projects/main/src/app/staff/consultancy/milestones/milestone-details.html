@@ -3,8 +3,8 @@
 <!-- 2026-11-17 (approved staff redesign): "Home > Milestone n > ZED ID" crumbs and the light head buttons. -->
 <!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.milestoneDetails.*). -->
 <zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
-  <button type="button" class="btn btn-ph" (click)="goBack()">{{ 'Back' | t: 'staff.milestoneDetails.backButton' }}</button>
-  <button type="button" class="btn btn-ph" (click)="refresh()">{{ 'Refresh' | t: 'staff.milestoneDetails.refreshButton' }}</button>
+  <button type="button" class="btn btn-primary" (click)="goBack()">{{ 'Back' | t: 'staff.milestoneDetails.backButton' }}</button>
+  <button type="button" class="btn btn-primary" (click)="refresh()">{{ 'Refresh' | t: 'staff.milestoneDetails.refreshButton' }}</button>
 </zed-page-head>
 @if (milestoneRow(1); as m1) {
   <zed-unit-facts [msme]="m1" [udyam]="t(m1, 'UdyogAadharNo')"
@@ -77,11 +77,12 @@
                     <td>
                       @switch (i) {
                         @case (0) {
-                          {{ 'BDSR From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.bdsrDates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }}<br />
-                          {{ 'HAP From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.hapDates' : { from: t(m, 'HapFromDate'), to: t(m, 'HapToDate') } }}
+                          <!-- 2026-11-21 (UI audit): the abbreviations spelt out on hover. -->
+                          <span class="abbr-help" [title]="'Baseline Diagnostic Study Report' | t: 'staff.milestoneDetails.overview.bdsrTitle'">{{ 'BDSR From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.bdsrDates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }}</span><br />
+                          <span class="abbr-help" [title]="'Handholding Action Plan' | t: 'staff.milestoneDetails.overview.hapTitle'">{{ 'HAP From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.hapDates' : { from: t(m, 'HapFromDate'), to: t(m, 'HapToDate') } }}</span>
                         }
-                        @case (1) { {{ 'PR 1 From: {from} PR 1 To: {to}' | t: 'staff.milestoneDetails.overview.review1Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }} }
-                        @default { {{ 'PR 2 From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.review2Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }} }
+                        @case (1) { <span class="abbr-help" [title]="'Progress review 1' | t: 'staff.milestoneDetails.overview.review1Title'">{{ 'PR 1 From: {from} PR 1 To: {to}' | t: 'staff.milestoneDetails.overview.review1Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }}</span> }
+                        @default { <span class="abbr-help" [title]="'Progress review 2' | t: 'staff.milestoneDetails.overview.review2Title'">{{ 'PR 2 From: {from} To: {to}' | t: 'staff.milestoneDetails.overview.review2Dates' : { from: t(m, 'BdsFromDate'), to: t(m, 'BdsToDate') } }}</span> }
                       }
                     </td>
                   </tr>
@@ -140,9 +141,10 @@
       @if (tab() === 3) {
         <div class="tab-pane fade show active" role="tabpanel">
           @for (c of d.attendanceConsultants; track $index) {
-            <h4 class="block-title">{{ t(c, 'ConsultantId') }} - {{ t(c, 'AssessorType') }}</h4>
+            <!-- 2026-11-21 (UI audit): the consultant's name (the ID beside it), not only the ID. -->
+            <h4 class="block-title">{{ t(c, 'AssessorName') || t(c, 'ConsultantId') }}@if (t(c, 'AssessorName')) { <small class="att-id">({{ t(c, 'ConsultantId') }})</small> } - {{ t(c, 'AssessorType') === 'Consultant' ? ('Consultant' | t: 'staff.milestoneDetails.attendance.consultantType') : t(c, 'AssessorType') }}</h4>
             <div class="table-responsive">
-              <table class="table table-zed table-bordered">
+              <table class="table table-zed table-bordered att-table">
                 <thead>
                   <tr class="text-center"><th>{{ 'MileStone' | t: 'staff.milestoneDetails.attendance.column.milestone' }}</th><th>{{ 'Day' | t: 'staff.milestoneDetails.attendance.column.day' }}</th><th>{{ 'Date' | t: 'staff.milestoneDetails.attendance.column.date' }}</th><th>{{ 'Punch-In' | t: 'staff.milestoneDetails.attendance.column.in' }}</th><th>{{ 'Punch-Out' | t: 'staff.milestoneDetails.attendance.column.out' }}</th><th>{{ 'No. of Hours' | t: 'staff.milestoneDetails.attendance.column.hours' }}</th><th>{{ 'Punch-In Selfie' | t: 'staff.milestoneDetails.attendance.column.inSelfie' }}</th><th>{{ 'Punch-Out Selfie' | t: 'staff.milestoneDetails.attendance.column.outSelfie' }}</th></tr>
                 </thead>
@@ -151,10 +153,11 @@
                     <tr class="text-center">
                       <td>{{ t(a, 'MileStoneNo') }}</td>
                       <td>{{ 'Day {n}' | t: 'staff.milestoneDetails.attendance.dayText' : { n: t(a, 'RowNumber') } }}</td>
-                      <td>{{ t(a, 'TimeStamps') }}</td>
-                      <td>{{ t(a, 'LoginTime') }}</td>
-                      <td>{{ t(a, 'LogoutTime') }}</td>
-                      <td>{{ '{hours} Hours ({minutes} Minutes)' | t: 'staff.milestoneDetails.attendance.hoursText' : { hours: t(a, 'NoOfHours'), minutes: t(a, 'NoOfMinutes') } }}</td>
+                      <td>{{ attendanceDate(a) }}</td>
+                      <td>{{ t(a, 'LoginTime') || ('Not punched in' | t: 'staff.milestoneDetails.attendance.notIn') }}</td>
+                      <td>{{ t(a, 'LogoutTime') || ('Not punched out' | t: 'staff.milestoneDetails.attendance.notOut') }}</td>
+                      <!-- 2026-11-21 (UI audit): no duration without both punches (as sa-details), never a negative one. -->
+                      <td>{{ t(a, 'NoOfMinutes') !== '' && n(a, 'NoOfMinutes') >= 0 && n(a, 'NoOfHours') >= 0 ? ('{hours} Hours ({minutes} Minutes)' | t: 'staff.milestoneDetails.attendance.hoursText' : { hours: t(a, 'NoOfHours'), minutes: t(a, 'NoOfMinutes') }) : '-' }}</td>
                       <td>
                         @if (a['LoginPhotoUrl']) {
                           <button type="button" class="btn btn-link p-0" (click)="openImage($any(a['LoginPhotoUrl']))"><img class="selfie" [src]="a['LoginPhotoUrl']" [alt]="'Login Selfie' | t: 'staff.milestoneDetails.attendance.inSelfieAlt'" width="50" height="50" /></button>
@@ -632,7 +635,7 @@
   </div>
   @for (pp of named($any(photos), 'Attendance Sheet'); track $index) {
     <div class="fact photo-row">
-      <p class="photo-name">{{ 'Attendane Record' | t: 'staff.milestoneDetails.training.attendanceTitle' }}</p>
+      <p class="photo-name">{{ 'Attendance Record' | t: 'staff.milestoneDetails.training.attendanceTitle' }}</p>
       <div class="photo-file">
         @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
         <span class="muted">{{ 'Captured at {time}' | t: 'staff.milestoneDetails.photo.capturedNote' : { time: pp.createdDate } }}</span>

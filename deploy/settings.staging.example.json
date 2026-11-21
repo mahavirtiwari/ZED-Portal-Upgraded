@@ -65,6 +65,7 @@
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in/Consultancy",
     "Portal__StorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
     "Consultancy__SharedStorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Consultancy__AppStorageRoot": "E:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES",
     "Consultancy__TuApp__LoginHours": "12",
     "Consultancy__TuApp__SameIp": "false"
   },

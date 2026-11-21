@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { AdminPortal } from '../admin-portal';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { ExpenditureApi, PoChange, PoItem, PoLevel, PoView, poPill, shownDate } from './expenditure.api';
@@ -45,7 +46,7 @@ type Form =
         <div class="po-acts">
           <button type="button" class="btn btn-default btn-sm" (click)="openHistory()">{{ 'History' | t: 'staff.expenditure.po.historyButton' }}</button>
           <button type="button" class="btn btn-default btn-sm" [disabled]="!view()?.levels?.length" (click)="export()">{{ 'Export' | t: 'staff.expenditure.po.exportButton' }}</button>
-          @if (view()?.canEdit) { <button type="button" class="btn btn-outline-primary btn-sm" (click)="startAdd()">{{ '+ Add PO' | t: 'staff.expenditure.po.addButton' }}</button> }
+          @if (view()?.canEdit) { <button type="button" class="btn btn-primary btn-sm" (click)="startAdd()">{{ '+ Add PO' | t: 'staff.expenditure.po.addButton' }}</button> }
         </div>
       </div>
       @if (error()) { <div class="alert alert-danger m-3" role="alert">{{ error() }}</div> }
@@ -82,12 +83,17 @@ type Form =
           </tbody>
         </table>
       </div>
-      <p class="po-note">{{ 'When the cases in a PO are used up (completed, rejected after assessment, or in progress), allotment to this {word} for that level stops and says why. Reopen asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.' | t: 'staff.expenditure.po.note' : { word: word() } }}</p>
+      @if (consultancy) {
+        <!-- 2026-11-21 (UI audit): handholding words on the Consultancy portal. -->
+        <p class="po-note">{{ 'When the cases in a PO are used up (handholding completed, rejected after a milestone, or in progress), allotment of consultancy to this {word} for that level stops and says why. Reopen asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.' | t: 'staff.expenditure.po.consultancy.note' : { word: word() } }}</p>
+      } @else {
+        <p class="po-note">{{ 'When the cases in a PO are used up (completed, rejected after assessment, or in progress), allotment to this {word} for that level stops and says why. Reopen asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.' | t: 'staff.expenditure.po.note' : { word: word() } }}</p>
+      }
     </div>
 
     @if (form(); as f) {
       <div class="xd-back" (click)="form.set(null)"></div>
-      <form class="xd" role="dialog" aria-modal="true" aria-labelledby="po-title" (ngSubmit)="save()">
+      <form class="xd" role="dialog" aria-modal="true" aria-labelledby="po-title" novalidate (ngSubmit)="save()">
         <div class="xd-head">
           <span class="xd-ico" aria-hidden="true">PO</span>
           <div><h3 id="po-title">{{ f.kind === 'add' ? ('Add purchase order' | t: 'staff.expenditure.po.form.addTitle') : f.kind === 'edit' ? ('Edit purchase order' | t: 'staff.expenditure.po.form.editTitle') : ('Reopen allotment' | t: 'staff.expenditure.po.form.reopenTitle') }}</h3>
@@ -95,7 +101,7 @@ type Form =
           <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.expenditure.po.closeAria'" (click)="form.set(null)">×</button>
         </div>
         <div class="xd-body">
-          @if (formError()) { <div class="alert alert-danger xd-err" role="alert">{{ formError() }}</div> }
+          @if (formError()) { <div class="alert alert-danger xd-err" role="alert" tabindex="-1" #poError>{{ formError() }}</div> }
           @if (f.kind === 'add') {
             <label class="xd-field"><span>{{ 'Level' | t: 'staff.expenditure.po.form.levelLabel' }}</span>
               <select class="form-select" name="level" [(ngModel)]="f.level">
@@ -105,19 +111,19 @@ type Form =
             <p><b>{{ levelName(f.level) }}</b></p>
           }
           @if (f.kind === 'reopen') {
-            <label class="xd-field"><span>{{ 'Reason' | t: 'staff.expenditure.po.form.reasonLabel' }}</span><textarea class="form-control" rows="2" maxlength="1000" name="reason" [(ngModel)]="f.reason"></textarea></label>
+            <label class="xd-field"><span>{{ 'Reason' | t: 'staff.expenditure.po.form.reasonLabel' }}</span><textarea class="form-control" rows="2" maxlength="1000" name="reason" [(ngModel)]="f.reason" [class.is-invalid]="bad('reason')"></textarea></label>
             <div class="xd-field" role="radiogroup" [attr.aria-label]="'How to reopen' | t: 'staff.expenditure.po.form.modeAria'">
               <label class="me-3"><input type="radio" name="mode" value="extra" [(ngModel)]="f.mode" /> {{ 'Extra cases (PO amendment)' | t: 'staff.expenditure.po.form.modeExtra' }}</label>
               <label><input type="radio" name="mode" value="new" [(ngModel)]="f.mode" /> {{ 'A new PO' | t: 'staff.expenditure.po.form.modeNew' }}</label>
             </div>
             @if (f.mode === 'extra') {
-              <label class="xd-field"><span>{{ 'Extra cases' | t: 'staff.expenditure.po.form.extraLabel' }}</span><input type="number" min="1" class="form-control" name="extra" [(ngModel)]="f.extraCases" /></label>
+              <label class="xd-field"><span>{{ 'Extra cases' | t: 'staff.expenditure.po.form.extraLabel' }}</span><input type="number" min="1" class="form-control" name="extra" [(ngModel)]="f.extraCases" [class.is-invalid]="bad('extra')" /></label>
             }
           }
           @if (f.kind !== 'reopen' || f.mode === 'new') {
-            <label class="xd-field"><span>{{ 'PO number' | t: 'staff.expenditure.po.form.numberLabel' }}</span><input class="form-control" maxlength="100" name="poNumber" [(ngModel)]="f.poNumber" /></label>
-            <label class="xd-field"><span>{{ 'PO date' | t: 'staff.expenditure.po.form.dateLabel' }}</span><input type="date" class="form-control" name="poDate" [(ngModel)]="f.poDate" /></label>
-            <label class="xd-field"><span>{{ 'Cases in PO' | t: 'staff.expenditure.po.form.casesLabel' }}</span><input type="number" min="1" class="form-control" name="cases" [(ngModel)]="f.cases" /></label>
+            <label class="xd-field"><span>{{ 'PO number' | t: 'staff.expenditure.po.form.numberLabel' }}</span><input class="form-control" maxlength="100" name="poNumber" [(ngModel)]="f.poNumber" [class.is-invalid]="bad('poNumber')" /></label>
+            <label class="xd-field"><span>{{ 'PO date' | t: 'staff.expenditure.po.form.dateLabel' }}</span><input type="date" class="form-control" name="poDate" [(ngModel)]="f.poDate" [class.is-invalid]="bad('poDate')" /></label>
+            <label class="xd-field"><span>{{ 'Cases in PO' | t: 'staff.expenditure.po.form.casesLabel' }}</span><input type="number" min="1" class="form-control" name="cases" [(ngModel)]="f.cases" [class.is-invalid]="bad('cases')" /></label>
           }
           @if (f.kind === 'edit') {
             <label class="xd-field"><span>{{ 'Reason (optional)' | t: 'staff.expenditure.po.form.reasonOptionalLabel' }}</span><input class="form-control" maxlength="1000" name="reason" [(ngModel)]="f.reason" /></label>
@@ -164,6 +170,11 @@ export class PoCard {
   readonly portal = input<AdminPortal | null>(null);
   /** "agency" or "organisation" (the note's wording). */
   readonly word = input('agency');
+  /** 2026-11-21: the Consultancy build (or the Admin reading a consultant organisation's POs from main). */
+  protected get consultancy(): boolean {
+    return this.system === 'consultancy' || this.portal() === 'consultancy';
+  }
+  private readonly system = inject(STAFF_SYSTEM);
 
   protected readonly view = signal<PoView | null>(null);
   protected readonly loading = signal(false);
@@ -206,22 +217,63 @@ export class PoCard {
     const used = new Set((this.view()?.levels ?? []).map((l) => l.level));
     const first = this.view()?.levelOptions.find((o) => !used.has(o.code))?.code ?? this.view()?.levelOptions[0]?.code ?? '';
     this.formError.set('');
+    this.badField.set('');
     this.form.set({ kind: 'add', level: first, poNumber: '', poDate: '', cases: null });
   }
 
   protected startEdit(l: PoLevel, p: PoItem): void {
     this.formError.set('');
+    this.badField.set('');
     this.form.set({ kind: 'edit', level: l.level, id: p.id, poNumber: p.poNumber, poDate: p.poDate, cases: p.cases, reason: '' });
   }
 
   protected startReopen(l: PoLevel): void {
     this.formError.set('');
+    this.badField.set('');
     this.form.set({ kind: 'reopen', level: l.level, mode: 'extra', reason: '', extraCases: null, poNumber: '', poDate: '', cases: null });
+  }
+
+  /** 2026-11-21 (UI audit): the field the browser's check found wrong (outlined in red). */
+  protected readonly badField = signal('');
+  protected bad(field: string): boolean {
+    return this.badField() === field;
+  }
+
+  /**
+   * The server's rules checked in the browser before posting (PurchaseOrders.Check / Reopen): the first problem is shown at
+   * the top of the form and scrolled into view, its field outlined. Null when the form can be sent.
+   */
+  protected check(f: Form): { field: string; message: string } | null {
+    const needsPo = f.kind !== 'reopen' || f.mode === 'new';
+    if (f.kind === 'add' && !f.level) return { field: 'level', message: t('staff.expenditure.po.check.level', 'Please choose a level.') };
+    if (f.kind === 'reopen' && !f.reason.trim()) return { field: 'reason', message: t('staff.expenditure.po.check.reason', 'Please enter the reason for reopening.') };
+    if (f.kind === 'reopen' && f.mode === 'extra' && !(Number.isInteger(f.extraCases) && (f.extraCases ?? 0) >= 1 && (f.extraCases ?? 0) <= 1_000_000))
+      return { field: 'extra', message: t('staff.expenditure.po.check.extra', 'Please enter the extra cases (1 to 10,00,000).') };
+    if (needsPo) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9 /\-_.()&:#]{0,99}$/.test(f.poNumber.trim()))
+        return { field: 'poNumber', message: t('staff.expenditure.po.check.number', 'Please enter the PO number (letters, digits and / - _ . only, up to 100 characters).') };
+      const d = /^\d{4}-\d{2}-\d{2}$/.test(f.poDate) ? new Date(f.poDate + 'T00:00:00') : null;
+      const latest = new Date();
+      latest.setFullYear(latest.getFullYear() + 1);
+      if (!d || isNaN(d.getTime()) || d.getFullYear() < 2000 || d > latest)
+        return { field: 'poDate', message: t('staff.expenditure.po.check.date', 'Please enter the PO date.') };
+      if (!(Number.isInteger(f.cases) && (f.cases ?? 0) >= 1 && (f.cases ?? 0) <= 1_000_000))
+        return { field: 'cases', message: t('staff.expenditure.po.check.cases', 'Please enter the cases in the PO (1 to 10,00,000).') };
+    }
+    return null;
   }
 
   protected async save(): Promise<void> {
     const f = this.form();
     if (!f) return;
+    const problem = this.check(f);
+    this.badField.set(problem?.field ?? '');
+    if (problem) {
+      this.formError.set(problem.message);
+      // The message is at the top of the form: bring it into view.
+      setTimeout(() => document.querySelector<HTMLElement>('.xd .xd-err')?.scrollIntoView?.({ block: 'nearest' }));
+      return;
+    }
     const partyId = this.partyId();
     this.busy.set(true);
     this.formError.set('');
@@ -240,6 +292,7 @@ export class PoCard {
       await this.load();
     } catch (e) {
       this.formError.set(apiErrorMessage(e));
+      setTimeout(() => document.querySelector<HTMLElement>('.xd .xd-err')?.scrollIntoView?.({ block: 'nearest' }));
     } finally {
       this.busy.set(false);
     }

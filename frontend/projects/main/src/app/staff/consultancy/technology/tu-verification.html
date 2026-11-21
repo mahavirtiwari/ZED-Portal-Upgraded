@@ -1,7 +1,7 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/FinancialAssistance/Verification.cshtml, laid out with the V4 blocks. -->
 <!-- 2026-11-17 (approved staff redesign): the page head with crumbs and the light buttons; completed actions as toasts. -->
 <!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.tuVerification.*). -->
-<zed-page-head [crumbs]="crumbs()" [title]="'Technology upgradation · {zedId}' | t: 'staff.tuVerification.title' : { zedId }"
+<zed-page-head [crumbs]="crumbs()" [title]="'Technology Upgradation · {zedId}' | t: 'staff.tuVerification.title' : { zedId }"
                [subtitle]="'The unit\'s purchased technologies, payments and documents; validate the documents, then accept or reject.' | t: 'staff.tuVerification.sub'">
   <button type="button" class="btn btn-ph" (click)="load()">{{ 'Refresh' | t: 'staff.tuVerification.refreshButton' }}</button>
   <a class="btn btn-ph" [routerLink]="backLink">{{ 'Back' | t: 'staff.tuVerification.backButton' }}</a>

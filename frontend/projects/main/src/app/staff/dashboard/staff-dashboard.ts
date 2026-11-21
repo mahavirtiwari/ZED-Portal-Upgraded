@@ -9,7 +9,7 @@ import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
 import { NO_EXPORT, exportElement } from './export';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
-import { levelName as adminLevelName } from '../../msme/shared/levels';
+import { allLevels, levelName as adminLevelName } from '../../msme/shared/levels';
 import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { TableExport } from '../table-export';
@@ -196,7 +196,7 @@ export function cardText(label: string): string {
             }
           </div>
         }
-        <button type="button" class="btn btn-ph dash-refresh no-export" [disabled]="an.loading()" (click)="refresh()">
+        <button type="button" class="btn btn-primary dash-refresh no-export" [disabled]="an.loading()" (click)="refresh()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> {{ 'Refresh' | t: 'staff.dashboard.refreshButton' }}
         </button>
         <button type="button" class="btn btn-primary dash-export-btn no-export" [disabled]="!an.data() || exporting()" aria-haspopup="dialog" (click)="openExport()">
@@ -301,9 +301,8 @@ export function cardText(label: string): string {
     .an-basis-tab { min-width: 168px; height: 30px; border: 0; background: none; border-radius: 7px; padding: 0 14px; font-size: 12.5px; font-weight: 500; color: #17373b;
       text-transform: capitalize; }
     .an-basis-tab.active { background: #24666b; color: #fff; font-weight: 700; }
-    .btn.btn-ph.dash-refresh, .btn.btn-primary.dash-export-btn { justify-content: center; gap: 8px; min-width: 112px; height: 36px; padding: 0 16px; border-radius: 9px;
+    .btn.dash-refresh, .btn.btn-primary.dash-export-btn { justify-content: center; gap: 8px; min-width: 112px; height: 36px; padding: 0 16px; border-radius: 9px;
       font-size: 13.5px; font-weight: 700; text-transform: none; }
-    .btn.btn-ph.dash-refresh { background: #e7eeee; color: #17373b; border: 0; }
     .btn.btn-primary.dash-export-btn { background: #24666b; border-color: #24666b; color: #fff; }
     svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     /* Level cards: the level's colour as the band; one bar of the statuses and a legend under it. Status colours: pending
@@ -502,7 +501,10 @@ export class StaffDashboardPage {
     if (card.name) return card.name;
     const m = /^([\w-]+) (certification|surveillance|level)$/i.exec(card.title);
     if (!m) return cardText(card.title);
-    // "ZED-X" keeps its capitals.
+    // 2026-11-21 (UI audit): the level registry's name (Administration → Certification Levels), e.g. ZED-X for ZEDX.
+    const code = m[1].replace(/-/g, '').toLowerCase();
+    const known = allLevels().find((l) => l.code.toLowerCase() === code);
+    if (known) return adminLevelName(known.code);
     return m[1].includes('-') ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
   }
 

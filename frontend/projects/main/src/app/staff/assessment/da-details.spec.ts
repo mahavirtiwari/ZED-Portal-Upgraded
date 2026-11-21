@@ -668,6 +668,36 @@ describe('DaDetailsPage', () => {
     http.expectNone((r) => r.url.startsWith('/api/staff/assessment'));
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Invalid request.');
   });
+
+  // 2026-11-21 (Assessor UI audit: the details were asked twice on every load): a second load while the first is on its way shares it.
+  it('asks the details once when a second load starts before the first answer', async () => {
+    fixture.componentRef.setInput('zedId', 'ZEDMSME000001');
+    fixture.componentRef.setInput('certification', 'Bronze');
+    await settle();
+    flushConfig();
+    (fixture.componentInstance as unknown as { refresh(): void }).refresh();
+    await settle();
+    http.expectOne(BASE).flush(details());
+    await settle();
+    expect(el.textContent).toContain('ZEDMSME000001');
+    // A later Refresh reads them again.
+    (fixture.componentInstance as unknown as { refresh(): void }).refresh();
+    await settle();
+    http.expectOne(BASE).flush(details());
+    await settle();
+  });
+
+  // 2026-11-21 (Assessor UI audit): "Click on the site exterior photos to validate" only while the assessor can assess.
+  it('shows the site photos note to the assessor only while the assessment is open', async () => {
+    const note = () => el.querySelector('zed-text[key="staff.assessment.desktop.validateNote.sitePhotos"]');
+    await open(details());
+    expect(note()).not.toBeNull();
+    fixture.destroy();
+    fixture = TestBed.createComponent(DaDetailsPage);
+    el = fixture.nativeElement;
+    await open(details({ msme: { ...details().msme, CertificationStatus: 6, IsCertified: true }, permissions: { canAssess: false, canFinalSubmit: false, canWithdrawExemption: false, review: NO_REVIEW } }));
+    expect(note()).toBeNull();
+  });
 });
 
 describe('DaDetailsPage (surveillance ESG tab)', () => {
@@ -693,7 +723,8 @@ describe('DaDetailsPage (surveillance ESG tab)', () => {
       details({
         esgCheckList: [
           { Code: 'E1', CheckListType: 'ESG', Question: 'Waste segregated?', Answer: 'Yes' },
-          { Code: 'S1', CheckListType: 'SOCIAL/OHS', Question: 'First aid kit?', Answer: 'No' },
+          { Code: '18', CheckListType: 'SOCIAL/OHS', Question: 'First aid kit?', Answer: 'No' },
+          { Code: '20', CheckListType: 'SOCIAL/OHS', Question: 'Fire exits marked?', Answer: 'Yes' },
         ],
       }),
     );
@@ -704,8 +735,10 @@ describe('DaDetailsPage (surveillance ESG tab)', () => {
     expect(el.querySelector('.numberCircle')!.textContent!.trim()).toBe('3');
     const [esg, social] = Array.from(el.querySelectorAll('table'));
     expect(Array.from(esg.querySelectorAll('th')).map((th) => th.textContent!.trim())[0]).toBe('S.No');
-    expect(esg.querySelector('tbody td')!.textContent!.trim()).toBe('E1');
-    expect(social.querySelector('tbody td')!.textContent!.trim()).toBe('S1');
+    // 2026-11-21 (Assessor UI audit): numbered by position, not by the stored code (which skipped 19).
+    expect(esg.querySelector('tbody td')!.textContent!.trim()).toBe('1');
+    expect(Array.from(social.querySelectorAll('tbody tr')).map((tr) => tr.querySelector('td')!.textContent!.trim())).toEqual(['1', '2']);
+    expect(el.querySelector('.tab-title h4')!.textContent!.trim()).toBe('ESG compliance');
     expect(Array.from(el.querySelectorAll('.panel-black')).map((p) => p.textContent!.trim())).toEqual(['ESG Check List', 'Social/OHS Check List']);
     for (const r of http.match((req) => req.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
     http.verify();

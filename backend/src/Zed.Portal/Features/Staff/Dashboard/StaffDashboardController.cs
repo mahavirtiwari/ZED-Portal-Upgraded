@@ -68,7 +68,129 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
             PortalSystem.Surveillance => SurveillanceSummaryColumns,
             _ => SummaryColumns,
         };
-        return DashboardFilters.Pick(sets[0].FirstOrDefault(), columns);
+        var result = DashboardFilters.Pick(sets[0].FirstOrDefault(), columns);
+        if (host.System == PortalSystem.Consultancy) await AddHandholdingCardsAsync(result, ct);
+        return result;
+    }
+
+    // ----- Consultancy: the handholding cards from the milestone rows -----
+
+    /// <summary>Handholding levels and the card columns of each, in the order of <see cref="ConsultancySummaryColumns"/>.</summary>
+    private static readonly string[] HandholdingCardLevels = ["Silver", "Gold", "ZEDX"];
+
+    /// <summary>The four test Udyam numbers the legacy dashboard procedures leave out.</summary>
+    internal const string TestUdyamNumbers = "'UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915'";
+
+    /// <summary>
+    /// 2026-11-21 (UI audit: the dashboard showed 0 applications while Consultancy Monitoring listed a Silver case in milestone 1):
+    /// the legacy SP_DASHBOARD_GET_DETAILS of ZED_CONSULTANT counts the level cards from the payment records (MsmePaymentInfo
+    /// by its Certification / MileStoneNum) and has no ZED-X columns at all, while Monitoring and the consultants list read the
+    /// milestone rows (MsmeCertifications, one per unit, level and milestone, written when the milestone's payment is
+    /// recorded). A payment record whose level or milestone does not match its milestone row (or no record) left the cards at
+    /// 0. The cards are now counted here from the milestone rows, with any payment record of a handholding level and
+    /// milestone 1-3 as well: a unit counts once per level (Total), a milestone counts as paid when its row or its payment
+    /// record exists, and as completed at status 100 (milestone 3: 100 or 16), as the legacy procedure counts completions.
+    /// Scope as the procedure: a consultant organisation its allotments (CertificationBodyUserId), a consultant its own
+    /// (DesktopAssessorId / SiteAssessorId; payment records are not allotted, so they are not counted for either), a
+    /// state-bound Ministry user its state. The test units are left out as in <see cref="Analytics"/>.
+    /// </summary>
+    internal const string HandholdingCardsSql =
+        "WITH HandholdingMilestones AS (" +
+        "SELECT C.ZedId, LTRIM(RTRIM(C.Certification)) AS Level, C.NcCount AS MileStone, C.CertificationStatus " +
+        "FROM dbo.MsmeCertifications C INNER JOIN dbo.Msme M ON M.ZedId = C.ZedId " +
+        "WHERE LTRIM(RTRIM(C.Certification)) IN ('Silver', 'Gold', 'ZEDX') AND C.NcCount BETWEEN 1 AND 3 AND C.ZedId NOT LIKE '%[_]D%' " +
+        "AND (@State IS NULL OR M.StateId = @State) " +
+        "AND (@IncludeTestUnits = 1 OR NOT EXISTS (SELECT 1 FROM dbo.MsmeBasicInformation B WHERE B.ZedId = C.ZedId AND B.UdyogAadharNo IN (" + TestUdyamNumbers + "))) " +
+        "AND (@AgencyId IS NULL OR C.CertificationBodyUserId = @AgencyId) " +
+        "AND (@ConsultantId IS NULL OR C.DesktopAssessorId = @ConsultantId OR C.SiteAssessorId = @ConsultantId) " +
+        "UNION " +
+        "SELECT P.ZedId, LTRIM(RTRIM(P.Certification)), ISNULL(P.MileStoneNum, 1), NULL " +
+        "FROM dbo.MsmePaymentInfo P INNER JOIN dbo.Msme M ON M.ZedId = P.ZedId " +
+        "WHERE LTRIM(RTRIM(P.Certification)) IN ('Silver', 'Gold', 'ZEDX') AND ISNULL(P.MileStoneNum, 1) BETWEEN 1 AND 3 AND P.ZedId NOT LIKE '%[_]D%' " +
+        "AND @AgencyId IS NULL AND @ConsultantId IS NULL AND (@State IS NULL OR M.StateId = @State) " +
+        "AND (@IncludeTestUnits = 1 OR NOT EXISTS (SELECT 1 FROM dbo.MsmeBasicInformation B WHERE B.ZedId = P.ZedId AND B.UdyogAadharNo IN (" + TestUdyamNumbers + ")))) " +
+        "SELECT Level, COUNT(DISTINCT ZedId) AS Total, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 1 THEN ZedId END) AS M1Paid, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 2 THEN ZedId END) AS M2Paid, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 3 THEN ZedId END) AS M3Paid, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 1 AND CertificationStatus = 100 THEN ZedId END) AS M1Done, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 2 AND CertificationStatus = 100 THEN ZedId END) AS M2Done, " +
+        "COUNT(DISTINCT CASE WHEN MileStone = 3 AND CertificationStatus IN (100, 16) THEN ZedId END) AS M3Done " +
+        "FROM HandholdingMilestones GROUP BY Level;";
+
+    public sealed class HandholdingCardRow
+    {
+        public string? Level { get; init; }
+        public int Total { get; init; }
+        public int M1Paid { get; init; }
+        public int M2Paid { get; init; }
+        public int M3Paid { get; init; }
+        public int M1Done { get; init; }
+        public int M2Done { get; init; }
+        public int M3Done { get; init; }
+    }
+
+    /// <summary>The card columns of one level from its counts (the legacy names: Completed / Pending / Sa…Completed = milestone 1 / 2 / 3 completed).</summary>
+    internal static IEnumerable<KeyValuePair<string, object?>> HandholdingCardColumns(string level, HandholdingCardRow? r) =>
+    [
+        new($"{level}Total", r?.Total ?? 0),
+        new($"{level}M1PaymentDone", r?.M1Paid ?? 0), new($"{level}Completed", r?.M1Done ?? 0),
+        new($"{level}M2PaymentDone", r?.M2Paid ?? 0), new($"{level}Pending", r?.M2Done ?? 0),
+        new($"{level}M3PaymentDone", r?.M3Paid ?? 0), new($"Sa{level}Completed", r?.M3Done ?? 0),
+    ];
+
+    private async Task AddHandholdingCardsAsync(Dictionary<string, object?> result, CancellationToken ct)
+    {
+        try
+        {
+            var rows = await db.QuerySqlAsync<HandholdingCardRow>(HandholdingCardsSql, new
+            {
+                State = BoundStateCode,
+                IncludeTestUnits = portal.Value.DashboardCountsTestUnits ?? !env.IsProduction(),
+                AgencyId = IsRole(UserRole.Agency) ? UserId : null,
+                ConsultantId = IsRole(UserRole.DesktopAssessor) ? UserId : null,
+            }, ct);
+            foreach (var level in HandholdingCardLevels)
+                foreach (var (key, value) in HandholdingCardColumns(level, rows.FirstOrDefault(r => string.Equals(r.Level, level, StringComparison.OrdinalIgnoreCase))))
+                    result[key] = value;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Handholding dashboard cards not counted from the milestone rows; the procedure's figures are shown");
+        }
+        // A card the procedure does not return (ZED-X) is 0, never empty.
+        foreach (var key in ConsultancySummaryColumns.Concat(ConsultancyMasterAdminColumns).Where(k => result.ContainsKey(k) && result[k] is null).ToList())
+            result[key] = 0;
+    }
+
+    /// <summary>One consultant's handholding milestones: completed per milestone, and the milestones in progress.</summary>
+    public sealed record ConsultantMilestones(string UserId, int M1, int M2, int M3, int InProgress);
+
+    /// <summary>
+    /// 2026-11-21 (UI audit: the consultants list printed a fixed "Milestone 1: 0" beside a consultant with a live milestone-1
+    /// case): per consultant (the milestone row's SiteAssessorId or DesktopAssessorId), the milestones completed (milestone
+    /// 1 and 2 at status 100, milestone 3 at 100 or 16, as the dashboard counts them) and those in progress (any other
+    /// status, not disabled). A consultant organisation gets the rows of its own allotments only.
+    /// </summary>
+    internal const string ConsultantMilestonesSql =
+        "SELECT X.ConsultantId AS UserId, " +
+        "SUM(CASE WHEN C.NcCount = 1 AND C.CertificationStatus = 100 THEN 1 ELSE 0 END) AS M1, " +
+        "SUM(CASE WHEN C.NcCount = 2 AND C.CertificationStatus = 100 THEN 1 ELSE 0 END) AS M2, " +
+        "SUM(CASE WHEN C.NcCount = 3 AND C.CertificationStatus IN (100, 16) THEN 1 ELSE 0 END) AS M3, " +
+        "SUM(CASE WHEN ISNULL(C.CertificationStatus, 0) NOT IN (16, 99, 100) AND ISNULL(C.IdDisabled, '') <> 'Yes' THEN 1 ELSE 0 END) AS InProgress " +
+        "FROM dbo.MsmeCertifications C " +
+        "CROSS APPLY (SELECT DISTINCT V.Id FROM (VALUES (C.SiteAssessorId), (C.DesktopAssessorId)) V(Id) WHERE ISNULL(V.Id, '') <> '') X(ConsultantId) " +
+        "WHERE LTRIM(RTRIM(C.Certification)) IN ('Silver', 'Gold', 'ZEDX') AND C.NcCount BETWEEN 1 AND 3 AND C.ZedId NOT LIKE '%[_]D%' " +
+        "AND (@AgencyId IS NULL OR C.CertificationBodyUserId = @AgencyId) " +
+        "GROUP BY X.ConsultantId;";
+
+    [HttpGet("consultant-milestones")]
+    [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Admin, UserRole.Agency)]
+    public async Task<ActionResult<IReadOnlyList<ConsultantMilestones>>> ConsultantMilestoneCounts(CancellationToken ct)
+    {
+        if (host.System != PortalSystem.Consultancy) return NotFound();
+        var rows = await db.QuerySqlAsync<ConsultantMilestones>(ConsultantMilestonesSql, new { AgencyId = IsRole(UserRole.Agency) ? UserId : null }, ct);
+        return Ok(rows);
     }
 
     public sealed record CountsResponse(int Total, int Bronze, int Silver, int Gold);

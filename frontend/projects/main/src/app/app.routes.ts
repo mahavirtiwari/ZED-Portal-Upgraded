@@ -25,13 +25,16 @@ const STAFF_MSME_PROFILE: Route = {
 };
 
 // The roles of each screen's API (the server's StaffRoles), so a typed address opens only for those who can use it.
-const REPORTS = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator]);
+// 2026-11-21 (Assessor UI audit): a menu screen also checks its menu entries on this portal (sub-roles, kinds of agency), so the
+// address opens only for the logins the menu gives it; the pages opened from links (details) keep the role check only.
+const REPORTS = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator], [], [], '/staff/reports');
 const HISTORY = staffScreenGuard([R.MasterAdmin, R.SuperAdmin, R.CitizenFeedback, R.QC]);
 const NEFT = staffScreenGuard([R.StateCoordinator]);
 const FINANCIAL_ASSISTANCE = staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor]);
+const FINANCIAL_ASSISTANCE_LIST = staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor], [], [], '/staff/financial-assistance');
 const FINANCIAL_SUPPORT = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback]);
-const MONITORING = staffScreenGuard([R.MasterAdmin, R.Agency]);
-const SA_ALLOTMENT = staffScreenGuard([R.Agency]);
+const MONITORING = staffScreenGuard([R.MasterAdmin, R.Agency], [], [], '/staff/monitoring');
+const SA_ALLOTMENT = staffScreenGuard([R.Agency], [], [], '/staff/sa-allotment');
 const REMOTE_ASSESSMENTS = staffScreenGuard([R.DesktopAssessor]);
 
 /**
@@ -139,7 +142,7 @@ const MAIN_STAFF_CHILDREN: Routes = [
   {
     path: 'financial-assistance',
     title: 'ZED | Financial Assistance',
-    canActivate: [FINANCIAL_ASSISTANCE],
+    canActivate: [FINANCIAL_ASSISTANCE_LIST],
     loadComponent: () => import('./staff/schemes/fa-submissions').then((m) => m.FaSubmissionsPage),
   },
   {

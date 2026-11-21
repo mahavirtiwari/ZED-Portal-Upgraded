@@ -8,6 +8,9 @@ const masterAdmin = authGuard('/staff', [StaffRole.MasterAdmin]);
 const agency = authGuard('/staff', [StaffRole.Agency]);
 const agencyOrMaster = authGuard('/staff', [StaffRole.Agency, StaffRole.MasterAdmin]);
 
+/** 2026-11-21 (UI audit): the Consultancy build names the agencies Consultant Organisations and the assessors Consultants. */
+const CONSULTANCY = PORTAL_SYSTEM === 'consultancy';
+
 /**
  * User management screens (children of `staff`, mounted at `staff/users`). The API checks the roles
  * again; the guards only keep other roles off pages they cannot use.
@@ -15,7 +18,7 @@ const agencyOrMaster = authGuard('/staff', [StaffRole.Agency, StaffRole.MasterAd
 const MAIN_USERS_ROUTES: Routes = [
   {
     path: 'agencies',
-    title: 'ZED | Assessment Agencies',
+    title: CONSULTANCY ? 'ZED | Consultant Organisations' : 'ZED | Assessment Agencies',
     canActivate: [masterAdmin],
     data: { mode: 'all' },
     loadComponent: () => import('./agencies').then((m) => m.AgenciesPage),
@@ -29,38 +32,38 @@ const MAIN_USERS_ROUTES: Routes = [
   },
   {
     path: 'agencies/new',
-    title: 'ZED | Add Assessment Agency',
+    title: CONSULTANCY ? 'ZED | Add Consultant Organisation' : 'ZED | Add Assessment Agency',
     canActivate: [masterAdmin],
     loadComponent: () => import('./agency-form').then((m) => m.AgencyFormPage),
   },
   {
     path: 'agencies/:userId',
-    title: 'ZED | Assessment Agency',
+    title: CONSULTANCY ? 'ZED | Consultant Organisation' : 'ZED | Assessment Agency',
     canActivate: [masterAdmin],
     loadComponent: () => import('./agency-form').then((m) => m.AgencyFormPage),
   },
   {
     path: 'assessors',
-    title: 'ZED | Assessors',
+    title: CONSULTANCY ? 'ZED | Consultants' : 'ZED | Assessors',
     canActivate: [masterAdmin],
     loadComponent: () => import('./assessor-list').then((m) => m.AssessorListPage),
   },
   {
     path: 'my-assessors',
-    title: 'ZED | Assessors',
+    title: CONSULTANCY ? 'ZED | Consultants' : 'ZED | Assessors',
     canActivate: [agency],
     loadComponent: () => import('./my-assessors').then((m) => m.MyAssessorsPage),
   },
   {
     path: 'assessors/new',
-    title: 'ZED | Add Assessor',
+    title: CONSULTANCY ? 'ZED | Add Consultant' : 'ZED | Add Assessor',
     canActivate: [agency],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),
   },
   {
     path: 'assessors/:userId',
-    title: 'ZED | Assessor',
+    title: CONSULTANCY ? 'ZED | Consultant' : 'ZED | Assessor',
     canActivate: [agencyOrMaster],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),

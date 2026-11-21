@@ -84,7 +84,6 @@ $zp-muted: #5f6f70;
 // The pages' own table rules (16px) must not enlarge the evidence table's text.
 .zp-block table.zp-ev-table td { font-size: 13px; line-height: 1.4; color: #1b2a2c; }
 .zp-ev-table tr:last-child td { border-bottom: 0; }
-.zp-ev-doc .pdf-chip { white-space: normal; text-align: left; }
 .zp-ev-remarks { font-size: 12px; color: $zp-muted; margin-top: 3px; }
 .zp-ev-table .pdf-link + .pdf-link { margin-left: 4px; }
 .zp-ev-act { text-align: right; white-space: nowrap; }

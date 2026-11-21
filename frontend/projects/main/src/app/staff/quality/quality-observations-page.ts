@@ -38,7 +38,7 @@ import { TextPipe, t } from '../../content/page-text';
   template: `
     <zed-page-head [crumbs]="crumbs()" [title]="'Quality Observations' | t: 'staff.quality.title'" [subtitle]="master() ? words().masterSub : words().agencySub">
       @if (master() && tab() === 'dashboard' && dash()) {
-        <button type="button" class="btn btn-outline-primary qo-csv" (click)="exportCsv(dash()!)">
+        <button type="button" class="btn btn-primary qo-csv" (click)="exportCsv(dash()!)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" /></svg> {{ 'Download ranking (CSV)' | t: 'staff.quality.csv.button' }}
         </button>
       }
@@ -61,7 +61,7 @@ import { TextPipe, t } from '../../content/page-text';
         <input id="qo-to" type="date" class="form-control qo-date" [attr.aria-label]="'To' | t: 'staff.quality.period.to.aria'" [title]="'To (dd-mm-yyyy)' | t: 'staff.quality.period.to.tooltip'"
                [min]="from()" [max]="today" [ngModel]="to()" (ngModelChange)="setDate('to', $event)" />
       }
-      <label class="visually-hidden" for="qo-level">{{ 'Certification level' | t: 'staff.quality.level.label' }}</label>
+      <label class="visually-hidden" for="qo-level">{{ consultancy ? ('Level' | t: 'staff.quality.consultancy.level.label') : ('Certification level' | t: 'staff.quality.level.label') }}</label>
       <select id="qo-level" class="form-select qo-level" [ngModel]="level()" (ngModelChange)="level.set($event); load()">
         <option value="">{{ 'All levels' | t: 'staff.quality.level.all.option' }}</option>
         @for (l of levels(); track l.value) { <option [value]="l.value">{{ l.label }}</option> }
@@ -212,7 +212,7 @@ export class QualityObservationsPage {
   protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.quality.crumb', 'Quality Observations') }));
   /** Handholding (consultancy portal) names consultants and consultant organisations; surveillance, surveillances. */
   private readonly system = inject(ASSESSMENT_SYSTEM);
-  private readonly consultancy = this.system === 'consultancy';
+  protected readonly consultancy = this.system === 'consultancy';
   protected readonly words = computed(() => {
     if (this.system === 'consultancy') return {
       agencies: t('staff.quality.consultancy.agencies.label', 'Consultant organisations'), assessors: t('staff.quality.consultancy.assessors.label', 'Consultants'),
@@ -362,8 +362,10 @@ export class QualityObservationsPage {
   }
 
   protected exportCsv(d: QoDashboard): void {
-    const columns = ['Type', 'Rank', 'Name', 'User ID', 'Assessments', 'Total', 'Open', 'Replied', 'Closed', 'Minor', 'Major', 'Critical', 'Reopened', 'Avg reply (h)', 'Avg close (h)', 'Score'];
-    const line = (s: QoStanding) => [s.kind, s.rank, s.name ?? '', s.userId, s.assessments, s.total, s.open, s.responded, s.closed, s.minor, s.major, s.critical,
+    // 2026-11-21 (UI audit): the portal's word for what is counted (Milestones on Consultancy, Surveillances, Assessments).
+    const columns = ['Type', 'Rank', 'Name', 'User ID', this.words().units, 'Total', 'Open', 'Replied', 'Closed', 'Minor', 'Major', 'Critical', 'Reopened', 'Avg reply (h)', 'Avg close (h)', 'Score'];
+    const kind = (k: QoStanding['kind']) => (this.consultancy ? (k === 'Agency' ? 'Consultant organisation' : 'Consultant') : k);
+    const line = (s: QoStanding) => [kind(s.kind), s.rank, s.name ?? '', s.userId, s.assessments, s.total, s.open, s.responded, s.closed, s.minor, s.major, s.critical,
       s.reopens, s.avgReplyHours ?? '', s.avgCloseHours ?? '', s.score];
     // The file name says what the (server-filtered) ranking covers.
     const f = this.filter();

@@ -50,13 +50,14 @@
     "UdyamiBharat__Enabled": "false"
   },
   "Consultancy": {
-    "_comment": "IIS application /Consultancy. StorageRoot: the same folder as main's.",
+    "_comment": "IIS application /Consultancy. StorageRoot: the same folder as main's. AppStorageRoot: the consultant mobile API's Mobile__StorageRoot (milestone attendance and site photos); left empty, Install-ZedIis.ps1 takes it from MobileConsultancy.",
     "ConnectionStrings__Consultancy": "",
     "Portal__PathBase": "/Consultancy",
     "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/Consultancy",
     "Portal__LegacyBaseUrl": "https://loginzed.msme.gov.in/Consultancy",
     "Portal__StorageRoot": "",
-    "Consultancy__SharedStorageRoot": ""
+    "Consultancy__SharedStorageRoot": "",
+    "Consultancy__AppStorageRoot": ""
   },
   "Surveillance": {
     "_comment": "IIS application /surveillance. StorageRoot: the same folder as main's.",

@@ -144,6 +144,10 @@ public sealed class SurveillanceUsersController(
             return this.Problem400("Please select the preferred state for the districts.");
         }
 
+        // 2026-11-21 (the product owner: profile edits in the History): the settings before the save, for the change list.
+        var r = agency.Row;
+        var before = await StaffUserActions.HistoryProfileAsync(async () => await BronzeProfileAsync(StaffUserRules.Bool(r, "AllowBronzeSurveillance"),
+            r.Text("TuPreferredState") is { Length: > 0 } was ? was : null, await DistrictsOfAsync(agency.UserId, ct), ct), agency.UserId, log);
         await db.ExecuteSqlAsync(
             "SET XACT_ABORT ON; BEGIN TRAN; " +
             "UPDATE Users SET AllowBronzeSurveillance = @Allow, ReasonForRejectionForBS = @Reason, TuPreferredState = @State WHERE UserId = @UserId AND RoleId = 2; " +
@@ -153,6 +157,8 @@ public sealed class SurveillanceUsersController(
             new { Allow = req.Allow, Reason = req.Allow ? null : reason, State = state, UserId = agency.UserId, Districts = string.Join(",", districts) }, ct);
         log.LogInformation("Bronze surveillance {State} for agency {UserId} (state {PreferredState}, {Districts} districts) by {Actor}",
             req.Allow ? "enabled" : "disabled", agency.UserId, state, districts.Count, UserId);
+        if (before is not null && await StaffUserActions.HistoryProfileAsync(() => BronzeProfileAsync(req.Allow, state, districts, ct), agency.UserId, log) is { } after)
+            await StaffUserActions.RecordChangesAsync(this, db, agency.UserId, (int)UserRole.Agency, UserBlockHistory.Edited, before, after, log, ct);
         return new MessageResponse(req.Allow ? "Bronze surveillance enabled." : "Bronze surveillance disabled.");
     }
 
@@ -211,6 +217,9 @@ public sealed class SurveillanceUsersController(
         await db.ExecuteSqlAsync("UPDATE Users SET AllowBronzeSurveillance = @Allow WHERE UserId = @UserId AND RoleId = 3",
             new { Allow = req.Allow, UserId = assessor.UserId }, ct);
         log.LogInformation("Bronze surveillance {State} for assessor {UserId} by {Actor}", req.Allow ? "allowed" : "disallowed", assessor.UserId, UserId);
+        await StaffUserActions.RecordChangesAsync(this, db, assessor.UserId, (int)UserRole.DesktopAssessor, UserBlockHistory.Edited,
+            new AccountProfile().Add("bronzeSurveillance", StaffUserRules.Bool(assessor.Row, "AllowBronzeSurveillance")),
+            new AccountProfile().Add("bronzeSurveillance", req.Allow), log, ct);
         return new MessageResponse(req.Allow ? "The assessor can now be assigned Bronze surveillance." : "The assessor can no longer be assigned Bronze surveillance.");
     }
 
@@ -242,7 +251,9 @@ public sealed class SurveillanceUsersController(
     {
         var user = await FindAsync(userId, role, ct);
         if (user is null) return NotFound();
-        return (await UserBlockHistory.ListAsync(db, user.UserId, log, ct)).ToList();
+        // 2026-11-21: the account's whole history, its allotments in this database merged in (UserBlockHistory).
+        return (await UserBlockHistory.ListAsync(db, user.UserId, log, ct,
+            role == UserRole.Agency ? UserBlockHistory.Allotments.Agency : UserBlockHistory.Allotments.Assessor)).ToList();
     }
 
     [HttpPost("agencies/{userId}/password-reset")]
@@ -286,6 +297,15 @@ public sealed class SurveillanceUsersController(
     {
         var user = await StaffUserRules.LoadAsync(db, userId, role, ct);
         return user is not null && StaffUserRules.CanManage(CurrentUser, user, role) ? user : null;
+    }
+
+    /// <summary>2026-11-21: an agency's Bronze surveillance settings as its History records them (the state and districts by name).</summary>
+    private async Task<AccountProfile> BronzeProfileAsync(bool allow, string? state, IReadOnlyList<string> districts, CancellationToken ct)
+    {
+        var names = state is null || districts.Count == 0 ? [] : await ConsultancyUsers.DistrictsAsync(db, state, ct);
+        return new AccountProfile().Add("bronzeSurveillance", allow)
+            .Add("preferredState", state is null ? null : DashboardFilters.States.GetValueOrDefault(state) ?? state)
+            .Add("districts", districts.Select(d => names.FirstOrDefault(n => string.Equals(n.DistrictCode.Trim(), d.Trim(), StringComparison.OrdinalIgnoreCase))?.DistrictName is { Length: > 0 } dn ? dn : d));
     }
 
     private async Task<List<string>> DistrictsOfAsync(string userId, CancellationToken ct) =>

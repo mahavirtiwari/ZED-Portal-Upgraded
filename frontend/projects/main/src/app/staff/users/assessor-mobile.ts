@@ -169,15 +169,18 @@ const SHOWN = 5;
     }
   `,
   styles: `
-    :host { display: block; }
-    .am { padding: 0; overflow: hidden; margin-bottom: 20px; }
-    .am-head { display: flex; align-items: center; gap: 12px; margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
+    /* 2026-11-21 (Consultancy audit: the card overflowed the page at 390 px on a long OS string). */
+    :host { display: block; min-width: 0; max-width: 100%; }
+    .am { padding: 0; overflow: hidden; margin-bottom: 20px; min-width: 0; }
+    .am-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; }
     .am-tile { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
     .am-tile svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .am-release { margin-left: auto; min-height: 32px; padding: 4px 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
     .am-body { padding: 14px 20px 18px; }
     .am-app { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #24666b; }
     .am-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin: 0 0 12px; }
+    .am-facts > div { min-width: 0; }
+    @media (max-width: 420px) { .am-facts { grid-template-columns: minmax(0, 1fr); } .am-release { margin-left: 0; } }
     .am-facts .am-wide { grid-column: 1 / -1; }
     .am-facts dt { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6f8487; }
     .am-facts dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; color: #17373b; overflow-wrap: anywhere; }

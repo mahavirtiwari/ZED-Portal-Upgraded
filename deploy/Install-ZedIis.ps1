@@ -419,6 +419,16 @@ foreach ($name in $Apps) {
     }
     if (-not $vars.Contains('DataProtection__KeysPath')) { $vars['DataProtection__KeysPath'] = $keys }
     if ($app.System) { $vars['Mobile__System'] = $app.System }
+    # 2026-11-21: the Consultancy portal shows the consultant app's photos (milestone attendance and site tour) from where the
+    # consultant mobile API writes them: its Mobile__StorageRoot (MobileConsultancy section, else the Mobile section, else the
+    # host's default App_Data\mobile-storage), unless the Consultancy section sets Consultancy__AppStorageRoot itself.
+    if ($name -eq 'Consultancy' -and [string]::IsNullOrWhiteSpace([string]$vars['Consultancy__AppStorageRoot'])) {
+        $mobileRoot = [string](Get-Section 'MobileConsultancy')['Mobile__StorageRoot']
+        if ([string]::IsNullOrWhiteSpace($mobileRoot)) { $mobileRoot = [string](Get-Section 'Mobile')['Mobile__StorageRoot'] }
+        if ([string]::IsNullOrWhiteSpace($mobileRoot)) { $mobileRoot = Join-Path (Join-Path $InstallRoot 'mobile-consultancy') 'App_Data\mobile-storage' }
+        $vars['Consultancy__AppStorageRoot'] = $mobileRoot
+        Write-Host "    Consultancy__AppStorageRoot = $mobileRoot (the consultant mobile API's storage)"
+    }
     $empty = @($vars.Keys | Where-Object { [string]::IsNullOrWhiteSpace($vars[$_]) })
     if ($empty.Count -gt 0) { Write-Warning "$name settings with no value, left unset (the host stops at startup if it needs them): $($empty -join ', ')" }
     # IIS refuses an environment variable with an empty value ("String must not be empty"); unset means the same to the hosts.

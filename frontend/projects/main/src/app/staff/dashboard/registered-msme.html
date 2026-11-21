@@ -33,7 +33,7 @@
     <thead>
       <tr>
         <th class="text-center">{{ 'S.No.' | t: 'staff.registeredMsme.column.serial' }}</th>
-        <th class="text-center">{{ 'Certification Level' | t: 'staff.registeredMsme.column.level' }}</th>
+        <th class="text-center">{{ consultancy ? ('Level' | t: 'staff.registeredMsme.column.consultancy.level') : ('Certification Level' | t: 'staff.registeredMsme.column.level') }}</th>
         @if (main) { <th class="text-center">{{ 'Certification Phase' | t: 'staff.registeredMsme.column.phase' }}</th> }
         @if (consultancy) { <th class="text-center">{{ 'Milestone' | t: 'staff.registeredMsme.column.milestone' }}</th> }
         @if (surveillance) { <th class="text-center">{{ 'Surveillance No.' | t: 'staff.registeredMsme.column.surveillanceNo' }}</th> }

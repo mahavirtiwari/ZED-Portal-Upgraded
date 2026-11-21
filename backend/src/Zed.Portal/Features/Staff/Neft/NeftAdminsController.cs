@@ -77,6 +77,8 @@ public sealed class NeftAdminsController(
         await db.ExecuteSqlAsync(InsertSql, new { UserId = userId, Password = passwords.StoredValueFor(password), UserName = name, Email = mail, MobileNo = mobile, CreatedBy = UserId }, ct);
         await passwords.SetAsync(userId, password, ct);
         log.LogInformation("NEFT Admin login {NewUserId} created by {Actor}", userId, UserId);
+        // 2026-11-21: the account's history starts with its creation (StaffUserActions; a failed write is a warning only).
+        await StaffUserActions.RecordChangesAsync(this, db, userId, Role, UserBlockHistory.Created, null, Profile(name, mail, mobile), log, ct);
 
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, userId, Role, password, UserId, ct);
         var sent = await SendLoginAsync(userId, name!, mail!, login, reset: false, ct);
@@ -92,6 +94,8 @@ public sealed class NeftAdminsController(
         if (Validate(req, out var name, out var mail, out var mobile) is { } error) return this.Problem400(error);
         await db.ExecuteSqlAsync(UpdateSql, new { row.UserId, UserName = name, Email = mail, MobileNo = mobile }, ct);
         log.LogInformation("NEFT Admin login {UserId} updated by {Actor}", row.UserId, UserId);
+        await StaffUserActions.RecordChangesAsync(this, db, row.UserId, row.RoleId, UserBlockHistory.Edited, Profile(row.UserName, row.Email, row.MobileNo),
+            Profile(name, mail, mobile), log, ct);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
         return new MessageResponse("Login updated. The user is signed out and the change applies at the next sign-in.");
     }
@@ -119,7 +123,12 @@ public sealed class NeftAdminsController(
             new { Password = passwords.StoredValueFor(password), row.UserId }, ct);
         log.LogInformation("Password of NEFT Admin {UserId} reset by {Actor}", row.UserId, UserId);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
-        return await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, new StaffWelcomeLogin(password, null), reset: true, ct)
+        var sent = await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, new StaffWelcomeLogin(password, null), reset: true, ct);
+        // 2026-11-21: in the account's history (where it was sent; never the password).
+        if (sent)
+            await UserBlockHistory.RecordAsync(db, row.UserId, row.RoleId, UserBlockHistory.PasswordLink, UserBlockHistory.NewPassword,
+                StaffUserActions.HistoryActor(this, UserId), RoleId, log, ct, AccountChanges.ToJson([new AccountChange("sentTo", New: to)]));
+        return sent
             ? new MessageResponse($"A new password has been sent to {to}.")
             : this.Problem400("The password was reset, but the e-mail could not be sent. Please try again.");
     }
@@ -154,6 +163,10 @@ public sealed class NeftAdminsController(
             row.UserName, row.Email, Label, blocked: !active, reason!, UserId, log, ct);
         return new MessageResponse(active ? "Login unblocked." : "Login blocked.");
     }
+
+    /// <summary>2026-11-21: the login's profile as its History records it.</summary>
+    private static AccountProfile Profile(string? name, string? mail, string? mobile) =>
+        new AccountProfile().Add("name", name).Add("email", mail).Add("mobile", mobile);
 
     private static string? Validate(NeftAdminRequest req, out string? name, out string? mail, out string? mobile)
     {

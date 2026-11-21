@@ -79,18 +79,76 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         if (!PaidDate(paidFrom, out var from) || !PaidDate(paidTo, out var to) || (from is { } a && to is { } b && a > b))
             return this.Problem400("Invalid payment dates.");
         // The legacy action passed PageNo/PageSize, which this procedure does not declare; only its own parameters are sent.
+        // Consultancy: the level filter is applied after the level is read from the milestone row (MapHandholdingAsync).
+        var consultancy = host.System == PortalSystem.Consultancy;
         var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_PAYMENT_TRANSACTIONS", new
         {
-            Status = "0", State = f.State, UserId, RoleId = RoleId.ToString(), CertificationType = f.Certification,
+            Status = "0", State = f.State, UserId, RoleId = RoleId.ToString(), CertificationType = consultancy ? null : f.Certification,
             Gender = f.Gender, MsmeSize = f.Size,
         }, ct);
         var raw = await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct);
-        var rows = DashboardFilters.Pick(raw,
-            host.System == PortalSystem.Consultancy ? [.. ReceivedColumns, ConsultancyReceivedMilestone] : ReceivedColumns);
+        var rows = DashboardFilters.Pick(raw, consultancy ? [.. ReceivedColumns, ConsultancyReceivedMilestone] : ReceivedColumns);
         await AddPaidOnAsync(raw, rows, ct);
+        if (consultancy)
+        {
+            await MapHandholdingAsync(raw, rows, ct);
+            if (f.Certification is { } level)
+                rows = rows.Where(r => string.Equals(r["Certification"]?.ToString(), level, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
         if (from is null && to is null) return rows;
         return rows.Where(r => r["PaidOn"] is DateTime d &&
             (from is null || DateOnly.FromDateTime(d) >= from) && (to is null || DateOnly.FromDateTime(d) <= to)).ToList();
+    }
+
+    /// <summary>
+    /// 2026-11-21 (UI audit: the only handholding payment showed Level "Bronze" and "MileStone 5" while Monitoring had the case
+    /// at Silver, milestone 1): SP_DASHBOARD_PAYMENT_TRANSACTIONS of ZED_CONSULTANT prints the payment record's own
+    /// Certification and MileStoneNum, which handholding never has as Bronze or beyond milestone 3. Each payment's level and
+    /// milestone are read from the milestone row it opened: the row linked to the record (MsmePaymentInfo.MsmePmtCertId,
+    /// set by the payment procedures), else, for a record whose level or milestone is not a handholding one, the unit's
+    /// handholding milestone row written with it (created within 10 minutes of the record).
+    /// </summary>
+    internal const string HandholdingMilestoneSql =
+        "SELECT P.Id, LTRIM(RTRIM(H.Certification)) AS Level, H.NcCount AS MileStone " +
+        "FROM dbo.MsmePaymentInfo P " +
+        "CROSS APPLY (SELECT TOP (1) C.Certification, C.NcCount FROM dbo.MsmeCertifications C " +
+        "WHERE C.ZedId = P.ZedId AND LTRIM(RTRIM(C.Certification)) IN ('Silver', 'Gold', 'ZEDX') AND C.NcCount BETWEEN 1 AND 3 " +
+        "AND (C.Id = P.MsmePmtCertId OR ((P.MsmePmtCertId IS NULL OR NOT EXISTS (SELECT 1 FROM dbo.MsmeCertifications L WHERE L.Id = P.MsmePmtCertId)) " +
+        "AND (ISNULL(LTRIM(RTRIM(P.Certification)), '') NOT IN ('Silver', 'Gold', 'ZEDX') OR ISNULL(P.MileStoneNum, 0) NOT BETWEEN 1 AND 3) " +
+        "AND ABS(DATEDIFF(SECOND, C.CreatedDate, P.CreatedDate)) <= 600)) " +
+        "ORDER BY CASE WHEN C.Id = P.MsmePmtCertId THEN 0 ELSE 1 END, ABS(DATEDIFF(SECOND, C.CreatedDate, P.CreatedDate))) H " +
+        "WHERE P.Id IN @Ids;";
+
+    public sealed record HandholdingMilestoneRow(int Id, string? Level, int MileStone);
+
+    private async Task MapHandholdingAsync(IReadOnlyList<IDictionary<string, object?>> raw, List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        var ids = raw.Select(r => int.TryParse(r.Text("TransactionId"), out var id) ? id : 0).ToList();
+        var wanted = ids.Where(id => id > 0).Distinct().ToList();
+        if (wanted.Count == 0) return;
+        var found = new Dictionary<int, HandholdingMilestoneRow>();
+        try
+        {
+            foreach (var chunk in wanted.Chunk(1000))
+                foreach (var m in await db.QuerySqlAsync<HandholdingMilestoneRow>(HandholdingMilestoneSql, new { Ids = chunk }, ct))
+                    found[m.Id] = m;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Milestone rows of the payments received list could not be read; the payment records' levels are shown");
+            return;
+        }
+        for (var i = 0; i < rows.Count && i < ids.Count; i++)
+        {
+            if (!found.TryGetValue(ids[i], out var m) || string.IsNullOrEmpty(m.Level)) continue;
+            var milestone = $"MileStone {m.MileStone}";
+            if (!string.Equals(rows[i]["Certification"]?.ToString(), m.Level, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(rows[i][ConsultancyReceivedMilestone]?.ToString(), milestone, StringComparison.OrdinalIgnoreCase))
+                log.LogWarning("Payment record {Id} of {ZedId} says {Certification} {Milestone}; its milestone row is {Level} milestone {MileStone}",
+                    ids[i], rows[i]["ZedId"], rows[i]["Certification"], rows[i][ConsultancyReceivedMilestone], m.Level, m.MileStone);
+            rows[i]["Certification"] = m.Level;
+            rows[i][ConsultancyReceivedMilestone] = milestone;
+        }
     }
 
     /// <summary>When each payment of the list was recorded: MsmePaymentInfo.CreatedDate by the row's Id (TransactionId).</summary>
@@ -239,12 +297,14 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
 
     private sealed record ListFilters(string? State, string? Certification, string? Size, string? Gender);
 
-    private static ListFilters? Filters(string? state, string? certification, string? size, string? gender)
+    /// <summary>The page's filters; the level among this portal's levels (Consultancy: the handholding levels, 2026-11-21).</summary>
+    private ListFilters? Filters(string? state, string? certification, string? size, string? gender)
     {
         var invalid = false;
         var f = new ListFilters(
             DashboardFilters.Pick(state, DashboardFilters.States.Keys, ref invalid),
-            DashboardFilters.Pick(certification, DashboardFilters.Certifications, ref invalid),
+            DashboardFilters.Pick(certification,
+                host.System == PortalSystem.Consultancy ? [.. Zed.Core.Data.LevelRegistry.Handholding] : DashboardFilters.Certifications, ref invalid),
             DashboardFilters.Pick(size, DashboardFilters.Sizes, ref invalid),
             DashboardFilters.Pick(gender, DashboardFilters.Genders, ref invalid));
         return invalid ? null : f;

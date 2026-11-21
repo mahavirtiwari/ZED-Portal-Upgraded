@@ -158,7 +158,7 @@ describe('Consultancy technology pages', () => {
       counts: { Rejected: 1 },
     });
     await settle();
-    expect(headers()).toEqual(['Unit', 'Certification level', 'Status', 'CO', 'Consultant', 'Verification date', 'Reason for rejection', 'Actions']);
+    expect(headers()).toEqual(['Unit', 'Level', 'Status', 'CO', 'Consultant', 'Verification date', 'Reason for rejection', 'Actions']);
     expect(el.textContent).toContain('Alloted to Consultant');
     expect(el.textContent).toContain('Rejected');
     expect(el.textContent).toContain('Agency comments: worse');

@@ -409,7 +409,7 @@ type Tab = 'allot' | 'reallot';
         <option value="">{{ 'All states' | t: 'staff.allot.filter.allStatesLabel' }}</option>
         @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
       </select>
-      <select class="form-select" id="allotLevel" [attr.aria-label]="consultancy ? ('Desired Certification' | t: 'staff.allot.filter.desiredLevelAria') : ('Certification Level' | t: 'staff.allot.filter.levelAria')" [(ngModel)]="filter.certification" (ngModelChange)="load()">
+      <select class="form-select" id="allotLevel" [attr.aria-label]="consultancy ? ('Level' | t: 'staff.allot.filter.consultancy.levelAria') : ('Certification Level' | t: 'staff.allot.filter.levelAria')" [(ngModel)]="filter.certification" (ngModelChange)="load()">
         <option value="">{{ 'All levels' | t: 'staff.allot.filter.allLevelsLabel' }}</option>
         @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
       </select>

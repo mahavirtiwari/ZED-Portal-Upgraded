@@ -1,6 +1,7 @@
 import { InjectionToken, computed, inject, signal } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
-import { AuthService, ClientConfigService } from '@zed/shared';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { AuthService, ClientConfigService, STAFF_NO_ACCESS_URL } from '@zed/shared';
+import { menuScreenAllows } from '../staff-menu';
 import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
 import { Row } from './assessment.api';
 import { apiBasePath, withApiBase } from '../../api-base';
@@ -121,16 +122,44 @@ export function useLegacyPortal() {
   };
 }
 
-/** Child-route guard: the screen's roles (Users.RoleId) and sub-roles; others go back to the staff home page. */
-export function staffScreenGuard(roles: number[], subRoles: string[] = [], anySubRole: string[] = []): CanActivateFn {
-  return async () => {
+/**
+ * Child-route guard: the screen's roles (Users.RoleId) and sub-roles. 2026-11-21 (Assessor UI audit): with `menuRoute`, also the
+ * conditions of that screen's menu entries on this portal (roles, sub-roles, kinds of agency: {@link menuScreenAllows}), so a typed
+ * address opens only what the menu gives the login. A refused login gets the staff "no access" page naming the screen (as authGuard).
+ */
+export function staffScreenGuard(roles: number[], subRoles: string[] = [], anySubRole: string[] = [], menuRoute?: string): CanActivateFn {
+  return async (_route, state) => {
     const auth = inject(AuthService);
     const router = inject(Router);
     await auth.ensureLoaded().catch(() => undefined);
     const user = auth.currentUser();
     if (!user) return router.parseUrl('/login');
     const subs = user.subRoles ?? [];
-    const ok = roles.includes(user.roleId) && subRoles.every((s) => subs.includes(s)) && (!anySubRole.length || anySubRole.some((s) => subs.includes(s)));
-    return ok ? true : router.parseUrl('/staff');
+    const ok = roles.includes(user.roleId) && subRoles.every((s) => subs.includes(s)) && (!anySubRole.length || anySubRole.some((s) => subs.includes(s)))
+      && (!menuRoute || menuScreenAllows(menuRoute, user.roleId, subs) !== false);
+    return ok ? true : staffRefusal(router, state?.url);
   };
+}
+
+/**
+ * Child-route guard of a screen that is a menu entry: only the logins its menu entries on this portal are for (2026-11-21, Assessor
+ * UI audit: the scheme verification screens of the incentive agencies).
+ */
+export function staffMenuGuard(menuRoute: string): CanActivateFn {
+  return async (_route, state) => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+    await auth.ensureLoaded().catch(() => undefined);
+    const user = auth.currentUser();
+    if (!user) return router.parseUrl('/login');
+    return menuScreenAllows(menuRoute, user.roleId, user.subRoles ?? []) !== false ? true : staffRefusal(router, state?.url);
+  };
+}
+
+/** The staff "no access" page for a screen the login's role may not open (staff home when the address is not a staff screen). */
+function staffRefusal(router: Router, url: string | undefined): UrlTree {
+  const screen = (url ?? '').split(/[?#]/)[0];
+  return screen.startsWith('/staff/') && screen !== STAFF_NO_ACCESS_URL
+    ? router.createUrlTree([STAFF_NO_ACCESS_URL], { queryParams: { screen, reason: 'role' } })
+    : router.parseUrl('/staff');
 }

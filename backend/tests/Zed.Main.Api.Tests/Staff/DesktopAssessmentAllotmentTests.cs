@@ -421,6 +421,43 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.False(row.TryGetProperty("PPin", out _));
     }
 
+    [Fact]
+    public async Task Assessor_completed_rows_take_the_allotment_and_completion_dates_from_the_history()
+    {
+        _host.Sql.Procs["SP_MONITORING_GET_LIST_PAGINATION"] = _ => FakeSql.Sets(
+            [
+                new { ZedId = "ZEDMSME000001", RejectedZedId = "ZEDMSME000001", Certification = "Bronze", DeskAssessment = "D", DocVerifiAllot = "November 12, 2026",
+                      DesktopVerificationCompleted = (string?)null, CertificationStatusDate = "November 14, 2026" },
+                new { ZedId = "ZEDMSME000002", RejectedZedId = "ZEDMSME000002", Certification = "Silver", DeskAssessment = "", DocVerifiAllot = "November 2, 2026",
+                      DesktopVerificationCompleted = (string?)"November 5, 2026", CertificationStatusDate = "November 20, 2026" },
+            ],
+            [new { TotalCounts = 2, PageNo = 1, PageSize = 20 }]);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Assessment.AssessmentResultsController.HistoryDatesSql] = _ =>
+        [
+            new { ZedId = "ZEDMSME000001", CertificationType = "Bronze", StatusType = "DocVerifiAllot", CreatedDate = (DateTime?)new DateTime(2026, 11, 10, 9, 0, 0) },
+            new { ZedId = "ZEDMSME000001", CertificationType = "Bronze", StatusType = "Completed", CreatedDate = (DateTime?)new DateTime(2026, 11, 14, 9, 0, 0) },
+            // Another level's history is not this record's; a site-only row keeps the procedure's allotment date.
+            new { ZedId = "ZEDMSME000001", CertificationType = "Silver", StatusType = "DesktopVerification", CreatedDate = (DateTime?)new DateTime(2026, 1, 1) },
+            new { ZedId = "ZEDMSME000002", CertificationType = "Silver", StatusType = "DocVerifiAllot", CreatedDate = (DateTime?)new DateTime(2026, 10, 1) },
+            new { ZedId = "ZEDMSME000002", CertificationType = "Silver", StatusType = "DesktopVerification", CreatedDate = (DateTime?)new DateTime(2026, 10, 9) },
+        ];
+        var client = await DaTestUsers.SignInAsync(_host, "ASSESSOR1");
+        var rows = (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed")).GetProperty("rows");
+        Assert.Equal("November 10, 2026", rows[0].GetProperty("DocVerifiAllot").GetString());
+        Assert.Equal(JsonValueKind.Null, rows[0].GetProperty("DesktopVerificationCompleted").ValueKind);
+        Assert.Equal("November 14, 2026", rows[0].GetProperty("CompletedOn").GetString());
+        Assert.Equal("November 2, 2026", rows[1].GetProperty("DocVerifiAllot").GetString());
+        Assert.Equal("November 5, 2026", rows[1].GetProperty("DesktopVerificationCompleted").GetString());
+        var query = _host.Sql.Calls.Single(c => c.Name == Zed.Portal.Features.Staff.Assessment.AssessmentResultsController.HistoryDatesSql);
+        Assert.Equal(["ZEDMSME000001", "ZEDMSME000002"], (string[])query.Args!.GetType().GetProperty("ZedIds")!.GetValue(query.Args)!);
+
+        // The agency's list and the counts do not read the history.
+        var agency = await DaTestUsers.SignInAsync(_host, "AGENCY1");
+        await agency.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed");
+        await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed/counts");
+        Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Staff.Assessment.AssessmentResultsController.HistoryDatesSql);
+    }
+
     // ----- 2026-11-17 (approved redesign): Waiting column and bulk allotment -----
 
     [Fact]

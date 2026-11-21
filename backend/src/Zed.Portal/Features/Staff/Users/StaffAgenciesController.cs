@@ -45,14 +45,38 @@ public sealed class StaffAgenciesController(
         "DesktopVerfi", "SiteVerifi", "FinanceVerfi", "NoOfUsers", "NoOfBronzeAssessors", "AllowBronzeAssessments",
     ];
 
+    /// <summary>The creators of the agencies (SP_GET_USERS_BY_ROLE lists one creator's agencies at a time).</summary>
+    internal const string AgencyCreatorsSql =
+        "SELECT DISTINCT LTRIM(RTRIM(CreatedBy)) AS CreatedBy FROM dbo.Users WHERE RoleId = 2 AND NULLIF(LTRIM(RTRIM(CreatedBy)), '') IS NOT NULL;";
+
+    private sealed record CreatorRow(string? CreatedBy);
+
     /// <summary>
-    /// Agencies created by the signed-in MasterAdmin (SP_GET_USERS_BY_ROLE RoleId 2), for both the
-    /// Assessment Agencies and the Bronze Assessment Agencies pages.
+    /// Every agency (SP_GET_USERS_BY_ROLE RoleId 2), for both the Assessment Agencies and the Bronze Assessment Agencies pages.
+    /// 2026-11-21 (Consultancy audit: an organisation created by another login was missing while the dashboard counted it):
+    /// the procedure lists only the agencies its @UserId created, so it is asked for the signed-in login and for each other
+    /// creator, one list (one Master Admin per portal; an operation admin's scope still narrows it below).
     /// </summary>
     [HttpGet]
     public async Task<IReadOnlyList<Dictionary<string, object?>>> List(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = ((int)UserRole.Agency).ToString() }, ct);
+        IReadOnlyList<IDictionary<string, object?>> listed = sets[0];
+        try
+        {
+            var seen = sets[0].Select(r => r.Text("UserId").Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var creators = (await db.QuerySqlAsync<CreatorRow>(AgencyCreatorsSql, null, ct)).Select(c => c.CreatedBy?.Trim() ?? "")
+                .Where(c => c.Length > 0 && !string.Equals(c, UserId, StringComparison.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase);
+            var all = sets[0].ToList();
+            foreach (var creator in creators)
+                foreach (var row in (await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId = creator, RoleId = ((int)UserRole.Agency).ToString() }, ct))[0])
+                    if (seen.Add(row.Text("UserId").Trim())) all.Add(row);
+            listed = all;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Agencies of other creators not listed");
+        }
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
         var levels = host.IsConsultancy() ? new Dictionary<string, AgencyLevels.Row>() : await AgencyLevels.ListAsync(db, log, ct);
         IReadOnlyList<AgencyLevels.Level> addedLevels = [];
@@ -64,7 +88,7 @@ public sealed class StaffAgenciesController(
         var scope = await HttpContext.LoginScopeAsync(ct);
         // 2026-11-20: the incentive verification agencies (desktop and onsite) have their own page (not these lists).
         var onsite = host.IsConsultancy() ? new HashSet<string>() : await global::Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.IdsAsync(db, log, ct);
-        return sets[0].Where(r => scope.AllowsAgency(r.Text("UserId")) && !onsite.Contains(r.Text("UserId").Trim())).Select(r =>
+        return listed.Where(r => scope.AllowsAgency(r.Text("UserId")) && !onsite.Contains(r.Text("UserId").Trim())).Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
@@ -209,6 +233,11 @@ public sealed class StaffAgenciesController(
         log.LogInformation("Agency {NewUserId} created by {Actor}", newId, UserId);
         await passwords.SetAsync(newId!, password, ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
+        // 2026-11-21: the account's history starts with its creation and what it was created with.
+        var partners = host.IsConsultancy() ? [] : Partners(sets[1]);
+        if (await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(values!, Sectors(sets),
+                values!.OrgPartnerId is { } pid ? partners.FirstOrDefault(p => p.UserId == pid)?.Name ?? pid : null, activity, tuState, tuDistricts, ct), newId!, log) is { } created)
+            await StaffUserActions.RecordChangesAsync(this, db, newId!, (int)UserRole.Agency, UserBlockHistory.Created, null, created, log, ct);
 
         // A one-time link to set the password, not the password (StaffWelcomeLogin); the office's copy has neither.
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId!, (int)UserRole.Agency, password, UserId, ct);
@@ -251,13 +280,52 @@ public sealed class StaffAgenciesController(
         if (ActivityError(req, out var activity) is { } activityError) return this.Problem400(activityError);
         if (await ScopeErrorAsync(req, activity, ct) is { } scopeError) return this.Problem400(scopeError);
 
+        // 2026-11-21 (the product owner: profile edits in the History): the profile before the save, for the change list.
+        var r = agency.Row;
+        var sectors = Sectors(sets);
+        var before = await StaffUserActions.HistoryProfileAsync(async () => await ProfileAsync(
+            new AgencyValues(r.Text("UserName"), r.Text("SpocName"), r.Text("Email"), r.Text("MobileNo"), r.Text("Address"), r.Text("Pincode"),
+                r.Text("AgencyGstNumber"), agency.States, agency.NicSectors, current.Length > 0 ? current : null, StaffUserRules.Bool(r, "DesktopVerification"),
+                StaffUserRules.Bool(r, "SiteVerification"), StaffUserRules.Bool(r, "FinancialVerification"), null),
+            sectors, r.Text("OrgPartnerName") is { Length: > 0 } pn ? pn : current.Length > 0 ? current : null,
+            host.IsConsultancy() ? null : r.Text("SectorActivity") is { Length: > 0 } a ? a : await UserSectorActivity.OfUserAsync(db, agency.UserId, log, ct),
+            host.IsConsultancy() && r.Text("TuPreferredState") is { Length: > 0 } st ? st : null,
+            host.IsConsultancy() ? await ConsultancyUsers.TuDistrictsAsync(db, agency.UserId, ct) : [], ct), agency.UserId, log);
+
         await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null, tuState, tuDistricts), ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, agency.UserId, activity, log, ct);
         log.LogInformation("Agency {UserId} updated by {Actor}", agency.UserId, UserId);
+        if (before is not null && await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(values!, sectors,
+                values!.OrgPartnerId is null ? null : r.Text("OrgPartnerName") is { Length: > 0 } kept ? kept : values.OrgPartnerId,
+                host.IsConsultancy() ? null : activity, tuState, tuDistricts, ct), agency.UserId, log) is { } after)
+            await StaffUserActions.RecordChangesAsync(this, db, agency.UserId, (int)UserRole.Agency, UserBlockHistory.Edited, before, after, log, ct);
         // M12: the verification types (sub-roles) are in the sign-in cookies of the agency and of its assessors, to which
         // the procedure copies them: their sessions end, and the next sign-in has the new ones.
         await SessionStamps.EndSessionsAsync(db, host.System, agency.UserId, log, ct, withAssessors: true);
         return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
+    }
+
+    /// <summary>
+    /// 2026-11-21: the agency's profile as its History records it: NIC sectors by name, the verifications ticked, on main the
+    /// organising partner and activity type, on Consultancy the Technology Upgradation state and districts (by name).
+    /// </summary>
+    private async Task<AccountProfile> ProfileAsync(AgencyValues v, IReadOnlyList<Sector> sectors, string? partnerName, string? activity,
+        string? tuState, IReadOnlyList<string> tuDistricts, CancellationToken ct)
+    {
+        var sectorNames = sectors.GroupBy(s => s.SectorCode.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().SectorName, StringComparer.OrdinalIgnoreCase);
+        var p = new AccountProfile()
+            .Add("name", v.UserName).Add("spoc", v.SpocName).Add("email", v.EmailId).Add("mobile", v.MobileNo).Add("address", v.Address)
+            .Add("pin", v.PinCode).Add("gstin", v.GstNumber).Add("states", v.States)
+            .Add("nicSectors", v.NicSectors.Select(c => sectorNames.GetValueOrDefault(c.Trim()) is { Length: > 0 } n ? n : c))
+            .Add("verifications", new[] { v.DesktopVerification ? "Desktop" : null, v.SiteVerification ? "Site" : null, v.FinancialVerification ? "Financial" : null });
+        if (!host.IsConsultancy()) return p.Add("organisingPartner", partnerName).Add("activity", activity);
+        var state = string.IsNullOrWhiteSpace(tuState) ? null : tuState.Trim();
+        var districtNames = state is null || tuDistricts.Count == 0 ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : (await ConsultancyUsers.DistrictsAsync(db, state, ct)).GroupBy(d => d.DistrictCode.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().DistrictName, StringComparer.OrdinalIgnoreCase);
+        return p.Add("tuState", state is null ? null : Dashboard.DashboardFilters.States.GetValueOrDefault(state) ?? state)
+            .Add("tuDistricts", tuDistricts.Select(d => districtNames.GetValueOrDefault(d.Trim()) is { Length: > 0 } n ? n : d));
     }
 
     /// <summary>Main: Manufacturing, Services or Both is required (V4). Consultancy: not asked.</summary>
@@ -366,6 +434,9 @@ public sealed class StaffAgenciesController(
             }
         }
         log.LogInformation("{Level} assessments {State} for agency {UserId} by {Actor}", level.Name, req.Allow ? "enabled" : "disabled", agency.UserId, UserId);
+        // 2026-11-21: in the agency's History as an edit of its certification levels, with the reason of a disabling.
+        await UserBlockHistory.RecordAsync(db, agency.UserId, (int)UserRole.Agency, UserBlockHistory.Edited, reason, StaffUserActions.HistoryActor(this, UserId),
+            RoleId, log, ct, AccountChanges.ToJson([req.Allow ? new AccountChange("levels", Added: [level.Name]) : new AccountChange("levels", Removed: [level.Name])]));
 
         var r = agency.Row;
         if (StaffUserRules.IsEmail(r.Text("Email")))

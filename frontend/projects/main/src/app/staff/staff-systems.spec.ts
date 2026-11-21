@@ -103,6 +103,9 @@ describe('staff pages per system', () => {
     await create(AssessorListPage, 'consultancy');
     http.expectOne('/api/staff/users/assessors').flush([{ RowNumber: 1, IdStatus: 'Active', UserId: 'ZEDCC0001', UserName: 'Lead', AgencyUserName: 'CO One', AgencyUserId: 'ZEDCO0001', IsActive: true }]);
     await settle();
+    // 2026-11-21 (Consultancy audit): the counts per consultant come from the milestone rows (they were always 0).
+    http.expectOne('/api/staff/dashboard/consultant-milestones').flush([]);
+    await settle();
     expect(el.querySelector('h2')!.textContent).toBe('Consultants');
     // V4 layout: the consultant's ID under the name, the status after the counts.
     expect(headers()).toEqual(['S.No', 'Consultant Details', 'Consultant Organisation Details', 'No. Of Consulting Completed', 'Status', 'Action(s)']);
@@ -127,7 +130,8 @@ describe('staff pages per system', () => {
     await settle();
     expect(headers()).toContain('Milestone');
     expect(headers()).not.toContain('Joining Reward');
-    expect([...el.querySelectorAll('tbody td')].map((td) => td.textContent!.trim())).toContain('2');
+    // 2026-11-21: shown as "Milestone 2".
+    expect([...el.querySelectorAll('tbody td')].map((td) => td.textContent!.trim())).toContain('Milestone 2');
   });
 
   it('lists Consultancy NEFT transactions per technology with Approve, View Details and Visit Report', async () => {

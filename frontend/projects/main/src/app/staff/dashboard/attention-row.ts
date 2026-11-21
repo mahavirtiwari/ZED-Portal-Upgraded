@@ -36,7 +36,9 @@ const ICONS: Record<string, string> = {
         <h2 class="at-h" id="at-h">{{ 'Needs your attention' | t: 'staff.dashboard.attention.heading' }}</h2>
         <div class="at-grid">
           @for (i of items(); track i.key) {
-            <a class="at-item" [routerLink]="i.link" [queryParams]="i.query" [class.is-zero]="!i.count" [attr.data-key]="i.key">
+            <!-- 2026-11-21 (Assessor UI audit): the link named by what it shows (the count and its label). -->
+            <a class="at-item" [routerLink]="i.link" [queryParams]="i.query" [class.is-zero]="!i.count" [attr.data-key]="i.key"
+               [attr.aria-label]="'{count} {label}' | t: 'staff.dashboard.attention.itemAria' : { count: i.count.toLocaleString('en-IN'), label: i.label }">
               <span [class]="'at-icon is-' + i.tone" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(i.icon)" /></svg></span>
               <span class="at-text"><b [class]="'is-' + i.tone">{{ i.count.toLocaleString('en-IN') }}</b><span>{{ i.label }}</span></span>
               <svg class="at-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>

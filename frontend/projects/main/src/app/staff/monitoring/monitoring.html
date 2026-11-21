@@ -6,8 +6,8 @@
      submission pending (man-days) in progress, TAT delays on quality check, Excel export of the filtered list. -->
 <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
   <!-- 2026-11-21 (audit item 7): the button says while the workbook is being made; a toast when it is ready. -->
-  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length || exporting()" [attr.aria-busy]="exporting()" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.monitoring.exportingButton') : ('Export' | t: 'staff.monitoring.exportButton') }}</button>
-  <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.monitoring.refreshButton' }}</button>
+  <button type="button" class="btn btn-primary mo-hb" [disabled]="!shown().length || exporting()" [attr.aria-busy]="exporting()" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.monitoring.exportingButton') : ('Export' | t: 'staff.monitoring.exportButton') }}</button>
+  <button type="button" class="btn btn-primary mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.monitoring.refreshButton' }}</button>
 </zed-page-head>
 <zed-list-counts class="mo-stages" [subRows]="true" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" [label]="'Stages' | t: 'staff.monitoring.stages.aria'" (pick)="pickStage($event.key)" />
 
@@ -27,11 +27,11 @@
 <div class="mo-filters">
   <div class="mo-q">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-    <input type="search" id="monitoringSearch" class="form-control" maxlength="50" [attr.aria-label]="'Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.aria'"
-           [placeholder]="consultancy ? ('Search ZED ID, unit, CO or consultant' | t: 'staff.monitoring.search.consultancy.placeholder') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.placeholder')"
+    <input type="search" id="monitoringSearch" class="form-control" maxlength="50" [attr.aria-label]="consultancy ? ('Search ZED ID, unit, consultant organisation or consultant' | t: 'staff.monitoring.search.consultancy.aria') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.aria')"
+           [placeholder]="consultancy ? ('Search ZED ID, unit, consultant organisation or consultant' | t: 'staff.monitoring.search.consultancy.placeholderFull') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.placeholder')"
            [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
-  <select id="certification" class="form-select mo-lv" [attr.aria-label]="'Certification level' | t: 'staff.monitoring.level.aria'"
+  <select id="certification" class="form-select mo-lv" [attr.aria-label]="consultancy ? ('Level' | t: 'staff.monitoring.level.consultancy.aria') : ('Certification level' | t: 'staff.monitoring.level.aria')"
           [ngModel]="certification()" (ngModelChange)="setCertification($event)">
     <option value="">{{ 'All levels' | t: 'staff.monitoring.level.all.label' }}</option>
     @for (l of levels(); track l) {
@@ -40,8 +40,8 @@
   </select>
   <!-- 2026-11-21 (audit item 7): an agency login only ever sees its own units: no agency filter, no Agency column. -->
   @if (!ownUnitsOnly) {
-  <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? ('CO' | t: 'staff.monitoring.co.aria') : ('Agency' | t: 'staff.monitoring.agency.aria')" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
-    <option value="">{{ consultancy ? ('All COs' | t: 'staff.monitoring.co.all.label') : ('All agencies' | t: 'staff.monitoring.agency.all.label') }}</option>
+  <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? ('Consultant Organisation' | t: 'staff.monitoring.co.ariaLabel') : ('Agency' | t: 'staff.monitoring.agency.aria')" [title]="consultancy ? ('Consultant Organisation' | t: 'staff.monitoring.co.ariaLabel') : ''" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
+    <option value="">{{ consultancy ? ('All consultant organisations' | t: 'staff.monitoring.co.allOrganisations.label') : ('All agencies' | t: 'staff.monitoring.agency.all.label') }}</option>
     @for (a of agencies(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }
   </select>
   }
@@ -80,7 +80,7 @@
         <tr>
           <th>{{ 'Unit' | t: 'staff.monitoring.column.unit' }}</th>
           <th>{{ 'Level' | t: 'staff.monitoring.column.level' }}</th>
-          @if (!ownUnitsOnly) { <th>{{ 'CO' | t: 'staff.monitoring.column.co' }}</th> }
+          @if (!ownUnitsOnly) { <th><abbr [title]="'Consultant Organisation' | t: 'staff.monitoring.column.coTitle'">{{ 'CO' | t: 'staff.monitoring.column.co' }}</abbr></th> }
           <th>{{ 'Milestone' | t: 'staff.monitoring.column.milestone' }}</th>
           <th>{{ 'Consultants / expert' | t: 'staff.monitoring.column.consultants' }}</th>
           <th>{{ 'Site visit dates' | t: 'staff.monitoring.column.siteVisitDates' }}</th>
@@ -133,11 +133,13 @@
             <td class="stack mo-name">
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
-            <td class="stack text-nowrap">
+            <!-- 2026-11-21 (UI audit): the row's font size; the abbreviations spelt out on hover (and for screen readers). -->
+            <td class="stack text-nowrap mo-dates">
               @if (num(s, 'NcCount') > 1) {
-                <div>{{ s['DocVerifiAllot'] }}</div><div>{{ 'PR{round}: {date}' | t: 'staff.monitoring.row.reviewDate.label' : { round: num(s, 'NcCount') - 1, date: s['SaAssessmentDate'] } }}</div>
+                <div>{{ s['DocVerifiAllot'] }}</div><div><abbr [title]="'Progress review {round}' | t: 'staff.monitoring.row.reviewDate.title' : { round: num(s, 'NcCount') - 1 }">{{ 'PR{round}' | t: 'staff.monitoring.row.reviewDate.abbr' : { round: num(s, 'NcCount') - 1 } }}</abbr>: {{ s['SaAssessmentDate'] }}</div>
               } @else {
-                <div>{{ 'BDS: {date}' | t: 'staff.monitoring.row.bds.label' : { date: s['BdsFromDate'] } }}</div><div>{{ 'HAP: {date}' | t: 'staff.monitoring.row.hap.label' : { date: s['HapFromDate'] } }}</div>
+                <div><abbr [title]="'Baseline Diagnostic Study' | t: 'staff.monitoring.row.bds.title'">{{ 'BDS' | t: 'staff.monitoring.row.bds.abbr' }}</abbr>: {{ s['BdsFromDate'] }}</div>
+                <div><abbr [title]="'Handholding Action Plan' | t: 'staff.monitoring.row.hap.title'">{{ 'HAP' | t: 'staff.monitoring.row.hap.abbr' }}</abbr>: {{ s['HapFromDate'] }}</div>
               }
             </td>
           } @else {

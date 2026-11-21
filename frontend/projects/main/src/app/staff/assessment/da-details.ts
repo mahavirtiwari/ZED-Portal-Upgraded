@@ -28,7 +28,7 @@ import { QoTarget } from '../quality/quality.api';
 import { StepTracker } from '../../msme/shared/step-tracker';
 import { staffCrumbs } from '../staff-crumbs';
 import { UNIT_VIEW_STYLES, desktopStage, ncLines, unitResult } from './da-details.layout';
-import { RoundState, TrackItem, aboveCapacity, basicRaised, ncTracker } from './da-details.overview';
+import { RoundState, TrackItem, aboveCapacity, basicAttention, basicMissing, basicRaised, ncTracker } from './da-details.overview';
 import { LevelMedal } from './level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { DaAllotmentBanner } from './da-allotment-banner';
@@ -59,7 +59,7 @@ export function tabTitle(id: number): string {
     case 1: return t('staff.daDetails.tabTitle.overview.title', 'Assessment Summary');
     case 2: return t('staff.daDetails.tabTitle.basic.title', 'Basic Information');
     case 3: return t('staff.daDetails.tabTitle.params.title', 'Parameters');
-    case 9: return t('staff.daDetails.tabTitle.esg.title', 'Esg Compliance');
+    case 9: return t('staff.daDetails.tabTitle.esg.title', 'ESG compliance');
     default: return id >= 4 && id <= 8 ? t('staff.daDetails.tabTitle.nc.title', 'Non-Conformance(s) {round}', { round: id - 3 }) : '';
   }
 }
@@ -255,6 +255,9 @@ export class DaDetailsPage {
   protected readonly historyLink = computed(() => [7, 10, 11, 17].includes(this.qoAuth.currentUser()?.roleId ?? 0));
   protected readonly basicItems = BASIC_ITEMS;
   protected readonly basicRaisedCount = computed(() => basicRaised(this.data()));
+  /** 2026-11-21: missing required items (selfie, site exterior photo) need attention too. */
+  protected readonly basicMissingItems = computed(() => basicMissing(this.data()));
+  protected readonly basicAttentionCount = computed(() => basicAttention(this.data()));
   protected readonly aboveCapacity = computed(() => aboveCapacity(this.msme()));
   /** Parameters that conform (every requirement Yes) and that do not (a requirement No). */
   protected readonly paramCounts = computed(() => {

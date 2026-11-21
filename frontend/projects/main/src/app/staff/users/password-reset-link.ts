@@ -48,10 +48,10 @@ const API = '/api/staff/password-reset/';
           <label class="form-label" for="resetUserId">{{ 'User ID' | t: 'staff.passwordResetLink.userIdLabel' }}<span class="req">*</span></label>
           <div class="prl-id">
             <input id="resetUserId" name="userId" class="form-control" [ngModel]="userId" (ngModelChange)="typed($event)" required maxlength="50" autocomplete="off"
-                   [placeholder]="'e.g. ZEDAA0001' | t: 'staff.passwordResetLink.userIdPlaceholder'" aria-describedby="resetUserIdHelp" [readonly]="step() > 0" />
+                   [placeholder]="consultancy ? ('e.g. ZEDCO0001' | t: 'staff.passwordResetLink.consultancy.userIdPlaceholder') : ('e.g. ZEDAA0001' | t: 'staff.passwordResetLink.userIdPlaceholder')" aria-describedby="resetUserIdHelp" [readonly]="step() > 0" />
             @if (step() > 0) { <button type="button" class="btn btn-link prl-change" (click)="restart()">{{ 'Change' | t: 'staff.passwordResetLink.changeButton' }}</button> }
           </div>
-          <small id="resetUserIdHelp" class="prl-help">{{ 'The login ID of any staff account: agency, assessor, Master Admin, Ministry, MSME DFO or dashboard.' | t: 'staff.passwordResetLink.userIdHelp' }}</small>
+          <small id="resetUserIdHelp" class="prl-help">{{ consultancy ? ('The login ID of any staff account: consultant organisation, consultant, Master Admin, Ministry, MSME DFO or dashboard.' | t: 'staff.passwordResetLink.consultancy.userIdHelp') : ('The login ID of any staff account: agency, assessor, Master Admin, Ministry, MSME DFO or dashboard.' | t: 'staff.passwordResetLink.userIdHelp') }}</small>
           @if (target(); as tg) {
             <div class="prl-who" [class.is-blocked]="!tg.canSend">
               <span class="prl-av" aria-hidden="true">{{ initials(tg.userName) }}</span>
@@ -164,7 +164,10 @@ const API = '/api/staff/password-reset/';
 export class PasswordResetLinkPage {
   private readonly http = inject(HttpClient);
   private readonly toast = inject(ToastService);
-  private readonly labels = LABELS[inject(STAFF_SYSTEM)];
+  private readonly system = inject(STAFF_SYSTEM);
+  private readonly labels = LABELS[this.system];
+  /** 2026-11-21 (UI audit): the Consultancy portal's words (consultant organisation, consultant). */
+  protected readonly consultancy = this.system === 'consultancy';
 
   protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.passwordResetLink.crumb', 'Password Reset Link') }));
   protected readonly busy = signal(false);

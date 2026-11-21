@@ -250,8 +250,9 @@ export class AssessorFormPage implements HasUnsavedChanges {
   /** The rail's line: "3 assessments allotted and not certified yet." (one and many as two wordings). */
   protected openLine(n: number): string {
     return this.consultancy
-      ? (n === 1 ? t('staff.assessorForm.rail.open.case', '{count} case allotted and not certified yet.', { count: n })
-        : t('staff.assessorForm.rail.open.cases', '{count} cases allotted and not certified yet.', { count: n }))
+      // 2026-11-21: on Consultancy the cases end with the handholding, not a certificate.
+      ? (n === 1 ? t('staff.assessorForm.rail.open.caseHandholding', '{count} case allotted and handholding not completed yet.', { count: n })
+        : t('staff.assessorForm.rail.open.casesHandholding', '{count} cases allotted and handholding not completed yet.', { count: n }))
       : (n === 1 ? t('staff.assessorForm.rail.open.assessment', '{count} assessment allotted and not certified yet.', { count: n })
         : t('staff.assessorForm.rail.open.assessments', '{count} assessments allotted and not certified yet.', { count: n }));
   }

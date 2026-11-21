@@ -66,11 +66,12 @@ public static class LevelFlows
         "@AssessmentFlow = @AssessmentFlow, @SurveillanceMode = @SurveillanceMode, @Code = @Code;";
 
     /// <summary>The stored choices by level code; empty before migration 0072 (every level as before).</summary>
-    public static async Task<Dictionary<string, Row>> StoredAsync(ISqlExecutor db, ILogger log, CancellationToken ct)
+    /// <param name="fromOtherDatabase">The connection is not main's (the consultancy or surveillance host's): read main's table.</param>
+    public static async Task<Dictionary<string, Row>> StoredAsync(ISqlExecutor db, ILogger log, CancellationToken ct, bool fromOtherDatabase = false)
     {
         try
         {
-            return (await db.QuerySqlAsync<Row>(ReadSql, null, ct)).Where(r => !string.IsNullOrWhiteSpace(r.Code))
+            return (await db.QuerySqlAsync<Row>(fromOtherDatabase ? CertificationLevels.FromMain(ReadSql) : ReadSql, null, ct)).Where(r => !string.IsNullOrWhiteSpace(r.Code))
                 .GroupBy(r => r.Code!.Trim(), StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         }
         catch (DbException ex)

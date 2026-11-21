@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
 import { FormsModule } from '@angular/forms';
 import { PagedView, PagerComponent, searchRows } from '../pager';
@@ -11,6 +11,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { ChipFilter, FilterChip } from '../chip-filter';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { TextPipe, t } from '../../content/page-text';
+import { RemoteAllotments } from '../remote-allotments';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -181,6 +182,8 @@ import { TextPipe, t } from '../../content/page-text';
 })
 export class RemoteAssessmentsPage {
   private readonly api = inject(SiteAssessmentApi);
+  /** 2026-11-21 (Assessor UI audit): the menu's check of the same list; this page's reading refreshes it (one request). */
+  private readonly remoteAllotments = inject(RemoteAllotments);
   private readonly router = inject(Router);
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
   protected readonly profileMenu = computed<RowMenuItem[]>(() => [{ key: 'profile', label: t('staff.remoteAssessments.menu.profile.label', 'View MSME profile'), icon: 'people' }]);
@@ -311,7 +314,7 @@ export class RemoteAssessmentsPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      const call = this.consultancy ? this.api.milestone(this.milestone) : this.api.remoteAssessments();
+      const call = this.consultancy ? this.api.milestone(this.milestone) : (this.remoteAllotments.list() as Observable<Row[]>);
       this.rows.set((await firstValueFrom(call)) ?? []);
     } catch (err) {
       this.error.set(apiErrorMessage(err));

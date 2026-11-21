@@ -21,6 +21,7 @@ public sealed class StaffAgencyHistoryController(ISqlExecutor db, ILogger<StaffA
     {
         var agency = await StaffUserRules.LoadAsync(db, userId, UserRole.Agency, ct);
         if (agency is null || !StaffUserRules.CanManage(CurrentUser, agency, UserRole.Agency)) return NotFound();
-        return (await UserBlockHistory.ListAsync(db, agency.UserId, log, ct)).ToList();
+        // 2026-11-21: the account's whole history (creation, profile edits, links, blocks), its allotments merged in.
+        return (await UserBlockHistory.ListAsync(db, agency.UserId, log, ct, UserBlockHistory.Allotments.Agency)).ToList();
     }
 }

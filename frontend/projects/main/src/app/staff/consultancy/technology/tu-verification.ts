@@ -169,7 +169,7 @@ export class TuVerificationPage {
   protected readonly isCoordinator = computed(() => this.user()?.roleId === StaffRole.StateCoordinator);
   /** 2026-11-17 (approved staff redesign): "Home > the list > ZED ID" (the coordinator's NEFT list, else the TU list). */
   protected readonly crumbs = computed(() => staffCrumbs(
-    { label: this.isCoordinator() ? t('staff.tuVerification.crumb.neft', 'New Transactions') : t('staff.tuVerification.crumb.list', 'Technology upgradation'), link: this.backLink },
+    { label: this.isCoordinator() ? t('staff.tuVerification.crumb.neft', 'New Transactions') : t('staff.tuVerification.crumb.list', 'Technology Upgradation'), link: this.backLink },
     { label: this.zedId },
   ));
   private readonly toast = inject(ToastService);

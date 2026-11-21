@@ -61,7 +61,7 @@
       <!-- ================================================= overview -->
       @if (tab() === 1) {
         <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="da-tab-1">
-          @if (isAssessorRole()) {
+          @if (isAssessorRole() && perms().canAssess) {
             <zed-text key="staff.assessment.desktop.validateNote.sitePhotos" box="alert alert-warning" />
           }
           <zed-step-tracker class="uv-tracker" [steps]="stage().steps" [current]="stage().current" [label]="'Stage of the assessment' | t: 'staff.daDetails.overview.stageAria'" />
@@ -128,6 +128,7 @@
               <b>{{ '{count} items' | t: 'staff.daDetails.overview.basic.count.label' : { count: basicItems } }}</b>
               @if (previewMode()) { <small class="muted">{{ 'As submitted by the unit' | t: 'staff.daDetails.overview.basic.previewNote' }}</small> } @else {
                 <small [class.warn]="basicRaisedCount()">{{ basicRaisedCount() ? ('{count} raised as NC' | t: 'staff.daDetails.overview.basic.raisedNote' : { count: basicRaisedCount() }) : ('None raised as NC' | t: 'staff.daDetails.overview.basic.noneRaisedNote') }}</small>
+                @if (basicMissingItems().count) { <small class="warn">{{ basicMissingItems().count === 1 ? ('1 required item missing' | t: 'staff.daDetails.overview.basic.missingOne') : ('{count} required items missing' | t: 'staff.daDetails.overview.basic.missingMany' : { count: basicMissingItems().count }) }}</small> }
               }
             </button>
             <button type="button" class="ov-link" (click)="tab.set(9)">
@@ -218,18 +219,20 @@
             @if (!previewMode()) {
             <div class="bi-chips" role="group" [attr.aria-label]="'Show' | t: 'staff.daDetails.basic.filterAria'">
               <button type="button" class="bi-chip" [class.on]="basicFilter() === 'all'" [attr.aria-pressed]="basicFilter() === 'all'" (click)="basicFilter.set('all')">{{ 'All' | t: 'staff.daDetails.basic.chip.all' }} <span>{{ basicItems }}</span></button>
-              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'attention'" [attr.aria-pressed]="basicFilter() === 'attention'" (click)="basicFilter.set('attention')">{{ 'Needs attention' | t: 'staff.daDetails.basic.chip.attention' }} <span>{{ basicRaisedCount() }}</span></button>
-              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'accepted'" [attr.aria-pressed]="basicFilter() === 'accepted'" (click)="basicFilter.set('accepted')">{{ 'Accepted' | t: 'staff.daDetails.basic.chip.accepted' }} <span>{{ basicItems - basicRaisedCount() }}</span></button>
+              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'attention'" [attr.aria-pressed]="basicFilter() === 'attention'" (click)="basicFilter.set('attention')">{{ 'Needs attention' | t: 'staff.daDetails.basic.chip.attention' }} <span>{{ basicAttentionCount() }}</span></button>
+              <button type="button" class="bi-chip" [class.on]="basicFilter() === 'accepted'" [attr.aria-pressed]="basicFilter() === 'accepted'" (click)="basicFilter.set('accepted')">{{ 'Accepted' | t: 'staff.daDetails.basic.chip.accepted' }} <span>{{ basicItems - basicAttentionCount() }}</span></button>
             </div>
             }
             @if (t(msme(), 'BasicInfoStatus')) { <span class="bi-when">{{ 'Submitted by the unit on {date}' | t: 'staff.daDetails.basic.submittedText' : { date: t(msme(), 'BasicInfoStatus') } }}</span> }
           </div>
 
-          @if (basicShown(false) || basicShown(seRaised)) {
+          @let selfieMissing = basicMissingItems().selfie;
+          @let seMissing = basicMissingItems().siteExterior;
+          @if (basicShown(selfieMissing) || basicShown(seRaised || seMissing)) {
             <h5 class="bi-group">{{ 'Photos' | t: 'staff.daDetails.basic.photos.heading' }}</h5>
             <div class="bi-photos basic-info">
-              @if (basicShown(false)) {
-                <section class="bi-card" data-item="1">
+              @if (basicShown(selfieMissing)) {
+                <section class="bi-card" [class.raised]="selfieMissing" data-item="1">
                   <div class="bi-thumb">
                     <span class="bi-no">1</span>
                     @for (p of selfies(); track t(p, 'Id')) {
@@ -238,12 +241,12 @@
                   </div>
                   <div class="bi-body">
                     <h6>{{ 'MSME representative selfie' | t: 'staff.daDetails.basic.selfie.title' }}</h6>
-                    <span class="uv-chip" [class.good]="selfies().length">{{ selfies().length ? ('Photo uploaded' | t: 'staff.daDetails.basic.photoUploaded.chip') : ('No photo' | t: 'staff.daDetails.basic.noPhoto.chip') }}</span>
+                    <span class="uv-chip" [class.good]="selfies().length" [class.bad]="!selfies().length">{{ selfies().length ? ('Photo uploaded' | t: 'staff.daDetails.basic.photoUploaded.chip') : ('No photo: needs attention' | t: 'staff.daDetails.basic.noPhotoAttention.chip') }}</span>
                   </div>
                 </section>
               }
-              @if (basicShown(seRaised)) {
-                <section class="bi-card" [class.raised]="seRaised" data-item="2">
+              @if (basicShown(seRaised || seMissing)) {
+                <section class="bi-card" [class.raised]="seRaised || seMissing" data-item="2">
                   <div class="bi-thumb">
                     <span class="bi-no">2</span>
                     @for (p of siteExterior(); track t(p, 'Id')) {
@@ -399,14 +402,15 @@
           <table class="table table-bordered table-zed">
             <thead>
               <tr>
-                @if (surveillanceSystem) { <th class="text-center">{{ 'S.No' | t: 'staff.daDetails.esg.column.sno' }}</th> }
+                <th class="text-center">{{ 'S.No' | t: 'staff.daDetails.esg.column.sno' }}</th>
                 <th>{{ 'Question' | t: 'staff.daDetails.esg.column.question' }}</th><th class="text-center">{{ 'Answer' | t: 'staff.daDetails.esg.column.answer' }}</th><th>{{ 'If Yes, Question' | t: 'staff.daDetails.esg.column.yesQuestion' }}</th><th class="text-center">{{ 'If Yes, Answer' | t: 'staff.daDetails.esg.column.yesAnswer' }}</th><th>{{ 'If No, Question' | t: 'staff.daDetails.esg.column.noQuestion' }}</th><th class="text-center">{{ 'If No, Answer' | t: 'staff.daDetails.esg.column.noAnswer' }}</th>
               </tr>
             </thead>
             <tbody>
               @for (p of esg(); track $index) {
                 <tr>
-                  @if (surveillanceSystem) { <td class="text-center">{{ t(p, 'Code') }}</td> }
+                  <!-- 2026-11-21 (Assessor UI audit): numbered by position on every portal (the stored codes skip numbers). -->
+                  <td class="text-center">{{ $index + 1 }}</td>
                   <td>{{ t(p, 'Question') }}</td><td class="text-center">{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
                   <td class="text-center">{{ t(p, 'IfYesAnswer') }}</td><td>{{ t(p, 'IfNoQuestion') }}</td><td class="text-center">{{ t(p, 'IfNoAnswer') }}</td>
                 </tr>
@@ -425,7 +429,7 @@
             <tbody>
               @for (p of social(); track $index) {
                 <tr>
-                  <td class="text-center">{{ t(p, 'Code') }}</td><td>{{ t(p, 'Question') }}</td><td class="text-center">{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
+                  <td class="text-center">{{ $index + 1 }}</td><td>{{ t(p, 'Question') }}</td><td class="text-center">{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
                   <td class="text-center">{{ t(p, 'IfYesAnswer') }}</td><td>{{ t(p, 'IfNoQuestion') }}</td><td class="text-center">{{ t(p, 'IfNoAnswer') }}</td>
                 </tr>
               }

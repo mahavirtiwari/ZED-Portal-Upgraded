@@ -73,6 +73,27 @@ public sealed partial class StaffPasswordResetTests : IDisposable
     private Task<HttpResponseMessage> Reset(HttpClient client, string token, string password = NewPassword) =>
         client.PostAsJsonAsync("/api/staff/auth/password-reset/reset", new { token, newPassword = password, confirmPassword = password });
 
+    /// <summary>2026-11-21 (the product owner): every link sent is in the account's History, by whom and where, never the link.</summary>
+    [Fact]
+    public async Task Each_link_sent_is_kept_in_the_accounts_history()
+    {
+        List<(string Name, object? Args)> Links() => _host.Sql.Calls
+            .Where(c => c.Name == Zed.Portal.Features.Staff.Users.UserBlockHistory.InsertDetailsSql && FakeSql.Arg(c.Args, "Action") == "PasswordLink").ToList();
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.OK, (await master.PostAsync($"/api/staff/users/agencies/{Agency}/password-reset", null)).StatusCode);
+        var sent = Assert.Single(Links());
+        Assert.Equal((Agency, "2", "MASTER1", "7", null), (FakeSql.Arg(sent.Args, "UserId"), FakeSql.Arg(sent.Args, "RoleId"),
+            FakeSql.Arg(sent.Args, "ActionBy"), FakeSql.Arg(sent.Args, "ActionByRole"), FakeSql.Arg(sent.Args, "Reason")));
+        Assert.Contains("spoc@acme.test", FakeSql.Arg(sent.Args, "Details"));
+        Assert.DoesNotContain("token", FakeSql.Arg(sent.Args, "Details"));
+
+        // "Forgot password?": by the user itself.
+        await RequestAndGetToken(await _host.CreateBrowserAsync(), "ZEDAS0001", "assessor@zed.test");
+        await Eventually(() => Links().Count == 2);
+        var self = Links()[1];
+        Assert.Equal(("ZEDAS0001", "ZEDAS0001", "self"), (FakeSql.Arg(self.Args, "UserId"), FakeSql.Arg(self.Args, "ActionBy"), FakeSql.Arg(self.Args, "Reason")));
+    }
+
     [Fact]
     public async Task Forgot_password_mails_a_single_use_link_and_sets_the_password()
     {

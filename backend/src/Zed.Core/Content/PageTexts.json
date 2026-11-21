@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9329,
+  "count": 9455,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -25038,6 +25038,18 @@
       ]
     },
     {
+      "key": "staff.agencies.search.consultancy.aria",
+      "standard": "Search consultant organisations",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "agencies",
+      "pageName": "Agencies",
+      "placeholders": [],
+      "files": [
+        "staff/users/agencies.html"
+      ]
+    },
+    {
       "key": "staff.agencies.search.placeholder",
       "standard": "Search ID, name, SPOC, mobile or e-mail",
       "kind": "placeholder",
@@ -27224,8 +27236,8 @@
       ]
     },
     {
-      "key": "staff.allot.filter.desiredLevelAria",
-      "standard": "Desired Certification",
+      "key": "staff.allot.filter.consultancy.levelAria",
+      "standard": "Level",
       "kind": "tooltip",
       "portal": "staff",
       "page": "allot",
@@ -30840,6 +30852,18 @@
       ]
     },
     {
+      "key": "staff.assessmentResults.column.coTitle",
+      "standard": "Consultant Organisation",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "assessmentResults",
+      "pageName": "Assessment results",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/assessment-results.ts"
+      ]
+    },
+    {
       "key": "staff.assessmentResults.column.completedOn",
       "standard": "Completed on",
       "kind": "label",
@@ -31011,6 +31035,30 @@
       "key": "staff.assessmentResults.completed.title",
       "standard": "Assessment Completed",
       "kind": "heading",
+      "portal": "staff",
+      "page": "assessmentResults",
+      "pageName": "Assessment results",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/assessment-results.ts"
+      ]
+    },
+    {
+      "key": "staff.assessmentResults.consultancy.completed.empty",
+      "standard": "No completed handholding matches these filters.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "assessmentResults",
+      "pageName": "Assessment results",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/assessment-results.ts"
+      ]
+    },
+    {
+      "key": "staff.assessmentResults.consultancy.filter.levelLabel",
+      "standard": "Level",
+      "kind": "label",
       "portal": "staff",
       "page": "assessmentResults",
       "pageName": "Assessment results",
@@ -31558,18 +31606,6 @@
     {
       "key": "staff.assessmentResults.filter.byZedId",
       "standard": "ZED ID",
-      "kind": "label",
-      "portal": "staff",
-      "page": "assessmentResults",
-      "pageName": "Assessment results",
-      "placeholders": [],
-      "files": [
-        "staff/assessment/assessment-results.ts"
-      ]
-    },
-    {
-      "key": "staff.assessmentResults.filter.desiredLabel",
-      "standard": "Desired certification",
       "kind": "label",
       "portal": "staff",
       "page": "assessmentResults",
@@ -33540,8 +33576,8 @@
       ]
     },
     {
-      "key": "staff.assessorForm.rail.open.case",
-      "standard": "{count} case allotted and not certified yet.",
+      "key": "staff.assessorForm.rail.open.caseHandholding",
+      "standard": "{count} case allotted and handholding not completed yet.",
       "kind": "text",
       "portal": "staff",
       "page": "assessorForm",
@@ -33554,8 +33590,8 @@
       ]
     },
     {
-      "key": "staff.assessorForm.rail.open.cases",
-      "standard": "{count} cases allotted and not certified yet.",
+      "key": "staff.assessorForm.rail.open.casesHandholding",
+      "standard": "{count} cases allotted and handholding not completed yet.",
       "kind": "text",
       "portal": "staff",
       "page": "assessorForm",
@@ -35557,6 +35593,20 @@
       ]
     },
     {
+      "key": "staff.assessors.row.milestonesInProgress",
+      "standard": "{count} in progress",
+      "kind": "note",
+      "portal": "staff",
+      "page": "assessors",
+      "pageName": "Assessors",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/users/assessor-list.ts"
+      ]
+    },
+    {
       "key": "staff.assessors.row.noMobile",
       "standard": "Mobile not saved",
       "kind": "text",
@@ -35608,6 +35658,30 @@
       "key": "staff.assessors.search.aria",
       "standard": "Search assessors",
       "kind": "tooltip",
+      "portal": "staff",
+      "page": "assessors",
+      "pageName": "Assessors",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-list.ts"
+      ]
+    },
+    {
+      "key": "staff.assessors.search.consultancy.aria",
+      "standard": "Search consultants",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "assessors",
+      "pageName": "Assessors",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-list.ts"
+      ]
+    },
+    {
+      "key": "staff.assessors.search.consultancy.placeholder",
+      "standard": "Search ID, name, mobile, e-mail or organisation",
+      "kind": "placeholder",
       "portal": "staff",
       "page": "assessors",
       "pageName": "Assessors",
@@ -38931,6 +39005,18 @@
       ]
     },
     {
+      "key": "staff.daDetails.basic.noPhotoAttention.chip",
+      "standard": "No photo: needs attention",
+      "kind": "label",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
       "key": "staff.daDetails.basic.noRemarks.text",
       "standard": "No remarks recorded",
       "kind": "note",
@@ -40487,6 +40573,32 @@
       "placeholders": [
         "count"
       ],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
+      "key": "staff.daDetails.overview.basic.missingMany",
+      "standard": "{count} required items missing",
+      "kind": "note",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
+      "key": "staff.daDetails.overview.basic.missingOne",
+      "standard": "1 required item missing",
+      "kind": "note",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [],
       "files": [
         "staff/assessment/da-details.html"
       ]
@@ -42246,7 +42358,7 @@
     },
     {
       "key": "staff.daDetails.tabTitle.esg.title",
-      "standard": "Esg Compliance",
+      "standard": "ESG compliance",
       "kind": "heading",
       "portal": "staff",
       "page": "daDetails",
@@ -44565,6 +44677,21 @@
       "page": "dashboard",
       "pageName": "Dashboard",
       "placeholders": [],
+      "files": [
+        "staff/dashboard/attention-row.ts"
+      ]
+    },
+    {
+      "key": "staff.dashboard.attention.itemAria",
+      "standard": "{count} {label}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [
+        "count",
+        "label"
+      ],
       "files": [
         "staff/dashboard/attention-row.ts"
       ]
@@ -50677,6 +50804,78 @@
       ]
     },
     {
+      "key": "staff.expenditure.po.check.cases",
+      "standard": "Please enter the cases in the PO (1 to 10,00,000).",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.check.date",
+      "standard": "Please enter the PO date.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.check.extra",
+      "standard": "Please enter the extra cases (1 to 10,00,000).",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.check.level",
+      "standard": "Please choose a level.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.check.number",
+      "standard": "Please enter the PO number (letters, digits and / - _ . only, up to 100 characters).",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.check.reason",
+      "standard": "Please enter the reason for reopening.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
       "key": "staff.expenditure.po.closeAria",
       "standard": "Close",
       "kind": "tooltip",
@@ -50768,6 +50967,20 @@
       "page": "expenditure",
       "pageName": "Expenditure",
       "placeholders": [],
+      "files": [
+        "staff/expenditure/po-card.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.po.consultancy.note",
+      "standard": "When the cases in a PO are used up (handholding completed, rejected after a milestone, or in progress), allotment of consultancy to this {word} for that level stops and says why. Reopen asks for a reason and either extra cases (a PO amendment) or a new PO; it is kept in the history.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [
+        "word"
+      ],
       "files": [
         "staff/expenditure/po-card.ts"
       ]
@@ -69167,6 +69380,18 @@
       ]
     },
     {
+      "key": "staff.listFilters.consultancy.levelLabel",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "listFilters",
+      "pageName": "List filters",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/list-controls.ts"
+      ]
+    },
+    {
       "key": "staff.listFilters.gender.female",
       "standard": "Female",
       "kind": "text",
@@ -71985,6 +72210,18 @@
       ]
     },
     {
+      "key": "staff.milestoneDetails.attendance.consultantType",
+      "standard": "Consultant",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
       "key": "staff.milestoneDetails.attendance.dayText",
       "standard": "Day {n}",
       "kind": "text",
@@ -72017,6 +72254,30 @@
       "key": "staff.milestoneDetails.attendance.inSelfieAlt",
       "standard": "Login Selfie",
       "kind": "tooltip",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
+      "key": "staff.milestoneDetails.attendance.notIn",
+      "standard": "Not punched in",
+      "kind": "text",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
+      "key": "staff.milestoneDetails.attendance.notOut",
+      "standard": "Not punched out",
+      "kind": "text",
       "portal": "staff",
       "page": "milestoneDetails",
       "pageName": "Milestone details",
@@ -72868,6 +73129,18 @@
       ]
     },
     {
+      "key": "staff.milestoneDetails.crumb.monitoring",
+      "standard": "Consultancy Monitoring",
+      "kind": "label",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.ts"
+      ]
+    },
+    {
       "key": "staff.milestoneDetails.deleteBullet.confirmButton",
       "standard": "Delete",
       "kind": "button",
@@ -73469,6 +73742,18 @@
       ]
     },
     {
+      "key": "staff.milestoneDetails.overview.bdsrTitle",
+      "standard": "Baseline Diagnostic Study Report",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
       "key": "staff.milestoneDetails.overview.coConsultantLabel",
       "standard": "Milestone {n} Co-consultant Name & ID",
       "kind": "label",
@@ -73564,6 +73849,18 @@
       ]
     },
     {
+      "key": "staff.milestoneDetails.overview.hapTitle",
+      "standard": "Handholding Action Plan",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
       "key": "staff.milestoneDetails.overview.leadLabel",
       "standard": "Milestone {n} Lead Consultant Name & ID",
       "kind": "label",
@@ -73607,6 +73904,18 @@
       ]
     },
     {
+      "key": "staff.milestoneDetails.overview.review1Title",
+      "standard": "Progress review 1",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
       "key": "staff.milestoneDetails.overview.review2Dates",
       "standard": "PR 2 From: {from} To: {to}",
       "kind": "text",
@@ -73617,6 +73926,18 @@
         "from",
         "to"
       ],
+      "files": [
+        "staff/consultancy/milestones/milestone-details.html"
+      ]
+    },
+    {
+      "key": "staff.milestoneDetails.overview.review2Title",
+      "standard": "Progress review 2",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "milestoneDetails",
+      "pageName": "Milestone details",
+      "placeholders": [],
       "files": [
         "staff/consultancy/milestones/milestone-details.html"
       ]
@@ -74330,7 +74651,7 @@
     },
     {
       "key": "staff.milestoneDetails.training.attendanceTitle",
-      "standard": "Attendane Record",
+      "standard": "Attendance Record",
       "kind": "heading",
       "portal": "staff",
       "page": "milestoneDetails",
@@ -74535,8 +74856,8 @@
       ]
     },
     {
-      "key": "staff.monitoring.co.all.label",
-      "standard": "All COs",
+      "key": "staff.monitoring.co.allOrganisations.label",
+      "standard": "All consultant organisations",
       "kind": "label",
       "portal": "staff",
       "page": "monitoring",
@@ -74547,9 +74868,9 @@
       ]
     },
     {
-      "key": "staff.monitoring.co.aria",
-      "standard": "CO",
-      "kind": "tooltip",
+      "key": "staff.monitoring.co.ariaLabel",
+      "standard": "Consultant Organisation",
+      "kind": "label",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
@@ -74610,6 +74931,18 @@
       "key": "staff.monitoring.column.co",
       "standard": "CO",
       "kind": "label",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.column.coTitle",
+      "standard": "Consultant Organisation",
+      "kind": "heading",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
@@ -75299,6 +75632,18 @@
       ]
     },
     {
+      "key": "staff.monitoring.level.consultancy.aria",
+      "standard": "Level",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
       "key": "staff.monitoring.loading.text",
       "standard": "Loading…",
       "kind": "note",
@@ -75517,6 +75862,18 @@
       ]
     },
     {
+      "key": "staff.monitoring.range.consultancy.label",
+      "standard": "Handholding between",
+      "kind": "label",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring-tat.ts"
+      ]
+    },
+    {
       "key": "staff.monitoring.range.fromAria",
       "standard": "{range} (from)",
       "kind": "tooltip",
@@ -75605,29 +75962,49 @@
       ]
     },
     {
-      "key": "staff.monitoring.row.bds.label",
-      "standard": "BDS: {date}",
-      "kind": "label",
+      "key": "staff.monitoring.row.bds.abbr",
+      "standard": "BDS",
+      "kind": "text",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
-      "placeholders": [
-        "date"
-      ],
+      "placeholders": [],
       "files": [
         "staff/monitoring/monitoring.html"
       ]
     },
     {
-      "key": "staff.monitoring.row.hap.label",
-      "standard": "HAP: {date}",
-      "kind": "label",
+      "key": "staff.monitoring.row.bds.title",
+      "standard": "Baseline Diagnostic Study",
+      "kind": "heading",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
-      "placeholders": [
-        "date"
-      ],
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.row.hap.abbr",
+      "standard": "HAP",
+      "kind": "text",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.row.hap.title",
+      "standard": "Handholding Action Plan",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
       "files": [
         "staff/monitoring/monitoring.html"
       ]
@@ -75673,15 +76050,28 @@
       ]
     },
     {
-      "key": "staff.monitoring.row.reviewDate.label",
-      "standard": "PR{round}: {date}",
-      "kind": "label",
+      "key": "staff.monitoring.row.reviewDate.abbr",
+      "standard": "PR{round}",
+      "kind": "text",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
       "placeholders": [
-        "round",
-        "date"
+        "round"
+      ],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.row.reviewDate.title",
+      "standard": "Progress review {round}",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [
+        "round"
       ],
       "files": [
         "staff/monitoring/monitoring.html"
@@ -75700,9 +76090,21 @@
       ]
     },
     {
-      "key": "staff.monitoring.search.consultancy.placeholder",
-      "standard": "Search ZED ID, unit, CO or consultant",
-      "kind": "placeholder",
+      "key": "staff.monitoring.search.consultancy.aria",
+      "standard": "Search ZED ID, unit, consultant organisation or consultant",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.search.consultancy.placeholderFull",
+      "standard": "Search ZED ID, unit, consultant organisation or consultant",
+      "kind": "text",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
@@ -82985,6 +83387,30 @@
       ]
     },
     {
+      "key": "staff.passwordResetLink.consultancy.userIdHelp",
+      "standard": "The login ID of any staff account: consultant organisation, consultant, Master Admin, Ministry, MSME DFO or dashboard.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "passwordResetLink",
+      "pageName": "Password reset link",
+      "placeholders": [],
+      "files": [
+        "staff/users/password-reset-link.ts"
+      ]
+    },
+    {
+      "key": "staff.passwordResetLink.consultancy.userIdPlaceholder",
+      "standard": "e.g. ZEDCO0001",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "passwordResetLink",
+      "pageName": "Password reset link",
+      "placeholders": [],
+      "files": [
+        "staff/users/password-reset-link.ts"
+      ]
+    },
+    {
       "key": "staff.passwordResetLink.crumb",
       "standard": "Password Reset Link",
       "kind": "label",
@@ -86095,6 +86521,18 @@
       ]
     },
     {
+      "key": "staff.quality.consultancy.level.label",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [],
+      "files": [
+        "staff/quality/quality-observations-page.ts"
+      ]
+    },
+    {
       "key": "staff.quality.consultancy.master.sub",
       "standard": "Observations of the ZED team on the handholding milestones, the consultant organisations' replies, and how each organisation and consultant ranks.",
       "kind": "note",
@@ -87482,6 +87920,18 @@
     {
       "key": "staff.registeredMsme.column.address",
       "standard": "Unit Address",
+      "kind": "label",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.html"
+      ]
+    },
+    {
+      "key": "staff.registeredMsme.column.consultancy.level",
+      "standard": "Level",
       "kind": "label",
       "portal": "staff",
       "page": "registeredMsme",
@@ -104598,6 +105048,54 @@
       ]
     },
     {
+      "key": "staff.subUsers.form.consultancy.agenciesAll",
+      "standard": "every consultant organisation",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.consultancy.agenciesLabel",
+      "standard": "Consultant organisations",
+      "kind": "label",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.consultancy.agenciesNote",
+      "standard": "none selected = every consultant organisation",
+      "kind": "note",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.consultancy.scopeNoteOperation",
+      "standard": "The operation admin sees only the units whose plant is in these states and the handholding cases of these consultant organisations, on every screen given.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
       "key": "staff.subUsers.form.editTitle",
       "standard": "Edit {id}",
       "kind": "heading",
@@ -105085,6 +105583,46 @@
       ]
     },
     {
+      "key": "staff.subUsers.row.consultancy.agenciesCount",
+      "standard": "{count} consultant organisations",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.row.consultancy.agencyCount",
+      "standard": "{count} consultant organisation",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.row.consultancy.allAgencies",
+      "standard": "all consultant organisations",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
       "key": "staff.subUsers.row.editButton",
       "standard": "Edit",
       "kind": "button",
@@ -105211,6 +105749,18 @@
       ]
     },
     {
+      "key": "staff.subUsers.screen.allotConsultancy",
+      "standard": "Allot consultancy",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
       "key": "staff.subUsers.screen.assessors",
       "standard": "Assessors",
       "kind": "text",
@@ -105225,6 +105775,18 @@
     {
       "key": "staff.subUsers.screen.consultancyAllotment",
       "standard": "Consultancy allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.consultancyCompleted",
+      "standard": "Consultancy completed",
       "kind": "text",
       "portal": "staff",
       "page": "subUsers",
@@ -111009,8 +111571,8 @@
       ]
     },
     {
-      "key": "staff.tuSubmissions.column.level",
-      "standard": "Certification level",
+      "key": "staff.tuSubmissions.column.levelShort",
+      "standard": "Level",
       "kind": "label",
       "portal": "staff",
       "page": "tuSubmissions",
@@ -111094,7 +111656,7 @@
     },
     {
       "key": "staff.tuSubmissions.crumb",
-      "standard": "Technology upgradation",
+      "standard": "Technology Upgradation",
       "kind": "label",
       "portal": "staff",
       "page": "tuSubmissions",
@@ -111592,7 +112154,7 @@
     },
     {
       "key": "staff.tuSubmissions.title",
-      "standard": "Technology upgradation",
+      "standard": "Technology Upgradation",
       "kind": "heading",
       "portal": "staff",
       "page": "tuSubmissions",
@@ -111957,7 +112519,7 @@
     },
     {
       "key": "staff.tuVerification.crumb.list",
-      "standard": "Technology upgradation",
+      "standard": "Technology Upgradation",
       "kind": "label",
       "portal": "staff",
       "page": "tuVerification",
@@ -112971,7 +113533,7 @@
     },
     {
       "key": "staff.tuVerification.title",
-      "standard": "Technology upgradation · {zedId}",
+      "standard": "Technology Upgradation · {zedId}",
       "kind": "heading",
       "portal": "staff",
       "page": "tuVerification",
@@ -113399,6 +113961,188 @@
       ]
     },
     {
+      "key": "staff.userLists.history.allot.auto",
+      "standard": "automatic allotment (round robin)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.consultancy",
+      "standard": "allotted for handholding",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.desktop",
+      "standard": "desktop assessment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.direct",
+      "standard": "direct allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.expert",
+      "standard": "technical expert",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.manual",
+      "standard": "allotted by the Master Admin",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.note",
+      "standard": "Note: {note}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "note"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.oldScheme",
+      "standard": "old scheme self-assessment, rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.onsiteSurveillance",
+      "standard": "onsite surveillance",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.onsiteSurveillanceCo",
+      "standard": "onsite surveillance, co-assessor",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.reallot",
+      "standard": "re-allotted after another agency's rejection",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.replaced",
+      "standard": "later allotted to someone else",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.schemeOnsite",
+      "standard": "incentive scheme onsite verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.site",
+      "standard": "lead (site / remote)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.allot.siteCo",
+      "standard": "co-assessor (site / remote)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
       "key": "staff.userLists.history.by",
       "standard": "By {name}",
       "kind": "text",
@@ -113456,6 +114200,109 @@
       ]
     },
     {
+      "key": "staff.userLists.history.change.added",
+      "standard": "added {items}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "items"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.change.list",
+      "standard": "{label}: {parts}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "label",
+        "parts"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.change.more",
+      "standard": "{names} and {n} more",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "names",
+        "n"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.change.removed",
+      "standard": "removed {items}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "items"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.change.set",
+      "standard": "{label}: {value}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "label",
+        "value"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.change.value",
+      "standard": "{label}: {old} → {new}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "label",
+        "old",
+        "new"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.changedCount",
+      "standard": "{n} changed",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
       "key": "staff.userLists.history.closeAria",
       "standard": "Close history",
       "kind": "tooltip",
@@ -113471,6 +114318,32 @@
       "key": "staff.userLists.history.closeButton",
       "standard": "Close",
       "kind": "button",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.createdWith",
+      "standard": "Created with ({n})",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.csv.column.changes",
+      "standard": "Changes",
+      "kind": "label",
       "portal": "staff",
       "page": "userLists",
       "pageName": "User lists",
@@ -113516,6 +114389,18 @@
       ]
     },
     {
+      "key": "staff.userLists.history.csv.column.kind",
+      "standard": "Kind",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
       "key": "staff.userLists.history.csv.sheet",
       "standard": "History",
       "kind": "text",
@@ -113540,9 +114425,525 @@
       ]
     },
     {
-      "key": "staff.userLists.history.empty",
-      "standard": "No block or unblock recorded yet.",
+      "key": "staff.userLists.history.emptyAll",
+      "standard": "Nothing recorded yet.",
       "kind": "note",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.activity",
+      "standard": "Activity type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.address",
+      "standard": "Address",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.agencyType",
+      "standard": "Agency type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.areasOfKnowledge",
+      "standard": "Areas of knowledge",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.assessments",
+      "standard": "Levels and modes",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.assessorType",
+      "standard": "Type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.bronzeSurveillance",
+      "standard": "Bronze surveillance",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.certificateNo",
+      "standard": "Certificate number",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.districts",
+      "standard": "Districts",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.email",
+      "standard": "E-mail",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.gstin",
+      "standard": "GSTIN",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.idProofNumber",
+      "standard": "ID proof number",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.idProofType",
+      "standard": "ID proof type",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.levels",
+      "standard": "Certification levels",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.mobile",
+      "standard": "Mobile",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.name",
+      "standard": "Name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.nicSectors",
+      "standard": "NIC sectors",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.organisingPartner",
+      "standard": "Organising partner",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.pan",
+      "standard": "PAN",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.pin",
+      "standard": "PIN code",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.preferredState",
+      "standard": "Preferred state",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.professionalEmail",
+      "standard": "Professional e-mail",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.schemeTicks",
+      "standard": "Scheme ticks",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.schemes",
+      "standard": "Schemes",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.scopeStates",
+      "standard": "Applicable states",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.sentTo",
+      "standard": "Sent to",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.spoc",
+      "standard": "SPOC name",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.state",
+      "standard": "State",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.states",
+      "standard": "States",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.tuDistricts",
+      "standard": "Technology Upgradation districts",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.tuState",
+      "standard": "Technology Upgradation state",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.field.verifications",
+      "standard": "Verifications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.filterAll",
+      "standard": "All",
+      "kind": "button",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.filterAria",
+      "standard": "Filter by kind",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.allotment",
+      "standard": "Allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.blocked",
+      "standard": "Blocked",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.created",
+      "standard": "Created",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.edited",
+      "standard": "Edited",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.mobileReset",
+      "standard": "Mobile reset",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.other",
+      "standard": "Other",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.passwordLink",
+      "standard": "Password link",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.sessionsEnded",
+      "standard": "Signed out everywhere",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.kind.unblocked",
+      "standard": "Unblocked",
+      "kind": "text",
       "portal": "staff",
       "page": "userLists",
       "pageName": "User lists",
@@ -113564,8 +114965,8 @@
       ]
     },
     {
-      "key": "staff.userLists.history.note",
-      "standard": "Blocks and unblocks are recorded with their reason. Allotments, reset links and profile edits are not kept in this history.",
+      "key": "staff.userLists.history.noteAll",
+      "standard": "Shown: the account’s creation, profile edits (each changed field, old → new), password links, mobile number changes, blocks and unblocks, and its allotments. Profile edits and links are recorded from 21 Nov 2026.",
       "kind": "note",
       "portal": "staff",
       "page": "userLists",
@@ -113590,6 +114991,32 @@
       ]
     },
     {
+      "key": "staff.userLists.history.selfService",
+      "standard": "Asked by the user (Forgot password)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.sentTo",
+      "standard": "Sent to {to}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "to"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
       "key": "staff.userLists.history.title",
       "standard": "History",
       "kind": "heading",
@@ -113597,6 +115024,130 @@
       "page": "userLists",
       "pageName": "User lists",
       "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.allotment",
+      "standard": "Allotment: {zedId}",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "zedId"
+      ],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.created",
+      "standard": "Account created",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.edited",
+      "standard": "Profile edited",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.mobileReset",
+      "standard": "Mobile number changed",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.newPassword",
+      "standard": "New password e-mailed",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.title.passwordLink",
+      "standard": "Password link sent",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.value.no",
+      "standard": "No",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.value.none",
+      "standard": "(none)",
+      "kind": "note",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.value.yes",
+      "standard": "Yes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [],
+      "files": [
+        "staff/users/history-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.userLists.history.whatChanged",
+      "standard": "What changed ({n})",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userLists",
+      "pageName": "User lists",
+      "placeholders": [
+        "n"
+      ],
       "files": [
         "staff/users/history-panel.ts"
       ]

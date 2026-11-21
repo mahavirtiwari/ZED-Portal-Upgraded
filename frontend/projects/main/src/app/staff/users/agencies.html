@@ -20,7 +20,7 @@
   <div class="ag-search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
     <input type="search" class="form-control" [placeholder]="'Search ID, name, SPOC, mobile or e-mail' | t: 'staff.agencies.search.placeholder'"
-           [attr.aria-label]="'Search agencies' | t: 'staff.agencies.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+           [attr.aria-label]="consultancy ? ('Search consultant organisations' | t: 'staff.agencies.search.consultancy.aria') : ('Search agencies' | t: 'staff.agencies.search.aria')" [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
   <zed-chip-filter [label]="'Status' | t: 'staff.agencies.filter.status'" data-filter="status" [chips]="statusChips()" [value]="status()" (valueChange)="setStatus($event)" />
   @if (!consultancy) {

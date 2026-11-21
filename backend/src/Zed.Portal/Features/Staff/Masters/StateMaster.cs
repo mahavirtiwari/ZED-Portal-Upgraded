@@ -52,9 +52,22 @@ public static class StateMaster
     public static string Code(string code) => code.Trim().TrimStart('0') is { Length: > 0 } c ? c : code.Trim();
 
     /// <summary>Reads dbo.States; keeps the last list when it cannot be read or is empty.</summary>
-    public static async Task RefreshAsync(ISqlExecutor db, CancellationToken ct)
+    /// <summary>The same query from another portal's connection (consultancy, surveillance): main's table by name.</summary>
+    internal static readonly string MainSql = Sql.Replace("FROM dbo.States", "FROM ZEDCS_V2_LIVE.dbo.States");
+
+    /// <param name="fromMain">2026-11-21: the consultancy and surveillance hosts read main's states (where the main host reads
+    /// them), and their own table only when main's cannot be read.</param>
+    public static async Task RefreshAsync(ISqlExecutor db, CancellationToken ct, bool fromMain = false)
     {
-        var rows = await db.QuerySqlAsync<State>(Sql, null, ct);
+        IReadOnlyList<State> rows;
+        try
+        {
+            rows = await db.QuerySqlAsync<State>(fromMain ? MainSql : Sql, null, ct);
+        }
+        catch (System.Data.Common.DbException) when (fromMain)
+        {
+            rows = await db.QuerySqlAsync<State>(Sql, null, ct);
+        }
         Apply(rows);
     }
 
@@ -101,7 +114,8 @@ public sealed class StateMasterRefresher(IServiceScopeFactory scopes, IConfigura
                 try
                 {
                     using var scope = scopes.CreateScope();
-                    await StateMaster.RefreshAsync(scope.ServiceProvider.GetRequiredService<ISqlExecutor>(), stoppingToken);
+                    var fromMain = scope.ServiceProvider.GetService<Zed.Core.Http.PortalHost>() is { System: not Zed.Core.Http.PortalSystem.Main };
+                    await StateMaster.RefreshAsync(scope.ServiceProvider.GetRequiredService<ISqlExecutor>(), stoppingToken, fromMain);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -115,10 +129,14 @@ public sealed class StateMasterRefresher(IServiceScopeFactory scopes, IConfigura
     }
 }
 
-/// <summary>GET api/public/states: the active states (LGD code and name) for the pages' state drop-downs.</summary>
+/// <summary>
+/// GET api/public/states: the active states (LGD code and name) for the pages' state drop-downs. 2026-11-21 (Consultancy
+/// UI audit: it answered 404 on every Consultancy page): served by the three portals.
+/// </summary>
 [ApiController]
 [AllowAnonymous]
 [Route("api/public/states")]
+[Zed.Core.Http.PortalSystems(Zed.Core.Http.PortalSystem.Main, Zed.Core.Http.PortalSystem.Consultancy, Zed.Core.Http.PortalSystem.Surveillance)]
 public sealed class PublicStatesController : ControllerBase
 {
     public sealed record StateDto(string Code, string Name);

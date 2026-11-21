@@ -224,6 +224,10 @@ public sealed class IncentiveAgenciesController(
             await db.ExecuteSqlAsync(SetDistrictsSql, new { Districts = DistrictsText(a.Districts), UserId = Ansi(newId, 100), State = Ansi(a.State, 2000) }, ct);
         await passwords.SetAsync(newId!, password, ct);
         log.LogInformation("Incentive verification agency {NewUserId} ({Kind}) created by {Actor}", newId, kind, ActorId);
+        // 2026-11-21: the account's history starts with its creation and what it was created with.
+        if (await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(v.UserName, v.SpocName, v.EmailId, v.MobileNo, v.Address, v.PinCode, v.GstNumber,
+                kind, v.Areas, v.Schemes, ct), newId!, log) is { } created)
+            await StaffUserActions.RecordChangesAsync(this, db, newId!, (int)UserRole.Agency, UserBlockHistory.Created, null, created, log, ct);
 
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId!, (int)UserRole.Agency, password, UserId, ct);
         var sent = await Mail.SendWelcomeAsync<StaffAgencyRegisteredEmail>(v.EmailId,
@@ -259,6 +263,10 @@ public sealed class IncentiveAgenciesController(
         var codes = (await store.AllAsync(ct)).Select(s => s.Code).ToList();
         var tick = IncentiveAgencies.TickOf(kind);
         var ticks = SchemeTicks.Replace(existing.SchemeVerification, codes, v!.Schemes.Select(c => $"{c}:{tick}"));
+        // 2026-11-21 (the product owner: profile edits in the History): the profile before the save, for the change list.
+        var before = await StaffUserActions.HistoryProfileAsync(async () => await ProfileAsync(existing.UserName?.Trim() ?? id, existing.SpocName, existing.Email,
+            existing.MobileNo, existing.Address, existing.Pincode, existing.AgencyGstNumber, kind, (await AreasAsync([id], ct)).GetValueOrDefault(id) ?? [],
+            Codes(existing.SchemeVerification, kind), ct), id, log);
         await db.ExecuteSqlAsync(UpdateSql, new
         {
             UserName = v.UserName, SpocName = v.SpocName, Email = v.EmailId, MobileNo = v.MobileNo, Address = v.Address, PinCode = v.PinCode,
@@ -268,6 +276,9 @@ public sealed class IncentiveAgenciesController(
         foreach (var a in v.Areas)
             await db.ExecuteSqlAsync(InsertStateSql, new { UserId = Ansi(id, 100), State = Ansi(a.State, 2000), Districts = DistrictsText(a.Districts) }, ct);
         log.LogInformation("Incentive verification agency {UserId} ({Kind}) updated by {Actor}", id, kind, ActorId);
+        if (before is not null && await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(v.UserName, v.SpocName, v.EmailId, v.MobileNo, v.Address,
+                v.PinCode, v.GstNumber, kind, v.Areas, v.Schemes, ct), id, log) is { } after)
+            await StaffUserActions.RecordChangesAsync(this, db, id, (int)UserRole.Agency, UserBlockHistory.Edited, before, after, log, ct);
         return new MessageResponse("Agency updated successfully.");
     }
 
@@ -353,6 +364,30 @@ public sealed class IncentiveAgenciesController(
         var ticks = string.Join(',', picked.Select(c => $"{c.ToUpperInvariant()}:{IncentiveAgencies.TickOf(kind)}"));
         if (ticks.Length > SchemeTicks.MaxLength) return (null, "Too many schemes selected.");
         return (new Values(name!, spoc!, mail!, mobile, address!, pin, gst, areas, picked, ticks), null);
+    }
+
+    /// <summary>
+    /// 2026-11-21: the agency's profile as its History records it: its type, states, districts by name ("Name (State)") and schemes by
+    /// name. District names are read only for the states that have districts chosen.
+    /// </summary>
+    private async Task<AccountProfile> ProfileAsync(string name, string? spoc, string? email, string? mobile, string? address, string? pin, string? gst,
+        string kind, IReadOnlyList<StateArea> areas, IEnumerable<string> schemes, CancellationToken ct)
+    {
+        var districts = new List<string>();
+        foreach (var a in areas.Where(a => a.Districts.Count > 0))
+        {
+            var known = Code(a.State) is { } code
+                ? (await DistrictsOfAsync(code, ct)).GroupBy(d => d.Code, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First().Name, StringComparer.OrdinalIgnoreCase)
+                : [];
+            districts.AddRange(a.Districts.Select(d => $"{(known.GetValueOrDefault(d.Trim()) is { Length: > 0 } n ? n : d)} ({a.State})"));
+        }
+        var all = await store.AllAsync(ct);
+        return new AccountProfile()
+            .Add("name", name).Add("spoc", spoc).Add("email", email).Add("mobile", mobile).Add("address", address).Add("pin", pin).Add("gstin", gst)
+            .Add("agencyType", TypeOf(kind))
+            .Add("states", areas.Select(a => a.State))
+            .Add("districts", districts)
+            .Add("schemes", schemes.Select(c => all.FirstOrDefault(x => string.Equals(x.Code, c, StringComparison.OrdinalIgnoreCase))?.Name is { Length: > 0 } n ? n : c));
     }
 
     private static string? DistrictsText(IReadOnlyList<string> districts) => districts.Count == 0 ? null : string.Join(',', districts);

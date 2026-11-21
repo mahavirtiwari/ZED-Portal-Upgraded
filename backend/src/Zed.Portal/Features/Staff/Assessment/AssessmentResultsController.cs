@@ -185,7 +185,44 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         }, ct);
 
         var total = sets[1].FirstOrDefault() is { } t && int.TryParse(t.Text("TotalCounts"), out var n) ? n : 0;
-        return new PageResponse(Pick(sets[0], WithReason(Fields)), total, page, size2);
+        var rows = Pick(sets[0], WithReason(Fields));
+        if (status == CompletedStatus && !all && IsRole(UserRole.DesktopAssessor)) await AddAssessorDates(rows, ct);
+        return new PageResponse(rows, total, page, size2);
+    }
+
+    /// <summary>
+    /// The dates of the record's history the assessment details page shows (SP_ASSESSMENT_DA_DETAILS reads MsmeHistory): when the unit
+    /// was allotted to the desktop assessor, its desktop verification and the assessment completed, for the listed rows only.
+    /// </summary>
+    internal const string HistoryDatesSql =
+        "SELECT ZedId, CertificationType, StatusType, MAX(CreatedDate) AS CreatedDate FROM dbo.MsmeHistory " +
+        "WHERE ZedId IN @ZedIds AND StatusType IN ('DocVerifiAllot', 'DesktopVerification', 'Completed') GROUP BY ZedId, CertificationType, StatusType;";
+
+    public sealed record HistoryDate(string? ZedId, string? CertificationType, string? StatusType, DateTime? CreatedDate);
+
+    /// <summary>
+    /// 2026-11-21 (Assessor UI audit): the assessor's Completed list showed the date the assessor accepted the unit as "allocated on"
+    /// (the details page: the date it was allotted) and a blank "completed on" (the procedure's DesktopVerificationDate is not set by
+    /// the desktop final submit, and it has no CompletedOn). The allotment date is taken from the history as on the details page, and
+    /// the completion dates where the procedure has none; the page falls back to the record's status date.
+    /// </summary>
+    private async Task AddAssessorDates(List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        // The record's own ZED ID (the procedure's P.ZedId), as the details page reads the history.
+        static string Key(Dictionary<string, object?> r) => (r.Text("RejectedZedId") is { Length: > 0 } own ? own : r.Text("ZedId")).Trim();
+        var ids = rows.Select(Key).Where(id => id.Length is > 0 and <= 60).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (ids.Length == 0) return;
+        var dates = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        foreach (var h in await db.QuerySqlAsync<HistoryDate>(HistoryDatesSql, new { ZedIds = ids }, ct))
+            if (h.CreatedDate is { } d) dates[$"{h.ZedId?.Trim()}|{h.CertificationType?.Trim()}|{h.StatusType}"] = d;
+        foreach (var r in rows)
+        {
+            string? At(string type) => dates.TryGetValue($"{Key(r)}|{r.Text("Certification").Trim()}|{type}", out var d)
+                ? d.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
+            if (r.Text("DeskAssessment") == "D" && At("DocVerifiAllot") is { } allotted) r["DocVerifiAllot"] = allotted;
+            if (string.IsNullOrEmpty(r.Text("DesktopVerificationCompleted")) && At("DesktopVerification") is { } desk) r["DesktopVerificationCompleted"] = desk;
+            if (string.IsNullOrEmpty(r.Text("CompletedOn")) && At("Completed") is { } done) r["CompletedOn"] = done;
+        }
     }
 
     /// <summary>

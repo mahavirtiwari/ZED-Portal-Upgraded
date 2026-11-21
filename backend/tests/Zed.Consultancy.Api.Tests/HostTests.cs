@@ -19,6 +19,21 @@ public sealed class HostTests : IDisposable
     }
 
     [Fact]
+    public async Task The_public_levels_and_states_are_served_here_from_mains_tables()
+    {
+        // 2026-11-21 (UI audit): every Consultancy page asked for them and got 404.
+        var client = _host.CreateClient();
+        var levels = await client.GetAsync("/api/public/levels");
+        Assert.Equal(HttpStatusCode.OK, levels.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/public/levels/all")).StatusCode);
+        var states = await client.GetAsync("/api/public/states");
+        Assert.Equal(HttpStatusCode.OK, states.StatusCode);
+        Assert.Contains("ANDHRA PRADESH", await states.Content.ReadAsStringAsync());
+        // The levels live in main's database: this host reads main's table by name.
+        Assert.Contains(_host.Sql.Calls, c => c.Name.Contains("ZEDCS_V2_LIVE.dbo.SectionTypes", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Main_only_features_are_not_served_here()
     {
         var client = _host.CreateClient();

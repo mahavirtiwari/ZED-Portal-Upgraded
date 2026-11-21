@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
-import { Observable } from 'rxjs';
+import { Observable, finalize, shareReplay } from 'rxjs';
 import { ReviewActions } from '../monitoring/review.api';
 import type { Checkpoint, CheckpointSaveRequest } from './checkpoint-dialog';
 import { canonicalLevelCode } from '../../msme/shared/levels';
@@ -274,8 +274,25 @@ export class AssessmentApi {
   private da(zedId: string, certification: string): string {
     return `${this.base}/da/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`;
   }
+  /** The details being read now, by address (see {@link details}). */
+  private readonly reading = new Map<string, Observable<DaDetails>>();
+
+  /**
+   * The assessment details. 2026-11-21 (Assessor UI audit: the details were asked twice on every load): a second ask while the same
+   * details are on their way shares that request; a later ask (after a save, Refresh) reads them again.
+   */
   details(zedId: string, certification: string): Observable<DaDetails> {
-    return this.http.get<DaDetails>(this.da(zedId, certification));
+    const url = this.da(zedId, certification);
+    const going = this.reading.get(url);
+    if (going) return going;
+    const call: Observable<DaDetails> = this.http.get<DaDetails>(url).pipe(
+      finalize(() => {
+        if (this.reading.get(url) === call) this.reading.delete(url);
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+    this.reading.set(url, call);
+    return call;
   }
   conformance(zedId: string, certification: string, id: unknown, conformance: string, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/requirements/${encodeURIComponent(String(id))}/conformance`, { conformance, remarks });

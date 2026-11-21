@@ -383,6 +383,8 @@ describe('StaffDashboardPage', () => {
     // 2026-11-18: staff-00's order (re-allotment last); a count of 0 keeps its colours.
     expect(items.map((a) => text(a))).toEqual(['18Units awaiting allotment', '7NC closures overdue', '0Quality observations open', '4Rejected, to re-allot']);
     expect(items[1].getAttribute('href')).toBe('/staff/monitoring?tab=nc');
+    // 2026-11-21 (Assessor UI audit): each link has its visible label as its name.
+    expect(items.map((a) => a.getAttribute('aria-label'))).toEqual(['18 Units awaiting allotment', '7 NC closures overdue', '0 Quality observations open', '4 Rejected, to re-allot']);
     expect(items[2].classList.contains('is-zero')).toBe(true);
     // Between the headline tiles and the level cards, and never in an export.
     expect(!!(el.querySelector('.an-kpis')!.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);

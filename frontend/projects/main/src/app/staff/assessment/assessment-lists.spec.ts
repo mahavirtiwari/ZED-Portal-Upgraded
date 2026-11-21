@@ -403,13 +403,27 @@ describe('assessment list pages', () => {
     const first = http.expectOne((r) => r.url === '/api/staff/assessment/completed');
     expect(first.request.params.get('pageNo')).toBe('1');
     expect(first.request.params.get('pageSize')).toBe('10');
-    first.flush({ rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', Certification: 'Bronze', DeskAssessment: 'D', DocVerifiAllot: 'May 1, 2024' }], totalCount: 45, pageNo: 1, pageSize: 20 });
+    const row = { RowNumber: 1, ZedId: 'ZEDMSME000001', Certification: 'Bronze', DeskAssessment: 'D', DocVerifiAllot: 'May 1, 2024', DesktopVerificationCompleted: null, CompletedOn: null, CertificationStatusDate: 'November 14, 2026' };
+    first.flush({ rows: [row], totalCount: 45, pageNo: 1, pageSize: 20 });
     await settle(fixture);
     const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent!.trim());
     expect(heads).toContain('Assessment allocated on');
     expect(heads).not.toContain('Assessor');
-    expect(heads).not.toContain('Actions');
     expect(el.textContent).toContain('May 1, 2024');
+    // 2026-11-21 (Assessor UI audit): a certified Bronze unit's completion falls back to the date it was certified, and the
+    // assessor opens its own unit read-only from the row menu.
+    const cells = [...el.querySelectorAll('tbody tr td')].map((td) => td.textContent!.replace(/\s+/g, ' ').trim());
+    expect(cells).toContain('November 14, 2026');
+    expect(heads).toContain('Actions');
+    (el.querySelector('tbody tr .rm-btn') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['Assessment details']);
+    const page = fixture.componentInstance as unknown as { href(s: object, k: string): string; assessedOn(s: object, part: string): string };
+    expect(page.href({ ...row, CertificationStatus: 16, Certification: 'Silver' }, 'details')).toBe('/staff/assessment/da-details/ZEDMSME000001/Silver');
+    // A Silver unit's desktop line does not take the certification date (that comes after the site assessment).
+    expect(page.assessedOn({ ...row, Certification: 'Silver' }, 'desk')).toBe('');
+    expect(page.assessedOn({ ...row, Certification: 'Silver', CompletedOn: 'November 10, 2026' }, 'site')).toBe('November 10, 2026');
+    expect(page.assessedOn({ ...row, DesktopVerificationCompleted: 'November 9, 2026' }, 'desk')).toBe('November 9, 2026');
 
     (el.querySelector('.zed-pager button[aria-label="Page 3"]') as HTMLButtonElement).click();
     await settle(fixture);

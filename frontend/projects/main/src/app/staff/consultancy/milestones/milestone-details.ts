@@ -233,6 +233,10 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
     .photo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 6px 0; }
     .photo-row + .photo-row { border-top: 1px solid #eef3f3; }
     .photo-name { margin: 0; font-weight: 600; flex: 1 1 160px; }
+    /* 2026-11-21 (UI audit): the attendance cells keep their words whole at 390 px (the table scrolls instead). */
+    .att-table th, .att-table td { word-break: normal; overflow-wrap: normal; hyphens: none; white-space: nowrap; }
+    .att-id { font-weight: 400; color: #5f6f70; }
+    .abbr-help { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
     .photo-file { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; }
     .photo-file img { border-radius: 6px; }
     .selfie { border-radius: 6px; object-fit: cover; }
@@ -321,12 +325,21 @@ export class MilestoneDetailsPage {
   protected readonly headTitle = computed(() => {
     const m1 = this.milestoneRow(1);
     const unit = (m1 && text(m1, 'PUnitName')) || this.zedId();
-    return t('staff.milestoneDetails.title', '{unit} · {level} handholding', { unit, level: (m1 && text(m1, 'Certification')) || this.certification() });
+    // 2026-11-21 (UI audit): the level registry's name (ZED-X, not ZEDX).
+    return t('staff.milestoneDetails.title', '{unit} · {level} handholding', { unit, level: levelName((m1 && text(m1, 'Certification')) || this.certification()) });
   });
-  protected readonly headCrumbs = computed(() => staffCrumbs(
-    ...(this.milestone() ? [{ label: t('staff.milestoneDetails.crumb.milestone', 'Milestone {n}', { n: this.milestone() }), link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []),
-    { label: this.zedId() },
-  ));
+  /** 2026-11-21 (UI audit): Home › Consultancy Monitoring (linked) › ZED ID, the list the Master Admin opens the case from. */
+  protected readonly headCrumbs = computed(() => {
+    const party = this.data()?.party;
+    // A consultant opens the case from its milestone list (it has no Monitoring page).
+    const consultant = party === 'Lead' || party === 'CoConsultant';
+    return staffCrumbs(
+      ...(consultant
+        ? this.milestone() ? [{ label: t('staff.milestoneDetails.crumb.milestone', 'Milestone {n}', { n: this.milestone() }), link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []
+        : [{ label: t('staff.milestoneDetails.crumb.monitoring', 'Consultancy Monitoring'), link: '/staff/monitoring' }]),
+      { label: this.zedId() },
+    );
+  });
   /** 2026-11-17 (approved staff redesign): the item whose deletion is being confirmed (the confirmation pop-up, not confirm()). */
   protected readonly bulletToDelete = signal<MilestoneBullet | null>(null);
   protected readonly deleteAsk = computed<ConfirmAsk>(() => ({
@@ -411,6 +424,11 @@ export class MilestoneDetailsPage {
     const a = Number(lat);
     const b = Number(lng);
     return lat && lng && Number.isFinite(a) && Number.isFinite(b) ? `https://www.google.com/maps?q=${a},${b}` : '';
+  }
+
+  /** The attendance day as a date only ("November 17, 2026"; an older value "November 17, 2026 12:00 AM" loses its time). */
+  protected attendanceDate(row: Row): string {
+    return text(row, 'TimeStamps').replace(/\s+12:00(:00)?\s*AM$/i, '').trim();
   }
 
   protected attendanceOf(consultant: Row): Row[] {

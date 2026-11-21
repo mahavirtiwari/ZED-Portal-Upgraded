@@ -235,7 +235,21 @@ public sealed class TuStorage(IWebHostEnvironment env, Microsoft.Extensions.Opti
     {
         var list = candidates.ToList();
         return Roots.SelectMany(root => list.Select(c => MsmeFilePaths.Resolve(root, c)))
+            .Concat(AppRootFiles(list))
             .FirstOrDefault(p => p is not null && File.Exists(p));
+    }
+
+    /// <summary>
+    /// 2026-11-21: the consultant app's files (the DFO's attendance selfies, consultancymobileapi/…) also in the consultant
+    /// mobile API's own folder (Milestones.MilestoneFiles.AppRootSetting), without the consultancymobileapi folder.
+    /// </summary>
+    private IEnumerable<string?> AppRootFiles(List<string> candidates)
+    {
+        if (config[Milestones.MilestoneFiles.AppRootSetting] is not { Length: > 0 } app) yield break;
+        var root = Full(app);
+        const string prefix = "consultancymobileapi/";
+        foreach (var c in candidates.Where(c => c.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            yield return MsmeFilePaths.Resolve(root, c[prefix.Length..]);
     }
 
     /// <summary>Full path of a file to write under the own root, or null when the path would leave it.</summary>

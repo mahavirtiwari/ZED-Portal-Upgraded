@@ -152,7 +152,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     <div class="zed-card as-bar">
       <label class="as-search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>
-        <input type="search" class="form-control" maxlength="50" [placeholder]="'Search ID, name, mobile, e-mail or agency' | t: 'staff.assessors.search.placeholder'" [attr.aria-label]="'Search assessors' | t: 'staff.assessors.search.aria'"
+        <input type="search" class="form-control" maxlength="50" [placeholder]="consultancy ? ('Search ID, name, mobile, e-mail or organisation' | t: 'staff.assessors.search.consultancy.placeholder') : ('Search ID, name, mobile, e-mail or agency' | t: 'staff.assessors.search.placeholder')" [attr.aria-label]="consultancy ? ('Search consultants' | t: 'staff.assessors.search.consultancy.aria') : ('Search assessors' | t: 'staff.assessors.search.aria')"
                [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
       </label>
       @if (!consultancy) {
@@ -245,13 +245,16 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                   </div>
                 </td>
                 @if (consultancy) {
-                  <!-- The live page prints 0 for each milestone (no count is read). -->
+                  <!-- 2026-11-21 (UI audit): the consultant's milestones completed (the live page printed a fixed 0), and those in progress. -->
                   <td class="text-center as-milestones" [attr.data-label]="'No. Of Consulting Completed' | t: 'staff.assessors.column.completed'">
-                    <div>{{ 'Milestone 1:' | t: 'staff.assessors.row.milestone1' }} <strong>0</strong></div><div>{{ 'Milestone 2:' | t: 'staff.assessors.row.milestone2' }} <strong>0</strong></div><div>{{ 'Milestone 3:' | t: 'staff.assessors.row.milestone3' }} <strong>0</strong></div>
+                    @let mc = milestonesOf(s);
+                    <div>{{ 'Milestone 1:' | t: 'staff.assessors.row.milestone1' }} <strong>{{ mc.m1 }}</strong></div><div>{{ 'Milestone 2:' | t: 'staff.assessors.row.milestone2' }} <strong>{{ mc.m2 }}</strong></div><div>{{ 'Milestone 3:' | t: 'staff.assessors.row.milestone3' }} <strong>{{ mc.m3 }}</strong></div>
+                    @if (mc.inProgress) { <small class="as-sub" data-in-progress>{{ '{count} in progress' | t: 'staff.assessors.row.milestonesInProgress' : { count: mc.inProgress } }}</small> }
                   </td>
                 }
                 <td class="text-center as-status" [attr.data-label]="'Status' | t: 'staff.assessors.column.status'">
-                  <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
+                  <!-- 2026-11-21 (UI audit): one word with the status tiles (Active / Blocked), not the procedure's ACTIVE / IN-ACTIVE. -->
+                  <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IsActive ? ('Active' | t: 'staff.assessors.count.active') : ('Blocked' | t: 'staff.assessors.count.blocked') }}</span>
                   <!-- 2026-11-18: the registered phone of the app (one phone per user), for the Admin and the Master Admin. -->
                   @if (showsPhone) { <zed-phone-chip class="as-phone" [phone]="phoneOf(s)" /> }
                   @if (!s.IsActive && (s.BlockReason || s.BlockedOn)) {
@@ -510,6 +513,7 @@ export class AssessorListPage {
   constructor() {
     void this.load();
     void this.loadPhones();
+    void this.loadMilestones();
   }
 
   protected setStatus(value: StatusFilter): void {
@@ -570,6 +574,24 @@ export class AssessorListPage {
       void this.loadPhones();
       return false;
     });
+  }
+
+  /** 2026-11-21: Consultancy, the milestones each consultant completed and has in progress, by user id (upper case). */
+  private readonly milestoneCounts = signal<Map<string, { m1: number; m2: number; m3: number; inProgress: number }>>(new Map());
+  private static readonly NoMilestones = { m1: 0, m2: 0, m3: 0, inProgress: 0 };
+
+  protected milestonesOf(s: AssessorRow): { m1: number; m2: number; m3: number; inProgress: number } {
+    return this.milestoneCounts().get((s.UserId ?? '').trim().toUpperCase()) ?? AssessorListPage.NoMilestones;
+  }
+
+  private async loadMilestones(): Promise<void> {
+    if (!this.consultancy) return;
+    try {
+      const rows = await firstValueFrom(this.http.get<{ userId: string; m1: number; m2: number; m3: number; inProgress: number }[]>('/api/staff/dashboard/consultant-milestones'));
+      this.milestoneCounts.set(new Map(rows.map((r) => [(r.userId ?? '').trim().toUpperCase(), { m1: r.m1 ?? 0, m2: r.m2 ?? 0, m3: r.m3 ?? 0, inProgress: r.inProgress ?? 0 }])));
+    } catch {
+      /* the list works without the counts (0) */
+    }
   }
 
   /** The Phone chips (Admin and Master Admin only; a failure leaves them "Not registered" rather than failing the list). */

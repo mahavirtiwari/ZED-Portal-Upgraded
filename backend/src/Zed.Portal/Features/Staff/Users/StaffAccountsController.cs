@@ -337,6 +337,10 @@ public sealed class StaffAccountsController(
         await SaveScopeAsync(userId, type, scope!, ct);
         if (type.HasScreens || type.HasNeftLists) await SaveScreensAsync(userId, screens, ct);
         log.LogInformation("{Type} login {NewUserId} created by {Actor}", type.Label, userId, UserId);
+        // 2026-11-21: the account's history starts with its creation and what it was created with.
+        if (await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(values.UserName, values.Email, values.MobileNo, values.StateCode, type,
+                new ScopeRow(userId, scope!.SectorActivity, scope.Levels, scope.States, scope.Districts), ct), userId, log) is { } created)
+            await StaffUserActions.RecordChangesAsync(this, db, userId, type.RoleId, UserBlockHistory.Created, null, created, log, ct);
 
         // A one-time link to set the password; Master Admin and Super Admin logins still get the password (StaffWelcomeLogin).
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, userId, type.RoleId, password, UserId, ct);
@@ -359,12 +363,18 @@ public sealed class StaffAccountsController(
         var (districts, lists, dfoError) = await ValidateDfoAsync(type!, req, LoginScope.Split(scope!.States), ct);
         if (dfoError is not null) return this.Problem400(dfoError);
         if (type!.HasNeftLists) { scope = scope! with { Districts = districts }; screens = lists; values = values! with { StateCode = LoginScope.Split(scope.States)[0] }; }
+        // 2026-11-21 (the product owner: profile edits in the History): the profile before the save, for the change list.
+        var before = await StaffUserActions.HistoryProfileAsync(async () => await ProfileAsync(row.UserName, row.Email, row.MobileNo, row.StateCode, type!,
+            type!.HasScope ? (await ScopesAsync(ct)).GetValueOrDefault(row.UserId) : null, ct), row.UserId, log);
         await db.ExecuteSqlAsync(
             "UPDATE Users SET UserName = @UserName, Email = @Email, MobileNo = @MobileNo, StateCode = @StateCode WHERE UserId = @UserId AND RoleId = @RoleId;",
             new { row.UserId, values!.UserName, values.Email, values.MobileNo, values.StateCode, row.RoleId }, ct);
         await SaveScopeAsync(row.UserId, type!, scope!, ct);
         if (type!.HasScreens || type.HasNeftLists) await SaveScreensAsync(row.UserId, screens, ct);
         log.LogInformation("{Type} login {UserId} updated by {Actor}", type!.Label, row.UserId, UserId);
+        if (before is not null && await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(values.UserName, values.Email, values.MobileNo, values.StateCode,
+                type, new ScopeRow(row.UserId, scope!.SectorActivity, scope.Levels, scope.States, scope.Districts), ct), row.UserId, log) is { } after)
+            await StaffUserActions.RecordChangesAsync(this, db, row.UserId, row.RoleId, UserBlockHistory.Edited, before, after, log, ct);
         // M12: the state (an MSME DFO's lists) is in the sign-in cookie: the user's sessions end and the next sign-in has the new one.
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
         return new MessageResponse("Login updated. The user is signed out and the change applies at the next sign-in.");
@@ -395,7 +405,12 @@ public sealed class StaffAccountsController(
         log.LogInformation("Password of {UserId} reset by {Actor}", row.UserId, UserId);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
         var label = Types.FirstOrDefault(t => t.RoleId == row.RoleId)?.Label ?? "Dashboard Admin";
-        return await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, label, new StaffWelcomeLogin(password, null), reset: true, ct)
+        var sent = await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, label, new StaffWelcomeLogin(password, null), reset: true, ct);
+        // 2026-11-21: in the account's history (where it was sent; never the password).
+        if (sent)
+            await UserBlockHistory.RecordAsync(db, row.UserId, row.RoleId, UserBlockHistory.PasswordLink, UserBlockHistory.NewPassword,
+                StaffUserActions.HistoryActor(this, UserId), RoleId, log, ct, AccountChanges.ToJson([new AccountChange("sentTo", New: to)]));
+        return sent
             ? new MessageResponse($"A new password has been sent to {to}.")
             : this.Problem400("The password was reset, but the e-mail could not be sent. Please try again.");
     }
@@ -428,6 +443,29 @@ public sealed class StaffAccountsController(
     }
 
     private sealed record Values(string UserName, string Email, string MobileNo, string? StateCode);
+
+    /// <summary>
+    /// 2026-11-21: the login's profile as its History records it: the state, and for the logins with a scope its category, levels,
+    /// states and (an MSME DFO's) districts by name. Empty levels / states mean "every one".
+    /// </summary>
+    private async Task<AccountProfile> ProfileAsync(string? name, string? email, string? mobile, string? stateCode, AccountType type, ScopeRow? scope,
+        CancellationToken ct)
+    {
+        string StateName(string code) => DashboardFilters.States.GetValueOrDefault(code.Trim()) ?? code;
+        var p = new AccountProfile().Add("name", name).Add("email", email).Add("mobile", mobile);
+        if (type.NeedsState || !string.IsNullOrWhiteSpace(stateCode)) p.Add("state", string.IsNullOrWhiteSpace(stateCode) ? null : StateName(stateCode));
+        if (!type.HasScope) return p;
+        p.Add("activity", scope?.SectorActivity ?? UserSectorActivity.Both);
+        if (type.HasLevels) p.Add("levels", LoginScope.Split(scope?.ScopeLevels).Select(Zed.Core.Data.LevelRegistry.NameOf));
+        if (type.HasStateScope || type.HasNeftLists) p.Add("scopeStates", LoginScope.Split(scope?.ScopeStates).Select(StateName));
+        if (type.HasNeftLists)
+        {
+            var codes = LoginScope.Split(scope?.ScopeDistricts);
+            var names = codes.Count == 0 ? [] : await DistrictsOfAsync(LoginScope.Split(scope?.ScopeStates), ct);
+            p.Add("districts", codes.Select(c => names.FirstOrDefault(n => string.Equals(n.DistrictCode?.Trim(), c.Trim(), StringComparison.OrdinalIgnoreCase))?.DistrictName?.Trim() is { Length: > 0 } dn ? dn : c));
+        }
+        return p;
+    }
 
     private (AccountType? Type, Values? Values, string? Error) Validate(AccountRequest req, int roleId)
     {

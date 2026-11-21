@@ -605,12 +605,22 @@ public sealed partial class CertificationLevelsController(
     private string Actor() => UserId.Length <= 50 ? UserId : UserId[..50];
 }
 
-/// <summary>The enabled levels for the MSME pages, and the logos (no sign-in: the dashboard and public pages show them).</summary>
+/// <summary>
+/// The enabled levels for the MSME pages, and the logos (no sign-in: the dashboard and public pages show them).
+/// 2026-11-21 (Consultancy UI audit: api/public/levels and /levels/all answered 404 on every Consultancy page, so the pages
+/// kept the built-in names): served by the three portals; the levels live in main's database (dbo.SectionTypes), which
+/// the consultancy and surveillance hosts read by name, as the surveillance host's documents already do.
+/// </summary>
 [ApiController]
 [AllowAnonymous]
 [Route("api/public/levels")]
-public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<PublicLevelsController> log) : ControllerBase
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
+public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, PortalHost host,
+    ILogger<PublicLevelsController> log) : ControllerBase
 {
+    /// <summary>The connection is not main's: the levels are read from main's table.</summary>
+    private bool OtherDatabase => host.System != PortalSystem.Main;
+
     /// <param name="AssessmentFlow">2026-11-14: how the level is assessed (<see cref="LevelFlows"/>), for the MSME's status steps.</param>
     public sealed record PublicLevel(string Code, string Name, string? Description, string? Comment, string? LogoUrl, string AssessmentMode,
         int ValidityMonths, decimal? Fee, PublicSurveillance? Surveillance = null, string? AssessmentFlow = null, string? SurveillanceMode = null);
@@ -624,8 +634,8 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     [HttpGet]
     public async Task<IReadOnlyList<PublicLevel>> Enabled(CancellationToken ct)
     {
-        var flows = await LevelFlows.StoredAsync(db, log, ct);
-        return (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
+        var flows = await LevelFlows.StoredAsync(db, log, ct, OtherDatabase);
+        return (await CertificationLevels.AllAsync(db, log, ct, OtherDatabase)).Where(l => l.IsEnabled)
             // Fee: none since 2026-11-08 (the dashboard shows the unit's own fee from Master → Payments, api/msme/dashboard/level-fees).
             .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, null,
                 SurveillanceOf(l), LevelFlows.FlowOf(flows.GetValueOrDefault(l.Code)?.AssessmentFlow, l.AssessmentMode),
@@ -643,7 +653,7 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     [HttpGet("all")]
     public async Task<IReadOnlyList<LevelSummary>> All(CancellationToken ct)
     {
-        var levels = await CertificationLevels.AllAsync(db, log, ct);
+        var levels = await CertificationLevels.AllAsync(db, log, ct, OtherDatabase);
         if (ReferenceEquals(levels, CertificationLevels.BuiltIn))
             return LevelRegistry.All.Select(l => new LevelSummary(l.Code, l.Name, l.IsEnabled, l.AssessmentMode,
                 CertificationLevelsController.LogoUrl(new CertificationLevel(l.Code, l.Name, l.OrderNo, null, null, null, l.IsEnabled, l.AssessmentMode,
@@ -661,7 +671,7 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     [HttpGet("{code}/logo")]
     public async Task<IActionResult> Logo(string code, CancellationToken ct)
     {
-        var level = await CertificationLevels.FindAsync(db, code, log, ct);
+        var level = await CertificationLevels.FindAsync(db, code, log, ct, OtherDatabase);
         if (level?.LogoPath is not { Length: > 0 } relative) return NotFound();
         var full = MsmeFilePaths.Resolve(MsmeFilePaths.Root(env, portal.Value), relative);
         if (full is null || !System.IO.File.Exists(full)) return NotFound();
