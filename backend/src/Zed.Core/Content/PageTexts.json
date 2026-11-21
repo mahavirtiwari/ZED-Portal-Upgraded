@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9224,
+  "count": 9226,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -48118,6 +48118,18 @@
       ]
     },
     {
+      "key": "staff.emailTemplates.incentivesSub",
+      "standard": "The incentive e-mails of all portals (Financial Assistance, Technology Upgradation, NEFT payment and every incentive scheme added in Admin → Incentive Schemes): switch one off, change its subject and text, or reset it.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "emailTemplates",
+      "pageName": "Email templates",
+      "placeholders": [],
+      "files": [
+        "staff/settings/email-templates.ts"
+      ]
+    },
+    {
       "key": "staff.emailTemplates.preview.standardBodyText",
       "standard": "The standard e-mail's text is put here.",
       "kind": "text",
@@ -48342,6 +48354,30 @@
       ]
     },
     {
+      "key": "staff.emailTemplates.section.incentives",
+      "standard": "Incentives",
+      "kind": "button",
+      "portal": "staff",
+      "page": "emailTemplates",
+      "pageName": "Email templates",
+      "placeholders": [],
+      "files": [
+        "staff/settings/email-templates.ts"
+      ]
+    },
+    {
+      "key": "staff.emailTemplates.sectionLabel",
+      "standard": "Section",
+      "kind": "label",
+      "portal": "staff",
+      "page": "emailTemplates",
+      "pageName": "Email templates",
+      "placeholders": [],
+      "files": [
+        "staff/settings/email-templates.ts"
+      ]
+    },
+    {
       "key": "staff.emailTemplates.stat.changedLabel",
       "standard": "Changed by Admin",
       "kind": "label",
@@ -48442,18 +48478,6 @@
     {
       "key": "staff.emailTemplates.tab.database",
       "standard": "Database mails",
-      "kind": "label",
-      "portal": "staff",
-      "page": "emailTemplates",
-      "pageName": "Email templates",
-      "placeholders": [],
-      "files": [
-        "staff/settings/email-templates.ts"
-      ]
-    },
-    {
-      "key": "staff.emailTemplates.tab.incentives",
-      "standard": "Incentive mails",
       "kind": "label",
       "portal": "staff",
       "page": "emailTemplates",

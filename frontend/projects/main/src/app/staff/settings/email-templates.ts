@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Component, DOCUMENT, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { PortalSwitchComponent } from '../admin-portal';
+import { ADMIN_PORTAL, ADMIN_PORTALS, ALL_PORTALS, AdminPortal, AdminPortalService } from '../admin-portal';
 import { ConfirmService } from '../confirm-dialog';
 import { IndianTimePipe } from '../utc-time';
 import { FormsModule } from '@angular/forms';
@@ -11,14 +11,21 @@ import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { TextPipe, t } from '../../content/page-text';
 
-/** The list's tabs: portal mails, incentive mails (server group "Incentives") and database mails. */
-type MailTab = 'portal' | 'incentives' | 'database';
+/** A portal's list tabs: its portal mails and its database mails. */
+type MailTab = 'portal' | 'database';
 
 /** The server's group of the incentive mails (EmailTemplatesController.Incentives). */
 export const INCENTIVE_GROUP = 'Incentives';
 
-function tabOf(item: { database: boolean; group: string }): MailTab {
-  return item.database ? 'database' : item.group === INCENTIVE_GROUP ? 'incentives' : 'portal';
+/**
+ * 2026-11-21 (the user: "keep as separate section and in future new scheme emails will be listed there"): the page's sections,
+ * the three portals and Incentives. Incentives gathers the incentive mails of every portal (Financial Assistance, Technology
+ * Upgradation, NEFT payment and every scheme the Admin adds); a portal's section leaves them out.
+ */
+export type MailSection = AdminPortal | 'incentives';
+
+function tabOf(item: { database: boolean }): MailTab {
+  return item.database ? 'database' : 'portal';
 }
 
 export interface EmailTemplateItem {
@@ -34,6 +41,8 @@ export interface EmailTemplateItem {
   placeholders: string[];
   updatedBy: string | null;
   updatedOn: string | null;
+  /** The portal that sends it (set by the page): its settings are read and saved there. */
+  portal?: AdminPortal;
 }
 
 interface EmailTemplateDetails {
@@ -117,16 +126,28 @@ const standardBodySample = (): string =>
  */
 @Component({
   selector: 'zed-staff-email-templates',
-  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, PortalSwitchComponent, TextPipe],
+  imports: [DatePipe, IndianTimePipe, FormsModule, PagerComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ 'Email Templates' | t: 'staff.emailTemplates.title' }}</h3>
-        <p class="page-sub">{{ 'The e-mails of this portal and of its database procedures: switch one off, change its subject and text, or reset it.' | t: 'staff.emailTemplates.sub' }}</p>
+        @if (section() === 'incentives') {
+          <p class="page-sub">{{ 'The incentive e-mails of all portals (Financial Assistance, Technology Upgradation, NEFT payment and every incentive scheme added in Admin → Incentive Schemes): switch one off, change its subject and text, or reset it.' | t: 'staff.emailTemplates.incentivesSub' }}</p>
+        } @else {
+          <p class="page-sub">{{ 'The e-mails of this portal and of its database procedures: switch one off, change its subject and text, or reset it.' | t: 'staff.emailTemplates.sub' }}</p>
+        }
       </div>
     </div>
-    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
-    <zed-portal-switch />
+    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own), or the Incentives section (2026-11-21). -->
+    @if (portals.enabled) {
+      <div class="portal-switch" role="group" [attr.aria-label]="'Section' | t: 'staff.emailTemplates.sectionLabel'">
+        <span class="ps-label">{{ 'Section' | t: 'staff.emailTemplates.sectionLabel' }}</span>
+        @for (p of sectionPortals; track p.key) {
+          <button type="button" class="ps-tab" [class.on]="section() === p.key" [attr.aria-pressed]="section() === p.key" (click)="choose(p.key)">{{ p.name }}</button>
+        }
+        <button type="button" class="ps-tab ps-incentives" [class.on]="section() === 'incentives'" [attr.aria-pressed]="section() === 'incentives'" (click)="choose('incentives')">{{ 'Incentives' | t: 'staff.emailTemplates.section.incentives' }}</button>
+      </div>
+    }
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -142,12 +163,14 @@ const standardBodySample = (): string =>
     </div>
 
     <div class="zed-card list-card">
+      @if (section() !== 'incentives') {
       <div class="et-tabs" role="tablist">
         @for (t of tabs(); track t.key) {
           <button type="button" role="tab" class="et-tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key"
                   (click)="tab.set(t.key)">{{ t.label }} ({{ count(t.key) }})</button>
         }
       </div>
+      }
       <div class="list-toolbar">
         <input type="search" class="form-control search" [placeholder]="'Search e-mail, group or subject' | t: 'staff.emailTemplates.search.placeholder'" [attr.aria-label]="'Search e-mails' | t: 'staff.emailTemplates.search.aria'" [ngModel]="search()" (ngModelChange)="search.set($event)" />
         <div class="seg" role="group" [attr.aria-label]="'Show' | t: 'staff.emailTemplates.filterAria'">
@@ -177,7 +200,8 @@ const standardBodySample = (): string =>
                     <div class="mail-text">
                       <div class="mail-title">
                         <strong>{{ t.name }}</strong>
-                        @if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
+                        @if (section() === 'incentives') { <span class="group-chip">{{ portalName(t.portal) }}</span> }
+                        @else if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
                       </div>
                       @if (t.subject) {<small class="muted d-block subject">{{ 'Subject: {subject}' | t: 'staff.emailTemplates.row.subjectNote' : { subject: t.subject } }}</small>}
                       @else {<small class="muted d-block subject">{{ 'Standard subject' | t: 'staff.emailTemplates.row.standardSubjectNote' }}</small>}
@@ -377,6 +401,11 @@ const standardBodySample = (): string =>
       .et-actions { justify-content: flex-start; }
       .status-stack { flex-direction: row; flex-wrap: wrap; align-items: center; }
     }
+    .portal-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
+    .ps-label { font-size: 12px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .05em; margin-right: 4px; }
+    .ps-tab { border: 1px solid var(--zt-soft, #d9eef0); border-radius: 6px; padding: 5px 14px; font-weight: 700; font-size: 13px; color: var(--zt-ink, #174a4e); background: var(--zt-soft, #d9eef0); }
+    .ps-tab.on { background: var(--zt-dark, #23656b); color: #fff; border-color: var(--zt-dark, #23656b); }
+    .ps-incentives { margin-left: 10px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class EmailTemplatesPage {
@@ -388,18 +417,20 @@ export class EmailTemplatesPage {
   private readonly baseUrl = portalBaseUrl(inject(DOCUMENT));
   private readonly subjectBox = viewChild<ElementRef<HTMLInputElement>>('subjectBox');
   private readonly bodyBox = viewChild<ElementRef<HTMLTextAreaElement>>('bodyBox');
+  protected readonly portals = inject(AdminPortalService);
+  protected readonly sectionPortals = ADMIN_PORTALS;
+  /** The section shown: the Admin's chosen portal, or Incentives (all portals' incentive mails). */
+  protected readonly section = signal<MailSection>(this.portals.effective());
 
-  /**
-   * 2026-11-20 (the user): the incentive mails (FA, TU and the Admin's schemes; group "Incentives" from the server) on a tab of
-   * their own, apart from the certification, consultancy and surveillance mails; shown when this portal has any.
-   */
   protected readonly tabs = computed(() => [
     { label: t('staff.emailTemplates.tab.portal', 'Portal mails'), key: 'portal' as MailTab },
-    ...(this.count('incentives') > 0 ? [{ label: t('staff.emailTemplates.tab.incentives', 'Incentive mails'), key: 'incentives' as MailTab }] : []),
     { label: t('staff.emailTemplates.tab.database', 'Database mails'), key: 'database' as MailTab },
   ]);
   protected readonly items = signal<EmailTemplateItem[]>([]);
   protected readonly tab = signal<MailTab>('portal');
+  /** The section's mails and tab: Incentives shows its portal mails (no tabs); a portal's tab leaves the incentive mails out. */
+  private readonly sectionRows = computed(() =>
+    this.section() === 'incentives' ? this.items() : this.items().filter((i) => i.group !== INCENTIVE_GROUP && tabOf(i) === this.tab()));
   protected readonly search = signal('');
   protected readonly filters = computed<readonly { key: StatusFilter; label: string }[]>(() => [
     { key: 'all', label: t('staff.emailTemplates.filter.all', 'All') },
@@ -411,13 +442,12 @@ export class EmailTemplatesPage {
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
     const f = this.filter();
-    return this.items().filter((t) => tabOf(t) === this.tab()
-      && (f === 'all' || (f === 'sent' && t.enabled) || (f === 'off' && !t.enabled) || (f === 'changed' && t.customised))
+    return this.sectionRows().filter((t) => (f === 'all' || (f === 'sent' && t.enabled) || (f === 'off' && !t.enabled) || (f === 'changed' && t.customised))
       && (!q || `${t.name} ${t.group} ${t.subject ?? ''}`.toLowerCase().includes(q)));
   });
   /** The counts of the tab shown. */
   protected readonly stats = computed(() => {
-    const rows = this.items().filter((t) => tabOf(t) === this.tab());
+    const rows = this.sectionRows();
     return { total: rows.length, sent: rows.filter((t) => t.enabled).length, off: rows.filter((t) => !t.enabled).length, changed: rows.filter((t) => t.customised).length };
   });
   /** The preview at a phone's width. */
@@ -448,7 +478,28 @@ export class EmailTemplatesPage {
   }
 
   protected count(tab: MailTab): number {
-    return this.items().filter((t) => tabOf(t) === tab).length;
+    return this.items().filter((t) => t.group !== INCENTIVE_GROUP && tabOf(t) === tab).length;
+  }
+
+  protected portalName(portal: AdminPortal | undefined): string {
+    return ADMIN_PORTALS.find((p) => p.key === portal)?.name ?? '';
+  }
+
+  /** A portal (its settings: the portal switch's choice, kept for the other screens) or the Incentives section. */
+  protected async choose(section: MailSection): Promise<void> {
+    if (section === this.section()) return;
+    if (section !== 'incentives') this.portals.select(section);
+    this.section.set(section);
+    this.tab.set('portal');
+    this.error.set('');
+    this.success.set('');
+    this.editing.set(null);
+    await this.load();
+  }
+
+  /** The request's portal: an incentive mail's own (its settings live there); otherwise the portal switch decides. */
+  private opts(item: EmailTemplateItem): { context?: HttpContext } {
+    return item.portal && this.section() === 'incentives' ? { context: new HttpContext().set(ADMIN_PORTAL, item.portal) } : {};
   }
 
   protected braces(name: string): string {
@@ -480,8 +531,8 @@ export class EmailTemplatesPage {
     this.success.set('');
     this.modalError.set('');
     try {
-      const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`));
-      this.editing.set({ item: d.item, enabled: d.item.enabled, subject: d.item.subject ?? '', body: d.bodyHtml, standardBody: d.standardBody, example: d.example ?? null });
+      const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`, this.opts(item)));
+      this.editing.set({ item: { ...d.item, portal: item.portal }, enabled: d.item.enabled, subject: d.item.subject ?? '', body: d.bodyHtml, standardBody: d.standardBody, example: d.example ?? null });
       this.preview.set(d.bodyHtml);
       this.target = 'body';
       this.placed = { subject: false, body: false };
@@ -523,7 +574,7 @@ export class EmailTemplatesPage {
           enabled: e.enabled,
           subject: e.subject.trim() || null,
           bodyHtml: e.body.trim() || null,
-        }),
+        }, this.opts(e.item)),
       );
       this.editing.set(null);
       this.success.set(r.message);
@@ -547,13 +598,13 @@ export class EmailTemplatesPage {
     this.error.set('');
     this.success.set('');
     try {
-      const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`));
+      const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`, this.opts(item)));
       const r = await firstValueFrom(
         this.http.put<MessageResponse>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`, {
           enabled: on,
           subject: d.item.subject?.trim() || null,
           bodyHtml: d.standardBody ? null : d.bodyHtml,
-        }),
+        }, this.opts(item)),
       );
       this.success.set(r.message);
       await this.load();
@@ -585,7 +636,7 @@ export class EmailTemplatesPage {
     this.error.set('');
     this.success.set('');
     try {
-      const r = await firstValueFrom(this.http.delete<MessageResponse>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`));
+      const r = await firstValueFrom(this.http.delete<MessageResponse>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`, this.opts(item)));
       this.success.set(r.message);
       await this.load();
     } catch (err) {
@@ -598,7 +649,21 @@ export class EmailTemplatesPage {
   private async load(): Promise<void> {
     this.busy.set(true);
     try {
-      this.items.set(await firstValueFrom(this.http.get<EmailTemplateItem[]>(EmailTemplatesPage.url)));
+      if (this.section() === 'incentives' && this.portals.enabled) {
+        // Every portal's incentive mails (each portal sends and keeps its own); a portal that cannot be read is left out.
+        const lists = await Promise.all(ALL_PORTALS.map(async (portal) => {
+          try {
+            const rows = await firstValueFrom(this.http.get<EmailTemplateItem[]>(EmailTemplatesPage.url, { context: new HttpContext().set(ADMIN_PORTAL, portal) }));
+            return rows.filter((r) => !r.database && r.group === INCENTIVE_GROUP).map((r) => ({ ...r, portal }));
+          } catch {
+            return [];
+          }
+        }));
+        this.items.set(lists.flat());
+      } else {
+        const portal = this.portals.effective();
+        this.items.set((await firstValueFrom(this.http.get<EmailTemplateItem[]>(EmailTemplatesPage.url))).map((r) => ({ ...r, portal })));
+      }
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

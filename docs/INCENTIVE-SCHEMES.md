@@ -107,8 +107,10 @@ application with `Name LIKE 'onsite/%'`, file in the mobile API's `Photos/{ZedId
 Every step mails the person who acts next, each with **its own template** (Razor, `backend/src/Zed.Portal/Templates`), so the
 Admin can switch it off or change its subject and body (placeholders) in **Admin → Email Templates → Incentive mails**. The
 incentive mails are kept apart from the certification, consultancy and surveillance mails: `EmailTemplatesController.IsIncentive`
-(names with "Scheme", the consultancy portal's `ConsultancyTu*`, `StaffNeftReimbursementEmail`) → group `Incentives` → its own
-tab. Framework templates are listed on the main portal only. Sent by `Features/Incentives/Staff/SchemeNotifier.cs`.
+(names with "Scheme", the consultancy portal's `ConsultancyTu*`, `StaffNeftReimbursementEmail`) → group `Incentives`. Since
+2026-11-21 the page has a separate **Incentives** section beside the portals (ZED Certification / Consultancy / Surveillance):
+it gathers every portal's incentive mails (each read and saved on its own portal); the portals' sections leave them out. A new
+scheme mail template named `…Scheme…Email` is listed there automatically. Framework templates are listed on the main portal only. Sent by `Features/Incentives/Staff/SchemeNotifier.cs`.
 
 | Step | Template | To |
 |---|---|---|

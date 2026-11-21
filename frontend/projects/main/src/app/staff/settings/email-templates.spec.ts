@@ -81,19 +81,33 @@ describe('EmailTemplatesPage', () => {
     expect(rows()[0]).toContain('Subject: ZED: {{StandardSubject}}');
   });
 
-  it('keeps the incentive mails on a tab of their own', async () => {
+  it('keeps the incentive mails in a section of their own, gathered from every portal', async () => {
+    // 2026-11-21 (the user): Incentives is its own section beside the portals; a portal's tabs leave the incentive mails out.
     fixture.destroy();
     fixture = TestBed.createComponent(EmailTemplatesPage);
     el = fixture.nativeElement;
     await settle();
-    http.expectOne(url).flush([...items, item('MsmeSchemeVisitDueEmail', 'Scheme: onsite visit due (to the unit)', false, { group: 'Incentives' })]);
+    const scheme = item('MsmeSchemeVisitDueEmail', 'Scheme: onsite visit due (to the unit)', false, { group: 'Incentives' });
+    http.expectOne(url).flush([...items, scheme]);
     await settle();
-    expect([...el.querySelectorAll('[role=tab]')].map((t) => t.textContent!.trim())).toEqual(['Portal mails (2)', 'Incentive mails (1)', 'Database mails (1)']);
+    expect([...el.querySelectorAll('[role=tab]')].map((t) => t.textContent!.trim())).toEqual(['Portal mails (2)', 'Database mails (1)']);
     expect(rows().some((r) => r.includes('onsite visit due'))).toBe(false);
-    (el.querySelectorAll('[role=tab]')[1] as HTMLElement).click();
+
+    const sections = [...el.querySelectorAll('.ps-tab')] as HTMLElement[];
+    expect(sections.map((b) => b.textContent!.trim())).toEqual(['ZED Certification', 'Consultancy', 'Surveillance', 'Incentives']);
+    sections[3].click();
     await settle();
-    expect(rows().length).toBe(1);
-    expect(rows()[0]).toContain('Scheme: onsite visit due (to the unit)');
+    const calls = http.match(url);
+    expect(calls.length).toBe(3);
+    calls[0].flush([...items, scheme]);
+    calls[1].flush([item('ConsultancyTuRejectedEmail', 'Consultancy Tu Rejected', false, { group: 'Incentives' })]);
+    calls[2].flush([]);
+    await settle();
+    expect(el.querySelectorAll('[role=tab]').length).toBe(0);
+    expect(rows().length).toBe(2);
+    expect(rows().join(' ')).toContain('Scheme: onsite visit due (to the unit)');
+    expect(rows().join(' ')).toContain('Consultancy Tu Rejected');
+    expect(rows().join(' ')).toContain('ZED Certification');
   });
 
   it('searches the mails', async () => {
