@@ -15,6 +15,7 @@ import {
   useNavigation,
   useRoute,
   useUi,
+  VoiceInputButton,
   ZedButton,
 } from '@zed/shared';
 import type { EsgField, EsgResponse } from '../api';
@@ -142,7 +143,11 @@ function Dependent({ field, value, onChange }: { field: EsgField; value?: string
     <View style={styles.linked} testID={`esg-${field.id}-linked`}>
       <FieldLabel label={field.question} />
       {field.type === 'text_box' ? (
-        <TextInput value={value ?? ''} onChangeText={onChange} style={styles.edit} multiline placeholder="Type your answer" testID={`esg-${field.id}`} />
+        <View style={styles.answerRow}>
+          <TextInput value={value ?? ''} onChangeText={onChange} style={[styles.edit, styles.answer]} multiline placeholder="Type your answer" testID={`esg-${field.id}`} />
+          {/* 2026-11-21: voice typing. */}
+          <VoiceInputButton value={value ?? ''} onChangeText={onChange} testID={`esg-${field.id}`} />
+        </View>
       ) : field.type === 'single_choice' ? (
         <SingleChoice compact options={field.options ?? []} value={value ?? null} onChange={onChange} style={styles.innerChoice} testID={`esg-${field.id}`} />
       ) : null}
@@ -175,6 +180,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     textAlignVertical: 'top',
   },
+  answerRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  answer: { flex: 1 },
   linked: { marginTop: dimens.padding3, borderLeftWidth: 3, borderLeftColor: colors.appColor, paddingLeft: dimens.padding3 },
   innerChoice: { margin: 0, padding: 0, borderWidth: 0 },
 });

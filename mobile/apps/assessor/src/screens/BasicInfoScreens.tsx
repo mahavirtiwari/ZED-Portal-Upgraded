@@ -22,6 +22,7 @@ import {
   useRoute,
   useUi,
   validateBasicInformation,
+  VoiceInputButton,
   valueOrNull,
   zedDevice,
   type FormDefinition,
@@ -122,6 +123,8 @@ function TextBox({
           onBlur={() => setFocused(false)}
           testID={base.testID}
         />
+        {/* 2026-11-21: voice typing in the comment boxes. */}
+        {multiline ? <VoiceInputButton value={value} onChangeText={onChange} maxLength={limit} style={styles.voice} testID={base.testID} /> : null}
       </View>
       {multiline && limit ? <Text style={styles.counter}>{`${value.length}/${limit}`}</Text> : null}
     </Labelled>
@@ -824,6 +827,7 @@ const styles = StyleSheet.create({
   error: { color: C.danger, fontSize: 12, marginTop: 4 },
   help: { fontSize: 11, color: C.tMuted, marginTop: 4 },
   box: { flexDirection: 'row', alignItems: 'center', minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingHorizontal: 12 },
+  voice: { alignSelf: 'flex-start', marginTop: 2, marginRight: -8 },
   boxFocused: { borderColor: C.primary },
   boxError: { borderColor: C.danger },
   input: { flex: 1, fontSize: 13, color: C.tPrimary, paddingVertical: 10 },

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { isNetworkAvailable, isNetworkError, isSuccess, useBrandTheme, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
+import { isNetworkAvailable, isNetworkError, isSuccess, useBrandTheme, useNavigation, useRoute, useUi, VoiceInputButton, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { PREFS } from '../db/stores';
 import {
@@ -330,6 +330,7 @@ export function BulletComments({ b, placeholder, error, testID }: { b: ReturnTyp
             returnKeyType="done"
             testID={testID}
           />
+          <VoiceInputButton value={b.point} onChangeText={b.setPoint} maxLength={b.room} style={styles.bulletVoice} testID={testID} />
           <ZButton title="Add" small variant="outline" onPress={b.add} testID={`${testID}-add`} />
         </View>
       </View>
@@ -717,6 +718,7 @@ const styles = StyleSheet.create({
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 5, gap: 8 },
   bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.primary, marginTop: 7 },
   bulletText: { flex: 1, fontSize: 14, color: C.tPrimary },
+  bulletVoice: { alignSelf: 'center', padding: 0 },
   bulletAdd: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   bulletInput: { flex: 1, minHeight: 40, borderColor: C.border, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: C.tPrimary },
   error: { color: C.danger, fontSize: 12, marginTop: 4 },

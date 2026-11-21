@@ -19,6 +19,7 @@ import android.os.StatFs
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.facebook.react.bridge.ActivityEventListener
@@ -382,6 +383,37 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         }.start()
     }
 
+    // ---- Voice typing (2026-11-21) ----------------------------------------------------------------------------
+
+    private fun speechIntent(language: String?, prompt: String?) = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+        if (!language.isNullOrBlank()) {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
+        }
+        if (!prompt.isNullOrBlank()) putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
+    }
+
+    /** The phone's speech service handles the microphone (and its permission), so the app asks for none. */
+    override fun isSpeechAvailable(): Boolean = try {
+        speechIntent(null, null).resolveActivity(context.packageManager) != null
+    } catch (e: Exception) {
+        false
+    }
+
+    override fun recognizeSpeech(language: String, prompt: String?, promise: Promise) {
+        val activity = reactApplicationContext.getCurrentActivity() ?: return promise.reject("NO_ACTIVITY", "No activity")
+        if (!beginRequest(promise, REQUEST_SPEECH)) return
+        try {
+            activity.startActivityForResult(speechIntent(language, prompt), REQUEST_SPEECH)
+        } catch (e: ActivityNotFoundException) {
+            finishRequest()?.reject("SPEECH_UNAVAILABLE", e.message, e)
+        } catch (e: Exception) {
+            finishRequest()?.reject("SPEECH_FAILED", e.message, e)
+        }
+    }
+
     override fun setClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("ZED ID", text))
@@ -483,6 +515,10 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
                     putString("tempPath", captureFile?.absolutePath ?: "")
                 })
             }
+            REQUEST_SPEECH -> {
+                val heard = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull { it.isNotBlank() }
+                promise.resolve(heard)
+            }
             else -> {
                 val uri = data?.data
                 if (uri == null) {
@@ -515,6 +551,7 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         private const val REQUEST_CAPTURE = 9100
         private const val REQUEST_PICK_IMAGE = 9101
         private const val REQUEST_PICK_PDF = 9102
+        private const val REQUEST_SPEECH = 9103
 
         /** Utils.writeStreamToFile. */
         fun writeStreamToFile(stream: InputStream, file: File) {

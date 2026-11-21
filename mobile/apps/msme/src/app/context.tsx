@@ -7,7 +7,7 @@ const AppContext = createContext<MsmeApp | null>(null);
 export function MsmeAppProvider({ app, children }: { app: MsmeApp; children: React.ReactNode }) {
   return (
     <AppContext.Provider value={app}>
-      <AppTextsProvider texts={app.texts}>
+      <AppTextsProvider texts={app.texts} app="app.msme">
         <OfflineNote>{children}</OfflineNote>
       </AppTextsProvider>
     </AppContext.Provider>

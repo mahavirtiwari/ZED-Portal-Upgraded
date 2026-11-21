@@ -197,4 +197,14 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.assessor.schemes.clear.confirmText": "They are removed from this phone only. What the server has stays.",
   // Scheme visits: Clear data: remove everything (text) (Main)
   "app.assessor.schemes.clear.everythingText": "The photos, checks and remarks of this visit and the sends waiting to sync are removed from the phone. What the server has stays.",
+  // Voice typing: mic button (spoken label) (Main)
+  "app.assessor.voice.button": "Speak to type (hold for Hindi)",
+  // Voice typing: listening prompt (Main)
+  "app.assessor.voice.prompt": "Speak now",
+  // Voice typing: not available on the phone (Main)
+  "app.assessor.voice.unavailable": "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again.",
+  // Voice typing: could not start (Main)
+  "app.assessor.voice.failed": "Voice typing could not start, please try again.",
+  // Voice typing: text cut to the box's limit (Main)
+  "app.assessor.voice.cut": "Only part of what you said was added: this box takes up to {{Max}} characters.",
 };

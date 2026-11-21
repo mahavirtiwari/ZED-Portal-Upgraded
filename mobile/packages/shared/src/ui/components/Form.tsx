@@ -19,6 +19,7 @@ import { sharedIcons } from '../sharedIcons';
 import { colors, dimens, shapes, textStyles } from '../theme';
 import { useKeyboardInset, useUi } from '../UiHost';
 import { Icon } from './Icon';
+import { VoiceInputButton } from './VoiceInput';
 
 /** The grey outlined box every view helper sits in (grey_outline_rectangle, margin 5, padding 8). */
 export function FieldBox({ children, style, testID }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
@@ -110,6 +111,10 @@ export function OutlinedInput({
         testID={testID}
         pointerEvents={onPress ? 'none' : 'auto'}
       />
+      {/* 2026-11-21: voice typing in every comment box (multiline, editable). */}
+      {multiline && editable && !onPress && onChangeText ? (
+        <VoiceInputButton value={value} onChangeText={onChangeText} maxLength={maxLength} style={styles.voice} testID={testID} />
+      ) : null}
       {right}
     </View>
   );
@@ -696,6 +701,7 @@ const styles = StyleSheet.create({
   outlineError: { borderWidth: 2, borderColor: colors.error },
   input: { flex: 1, fontSize: dimens.textSize, color: colors.black, paddingHorizontal: 16, paddingVertical: 12 },
   inputMultiline: { minHeight: 90, maxHeight: 200 },
+  voice: { alignSelf: 'flex-start', marginTop: 4, marginRight: 4 },
   helperRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, minHeight: 4 },
   errorText: { color: colors.error, fontSize: 12 },
   counter: { color: 'rgba(0,0,0,0.6)', fontSize: 12 },

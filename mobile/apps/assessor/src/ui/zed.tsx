@@ -7,7 +7,7 @@ import React from 'react';
 import { Dimensions, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ScrollViewProps, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { BrandLogo, useBrandTheme, type BrandTheme } from '@zed/shared';
+import { BrandLogo, useBrandTheme, VoiceInputButton, type BrandTheme } from '@zed/shared';
 
 export const C = {
   primary: '#F9A63A',
@@ -446,6 +446,13 @@ export function Field({
   style,
   ...input
 }: TextInputProps & { label?: string; icon?: IconName; right?: React.ReactNode; error?: string | null; testID?: string; style?: StyleProp<ViewStyle> }) {
+  // Boxes that save when left (onBlur) also save after voice typing, with the new text (the render after it).
+  const [dictated, setDictated] = React.useState(0);
+  const blurRef = React.useRef(input.onBlur);
+  blurRef.current = input.onBlur;
+  React.useEffect(() => {
+    if (dictated) blurRef.current?.({} as never);
+  }, [dictated]);
   return (
     <View style={[{ marginBottom: 14 }, style]}>
       {label ? <Text style={s.fieldLabel}>{label.toUpperCase()}</Text> : null}
@@ -456,6 +463,10 @@ export function Field({
           </View>
         ) : null}
         <TextInput placeholderTextColor={C.tMuted} {...input} style={[s.fieldInput, icon ? { marginLeft: 10 } : null, input.multiline ? s.fieldMulti : null]} testID={testID} />
+        {/* 2026-11-21: voice typing in every comment box (multiline, editable). */}
+        {input.multiline && input.editable !== false && input.onChangeText ? (
+          <VoiceInputButton value={input.value ?? ''} onChangeText={text => (input.onChangeText?.(text), setDictated(n => n + 1))} maxLength={input.maxLength} style={s.fieldVoice} testID={testID} />
+        ) : null}
         {right}
       </View>
       {error ? <Text style={s.fieldError}>{error}</Text> : null}
@@ -752,6 +763,7 @@ const s = StyleSheet.create({
   fieldMulti: { minHeight: 96, textAlignVertical: 'top' },
   fieldTop: { alignItems: 'flex-start' },
   fieldIconTop: { marginTop: 13 },
+  fieldVoice: { marginTop: 4, marginRight: -6 },
   fieldError: { color: C.danger, fontSize: 12, marginTop: 4 },
   badge: { borderRadius: 11, paddingHorizontal: 10, height: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   badgeSmall: { height: 18, paddingHorizontal: 8, borderRadius: 9 },

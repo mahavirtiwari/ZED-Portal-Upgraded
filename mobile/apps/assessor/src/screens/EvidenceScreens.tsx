@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { htmlToPlain, useAppText, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
+import { htmlToPlain, useAppText, useNavigation, useRoute, useUi, VoiceInputButton, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { PREFS } from '../db/stores';
 import { useInlineCapture } from '../photo/capture';
@@ -63,6 +63,7 @@ function NoteBox({ value, onChangeText, placeholder, error, testID }: { value: s
         autoCapitalize="sentences"
         testID={testID}
       />
+      <VoiceInputButton value={value} onChangeText={onChangeText} maxLength={COMMENT_LIMIT} style={styles.noteVoice} testID={testID} />
     </View>
   );
 }
@@ -497,6 +498,7 @@ const styles = StyleSheet.create({
   noteFilled: { borderColor: C.primary },
   noteError: { borderColor: C.danger },
   noteInput: { flex: 1, fontSize: 13, color: C.tPrimary, paddingVertical: 10, textAlignVertical: 'top' },
+  noteVoice: { alignSelf: 'flex-start', marginTop: 2, marginRight: -8 },
   noteInputFilled: { marginLeft: 10 },
   error: { color: C.danger, fontSize: 12, marginTop: 4 },
   hint: { fontSize: 11, color: C.tMuted, marginTop: 8 },

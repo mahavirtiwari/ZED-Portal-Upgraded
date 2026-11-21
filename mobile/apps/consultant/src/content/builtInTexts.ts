@@ -7,4 +7,14 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.consultant.login.windowNote": "You can only login 2 days prior to your allocated Site Assessment date",
   // Technology Upgradation: data is correct (checkbox) (Consultancy)
   "app.consultant.tu.dataCorrect.checkbox": "I am confirming that the above data is correct",
+  // Voice typing: mic button (spoken label) (Consultancy)
+  "app.consultant.voice.button": "Speak to type (hold for Hindi)",
+  // Voice typing: listening prompt (Consultancy)
+  "app.consultant.voice.prompt": "Speak now",
+  // Voice typing: not available on the phone (Consultancy)
+  "app.consultant.voice.unavailable": "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again.",
+  // Voice typing: could not start (Consultancy)
+  "app.consultant.voice.failed": "Voice typing could not start, please try again.",
+  // Voice typing: text cut to the box's limit (Consultancy)
+  "app.consultant.voice.cut": "Only part of what you said was added: this box takes up to {{Max}} characters.",
 };

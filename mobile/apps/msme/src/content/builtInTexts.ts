@@ -71,4 +71,14 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.offline.note": "You are offline, don’t forget to Sync your information once you are connected to Internet again.",
   // Offline: evidence not synced (MainAndSurveillance)
   "app.msme.offline.evidenceNote": "Don’t forget to sync your offline changes once you are connected to the Internet again.",
+  // Voice typing: mic button (spoken label) (MainAndSurveillance)
+  "app.msme.voice.button": "Speak to type (hold for Hindi)",
+  // Voice typing: listening prompt (MainAndSurveillance)
+  "app.msme.voice.prompt": "Speak now",
+  // Voice typing: not available on the phone (MainAndSurveillance)
+  "app.msme.voice.unavailable": "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again.",
+  // Voice typing: could not start (MainAndSurveillance)
+  "app.msme.voice.failed": "Voice typing could not start, please try again.",
+  // Voice typing: text cut to the box's limit (MainAndSurveillance)
+  "app.msme.voice.cut": "Only part of what you said was added: this box takes up to {{Max}} characters.",
 };

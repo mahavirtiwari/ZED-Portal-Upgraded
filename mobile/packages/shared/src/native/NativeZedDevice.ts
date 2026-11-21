@@ -122,6 +122,15 @@ export interface Spec extends TurboModule {
   /** Downloads to cacheDir/downloads/<fileName> and returns the path; sends the app sign-in token header when given. */
   downloadFile(url: string, fileName: string, appToken: string | null): Promise<string>;
 
+  /** New (2026-11-21, voice typing in comment boxes): whether the phone has a speech recognizer (RecognizerIntent). */
+  isSpeechAvailable(): boolean;
+  /**
+   * RecognizerIntent.ACTION_RECOGNIZE_SPEECH (free form, the phone's own speech service and its microphone dialog) in
+   * `language` (a BCP 47 tag such as en-IN or hi-IN) with `prompt` shown in the dialog; the best match, null when the
+   * user cancelled or nothing was heard.
+   */
+  recognizeSpeech(language: string, prompt: string | null): Promise<string | null>;
+
   setClipboard(text: string): void;
   /** PBKDF2-HMAC-SHA256, hex encoded. */
   hashPassword(password: string, saltHex: string, iterations: number): string;

@@ -7,7 +7,7 @@ const AppContext = createContext<MsmeApp | null>(null);
 export function MsmeAppProvider({ app, children }: { app: MsmeApp; children: React.ReactNode }) {
   return (
     <AppContext.Provider value={app}>
-      <AppTextsProvider texts={app.texts}>
+      <AppTextsProvider texts={app.texts} app="app.msme">
         {/* 2026-11-15: the Admin's logo and colours for the header, the buttons and the sign-in page. */}
         <AppBrandingProvider branding={app.branding}>
           <OfflineNote>{children}</OfflineNote>

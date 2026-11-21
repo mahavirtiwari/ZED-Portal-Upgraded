@@ -45,6 +45,8 @@ export * from './ui/theme';
 export * from './ui/UiHost';
 export * from './ui/components/Icon';
 export * from './ui/components/Form';
+export * from './ui/components/VoiceInput';
+export * from './speech/dictation';
 export * from './ui/components/PhotosField';
 export * from './ui/components/HtmlText';
 export * from './ui/components/CustomFormField';
