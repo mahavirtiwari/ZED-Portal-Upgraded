@@ -71,14 +71,18 @@ describe('StaffLayout (2026-11-18 designs)', () => {
   });
 
   // 2026-11-19 (the user, Admin login: 'make the buttons in dark color'): the dark buttons are scoped to .zed-admin.
-  it('marks the frame zed-admin for the Admin login only (the scope of the dark buttons)', async () => {
+  it('marks the frame zed-admin for the Admin and the Master Admin (the scope of the dark buttons)', async () => {
     const admin = await render({}, { userId: 'ZEDV4AD01', userName: 'ADMIN', roleId: 1, role: 'Admin' });
     expect(admin.classList).toContain('zed-legacy');
     expect(admin.classList).toContain('zed-v4');
     expect(admin.classList).toContain('zed-admin');
     TestBed.resetTestingModule();
-    const master = await render();
-    expect(master.classList).toContain('zed-v4');
-    expect(master.classList).not.toContain('zed-admin');
+    // 2026-11-21 (the user): the Master Admin's pages have the dark buttons too.
+    const master = await render({}, { userId: 'ZEDV4MA01', userName: 'MASTER ADMIN', roleId: 7, role: 'MasterAdmin' });
+    expect(master.classList).toContain('zed-admin');
+    TestBed.resetTestingModule();
+    const agency = await render({}, { userId: 'ZEDAA0001', userName: 'AGENCY', roleId: 2, role: 'Agency' });
+    expect(agency.classList).toContain('zed-v4');
+    expect(agency.classList).not.toContain('zed-admin');
   });
 });
