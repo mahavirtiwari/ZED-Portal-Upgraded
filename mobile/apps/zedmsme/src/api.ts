@@ -140,6 +140,12 @@ export type PaymentTokenRequest = {
   TdsDeductible?: string | null;
   Tds?: string | null;
   Tan?: string | null;
+  /**
+   * New (2026-11-21), handholding milestone 1 only (ConsultancyPay/GetToken and SubmitZeroPaymentDetails; required there):
+   * "Did any Consultant Organisation assist you?" "Yes"/"No", and with "Yes" the organisation's user id.
+   */
+  AssistedByCo?: string | null;
+  AssistedCoId?: string | null;
 };
 
 export type PaymentHashResponse = BaseServiceResponse & {
@@ -263,6 +269,16 @@ export interface FacilitatorAgenciesResponse extends BaseServiceResponse {
   agencies?: FacilitatorAgency[] | null;
 }
 
+/** New (2026-11-21): a Consultant Organisation the unit may name at the handholding milestone 1 payment (active, purchase order not used up). */
+export interface ConsultantOrganisation {
+  userId: string;
+  userName: string;
+}
+
+export interface ConsultantOrganisationsResponse extends BaseServiceResponse {
+  organisations?: ConsultantOrganisation[] | null;
+}
+
 export class MsmeApi {
   readonly http: HttpClient;
   /** The portal site (pledge certificate, Msme/ViewStatus). */
@@ -272,6 +288,7 @@ export class MsmeApi {
   private readonly remote: string;
   private readonly portalMsme: string;
   private readonly pay: string;
+  private readonly consultancyPay: string;
   private readonly host: string;
 
   constructor(env: Environment, private readonly ctx: () => RequestContext, http?: HttpClient) {
@@ -282,6 +299,7 @@ export class MsmeApi {
     this.remote = apiBase(env, 'mobileapi/RA/');
     this.portalMsme = apiBase(env, 'Msme/');
     this.pay = apiBase(env, 'Pay/');
+    this.consultancyPay = apiBase(env, 'ConsultancyPay/');
     this.host = apiBase(env, 'mobileapi/');
   }
 
@@ -661,5 +679,14 @@ export class MsmeApi {
 
   submitZeroPaymentDetails(request: PaymentTokenRequest) {
     return this.http.postJson<BaseServiceResponse>(this.pay + 'SubmitZeroPaymentDetails', request);
+  }
+
+  /**
+   * New (2026-11-21, the product owner's rule): the organisations for "Did any Consultant Organisation assist you?" at the
+   * handholding milestone 1 payment (the server refuses for milestones 2 and 3). The answer goes with the handholding payment
+   * request (PaymentTokenRequest.AssistedByCo / AssistedCoId to ConsultancyPay/GetToken or SubmitZeroPaymentDetails).
+   */
+  getConsultantOrganisations(certification: string, zedId: string) {
+    return this.http.postJson<ConsultantOrganisationsResponse>(this.consultancyPay + 'GetConsultantOrganisations', { certification, zedId });
   }
 }
