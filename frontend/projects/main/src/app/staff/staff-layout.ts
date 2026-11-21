@@ -333,9 +333,10 @@ export class StaffLayout {
   protected readonly main = PORTAL_SYSTEM === 'main';
   /**
    * The dark buttons (host class zed-admin, styles/_admin-skin.scss): 2026-11-19 the Admin login (RoleId 1); 2026-11-21 (the
-   * user: "buttons colour should be in dark") also the Master Admin (RoleId 7) and its Operation Admins, on every portal.
+   * user: "buttons colour should be in dark") also the Master Admin (RoleId 7) and its Operation Admins, on every portal;
+   * 2026-11-21 (the user, assessor login: "keep button colour in dark color filled") every staff login.
    */
-  protected readonly darkButtons = computed(() => this.user()?.roleId === StaffRole.Admin || this.user()?.roleId === StaffRole.MasterAdmin);
+  protected readonly darkButtons = computed(() => !!this.user());
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
   /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */

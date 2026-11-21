@@ -618,4 +618,15 @@ public sealed class ExpenditureTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await (await SignIn("AGENCY1")).GetAsync("/api/staff/expenditure/tax/pan?partyId=AGENCY1")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await (await SignIn("ADMIN1")).GetAsync("/api/staff/expenditure/tax?partyId=AGENCY1")).StatusCode);
     }
+
+    [Fact]
+    public void Cases_in_desktop_assessment_and_waiting_for_the_visit_use_the_purchase_order()
+    {
+        // 2026-11-21 (the owner): status 3 (desktop assessment) and 6 without a certificate (Silver / Gold waiting for the site
+        // visit) are in progress; 16 and 6 with a certificate are completed (counted, not in progress).
+        Assert.DoesNotContain("NOT IN (3, 6, 16)", PoLimits.MainInProgressSql);
+        Assert.Contains("C.CertificationStatus <> 16", PoLimits.MainInProgressSql);
+        Assert.Contains("NOT (C.CertificationStatus = 6 AND (C.DaCertificateNo IS NOT NULL OR C.CertificationPhase IS NOT NULL))", PoLimits.MainInProgressSql);
+        Assert.Contains("C.ExpCountedOn IS NULL", PoLimits.MainInProgressSql);
+    }
 }

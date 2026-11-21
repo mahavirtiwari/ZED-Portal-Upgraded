@@ -64,7 +64,14 @@ public static class PoLimits
         string.Format(CultureInfo.InvariantCulture, Scope, "C.CertificationBodyUserId", "C.Certification") +
         " GROUP BY LTRIM(RTRIM(C.CertificationBodyUserId)), C.Certification;";
 
-    internal static readonly string MainInProgressSql = InProgressSql("C.CertificationStatus BETWEEN 2 AND 98 AND C.CertificationStatus NOT IN (3, 6, 16)", " AND C.ExpCountedOn IS NULL");
+    /// <summary>
+    /// Main: every allotted case not counted yet. 2026-11-21 (the owner): a case in desktop assessment (status 3) and a Silver /
+    /// Gold case whose desktop is done and waits for the site visit (status 6 without a certificate) are in progress too; a
+    /// completed case (16, or 6 with a certificate: ExpenditureData's rule) is counted, not in progress.
+    /// </summary>
+    internal static readonly string MainInProgressSql = InProgressSql(
+        "C.CertificationStatus BETWEEN 2 AND 98 AND C.CertificationStatus <> 16 " +
+        "AND NOT (C.CertificationStatus = 6 AND (C.DaCertificateNo IS NOT NULL OR C.CertificationPhase IS NOT NULL))", " AND C.ExpCountedOn IS NULL");
     /// <summary>
     /// Consultancy: every milestone started (paid, 1..NcCount) and not counted yet. A milestone counts only when the next one
     /// is paid (the last: when the unit is certified), so a finished one waiting for that stays committed to the PO.
