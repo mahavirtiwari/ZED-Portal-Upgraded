@@ -102,6 +102,10 @@ export type PaymentDetails = {
   SubsidyPercentage?: number | null;
   Subsidy?: number | null;
   SubsidyLabel?: string | null;
+  /** Handholding fee rows (SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS): the milestone, a state subsidy's label, and "pay all at milestone 1". */
+  MileStone?: number | string | null;
+  StateSubsidyLabel?: string | null;
+  PayAllAtMilestone1?: boolean | number | string | null;
 };
 
 /**
@@ -277,6 +281,26 @@ export interface ConsultantOrganisation {
 
 export interface ConsultantOrganisationsResponse extends BaseServiceResponse {
   organisations?: ConsultantOrganisation[] | null;
+}
+
+/** New (2026-11-21): a handholding level of the unit (ConsultancyPay/GetHandholdingStatus), as the web page evaluates it. */
+export interface HandholdingLevel {
+  /** Silver, Gold or ZEDX. */
+  certification: string;
+  /** The name shown (ZED-X for ZEDX). */
+  name: string;
+  milestonesStarted: number;
+  /** The milestone the next payment is for (1-3). */
+  nextMilestone: number;
+  canPay: boolean;
+  /** Why the next milestone cannot be paid now. */
+  refusal?: string | null;
+  /** A milestone waiting for the unit's acceptance. */
+  awaitingAcceptance?: number | null;
+}
+
+export interface HandholdingStatusResponse extends BaseServiceResponse {
+  levels?: HandholdingLevel[] | null;
 }
 
 export class MsmeApi {
@@ -688,5 +712,27 @@ export class MsmeApi {
    */
   getConsultantOrganisations(certification: string, zedId: string) {
     return this.http.postJson<ConsultantOrganisationsResponse>(this.consultancyPay + 'GetConsultantOrganisations', { certification, zedId });
+  }
+
+  // ----- Handholding payment (2026-11-21: the app's own screens instead of the web) -----
+
+  /** The unit's handholding levels: milestones started, the milestone due, whether it can be paid now. */
+  getHandholdingStatus(zedId: string) {
+    return this.http.postJson<HandholdingStatusResponse>(this.consultancyPay + 'GetHandholdingStatus', { zedId });
+  }
+
+  /** The handholding fee rows of the level's milestone due (WithCoupon / WithOutCoupon / CouponStatus). */
+  getConsultancyPaymentDetails(certification: string, zedId: string) {
+    return this.http.postJson<PaymentDetailsResponse>(this.portalMsme + 'GetConsultancyPaymentDetailsByType', { certification, zedId });
+  }
+
+  /** The handholding order for the CCAvenue checkout (milestone 1 carries the Consultant Organisation answer). */
+  getConsultancyPaymentToken(request: PaymentTokenRequest) {
+    return this.http.postJson<PaymentHashResponse>(this.consultancyPay + 'GetToken', request);
+  }
+
+  /** A handholding milestone with nothing to pay, confirmed without the gateway. */
+  submitConsultancyZeroPayment(request: PaymentTokenRequest) {
+    return this.http.postJson<BaseServiceResponse>(this.consultancyPay + 'SubmitZeroPaymentDetails', request);
   }
 }

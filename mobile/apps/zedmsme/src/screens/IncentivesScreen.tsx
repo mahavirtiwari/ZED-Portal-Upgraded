@@ -197,7 +197,8 @@ export function IncentivesScreen() {
                 detail={card.detail}
                 enabled={certified}
                 right={icons.ic_incentive_arrow_enabled}
-                onPress={() => open(app.api.incentivesUrl)}
+                // 2026-11-21: Handholding Support opens the app's own screens (levels, milestones, payment); the others the web.
+                onPress={() => (g.code === 'HANDHOLDING' ? nav.push('Handholding') : open(app.api.incentivesUrl))}
                 testID={`incentive-graded-${i}`}
               />
             ) : null;

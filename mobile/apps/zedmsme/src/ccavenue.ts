@@ -31,8 +31,18 @@ function native(): CcAvenueNative {
   return m;
 }
 
-/** The order as the legacy makePayment filled it: the server's order, the unit as billing and delivery details. */
-export function checkoutOrder(token: PaymentHashResponse, details: MsmeDetails | null | undefined, certification: string, site: string): CheckoutOrder {
+/**
+ * The order as the legacy makePayment filled it: the server's order, the unit as billing and delivery details. 2026-11-21: a
+ * handholding order (`gateway` "ConsultancyPay") comes back to ConsultancyPay/successtransmobile with "Milestone n" in
+ * merchant_param3, as the web checkout sends it.
+ */
+export function checkoutOrder(
+  token: PaymentHashResponse,
+  details: MsmeDetails | null | undefined,
+  certification: string,
+  site: string,
+  handholding?: { milestone: number },
+): CheckoutOrder {
   const basic = details?.BasicDetails;
   const plant = details?.PlantDetails;
   const v = (s: string | null | undefined) => s ?? '';
@@ -53,8 +63,9 @@ export function checkoutOrder(token: PaymentHashResponse, details: MsmeDetails |
     zip: v(plant?.PPin),
     merchantParam1: v(details?.ZedId),
     merchantParam2: certification,
-    redirectUrl: site + 'pay/successtransmobile',
-    cancelUrl: site + 'pay/failuretransmobile',
+    ...(handholding ? { merchantParam3: `Milestone ${handholding.milestone}` } : {}),
+    redirectUrl: site + (handholding ? 'ConsultancyPay/successtransmobile' : 'pay/successtransmobile'),
+    cancelUrl: site + (handholding ? 'ConsultancyPay/failuretransmobile' : 'pay/failuretransmobile'),
   };
 }
 

@@ -25,6 +25,7 @@ import {
   NonConformancesScreen,
 } from './src/screens/NonConformanceScreens';
 import { PaymentScreen } from './src/screens/PaymentScreen';
+import { HandholdingPaymentScreen, HandholdingScreen } from './src/screens/HandholdingScreens';
 import { EditHistoryScreen } from './src/screens/EditHistoryScreen';
 import { PendingUploadsScreen } from './src/screens/PendingUploadsScreen';
 import { FinancialAssistanceScreen } from './src/screens/FinancialAssistanceScreen';
@@ -60,6 +61,9 @@ export const SCREENS: ScreenMap = {
   RemoteAssessmentInitial: RemoteAssessmentInitialScreen,
   RemoteAssessmentDetails: RemoteAssessmentDetailsScreen,
   Payment: PaymentScreen,
+  // 2026-11-21: Handholding Support and its milestone payments in the app (were the web).
+  Handholding: HandholdingScreen,
+  HandholdingPayment: HandholdingPaymentScreen,
   EditHistory: EditHistoryScreen,
   PendingUploads: PendingUploadsScreen,
 };

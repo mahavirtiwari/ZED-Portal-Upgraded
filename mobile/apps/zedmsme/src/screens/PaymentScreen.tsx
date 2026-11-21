@@ -38,25 +38,28 @@ const TDS_TEN = '10';
 
 // The disclaimer, instructions, joining reward notes and result messages are Admin texts (app.msme.certification.payment.*,
 // app.msme.payment.*), the legacy wording until the server's arrives.
-const PAYMENT_ERROR = 'Unknown error occurred while making the payment';
+export const PAYMENT_ERROR = 'Unknown error occurred while making the payment';
 // The web payment page's formats (payment-step.ts).
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
-const FEE_ERROR = 'The fee could not be loaded. Check your internet connection and try again.';
-const AMOUNT_ERROR = 'The amount to pay could not be worked out. Go back and open the payment again.';
+export const FEE_ERROR = 'The fee could not be loaded. Check your internet connection and try again.';
+export const AMOUNT_ERROR = 'The amount to pay could not be worked out. Go back and open the payment again.';
 
 /** BigDecimal.toString of the server's amounts. */
 const num = (v: number | null | undefined) => (v == null ? '' : String(v));
-const formatCurrency = (v: number | null | undefined) => `${RS} ${num(v)}`;
+export const formatCurrency = (v: number | null | undefined) => `${RS} ${num(v)}`;
 const minus = (a: number | null | undefined, b: number | null | undefined) => (a == null || b == null ? null : round(a - b));
 const round = (n: number) => Math.round(n * 100) / 100;
 
 type Summary = { rows: Array<{ key: string; label: string; value: string; color?: string; bold?: boolean }>; due: number | null | undefined };
 
-/** showPaymentSummary of PaymentDetailsFragment / PaymentSummaryFragment. */
-export function paymentSummary(details: PaymentDetails, tds: string | null, certification: CertificationType): Summary {
+/**
+ * showPaymentSummary of PaymentDetailsFragment / PaymentSummaryFragment. `feeLabel`: the first line's label (2026-11-21: the
+ * handholding payment says "Handholding Fee").
+ */
+export function paymentSummary(details: PaymentDetails, tds: string | null, certification: CertificationType, feeLabel = 'Certification Fee'): Summary {
   void certification;
-  const rows: Summary['rows'] = [{ key: 'fee', label: 'Certification Fee', value: formatCurrency(details.Total) }];
+  const rows: Summary['rows'] = [{ key: 'fee', label: feeLabel, value: formatCurrency(details.Total) }];
   if (!(details.Coupon == null || details.Coupon === 0)) {
     rows.push({ key: 'reward', label: 'Joining Reward', value: formatCurrency(details.Coupon), color: colors.couponBorder });
     rows.push({ key: 'afterReward', label: 'Final Certification Fee\n(After adjusting joining reward)', value: formatCurrency(details.TotalAfterCoupon) });
@@ -209,7 +212,7 @@ function Footer({ onBack, proceedTitle, onProceed, proceedEnabled = true }: { on
 }
 
 /** The fee could not be loaded: the reason, BACK and RETRY. */
-function FeeError({ message, onBack, onRetry }: { message: string; onBack: () => void; onRetry: () => void }) {
+export function FeeError({ message, onBack, onRetry }: { message: string; onBack: () => void; onRetry: () => void }) {
   return (
     <View style={{ flex: 1 }} testID="payment-fee-error">
       <View style={{ flex: 1, justifyContent: 'center', padding: dimens.padding4 }}>
@@ -221,7 +224,7 @@ function FeeError({ message, onBack, onRetry }: { message: string; onBack: () =>
   );
 }
 
-function TextPage({ title, textKey, onBack, onProceed }: { title: string; textKey: string; onBack: () => void; onProceed: () => void }) {
+export function TextPage({ title, textKey, onBack, onProceed }: { title: string; textKey: string; onBack: () => void; onProceed: () => void }) {
   const text = useAppText(textKey);
   return (
     <View style={{ flex: 1 }}>
@@ -236,19 +239,31 @@ function TextPage({ title, textKey, onBack, onProceed }: { title: string; textKe
   );
 }
 
-/** PaymentDetailsFragment */
-function DetailsPage({
+/**
+ * PaymentDetailsFragment. 2026-11-21: also the handholding payment's (HandholdingScreens): its fee label, notes over the summary,
+ * its own section (the Consultant Organisation question of milestone 1) and `complete`, which adds that section's fields to the
+ * request or says why not (null: the request is not sent).
+ */
+export function DetailsPage({
   type,
   response,
   zedId,
   onBack,
   onPay,
+  feeLabel,
+  notes,
+  children,
+  complete,
 }: {
   type: CertificationType;
   response: PaymentDetailsResponse;
   zedId: string;
   onBack: () => void;
   onPay: (r: PaymentTokenRequest) => void;
+  feeLabel?: string;
+  notes?: string[];
+  children?: React.ReactNode;
+  complete?: (r: PaymentTokenRequest) => PaymentTokenRequest | null;
 }) {
   const ui = useUi();
   const rewardNote = useAppText('app.msme.payment.joiningReward.note');
@@ -270,7 +285,7 @@ function DetailsPage({
   const [correctedPan, setCorrectedPan] = useState('');
   const api = useMsme().api;
   const showCoupon = couponUsed != null && couponUsed !== 1 && withCoupon?.Coupon != null;
-  const summary = details ? paymentSummary(details, tdsDeductible === YES ? tds : null, type) : null;
+  const summary = details ? paymentSummary(details, tdsDeductible === YES ? tds : null, type, feeLabel) : null;
   const due = summary?.due;
 
   const prepare = (): PaymentTokenRequest | null => {
@@ -317,7 +332,7 @@ function DetailsPage({
       setTanError(undefined);
       req.Tan = tan.trim().toUpperCase();
     } else req.TdsDeductible = NO;
-    return req;
+    return complete ? complete(req) : req;
   };
 
   return (
@@ -366,7 +381,13 @@ function DetailsPage({
               {type === 'Bronze' && bronzeNote ? <Text style={styles.couponText}>{htmlToPlain(bronzeNote.html)}</Text> : null}
             </View>
           ) : null}
+          {children}
           <Text style={textStyles.subheading}>Summary</Text>
+          {(notes ?? []).map(n => (
+            <Text key={n} style={styles.note} testID="payment-note">
+              {n}
+            </Text>
+          ))}
           {summary ? <SummaryRows summary={summary} /> : null}
         </View>
       </ScrollView>
@@ -435,7 +456,7 @@ function DetailsPage({
       ) : null}
       {summaryOpen && details ? (
         <ZedDialog visible title="Summary" cancelable={false} onClose={() => setSummaryOpen(null)}>
-          <SummaryRows summary={paymentSummary(details, tdsDeductible === YES ? tds : null, type)} />
+          <SummaryRows summary={paymentSummary(details, tdsDeductible === YES ? tds : null, type, feeLabel)} />
           <ZedButton
             title={due === 0 ? 'CONFIRM (NOTHING TO PAY)' : 'PROCEED TO PAYMENT'}
             small
@@ -453,7 +474,7 @@ function DetailsPage({
   );
 }
 
-function SummaryRows({ summary }: { summary: Summary }) {
+export function SummaryRows({ summary }: { summary: Summary }) {
   return (
     <View style={[shapes.greyOutlineRectangle, { margin: dimens.padding2 }]}>
       {summary.rows.map(r => (
@@ -580,4 +601,5 @@ const styles = StyleSheet.create({
   summaryLabel: { flex: 65, padding: dimens.padding2, color: colors.textColor, fontSize: dimens.textSize },
   summaryValue: { flex: 35, padding: dimens.padding2, color: colors.textColor, fontWeight: 'bold', fontSize: dimens.textSize },
   centered: { textAlign: 'center', fontSize: dimens.textSize, color: colors.black },
+  note: { marginHorizontal: dimens.padding2, marginTop: dimens.padding1, color: colors.appColorDark, fontSize: dimens.textSize14, fontWeight: 'bold' },
 });

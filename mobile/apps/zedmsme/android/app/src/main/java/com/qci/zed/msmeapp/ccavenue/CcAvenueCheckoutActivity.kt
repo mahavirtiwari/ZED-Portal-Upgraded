@@ -62,6 +62,8 @@ class CcAvenueCheckoutActivity : AppCompatActivity(), AvenuesTransactionCallback
       setDeliveryEmail(e.getString("email"))
       setMerchant_param1(e.getString("merchantParam1"))
       setMerchant_param2(e.getString("merchantParam2"))
+      // 2026-11-21: "Milestone n" of a handholding order (the server checks it).
+      e.getString("merchantParam3")?.let { setMerchant_param3(it) }
       setPaymentEnviroment(e.getString("environment") ?: "app_live")
       setPaymentType("all")
       setRedirectUrl(e.getString("redirectUrl"))
