@@ -1,6 +1,5 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 
 export type Row = Record<string, string | number | boolean | null>;
@@ -55,6 +54,16 @@ export function completionColumn(level: HandholdingLevel, milestone: number): st
   return level === 'ZEDX' ? `MilestoneCompletionStatusZEDX${milestone}` : `MilestoneCompletionStatus${milestone}`;
 }
 
+/**
+ * "Accept milestone n" (2026-11-21): Started = one payment for all milestones, the next milestone has started (no payment page);
+ * Pay = the next milestone is paid on its payment page; Completed = all three milestones are done.
+ */
+export interface AcceptResponse {
+  message: string;
+  next: 'Completed' | 'Started' | 'Pay';
+  nextMilestone: number | null;
+}
+
 /** Client for api/msme/handholding (Zed.Main.Api HandholdingController). */
 @Injectable({ providedIn: 'root' })
 export class HandholdingApi {
@@ -65,7 +74,7 @@ export class HandholdingApi {
     return this.http.get<HandholdingSummary>(this.base);
   }
 
-  acceptMilestone(certification: HandholdingLevel, milestone: number): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/accept-milestone`, { certification, milestone });
+  acceptMilestone(certification: HandholdingLevel, milestone: number): Observable<AcceptResponse> {
+    return this.http.post<AcceptResponse>(`${this.base}/accept-milestone`, { certification, milestone });
   }
 }

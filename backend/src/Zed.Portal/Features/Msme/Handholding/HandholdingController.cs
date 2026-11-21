@@ -1,4 +1,3 @@
-using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
@@ -73,34 +72,24 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
 
     public sealed record AcceptRequest(string? Certification, int Milestone);
 
+    /// <summary>"ACCEPT MILESTONE n": what was done and where the page goes (Next: Completed, Started or Pay with NextMilestone).</summary>
+    public sealed record AcceptResponse(string Message, string Next, int? NextMilestone);
+
     /// <summary>
-    /// "ACCEPT MILESTONE n" (Msme/AcceptMilestone). SP_MONITORING_RA_APPLICANT_ACCEPTANCE marks the
-    /// signed-in unit's milestone that waits for acceptance (status 16) as accepted (100). The old page
-    /// posted an empty ZED ID and level; here the button's level and milestone must be the one waiting.
+    /// "ACCEPT MILESTONE n" (Msme/AcceptMilestone), <see cref="HandholdingAcceptance"/>: the signed-in unit's milestone that waits for
+    /// acceptance (status 16) becomes accepted (100); the old page posted an empty ZED ID and level, here the button's level and
+    /// milestone must be the one waiting. 2026-11-21: one payment for all milestones starts the next milestone at once; else the page
+    /// opens the next milestone's payment (Next "Pay").
     /// </summary>
     [HttpPost("accept-milestone")]
     [MsmeEditAudit("Handholding: milestone accepted")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
-    public async Task<ActionResult<MessageResponse>> AcceptMilestone(AcceptRequest req, CancellationToken ct)
+    public async Task<ActionResult<AcceptResponse>> AcceptMilestone(AcceptRequest req, CancellationToken ct)
     {
         if (HandholdingEligibility.Canonical(req.Certification) is not { } level || req.Milestone is < 1 or > HandholdingEligibility.Milestones)
             return this.Problem400("Invalid milestone.");
-
-        var status = await StatusAsync(ct);
-        if (HandholdingEligibility.Int(status, HandholdingEligibility.CompletionColumn(level, req.Milestone)) != HandholdingEligibility.AwaitingAcceptance)
-            return this.Problem400($"Milestone {req.Milestone} is not waiting for your acceptance.");
-
-        try
-        {
-            await db.ExecuteProcAsync("SP_MONITORING_RA_APPLICANT_ACCEPTANCE", new { UserId = ZedId, ZedId, CertificationType = level }, ct);
-        }
-        catch (DbException ex)
-        {
-            log.LogError(ex, "SP_MONITORING_RA_APPLICANT_ACCEPTANCE failed for {ZedId}/{Level} milestone {Milestone}", ZedId, level, req.Milestone);
-            return this.Problem400("The milestone could not be accepted. Please try again.");
-        }
-        log.LogInformation("{ZedId} accepted {Level} handholding milestone {Milestone}", ZedId, level, req.Milestone);
-        return new MessageResponse($"Milestone {req.Milestone} accepted.");
+        var r = await HandholdingAcceptance.AcceptAsync(db, HttpContext.RequestServices, ZedId, level, req.Milestone, log, ct);
+        return r.Error is not null ? this.Problem400(r.Error) : new AcceptResponse(r.Message, r.Next.ToString(), r.NextMilestone);
     }
 
     private async Task<IDictionary<string, object?>?> StatusAsync(CancellationToken ct) =>

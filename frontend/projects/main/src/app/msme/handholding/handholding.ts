@@ -100,6 +100,8 @@ export class HandholdingPage {
   protected readonly data = signal<HandholdingSummary | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  /** 2026-11-21: what the last acceptance did (e.g. the next milestone started, paid with milestone 1). */
+  protected readonly notice = signal('');
   protected readonly loadedAt = signal(new Date());
 
   /** Level whose milestones are shown below the cards (outlined). */
@@ -312,7 +314,15 @@ export class HandholdingPage {
     if (!a || !this.accepted) return;
     const ok = await this.call(this.api.acceptMilestone(a.level, a.milestone));
     this.accepting.set(null);
-    if (ok) await this.load();
+    if (!ok) return;
+    // 2026-11-21 (the user): each milestone paid: Accept leads to the next milestone's payment; one payment for all milestones:
+    // the server has started the next milestone (allotted as before), so the page stays with the message.
+    if (ok.next === 'Pay' && ok.nextMilestone) {
+      void this.router.navigate(['/msme/handholding', a.level, 'payment']);
+      return;
+    }
+    this.notice.set(ok.message);
+    await this.load();
   }
 
   private async call<T>(req: Observable<T>): Promise<T | null> {

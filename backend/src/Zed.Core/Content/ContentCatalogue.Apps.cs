@@ -200,6 +200,8 @@ public static partial class ContentCatalogue
               <li>Activity for each milestone would commence only after payment of that milestone and acceptance of activities performed in the previous milestone, if &amp; as applicable.</li>
             </ol>
             """),
+        App("app.msme.handholding.acceptMilestone.confirm", "Handholding: accept milestone confirmation", MsmeApp, Main,
+            "I accept the activities conducted &amp; recommendations given in Milestone-{{Milestone}}", "Milestone"),
         App("app.msme.fa.eligibleAmountNote", "Financial Assistance: eligible amount note", MsmeApp, Main,
             "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
         App("app.msme.evidences.finalSubmit.confirm", "Evidences: final submit confirmation", MsmeApp, MainAndSurveillance,

@@ -216,6 +216,25 @@ public sealed partial class ConsultancyMobilePaymentController(
         return LegacyJson(new { status = "1", errorMessage = (string?)null, levels });
     }
 
+    /// <summary>
+    /// 2026-11-21, new for the ZED MSME app: "Accept Milestone n" as the web page's (<see cref="HandholdingAcceptance"/>). Next "Started":
+    /// one payment for all milestones, the next milestone has started; "Pay": the app opens the next milestone's payment
+    /// (NextMilestone); "Completed": the level's three milestones are done.
+    /// </summary>
+    [HttpPost("/ConsultancyPay/AcceptMilestone")]
+    [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> AcceptMilestone(string? certification, int? milestone, string? zedId, CancellationToken ct)
+    {
+        zedId = zedId?.Trim();
+        if (string.IsNullOrEmpty(zedId) || zedId.Length > 50 || HandholdingEligibility.Canonical(certification) is not { } level ||
+            milestone is not (>= 1 and <= HandholdingEligibility.Milestones))
+            return Refuse("Invalid milestone.");
+        var r = await HandholdingAcceptance.AcceptAsync(db, HttpContext.RequestServices, zedId, level, milestone.Value, log, ct);
+        if (r.Error is not null) return Refuse(r.Error);
+        return LegacyJson(new { status = "1", errorMessage = (string?)null, message = r.Message, next = r.Next.ToString(), nextMilestone = r.NextMilestone });
+    }
+
     // ----- Consultant Organisation (milestone 1) -----
 
     /// <summary>

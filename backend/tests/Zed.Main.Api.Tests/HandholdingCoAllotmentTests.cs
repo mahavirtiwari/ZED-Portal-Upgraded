@@ -362,6 +362,34 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
         Assert.Equal(["zedId"], bound!.UserFields);
     }
 
+    /// <summary>2026-11-21: the app's "Accept Milestone n" (HandholdingAcceptance, as the web page's).</summary>
+    [Fact]
+    public async Task The_app_accepts_a_milestone_and_is_told_to_pay_the_next_one()
+    {
+        var app = App().CreateClient();
+        Task<JsonElement> Accept(int milestone) => app.PostAsync("/ConsultancyPay/AcceptMilestone", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["zedId"] = Me, ["certification"] = "Silver", ["milestone"] = milestone.ToString(System.Globalization.CultureInfo.InvariantCulture), ["deviceInfo.deviceId"] = "device-1",
+        })).ContinueWith(t => Json(t.Result)).Unwrap();
+
+        var early = await Accept(1);
+        Assert.Equal("0", early.GetProperty("status").GetString());
+        Assert.Equal("Milestone 1 is not waiting for your acceptance.", early.GetProperty("errorMessage").GetString());
+
+        var status = HandholdingTests.Status(silverStarted: 1, silverCompletion: [16, 0, 0]);
+        _host.Sql.Procs["SP_CONSULTANCY_APP_MSME_STATUS"] = _ => FakeSql.Sets([status]);
+        _host.Sql.Procs["SP_MONITORING_RA_APPLICANT_ACCEPTANCE"] = _ => { status = HandholdingTests.Status(silverStarted: 1, silverCompletion: [100, 0, 0]); return FakeSql.Sets(); };
+        var ok = await Accept(1);
+        Assert.Equal("1", ok.GetProperty("status").GetString());
+        Assert.Equal("Pay", ok.GetProperty("next").GetString());
+        Assert.Equal(2, ok.GetProperty("nextMilestone").GetInt32());
+        Assert.Contains("Please pay for Milestone 2", ok.GetProperty("message").GetString());
+
+        var bound = typeof(ConsultancyMobilePaymentController).GetMethod(nameof(ConsultancyMobilePaymentController.AcceptMilestone))!
+            .GetCustomAttribute<DeviceBoundAttribute>();
+        Assert.Equal(["zedId"], bound!.UserFields);
+    }
+
     private sealed class MobileGateway : ICcAvenueMobileClient
     {
         public Task<SecureTokenResponse?> GetSecureTokenAsync(string orderId, CancellationToken ct) =>

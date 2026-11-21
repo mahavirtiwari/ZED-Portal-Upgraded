@@ -1,5 +1,11 @@
 <div class="container form-page" id="zed_user_form">
   <div class="Dashboard-msme">
+    @if (notice()) {
+      <div class="alert alert-success alert-dismissible mt-3" role="status" data-testid="hh-notice">
+        {{ notice() }}
+        <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'msme.handholding.closeAria'" (click)="notice.set('')"></button>
+      </div>
+    }
     @if (error()) {
       <div class="alert alert-danger alert-dismissible mt-3" role="alert">
         {{ error() }}

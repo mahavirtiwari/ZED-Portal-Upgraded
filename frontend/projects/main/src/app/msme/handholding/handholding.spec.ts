@@ -240,6 +240,39 @@ describe('HandholdingPage', () => {
     expect(el.textContent).not.toContain('Accept milestone 1');
   });
 
+  /** 2026-11-21 (the user): Accept leads to the next milestone's payment, or (one payment for all) the next milestone has started. */
+  async function accept(answer: { message: string; next: string; nextMilestone: number | null }) {
+    await open(
+      summary({ SilverStatus: 9, SilverStatusOfNc: 1, SilverStatusOfNc1: 1, MilestoneCompletionStatus1: 16 }, [
+        level('Silver', { milestonesStarted: 1, nextMilestone: 2, canPay: false, refusal: 'Milestone 1 must be completed and accepted before Milestone 2 can be paid.', awaitingAcceptance: 1 }),
+      ]),
+    );
+    find('button', 'Accept milestone 1')!.click();
+    await settled();
+    (el.querySelector('input[name="isAccepted"]') as HTMLInputElement).click();
+    await settled();
+    (find('button', 'Submit') as HTMLButtonElement).click();
+    await settled();
+    http.expectOne(`${API}/accept-milestone`).flush(answer);
+    await settled();
+  }
+
+  it('each milestone paid: accepting a milestone opens the payment of the next one', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await accept({ message: 'Milestone 1 accepted. Please pay for Milestone 2 to start it.', next: 'Pay', nextMilestone: 2 });
+    expect(navigate).toHaveBeenCalledWith(['/msme/handholding', 'Silver', 'payment']);
+    http.expectNone(API);
+  });
+
+  it('one payment for all milestones: accepting starts the next milestone, no payment page', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await accept({ message: 'Milestone 1 accepted. Milestone 2 has started with your Consultant Organisation (already paid with milestone 1).', next: 'Started', nextMilestone: 2 });
+    expect(navigate).not.toHaveBeenCalled();
+    http.expectOne(API).flush(summary({ SilverStatusOfNc: 2, MilestoneCompletionStatus1: 100 }));
+    await settled();
+    expect(el.querySelector('[data-testid="hh-notice"]')!.textContent).toContain('Milestone 2 has started');
+  });
+
   it('shows the API error', async () => {
     fixture = TestBed.createComponent(HandholdingPage);
     el = fixture.nativeElement;

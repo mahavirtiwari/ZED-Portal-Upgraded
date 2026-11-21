@@ -244,5 +244,53 @@ public sealed class HandholdingTests : IDisposable
         Assert.Equal("The milestone could not be accepted. Please try again.", await r.ProblemTitle());
     }
 
+    /// <summary>A fee row of SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS for the milestone due.</summary>
+    private void Fee(int milestone, bool payAll, decimal due) =>
+        _host.Sql.Procs["SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS"] = _ =>
+        {
+            var row = new Dictionary<string, object?>
+            {
+                ["Id"] = 40 + milestone, ["Total"] = "200000.00", ["Coupon"] = null, ["ApplicantContributionAfterSubsidy"] = due.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["NetPaybleTds15"] = "0", ["NetPaybleTds75"] = "0", ["UdyamPanNo"] = "ABCDE1234F", ["MileStone"] = milestone, ["PayAllAtMilestone1"] = payAll,
+            };
+            return FakeSql.Sets([row], [row], [new { IsCouponUsed = 1 }]);
+        };
+
+    /// <summary>
+    /// 2026-11-21 (the user): one payment for all milestones: accepting milestone 1 starts milestone 2 at once (its Rs 0 payment, the
+    /// same Consultant Organisation), no payment page; each milestone paid: accepting sends the unit to milestone 2's payment.
+    /// </summary>
+    [Fact]
+    public async Task Accepting_starts_the_next_milestone_when_paid_at_milestone_1_else_leads_to_its_payment()
+    {
+        _status = Status(silverStarted: 1, silverCompletion: [16, 0, 0]);
+        _host.Sql.Procs["SP_MONITORING_RA_APPLICANT_ACCEPTANCE"] = _ => { _status = Status(silverStarted: 1, silverCompletion: [100, 0, 0]); return FakeSql.Sets(); };
+        _host.Sql.Procs["SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS"] = _ => { _status = Status(silverStarted: 2, silverCompletion: [100, 0, 0]); return FakeSql.Sets(); };
+        Fee(2, payAll: true, due: 0);
+        var client = await SignedInAsync();
+
+        var started = await (await client.PostAsJsonAsync($"{Api}/accept-milestone", new { certification = "Silver", milestone = 1 })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Started", started.GetProperty("next").GetString());
+        Assert.Equal(2, started.GetProperty("nextMilestone").GetInt32());
+        Assert.Contains("Milestone 2 has started", started.GetProperty("message").GetString());
+        var zero = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS");
+        Assert.Equal("Silver", FakeSql.Arg(zero.Args, "Certification"));
+
+        // Each milestone paid: milestone 2 has its own payment.
+        var zeroCalls = _host.Sql.Calls.Count(c => c.Name == "SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS");
+        _status = Status(silverStarted: 1, silverCompletion: [16, 0, 0]);
+        Fee(2, payAll: false, due: 23600);
+        var pay = await (await client.PostAsJsonAsync($"{Api}/accept-milestone", new { certification = "Silver", milestone = 1 })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Pay", pay.GetProperty("next").GetString());
+        Assert.Equal(2, pay.GetProperty("nextMilestone").GetInt32());
+        Assert.Equal(zeroCalls, _host.Sql.Calls.Count(c => c.Name == "SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS"));
+
+        // Milestone 3: complete.
+        _status = Status(silverStarted: 3, silverCompletion: [100, 100, 16]);
+        var done = await (await client.PostAsJsonAsync($"{Api}/accept-milestone", new { certification = "Silver", milestone = 3 })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Completed", done.GetProperty("next").GetString());
+        Assert.Equal(JsonValueKind.Null, done.GetProperty("nextMilestone").ValueKind);
+    }
+
     private sealed class ProcedureError() : System.Data.Common.DbException("Invalid column name 'internal'.");
 }
