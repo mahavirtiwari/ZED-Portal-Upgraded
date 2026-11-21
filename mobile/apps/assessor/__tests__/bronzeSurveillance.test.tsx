@@ -52,15 +52,15 @@ const signInAnswer = (over: Record<string, unknown> = {}) => ({
 });
 
 /** Main and surveillance hosts; `mainRefuses`: the assessor is known on the surveillance host only. */
-function server(opts: { mainRefuses?: boolean; session?: unknown } = {}) {
+function server(opts: { mainRefuses?: boolean; session?: unknown; ncRound?: number } = {}) {
   const s = new FakeServer(r => {
     const surv = r.url.includes('surveillancemobileapi');
     const name = r.url.split('/SA/')[1]?.split('?')[0] ?? '';
     if (name === 'SignIn') {
       if (!surv) return opts.mainRefuses ? { status: '0', errorMessage: 'Invalid credetials.' } : signInAnswer();
-      return signInAnswer({ appToken: 'tok-s', bronzeSurveillance: [bronzeCase()] });
+      return signInAnswer({ appToken: 'tok-s', bronzeSurveillance: [bronzeCase(opts.ncRound ? { status: 4, ncRound: opts.ncRound } : {})] });
     }
-    if (name === 'BronzeSurveillance') return { status: '1', cases: [bronzeCase()] };
+    if (name === 'BronzeSurveillance') return { status: '1', cases: [bronzeCase(opts.ncRound ? { status: 4, ncRound: opts.ncRound } : {})] };
     if (name === 'BronzeSurveillanceSession') return opts.session ?? sessionAnswer();
     if (name === 'Assessments') return { status: '1', assessments: [] };
     return { status: '1' };
@@ -106,6 +106,17 @@ describe('Bronze surveillance in ZED SA (2026-11-21)', () => {
     // The list is refreshed from the surveillance host with ZED SA's surveillance token.
     expect(s.last('SA/BronzeSurveillance')!.url).toContain('surveillancemobileapi/SA/BronzeSurveillance');
     expect(s.last('SA/BronzeSurveillance')!.headers![APP_TOKEN_HEADER]).toBe('tok-s');
+    act(() => r.unmount());
+  });
+
+  it('a unit in its open NC round is listed as waiting for the NC reply', async () => {
+    const s = server({ ncRound: 2 });
+    const { app } = await makeApp(s);
+    await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
+    const r = render(app, 'Home');
+    await flush();
+    expect(texts(r)).toContain('NC 2: reply due');
+    expect(texts(r)).not.toContain('Desktop assessment');
     act(() => r.unmount());
   });
 

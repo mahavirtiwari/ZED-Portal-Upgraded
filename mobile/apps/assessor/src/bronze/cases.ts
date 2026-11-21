@@ -22,6 +22,8 @@ export type BronzeCase = {
   status?: number | null;
   /** ISO text, server time. */
   statusDate?: string | null;
+  /** 2026-11-21: the NC round waiting for the reply (the unit is in its NC round), null before the final submit. */
+  ncRound?: number | null;
 };
 
 export type BronzeCasesResponse = BaseServiceResponse & { cases?: BronzeCase[] | null };

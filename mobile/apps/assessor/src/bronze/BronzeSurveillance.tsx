@@ -125,7 +125,11 @@ export function BronzeCasesSection({ testID = 'bronze-cases' }: { testID?: strin
           ) : null}
           <View style={st.actions}>
             <View style={{ flexShrink: 1 }}>
-              <Badge label={t('case.status')} tone="info" small testID={`bronze-status-${c.zedId}`} />
+              {c.ncRound ? (
+                <Badge label={t('case.ncRound', { Round: c.ncRound })} tone="warning" small testID={`bronze-status-${c.zedId}`} />
+              ) : (
+                <Badge label={t('case.status')} tone="info" small testID={`bronze-status-${c.zedId}`} />
+              )}
               {c.statusDate ? <Text style={[z.sub, { marginTop: 4 }]}>{t('case.allotted', { Date: formatDate(c.statusDate) })}</Text> : null}
             </View>
             <ZButton title={t('case.open')} icon="arrow-right" small onPress={() => viewBronzeCase(app, ui, nav, c, t)} style={{ minWidth: 110 }} testID={`bronze-open-${c.zedId}`} />

@@ -15,6 +15,8 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.assessor.bronze.case.label": "Bronze Surveillance",
   // Bronze surveillance: case card: status (with the desktop assessor) (Main)
   "app.assessor.bronze.case.status": "Desktop assessment",
+  // Bronze surveillance: case card: status (NC round open for the reply) (Main)
+  "app.assessor.bronze.case.ncRound": "NC {{Round}}: reply due",
   // Bronze surveillance: case card: since (Main)
   "app.assessor.bronze.case.allotted": "Since {{Date}}",
   // Bronze surveillance: case card: open button (Main)
