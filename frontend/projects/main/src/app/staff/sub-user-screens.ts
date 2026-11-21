@@ -38,7 +38,12 @@ export const subUserScreenGuard: CanActivateChildFn = (_route, state) => {
   template: `
     <div class="zed-card na-card" role="alert">
       <h3 class="registration-title">{{ 'No access to this screen' | t: 'staff.noAccess.title' }}</h3>
-      <p>{{ 'This screen was not given to your login. Please ask your administrator if you need it.' | t: 'staff.noAccess.text' }}</p>
+      @if (byRole) {
+        <!-- 2026-11-21 (audit item 11): a screen of another role (authGuard), not one the owner did not give. -->
+        <p>{{ 'This screen is not available to your login.' | t: 'staff.noAccess.roleText' }}</p>
+      } @else {
+        <p>{{ 'This screen was not given to your login. Please ask your administrator if you need it.' | t: 'staff.noAccess.text' }}</p>
+      }
       @if (screen) { <p class="muted na-screen">{{ screen }}</p> }
       <a routerLink="/staff" class="btn btn-primary">{{ 'Back to home' | t: 'staff.noAccess.home' }}</a>
     </div>
@@ -50,5 +55,8 @@ export const subUserScreenGuard: CanActivateChildFn = (_route, state) => {
   `,
 })
 export class NoAccessPage {
-  protected readonly screen = inject(ActivatedRoute).snapshot.queryParamMap.get('screen');
+  private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
+  protected readonly screen = this.query.get('screen');
+  /** Sent by authGuard: the login's role may not open the screen (rather than a sub-user's screen not given). */
+  protected readonly byRole = this.query.get('reason') === 'role';
 }

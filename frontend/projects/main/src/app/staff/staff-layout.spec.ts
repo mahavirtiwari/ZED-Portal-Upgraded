@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { AuthService, PORTAL_LINK_DEFAULTS, PortalLinkKey, PortalLinksService } from '@zed/shared';
 import { ATTENTION_API } from './attention';
-import { StaffLayout, closeButtonOf, topDialog } from './staff-layout';
+import { StaffLayout, closeButtonOf, escapeIsForDropDown, topDialog } from './staff-layout';
 
 /** jsdom has no ResizeObserver (the menu row measures its entries on resize). */
 class NoResizeObserver {
@@ -100,5 +100,39 @@ describe('Esc on staff pop-ups (UI audit F1/F2/F5)', () => {
     labelled.innerHTML = '<div role="dialog" aria-modal="true"><button>Save</button><button class="btn btn-link p-0" aria-label="Close">x</button></div>';
     expect(closeButtonOf(topDialog(labelled)!)!.getAttribute('aria-label')).toBe('Close');
     expect(topDialog(document.createElement('div'))).toBeNull();
+  });
+
+  it('skips hidden and nested pop-ups, falls back to the x or footer Close, and lets a drop-down in the pop-up take the Esc (audit item 3)', () => {
+    const root = document.createElement('div');
+    document.body.appendChild(root);
+    root.innerHTML = `
+      <button id="opener" aria-expanded="true">Menu</button>
+      <div class="xd-back"></div>
+      <div class="xd wide" role="dialog" aria-modal="true" id="cases">
+        <div role="dialog" aria-modal="true" id="inner"><button class="btn">Export</button></div>
+        <input id="combo" role="combobox" aria-expanded="true" />
+        <div class="xd-foot"><button class="btn btn-default">Close</button></div>
+      </div>
+      <div class="modal d-block" id="kept" style="visibility: hidden"><button class="btn-close"></button></div>
+      <div role="dialog" aria-modal="true" id="gone" hidden><button class="btn-close"></button></div>`;
+    const top = topDialog(root)!;
+    expect(top.id).toBe('cases');
+    expect(closeButtonOf(top)!.textContent).toBe('Close');
+    // An expanded control outside the pop-up (its opener) does not stop the Esc; one inside it does.
+    expect(escapeIsForDropDown(root.querySelector('#opener'), top)).toBe(false);
+    expect(escapeIsForDropDown(root.querySelector('#combo'), top)).toBe(true);
+    expect(escapeIsForDropDown(null, top)).toBe(false);
+
+    const marked = document.createElement('div');
+    marked.innerHTML = '<div class="modal d-block"><button class="btn btn-link" aria-label="Fermer">x</button><button class="btn" data-dismiss>y</button></div>';
+    expect(closeButtonOf(topDialog(marked)!)!.textContent).toBe('y');
+    const times = document.createElement('div');
+    times.innerHTML = '<div role="dialog" aria-modal="true"><button class="btn">Save</button><button class="btn">×</button></div>';
+    expect(closeButtonOf(topDialog(times)!)!.textContent).toBe('×');
+    // The one painted on top wins over the one later in the page.
+    const layered = document.createElement('div');
+    layered.innerHTML = '<div class="xd" role="dialog" aria-modal="true" id="high" style="position: fixed; z-index: 1070"></div><div class="modal d-block" id="low" style="z-index: 1055"></div>';
+    expect(topDialog(layered)!.id).toBe('high');
+    root.remove();
   });
 });

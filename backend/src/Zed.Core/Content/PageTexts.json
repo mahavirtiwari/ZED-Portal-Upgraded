@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9296,
+  "count": 9329,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -32065,7 +32065,7 @@
     },
     {
       "key": "staff.assessmentResults.search.placeholder",
-      "standard": "Search ZED ID, Udyam number or unit name",
+      "standard": "Search ZED ID, Udyam no. or unit name",
       "kind": "placeholder",
       "portal": "staff",
       "page": "assessmentResults",
@@ -32976,6 +32976,30 @@
       "placeholders": [],
       "files": [
         "staff/users/assessor-form.ts"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.idProof.panFromAbove",
+      "standard": "The PAN entered above is used.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.idProof.panFromProfile",
+      "standard": "The saved PAN is used.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
       ]
     },
     {
@@ -34005,8 +34029,8 @@
       ]
     },
     {
-      "key": "staff.assessorForm.verifyOff.consultancyNote",
-      "standard": "Verification is off: enter the consultant/expert's details as on the certificate.",
+      "key": "staff.assessorForm.verifyOff.agencyConsultancyNote",
+      "standard": "Enter the consultant/expert's details exactly as on the certificate.",
       "kind": "note",
       "portal": "staff",
       "page": "assessorForm",
@@ -34017,8 +34041,8 @@
       ]
     },
     {
-      "key": "staff.assessorForm.verifyOff.note",
-      "standard": "Verification is off: enter the assessor's details as on the certificate.",
+      "key": "staff.assessorForm.verifyOff.agencyNote",
+      "standard": "Enter the assessor's details exactly as on the certificate.",
       "kind": "note",
       "portal": "staff",
       "page": "assessorForm",
@@ -44141,6 +44165,18 @@
       "key": "staff.dashboard.analytics.rangeCompletedLabel",
       "standard": "Certified between",
       "kind": "label",
+      "portal": "staff",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/analytics.ts"
+      ]
+    },
+    {
+      "key": "staff.dashboard.analytics.rangeError",
+      "standard": "The From date must be on or before the To date.",
+      "kind": "message",
       "portal": "staff",
       "page": "dashboard",
       "pageName": "Dashboard",
@@ -74863,6 +74899,18 @@
       ]
     },
     {
+      "key": "staff.monitoring.due.none",
+      "standard": "No TAT set",
+      "kind": "note",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
       "key": "staff.monitoring.due.overdueDay.chip",
       "standard": "Overdue {count} day",
       "kind": "label",
@@ -75157,6 +75205,18 @@
     {
       "key": "staff.monitoring.exportButton",
       "standard": "Export",
+      "kind": "button",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.exportingButton",
+      "standard": "Exporting…",
       "kind": "button",
       "portal": "staff",
       "page": "monitoring",
@@ -76085,6 +76145,32 @@
       "page": "monitoring",
       "pageName": "Monitoring",
       "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.ts"
+      ]
+    },
+    {
+      "key": "staff.monitoring.toast.exported",
+      "standard": "Export ready",
+      "kind": "message",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.ts"
+      ]
+    },
+    {
+      "key": "staff.monitoring.toast.exportedText",
+      "standard": "{count} units saved to Excel.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [
+        "count"
+      ],
       "files": [
         "staff/monitoring/monitoring.ts"
       ]
@@ -80410,6 +80496,18 @@
       "key": "staff.noAccess.home",
       "standard": "Back to home",
       "kind": "button",
+      "portal": "staff",
+      "page": "noAccess",
+      "pageName": "No access",
+      "placeholders": [],
+      "files": [
+        "staff/sub-user-screens.ts"
+      ]
+    },
+    {
+      "key": "staff.noAccess.roleText",
+      "standard": "This screen is not available to your login.",
+      "kind": "note",
       "portal": "staff",
       "page": "noAccess",
       "pageName": "No access",
@@ -86182,6 +86280,20 @@
       ]
     },
     {
+      "key": "staff.quality.item.closedNoReply.label",
+      "standard": "Closed without a reply · closed in {close}",
+      "kind": "label",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [
+        "close"
+      ],
+      "files": [
+        "staff/quality/quality-observation-item.ts"
+      ]
+    },
+    {
       "key": "staff.quality.item.hideHistory.button",
       "standard": "Hide history ({count})",
       "kind": "button",
@@ -86191,6 +86303,18 @@
       "placeholders": [
         "count"
       ],
+      "files": [
+        "staff/quality/quality-observation-item.ts"
+      ]
+    },
+    {
+      "key": "staff.quality.item.noReply.label",
+      "standard": "No reply yet",
+      "kind": "label",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [],
       "files": [
         "staff/quality/quality-observation-item.ts"
       ]
@@ -104488,6 +104612,18 @@
       ]
     },
     {
+      "key": "staff.subUsers.form.emailInvalid",
+      "standard": "Please enter a valid e-mail address.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
       "key": "staff.subUsers.form.emailLabel",
       "standard": "E-mail",
       "kind": "label",
@@ -104503,6 +104639,42 @@
       "key": "staff.subUsers.form.emailPlaceholder",
       "standard": "name@organisation.in",
       "kind": "placeholder",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.emailRequired",
+      "standard": "Please enter the e-mail address.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.fixFields",
+      "standard": "Please correct the marked fields.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.mobileInvalid",
+      "standard": "Please enter a valid 10 digit mobile number.",
+      "kind": "text",
       "portal": "staff",
       "page": "subUsers",
       "pageName": "Sub users",
@@ -104551,6 +104723,18 @@
       "key": "staff.subUsers.form.namePlaceholder",
       "standard": "Full name",
       "kind": "placeholder",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.nameRequired",
+      "standard": "Please enter the name.",
+      "kind": "text",
       "portal": "staff",
       "page": "subUsers",
       "pageName": "Sub users",
@@ -104644,6 +104828,18 @@
         "count",
         "total"
       ],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.form.screensRequired",
+      "standard": "Please select at least one screen.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
       "files": [
         "staff/user-management/sub-users.ts"
       ]
@@ -104986,6 +105182,162 @@
       "placeholders": [
         "count"
       ],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.agencies",
+      "standard": "Agencies and their assessors",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.allot",
+      "standard": "Allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.assessors",
+      "standard": "Assessors",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.consultancyAllotment",
+      "standard": "Consultancy allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.consultantOrganisations",
+      "standard": "Consultant organisations and their consultants",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.consultants",
+      "standard": "Consultants",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.desktopAllotment",
+      "standard": "Desktop allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.monitoring",
+      "standard": "Monitoring",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.passwordReset",
+      "standard": "Password Reset Link",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.payments",
+      "standard": "Payment Received",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.reports",
+      "standard": "Reports",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.results",
+      "standard": "Completed and rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.siteAllotment",
+      "standard": "Site assessment allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
       "files": [
         "staff/user-management/sub-users.ts"
       ]
@@ -112984,6 +113336,54 @@
       "placeholders": [],
       "files": [
         "staff/assessment/da-details.layout.ts"
+      ]
+    },
+    {
+      "key": "staff.unsaved.leaveButton",
+      "standard": "Leave",
+      "kind": "button",
+      "portal": "staff",
+      "page": "unsaved",
+      "pageName": "Unsaved",
+      "placeholders": [],
+      "files": [
+        "staff/unsaved-changes.guard.ts"
+      ]
+    },
+    {
+      "key": "staff.unsaved.message",
+      "standard": "Your changes on this page are not saved yet.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "unsaved",
+      "pageName": "Unsaved",
+      "placeholders": [],
+      "files": [
+        "staff/unsaved-changes.guard.ts"
+      ]
+    },
+    {
+      "key": "staff.unsaved.stayButton",
+      "standard": "Stay",
+      "kind": "button",
+      "portal": "staff",
+      "page": "unsaved",
+      "pageName": "Unsaved",
+      "placeholders": [],
+      "files": [
+        "staff/unsaved-changes.guard.ts"
+      ]
+    },
+    {
+      "key": "staff.unsaved.title",
+      "standard": "Leave without saving?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "unsaved",
+      "pageName": "Unsaved",
+      "placeholders": [],
+      "files": [
+        "staff/unsaved-changes.guard.ts"
       ]
     },
     {

@@ -110,6 +110,45 @@ public sealed class AdminFollowUpsTests : IDisposable
         Assert.Contains("FROM dbo.Requirements WHERE SectionType = @SectionType", RequirementTexts.Sql("dbo"));
     }
 
+    [Fact]
+    public void Checkpoint_and_sub_point_texts_come_from_the_levels_questionnaire_by_code()
+    {
+        // 2026-11-21 (Assessment Agency UI audit, item 1): the Silver record's checkpoints read Bronze's texts.
+        var map = RequirementTexts.From([], [
+            new("O", "7", "1", " 1 ", null, " Silver checkpoint 1 "), new("O", "7", "1", "1", null, "a later row of the same code"),
+            new("O", "7", "1", "2", null, "  "), new("S", "7", "1", "1", "1", "Silver sub-point 1.1"), new("S", "7", "1", "1", null, "no code"),
+        ]);
+        Assert.Equal(1, map.CheckpointCount);
+        Assert.Equal(1, map.SubPointCount);
+        var options = new List<Dictionary<string, object?>>
+        {
+            new() { ["SectionCode"] = "7", ["RequirementCode"] = "1", ["OptionCode"] = 1, ["OptionName"] = "Bronze checkpoint" },
+            new() { ["SectionCode"] = "7", ["RequirementCode"] = "1", ["OptionCode"] = "2", ["OptionName"] = "kept when the questionnaire has none" },
+        };
+        map.AttachToCheckpoints(options);
+        Assert.Equal("Silver checkpoint 1", options[0]["OptionName"]);
+        Assert.Equal("kept when the questionnaire has none", options[1]["OptionName"]);
+        var subs = new List<Dictionary<string, object?>> { new() { ["SectionCode"] = "7", ["RequirementCode"] = "1", ["OptionCode"] = "1", ["SubOptionCode"] = "1", ["SubOptionName"] = "Bronze" } };
+        map.AttachToSubPoints(subs);
+        Assert.Equal("Silver sub-point 1.1", subs[0]["SubOptionName"]);
+
+        // The checkpoint answers by their requirement row's codes; a row of another requirement keeps its text.
+        var checkpoints = new List<CheckpointAnswers.Checkpoint>
+        {
+            new(501, 11, "1", "Bronze checkpoint", [], [], null, null, null, null, null),
+            new(502, 12, "1", "other requirement", [], [], null, null, null, null, null),
+        };
+        var requirementRows = new List<IDictionary<string, object?>>
+        {
+            new Dictionary<string, object?> { ["Id"] = 11L, ["SectionCode"] = "7", ["RequirementCode"] = "1" },
+            new Dictionary<string, object?> { ["Id"] = 12L, ["SectionCode"] = "8", ["RequirementCode"] = "1" },
+        };
+        var named = map.AttachTo(checkpoints, requirementRows);
+        Assert.Equal(["Silver checkpoint 1", "other requirement"], named.Select(c => c.Text));
+        Assert.Contains("FROM dbo.Options WHERE SectionType = @SectionType", RequirementTexts.CheckpointSql("dbo"));
+        Assert.Contains("FROM dbo.SubOptions WHERE SectionType = @SectionType", RequirementTexts.CheckpointSql("dbo"));
+    }
+
     // ------------------------------------------------------------------ e-mail templates
 
     [Fact]

@@ -133,6 +133,19 @@ describe('Quality observations (2026-11-16)', () => {
     await settle(f);
   });
 
+  it('says "Closed without a reply" when an observation was closed with no reply (audit item 9)', async () => {
+    const f = TestBed.createComponent(Host);
+    const el: HTMLElement = f.nativeElement;
+    await settle(f);
+    http.expectOne(`${API}/ZEDMSME000001/Silver`).flush(view({ items: [obs({ status: 'Closed', closeHours: 5 }), obs({ id: 102, status: 'Closed', replyHours: 2, closeHours: 6 })] }));
+    await settle(f);
+    el.querySelectorAll<HTMLButtonElement>('.qo-toggle').forEach((b) => b.click());
+    await settle(f);
+    const times = [...el.querySelectorAll('.qo-times')].map((x) => x.textContent!.replace(/\s+/g, ' ').trim());
+    expect(times[0]).toBe('Closed without a reply · closed in 5 h');
+    expect(times[1]).toBe('Reply in 2 h · closed in 6 h');
+  });
+
   it('raises from the panel with the whose-work switch, and asks for the category and the text first', async () => {
     const f = TestBed.createComponent(Host);
     const el: HTMLElement = f.nativeElement;

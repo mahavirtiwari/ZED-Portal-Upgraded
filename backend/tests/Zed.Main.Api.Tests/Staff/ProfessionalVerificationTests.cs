@@ -127,6 +127,22 @@ public sealed class ProfessionalVerificationTests : IDisposable
     }
 
     [Fact]
+    public async Task A_pan_card_as_id_proof_takes_the_pan_above_and_a_different_number_is_refused()
+    {
+        // 2026-11-21 (Assessment Agency UI audit, item 5): the PAN is not asked twice.
+        var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        var other = await client.PostAsJsonAsync("/api/staff/users/assessors", Body(new() { ["idProofType"] = "PAN Card", ["idProofNumber"] = "ZZZZZ9999Z" }));
+        Assert.Equal("The PAN Card number must be the PAN entered above.", await other.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_INSERT_USER");
+
+        var r = await client.PostAsJsonAsync("/api/staff/users/assessors", Body(new() { ["idProofType"] = "PAN Card", ["idProofNumber"] = "" }));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var insert = Call("SP_INSERT_USER");
+        Assert.Equal("PAN Card", FakeSql.Arg(insert.Args, "IdProofType"));
+        Assert.Equal("ABCDE1234F", FakeSql.Arg(insert.Args, "IdProofNumber"));
+    }
+
+    [Fact]
     public async Task A_certificate_used_by_an_active_assessor_is_refused()
     {
         _host.Sql.Queries[ProfessionalVerification.CertificateInUseSql] = args => FakeSql.Arg(args, "CertificateNo") == "BA1234" ? [1] : [0];

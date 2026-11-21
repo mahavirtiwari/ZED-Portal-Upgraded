@@ -53,8 +53,8 @@ Screens an owner can give (`SubUserPermissions.cs`):
 
 | Owner | Screens |
 |---|---|
-| Master Admin | Agencies / organisations and their assessors, Payment Received, Allotment, Monitoring, Completed and rejected, Password Reset Link; main: ZED ID History, Financial Assistance, Upload API Incentives; consultancy: Technology Upgradation |
-| Agency | Monitoring, Assessors / consultants, Desktop allotment (main, surveillance), Site / consultancy allotment, Completed and rejected, Reports; main: Financial Assistance verification; consultancy: Technology Upgradation (each only with the agency's own verification types) |
+| Master Admin | Agencies and their assessors (consultancy: Consultant organisations and their consultants), Payment Received, Allotment, Monitoring, Completed and rejected, Password Reset Link; main: ZED ID History, Financial Assistance, Upload API Incentives; consultancy: Technology Upgradation |
+| Agency | Monitoring, Assessors (consultancy: Consultants), Desktop allotment (main, surveillance), Site assessment allotment (consultancy: Consultancy allotment), Completed and rejected, Reports; main: Financial Assistance verification; consultancy: Technology Upgradation (each only with the agency's own verification types) |
 
 ## Deployment
 

@@ -15,6 +15,7 @@ import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/share
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCount, ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
+import { StaffRole } from '../staff-menu';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { ToastService } from '../toast';
 import { daysUntil, shortDate } from '../assessment/allot';
@@ -253,9 +254,16 @@ export class MonitoringPage {
     });
   });
   protected readonly view = new PagedView(() => this.shown(), 10);
+  /** The Due / Delay column: shown when a unit of the list has a due date or a TAT (2026-11-21, audit item 7). */
+  protected readonly showDue = computed(() => this.shown().some((r) => this.due(r) !== null));
   // The server says so with each list; until the first list, the role decides, as the old page's header did
   // (MasterAdmin: "Assessment Dates / NC Closure Date").
   protected readonly canManage = signal(inject(AuthService).currentUser()?.roleId === 7);
+  /** 2026-11-21 (Assessment Agency UI audit, item 7): an agency (or CO) login lists only its own units. */
+  protected readonly ownUnitsOnly = inject(AuthService).currentUser()?.roleId === StaffRole.Agency;
+  /** The Excel workbook is being made (the Export button says so). */
+  protected readonly exporting = signal(false);
+  private readonly route = inject(ActivatedRoute);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly action = signal<Action | null>(null);
@@ -264,7 +272,7 @@ export class MonitoringPage {
 
   constructor() {
     // The header bell opens a stage: ?status=4 (NC closures overdue) or ?status=5 (quality check).
-    const asked = Number(inject(ActivatedRoute).snapshot.queryParamMap.get('status'));
+    const asked = Number(this.route.snapshot.queryParamMap.get('status'));
     if (this.tabs.some((x) => x.status === asked)) this.status.set(asked);
     void this.load();
   }
@@ -276,6 +284,8 @@ export class MonitoringPage {
 
   protected setStatus(value: number): void {
     this.status.set(value);
+    // 2026-11-21 (audit item 7): the address keeps the chosen stage (?status=), so a reload or a shared link opens it again.
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { status: value }, queryParamsHandling: 'merge', replaceUrl: true });
     this.ncClosingDate.set('');
     // The sub-section, chips and date range belong to the stage (the range's meaning follows it).
     this.trackPick.set('');
@@ -335,8 +345,12 @@ export class MonitoringPage {
     const status = this.status();
     const stage = this.tabs.some((x) => x.status === status) ? this.stageLabel(status!) : '';
     const title = this.title();
+    this.exporting.set(true);
     void this.exporter.xlsx(`${title} ${stage}`.trim(), [{ name: stage || title, columns, rows }])
-      .catch((err) => this.toast.error(t('staff.monitoring.toast.exportFailed', 'Export'), apiErrorMessage(err)));
+      .then(() => this.toast.success(t('staff.monitoring.toast.exported', 'Export ready'),
+        t('staff.monitoring.toast.exportedText', '{count} units saved to Excel.', { count: rows.length })))
+      .catch((err) => this.toast.error(t('staff.monitoring.toast.exportFailed', 'Export'), apiErrorMessage(err)))
+      .finally(() => this.exporting.set(false));
   }
 
   /** The stage's name (tiles, export). */

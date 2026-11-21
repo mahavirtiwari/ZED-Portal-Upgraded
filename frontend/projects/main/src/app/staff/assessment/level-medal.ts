@@ -9,11 +9,14 @@ import { canonicalLevelCode, levelName } from '../../msme/shared/levels';
 @Component({
   selector: 'zed-level-medal',
   host: { class: 'lm' },
-  template: `@if (name()) {<span class="lm-dot" [class]="'lm-dot lm-' + code()" aria-hidden="true">Z</span><span class="lm-name">{{ name() }}</span>}`,
+  // 2026-11-21 (Assessment Agency UI audit, item 10): the medal's "Z" is drawn by the style sheet, so neither the page's text nor
+  // the accessibility tree reads "Z Silver"; the medal itself is aria-hidden.
+  template: `@if (name()) {<span class="lm-dot" [class]="'lm-dot lm-' + code()" aria-hidden="true"></span><span class="lm-name">{{ name() }}</span>}`,
   styles: `
     :host { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
     .lm-dot { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px;
       font-weight: 800; font-style: italic; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .55); background: linear-gradient(135deg, #8ad6a4, #2f9aa3 50%, #1f6d73); }
+    .lm-dot::before { content: 'Z'; }
     .lm-bronze { background: linear-gradient(135deg, #e9a888, #c9714f 50%, #9c4f2e); }
     .lm-silver { background: linear-gradient(135deg, #dfe2e4, #a5abb0 50%, #7b838a); }
     .lm-gold { background: linear-gradient(135deg, #f0d98a, #c9a23f 50%, #9c7a1d); }

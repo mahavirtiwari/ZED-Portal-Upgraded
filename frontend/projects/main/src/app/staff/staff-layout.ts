@@ -25,21 +25,63 @@ import { TextPipe } from '../content/page-text';
  * The shared blocks of the pages (buttons, tables, pills, cards) are in styles/_v4-skin.scss.
  */
 /** An open pop-up of the staff pages (the Bootstrap-style modals and the dialogs marked aria-modal). */
-export const DIALOG_SELECTOR = '.modal.d-block, .modal.show, [role="dialog"][aria-modal="true"]';
+export const DIALOG_SELECTOR = '.modal.d-block, .modal.show, [role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]';
 
-/** The pop-up on top (the last open one in the page), or null. */
-export function topDialog(root: ParentNode): HTMLElement | null {
-  const open = [...root.querySelectorAll<HTMLElement>(DIALOG_SELECTOR)].filter((el) => !el.closest('[hidden]') && getComputedStyle(el).display !== 'none');
-  return open.at(-1) ?? null;
+/** Shown: not inside [hidden], not display:none, not visibility:hidden. */
+function shown(el: HTMLElement): boolean {
+  if (el.closest('[hidden]')) return false;
+  const style = getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden';
 }
 
-/** A pop-up's close button: its ×, by class (btn-close, *-x, *-close, data-dismiss) or by its "Close" label. */
+/**
+ * The pop-up on top, or null: among the shown outermost pop-ups, the one with the highest z-index (the last one in the page
+ * when equal). 2026-11-21 (Assessment Agency UI audit, item 3): a pop-up nested in another (an inner [role=dialog] in a
+ * .modal) counts once, as its outer element, and a pop-up kept in the page but hidden by its styles is skipped, so Esc
+ * reaches the pop-up the user sees (Add Sub-User, Expenditure "Cases", "Other ZED units with the same PAN").
+ */
+export function topDialog(root: ParentNode): HTMLElement | null {
+  const open = [...root.querySelectorAll<HTMLElement>(DIALOG_SELECTOR)]
+    .filter((el) => !el.parentElement?.closest(DIALOG_SELECTOR) && shown(el));
+  let top: HTMLElement | null = null;
+  let topZ = -Infinity;
+  for (const el of open) {
+    const z = layer(el);
+    if (z >= topZ) { top = el; topZ = z; }
+  }
+  return top;
+}
+
+/** The z-index the pop-up is painted at on the page: the outermost one set on it or its parents (0 when none). */
+function layer(el: HTMLElement): number {
+  let z = 0;
+  for (let n: HTMLElement | null = el; n && n !== document.body; n = n.parentElement) {
+    const v = Number.parseInt(getComputedStyle(n).zIndex, 10);
+    if (Number.isFinite(v)) z = v;
+  }
+  return z;
+}
+
+/**
+ * A pop-up's close button: one marked data-dismiss, its × by class (btn-close, *-x, *-close) or by its "Close" label, a button
+ * showing only "×", else the footer's Close / Cancel button.
+ */
 export function closeButtonOf(dialog: HTMLElement): HTMLButtonElement | null {
   const scope = dialog.closest<HTMLElement>('.modal') ?? dialog;
-  const buttons = [...scope.querySelectorAll<HTMLButtonElement>('button')];
-  return buttons.find((b) => b.hasAttribute('data-dismiss') || /(^|\s)(btn-close|[\w]+-x|[\w]+-close)(\s|$)/.test(b.className))
+  const buttons = [...scope.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !b.closest('[hidden]'));
+  const text = (b: HTMLButtonElement) => (b.textContent ?? '').replace(/\s+/g, ' ').trim();
+  return buttons.find((b) => b.hasAttribute('data-dismiss'))
+    ?? buttons.find((b) => /(^|\s)(btn-close|[\w]+-x|[\w]+-close)(\s|$)/.test(b.className))
     ?? buttons.find((b) => /close/i.test(b.getAttribute('aria-label') ?? ''))
+    ?? buttons.find((b) => /^[×✕✖]$/.test(text(b)))
+    ?? [...buttons].reverse().find((b) => b.closest('.modal-footer, [class*="-foot"]') && /^(close|cancel)$/i.test(text(b)))
     ?? null;
+}
+
+/** Esc pressed in an open drop-down inside the pop-up (a combobox, a menu): the drop-down closes, not the pop-up. */
+export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement): boolean {
+  const expanded = target?.closest?.('[aria-expanded="true"]');
+  return !!expanded && dialog.contains(expanded);
 }
 
 @Component({
@@ -418,10 +460,12 @@ export class StaffLayout {
   @HostListener('document:keydown.escape', ['$event'])
   protected escapeDialog(event?: Event): void {
     // Esc that closed something inside the pop-up (a row menu, an open drop-down) does not close the pop-up too.
+    // 2026-11-21 (Assessment Agency UI audit, item 3): only a drop-down open inside the pop-up keeps it open; an expanded
+    // control outside it (the menu button that opened it, a toggle of the page) no longer swallows the Esc.
     const target = event?.target as Element | null;
-    if (event?.defaultPrevented || target?.closest?.('[aria-expanded="true"]')) return;
+    if (event?.defaultPrevented) return;
     const dialog = topDialog(document);
-    if (!dialog) return;
+    if (!dialog || escapeIsForDropDown(target, dialog)) return;
     setTimeout(() => {
       if (dialog.isConnected && topDialog(document) === dialog) closeButtonOf(dialog)?.click();
     });

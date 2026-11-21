@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, effect, input, signal, untracked } from '@angular/core';
 import { TextPipe, t } from '../../content/page-text';
 
 /** One mark: a label, its value and, for categorical charts, its colour (slot of CHART_COLORS or a level colour). */
@@ -291,7 +291,7 @@ export function axisTicks(max: number): number[] {
         </div>
         <div class="gc-area">
           @for (t of ticks(); track $index) { <span class="gc-grid" [style.bottom.%]="$index * 25" aria-hidden="true"></span> }
-          <div class="gc-plot" [style.--cols]="items().length || 1" role="img" [attr.aria-label]="ariaLabel()">
+          <div class="gc-plot" [style.--cols]="items().length || 1" role="img" [attr.aria-label]="ariaLabel()" (mouseleave)="hover.set(-1)">
             @for (it of items(); track it.label; let p = $index) {
               <div class="gc-group" tabindex="0" (mouseenter)="hover.set(p)" (mouseleave)="hover.set(-1)" (focus)="hover.set(p)" (blur)="hover.set(-1)"
                    [attr.aria-label]="describe(it)">
@@ -347,6 +347,15 @@ export class GroupedColumnChart {
   readonly legend = input(true);
   protected readonly hover = signal(-1);
   protected readonly ticks = computed(() => axisTicks(Math.max(0, ...this.items().flatMap((i) => i.values))));
+
+  constructor() {
+    // 2026-11-21 (Assessment Agency UI audit, item 4): new columns (Monthly / Yearly, other filters) start without a tooltip;
+    // the old index would otherwise open one over a column the pointer never reached.
+    effect(() => {
+      this.items();
+      untracked(() => this.hover.set(-1));
+    });
+  }
 
   protected height(v: number): number {
     const top = this.ticks()[4] || 1;

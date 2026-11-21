@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringPage } from './monitoring';
 import { ToastService } from '../toast';
+import { AuthService } from '@zed/shared';
 
 /** A date `days` from today in the procedures' "MMMM d, yyyy" form. */
 function inDays(days: number): string {
@@ -62,11 +63,12 @@ describe('MonitoringPage', () => {
     await settle();
   }
 
-  async function setup(status: string | null = null) {
+  async function setup(status: string | null = null, roleId: number | null = null) {
     await TestBed.configureTestingModule({
       imports: [MonitoringPage],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(status ? { status } : {}) } } }],
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(status ? { status } : {}) } } },
+        ...(roleId ? [{ provide: AuthService, useValue: { currentUser: () => ({ roleId }) } }] : [])],
     }).compileComponents();
     fixture = TestBed.createComponent(MonitoringPage);
     http = TestBed.inject(HttpTestingController);
@@ -167,10 +169,11 @@ describe('MonitoringPage', () => {
       unit(3, { NcFinalClosureDt: null }),
     ]);
     const due = () => [...el.querySelectorAll('tbody tr')].map((r) => r.querySelectorAll('td')[7].textContent!.trim());
-    expect(due()).toEqual(['Overdue 2 days', '8 days left', '']);
+    // 2026-11-21 (audit item 7): a unit without a due date says so.
+    expect(due()).toEqual(['Overdue 2 days', '8 days left', 'No TAT set']);
     (el.querySelector('.mo-due-h') as HTMLButtonElement).click();
     await settle();
-    expect(due()).toEqual(['8 days left', 'Overdue 2 days', '']);
+    expect(due()).toEqual(['8 days left', 'Overdue 2 days', 'No TAT set']);
   });
 
   it('lets master admin extend the NC closure date and reloads', async () => {
@@ -275,7 +278,8 @@ describe('MonitoringPage', () => {
       counts, canManage: false, stages,
     });
     await settle();
-    expect(tile('Quality check').textContent).toContain('Desktop 2 · Site 3 · 4 delayed');
+    // 2026-11-21 (audit item 7): each count on its own row at every width.
+    expect([...tile('Quality check').querySelectorAll('.lc-part')].map((p) => p.textContent!.trim())).toEqual(['Desktop 2', 'Site 3', '4 delayed']);
     expect(tile('Assessment in progress').textContent).toContain('4');
     expect(tab('desktop').textContent).toContain('1');
     expect(tab('site').textContent).toContain('2');
@@ -379,8 +383,36 @@ describe('MonitoringPage', () => {
     expect(sheet.columns).toContain('Contact mobile');
     expect(sheet.rows[0]).toContain('9876543210');
     expect(sheet.rows[0]).toContain('Site assessment');
+    // 2026-11-21 (audit item 7): the button says it is working, then a toast says the file is ready.
+    const button = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Exporting…') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
     req.flush(new Blob(['x']));
     await settle();
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Export')).toBe(true);
+    expect(TestBed.inject(ToastService).toasts().map((x) => x.title)).toContain('Export ready');
+  });
+
+  it('keeps ?status= in step with the chosen stage (audit item 7)', async () => {
+    await setup();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    listRequest().flush({ units: [], counts, canManage: false });
+    await settle();
+    tile('Non-conformance').click();
+    await settle();
+    listRequest().flush({ units: [], counts, canManage: false });
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { status: 4 }, queryParamsHandling: 'merge', replaceUrl: true }));
+  });
+
+  it('an agency login has no agency filter or Agency column, and no Due column without due dates (audit item 7)', async () => {
+    await setup(null, 2);
+    listRequest().flush({ units: [unit(1, { CertificationStatus: 9, NcFinalClosureDt: null })], counts, canManage: false });
+    await settle();
+    expect(el.querySelector('#monitoringAgency')).toBeNull();
+    const heads = [...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim());
+    expect(heads).not.toContain('Agency');
+    expect(heads).not.toContain('Due');
+    expect(el.querySelector('tbody .mo-name b')?.textContent ?? '').not.toContain('Agency');
   });
 });
 
@@ -527,7 +559,7 @@ describe('MonitoringPage per system', () => {
       stages: [{ status: 2, total: 0, delayed: 0, tracks: {} }, { status: 3, total: 2, delayed: 1, tracks: { m1: 1, m2: 1 } }, { status: 5, total: 0, delayed: 0, tracks: {} }],
     });
     await settle();
-    expect(tile('Consultancy in progress').textContent).toContain('M1 1 · M2 1 · M3 0');
+    expect([...tile('Consultancy in progress').querySelectorAll('.lc-part')].map((p) => p.textContent!.trim())).toEqual(['M1 1', 'M2 1', 'M3 0']);
     const tabs = [...el.querySelectorAll('[data-track]')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
     expect(tabs).toEqual(['All milestones 2', 'Milestone 1 1', 'Milestone 2 1', 'Milestone 3 0']);
     expect(el.querySelectorAll('tbody tr').length).toBe(2);

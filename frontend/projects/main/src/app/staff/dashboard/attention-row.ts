@@ -64,7 +64,8 @@ const ICONS: Record<string, string> = {
     .at-text b.is-warn { color: #9a5f06; }
     .at-text b.is-bad { color: #c8473c; }
     .at-text b.is-good { color: #1e7a3c; }
-    .at-text span { font-size: 12.5px; font-weight: 500; line-height: 17px; color: #3d5559; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 2026-11-21 (Assessment Agency UI audit, item 4): the whole label, wrapped (two lines at most widths; it was cut with "…" even at 1536px). */
+    .at-text span { font-size: 12.5px; font-weight: 500; line-height: 17px; color: #3d5559; white-space: normal; overflow-wrap: break-word; }
     .at-go { flex: none; width: 16px; height: 16px; color: #6f8487; }
     .is-zero .at-go { opacity: .5; }
   `,

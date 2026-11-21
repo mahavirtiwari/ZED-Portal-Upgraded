@@ -506,6 +506,35 @@ describe('User management', () => {
       expect(toasts()).toContain('Sub-User added: Sub-User AG1S02 created.');
     });
 
+    it('marks each missing or wrong field before posting and names the screens for the main portal (audit item 6)', async () => {
+      await create(SubUsersPage);
+      http.expectOne('/api/staff/sub-users').flush({
+        ...list, permissions: [{ key: 'assessors', label: 'Assessors / consultants' }, { key: 'sa-allotment', label: 'Site / consultancy allotment' }],
+      });
+      await settle();
+      button('+ Add Sub-User').click();
+      await settle();
+      expect([...el.querySelectorAll('.su-perm-name')].map((s) => s.textContent!.trim())).toEqual(['Assessors', 'Site assessment allotment']);
+      submit();
+      await settle();
+      http.expectNone((r) => r.method === 'POST');
+      expect(el.querySelector('#sub-name')!.classList).toContain('is-invalid');
+      expect(el.querySelector('#sub-name-err')!.textContent).toContain('Please enter the name.');
+      expect(el.querySelector('#sub-email-err')!.textContent).toContain('Please enter the e-mail address.');
+      expect(el.querySelector('#sub-screens-err')!.textContent).toContain('Please select at least one screen.');
+      expect(el.querySelector('.su-form-error')!.textContent).toContain('Please correct the marked fields.');
+      type('#sub-name', 'Asha');
+      type('#sub-email', 'asha@');
+      type('#sub-mobile', '123');
+      await settle();
+      expect(el.querySelector('#sub-name-err')).toBeNull();
+      submit();
+      await settle();
+      http.expectNone((r) => r.method === 'POST');
+      expect(el.querySelector('#sub-email-err')!.textContent).toContain('valid e-mail');
+      expect(el.querySelector('#sub-mobile-err')!.textContent).toContain('10 digit');
+    });
+
     it('gives an agency sub-user states, and an operation admin states and agencies (2026-11-16)', async () => {
       await create(SubUsersPage);
       const states = [{ code: '28', name: 'ANDHRA PRADESH' }, { code: '36', name: 'TELANGANA' }];

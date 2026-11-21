@@ -73,7 +73,8 @@
         }
         @if (model.assessorType && verifyOff) {
           <!-- Verification off (Admin -> Settings -> Professional Verification): the details are typed, no Search. -->
-          <div class="alert alert-warning mt-3 mb-3" role="note">{{ consultancy ? ("Verification is off: enter the consultant/expert's details as on the certificate." | t: 'staff.assessorForm.verifyOff.consultancyNote') : ("Verification is off: enter the assessor's details as on the certificate." | t: 'staff.assessorForm.verifyOff.note') }}</div>
+          <!-- 2026-11-21 (audit item 5): worded for the agency (the Admin's verification setting is not its concern). -->
+          <div class="alert alert-info mt-3 mb-3" role="note">{{ consultancy ? ("Enter the consultant/expert's details exactly as on the certificate." | t: 'staff.assessorForm.verifyOff.agencyConsultancyNote') : ("Enter the assessor's details exactly as on the certificate." | t: 'staff.assessorForm.verifyOff.agencyNote') }}</div>
           <div class="form-grid">
             <label for="certificateNo">{{ 'Certificate Number' | t: 'staff.assessorForm.certificateLabel' }}<span class="req">*</span></label>
             <div>
@@ -198,7 +199,14 @@
             </div>
             @if (submitted() && !model.idProofType) { <span class="help-block">{{ 'Id Proof required.' | t: 'staff.assessorForm.idProof.requiredError' }}</span> }
           </div>
-          @if (model.idProofType) {
+          @if (panForIdProof; as pan) {
+            <!-- 2026-11-21 (audit item 5): the PAN is not asked twice; the PAN card number is the PAN above (or the saved one). -->
+            <span class="af-label">{{ 'PAN Card Number' | t: 'staff.assessorForm.idProof.panNumberLabel' }}</span>
+            <div>
+              <span class="af-pan-proof" data-pan-proof>{{ pan }}</span>
+              <small class="muted d-block mt-1">{{ isNew ? ('The PAN entered above is used.' | t: 'staff.assessorForm.idProof.panFromAbove') : ('The saved PAN is used.' | t: 'staff.assessorForm.idProof.panFromProfile') }}</small>
+            </div>
+          } @else if (model.idProofType) {
             <label for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? ('Aadhaar Card Number' | t: 'staff.assessorForm.idProof.aadhaarNumberLabel') : ('PAN Card Number' | t: 'staff.assessorForm.idProof.panNumberLabel') }}</label>
             <div>
               <input id="idProofNumber" name="idProofNumber" class="form-control af-mid" maxlength="20" autocomplete="off"
@@ -237,7 +245,8 @@
         </div>
       </section>
 
-      @if (!isNew) {
+      <!-- 2026-11-21 (audit item 5): the block reason only for a blocked assessor. -->
+      @if (!isNew && isActive() === false) {
         <section class="zed-card af-section">
           <h4 class="af-head"><span class="af-no">{{ first + 4 }}</span>{{ 'Block reason' | t: 'staff.assessorForm.blockSection.title' }}</h4>
           <div class="form-grid">
@@ -335,7 +344,7 @@
       <tbody>
         @for (l of levels(); track l.code) {
           <tr>
-            <th scope="row"><span [class]="'af-medal m-' + medal(l.code)" aria-hidden="true">Z</span>{{ l.name }}</th>
+            <th scope="row"><span [class]="'af-medal m-' + medal(l.code)" aria-hidden="true"></span>{{ l.name }}</th>
             @for (m of modes; track m) {
               <td>
                 @if (l.modes.includes(m)) {

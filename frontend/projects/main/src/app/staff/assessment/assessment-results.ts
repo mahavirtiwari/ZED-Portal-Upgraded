@@ -89,8 +89,8 @@ const EXPORT_LIMIT = 10_000;
         <!-- 2026-11-18: staff-12's row: one search box (left icon), All states / All levels / All sizes, no labels. -->
         <div class="filter rs-find">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <input type="search" id="resSearch" class="form-control" maxlength="50" [placeholder]="'Search ZED ID, Udyam number or unit name' | t: 'staff.assessmentResults.search.placeholder'"
-                 [attr.aria-label]="'Search ZED ID, Udyam number or unit name' | t: 'staff.assessmentResults.search.placeholder'" [(ngModel)]="searchText" (ngModelChange)="typed()" (keyup.enter)="search()" />
+          <input type="search" id="resSearch" class="form-control" maxlength="50" [placeholder]="'Search ZED ID, Udyam no. or unit name' | t: 'staff.assessmentResults.search.placeholder'"
+                 [attr.aria-label]="'Search ZED ID, Udyam no. or unit name' | t: 'staff.assessmentResults.search.placeholder'" [(ngModel)]="searchText" (ngModelChange)="typed()" (keyup.enter)="search()" />
         </div>
         <div class="filter">
           <select class="form-select" id="resState" [attr.aria-label]="'State' | t: 'staff.assessmentResults.filter.stateLabel'" [(ngModel)]="state" (ngModelChange)="search()">
@@ -330,7 +330,8 @@ const EXPORT_LIMIT = 10_000;
     .rs-filters .filter { flex: 0 1 200px; min-width: 0; }
     .rs-filters .filter.wide { flex: 1 1 420px; max-width: 430px; }
     .rs-filters .form-label { font-size: 11.5px; font-weight: 600; color: #6f8487; margin-bottom: 4px; }
-    .rs-filters .filter.rs-find { flex: 0 1 340px; position: relative; }
+    /* 2026-11-21 (Assessment Agency UI audit, item 8): wide enough for the whole placeholder ("…or unit n" was cut). */
+    .rs-filters .filter.rs-find { flex: 1 1 380px; min-width: 260px; max-width: 460px; position: relative; }
     .rs-find svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6f8487; }
     .rs-find input { padding-left: 36px; background-image: none !important; }
     .rs-q { display: flex; gap: 12px; }

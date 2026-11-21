@@ -22,7 +22,8 @@ export function blockHistoryItems(entries: readonly BlockHistoryEntry[], agencyW
     : r === 1 ? t('staff.userLists.history.byAdmin', 'By {name} (Admin)', { name })
     : t('staff.userLists.history.by', 'By {name}', { name });
   return entries.map((e) => {
-    const parts = [e.actionBy ? by(e.actionBy, e.actionByRole) : '', e.reason ? t('staff.userLists.history.reason', 'Reason: {reason}', { reason: e.reason }) : ''].filter(Boolean);
+    const who = e.actionByName?.trim() || e.actionBy;
+    const parts = [who ? by(who, e.actionByRole) : '', e.reason ? t('staff.userLists.history.reason', 'Reason: {reason}', { reason: e.reason }) : ''].filter(Boolean);
     return { kind: 'status', title: e.action, detail: parts.join(' · '), at: e.actionDate, tone: e.action === 'Blocked' ? 'bad' : 'good' };
   });
 }

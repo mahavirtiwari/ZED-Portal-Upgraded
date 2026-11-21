@@ -30,7 +30,8 @@
     <ul class="nav nav-tabs uv-tabs" role="tablist">
       @for (id of [1, 2, 9, 3]; track id) {
         <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">
+          <!-- 2026-11-21 (Assessment Agency UI audit, item 10): each tab named by its label for screen readers. -->
+          <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.id]="'da-tab-' + id" [attr.aria-label]="tabLabel(id)" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">
             <span class="uv-tab-name">{{ tabLabel(id) }}</span>
             @if (id === 2) { <span class="uv-tab-n">{{ '{count} items' | t: 'staff.daDetails.tab.basicCount.label' : { count: basicItems } }}</span> }
             @if (id === 3) { <span class="uv-tab-n">{{ previewMode() ? ('{count} parameters' | t: 'staff.daDetails.tab.paramCount.label' : { count: d.sections.length }) : ('{done} of {total}' | t: 'staff.daDetails.tab.paramDone.label' : { done: completeCount(), total: d.sections.length }) }}</span> }
@@ -39,7 +40,7 @@
       }
       @if (ncTabs().length) {
         <li class="nav-item" role="presentation">
-          <button class="nav-link" [class.active]="ncTab()" type="button" role="tab" [attr.aria-selected]="ncTab()" (click)="openNc()">
+          <button class="nav-link" [class.active]="ncTab()" type="button" role="tab" id="da-tab-nc" [attr.aria-label]="tabLabel(4)" [attr.aria-selected]="ncTab()" (click)="openNc()">
             <span class="uv-tab-name">{{ tabLabel(4) }}</span><span class="uv-tab-n">{{ ncTabs().length === 1 ? ('{count} round' | t: 'staff.daDetails.tab.round.label' : { count: ncTabs().length }) : ('{count} rounds' | t: 'staff.daDetails.tab.rounds.label' : { count: ncTabs().length }) }}</span>
           </button>
         </li>
@@ -59,7 +60,7 @@
 
       <!-- ================================================= overview -->
       @if (tab() === 1) {
-        <div class="tab-pane fade show active" role="tabpanel">
+        <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="da-tab-1">
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.sitePhotos" box="alert alert-warning" />
           }
@@ -205,7 +206,7 @@
            raw materials) numbered as the unit's form (1 to 11); items not accepted are outlined red with "Raised in NC 1"; the same
            buttons as before (Validate / Edit, Edit Remarks). -->
       @if (tab() === 2) {
-        <div class="tab-pane fade show active" role="tabpanel">
+        <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="da-tab-2">
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.productPhotos" box="alert alert-warning" />
           }
@@ -388,7 +389,7 @@
 
       <!-- ================================================= ESG -->
       @if (tab() === 9) {
-        <div class="tab-pane fade show active" role="tabpanel">
+        <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="da-tab-9">
           @if (surveillanceSystem) {
             <div class="panel panel-default panel-black"><div class="panel-body">{{ 'ESG Check List' | t: 'staff.daDetails.esg.esg.heading' }}</div></div>
           } @else {
@@ -436,7 +437,7 @@
 
       <!-- ================================================= parameters -->
       @if (tab() === 3) {
-        <div class="tab-pane fade show active" role="tabpanel">
+        <div class="tab-pane fade show active" role="tabpanel" aria-labelledby="da-tab-3">
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.documents" box="alert alert-warning" />
           }

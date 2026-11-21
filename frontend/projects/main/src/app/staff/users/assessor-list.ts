@@ -219,7 +219,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                     @let m = medals(s.Assessments);
                     @if (m.items.length) {
                       <span class="lv-row" role="img" [attr.aria-label]="m.aria">
-                        @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true">Z</span> }
+                        @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true"></span> }
                       </span>
                       <span class="as-sub">{{ m.modes }}</span>
                     } @else {
@@ -345,6 +345,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     .lv-row { display: flex; gap: 7px; margin-bottom: 3px; }
     .lv { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; font-style: italic;
       background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5); }
+    .lv::before { content: 'Z'; } /* 2026-11-21 (audit item 10): not in the page's text */
     .lv-bronze { background: #c9714f; }
     .lv-silver { background: #9aa4aa; }
     .lv-gold { background: #c9a23f; }

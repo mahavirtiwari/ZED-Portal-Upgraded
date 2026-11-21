@@ -56,7 +56,7 @@ export interface SamePanResponse {
                 <div class="modal-header">
                   <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                     <h3 class="registration-title m-0" id="same-pan-title">{{ 'Other ZED units with the same PAN' | t: 'staff.samePan.dialog.title' }}</h3>
-                    <button type="button" class="btn btn-link p-0" [attr.aria-label]="'Close' | t: 'staff.samePan.dialog.closeAria'" (click)="open.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
+                    <button type="button" class="btn btn-link p-0" data-dismiss [attr.aria-label]="'Close' | t: 'staff.samePan.dialog.closeAria'" (click)="open.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
                   </div>
                 </div>
                 <div class="modal-body">

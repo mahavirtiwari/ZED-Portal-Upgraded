@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
 import { PORTAL_SYSTEM } from '../../portal-system';
+import { unsavedChangesGuard } from '../unsaved-changes.guard';
 
 const masterAdmin = authGuard('/staff', [StaffRole.MasterAdmin]);
 const agency = authGuard('/staff', [StaffRole.Agency]);
@@ -54,12 +55,14 @@ const MAIN_USERS_ROUTES: Routes = [
     path: 'assessors/new',
     title: 'ZED | Add Assessor',
     canActivate: [agency],
+    canDeactivate: [unsavedChangesGuard],
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),
   },
   {
     path: 'assessors/:userId',
     title: 'ZED | Assessor',
     canActivate: [agencyOrMaster],
+    canDeactivate: [unsavedChangesGuard],
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),
   },
   {

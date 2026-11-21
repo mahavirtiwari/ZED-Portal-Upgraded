@@ -1,3 +1,4 @@
+import { blockHistoryItems } from './history-panel';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -245,5 +246,15 @@ describe('AssessorFormPage (staff-05 redesign)', () => {
     expect(el.querySelector('.af-rail')).toBeNull();
     expect(head().querySelector('[aria-current]')!.textContent!.trim()).toBe('Add');
     http.expectNone((r) => r.url.endsWith('/open-assessments'));
+  });
+});
+
+describe('block history lines (audit item 5)', () => {
+  it('names who did it when the name is known, else keeps the login ID', () => {
+    const items = blockHistoryItems([
+      { action: 'Blocked', reason: 'Left', actionBy: 'ZEDV4MA01', actionByRole: 7, actionDate: '2026-11-10T10:00:00', actionByName: 'A. Kumar' },
+      { action: 'Unblocked', reason: null, actionBy: 'ZEDV4AG01', actionByRole: 2, actionDate: '2026-11-11T10:00:00', actionByName: null },
+    ]);
+    expect(items.map((i) => i.detail)).toEqual(['By A. Kumar (Master Admin) · Reason: Left', 'By ZEDV4AG01 (agency)']);
   });
 });

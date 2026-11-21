@@ -27,7 +27,7 @@ export interface ListCount {
   imports: [NgTemplateOutlet],
   host: { class: 'd-block' },
   template: `
-    <div class="lc" [attr.role]="buttons() ? 'group' : 'list'" [attr.aria-label]="label()">
+    <div class="lc" [class.lc-sub-rows]="subRows()" [attr.role]="buttons() ? 'group' : 'list'" [attr.aria-label]="label()">
       @for (c of counts(); track c.key ?? c.label) {
         @if (buttons()) {
           <button type="button" class="lc-item lc-btn" [class.on]="isOn(c)" [attr.aria-pressed]="isOn(c)" (click)="pick.emit(c)">
@@ -66,6 +66,9 @@ export interface ListCount {
     .lc-sub { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); }
     /* 2026-11-21 (UI audit L2): "Desktop 1 · Site 0" breaks only between its parts, never inside "Desktop 1". */
     .lc-part { white-space: nowrap; }
+    /* 2026-11-21 (Assessment Agency UI audit, item 7): with subRows each part of the line on its own row, at every width. */
+    .lc-sub-rows .lc-sub { display: block; margin: 2px 0 0; }
+    .lc-sub-rows .lc-part { display: block; }
     .lc-delta { position: absolute; right: 16px; bottom: 14px; font-size: 12px; font-weight: 700; color: #2f9e58; }
     .lc-delta.down { color: #c8473c; }
     @media (max-width: 575.98px) {
@@ -78,8 +81,11 @@ export interface ListCount {
 export class ListCounts {
   /** A line's parts ("Desktop 1 · Site 0" → "Desktop 1", "· Site 0"), each kept on one line. */
   protected parts(sub: string): string[] {
-    return sub.split(' · ').map((p, i) => (i ? '· ' + p : p));
+    return sub.split(' · ').map((p, i) => (i && !this.subRows() ? '· ' + p : p));
   }
+
+  /** Each part of a tile's line on its own row ("Desktop 1" / "Site 0"), without the dots between them. */
+  readonly subRows = input(false);
 
   readonly counts = input.required<ListCount[]>();
   /** The tiles are buttons that filter the list (also when `selected` is given). */

@@ -16,6 +16,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { plain } from '../users/user-display';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 interface PermissionOption {
   key: string;
@@ -198,22 +199,28 @@ const API = '/api/staff/sub-users';
                 <h3 class="m-0" id="sub-user-title">{{ editing() ? ('Edit {id}' | t: 'staff.subUsers.form.editTitle' : { id: editing() }) : ('Add {type}' | t: 'staff.subUsers.form.addTitle' : { type: accountType() }) }}</h3>
                 <small class="su-sub">{{ editing() ? f.userName : ('The User ID is generated and the login details are e-mailed to the user.' | t: 'staff.subUsers.form.addSub') }}</small>
               </div>
-              <button type="button" class="su-x" [attr.aria-label]="'Close' | t: 'staff.subUsers.form.closeAria'" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
+              <button type="button" class="su-x" data-dismiss [attr.aria-label]="'Close' | t: 'staff.subUsers.form.closeAria'" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18 M6 6l12 12" /></svg></button>
             </div>
             <form class="su-form" (ngSubmit)="save()" novalidate>
               <div class="modal-body su-body">
                 <div class="su-col">
                   <div class="su-field">
                     <label for="sub-name">{{ 'Name' | t: 'staff.subUsers.form.nameLabel' }}<span class="req">*</span></label>
-                    <input class="form-control" id="sub-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.subUsers.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                    <input class="form-control" id="sub-name" name="userName" maxlength="100" [placeholder]="'Full name' | t: 'staff.subUsers.form.namePlaceholder'" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)"
+                           [class.is-invalid]="!!fieldErrors().userName" [attr.aria-invalid]="!!fieldErrors().userName" [attr.aria-describedby]="fieldErrors().userName ? 'sub-name-err' : null" />
+                    @if (fieldErrors().userName; as e) { <span class="help-block" id="sub-name-err">{{ e }}</span> }
                   </div>
                   <div class="su-field">
                     <label for="sub-email">{{ 'E-mail' | t: 'staff.subUsers.form.emailLabel' }}<span class="req">*</span></label>
-                    <input class="form-control" id="sub-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.subUsers.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                    <input class="form-control" id="sub-email" name="email" type="email" maxlength="100" [placeholder]="'name@organisation.in' | t: 'staff.subUsers.form.emailPlaceholder'" [ngModel]="f.email" (ngModelChange)="patch('email', $event)"
+                           [class.is-invalid]="!!fieldErrors().email" [attr.aria-invalid]="!!fieldErrors().email" [attr.aria-describedby]="fieldErrors().email ? 'sub-email-err' : null" />
+                    @if (fieldErrors().email; as e) { <span class="help-block" id="sub-email-err">{{ e }}</span> }
                   </div>
                   <div class="su-field">
                     <label for="sub-mobile">{{ 'Mobile number' | t: 'staff.subUsers.form.mobileLabel' }}</label>
-                    <input class="form-control" id="sub-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits (optional)' | t: 'staff.subUsers.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                    <input class="form-control" id="sub-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [placeholder]="'10 digits (optional)' | t: 'staff.subUsers.form.mobilePlaceholder'" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)"
+                           [class.is-invalid]="!!fieldErrors().mobileNo" [attr.aria-invalid]="!!fieldErrors().mobileNo" [attr.aria-describedby]="fieldErrors().mobileNo ? 'sub-mobile-err' : null" />
+                    @if (fieldErrors().mobileNo; as e) { <span class="help-block" id="sub-mobile-err">{{ e }}</span> }
                   </div>
                   <!-- 2026-11-16 (approved): the states (and, for an operation admin, the assessment agencies) it may see. -->
                   <h4 class="su-section">{{ 'Scope' | t: 'staff.subUsers.form.scopeTitle' }}</h4>
@@ -246,12 +253,13 @@ const API = '/api/staff/sub-users';
                       <button type="button" class="btn btn-link p-0" (click)="patch('permissions', [])">{{ 'Clear' | t: 'staff.subUsers.form.clearButton' }}</button>
                     </span>
                   </div>
-                  <div class="su-perms" role="group" aria-labelledby="sub-screens">
+                  @if (fieldErrors().permissions; as e) { <span class="help-block su-perms-err" id="sub-screens-err">{{ e }}</span> }
+                  <div class="su-perms" role="group" aria-labelledby="sub-screens" [class.is-invalid]="!!fieldErrors().permissions" [attr.aria-describedby]="fieldErrors().permissions ? 'sub-screens-err' : null">
                     @for (p of options(); track p.key) {
                       <label class="toggle-card form-switch" [class.active]="f.permissions.includes(p.key)" [for]="'perm-' + p.key">
                         <input class="form-check-input" type="checkbox" role="switch" [id]="'perm-' + p.key" [name]="'perm-' + p.key"
                                [checked]="f.permissions.includes(p.key)" (change)="toggle(p.key)" />
-                        <span class="su-perm-name" [title]="p.label">{{ p.label }}</span>
+                        <span class="su-perm-name">{{ screenName(p) }}</span>
                       </label>
                     }
                   </div>
@@ -395,6 +403,12 @@ export class SubUsersPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly formError = signal('');
+  /**
+   * 2026-11-21 (Assessment Agency UI audit, item 6): each field's problem, checked in the browser before the form is sent (as
+   * the server checks them: name, e-mail, optional 10-digit mobile, at least one screen), so every wrong field is marked.
+   */
+  protected readonly fieldErrors = signal<Partial<Record<'userName' | 'email' | 'mobileNo' | 'permissions', string>>>({});
+  private readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
   /** The row menu action waiting for its confirmation, and the server's refusal shown in it. */
   protected readonly pending = signal<PendingAction | null>(null);
   protected readonly pendingError = signal('');
@@ -407,7 +421,29 @@ export class SubUsersPage {
   }
 
   protected label(key: string): string {
-    return this.options().find((p) => p.key === key)?.label ?? key;
+    const p = this.options().find((o) => o.key === key);
+    return p ? this.screenName(p) : key;
+  }
+
+  /**
+   * A screen's name as the owner reads it, editable in Admin → Texts and worded for this portal (2026-11-21, audit item 6: the
+   * main portal's agency read "Assessors / consult…"); a screen added later on the server keeps the server's name.
+   */
+  protected screenName(p: PermissionOption): string {
+    const c = this.consultancy;
+    switch (p.key) {
+      case 'assessors': return c ? t('staff.subUsers.screen.consultants', 'Consultants') : t('staff.subUsers.screen.assessors', 'Assessors');
+      case 'sa-allotment': return c ? t('staff.subUsers.screen.consultancyAllotment', 'Consultancy allotment') : t('staff.subUsers.screen.siteAllotment', 'Site assessment allotment');
+      case 'da-allotment': return t('staff.subUsers.screen.desktopAllotment', 'Desktop allotment');
+      case 'users': return c ? t('staff.subUsers.screen.consultantOrganisations', 'Consultant organisations and their consultants') : t('staff.subUsers.screen.agencies', 'Agencies and their assessors');
+      case 'monitoring': return t('staff.subUsers.screen.monitoring', 'Monitoring');
+      case 'results': return t('staff.subUsers.screen.results', 'Completed and rejected');
+      case 'reports': return t('staff.subUsers.screen.reports', 'Reports');
+      case 'payments': return t('staff.subUsers.screen.payments', 'Payment Received');
+      case 'allot': return t('staff.subUsers.screen.allot', 'Allotment');
+      case 'password-reset': return t('staff.subUsers.screen.passwordReset', 'Password Reset Link');
+      default: return p.label;
+    }
   }
 
   /** Every screen there is to give (shown as one chip). */
@@ -538,12 +574,14 @@ export class SubUsersPage {
   protected add(): void {
     this.editing.set(null);
     this.formError.set('');
+    this.fieldErrors.set({});
     this.form.set({ userName: '', email: '', mobileNo: '', permissions: [], isActive: true, states: [], agencies: [] });
   }
 
   protected edit(u: SubUser): void {
     this.editing.set(u.userId);
     this.formError.set('');
+    this.fieldErrors.set({});
     this.form.set({
       userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: u.isActive,
       states: [...(u.states ?? [])], agencies: [...(u.agencies ?? [])],
@@ -572,6 +610,19 @@ export class SubUsersPage {
 
   protected patch<K extends keyof SubUserForm>(key: K, value: SubUserForm[K]): void {
     this.form.update((f) => (f ? { ...f, [key]: value } : f));
+    // A corrected field loses its mark at once (the others keep theirs until the next Add / Save).
+    if (key in this.fieldErrors()) this.fieldErrors.update((e) => { const next = { ...e }; delete next[key as keyof typeof e]; return next; });
+  }
+
+  /** The form's problems, field by field (empty when it can be sent). */
+  private validate(f: SubUserForm): Partial<Record<'userName' | 'email' | 'mobileNo' | 'permissions', string>> {
+    const errors: Partial<Record<'userName' | 'email' | 'mobileNo' | 'permissions', string>> = {};
+    if (!f.userName.trim()) errors.userName = t('staff.subUsers.form.nameRequired', 'Please enter the name.');
+    if (!f.email.trim()) errors.email = t('staff.subUsers.form.emailRequired', 'Please enter the e-mail address.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) errors.email = t('staff.subUsers.form.emailInvalid', 'Please enter a valid e-mail address.');
+    if (f.mobileNo.trim() && !/^\d{10}$/.test(f.mobileNo.trim())) errors.mobileNo = t('staff.subUsers.form.mobileInvalid', 'Please enter a valid 10 digit mobile number.');
+    if (!f.permissions.length) errors.permissions = t('staff.subUsers.form.screensRequired', 'Please select at least one screen.');
+    return errors;
   }
 
   protected toggle(key: string): void {
@@ -584,9 +635,17 @@ export class SubUsersPage {
     const f = this.form();
     if (!f) return;
     const id = this.editing();
-    this.busy.set(true);
     this.error.set('');
     this.formError.set('');
+    const errors = this.validate(f);
+    this.fieldErrors.set(errors);
+    if (Object.keys(errors).length) {
+      this.formError.set(t('staff.subUsers.form.fixFields', 'Please correct the marked fields.'));
+      const first = errors.userName ? 'sub-name' : errors.email ? 'sub-email' : errors.mobileNo ? 'sub-mobile' : null;
+      if (first) document.getElementById(first)?.focus();
+      return;
+    }
+    this.busy.set(true);
     try {
       const r = await firstValueFrom(id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, f) : this.http.post<MessageResponse>(API, f));
       this.close();

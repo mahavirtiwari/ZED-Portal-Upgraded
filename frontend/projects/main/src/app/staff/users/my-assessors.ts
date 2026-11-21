@@ -122,7 +122,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                       @let m = medals(u.Assessments);
                       @if (m.items.length) {
                         <span class="lv-row" role="img" [attr.aria-label]="m.aria">
-                          @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true">Z</span> }
+                          @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true"></span> }
                         </span>
                         <span class="ma-sub">{{ m.modes }}</span>
                       } @else {
@@ -213,6 +213,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     .lv-row { display: flex; gap: 5px; margin-bottom: 3px; }
     .lv { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10.5px; font-weight: 800;
       background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 0 0 1.5px rgba(0,0,0,.12); }
+    .lv::before { content: 'Z'; } /* 2026-11-21 (audit item 10): not in the page's text */
     .lv-bronze { background: #c46a3c; }
     .lv-silver { background: #9aa4aa; }
     .lv-gold { background: #d2a12a; }

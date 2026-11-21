@@ -18,7 +18,7 @@ import { TextPipe, t } from '../../content/page-text';
       <div class="xd-head">
         <span class="xd-ico" aria-hidden="true">#</span>
         <div><h3 id="xc-title">{{ 'Cases · {title}' | t: 'staff.expenditure.cases.title' : { title: title() } }}</h3><small>{{ subtitle() }}</small></div>
-        <button type="button" class="xd-x" [attr.aria-label]="'Close' | t: 'staff.expenditure.cases.closeAria'" (click)="closed.emit()">×</button>
+        <button type="button" class="xd-x" data-dismiss [attr.aria-label]="'Close' | t: 'staff.expenditure.cases.closeAria'" (click)="closed.emit()">×</button>
       </div>
       <div class="xd-body">
         @if (error()) { <div class="alert alert-danger xd-err" role="alert">{{ error() }}</div> }

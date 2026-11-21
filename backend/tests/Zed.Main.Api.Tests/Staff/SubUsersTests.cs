@@ -66,6 +66,20 @@ public sealed class SubUsersTests : IDisposable
     }
 
     [Fact]
+    public void Screen_names_are_worded_for_each_portal()
+    {
+        // 2026-11-21 (Assessment Agency UI audit, item 6): "Assessors / consultants" and "Site / consultancy allotment" on every portal.
+        var site = new[] { SubRoles.SiteVerification };
+        string Name(PortalSystem system, string key) => SubUserPermissions.For((int)UserRole.Agency, site, system).Single(p => p.Key == key).LabelFor(system);
+        Assert.Equal("Assessors", Name(PortalSystem.Main, "assessors"));
+        Assert.Equal("Site assessment allotment", Name(PortalSystem.Main, "sa-allotment"));
+        Assert.Equal("Assessors", Name(PortalSystem.Surveillance, "assessors"));
+        Assert.Equal("Consultants", Name(PortalSystem.Consultancy, "assessors"));
+        Assert.Equal("Consultancy allotment", Name(PortalSystem.Consultancy, "sa-allotment"));
+        Assert.Equal("Monitoring", Name(PortalSystem.Consultancy, "monitoring"));
+    }
+
+    [Fact]
     public async Task An_agency_creates_a_sub_user_with_screens_of_its_own_menu()
     {
         var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");

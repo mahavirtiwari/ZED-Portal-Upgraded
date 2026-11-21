@@ -214,13 +214,24 @@ describe('StaffDashboardPage', () => {
     dated.flush(analytics('certified'));
     await settle();
 
+    // A From date after the To date is not sent: the message shows, the figures are hidden (audit item 4).
+    await choose('#an-to', '2025-12-31');
+    http.expectNone((r) => r.url.includes('/analytics'));
+    expect(text(el.querySelector('#an-range-error'))).toBe('The From date must be on or before the To date.');
+    expect(el.querySelector('#an-from')!.classList).toContain('is-invalid');
+    expect(el.querySelector('.an-kpis')).toBeNull();
+    // The chips show the dates as dd-MM-yyyy.
+    expect([...el.querySelectorAll('.an-chip')].map(text).join(' | ')).toContain('From: 01-01-2026');
+
+    // Clear All clears the filters and keeps the chosen date basis (audit item 4).
     (el.querySelector('.an-filters .dash-reset') as HTMLButtonElement).click();
     await settle();
     const cleared = analyticsCall();
     expect(cleared.request.params.keys()).toEqual(['view']);
-    expect(cleared.request.params.get('view')).toBe('registered');
-    cleared.flush(analytics());
+    expect(cleared.request.params.get('view')).toBe('certified');
+    cleared.flush(analytics('certified'));
     await settle();
+    expect(el.querySelector('#an-range-error')).toBeNull();
     // 2026-11-18: Clear All is always there (staff-00), disabled with nothing to clear.
     expect((el.querySelector('.an-filters .dash-reset') as HTMLButtonElement).disabled).toBe(true);
     expect(text(el.querySelector('.an-filters .dash-reset'))).toBe('Clear All');
@@ -347,9 +358,9 @@ describe('StaffDashboardPage', () => {
     analyticsCall().flush(analytics('registered', { months: [{ period: '2025-01', registered: 10, certified: 5 }, { period, registered: 1312, certified: 1042 }] }));
     await settle();
     const tiles = el.querySelectorAll('.an-kpi');
-    // 2026-11-18: green, right on the label line: "+1,312 this month" and "+1,042" (staff-00).
+    // 2026-11-18: green, right on the label line; 2026-11-21 (audit item 4): "this month" on both tiles.
     expect(text(tiles[0].querySelector('.an-kpi-note'))).toBe('+1,312 this month');
-    expect(text(tiles[1].querySelector('.an-kpi-note'))).toBe('+1,042');
+    expect(text(tiles[1].querySelector('.an-kpi-note'))).toBe('+1,042 this month');
     expect(tiles[1].querySelector('.an-kpi-note')!.getAttribute('title')).toBe('+1,042 this month');
     expect(tiles[2].querySelector('.an-kpi-note')).toBeNull();
   });

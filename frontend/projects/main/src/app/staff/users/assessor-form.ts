@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -11,6 +11,7 @@ import { ConfirmAsk, ConfirmDialog } from '../confirm-dialog';
 import { staffCrumbs } from '../staff-crumbs';
 import { STAFF_SYSTEM, StaffRole, agencyKindOf } from '../staff-menu';
 import { ToastService } from '../toast';
+import { HasUnsavedChanges } from '../unsaved-changes.guard';
 import { SchemeTicksPanel } from '../scheme-verification/scheme-ticks-panel';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
@@ -98,7 +99,7 @@ function emptyAssessor(): AssessorModel {
   styleUrls: ['./assessor-form-scope.scss', './assessor-form-view.scss'],
   templateUrl: './assessor-form.html',
 })
-export class AssessorFormPage {
+export class AssessorFormPage implements HasUnsavedChanges {
   private readonly api = inject(UsersApi);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
@@ -417,6 +418,23 @@ export class AssessorFormPage {
     return choices;
   }
 
+  /** 2026-11-21 (audit item 5): leaving with changes not saved asks first (unsavedChangesGuard; the browser's own prompt on reload / close). */
+  hasUnsavedChanges(): boolean {
+    return this.canEdit() && this.dirty() && !this.saving();
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.hasUnsavedChanges()) event.preventDefault();
+  }
+
+  /** The PAN card number when the ID proof is the PAN: the PAN entered above (a new assessor) or the saved PAN, so it is not asked twice. */
+  protected get panForIdProof(): string | null {
+    if (this.model.idProofType !== 'PAN Card') return null;
+    if (this.isNew) return (this.verifyOff || this.byApi) && this.panValid ? this.model.pan.trim().toUpperCase() : null;
+    return this.panNo()?.trim().toUpperCase() || null;
+  }
+
   /** Typing in a multi-select's filter box changes nothing. */
   protected markDirty(event: Event): void {
     if (!(event.target as HTMLElement | null)?.matches?.('input[type=search]')) this.dirty.set(true);
@@ -653,7 +671,8 @@ export class AssessorFormPage {
       return;
     }
     const keepsStoredId = !this.isNew && m.idProofType === this.storedIdProofType() && !!this.maskedIdProof();
-    if (!m.address.trim() || !m.pinCode.trim() || !m.idProofType || (!m.idProofNumber.trim() && !keepsStoredId)) {
+    const idProofNumber = this.panForIdProof ?? m.idProofNumber;
+    if (!m.address.trim() || !m.pinCode.trim() || !m.idProofType || (!idProofNumber.trim() && !keepsStoredId)) {
       this.error.set(t('staff.assessorForm.error.invalid', 'Please enter valid data.'));
       return;
     }
@@ -667,18 +686,19 @@ export class AssessorFormPage {
         const r = await firstValueFrom(
           this.api.createAssessor({
             assessorType: m.assessorType, certificateNo: m.certificateNo.trim(), professionalEmail: m.professionalEmail.trim(),
-            address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber,
+            address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber,
             states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, sectorActivity: m.sectorActivity,
             ...(this.typesIdentity ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
             ...(this.verifyOff || this.byApi ? { pan: m.pan.trim() } : {}),
             ...(this.consultancy ? {} : { assessments: this.ticks() }),
           }),
         );
+        this.dirty.set(false);
         await this.router.navigate(['/staff/users/my-assessors'], { state: { message: r.message } });
       } else {
         const r = await firstValueFrom(
           this.api.updateAssessor(this.userId!, {
-            address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber, states: m.states,
+            address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber, states: m.states,
             nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, reasonForRejection: m.reasonForRejection, sectorActivity: m.sectorActivity,
             mobileNo: m.mobileNo.trim(),
             ...(this.consultancy || !this.levels().length ? {} : { assessments: this.ticks() }),

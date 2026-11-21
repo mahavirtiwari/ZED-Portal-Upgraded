@@ -232,7 +232,10 @@ public sealed partial class DesktopAssessmentController(
             IsRole(UserRole.MasterAdmin) && !desktopOnly && status is 5 or 6 or 8,
             Monitoring.ReviewRules.For(user, record, Monitoring.ReviewStage.Desktop));
 
-        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct);
+        // 2026-11-21 (Assessment Agency UI audit, item 1): the checkpoint texts of the record's level as well.
+        // The checkpoints of every round: their requirement rows are the record's (da[4]) and its NC rounds' ones.
+        var checkpoints = texts.AttachTo(await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct),
+            da[4].Concat(rounds.SelectMany(r => r.Requirements.Select(x => (IDictionary<string, object?>)x))));
         var allotment = await AgencyAllotmentAsync(zedId, level, record, user, ct);
         return new DaDetailsResponse(
             zedId, level, user.RoleName, msme,
@@ -240,8 +243,8 @@ public sealed partial class DesktopAssessmentController(
             Pick(da[2], RawMaterialFields),
             Pick(da[3], SectionFields),
             WithVideos(Pick(da[4], RequirementFields), videos, texts),
-            Pick(da[5], OptionFields),
-            Pick(da[6], SubOptionFields),
+            WithCheckpointTexts(Pick(da[5], OptionFields), texts),
+            WithSubPointTexts(Pick(da[6], SubOptionFields), texts),
             evidences,
             Photos(da[8], zedId, level, moved, system),
             da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude"]) : null,
@@ -264,6 +267,18 @@ public sealed partial class DesktopAssessmentController(
         return rows;
     }
 
+    private static List<Dictionary<string, object?>> WithCheckpointTexts(List<Dictionary<string, object?>> rows, RequirementTexts.Map texts)
+    {
+        texts.AttachToCheckpoints(rows);
+        return rows;
+    }
+
+    private static List<Dictionary<string, object?>> WithSubPointTexts(List<Dictionary<string, object?>> rows, RequirementTexts.Map texts)
+    {
+        texts.AttachToSubPoints(rows);
+        return rows;
+    }
+
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, RequirementVideos.Map videos, RequirementTexts.Map texts, CancellationToken ct)
     {
         var nc = await db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS_NC",
@@ -274,8 +289,8 @@ public sealed partial class DesktopAssessmentController(
             Products(nc[8], zedId, level, moved, host.System),
             Pick(nc[1], SectionFields),
             WithVideos(Pick(nc[2], RequirementFields), videos, texts),
-            Pick(nc[3], OptionFields),
-            Pick(nc[4], SubOptionFields),
+            WithCheckpointTexts(Pick(nc[3], OptionFields), texts),
+            WithSubPointTexts(Pick(nc[4], SubOptionFields), texts),
             Evidences(nc[5], zedId, level, moved, host.System),
             Photos(nc[6], zedId, level, moved, host.System),
             nc[7].FirstOrDefault()?.Text("AssessorRemarksNc") is { Length: > 0 } r ? r : null);

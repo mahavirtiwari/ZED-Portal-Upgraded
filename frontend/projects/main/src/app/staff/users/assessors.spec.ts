@@ -175,7 +175,8 @@ describe('AssessorFormPage', () => {
     http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Both' });
     await settle(fixture);
     await pick('assessorType', 'Assessor');
-    expect(el.querySelector('.alert-warning')!.textContent!.trim()).toBe("Verification is off: enter the assessor's details as on the certificate.");
+    // 2026-11-21 (audit item 5): worded for the agency.
+    expect(el.querySelector('[role="note"]')!.textContent!.trim()).toBe("Enter the assessor's details exactly as on the certificate.");
     expect([...el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Search')).toBe(false);
     expect(el.querySelector('#professionalEmail')).toBeNull();
     expect((el.querySelector('#userName') as HTMLInputElement).readOnly).toBe(false);
@@ -195,8 +196,10 @@ describe('AssessorFormPage', () => {
     expect(createButton.disabled).toBe(false);
     await type('#address', 'Street 1');
     await type('#pinCode', '411001');
-    await pick('idProofType', 'Aadhaar Card');
-    await type('#idProofNumber', '123412341234');
+    // A PAN card as ID proof: the PAN above is its number, not asked twice (audit item 5).
+    await pick('idProofType', 'PAN Card');
+    expect(el.querySelector('#idProofNumber')).toBeNull();
+    expect(el.querySelector('[data-pan-proof]')!.textContent!.trim()).toBe('ABCDE1234F');
     await pick('sectorActivity', 'Both');
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
@@ -205,7 +208,9 @@ describe('AssessorFormPage', () => {
     const req = http.expectOne('/api/staff/users/assessors');
     expect(req.request.body).toMatchObject({
       assessorType: 'Assessor', certificateNo: 'AS1234', pan: 'ABCDE1234F', userName: 'Typed Pro', emailId: 'typed@zed.test', mobileNo: '9222222222',
+      idProofType: 'PAN Card', idProofNumber: 'ABCDE1234F',
     });
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
     http.expectNone('/api/staff/users/assessors/lookup');
     req.flush({ message: 'User created successfully.', userId: 'ZEDAS0099' });
     await settle(fixture);
@@ -218,7 +223,7 @@ describe('AssessorFormPage', () => {
     http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Both' });
     await settle(fixture);
     await pick('assessorType', 'Bronze Assessor');
-    expect(el.querySelector('.alert-warning')).toBeNull();
+    expect(el.querySelector('[role="note"]')).toBeNull();
     expect(el.querySelector('#professionalEmail')).toBeNull();
     expect(saveNote()).toBe('Search the certified professional to continue.');
     await type('#certificateNo', 'BA1234');
@@ -264,10 +269,10 @@ describe('AssessorFormPage', () => {
     http.expectOne('/api/staff/users/assessors/options').flush(withMode('Off'));
     await settle(fixture);
     await pick('assessorType', 'Consultant/Expert');
-    expect(el.querySelector('.alert-warning')!.textContent).toContain("enter the consultant/expert's details as on the certificate.");
+    expect(el.querySelector('[role="note"]')!.textContent).toContain("Enter the consultant/expert's details exactly as on the certificate.");
     expect(el.querySelector('#pan')).not.toBeNull();
     await pick('assessorType', 'Technical Expert');
-    expect(el.querySelector('.alert-warning')).toBeNull();
+    expect(el.querySelector('[role="note"]')).toBeNull();
     expect(el.querySelector('#pan')).toBeNull();
     expect(el.querySelector('#certificateNo')).toBeNull();
   });
@@ -339,7 +344,10 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
     expect(el.querySelector('.ph-title')!.textContent).toContain('Update Assessor details');
     expect(el.querySelector('.af-avatar')!.textContent!.trim()).toBe('AR');
-    expect([...el.querySelectorAll('.af-head')].map((h) => h.textContent!.trim())).toEqual(['1Contact details', '2ID proof', '3What the assessor assesses', '4Block reason']);
+    // 2026-11-21 (audit item 5): no Block reason section for an active assessor.
+    expect([...el.querySelectorAll('.af-head')].map((h) => h.textContent!.trim())).toEqual(['1Contact details', '2ID proof', '3What the assessor assesses']);
+    expect(el.querySelector('#reasonForRejection')).toBeNull();
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
     expect(saveNote()).toBe('No unsaved changes.');
     expect(el.querySelector('.save-bar')!.classList).not.toContain('is-dirty');
 
@@ -348,6 +356,7 @@ describe('AssessorFormPage', () => {
     address.dispatchEvent(new Event('input', { bubbles: true }));
     await settle(fixture);
     expect(saveNote()).toBe('Not saved yet.');
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
     // 2026-11-13: the mobile number is editable on the agency's edit page (checked before saving).
     const mobile = el.querySelector('#mobileNo') as HTMLInputElement;
     expect(mobile.readOnly).toBe(false);
@@ -373,6 +382,32 @@ describe('AssessorFormPage', () => {
     // 2026-11-17: a toast instead of the green alert (assessor-form.spec.ts).
     expect(el.querySelector('.alert-success')).toBeNull();
     expect(saveNote()).toBe('No unsaved changes.');
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('a PAN card as ID proof takes the saved PAN instead of asking again; the Block reason shows for a blocked assessor (audit item 5)', async () => {
+    await create(StaffRole.Agency, 'ZEDAS0001');
+    http.expectOne('/api/staff/users/assessors/options').flush(options);
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/ZEDAS0001').flush({
+      userId: 'ZEDAS0001', userName: 'Asha Rao', emailId: 'a@z.test', mobileNo: '9000000001', address: 'Street', pinCode: '560001',
+      assessorType: 'Assessor', certificateNo: 'AS1', idProofType: 'Aadhaar Card', idProofNumberMasked: 'XXXXXXXX9012', states: ['DELHI'],
+      nicSectors: [], areasOfKnowledge: [], reasonForRejection: 'Left the agency', isActive: false, agencyUserId: 'AGENCY1', canEdit: true,
+      sectorActivity: 'Manufacturing', panNo: 'ABCDE1234F',
+    });
+    await settle(fixture);
+    http.match(() => true).forEach((r) => r.flush({ count: 0 }));
+    await settle(fixture);
+    expect([...el.querySelectorAll('.af-head')].map((h) => h.textContent!.trim())).toContain('4Block reason');
+    await pick('idProofType', 'PAN Card');
+    expect(el.querySelector('#idProofNumber')).toBeNull();
+    expect(el.querySelector('[data-pan-proof]')!.textContent!.trim()).toBe('ABCDE1234F');
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const req = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/users/assessors/ZEDAS0001');
+    expect(req.request.body).toMatchObject({ idProofType: 'PAN Card', idProofNumber: 'ABCDE1234F' });
+    req.flush({ message: 'Updated.' });
+    await settle(fixture);
   });
 });
 

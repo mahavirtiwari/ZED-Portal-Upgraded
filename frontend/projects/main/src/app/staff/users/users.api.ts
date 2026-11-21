@@ -207,6 +207,8 @@ export interface BlockHistoryEntry {
   actionBy: string | null;
   actionByRole: number | null;
   actionDate: string | null;
+  /** 2026-11-21: the name of who did it (Users.UserName), when found; the history shows it instead of the login ID. */
+  actionByName?: string | null;
 }
 
 /** Row of SP_GET_USERS_BY_ROLE (RoleId 3): the signed-in agency's assessors. ID proof numbers are masked. */

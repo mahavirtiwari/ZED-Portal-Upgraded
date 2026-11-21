@@ -72,15 +72,29 @@ export class AuthService {
   }
 }
 
-/** Route guard: requires a signed-in user, optionally with one of the given role ids. */
+/** The staff pages' refusal page (staff/sub-user-screens.ts NoAccessPage). */
+export const STAFF_NO_ACCESS_URL = '/staff/no-access';
+
+/**
+ * Route guard: requires a signed-in user, optionally with one of the given role ids. A signed-out user goes to
+ * <code>loginUrl</code>. 2026-11-21 (Assessment Agency UI audit, item 11): a signed-in staff user whose role may not open a
+ * staff screen (a guard sending back to <code>/staff</code>) gets the staff "no access" page naming the screen, instead of
+ * landing on its dashboard without a word; the MSME and public guards keep sending back to their own page.
+ */
 export function authGuard(loginUrl: string, roleIds?: number[]): CanActivateFn {
-  return async () => {
+  return async (_route, state) => {
     const auth = inject(AuthService);
     const router = inject(Router);
     await auth.ensureLoaded().catch(() => undefined);
     const user = auth.currentUser();
     if (!user) return router.parseUrl(loginUrl);
-    if (roleIds && !roleIds.includes(user.roleId)) return router.parseUrl(loginUrl);
+    if (roleIds && !roleIds.includes(user.roleId)) {
+      const screen = (state?.url ?? '').split(/[?#]/)[0];
+      const staffGuard = loginUrl === '/staff' || loginUrl.startsWith('/staff/');
+      if (staffGuard && screen.startsWith('/staff/') && screen !== STAFF_NO_ACCESS_URL)
+        return router.createUrlTree([STAFF_NO_ACCESS_URL], { queryParams: { screen, reason: 'role' } });
+      return router.parseUrl(loginUrl);
+    }
     return true;
   };
 }

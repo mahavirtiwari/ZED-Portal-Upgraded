@@ -9,8 +9,15 @@ namespace Zed.Portal.Features.Staff.SubUsers;
 /// <param name="AnySubRole">The owner needs one of these sub-roles to have the screen (agencies), as its menu entry.</param>
 /// <param name="Routes">The Angular screens (menu routes) it opens.</param>
 /// <param name="ApiPaths">The API paths those screens call (prefixes, by path segment).</param>
+/// <param name="ConsultancyLabel">2026-11-21 (Assessment Agency UI audit, item 6): the screen's name on the Consultancy portal when
+/// it differs (consultants, consultancy allotment); <paramref name="Label"/> is the main and surveillance portals' name.</param>
 public sealed record SubUserPermission(
-    string Key, string Label, UserRole OwnerRole, PortalSystem[] Systems, string[] AnySubRole, string[] Routes, string[] ApiPaths);
+    string Key, string Label, UserRole OwnerRole, PortalSystem[] Systems, string[] AnySubRole, string[] Routes, string[] ApiPaths,
+    string? ConsultancyLabel = null)
+{
+    /// <summary>The screen's name on <paramref name="system"/>.</summary>
+    public string LabelFor(PortalSystem system) => system == PortalSystem.Consultancy && ConsultancyLabel is not null ? ConsultancyLabel : Label;
+}
 
 /// <summary>
 /// The screens an owner can give its sub-users: the owner's own menu (staff-menu.ts), one entry per screen or group of
@@ -51,10 +58,11 @@ public static class SubUserPermissions
     public static readonly IReadOnlyList<SubUserPermission> Catalogue =
     [
         // MasterAdmin ("operation admins")
-        new("users", "Agencies / organisations and their assessors", UserRole.MasterAdmin, All, None,
+        new("users", "Agencies and their assessors", UserRole.MasterAdmin, All, None,
             ["/staff/users/agencies", "/staff/users/bronze-agencies", "/staff/users/assessors", "/staff/users/surveillance-agencies", "/staff/users/surveillance-assessors"],
             // 2026-11-18: the purchase orders card on Agency Level Allocation / the Consultant Organisations page.
-            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users", "/api/staff/expenditure/po"]),
+            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users", "/api/staff/expenditure/po"],
+            ConsultancyLabel: "Consultant organisations and their consultants"),
         new("payments", "Payment Received", UserRole.MasterAdmin, All, None,
             ["/staff/payments-received"], ["/api/staff/dashboard/payments-received"]),
         new("allot", "Allotment", UserRole.MasterAdmin, All, None,
@@ -89,14 +97,14 @@ public static class SubUserPermissions
         // Agencies, consultant organisations and surveillance agencies
         new("monitoring", "Monitoring", UserRole.Agency, All, SiteOrDesktop,
             ["/staff/monitoring", "/staff/quality-observations"], ["/api/staff/monitoring", DaDetails, Milestones, QualityObservations]),
-        new("assessors", "Assessors / consultants", UserRole.Agency, All, None,
+        new("assessors", "Assessors", UserRole.Agency, All, None,
             ["/staff/users/my-assessors", "/staff/users/assessors", "/staff/users/surveillance-assessors"],
-            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors"]),
+            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors"], ConsultancyLabel: "Consultants"),
         new("da-allotment", "Desktop allotment", UserRole.Agency, [PortalSystem.Main, PortalSystem.Surveillance], [SubRoles.DesktopVerification],
             ["/staff/assessment/da-allotment"], ["/api/staff/assessment/da-allotment", DaDetails]),
-        new("sa-allotment", "Site / consultancy allotment", UserRole.Agency, All, [SubRoles.SiteVerification],
+        new("sa-allotment", "Site assessment allotment", UserRole.Agency, All, [SubRoles.SiteVerification],
             ["/staff/sa-allotment", "/staff/site-assessment/co-allotment"],
-            ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments"]),
+            ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments"], ConsultancyLabel: "Consultancy allotment"),
         new("results", "Completed and rejected", UserRole.Agency, All, SiteOrDesktop,
             ["/staff/assessment/completed", "/staff/assessment/rejected", "/staff/quality-observations"],
             ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones, QualityObservations]),

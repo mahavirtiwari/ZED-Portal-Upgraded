@@ -344,8 +344,9 @@ public sealed class StaffAssessorsController(
             if (typedMobile is null || !StaffUserRules.MobilePattern().IsMatch(typedMobile)) return this.Problem400("Please enter a valid 10 digit mobile number.");
         }
         var (sectors, areas) = await LoadOptionsAsync(ct);
+        // 2026-11-21 (audit item 5): with a PAN card as ID proof the PAN is not asked twice; the PAN above is its number.
         var (values, valuesError) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, null,
-            req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: null);
+            req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: null, pan: pan, panMustMatch: true);
         if (valuesError is not null) return this.Problem400(valuesError);
         var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
         if (activityError is not null) return this.Problem400(activityError);
@@ -469,8 +470,12 @@ public sealed class StaffAssessorsController(
         var a = await FindAsync(userId, ct);
         if (a is null) return NotFound();
         var (sectors, areas) = await LoadOptionsAsync(ct);
+        // A PAN card without a number: the assessor's saved PAN (Users.PanNo), as the form shows it.
+        var savedPan = string.Equals(req.IdProofType?.Trim(), StaffUserRules.IdProofPan, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(req.IdProofNumber)
+            ? ProfessionalVerification.NormalizePan(a.Row.Text("PanNo") is { Length: > 0 } p ? p : await ProfessionalVerification.PanOfAsync(db, a.UserId, log, ct))
+            : null;
         var (values, error) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, req.ReasonForRejection,
-            req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: a);
+            req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: a, pan: savedPan);
         if (error is not null) return this.Problem400(error);
         var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
         if (activityError is not null) return this.Problem400(activityError);
@@ -597,7 +602,7 @@ public sealed class StaffAssessorsController(
     private static (AssessorValues? Values, string? Error) ValidateCommon(
         string? address, string? pinCode, string? idProofType, string? idProofNumber, string? reasonForRejection,
         List<string>? states, List<string>? nicSectors, List<string>? areasOfKnowledge, List<Sector> sectors, List<string> areas,
-        ManagedUser? existing)
+        ManagedUser? existing, string? pan = null, bool panMustMatch = false)
     {
         // On update, values already stored on the assessor stay allowed even if the lists changed since.
         if (!StaffUserRules.TryText(address, 2000, true, true, out var addr)) return (null, "Please enter the assessor address (up to 2000 characters).");
@@ -607,6 +612,12 @@ public sealed class StaffAssessorsController(
         if (string.IsNullOrEmpty(number) && existing is not null && existing.Row.Text("IdProofType") == idProofType &&
             existing.Row.Text("IdProofNumber").Length > 0)
             number = existing.Row.Text("IdProofNumber");
+        // The PAN card's number is the PAN (2026-11-21): taken from it when empty; a different number is refused on create.
+        if (string.Equals(idProofType?.Trim(), StaffUserRules.IdProofPan, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(pan))
+        {
+            if (string.IsNullOrEmpty(number)) number = pan;
+            else if (panMustMatch && number != pan) return (null, "The PAN Card number must be the PAN entered above.");
+        }
         if (StaffUserRules.IdProofError(idProofType, number) is { } idError) return (null, idError);
         var st = StaffUserRules.OnlyAllowed(states, StaffUserRules.States.Concat(existing?.States ?? []));
         if (st is null) return (null, "Please select valid states.");

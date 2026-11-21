@@ -162,9 +162,11 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
           <div class="filter an-range">
             <span class="form-label" id="an-range-label">{{ view() === 'registered' ? ('Registered between' | t: 'staff.dashboard.analytics.filter.rangeRegisteredLabel') : words.rangeCompleted }}</span>
             <div class="an-range-inputs" role="group" aria-labelledby="an-range-label">
-              <input id="an-from" type="date" class="form-control" [attr.aria-label]="'From' | t: 'staff.dashboard.analytics.filter.fromAria'" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)" />
+              <input id="an-from" type="date" class="form-control" [attr.aria-label]="'From' | t: 'staff.dashboard.analytics.filter.fromAria'" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)"
+                     [class.is-invalid]="rangeInverted()" [attr.aria-invalid]="rangeInverted()" [attr.aria-describedby]="rangeInverted() ? 'an-range-error' : null" />
               <span class="an-range-to">{{ 'to' | t: 'staff.dashboard.analytics.filter.toText' }}</span>
-              <input id="an-to" type="date" class="form-control" [attr.aria-label]="'To' | t: 'staff.dashboard.analytics.filter.toAria'" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
+              <input id="an-to" type="date" class="form-control" [attr.aria-label]="'To' | t: 'staff.dashboard.analytics.filter.toAria'" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)"
+                     [class.is-invalid]="rangeInverted()" [attr.aria-invalid]="rangeInverted()" [attr.aria-describedby]="rangeInverted() ? 'an-range-error' : null" />
             </div>
           </div>
           <div class="an-more-btn no-export">
@@ -224,7 +226,10 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
         }
       </div>
 
-      @if (error()) {
+      @if (rangeInverted()) {
+        <!-- 2026-11-21 (Assessment Agency UI audit, item 4): checked here, not sent; the figures are hidden meanwhile. -->
+        <div class="alert alert-danger" role="alert" id="an-range-error">{{ 'The From date must be on or before the To date.' | t: 'staff.dashboard.analytics.rangeError' }}</div>
+      } @else if (error()) {
         <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">{{ 'Try Again' | t: 'staff.dashboard.analytics.tryAgainButton' }}</button></div>
       }
 
@@ -403,7 +408,13 @@ export class StaffAnalytics {
   protected readonly yearly = signal(false);
   private request = 0;
 
-  readonly filtered = computed(() => this.view() !== 'registered' || Object.values(this.filter()).some((v) => !!v));
+  /** Clear All has filters to clear (2026-11-21, audit item 4: the date-basis view is not a filter; Clear All keeps it). */
+  readonly filtered = computed(() => Object.values(this.filter()).some((v) => !!v));
+  /** The From date is after the To date (the figures are not asked for until it is corrected). */
+  protected readonly rangeInverted = computed(() => {
+    const { from, to } = this.filter();
+    return !!from && !!to && from > to;
+  });
   protected readonly unitWord = computed(() => (this.view() === 'certified' ? this.words.completedShort : t('staff.dashboard.analytics.registeredLabel', 'Registered')));
 
   /** The last month of the trend when it is this month (the range reaches today): this month's registrations and completions. */
@@ -425,7 +436,8 @@ export class StaffAnalytics {
       const plus = month === undefined ? null : `+${formatCount(month)}`;
       return {
         label, n, value: formatCount(n), color, month: month ?? null, tip: plus ? thisMonth(plus) : null,
-        note: plus && label === k[0] ? thisMonth(plus) : plus && label === k[1] ? plus : null,
+        // 2026-11-21 (audit item 4): the completed tile's figure says "this month" too, as the registered one's.
+        note: plus && (label === k[0] || label === k[1]) ? thisMonth(plus) : null,
       };
     };
     return [
@@ -502,17 +514,23 @@ export class StaffAnalytics {
     void this.load();
   }
 
+  /** Clear All: the filters only; the chosen date basis (By registration / By certification date) stays (audit item 4). */
   reset(): void {
     this.filter.set({});
-    this.view.set(this.views[0]);
     void this.load();
   }
 
   /** fresh (Refresh): the server reads the figures again instead of the ones it keeps for ten minutes. */
   async load(fresh = false): Promise<void> {
     const id = ++this.request;
-    this.loading.set(true);
     this.error.set('');
+    // An inverted range is not sent (the server refuses it): the message shows and the old figures are hidden.
+    if (this.rangeInverted()) {
+      this.loading.set(false);
+      this.data.set(null);
+      return;
+    }
+    this.loading.set(true);
     try {
       const d = await firstValueFrom(this.api.analytics({ view: this.view(), ...this.filter() }, fresh));
       if (id !== this.request) return;
@@ -530,7 +548,8 @@ export class StaffAnalytics {
       if (d.boundState && this.filter().state !== d.boundState) this.filter.update((f) => ({ ...f, state: d.boundState! }));
       if (d.boundSector && this.filter().sector !== d.boundSector) this.filter.update((f) => ({ ...f, sector: d.boundSector! }));
     } catch (err) {
-      if (id === this.request) this.error.set(apiErrorMessage(err));
+      // The figures of the earlier filters are not left under the error as if they were these filters'.
+      if (id === this.request) { this.error.set(apiErrorMessage(err)); this.data.set(null); }
     } finally {
       if (id === this.request) this.loading.set(false);
     }
@@ -624,7 +643,9 @@ export class StaffAnalytics {
   }
 
   /** A filter's value as people read it (Gender: "Male", a level: its name). */
+  /** A filter's value as shown: the dates as dd-MM-yyyy (as the staff pages show dates), the gender by its name. */
   private shown(key: FilterKey, v: string): string {
+    if ((key === 'from' || key === 'to') && /^\d{4}-\d{2}-\d{2}$/.test(v)) return `${v.slice(8, 10)}-${v.slice(5, 7)}-${v.slice(0, 4)}`;
     return key === 'gender' ? genderLabel(v) : v;
   }
 }

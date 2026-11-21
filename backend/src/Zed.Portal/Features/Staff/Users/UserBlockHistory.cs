@@ -17,15 +17,19 @@ public static class UserBlockHistory
         "INSERT INTO dbo.UserBlockHistory (UserId, RoleId, Action, Reason, ActionBy, ActionByRole, ActionDate) " +
         "VALUES (@UserId, @RoleId, @Action, @Reason, @ActionBy, @ActionByRole, GETDATE());";
 
+    /// <remarks>2026-11-21 (Assessment Agency UI audit, item 5): with the name of who did it (Users.UserName), so the history
+    /// reads "By A. Kumar (Master Admin)" rather than a login ID; the ID is shown when the name is not found.</remarks>
     internal const string ListSql =
-        "SELECT Action, Reason, ActionBy, ActionByRole, ActionDate FROM dbo.UserBlockHistory WHERE UserId = @UserId ORDER BY ActionDate DESC, Id DESC;";
+        "SELECT h.Action, h.Reason, h.ActionBy, h.ActionByRole, h.ActionDate, n.UserName AS ActionByName FROM dbo.UserBlockHistory h " +
+        "OUTER APPLY (SELECT TOP (1) NULLIF(LTRIM(RTRIM(u.UserName)), '') AS UserName FROM dbo.Users u WHERE u.UserId = h.ActionBy) n " +
+        "WHERE h.UserId = @UserId ORDER BY h.ActionDate DESC, h.Id DESC;";
 
     /// <summary>The latest block of each user that is blocked now (for the reason and date under the Blocked badge).</summary>
     internal const string LatestBlocksSql =
         "SELECT h.UserId, h.Reason, h.ActionDate FROM dbo.UserBlockHistory h " +
         "WHERE h.Action = 'Blocked' AND h.Id = (SELECT MAX(x.Id) FROM dbo.UserBlockHistory x WHERE x.UserId = h.UserId);";
 
-    public sealed record Entry(string Action, string? Reason, string? ActionBy, int? ActionByRole, DateTime? ActionDate);
+    public sealed record Entry(string Action, string? Reason, string? ActionBy, int? ActionByRole, DateTime? ActionDate, string? ActionByName = null);
 
     public sealed class LatestRow
     {

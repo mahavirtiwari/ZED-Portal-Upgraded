@@ -63,3 +63,10 @@
   .su-foot-actions .btn { flex: 1 1 auto; min-width: 0; }
   .su-foot .btn-primary { min-width: 0; }
 }
+/* 2026-11-21 (Assessment Agency UI audit, item 6): a long screen name always wraps inside its card (never "…"), and a field the
+   browser check found wrong is marked under it. */
+.modal .modal-popup label.toggle-card { white-space: normal; overflow: visible; height: auto; padding-top: 4px; padding-bottom: 4px; }
+.modal .modal-popup .toggle-card .su-perm-name { flex: 1 1 auto; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; white-space: normal; }
+.su-field .help-block, .su-perms-err { display: block; margin: 0; font-size: 12px; font-weight: 600; color: #c8473c; }
+.su-perms-err { margin-bottom: 8px; }
+.su-perms.is-invalid .toggle-card { border-color: #e3a49d; }

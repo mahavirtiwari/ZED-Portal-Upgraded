@@ -46,7 +46,14 @@ import { TextPipe, t } from '../../content/page-text';
           }
         </ol>
         <div class="qo-times">
-          {{ 'Reply in {reply} · closed in {close}' | t: 'staff.quality.item.times.label' : { reply: hoursOf(o.replyHours), close: hoursOf(o.closeHours) } }}
+          <!-- 2026-11-21 (Assessment Agency UI audit, item 9): closed with no reply says so instead of "Reply in —". -->
+          @if (o.replyHours == null && o.status === 'Closed') {
+            {{ 'Closed without a reply · closed in {close}' | t: 'staff.quality.item.closedNoReply.label' : { close: hoursOf(o.closeHours) } }}
+          } @else if (o.replyHours == null) {
+            {{ 'No reply yet' | t: 'staff.quality.item.noReply.label' }}
+          } @else {
+            {{ 'Reply in {reply} · closed in {close}' | t: 'staff.quality.item.times.label' : { reply: hoursOf(o.replyHours), close: hoursOf(o.closeHours) } }}
+          }
           @if (o.reopens) { {{ '· reopened {count}×' | t: 'staff.quality.item.reopens.label' : { count: o.reopens } }} }
         </div>
       }

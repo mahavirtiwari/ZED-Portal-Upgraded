@@ -13,7 +13,7 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0107 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0108 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
   2026-11-19: migration 0102 (surveillance rounds go by round robin to another agency, never the certifying one; one
   agency login serves Bronze, Silver and Gold surveillance; blocked agencies are not offered on Allot Surveillance); 0103 (agency rejection reasons and automatic re-allotment); 0104 (My Documents with two records of a level).
@@ -177,6 +177,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0105 incentive schemes'; Test = (Has-Col 'dbo.Incentives' 'SchemeJson') + ' AND ' + (Has-Col 'dbo.FinancialAssistance' 'SchemeCode') + ' AND ' + (Has-Col 'dbo.Users' 'SchemeVerification') }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0106 incentive onsite'; Test = (Has-Col 'dbo.Users' 'AgencyKind') + ' AND ' + (Has-Col 'dbo.AgencyUserStates' 'Districts') + ' AND ' + (Has-Col 'dbo.FinancialAssistance' 'OnsiteAgencyId') }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0107 incentive desktop agencies'; Test = "EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0 AND major_id = OBJECT_ID(N'dbo.Users') AND name = N'V4_0107_SchemeDesktop')" }
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0108 level requirement texts'; Test = (Has-Text 'dbo.SP_RECOVER_MISSING_MSME_PARAMETERS_DATA' '/*V4_0108*/') + ' AND ' + (Has-Text 'dbo.SP_ASSESSMENT_DA_FINAL_SUBMIT' '/*V4_0108*/') }
     )
     foreach ($r in $release) {
         foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }

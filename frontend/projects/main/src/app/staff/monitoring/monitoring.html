@@ -5,10 +5,11 @@
 <!-- 2026-11-18 (approved monitoring design): sub-sections per stage, a date range that follows the stage, the app's steps and the
      submission pending (man-days) in progress, TAT delays on quality check, Excel export of the filtered list. -->
 <zed-page-head [crumbs]="crumbs()" [title]="title()" [subtitle]="subtitle()">
-  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />{{ 'Export' | t: 'staff.monitoring.exportButton' }}</button>
+  <!-- 2026-11-21 (audit item 7): the button says while the workbook is being made; a toast when it is ready. -->
+  <button type="button" class="btn btn-ph mo-hb" [disabled]="!shown().length || exporting()" [attr.aria-busy]="exporting()" (click)="exportList()"><zed-dash-icon name="download" [size]="16" />{{ exporting() ? ('Exporting…' | t: 'staff.monitoring.exportingButton') : ('Export' | t: 'staff.monitoring.exportButton') }}</button>
   <button type="button" class="btn btn-ph mo-hb" (click)="load()"><zed-dash-icon name="refresh" [size]="16" />{{ 'Refresh' | t: 'staff.monitoring.refreshButton' }}</button>
 </zed-page-head>
-<zed-list-counts class="mo-stages" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" [label]="'Stages' | t: 'staff.monitoring.stages.aria'" (pick)="pickStage($event.key)" />
+<zed-list-counts class="mo-stages" [subRows]="true" [counts]="stageCounts()" [selected]="status() === null ? null : '' + status()" [label]="'Stages' | t: 'staff.monitoring.stages.aria'" (pick)="pickStage($event.key)" />
 
 <div class="mo-sec">
 <div class="mo-tabs" role="tablist" [attr.aria-label]="'Sub-sections' | t: 'staff.monitoring.tracks.aria'">
@@ -37,10 +38,13 @@
       <option [value]="l">{{ levelName(l) }}</option>
     }
   </select>
+  <!-- 2026-11-21 (audit item 7): an agency login only ever sees its own units: no agency filter, no Agency column. -->
+  @if (!ownUnitsOnly) {
   <select id="monitoringAgency" class="form-select mo-ag" [attr.aria-label]="consultancy ? ('CO' | t: 'staff.monitoring.co.aria') : ('Agency' | t: 'staff.monitoring.agency.aria')" [ngModel]="agency()" (ngModelChange)="agency.set($event)">
     <option value="">{{ consultancy ? ('All COs' | t: 'staff.monitoring.co.all.label') : ('All agencies' | t: 'staff.monitoring.agency.all.label') }}</option>
     @for (a of agencies(); track a[0]) { <option [value]="a[0]">{{ a[1] }}</option> }
   </select>
+  }
   @if (!consultancy && track() === 'site') {
     <select id="monitoringMode" class="form-select mo-md" [attr.aria-label]="'Mode of assessment' | t: 'staff.monitoring.mode.aria'" [ngModel]="modeFilter()" (ngModelChange)="modeFilter.set($event)">
       <option value="">{{ 'All modes' | t: 'staff.monitoring.mode.all.label' }}</option>
@@ -76,7 +80,7 @@
         <tr>
           <th>{{ 'Unit' | t: 'staff.monitoring.column.unit' }}</th>
           <th>{{ 'Level' | t: 'staff.monitoring.column.level' }}</th>
-          <th>{{ 'CO' | t: 'staff.monitoring.column.co' }}</th>
+          @if (!ownUnitsOnly) { <th>{{ 'CO' | t: 'staff.monitoring.column.co' }}</th> }
           <th>{{ 'Milestone' | t: 'staff.monitoring.column.milestone' }}</th>
           <th>{{ 'Consultants / expert' | t: 'staff.monitoring.column.consultants' }}</th>
           <th>{{ 'Site visit dates' | t: 'staff.monitoring.column.siteVisitDates' }}</th>
@@ -86,15 +90,18 @@
         <tr>
           <th>{{ 'Unit' | t: 'staff.monitoring.column.unit' }}</th>
           <th>{{ surveillance ? ('Level / Surveillance No' | t: 'staff.monitoring.column.levelSurveillance') : ('Level' | t: 'staff.monitoring.column.level') }}</th>
-          <th>{{ 'Agency' | t: 'staff.monitoring.column.agency' }}</th>
+          @if (!ownUnitsOnly) { <th>{{ 'Agency' | t: 'staff.monitoring.column.agency' }}</th> }
           @if (track() !== 'desktop') { <th>{{ 'Mode' | t: 'staff.monitoring.column.mode' }}</th> }
           <th>{{ 'Assessor' | t: 'staff.monitoring.column.assessor' }}</th>
           @if (main) { <th class="text-center">{{ 'Duplicates' | t: 'staff.monitoring.column.duplicates' }}</th> }
           <th>{{ surveillance ? ('Surveillance dates' | t: 'staff.monitoring.column.surveillanceDates') : ('Assessment dates' | t: 'staff.monitoring.column.assessmentDates') }}</th>
           @if (showSteps()) { <th>{{ 'Progress' | t: 'staff.monitoring.column.progress' }}</th> }
+          <!-- 2026-11-21 (audit item 7): the Due column only when a unit of the list has a due date or a TAT. -->
+          @if (showDue()) {
           <th [attr.aria-sort]="dueSort() === 1 ? 'ascending' : dueSort() === -1 ? 'descending' : 'none'">
             <button type="button" class="mo-due-h" [title]="dueSort() === 1 ? ('Sorted by days left' | t: 'staff.monitoring.due.sortedTooltip') : dueSort() === -1 ? ('Most days left first' | t: 'staff.monitoring.due.reverseTooltip') : ('Sort by days left' | t: 'staff.monitoring.due.sortTooltip')" (click)="toggleDueSort()">{{ showDelays() ? ('Delay' | t: 'staff.monitoring.column.delay') : ('Due' | t: 'staff.monitoring.column.due') }}</button>
           </th>
+          }
           <th class="text-end mo-act">{{ 'Actions' | t: 'staff.monitoring.column.actions' }}</th>
         </tr>
       }
@@ -112,10 +119,12 @@
             <zed-level-medal [level]="col(s, 'Certification')" />
             @if (surveillance) { <small class="sub">{{ s['SurveillanceNo'] }}</small> }
           </td>
+          @if (!ownUnitsOnly) {
           <td class="mo-name">
             <b>{{ s['AgencyName'] }}</b>
             <small class="sub">{{ s['CertificationBodyUserId'] }}</small>
           </td>
+          }
           @if (consultancy) {
             <td><span class="chip is-info">{{ 'Milestone {number}' | t: 'staff.monitoring.row.milestone.chip' : { number: s['NcCount'] } }}</span>
               @if (showSteps() && s['Step']) { <small class="sub">{{ stepNames()['' + s['Step']] }}</small> }
@@ -157,7 +166,10 @@
                 @if (s['SubmissionPending']) { <span class="mo-pend">{{ 'Submission pending through mobile app' | t: 'staff.monitoring.row.pending.text' }}</span> }
               </td>
             }
-            <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span>@if (s['TatRule']) { <small class="mo-rule">{{ s['TatRule'] }}</small> } }</td>
+            @if (showDue()) {
+              <td>@if (due(s); as d) { <span class="chip" [class]="'chip ' + d.cls">{{ d.label }}</span>@if (s['TatRule']) { <small class="mo-rule">{{ s['TatRule'] }}</small> } }
+                @else { <small class="mo-rule">{{ 'No TAT set' | t: 'staff.monitoring.due.none' }}</small> }</td>
+            }
           }
           <td class="text-end mo-act"><zed-row-menu [items]="menu(s)" [label]="'More actions for {zedId}' | t: 'staff.monitoring.row.menuAria' : { zedId: s['ZedId'] }" (picked)="act(s, $event)" /></td>
         </tr>

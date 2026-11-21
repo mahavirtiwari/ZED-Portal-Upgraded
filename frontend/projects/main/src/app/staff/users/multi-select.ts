@@ -125,6 +125,7 @@ export interface MultiSelectOption {
   `,
   imports: [NgTemplateOutlet, TextPipe],
   styles: `
+    :host { display: block; min-width: 0; max-width: 100%; }
     .zed-multi { border: 1px solid #ced4da; border-radius: 10px; padding: 10px 12px; background: #fff; }
     .zed-multi.disabled { background: #e9ecef; }
     .ms-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
@@ -132,9 +133,12 @@ export interface MultiSelectOption {
     .ms-count.has { color: #1f5c61; background: #e4f3f4; }
     .ms-actions { margin-left: auto; display: flex; gap: 6px; }
     .ms-actions .btn { font-size: 12px; padding: 2px 10px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-    .chip { display: inline-flex; align-items: center; background: #e4f3f4; border: 1px solid #b9dfe2; border-radius: 14px; padding: 1px 6px 1px 10px; font-size: 12px; color: #1f5c61; }
-    .chip-remove { border: 0; background: none; padding: 0 0 0 6px; line-height: 1; color: #1f5c61; font-size: 15px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-width: 0; }
+    /* 2026-11-21 (Assessment Agency UI audit, item 2): a long option (an NIC code's description) wraps inside its chip instead
+       of widening the page on a phone or tablet (the old site styles give chips white-space: nowrap). */
+    .chip { display: inline-flex; align-items: center; background: #e4f3f4; border: 1px solid #b9dfe2; border-radius: 14px; padding: 1px 6px 1px 10px; font-size: 12px; color: #1f5c61;
+      white-space: normal; max-width: 100%; min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    .chip-remove { flex: none; border: 0; background: none; padding: 0 0 0 6px; line-height: 1; color: #1f5c61; font-size: 15px; }
     .filter-box { position: relative; margin-bottom: 8px; }
     .filter-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%) rotate(-45deg); color: #9aa5a6; font-size: 15px; pointer-events: none; }
     .filter { height: 34px; padding-left: 30px; }
@@ -145,6 +149,7 @@ export interface MultiSelectOption {
     .options.wide { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
     .option {
       display: flex; gap: 8px; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-size: 13px; cursor: pointer; margin: 0;
+      min-width: 0; overflow-wrap: anywhere;
       padding: 6px 10px; border: 1px solid #e3e8e9; border-radius: 8px; color: #343a40; transition: background-color .12s, border-color .12s;
     }
     .option:hover { background: #f5fafa; border-color: #b9dfe2; }
@@ -152,23 +157,25 @@ export interface MultiSelectOption {
     .option input { accent-color: #45a5ad; flex: none; margin: 0; }
     /* Not .small: the old site styles paint .small yellow (the Small enterprise badge). */
     .no-match { font-size: .875em; padding: 4px 2px; grid-column: 1 / -1; }
-    @media (max-width: 575.98px) { .options, .options.wide { grid-template-columns: 1fr; } }
+    @media (max-width: 575.98px) { .options, .options.wide { grid-template-columns: minmax(0, 1fr); } }
 
     /* 'chips' and 'dropdown' (2026-11-18): the designs' 9px fields with a #b9cdcf line, teal text links, a floating list. */
     .msc, .msd { position: relative; }
-    .msc-top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+    .msc-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 6px; }
     .msc-label { margin: 0; font-size: 12.5px; font-weight: 600; color: #17373b; }
     .msc-label .req { color: #c8473c; margin-left: 2px; }
-    .msc-meta { margin-left: auto; font-size: 12px; font-weight: 600; color: #24666b; white-space: nowrap; }
+    .msc-meta { margin-left: auto; font-size: 12px; font-weight: 600; color: #24666b; white-space: nowrap; max-width: 100%; }
+    /* On a phone the count and Select all / Clear take their own line rather than pushing the field wider. */
+    @media (max-width: 575.98px) { .msc-meta { white-space: normal; margin-left: 0; } }
     .msc-link { border: 0; background: none; padding: 0 2px; font: inherit; color: #24666b; }
     .msc-link:hover:not(:disabled) { text-decoration: underline; }
     .msc-link:disabled { color: #9aadaf; }
-    .msc-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 44px; padding: 8px; border: 1.2px solid #b9cdcf; border-radius: 9px; background: #fff; cursor: text; }
+    .msc-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 8px; border: 1.2px solid #b9cdcf; border-radius: 9px; background: #fff; cursor: text; }
     .msc.open .msc-box { border-color: #24666b; box-shadow: 0 0 0 3px rgba(69, 165, 173, .18); }
     .msc.disabled .msc-box { background: #eef3f3; cursor: default; }
-    .msc-box .chip { min-height: 26px; padding: 0 8px 0 12px; border: 0; border-radius: 13px; background: #e6f2f3; color: #24666b; font-size: 12px; font-weight: 600; }
+    .msc-box .chip { min-height: 26px; padding: 2px 8px 2px 12px; border: 0; border-radius: 13px; background: #e6f2f3; color: #24666b; font-size: 12px; font-weight: 600; }
     .msc-box .chip-remove { color: #24666b; font-weight: 700; padding-left: 8px; }
-    .msc-input { flex: 1 1 140px; min-width: 120px; border: 0; outline: 0; padding: 2px 4px; font-size: 12.5px; background: transparent; }
+    .msc-input { flex: 1 1 140px; min-width: 0; border: 0; outline: 0; padding: 2px 4px; font-size: 12.5px; background: transparent; }
     .msc-list, .msd-panel { display: none; position: absolute; left: 0; right: 0; z-index: 30; margin-top: 4px; padding: 8px; max-height: 240px; background: #fff;
       border: 1px solid #dde7e8; border-radius: 12px; box-shadow: 0 10px 28px rgba(16, 61, 64, .18); }
     .msc.open .msc-list { display: grid; }

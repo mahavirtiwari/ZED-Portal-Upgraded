@@ -78,7 +78,7 @@ public sealed class SubUsersController(
         if (CurrentUser.IsSubUser) return Forbidden();
         var available = Available;
         var rows = await store.ListAsync(UserId, ct);
-        return new SubUsersResponse(AccountType, available.Select(p => new PermissionOption(p.Key, p.Label)).ToList(),
+        return new SubUsersResponse(AccountType, available.Select(p => new PermissionOption(p.Key, p.LabelFor(host.System))).ToList(),
             rows.Select(r => Item(r, available)).ToList())
         {
             States = await StateOptionsAsync(ct),
