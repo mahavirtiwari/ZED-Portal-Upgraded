@@ -192,6 +192,18 @@ public static partial class ContentCatalogue
         App("app.msme.offline.evidenceNote", "Offline: evidence not synced", MsmeApp, MainAndSurveillance,
             "Don’t forget to sync your offline changes once you are connected to the Internet again."),
 
+        // MSME app: voice typing (2026-11-21: the mic of every comment box; a tap listens in English (India), a long press in Hindi)
+        App("app.msme.voice.button", "Voice typing: mic button (spoken label)", MsmeApp, MainAndSurveillance,
+            "Speak to type (hold for Hindi)"),
+        App("app.msme.voice.prompt", "Voice typing: listening prompt", MsmeApp, MainAndSurveillance,
+            "Speak now"),
+        App("app.msme.voice.unavailable", "Voice typing: not available on the phone", MsmeApp, MainAndSurveillance,
+            "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again."),
+        App("app.msme.voice.failed", "Voice typing: could not start", MsmeApp, MainAndSurveillance,
+            "Voice typing could not start, please try again."),
+        App("app.msme.voice.cut", "Voice typing: text cut to the box's limit", MsmeApp, MainAndSurveillance,
+            "Only part of what you said was added: this box takes up to {{Max}} characters.", "Max"),
+
         // Assessor app (ZED_SA_Studio)
         App("app.assessor.siteTour.pickInstruction", "Site tour: pick a photo", AssessorApp, Main,
             "Simply tap on any photo from the list to pick as evidence"),
@@ -297,6 +309,18 @@ public static partial class ContentCatalogue
         App("app.assessor.schemes.clear.confirmText", "Scheme visits: Clear data: what stays", AssessorApp, Main, "They are removed from this phone only. What the server has stays."),
         App("app.assessor.schemes.clear.everythingText", "Scheme visits: Clear data: remove everything (text)", AssessorApp, Main, "The photos, checks and remarks of this visit and the sends waiting to sync are removed from the phone. What the server has stays."),
 
+        // Assessor app: voice typing (2026-11-21: the mic of every comment box; a tap listens in English (India), a long press in Hindi)
+        App("app.assessor.voice.button", "Voice typing: mic button (spoken label)", AssessorApp, Main,
+            "Speak to type (hold for Hindi)"),
+        App("app.assessor.voice.prompt", "Voice typing: listening prompt", AssessorApp, Main,
+            "Speak now"),
+        App("app.assessor.voice.unavailable", "Voice typing: not available on the phone", AssessorApp, Main,
+            "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again."),
+        App("app.assessor.voice.failed", "Voice typing: could not start", AssessorApp, Main,
+            "Voice typing could not start, please try again."),
+        App("app.assessor.voice.cut", "Voice typing: text cut to the box's limit", AssessorApp, Main,
+            "Only part of what you said was added: this box takes up to {{Max}} characters.", "Max"),
+
         // Consultant app (ZEDConsultant)
         App("app.consultant.siteTour.tourInstruction", "Site tour: capture photos", ConsultantApp, Consultancy,
             "Here you can capture Site Photos which can later be used as evidences"),
@@ -304,5 +328,16 @@ public static partial class ContentCatalogue
             "You can only login 2 days prior to your allocated Site Assessment date"),
         App("app.consultant.tu.dataCorrect.checkbox", "Technology Upgradation: data is correct (checkbox)", ConsultantApp, Consultancy,
             "I am confirming that the above data is correct"),
+        // Consultant app: voice typing (2026-11-21: the mic of every comment box; a tap listens in English (India), a long press in Hindi)
+        App("app.consultant.voice.button", "Voice typing: mic button (spoken label)", ConsultantApp, Consultancy,
+            "Speak to type (hold for Hindi)"),
+        App("app.consultant.voice.prompt", "Voice typing: listening prompt", ConsultantApp, Consultancy,
+            "Speak now"),
+        App("app.consultant.voice.unavailable", "Voice typing: not available on the phone", ConsultantApp, Consultancy,
+            "Voice typing is not available on this phone. Please turn on the Google voice typing service and try again."),
+        App("app.consultant.voice.failed", "Voice typing: could not start", ConsultantApp, Consultancy,
+            "Voice typing could not start, please try again."),
+        App("app.consultant.voice.cut", "Voice typing: text cut to the box's limit", ConsultantApp, Consultancy,
+            "Only part of what you said was added: this box takes up to {{Max}} characters.", "Max"),
     ];
 }

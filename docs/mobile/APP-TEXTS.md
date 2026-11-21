@@ -86,3 +86,19 @@ Files under `app/src/main/java/com/geostat/assessment/activities/`.
 | `app.consultant.siteTour.tourInstruction` | Site tour: capture photos | `SiteTourActivity.java:90` (alert) | | Consultancy |
 | `app.consultant.login.windowNote` | Login: two days before the site assessment | `LoginActivity.java:111` (alert) | | Consultancy |
 | `app.consultant.tu.dataCorrect.checkbox` | Technology Upgradation: data is correct (checkbox) | `technologyupgradation/RejectCommentFragment.kt:65` ("Confirm Final Submit" dialog) | | Consultancy |
+
+## Voice typing (all apps, 2026-11-21)
+
+Every comment box (multi-line, editable) has a mic: a tap listens in English (India), a long press in Hindi, through
+the phone's own speech service (`RecognizerIntent`, `ZedDeviceModule.recognizeSpeech`; no microphone permission in the
+app). The words heard are added to the box, cut to its limit. The mic is hidden on phones without a speech service.
+`<app>` is `app.msme` (MSME and ZED MSME apps; Main, Surveillance), `app.assessor` (Main) or `app.consultant`
+(Consultancy); shared components read them through `AppTextsProvider app=…` / `useSharedAppText`.
+
+| Key | Name | Fields |
+|---|---|---|
+| `<app>.voice.button` | Voice typing: mic button (spoken label) | |
+| `<app>.voice.prompt` | Voice typing: listening prompt | |
+| `<app>.voice.unavailable` | Voice typing: not available on the phone | |
+| `<app>.voice.failed` | Voice typing: could not start | |
+| `<app>.voice.cut` | Voice typing: text cut to the box's limit | `Max` |
