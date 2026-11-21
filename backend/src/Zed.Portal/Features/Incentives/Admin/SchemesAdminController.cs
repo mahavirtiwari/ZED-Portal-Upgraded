@@ -97,8 +97,8 @@ public sealed class SchemesAdminController(SchemeStore store, ILogger<SchemesAdm
         }
         catch (DbException ex)
         {
-            log.LogError(ex, "Could not add scheme {Code} (is migration 0105 applied, or the code used?)", code);
-            return this.Problem400($"The scheme could not be added. The code {code} may be in use, or database migration 0105 is not applied.");
+            log.LogError(ex, "Could not add scheme {Code}", code);
+            return this.Problem400($"The scheme could not be added (database error). The code {code} may be in use; otherwise please report it with the time.");
         }
         log.LogInformation("Scheme {Code} added from {Template} by {UserId}", code, string.IsNullOrWhiteSpace(req.Template) ? "blank" : req.Template.Trim(), UserId);
         return new MessageResponse("Scheme added. It is off until you switch it on.");

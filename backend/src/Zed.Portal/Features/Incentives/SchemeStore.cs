@@ -19,9 +19,14 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
         "SELECT Id, SchemeCode, SchemeJson, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active, OrderNo FROM dbo.Incentives " +
         "WHERE SchemeCode IS NOT NULL ORDER BY OrderNo, Id;";
 
+    /// <summary>
+    /// 2026-11-21 (production: no scheme could be added): DisplayOn stays NULL. Migration 0026's CK_Incentives_DisplayOn allows only
+    /// NULL, 'Dashboard' or 'Card', and the former 'Scheme' made every insert fail. A scheme row is known by DashboardCard 'SCHEME'
+    /// and its SchemeCode; with IncentiveType NULL the legacy incentive lists (by type) never show it.
+    /// </summary>
     internal const string InsertSql =
         "INSERT INTO dbo.Incentives (Incentive, Details, CardHighlight, DashboardCard, SchemeCode, SchemeJson, ActiveStatus, OrderNo, DisplayOn) " +
-        "VALUES (@Title, @Details, @Highlight, 'SCHEME', @Code, @Json, @Active, @OrderNo, 'Scheme');";
+        "VALUES (@Title, @Details, @Highlight, 'SCHEME', @Code, @Json, @Active, @OrderNo, NULL);";
 
     internal const string UpdateSql =
         "UPDATE dbo.Incentives SET Incentive = @Title, Details = @Details, CardHighlight = @Highlight, SchemeJson = @Json, ActiveStatus = @Active, " +
@@ -138,7 +143,8 @@ public sealed class SchemeStore(ISqlExecutor db, ILogger<SchemeStore> log)
                     }
                     catch (DbException ex)
                     {
-                        log.LogDebug(ex, "Built-in scheme {Code} not added (is migration 0105 applied?)", code);
+                        // 2026-11-21: an error, not a debug line (a failing insert hid the built-in schemes on production).
+                        log.LogError(ex, "Built-in scheme {Code} could not be added to dbo.Incentives", code);
                         return list;
                     }
                     log.LogInformation("Built-in scheme {Code} added ({State})", code, d.Active ? "on" : "off");

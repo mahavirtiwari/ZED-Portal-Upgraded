@@ -147,7 +147,7 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
     internal const string BuiltInCardsSql =
         "SELECT DashboardCard AS Card, Incentive AS Title, CardHighlight AS Highlight, Details, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active " +
         // MSME KAWACH was removed (2026-11-06): its row (migration 0026) is not listed.
-        "FROM dbo.Incentives WHERE DashboardCard IS NOT NULL AND DashboardCard <> 'KAWACH' ORDER BY OrderNo, Id;";
+        "FROM dbo.Incentives WHERE DashboardCard IS NOT NULL AND DashboardCard NOT IN ('KAWACH', 'SCHEME') ORDER BY OrderNo, Id;";
 
     internal const string IncentiveCardsSql =
         "SELECT Id, Incentive AS Title, CardHighlight AS Highlight, Details, MinistryOrDepartment AS Department, ContactPerson, Email, MobileNo, " +

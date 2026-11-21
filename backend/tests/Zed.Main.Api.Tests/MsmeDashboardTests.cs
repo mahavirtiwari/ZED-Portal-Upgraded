@@ -69,7 +69,7 @@ public sealed class MsmeDashboardTests : IDisposable
         var builtIn = json.GetProperty("builtIn")[0];
         Assert.Equal(("HANDHOLDING", false), (builtIn.GetProperty("card").GetString(), builtIn.GetProperty("active").GetBoolean()));
         // MSME KAWACH was removed: its row (migration 0026) is never read.
-        Assert.Contains("DashboardCard <> 'KAWACH'", Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql);
+        Assert.Contains("DashboardCard NOT IN ('KAWACH', 'SCHEME')", Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql);
         var card = json.GetProperty("incentives")[0];
         Assert.Equal(JsonValueKind.Null, card.GetProperty("webLink").ValueKind);
         Assert.Equal("https://youtu.be/x", card.GetProperty("videoLink").GetString());

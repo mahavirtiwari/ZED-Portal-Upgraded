@@ -70,7 +70,7 @@ interface NewScheme { name: string; code: string; codeTouched: boolean; template
                 <td class="text-end"><a class="btn btn-outline-primary btn-sm" [routerLink]="[s.code]">{{ 'Edit' | t: 'staff.incentivesAdmin.list.editButton' }}</a></td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="no-data">{{ 'No scheme yet. The database may need migration 0105.' | t: 'staff.incentivesAdmin.list.empty' }}</td></tr>
+              <tr><td colspan="7" class="no-data">{{ 'No scheme yet. Use New scheme to add one.' | t: 'staff.incentivesAdmin.list.emptyNoScheme' }}</td></tr>
             }
           </tbody>
         </table>

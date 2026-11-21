@@ -370,4 +370,24 @@ public sealed class SchemeCoreTests
         var old = fa with { Code = SchemeTemplates.FaCode, TemplateVersion = 2, Form = fa.Form with { Sections = fa.Form.Sections.Select(s => s with { Fields = s.Fields.Select(f => f with { WholeNumber = false }).ToList() }).ToList() } };
         Assert.True(SchemeTemplates.Upgrade(old).Form.Sections.SelectMany(s => s.Fields).Single(f => f.Key == "validity").WholeNumber);
     }
+
+    [Fact]
+    public void Scheme_rows_respect_the_incentives_table_rules()
+    {
+        // 2026-11-21 (production: no scheme could be added): migration 0026's CK_Incentives_DisplayOn allows only NULL, 'Dashboard'
+        // or 'Card'. The insert must leave DisplayOn NULL (a scheme row is known by DashboardCard 'SCHEME' and its SchemeCode).
+        var migration = File.ReadAllText(Path.Combine(RepoRoot(), "database", "migrations", "0026_incentive_dashboard.sql"));
+        Assert.Contains("DisplayOn IN ('Dashboard', 'Card')", migration);
+        Assert.EndsWith("@Active, @OrderNo, NULL);", SchemeStore.InsertSql);
+        Assert.DoesNotContain("'Scheme'", SchemeStore.InsertSql);
+        // The MSME dashboard's built-in cards leave the scheme rows out.
+        Assert.Contains("NOT IN ('KAWACH', 'SCHEME')", Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql);
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "database", "migrations"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("Repository root not found.");
+    }
 }

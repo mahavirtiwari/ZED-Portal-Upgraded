@@ -64677,9 +64677,9 @@
       ]
     },
     {
-      "key": "staff.incentivesAdmin.list.empty",
-      "standard": "No scheme yet. The database may need migration 0105.",
-      "kind": "note",
+      "key": "staff.incentivesAdmin.list.emptyNoScheme",
+      "standard": "No scheme yet. Use New scheme to add one.",
+      "kind": "text",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
