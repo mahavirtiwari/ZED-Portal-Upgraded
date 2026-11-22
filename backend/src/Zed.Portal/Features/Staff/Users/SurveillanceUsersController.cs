@@ -87,7 +87,10 @@ public sealed class SurveillanceUsersController(
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<IReadOnlyList<AgencyRow>> Agencies(CancellationToken ct)
     {
-        var rows = await db.QuerySqlAsync<AgencyRow>(AgenciesSql, null, ct);
+        // 2026-11-22 (Surveillance Operation Admin audit): an operation admin limited to some agencies sees only those (as
+        // main's Assessment Agencies list).
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        var rows = (await db.QuerySqlAsync<AgencyRow>(AgenciesSql, null, ct)).Where(r => scope.AllowsAgency(r.UserId)).ToList();
         // 2026-11-18 (the user): units allotted per level, one grouped query for the whole list.
         var allotted = await UserLevelCounts.AgenciesAsync(db, null, log, ct);
         foreach (var r in rows) r.LevelCounts = allotted?.Of(r.UserId);
@@ -113,7 +116,7 @@ public sealed class SurveillanceUsersController(
         if (!StaffUserRules.IsUserId(userId)) return NotFound();
         var row = (await db.QuerySqlAsync<AgencyRow>(AgenciesSql.Replace("WHERE U.RoleId = 2", "WHERE U.RoleId = 2 AND U.UserId = @UserId"),
             new { UserId = userId }, ct)).FirstOrDefault();
-        if (row is null) return NotFound();
+        if (row is null || !(await HttpContext.LoginScopeAsync(ct)).AllowsAgency(row.UserId)) return NotFound();
         return new AgencyDetails(row, await DistrictsOfAsync(userId, ct));
     }
 
@@ -195,6 +198,9 @@ public sealed class SurveillanceUsersController(
             "FROM Users A LEFT JOIN Users G ON G.UserId = A.CreatedBy AND G.RoleId = 2 " +
             "WHERE A.RoleId = 3 AND (@AgencyId IS NULL OR A.CreatedBy = @AgencyId) ORDER BY A.CreatedBy, A.UserId",
             new { AgencyId = agency }, ct);
+        // 2026-11-22: an operation admin limited to some agencies sees only their assessors.
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        rows = rows.Where(r => scope.AllowsAgency(r.AgencyUserId)).ToList();
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         // 2026-11-18 (the user): per level, scoped as the list (an agency: only its own assessors).
         var allotted = await UserLevelCounts.AssessorsAsync(db, agency, log, ct);
@@ -296,7 +302,10 @@ public sealed class SurveillanceUsersController(
     private async Task<ManagedUser?> FindAsync(string userId, UserRole role, CancellationToken ct)
     {
         var user = await StaffUserRules.LoadAsync(db, userId, role, ct);
-        return user is not null && StaffUserRules.CanManage(CurrentUser, user, role) ? user : null;
+        if (user is null || !StaffUserRules.CanManage(CurrentUser, user, role)) return null;
+        // 2026-11-22: an operation admin manages only the agencies of its scope and their assessors.
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        return scope.AllowsAgency(role == UserRole.Agency ? user.UserId : user.Row.Text("CreatedBy")) ? user : null;
     }
 
     /// <summary>2026-11-21: an agency's Bronze surveillance settings as its History records them (the state and districts by name).</summary>
