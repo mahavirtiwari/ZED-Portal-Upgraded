@@ -344,7 +344,7 @@
       <tbody>
         @for (l of levels(); track l.code) {
           <tr>
-            <th scope="row"><span [class]="'af-medal m-' + medal(l.code)" aria-hidden="true"></span>{{ l.name }}</th>
+            <th scope="row">{{ l.name }}</th>
             @for (m of modes; track m) {
               <td>
                 @if (l.modes.includes(m)) {

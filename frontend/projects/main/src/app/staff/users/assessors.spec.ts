@@ -515,8 +515,10 @@ describe('MyAssessorsPage', () => {
     expect(first.querySelector('.ma-type')!.textContent!.trim()).toBe('Bronze Assessor');
     expect(first.querySelector('.ma-pill')!.textContent!.trim()).toBe('Services');
     expect(second.querySelector('.ma-pill')!.textContent!.trim()).toBe('Not set');
-    expect([...second.querySelectorAll('.lv')].map((m) => m.className)).toEqual(['lv lv-bronze', 'lv lv-silver']);
-    expect(second.querySelector('.lv-row')!.getAttribute('aria-label')).toBe('Bronze: Desktop; Silver: Onsite, Desktop');
+    // 2026-11-22 (the product owner): the level names as text (no medal icons), the modes per level on hover.
+    expect(second.querySelector('.lv-names')!.textContent!.trim()).toBe('Bronze · Silver');
+    expect(second.querySelector('.lv-names')!.getAttribute('title')).toBe('Bronze: Desktop; Silver: Onsite, Desktop');
+    expect(second.querySelector('.lv')).toBeNull();
     expect(second.querySelector('.ma-levels .ma-sub')!.textContent!.trim()).toBe('Desktop · Onsite');
 
     ([...el.querySelectorAll('zed-list-counts button')].find((t) => t.textContent!.includes('Blocked')) as HTMLButtonElement).click();
@@ -844,7 +846,8 @@ describe('AssessorListPage', () => {
     expect(first.querySelector('.as-avatar')!.textContent!.trim()).toBe('RK');
     expect(first.querySelector('.as-type')!.textContent!.trim()).toBe('Bronze Assessor');
     expect(first.querySelector('.as-pill')!.textContent!.trim()).toBe('Manufacturing');
-    expect([...second.querySelectorAll('.lv')].map((m) => [m.className, m.getAttribute('title')])).toEqual([['lv lv-gold', 'Gold: Remote'], ['lv lv-zedx', 'ZED-X: Onsite']]);
+    expect(second.querySelector('.lv-names')!.textContent!.trim()).toBe('Gold · ZED-X');
+    expect(second.querySelector('.lv-names')!.getAttribute('title')).toBe('Gold: Remote; ZED-X: Onsite');
     expect(second.querySelector('.as-levels .as-sub')!.textContent!.trim()).toBe('Remote · Onsite');
     expect(third.querySelector('.as-pill')!.textContent!.trim()).toBe('Not set');
     expect([...first.querySelector('.as-agency')!.children].map((c) => c.textContent!.trim())).toEqual(['Alpha Quality', 'ZEDAA0001']);

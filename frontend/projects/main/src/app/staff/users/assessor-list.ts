@@ -49,6 +49,8 @@ export function assessorTypeLabel(type: string | null | undefined): string {
 /** The levels of an assessor as medals (Bronze, Silver, Gold, ZED-X) with the modes beneath ("Desktop · Onsite"). */
 export interface LevelMedals {
   items: { code: string; title: string }[];
+  /** 2026-11-22: the level names as text ("Bronze · Silver"; the medal icons were removed). */
+  names: string;
   modes: string;
   /** "Bronze: Desktop; Silver: Desktop, Onsite" for screen readers. */
   aria: string;
@@ -62,10 +64,11 @@ export function levelMedals(v: unknown): LevelMedals {
   const items = list.map((x) => {
     const name = x.level === 'ZEDX' ? 'ZED-X' : x.level;
     const code = x.level.toLowerCase().replace(/[^a-z]/g, '');
-    return { code: ['bronze', 'silver', 'gold', 'zedx'].includes(code) ? code : 'other', title: `${name}: ${x.modes.join(', ')}` };
+    return { code: ['bronze', 'silver', 'gold', 'zedx'].includes(code) ? code : 'other', title: `${name}: ${x.modes.join(', ')}`, name };
   });
   return {
-    items,
+    items: items.map(({ code, title }) => ({ code, title })),
+    names: items.map((i) => i.name).join(' · '),
     modes: [...order.filter((m) => modes.has(m)), ...[...modes].filter((m) => !order.includes(m))].join(' · '),
     aria: items.map((i) => i.title).join('; '),
   };
@@ -218,9 +221,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                   <td class="as-levels" [attr.data-label]="'Levels and modes' | t: 'staff.assessors.column.levels'">
                     @let m = medals(s.Assessments);
                     @if (m.items.length) {
-                      <span class="lv-row" role="img" [attr.aria-label]="m.aria">
-                        @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true"></span> }
-                      </span>
+                      <span class="lv-names" [title]="m.aria">{{ m.names }}</span>
                       <span class="as-sub">{{ m.modes }}</span>
                     } @else {
                       <span class="as-type">{{ typeLabel(s.AssessorType) }}</span>
@@ -345,14 +346,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     .as-who .as-id { font-weight: 600; }
     div.as-contact > span:first-child { font-size: 12.5px; font-weight: 500; color: #3d5559; }
     .as-under { margin: 6px 0 0 44px; }
-    .lv-row { display: flex; gap: 7px; margin-bottom: 3px; }
-    .lv { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10px; font-weight: 800; font-style: italic;
-      background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.5); }
-    .lv::before { content: 'Z'; } /* 2026-11-21 (audit item 10): not in the page's text */
-    .lv-bronze { background: #c9714f; }
-    .lv-silver { background: #9aa4aa; }
-    .lv-gold { background: #c9a23f; }
-    .lv-zedx { background: #3c8f99; }
+    .lv-names { display: block; font-size: 13px; font-weight: 700; color: #17373b; margin-bottom: 2px; }
     .as-type { font-size: 12.5px; color: #3d5559; }
     .as-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
     .no-mobile { color: #9a5f06; }

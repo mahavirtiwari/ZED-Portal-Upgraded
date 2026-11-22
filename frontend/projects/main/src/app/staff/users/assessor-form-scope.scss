@@ -44,12 +44,6 @@ fieldset:disabled .af-chip:not(.active) { background: #f4f6f6; color: #6f8487; }
 .af-scope-table thead th { padding-top: 0; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #1b4f53; }
 .af-scope-table th:first-child { text-align: left; width: 40%; }
 .af-scope-table tbody th { font-weight: 600; color: #17373b; }
-.af-medal { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 10px; border-radius: 50%; vertical-align: middle;
-  background: #3c8f99; color: #fff; font-size: 11px; font-weight: 800; font-style: italic; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .45); }
-.af-medal::before { content: 'Z'; } /* 2026-11-21 (audit item 10): not in the page's text */
-.af-medal.m-bronze { background: #c9714f; }
-.af-medal.m-silver { background: #9aa4aa; }
-.af-medal.m-gold { background: #c9a23f; }
 .af-scope-table .form-check-input { appearance: none; width: 20px; height: 20px; margin: 0; float: none; cursor: pointer; border: 1.5px solid #c3d0d2;
   border-radius: 5px; background: #fff center / 13px no-repeat; }
 .af-scope-table .form-check-input:checked { border-color: #24666b; background-color: #24666b;

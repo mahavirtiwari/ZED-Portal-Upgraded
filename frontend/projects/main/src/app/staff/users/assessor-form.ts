@@ -184,12 +184,6 @@ export class AssessorFormPage implements HasUnsavedChanges {
     }
   }
 
-  /** The medal colour of a level row (bronze, silver, gold, zedx). */
-  protected medal(code: string): string {
-    const c = code.toLowerCase().replace(/[^a-z]/g, '');
-    return ['bronze', 'silver', 'gold', 'zedx'].includes(c) ? c : 'other';
-  }
-
   constructor() {
     void this.load();
   }

@@ -121,9 +121,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                     <td class="ma-levels" [attr.data-label]="'Levels and modes' | t: 'staff.myAssessors.column.levels'">
                       @let m = medals(u.Assessments);
                       @if (m.items.length) {
-                        <span class="lv-row" role="img" [attr.aria-label]="m.aria">
-                          @for (x of m.items; track $index) { <span [class]="'lv lv-' + x.code" [title]="x.title" aria-hidden="true"></span> }
-                        </span>
+                        <span class="lv-names" [title]="m.aria">{{ m.names }}</span>
                         <span class="ma-sub">{{ m.modes }}</span>
                       } @else {
                         <span class="ma-type">{{ typeLabel(u.AssessorType) }}</span>
@@ -210,13 +208,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     .ma-id, .ma-sub { font-size: 12.5px; color: #5f6f70; }
     .ma-contact { min-width: 150px; }
     .ma-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lv-row { display: flex; gap: 5px; margin-bottom: 3px; }
-    .lv { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10.5px; font-weight: 800;
-      background: var(--zt-mid2, #2a8a8c); box-shadow: inset 0 0 0 2px rgba(255,255,255,.45), 0 0 0 1.5px rgba(0,0,0,.12); }
-    .lv::before { content: 'Z'; } /* 2026-11-21 (audit item 10): not in the page's text */
-    .lv-bronze { background: #c46a3c; }
-    .lv-silver { background: #9aa4aa; }
-    .lv-gold { background: #d2a12a; }
+    .lv-names { display: block; font-size: 13px; font-weight: 700; color: #17373b; margin-bottom: 2px; }
     .ma-type { font-size: 13px; color: #3d5254; }
     .ma-pill { display: inline-block; padding: 3px 11px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .ma-pill.is-none { background: #fff4d6; color: #8a6100; }

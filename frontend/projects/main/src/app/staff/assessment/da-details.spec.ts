@@ -89,10 +89,11 @@ describe('DaDetailsPage', () => {
     const text = el.textContent!.replace(/\s+/g, ' ');
     expect(text).toContain('ZEDMSME000001');
     expect(text).toContain('Agency One AGENCY1');
-    // 2026-11-21 (audit item 10): every tab has its name, and the level medal adds no "Z" to the text.
+    // 2026-11-21 (audit item 10): every tab has its name, and and the level shows no "Z" medal.
     expect([...el.querySelectorAll('[role="tab"]')].every((b) => !!b.getAttribute('aria-label'))).toBe(true);
     expect(el.querySelector('#da-tab-3')!.getAttribute('aria-label')).toBe('Parameters');
-    expect([...el.querySelectorAll('.lm-dot')].every((m) => m.textContent === '' && m.getAttribute('aria-hidden') === 'true')).toBe(true);
+    // 2026-11-22 (the product owner): no level medal icon at all, only the level name.
+    expect(el.querySelector('.lm-dot')).toBeNull();
 
     tab('Parameters');
     await settle();
