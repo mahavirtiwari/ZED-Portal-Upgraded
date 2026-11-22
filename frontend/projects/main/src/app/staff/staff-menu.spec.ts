@@ -214,8 +214,9 @@ describe('staff menu', () => {
 
   describe('sub-users', () => {
     it('get only the screens their owner gave them, without user management', () => {
+      // Documents: every sub-user (asserted below).
       const labels = (role: number, subs: string[], routes: string[], system: 'main' | 'consultancy' | 'surveillance' = 'main') =>
-        menuFor(role, subs, system, routes).map((i) => i.label);
+        menuFor(role, subs, system, routes).map((i) => i.label).filter((l) => l !== 'Documents');
       expect(labels(StaffRole.MasterAdmin, [], ['/staff/assessment/allot', '/staff/assessment/completed', '/staff/assessment/rejected'])).toEqual([
         'Allot Assessment', 'Assessment Completed', 'Rejected Certification',
       ]);
@@ -223,6 +224,14 @@ describe('staff menu', () => {
       expect(labels(StaffRole.Agency, ['DesktopVerification'], [])).toEqual([]);
       // Owners keep the whole menu.
       expect(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main', null).map((i) => i.label)).toContain('Sub-Users');
+    });
+
+    it('all get the ZED team documents, not a limited dashboard login (2026-11-22)', () => {
+      for (const system of ['main', 'consultancy', 'surveillance'] as const) {
+        expect(menuFor(StaffRole.Agency, ['SiteVerification'], system, []).map((i) => i.label)).toEqual(['Documents']);
+        expect(menuFor(StaffRole.MasterAdmin, [], system, []).map((i) => i.label)).toEqual(['Documents']);
+      }
+      expect(menuFor(StaffRole.SuperAdmin, [], 'main', ['/staff/reports']).map((i) => i.label)).not.toContain('Documents');
     });
   });
   it('reaches Customer History from Registered MSMEs; only logins without that list keep the menu item', () => {

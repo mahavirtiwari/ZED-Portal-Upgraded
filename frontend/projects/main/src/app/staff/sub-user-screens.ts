@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute, CanActivateChildFn, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { TextPipe } from '../content/page-text';
-import { menuFor } from './staff-menu';
+import { menuFor, subUserAlwaysOpen } from './staff-menu';
 
 /**
  * 2026-11-21 (Operation Admin audit): a sub-user (operation admin, agency sub-user) opening a screen of its owner's menu that it
@@ -17,7 +17,7 @@ export function blockedScreen(path: string, roleId: number, subRoles: readonly s
     .map((i) => i.route)
     .filter((r): r is string => !!r && r !== '/staff' && r.startsWith('/staff/') && (clean === r || clean.startsWith(r + '/')))
     .sort((a, b) => b.length - a.length)[0];
-  if (!screen || ALWAYS_OPEN.some((r) => screen === r || screen.startsWith(r + '/'))) return null;
+  if (!screen || ALWAYS_OPEN.some((r) => screen === r || screen.startsWith(r + '/')) || subUserAlwaysOpen(screen, roleId)) return null;
   return granted.some((r) => screen === r || screen.startsWith(r + '/')) ? null : screen;
 }
 

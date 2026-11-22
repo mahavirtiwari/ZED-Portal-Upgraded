@@ -19,6 +19,9 @@ describe('sub-user screens (2026-11-21)', () => {
     expect(blockedScreen('/staff/msme-profile/ZEDM000005', masterAdmin, [], ['/staff/expenditure'])).toBeNull();
     expect(blockedScreen('/staff/assessment/da-details/ZEDM000005/Silver', masterAdmin, [], ['/staff/expenditure'])).toBeNull();
     expect(blockedScreen('/staff/sub-users', masterAdmin, [], null)).toBeNull();
+    // 2026-11-22: the ZED team's documents, for every sub-user.
+    expect(blockedScreen('/staff/documents', masterAdmin, [], ['/staff/expenditure'])).toBeNull();
+    expect(blockedScreen('/staff/documents', 2, ['SiteVerification'], [])).toBeNull();
   });
 });
 

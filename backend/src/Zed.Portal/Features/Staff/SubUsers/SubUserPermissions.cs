@@ -178,6 +178,8 @@ public static class SubUserPermissions
             // 2026-11-22 (Consultancy Operation Admin audit: a milestone page's checklist answered 403): the submission checklists
             // a case page shows (read-only; the controller's roles still apply).
             || Under(path, "/api/staff/submission-checklists")
+            // 2026-11-22 (Consultant Organisation audit): the ZED team's documents for the owner's role (Documents page, read-only).
+            || Under(path, "/api/staff/documents")
             // 2026-11-17: the header's bell; it lists only the screens the sub-user was given (AttentionController).
             || path.Equals("/api/staff/attention", StringComparison.OrdinalIgnoreCase)
             || Under(path, "/api/staff/msme-profile")

@@ -639,6 +639,17 @@ export function menuScreenAllows(route: string, roleId: number, subRoles: readon
 }
 
 /**
+ * 2026-11-22 (Consultant Organisation audit: a sub-user could not open the ZED team's documents at all): screens of the owner's
+ * menu every sub-user has, whatever it was given (the API's SubUserPermissions.AlwaysReadable). Not a limited Dashboard Admin
+ * (role 10), whose screens (Documents among them) are the Admin's ticks.
+ */
+const SUB_USER_ALWAYS_OPEN = ['/staff/documents'];
+
+export function subUserAlwaysOpen(route: string | undefined, roleId: number): boolean {
+  return !!route && roleId !== StaffRole.SuperAdmin && SUB_USER_ALWAYS_OPEN.includes(route);
+}
+
+/**
  * The menu of a role. A sub-user (operation admin, agency sub-user) gets its owner's menu limited to the screens its owner
  * gave it (`permissionRoutes`, from the sign-in); the API checks them again.
  */
@@ -651,7 +662,7 @@ export function menuFor(
   return expandLevels(MENUS[system]).filter(
     (i) =>
       menuItemAllows(i, roleId, subRoles) &&
-      (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
+      (!permissionRoutes || subUserAlwaysOpen(i.route, roleId) || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
       (!i.onlyWithout || (!!permissionRoutes && !permissionRoutes.includes(i.onlyWithout))),
   );
 }

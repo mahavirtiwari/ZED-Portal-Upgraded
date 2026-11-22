@@ -354,6 +354,9 @@ public sealed class SubUsersTests : IDisposable
         // 2026-11-22: a milestone / case page's submission checklist (read-only).
         Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/submission-checklists/ZEDM000005/Silver"));
         Assert.False(SubUserPermissions.AlwaysReadable("POST", "/api/staff/submission-checklists/ZEDM000005/Silver"));
+        // The ZED team's documents (Documents page).
+        Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/documents"));
+        Assert.False(SubUserPermissions.AlwaysReadable("DELETE", "/api/staff/documents/5"));
     }
 
     [Fact]
