@@ -52,6 +52,9 @@ public static class SubUserPermissions
     /// <summary>2026-11-16: the ZED team's quality observations (an agency sub-user on Monitoring or the results replies to them).</summary>
     private const string QualityObservations = "/api/staff/quality-observations";
 
+    /// <summary>The Consultants list's milestone counts (Consultancy; StaffDashboardController narrows them to an agency's own).</summary>
+    private const string ConsultantMilestones = "/api/staff/dashboard/consultant-milestones";
+
     /// <summary>The API roots whose calls a sub-user needs a permission for (<see cref="SubUserAccessFilter"/>).</summary>
     public static readonly string[] CheckedRoots = ["/api/staff", "/api/consultancy"];
 
@@ -61,7 +64,11 @@ public static class SubUserPermissions
         new("users", "Agencies and their assessors", UserRole.MasterAdmin, All, None,
             ["/staff/users/agencies", "/staff/users/bronze-agencies", "/staff/users/assessors", "/staff/users/surveillance-agencies", "/staff/users/surveillance-assessors"],
             // 2026-11-18: the purchase orders card on Agency Level Allocation / the Consultant Organisations page.
-            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users", "/api/staff/expenditure/po"],
+            // 2026-11-22 (Consultancy Operation Admin audit: the Consultants list showed every phone "Not registered" and every
+            // milestone count 0, both calls answering 403): the registered phones (and their release) and the consultants'
+            // milestone counts, as the Master Admin's own list.
+            ["/api/staff/users/agencies", "/api/staff/users/assessors", "/api/staff/surveillance-users", "/api/staff/expenditure/po",
+             "/api/staff/assessor-mobile", ConsultantMilestones],
             ConsultancyLabel: "Consultant organisations and their consultants"),
         new("payments", "Payment Received", UserRole.MasterAdmin, All, None,
             ["/staff/payments-received"], ["/api/staff/dashboard/payments-received"]),
@@ -99,7 +106,7 @@ public static class SubUserPermissions
             ["/staff/monitoring", "/staff/quality-observations"], ["/api/staff/monitoring", DaDetails, Milestones, QualityObservations]),
         new("assessors", "Assessors", UserRole.Agency, All, None,
             ["/staff/users/my-assessors", "/staff/users/assessors", "/staff/users/surveillance-assessors"],
-            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors"], ConsultancyLabel: "Consultants"),
+            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors", ConsultantMilestones], ConsultancyLabel: "Consultants"),
         new("da-allotment", "Desktop allotment", UserRole.Agency, [PortalSystem.Main, PortalSystem.Surveillance], [SubRoles.DesktopVerification],
             ["/staff/assessment/da-allotment"], ["/api/staff/assessment/da-allotment", DaDetails]),
         new("sa-allotment", "Site assessment allotment", UserRole.Agency, All, [SubRoles.SiteVerification],
@@ -168,6 +175,9 @@ public static class SubUserPermissions
             || path.Equals("/api/staff/dashboard/analytics", StringComparison.OrdinalIgnoreCase)
             // 2026-11-21: the MSME profile's "Edit history" section (read-only, as the profile itself).
             || Under(path, "/api/staff/msme-edit-history")
+            // 2026-11-22 (Consultancy Operation Admin audit: a milestone page's checklist answered 403): the submission checklists
+            // a case page shows (read-only; the controller's roles still apply).
+            || Under(path, "/api/staff/submission-checklists")
             // 2026-11-17: the header's bell; it lists only the screens the sub-user was given (AttentionController).
             || path.Equals("/api/staff/attention", StringComparison.OrdinalIgnoreCase)
             || Under(path, "/api/staff/msme-profile")

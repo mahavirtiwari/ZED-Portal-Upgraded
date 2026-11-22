@@ -351,5 +351,23 @@ public sealed class SubUsersTests : IDisposable
         Assert.False(SubUserPermissions.AlwaysReadable("POST", "/api/staff/dashboard/analytics"));
         Assert.False(SubUserPermissions.AlwaysReadable("GET", "/api/staff/monitoring"));
         Assert.False(SubUserPermissions.AlwaysReadable("GET", "/api/staff/dashboard/analyticsx"));
+        // 2026-11-22: a milestone / case page's submission checklist (read-only).
+        Assert.True(SubUserPermissions.AlwaysReadable("GET", "/api/staff/submission-checklists/ZEDM000005/Silver"));
+        Assert.False(SubUserPermissions.AlwaysReadable("POST", "/api/staff/submission-checklists/ZEDM000005/Silver"));
+    }
+
+    [Fact]
+    public void An_operation_admin_with_the_users_screen_gets_the_consultants_phones_and_milestone_counts()
+    {
+        // 2026-11-22 (Consultancy Operation Admin audit): both answered 403, so every consultant showed "Not registered" and 0.
+        var users = SubUserPermissions.Granted("users", (int)UserRole.MasterAdmin, [], PortalSystem.Consultancy);
+        Assert.True(SubUserPermissions.Covers(users, "/api/staff/assessor-mobile"));
+        Assert.True(SubUserPermissions.Covers(users, "/api/staff/assessor-mobile/ZEDCC4631/release"));
+        Assert.True(SubUserPermissions.Covers(users, "/api/staff/dashboard/consultant-milestones"));
+        Assert.False(SubUserPermissions.Covers(users, "/api/staff/dashboard/payments-received"));
+        // An organisation's sub-user with its Consultants screen gets its consultants' counts too.
+        var assessors = SubUserPermissions.Granted("assessors", (int)UserRole.Agency, [], PortalSystem.Consultancy);
+        Assert.True(SubUserPermissions.Covers(assessors, "/api/staff/dashboard/consultant-milestones"));
+        Assert.False(SubUserPermissions.Covers(assessors, "/api/staff/assessor-mobile"));
     }
 }

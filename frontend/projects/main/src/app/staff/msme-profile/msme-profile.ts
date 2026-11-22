@@ -146,12 +146,19 @@ export const PROFILE_SECTIONS: InfoSection[] = [
 export class StaffMsmeProfilePage {
   private readonly http = inject(HttpClient);
   private readonly roleId = inject(AuthService).currentUser()?.roleId ?? 0;
+  /** A sub-user's (and a limited dashboard login's) screens; null = every screen of its role. */
+  private readonly permissionRoutes = inject(AuthService).currentUser()?.permissionRoutes ?? null;
+
+  private mayOpen(route: string): boolean {
+    return !this.permissionRoutes || this.permissionRoutes.some((r) => r === route || route.startsWith(r + '/'));
+  }
   protected readonly zedId = inject(ActivatedRoute).snapshot.paramMap.get('zedId') ?? '';
   protected readonly sections = PROFILE_SECTIONS.filter((x) => !x.full);
   protected readonly more = PROFILE_SECTIONS.find((x) => x.full)!;
   protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.msmeProfile.crumb', 'MSME Profile') }));
   /** ZED ID history: the logins with that screen (Master Admin and the dashboard logins). */
-  protected readonly historyLink = [7, 10, 11, 17].includes(this.roleId) ? ['/staff/history'] : null;
+  /** 2026-11-22 (Consultancy Operation Admin audit: the button opened a "no access" page): a sub-user only when it was given it. */
+  protected readonly historyLink = [7, 10, 11, 17].includes(this.roleId) && this.mayOpen('/staff/history') ? ['/staff/history'] : null;
   /** Assessment details of each level (not on the consultancy portal: handholding has no assessment pages). */
   protected readonly assessmentLinks = computed(() => {
     if (PORTAL_SYSTEM === 'consultancy' || ![7, 2, 3, 10, 8, 11, 17].includes(this.roleId)) return [];

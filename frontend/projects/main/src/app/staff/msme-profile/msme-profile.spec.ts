@@ -8,7 +8,7 @@ import { apiBasePath, withApiBase } from '../../api-base';
 import { systemLegacyTarget } from '../../app.routes';
 
 describe('staff MSME profile', () => {
-  function create(zedId: string, roleId = 7) {
+  function create(zedId: string, roleId = 7, permissionRoutes: string[] | null = null) {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -16,7 +16,7 @@ describe('staff MSME profile', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ zedId }) } } },
       ],
     });
-    TestBed.inject(AuthService).setUser({ userId: 'U1', userName: 'U1', roleId, role: '' });
+    TestBed.inject(AuthService).setUser({ userId: 'U1', userName: 'U1', roleId, role: '', permissionRoutes });
     const fixture = TestBed.createComponent(StaffMsmeProfilePage);
     return { fixture, http: TestBed.inject(HttpTestingController) };
   }
@@ -71,6 +71,21 @@ describe('staff MSME profile', () => {
     fixture.detectChanges();
     const links = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.pf-links a')].map((a) => a.textContent?.trim());
     expect(links).toEqual(['Assessment details']);
+  });
+
+  it('shows an operation admin the ZED ID history link only when it was given that screen', async () => {
+    // 2026-11-22 (Consultancy Operation Admin audit): the link opened a "no access" page.
+    const without = create('ZEDMSME000001', 7, ['/staff/monitoring']);
+    without.http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({ unit: { ZedId: 'ZEDMSME000001' }, enterprise: {}, certifications: ['Silver'] });
+    await without.fixture.whenStable();
+    without.fixture.detectChanges();
+    expect([...(without.fixture.nativeElement as HTMLElement).querySelectorAll('.pf-links a')].map((a) => a.textContent?.trim())).not.toContain('ZED ID history');
+    TestBed.resetTestingModule();
+    const given = create('ZEDMSME000001', 7, ['/staff/history']);
+    given.http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({ unit: { ZedId: 'ZEDMSME000001' }, enterprise: {}, certifications: ['Silver'] });
+    await given.fixture.whenStable();
+    given.fixture.detectChanges();
+    expect([...(given.fixture.nativeElement as HTMLElement).querySelectorAll('.pf-links a')].map((a) => a.textContent?.trim())).toContain('ZED ID history');
   });
 
   it('says so when the unit is not allotted to the user', async () => {
