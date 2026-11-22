@@ -105,9 +105,9 @@ each portal resets the accounts of its own Users table (Consultancy keeps its ow
   changed" mail follows.
 - **Limits:** 5 requests per 15 minutes per address, and `StaffPasswordReset:MaxRequestsPerHour` (3) self-service links
   per account and hour (more requests get the same answer and send nothing).
-- **Excluded roles:** `StaffPasswordReset:ExcludedRoles` (default `7`, MasterAdmin; the Dashboard Admin, RoleId 10, resets like other staff since 2026-11-08) cannot reset with
-  their e-mail account alone. Another MasterAdmin sends them a link (menu *Password Reset Link*). Add `1` to exclude
-  Admin accounts too.
+- **Excluded roles:** `StaffPasswordReset:ExcludedRoles` (default empty since 2026-11-22: every staff login, the MasterAdmin
+  included, can use *Forgot password?*; it was `7` before) lists the RoleIds that cannot reset with their e-mail account alone.
+  Another MasterAdmin then sends them a link (menu *Password Reset Link*), or the Admin a new password (User Management).
 - **Links sent by an administrator:** *Reset Link* in the user screens (MasterAdmin: agencies, assessors/consultants;
   an agency: its own assessors; Surveillance: the agency and assessor lists) and the MasterAdmin page *Password Reset
   Link* (any staff account of the portal, `POST api/staff/password-reset/{userId}`). The link goes to the user's
