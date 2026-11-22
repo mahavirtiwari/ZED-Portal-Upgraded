@@ -246,6 +246,31 @@ describe('scheme onsite verification pages', () => {
     await settle();
   });
 
+  it('adds every state at once with "All states", each as the whole state, and removes them all (2026-11-22)', async () => {
+    await open('/staff/scheme-agencies/new');
+    http.expectOne('/api/staff/scheme-agencies/options').flush({ states: ['GOA', 'KERALA', 'UTTAR PRADESH'], schemes: [], desktopSchemes: [] });
+    await settle();
+    const s = el.querySelector('.of-add select') as HTMLSelectElement;
+    expect([...s.options].map((o) => o.textContent!.trim())).toEqual(['-- Add a state --', 'All states', 'GOA', 'KERALA', 'UTTAR PRADESH']);
+    s.value = 'GOA';
+    s.dispatchEvent(new Event('change'));
+    await settle();
+    button('Add state')[0].click();
+    await settle();
+    s.value = '*ALL*';
+    s.dispatchEvent(new Event('change'));
+    await settle();
+    button('Add state')[0].click();
+    await settle();
+    expect([...el.querySelectorAll('.of-area')].map((a) => a.getAttribute('data-state'))).toEqual(['GOA', 'KERALA', 'UTTAR PRADESH']);
+    expect([...el.querySelectorAll('.of-area input[type="radio"]:checked')].length).toBe(3);
+    // Nothing is left to add: no "All states" any more.
+    expect([...(el.querySelector('.of-add select') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['-- Add a state --']);
+    button('Remove all states')[0].click();
+    await settle();
+    expect(el.querySelectorAll('.of-area').length).toBe(0);
+  });
+
   it('shows the type of an existing agency as fixed', async () => {
     await open('/staff/scheme-agencies/ZEDAA0100');
     http.expectOne('/api/staff/scheme-agencies/options').flush({ states: ['GOA'], schemes: [], desktopSchemes: [{ code: 'FA', name: 'Financial Assistance', active: true }] });

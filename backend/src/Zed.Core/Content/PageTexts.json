@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9471,
+  "count": 9473,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -99213,6 +99213,18 @@
       ]
     },
     {
+      "key": "staff.schemeOnsite.form.allStates",
+      "standard": "All states",
+      "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
       "key": "staff.schemeOnsite.form.areaTitle",
       "standard": "States and districts",
       "kind": "heading",
@@ -99558,6 +99570,18 @@
       "key": "staff.schemeOnsite.form.pin",
       "standard": "PIN code",
       "kind": "label",
+      "portal": "staff",
+      "page": "schemeOnsite",
+      "pageName": "Scheme onsite",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/incentive-agency-form.ts"
+      ]
+    },
+    {
+      "key": "staff.schemeOnsite.form.removeAllStates",
+      "standard": "Remove all states",
+      "kind": "button",
       "portal": "staff",
       "page": "schemeOnsite",
       "pageName": "Scheme onsite",

@@ -130,9 +130,14 @@ interface AreaEdit {
         <div class="of-add">
           <select class="form-select" [attr.aria-label]="'Add a state' | t: 'staff.schemeOnsite.form.addStateAria'" [ngModel]="pick" name="pickState" (ngModelChange)="pick = $event">
             <option value="">{{ '-- Add a state --' | t: 'staff.schemeOnsite.form.addStatePlaceholder' }}</option>
+            <!-- 2026-11-22 (the product owner: "All state selection option is missing"): every state not added yet, each as the whole state. -->
+            @if (freeStates().length > 1) { <option [value]="allStates">{{ 'All states' | t: 'staff.schemeOnsite.form.allStates' }}</option> }
             @for (s of freeStates(); track s) { <option [value]="s">{{ s }}</option> }
           </select>
-          <button type="button" class="btn btn-outline-primary" [disabled]="!pick" (click)="addState()">{{ 'Add state' | t: 'staff.schemeOnsite.form.addState' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="!pick" (click)="addState()">{{ 'Add state' | t: 'staff.schemeOnsite.form.addState' }}</button>
+          @if (areas().length > 1) {
+            <button type="button" class="btn btn-link btn-sm text-danger" (click)="removeAllStates()">{{ 'Remove all states' | t: 'staff.schemeOnsite.form.removeAllStates' }}</button>
+          }
         </div>
         @if (err('states'); as e) { <span class="help-block">{{ e }}</span> }
       </section>
@@ -250,10 +255,18 @@ export class IncentiveAgencyFormPage {
     this.picked.set(new Set([...this.picked()].filter((c) => allowed.has(c))));
   }
 
+  /** The drop-down's "All states" value (never a state name). */
+  protected readonly allStates = '*ALL*';
+
   protected addState(): void {
     if (!this.pick) return;
-    this.areas.set([...this.areas(), { state: this.pick, whole: true, districts: new Set(), options: null, filter: '' }]);
+    const add = this.pick === this.allStates ? this.freeStates() : [this.pick];
+    this.areas.set([...this.areas(), ...add.map((state) => ({ state, whole: true, districts: new Set<string>(), options: null, filter: '' }))]);
     this.pick = '';
+  }
+
+  protected removeAllStates(): void {
+    this.areas.set([]);
   }
 
   protected removeState(a: AreaEdit): void {
