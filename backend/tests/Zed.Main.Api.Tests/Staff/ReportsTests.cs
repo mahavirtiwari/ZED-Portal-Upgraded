@@ -37,6 +37,18 @@ public sealed class ReportsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_report_whose_procedure_is_not_in_the_database_is_not_listed()
+    {
+        // 2026-11-22 (database check): three Citizen Feedback reports have no procedure in the databases.
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Reports.ReportsController.PresentSql] = args =>
+            ((IEnumerable<string>)args!.GetType().GetProperty("Names")!.GetValue(args)!).Where(n => !n.Contains("_MINISTRY_UPTO_")).Select(n => (object)n);
+        var super = await _host.SignInAsync("SUPER1");
+        var names = (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).EnumerateArray().Select(r => r.GetProperty("name").GetString()).ToList();
+        Assert.Equal(49, names.Count);
+        Assert.DoesNotContain("Master Report Of Registered Units (Up to 2025-26)", names);
+    }
+
+    [Fact]
     public async Task Each_role_sees_its_own_report_list()
     {
         var agency = await _host.SignInAsync("AGENCY1");

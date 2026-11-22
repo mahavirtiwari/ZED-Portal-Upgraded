@@ -128,6 +128,9 @@ public sealed class FakeSql : ISqlExecutor
     {
         // Every ZED ID has a registration record to draw its pledge certificate from (PledgeCertificateService.LoadAsync).
         [PledgeQuery] = args => [PledgeRow(Arg(args, "ZedId")!)],
+        // 2026-11-22: the report procedures a test database has (every one asked for; a test removes one to hide it).
+        ["SELECT name FROM sys.procedures WHERE name IN @Names;"] = args =>
+            ((IEnumerable<string>)args!.GetType().GetProperty("Names")!.GetValue(args)!).Select(n => (object)n),
     };
 
     public const string PledgeQuery = "SELECT TOP (1) M.ZedId,";

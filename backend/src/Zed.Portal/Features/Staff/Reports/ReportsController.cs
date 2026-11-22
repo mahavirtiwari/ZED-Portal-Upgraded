@@ -43,9 +43,32 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
 
     [HttpGet]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
-    public IEnumerable<ReportItem> List() =>
+    public async Task<IEnumerable<ReportItem>> List(CancellationToken ct)
+    {
         // An MSME DFO without this portal's NEFT list has none of its reports (2026-11-08).
-        MayUseReports() ? ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).Select(r => new ReportItem(r.Id, r.Name)) : [];
+        if (!MayUseReports()) return [];
+        var reports = ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).ToList();
+        // 2026-11-22 (database check): a report whose procedure is not in this portal's database is not offered (it could only
+        // answer "This report is not available"); when the catalogue cannot be read, every report is offered as before.
+        var present = await PresentAsync(reports.Select(r => r.Procedure).Distinct().ToList(), ct);
+        return reports.Where(r => present is null || present.Contains(r.Procedure)).Select(r => new ReportItem(r.Id, r.Name));
+    }
+
+    public const string PresentSql = "SELECT name FROM sys.procedures WHERE name IN @Names;";
+
+    private async Task<HashSet<string>?> PresentAsync(IReadOnlyList<string> procedures, CancellationToken ct)
+    {
+        if (procedures.Count == 0) return [];
+        try
+        {
+            return (await db.QuerySqlAsync<string>(PresentSql, new { Names = procedures }, ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (SqlException ex)
+        {
+            log.LogWarning(ex, "The report procedures could not be checked; every report is listed");
+            return null;
+        }
+    }
 
     private bool MayUseReports() => RoleId != (int)UserRole.StateCoordinator || Neft.CoordinatorAreas.HasList(CurrentUser, host.System);
 
