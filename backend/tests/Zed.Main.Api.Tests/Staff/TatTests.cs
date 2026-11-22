@@ -166,7 +166,12 @@ public sealed class TatTests : IDisposable
         }
         Assert.Contains(TatCatalog.Suggestions(PortalSystem.Main), s => s.Name == "Registration to certification");
         Assert.Contains(TatCatalog.Suggestions(PortalSystem.Consultancy), s => s.Name == "Milestone payment to deliverables accepted");
-        Assert.DoesNotContain(TatCatalog.TimedStatuses(PortalSystem.Main), p => p.Code is "16" or "7" or "17");
+        Assert.DoesNotContain(TatCatalog.TimedStatuses(PortalSystem.Main), p => p.Code is "16" or "7" or "17" or "99");
+        // 2026-11-22 (the product owner: every status listed): every status the procedures set, rejected (99) included.
+        string[] assessment = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "13", "14", "15", "16", "17", "99"];
+        Assert.Equal(assessment, TatCatalog.For(PortalSystem.Main).Where(p => p.IsStatus).Select(p => p.Code));
+        Assert.Equal(assessment, TatCatalog.For(PortalSystem.Surveillance).Where(p => p.IsStatus).Select(p => p.Code));
+        Assert.Equal(["1", "8", "9", "13", "15", "16", "100", "99"], TatCatalog.For(PortalSystem.Consultancy).Where(p => p.IsStatus).Select(p => p.Code));
     }
 
     // ------------------------------------------------------------------ validation

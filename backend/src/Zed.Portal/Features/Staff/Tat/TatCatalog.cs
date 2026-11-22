@@ -69,6 +69,9 @@ public static class TatCatalog
         M("nc-closed", "Non-conformances closed", 155, "NcClosed"),
         F(16, "Certified", 160, null, "GetCertified"),
         F(17, "Site assessment rejected", 170, Site),
+        // 2026-11-22 (the product owner: "check all statuses are listed here"): rejected by the agency / Master Admin
+        // (CertificationPhase REJECTED; SP_ASSESSMENT_REJECT_* and the Master Admin's rejection set 99).
+        F(99, "Rejected", 180, null),
     ];
 
     /// <summary>
@@ -96,6 +99,8 @@ public static class TatCatalog
         M("nc-closed", "Non-conformances closed", 155, "NcClosed"),
         F(16, "Surveillance completed", 160, null, "GetCertified"),
         F(17, "Site assessment rejected", 170, Site),
+        // 2026-11-22: rejected (that portal's rejection procedures set 99), as on main.
+        F(99, "Rejected", 180, null),
     ];
 
     /// <summary>
