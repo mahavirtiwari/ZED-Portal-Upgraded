@@ -63,8 +63,8 @@ internal static class SiteRejections
         {
             var rows = await db.QuerySqlAsync<Row>(Sql, new
             {
-                ZedId = zedId is null ? null : AssessmentInput.Ansi(zedId),
-                Certification = f.Certification is null ? null : AssessmentInput.Ansi(f.Certification),
+                ZedId = AssessmentInput.Ansi(zedId),
+                Certification = AssessmentInput.Ansi(f.Certification),
                 State = f.State,
                 MsmeSize = f.Size,
                 Gender = f.Gender,

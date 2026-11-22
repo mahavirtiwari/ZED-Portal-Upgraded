@@ -115,7 +115,7 @@ public static class SchemeReview
     {
         var schemes = await store.AllAsync(ct);
         var names = schemes.ToDictionary(s => s.Code, s => s.Name, StringComparer.OrdinalIgnoreCase);
-        var rows = (await db.QuerySqlAsync<ListRow>(sql, new { UserId = userId is null ? null : Ansi(userId, 50) }, ct))
+        var rows = (await db.QuerySqlAsync<ListRow>(sql, new { UserId = Ansi(userId, 50) }, ct))
             .Select(r => new ListItem(r.Id, r.ZedId?.Trim() ?? "", r.EnterpriseName?.Trim(), r.PStateName?.Trim(), r.SchemeCode?.Trim() ?? "",
                 names.GetValueOrDefault(r.SchemeCode?.Trim() ?? "") ?? r.SchemeCode?.Trim() ?? "", r.SchemeLevel, LevelName(r.SchemeLevel), r.Status,
                 r.ClaimAmount, SchemeCases.ParseMoney(r.EligibleAmount), r.ApprovedAmount, r.SubmittedOn, r.DecidedOn, r.CorrectionRound ?? 0, r.CorrectionDueOn,

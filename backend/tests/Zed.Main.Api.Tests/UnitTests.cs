@@ -153,3 +153,18 @@ public sealed class LegacyClockTests
     public void A_24_hour_time_with_am_pm_goes_back_to_the_12_hour_clock(string text, string expected) =>
         Assert.Equal(expected, Zed.Core.Data.LegacyClock.Fix(text));
 }
+
+public sealed class UserLevelCountsParameterTests
+{
+    [Fact]
+    public void The_whole_list_sends_a_null_valued_agency_parameter_never_a_missing_one()
+    {
+        // 2026-11-22: a null DbString made Dapper throw, so the Master Admin's agency and assessor lists answered 500.
+        var all = Zed.Portal.Features.Staff.Users.UserLevelCounts.Parameters(null);
+        Assert.NotNull(all.AgencyId);
+        Assert.Null(all.AgencyId.Value);
+        Assert.Equal("ZEDAA0001", Zed.Portal.Features.Staff.Users.UserLevelCounts.Parameters(" ZEDAA0001 ").AgencyId.Value);
+        FakeSql.RefuseNullCustomParameters(all);
+        Assert.Throws<InvalidOperationException>(() => FakeSql.RefuseNullCustomParameters(new { AgencyId = (Dapper.DbString?)null }));
+    }
+}

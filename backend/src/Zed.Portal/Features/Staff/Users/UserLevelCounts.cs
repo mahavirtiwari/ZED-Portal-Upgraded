@@ -112,15 +112,25 @@ public static class UserLevelCounts
     public static Task<Counts?> AssessorsAsync(ISqlExecutor db, string? agencyId, ILogger log, CancellationToken ct) =>
         LoadAsync(db, AssessorSql, agencyId, "assessors", log, ct);
 
+    public sealed record Args(DbString AgencyId);
+
+    /// <summary>
+    /// 2026-11-22 (production: the Master Admin's Assessment Agencies and Assessors lists answered 500): a null DbString makes
+    /// Dapper throw ("Member 'AgencyId' is an ICustomQueryParameter and cannot be null", not a DbException), so the whole-list
+    /// call (no agency) always sends one, its value null.
+    /// </summary>
+    public static Args Parameters(string? agencyId) =>
+        new(new DbString { Value = string.IsNullOrWhiteSpace(agencyId) ? null : agencyId.Trim(), IsAnsi = true, Length = 50 });
+
     private static async Task<Counts?> LoadAsync(ISqlExecutor db, string sql, string? agencyId, string what, ILogger log, CancellationToken ct)
     {
         try
         {
-            var agency = string.IsNullOrWhiteSpace(agencyId) ? null : new DbString { Value = agencyId.Trim(), IsAnsi = true, Length = 50 };
-            return new Counts(await db.QuerySqlAsync<Row>(sql, new { AgencyId = agency }, ct));
+            return new Counts(await db.QuerySqlAsync<Row>(sql, Parameters(agencyId), ct));
         }
-        catch (System.Data.Common.DbException ex)
+        catch (Exception ex) when (ex is System.Data.Common.DbException or InvalidOperationException or System.Data.DataException)
         {
+            // The counts are extra: whatever stops them, the list still loads.
             log.LogWarning(ex, "Level-wise allotment counts of the {What} not read", what);
             return null;
         }

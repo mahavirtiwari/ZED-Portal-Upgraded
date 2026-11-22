@@ -485,7 +485,8 @@ export class SubUsersPage {
 
   /** Two letters of the name (or of the user ID) for the round badge. */
   protected initials(u: SubUser): string {
-    const words = (u.userName ?? '').trim().split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
+    // 2026-11-22: each word's first letter or digit ("Surveillance OA (test)" gave "S(").
+    const words = (u.userName ?? '').trim().split(/\s+/).map((w) => w.replace(/[^A-Za-z0-9]/g, '')).filter(Boolean);
     const letters = words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? u.userId).slice(0, 2);
     return letters.toUpperCase();
   }

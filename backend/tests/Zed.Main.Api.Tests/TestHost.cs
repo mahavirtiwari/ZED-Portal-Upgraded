@@ -108,6 +108,7 @@ public sealed class FakeSql : ISqlExecutor
 
     private ResultSets Run(string name, object? args)
     {
+        RefuseNullCustomParameters(args);
         Calls.Enqueue((name, args));
         return Procs.TryGetValue(name, out var f) ? f(args) : Sets();
     }
@@ -137,8 +138,21 @@ public sealed class FakeSql : ISqlExecutor
         Address = "Plot 4, Industrial Area, KANPUR, UTTAR PRADESH-208001", UdyogAadharNo = "UDYAM-UP-29-0003915", QrCodeNo = "P11ABCDEF",
     };
 
+    /// <summary>
+    /// 2026-11-22 (production 500 on the Master Admin's agency and assessor lists): Dapper refuses a parameter property typed
+    /// as a custom parameter (DbString) whose value is null; the fake refuses it the same way, so tests catch it.
+    /// </summary>
+    public static void RefuseNullCustomParameters(object? args)
+    {
+        if (args is null or IDictionary<string, object?> or Dapper.DynamicParameters) return;
+        foreach (var p in args.GetType().GetProperties())
+            if (typeof(Dapper.SqlMapper.ICustomQueryParameter).IsAssignableFrom(p.PropertyType) && p.GetValue(args) is null)
+                throw new InvalidOperationException($"Member '{p.Name}' is an ICustomQueryParameter and cannot be null");
+    }
+
     public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {
+        RefuseNullCustomParameters(parameters);
         Calls.Enqueue((sql, parameters));
         var match = Queries.FirstOrDefault(q => sql.StartsWith(q.Key, StringComparison.OrdinalIgnoreCase));
         var rows = match.Value?.Invoke(parameters) ?? [];

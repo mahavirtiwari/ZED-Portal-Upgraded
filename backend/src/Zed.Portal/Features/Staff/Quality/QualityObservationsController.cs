@@ -262,7 +262,7 @@ public sealed class QualityObservationsController(
     private Task StepAsync(long parentId, string zedId, string level, string step, string? text, CancellationToken ct) =>
         db.QuerySqlAsync<long>(QualityObservations.InsertSql, new
         {
-            ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), Text = text is null ? null : AssessmentInput.Ansi(text, 5000),
+            ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), Text = AssessmentInput.Ansi(text, 5000),
             Type = QualityObservations.EventType, Status = step, ParentId = (int?)parentId, Round = (int?)null, Stage = (string?)null,
             RefType = (string?)null, RefId = (string?)null, RefLabel = (string?)null, Category = (string?)null, Severity = (string?)null,
             About = (string?)null, AboutUserId = (string?)null, AgencyId = (string?)null, By, ByName = Short(ByName, 150),
