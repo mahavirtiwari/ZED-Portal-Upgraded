@@ -319,18 +319,19 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
 					UPDATE Msme SET IsBronzePaymentDone=null where ZedId=@ZedId
 				END', 1),
 (N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', N'send back only from quality check or rejection',
- N'IF @NcNumber<=5 AND (@CertiStatus=5 OR @CertiStatus=15) BEGIN IF @CertificationType=''Bronze''',
+ -- 2026-11-22: only the line that both the reviewed text and migration 0079's (which turned the next line into
+ -- IF @V4Desktop=1) share, and a check by the state alone (7 or 17 after the NC rounds: 0079 sends a desktop Silver
+ -- back from 7 too), so the fix applies before or after 0079. The rejection branch only updates rows with NcCount 6.
+ N'IF @NcNumber<=5 AND (@CertiStatus=5 OR @CertiStatus=15)',
  N'IF CASE WHEN @NcNumber<=5 AND @CertiStatus IN (5, 15) THEN 1
-	        WHEN @NcNumber=6 AND ((@CertificationType=''Bronze'' AND @CertiStatus=7) OR (@CertificationType<>''Bronze'' AND @CertiStatus=17)) THEN 1
+	        WHEN @NcNumber=6 AND @CertiStatus IN (7, 17) THEN 1
 	        ELSE 0 END = 0
 	BEGIN
 		RAISERROR(''SP_MONITORING_SEND_BACK_TO_ASSESSOR: this level is not in quality check or rejection.'', 16, 1);   -- V4 fix #84
 		RETURN;
 	END
 
-	IF @NcNumber<=5 AND (@CertiStatus=5 OR @CertiStatus=15)
-	BEGIN
-		IF @CertificationType=''Bronze''', 1),
+	IF @NcNumber<=5 AND (@CertiStatus=5 OR @CertiStatus=15)', 1),
 (N'dbo.SP_MONITORING_RA_UPDATE_AGENCY_REMARKS', N'save SaProducts remarks',
  N'IF @TableName=''MsmeRequirements''',
  N'IF @TableName=''SaProducts''   -- V4 fix #84: products added during the site visit
@@ -360,6 +361,13 @@ BEGIN TRY
     BEGIN
         SELECT TOP (1) @n = n, @proc = ProcName FROM @procs WHERE n > @n ORDER BY n;
         IF @@ROWCOUNT = 0 BREAK;
+        -- An earlier version of this fix (before 2026-11-22) already added the send-back check: not added twice.
+        IF @proc = N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR'
+           AND OBJECT_DEFINITION(OBJECT_ID(@proc)) LIKE N'%SP[_]MONITORING[_]SEND[_]BACK[_]TO[_]ASSESSOR: this level is not in quality check or rejection.%'
+        BEGIN
+            PRINT CONCAT(DB_NAME(), N'.', @proc, N': the state check is already in place.');
+            CONTINUE;
+        END
         EXEC #V4_REWRITE_PROCEDURE @Procedure = @proc, @Mode = @Mode, @PrintDefinition = @PrintDefinitions;
     END
     COMMIT TRANSACTION;

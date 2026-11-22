@@ -396,9 +396,11 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
 (N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'V4 site levels: site NC past its closure date rejected as Silver / Gold (from the ZED-X-only version)',
  N'Certification in (''Silver'',''Gold'',''ZEDX'')',
  N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', -1),
+-- Optional since 2026-11-22: migration 0086 re-creates SP_ASSESSMENT_DA_AUTO_REJECT for every level (no Certification
+-- filter left), so after 0086 neither edit finds anything and both are skipped.
 (N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'V4 site levels: site NC past its closure date rejected as Silver / Gold',
  N'Certification in (''Silver'',''Gold'')',
- N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', 2),
+ N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', -1),
 (N'dbo.SP_MONITORING_DA_FINAL_SUBMIT', N'V4 desktop levels: certified by the desktop assessment, as Bronze',
  N'END ELSE BEGIN UPDATE MsmeCertifications SET CertificationStatusDate=getdate(),CertificationStatus=6, DesktopVerificationDate=getdate() where ZedId=@ZedId and Certification=@CertificationType',
  N'END
