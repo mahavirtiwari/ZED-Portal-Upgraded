@@ -151,10 +151,11 @@ public sealed partial class StaffPasswordResetTests : IDisposable
         _resets.HoldAccountLookup.Release(100);
 
         Assert.Equal(StaffPasswordResetController.RequestAnswer, JsonDocument.Parse(expected!).RootElement.GetProperty("message").GetString());
-        await Eventually(() => _host.Email.Sent.Count == 1);
+        // 2026-11-22: the Master Admin is no longer excluded by default, so it gets its link too.
+        await Eventually(() => _host.Email.Sent.Count == 2);
         await Task.Delay(300);
-        Assert.Equal("spoc@acme.test", Assert.Single(_host.Email.Sent).To);   // nothing for unknown, no e-mail, blocked or excluded accounts
-        Assert.All(_resets.Rows, r => Assert.Equal(Agency, r.UserId));
+        Assert.Equal(["master1@zed.test", "spoc@acme.test"], _host.Email.Sent.Select(m => m.To).Order());   // nothing for unknown, no e-mail or blocked accounts
+        Assert.Equal(["MASTER1", Agency], _resets.Rows.Select(r => r.UserId).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -204,8 +205,10 @@ public sealed partial class StaffPasswordResetTests : IDisposable
     }
 
     [Fact]
-    public async Task MasterAdmins_cannot_reset_by_mail_alone_but_another_MasterAdmin_can_send_them_a_link()
+    public async Task MasterAdmins_excluded_by_setting_cannot_reset_by_mail_alone_but_another_MasterAdmin_can_send_them_a_link()
     {
+        // 2026-11-22: no role is excluded by default any more; a portal may still exclude the Master Admin.
+        Set("StaffPasswordReset:ExcludedRoles", "7");
         var anonymous = await _host.CreateBrowserAsync();
         Assert.Equal(HttpStatusCode.OK, (await RequestLink(anonymous, "MASTER2")).StatusCode);
         await Task.Delay(500);

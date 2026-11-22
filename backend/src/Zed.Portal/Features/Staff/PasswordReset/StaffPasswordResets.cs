@@ -25,11 +25,12 @@ public sealed class StaffPasswordResetOptions
     public int MaxRequestsPerHour { get; set; } = 3;
 
     /// <summary>
-    /// Users.RoleId values (comma-separated) that cannot reset through their e-mail alone: MasterAdmin (7) by default; another
-    /// MasterAdmin sends them a link instead. 2026-11-08: the Dashboard Admin (10) is no longer excluded (it took over the
-    /// Citizen Feedback and QC logins, which could reset).
+    /// Users.RoleId values (comma-separated) that cannot reset through their e-mail alone (another MasterAdmin or the Admin sends
+    /// them a link or a new password instead). 2026-11-08: the Dashboard Admin (10) is no longer excluded. 2026-11-22 (the
+    /// product owner, on the Surveillance Master Admin: "I do not able to reset password"): none by default, the Master Admin
+    /// (7) included: it gets the link at its registered e-mail like every staff login (one use, ValidMinutes, MaxRequestsPerHour).
     /// </summary>
-    public string ExcludedRoles { get; set; } = "7";
+    public string ExcludedRoles { get; set; } = "";
 
     /// <summary>Surveillance: the main portal's address for accounts whose password main holds; empty = PublicBaseUrl without Portal:PathBase.</summary>
     public string? MainPortalUrl { get; set; }

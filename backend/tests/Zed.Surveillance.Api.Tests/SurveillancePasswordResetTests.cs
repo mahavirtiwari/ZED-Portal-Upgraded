@@ -65,6 +65,20 @@ public sealed partial class SurveillancePasswordResetTests : IDisposable
     }
 
     [Fact]
+    public async Task The_surveillance_Master_Admin_gets_a_link_from_Forgot_password()
+    {
+        // 2026-11-22 (the product owner: the Surveillance Master Admin could not reset its password; no mail was sent).
+        const string masterAdmin = "SURVMASTER1";
+        _resets.Add(masterAdmin, 7, "survmaster@zed.test");
+        // A browser of this host (its anti-forgery cookie), as the page sends the request.
+        var browser = await ReviewTestHost.SignInAsync(_app, null, UserRole.DesktopAssessor);
+        var r = await browser.PostAsJsonAsync("/api/staff/auth/password-reset/request", new { userId = masterAdmin });
+        Assert.True(r.StatusCode == HttpStatusCode.OK, await r.Content.ReadAsStringAsync());
+        await Eventually(() => _host.Email.Sent.Any(m => m.To.Contains("survmaster@zed.test")));
+        Assert.Contains("reset-password#token=", _host.Email.Sent.Single(m => m.To.Contains("survmaster@zed.test")).HtmlBody);
+    }
+
+    [Fact]
     public async Task Once_main_holds_the_password_the_user_is_pointed_to_main_by_mail()
     {
         // A link from before the switch...

@@ -14,8 +14,7 @@ namespace Zed.Portal.Features.Staff.PasswordReset;
 public sealed class StaffPasswordResetController(StaffPasswordResets resets, ICaptchaVerifier captcha, IBackgroundWork background) : ControllerBase
 {
     public const string RequestAnswer =
-        "If the User ID belongs to an active account with a registered e-mail address, a link to set a new password has been sent to that address. " +
-        "Administrator accounts are reset by another administrator.";
+        "If the User ID belongs to an active account with a registered e-mail address, a link to set a new password has been sent to that address.";
 
     public sealed record ResetRequest(string? UserId, string? CaptchaToken);
 
