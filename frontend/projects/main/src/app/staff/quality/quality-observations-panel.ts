@@ -1,6 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, model, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
+import { SideDrawer } from '../side-drawer';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { QualityObservationItem } from './quality-observation-item';
@@ -30,16 +32,11 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
  */
 @Component({
   selector: 'zed-qo-panel',
-  imports: [FormsModule, QualityObservationItem, TextPipe],
-  host: { '(document:keydown.escape)': 'cancel()' },
+  imports: [FormsModule, NgTemplateOutlet, QualityObservationItem, SideDrawer, TextPipe],
+  host: { '(document:keydown.escape)': 'escape()' },
   template: `
-    @if (shown()) {
-      @let v = view()!;
-      <section class="qo-panel" [class.qo-rail]="rail()" data-qo-panel id="quality-observations" aria-labelledby="qo-panel-title">
-        <div class="qo-head">
-          <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
-          <h4 id="qo-panel-title">{{ 'ZED quality observations' | t: 'staff.quality.panel.title' }}</h4>
-        </div>
+    <ng-template #listTpl>
+      @if (view(); as v) {
         <div class="qo-bar">
           <small>{{ '{open} open · {total} in all' | t: 'staff.quality.panel.count.label' : { open: openCount(), total: v.items.length } }}</small>
           @if (v.canRaise) {
@@ -59,22 +56,12 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
             <p class="qo-empty">{{ 'No observations yet.' | t: 'staff.quality.panel.empty' }}</p>
           }
         </div>
-      </section>
-    }
+      }
+    </ng-template>
 
-    @if (form(); as f) {
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="qo-dlg-title" (click)="cancel()">
-        <div class="modal-dialog modal-dialog-centered qo-dlg" (click)="$event.stopPropagation()">
-          <form class="modal-content" (ngSubmit)="save()" novalidate data-qo-form>
-            <div class="qo-dlg-head">
-              <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
-              <div class="qo-dlg-t">
-                <h3 id="qo-dlg-title">{{ 'Raise a quality observation' | t: 'staff.quality.raise.title' }}</h3>
-                <p>{{ heading() }}</p>
-              </div>
-              <button type="button" class="qo-x" [attr.aria-label]="'Close' | t: 'staff.quality.raise.close.aria'" (click)="cancel()">×</button>
-            </div>
-            <div class="qo-dlg-body">
+    <ng-template #fieldsTpl>
+      @if (form(); as f) {
+
               <label for="qo-target">{{ 'About' | t: 'staff.quality.raise.target.label' }}</label>
               <select id="qo-target" class="form-select" name="target" [ngModel]="f.targetKey" (ngModelChange)="patch('targetKey', $event)">
                 @for (t of allTargets(); track key(t)) { <option [value]="key(t)">{{ t.label }}</option> }
@@ -116,7 +103,59 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
                 [ngModel]="f.text" (ngModelChange)="patch('text', $event)"></textarea>
               @if (holds()) { <p class="qo-warn" role="status">{{ blockingHint() }}</p> }
               @if (formError()) { <div class="alert alert-danger py-1 mb-0 mt-2" role="alert">{{ formError() }}</div> }
+      }
+    </ng-template>
+
+    @if (drawer()) {
+      <!-- 2026-11-22 (the product owner: "side panel as you are showing for history"): the observations open from the page's button
+           as the History-style side panel; "+ Observation" shows the form inside it (no pop-up over the panel). -->
+      @if (open() && shown()) {
+        <zed-side-drawer id="qo-drawer" [title]="form() ? ('Raise a quality observation' | t: 'staff.quality.raise.title') : ('ZED quality observations' | t: 'staff.quality.panel.title')"
+                         [subtitle]="heading()" (closed)="close()">
+          @if (form()) {
+            <form class="qo-drawer-form" id="qo-drawer-form" (ngSubmit)="save()" novalidate data-qo-form>
+              <ng-container [ngTemplateOutlet]="fieldsTpl" />
+            </form>
+          } @else {
+            <div class="qo-drawer-list" data-qo-panel id="quality-observations"><ng-container [ngTemplateOutlet]="listTpl" /></div>
+          }
+          <div drawer-foot class="qo-drawer-foot">
+            @if (form()) {
+              <button type="button" class="btn btn-default" (click)="cancel()">{{ 'Cancel' | t: 'staff.quality.raise.cancel.button' }}</button>
+              <button type="submit" form="qo-drawer-form" class="btn btn-primary" [disabled]="busy()">{{ 'Raise observation' | t: 'staff.quality.raise.submit.button' }}</button>
+            } @else {
+              <button type="button" class="btn btn-default" (click)="close()">{{ 'Close' | t: 'staff.quality.panel.close.button' }}</button>
+              @if (view()?.canRaise) {
+                <button type="button" class="btn btn-primary" (click)="start(null)">{{ '+ Observation' | t: 'staff.quality.panel.add.button' }}</button>
+              }
+            }
+          </div>
+        </zed-side-drawer>
+      }
+    } @else {
+    @if (shown()) {
+      <section class="qo-panel" [class.qo-rail]="rail()" data-qo-panel id="quality-observations" aria-labelledby="qo-panel-title">
+        <div class="qo-head">
+          <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
+          <h4 id="qo-panel-title">{{ 'ZED quality observations' | t: 'staff.quality.panel.title' }}</h4>
+        </div>
+        <ng-container [ngTemplateOutlet]="listTpl" />
+      </section>
+    }
+
+    @if (form(); as f) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="qo-dlg-title" (click)="cancel()">
+        <div class="modal-dialog modal-dialog-centered qo-dlg" (click)="$event.stopPropagation()">
+          <form class="modal-content" (ngSubmit)="save()" novalidate data-qo-form>
+            <div class="qo-dlg-head">
+              <span class="qo-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z" /></svg></span>
+              <div class="qo-dlg-t">
+                <h3 id="qo-dlg-title">{{ 'Raise a quality observation' | t: 'staff.quality.raise.title' }}</h3>
+                <p>{{ heading() }}</p>
+              </div>
+              <button type="button" class="qo-x" [attr.aria-label]="'Close' | t: 'staff.quality.raise.close.aria'" (click)="cancel()">×</button>
             </div>
+            <div class="qo-dlg-body"><ng-container [ngTemplateOutlet]="fieldsTpl" /></div>
             <div class="qo-dlg-foot">
               <button type="button" class="btn btn-default" (click)="cancel()">{{ 'Cancel' | t: 'staff.quality.raise.cancel.button' }}</button>
               <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ 'Raise observation' | t: 'staff.quality.raise.submit.button' }}</button>
@@ -125,6 +164,7 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
         </div>
       </div>
       <div class="modal-backdrop show"></div>
+    }
     }
   `,
   styles: `
@@ -174,6 +214,16 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
     .qo-dlg-foot { flex: none; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 28px; border-top: 1px solid #edf2f2; }
     .qo-dlg-foot .btn { min-height: 40px; border-radius: 9px; padding: 0 22px; font-weight: 700; }
     .qo-dlg-foot .btn-default { min-width: 110px; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
+    .qo-drawer-list .qo-bar { padding: 0 0 4px; }
+    .qo-drawer-list .qo-bar .qo-add { display: none; }
+    .qo-drawer-list .qo-chips { padding: 8px 0 0; }
+    .qo-drawer-list .qo-list { padding: 10px 0 0; }
+    .qo-drawer-form { display: flex; flex-direction: column; }
+    .qo-drawer-form label, .qo-drawer-form .qo-l { font-size: 12.5px; color: #3d5559; margin: 10px 0 5px; font-weight: 600; }
+    .qo-drawer-form textarea { min-height: 90px; resize: vertical; }
+    .qo-drawer-foot { display: contents; }
+    .qo-drawer-foot .btn { min-height: 40px; border-radius: 9px; padding: 0 22px; font-weight: 700; }
+    .qo-drawer-foot .btn-default { min-width: 100px; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
     @media (max-width: 575.98px) { .qo-sevs { grid-template-columns: minmax(0, 1fr); } .qo-dlg-head, .qo-dlg-body, .qo-dlg-foot { padding-left: 16px; padding-right: 16px; } }
   `,
 })
@@ -203,6 +253,12 @@ export class QualityObservationsPanel {
   readonly unitName = input<string | null>(null);
   /** The right rail of a details page. */
   readonly rail = input(false);
+  /**
+   * 2026-11-22: the History-style side panel instead of the card on the page; the page shows its own button (with
+   * {@link openCount}) and opens it through {@link open}.
+   */
+  readonly drawer = input(false);
+  readonly open = model(false);
   /** The page's items an observation can be about (requirements, products…); the whole assessment is always offered. */
   readonly targets = input<QoTarget[]>([]);
   /** Which assessors the page has (Desktop / Lead / Co); the agency is always offered. */
@@ -226,7 +282,8 @@ export class QualityObservationsPanel {
   protected readonly busy = signal(false);
   protected readonly formError = signal('');
   protected readonly allTargets = computed(() => [this.overall(), ...this.targets()]);
-  protected readonly openCount = computed(() => (this.view()?.items ?? []).filter((o) => o.status !== 'Closed').length);
+  /** The observations not closed (the page's button shows it). */
+  readonly openCount = computed(() => (this.view()?.items ?? []).filter((o) => o.status !== 'Closed').length);
   /** There is a panel: the login may raise observations or has some to see. */
   readonly shown = computed(() => {
     const v = this.view();
@@ -266,12 +323,25 @@ export class QualityObservationsPanel {
 
   protected start(on: QoTarget | null): void {
     this.formError.set('');
+    if (this.drawer()) this.open.set(true);
     this.form.set({ targetKey: this.key(on ?? this.overall()), about: this.abouts()[0] ?? 'Lead', category: '', text: '' });
     setTimeout(() => document.getElementById('qo-target')?.focus());
   }
 
   protected cancel(): void {
     if (!this.busy()) this.form.set(null);
+  }
+
+  protected close(): void {
+    if (this.busy()) return;
+    this.form.set(null);
+    this.open.set(false);
+  }
+
+  /** Esc: the form first, then (a side panel) the panel. */
+  protected escape(): void {
+    if (this.form()) this.cancel();
+    else if (this.drawer() && this.open()) this.close();
   }
 
   protected patch(k: 'targetKey' | 'about' | 'category' | 'text', v: string): void {

@@ -24,6 +24,7 @@ import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
 import { cleanAddress } from '../address';
 import { dateSpan } from '../site-assessment/site-assessment.api';
+import { SamePanCount } from '../msme-profile/same-pan';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -56,7 +57,7 @@ const DEFAULT_STATUS = 3;
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon, ChipFilter, TextPipe],
+  imports: [FormsModule, PagerComponent, PageHead, ListCounts, RowMenu, LevelMedal, DashIcon, ChipFilter, SamePanCount, TextPipe],
   host: { class: 'list-v2 d-block' },
   templateUrl: './monitoring.html',
   styles: `

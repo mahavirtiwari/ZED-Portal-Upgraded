@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { SamePanUnits } from '../msme-profile/same-pan';
+import { SamePanCount, SamePanUnits } from '../msme-profile/same-pan';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +21,7 @@ import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread'
 import { ParameterChip, ParameterNav, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
 import { Location } from '@angular/common';
 import { PageHead } from '../../msme/shared/page-head';
+import { QoButton } from '../quality/qo-button';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { ChecklistRecords } from '../quality/checklist-records';
@@ -88,7 +89,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean; sub
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, StepTracker, LevelMedal, DashIcon, DaAllotmentBanner, TextPipe],
+  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, SubmitChecklist, FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, FormChecksPanel, CheckpointDialog, RequirementVideo, PageHead, SamePanUnits, SamePanCount, StepTracker, LevelMedal, DashIcon, DaAllotmentBanner, TextPipe],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES, UNIT_VIEW_STYLES],
   styleUrls: ['./da-details.css', './da-details.params.css', './da-details.basic.css', './da-details.nc.css'],
@@ -116,6 +117,8 @@ export class DaDetailsPage {
   // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
   protected readonly qoAbouts = ['Desktop', 'Agency'];
   protected readonly qoTarget = signal<QoTarget | null>(null);
+  /** 2026-11-22: the observations side panel is open. */
+  protected readonly qoOpen = signal(false);
   private readonly qoAuth = inject(QoAuth);
   /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
   protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);

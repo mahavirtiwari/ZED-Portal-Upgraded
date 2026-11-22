@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9473,
+  "count": 9484,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -41621,18 +41621,6 @@
       ]
     },
     {
-      "key": "staff.daDetails.railAria",
-      "standard": "Quality observations",
-      "kind": "tooltip",
-      "portal": "staff",
-      "page": "daDetails",
-      "pageName": "Da details",
-      "placeholders": [],
-      "files": [
-        "staff/assessment/da-details.html"
-      ]
-    },
-    {
       "key": "staff.daDetails.remarksError",
       "standard": "Please enter remarks.",
       "kind": "message",
@@ -42183,6 +42171,18 @@
     {
       "key": "staff.daDetails.summary.result.label",
       "standard": "Result",
+      "kind": "label",
+      "portal": "staff",
+      "page": "daDetails",
+      "pageName": "Da details",
+      "placeholders": [],
+      "files": [
+        "staff/assessment/da-details.html"
+      ]
+    },
+    {
+      "key": "staff.daDetails.summary.samePan.label",
+      "standard": "Same PAN units",
       "kind": "label",
       "portal": "staff",
       "page": "daDetails",
@@ -75171,18 +75171,6 @@
       ]
     },
     {
-      "key": "staff.monitoring.column.duplicates",
-      "standard": "Duplicates",
-      "kind": "label",
-      "portal": "staff",
-      "page": "monitoring",
-      "pageName": "Monitoring",
-      "placeholders": [],
-      "files": [
-        "staff/monitoring/monitoring.html"
-      ]
-    },
-    {
       "key": "staff.monitoring.column.level",
       "standard": "Level",
       "kind": "label",
@@ -75234,6 +75222,30 @@
       "key": "staff.monitoring.column.progress",
       "standard": "Progress",
       "kind": "label",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.column.samePan",
+      "standard": "Same PAN",
+      "kind": "label",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.column.samePan.tooltip",
+      "standard": "Other units registered with the same PAN; duplicates (same Udyam and plant address) are marked in the list",
+      "kind": "tooltip",
       "portal": "staff",
       "page": "monitoring",
       "pageName": "Monitoring",
@@ -75500,6 +75512,32 @@
       "placeholders": [],
       "files": [
         "staff/monitoring/monitoring.ts"
+      ]
+    },
+    {
+      "key": "staff.monitoring.duplicates.count",
+      "standard": "{count} duplicate(s)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/monitoring/monitoring.html"
+      ]
+    },
+    {
+      "key": "staff.monitoring.duplicates.tooltip",
+      "standard": "Units with the same Udyam registration and plant address",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "monitoring",
+      "pageName": "Monitoring",
+      "placeholders": [],
+      "files": [
+        "staff/monitoring/monitoring.html"
       ]
     },
     {
@@ -86566,6 +86604,32 @@
       ]
     },
     {
+      "key": "staff.quality.button.label",
+      "standard": "Observations",
+      "kind": "label",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [],
+      "files": [
+        "staff/quality/qo-button.ts"
+      ]
+    },
+    {
+      "key": "staff.quality.button.openAria",
+      "standard": "{count} open",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/quality/qo-button.ts"
+      ]
+    },
+    {
       "key": "staff.quality.categories.bar.aria",
       "standard": "{total} observations, {major} major or critical",
       "kind": "tooltip",
@@ -87171,6 +87235,18 @@
       "key": "staff.quality.panel.chips.aria",
       "standard": "Show",
       "kind": "tooltip",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [],
+      "files": [
+        "staff/quality/quality-observations-panel.ts"
+      ]
+    },
+    {
+      "key": "staff.quality.panel.close.button",
+      "standard": "Close",
+      "kind": "button",
       "portal": "staff",
       "page": "quality",
       "pageName": "Quality",
@@ -96385,6 +96461,18 @@
       ]
     },
     {
+      "key": "staff.saDetails.fact.samePan.label",
+      "standard": "Same PAN units",
+      "kind": "label",
+      "portal": "staff",
+      "page": "saDetails",
+      "pageName": "Sa details",
+      "placeholders": [],
+      "files": [
+        "staff/site-review/sa-details.html"
+      ]
+    },
+    {
       "key": "staff.saDetails.fact.siteAssessor.label",
       "standard": "Site assessor",
       "kind": "label",
@@ -97445,18 +97533,6 @@
       "key": "staff.saDetails.preview.title",
       "standard": "Preview",
       "kind": "heading",
-      "portal": "staff",
-      "page": "saDetails",
-      "pageName": "Sa details",
-      "placeholders": [],
-      "files": [
-        "staff/site-review/sa-details.html"
-      ]
-    },
-    {
-      "key": "staff.saDetails.rail.aria",
-      "standard": "Quality observations",
-      "kind": "tooltip",
       "portal": "staff",
       "page": "saDetails",
       "pageName": "Sa details",
@@ -98735,19 +98811,21 @@
       ]
     },
     {
-      "key": "staff.samePan.dialog.closeAria",
-      "standard": "Close",
+      "key": "staff.samePan.count.aria",
+      "standard": "Units with the same PAN: {count}",
       "kind": "tooltip",
       "portal": "staff",
       "page": "samePan",
       "pageName": "Same pan",
-      "placeholders": [],
+      "placeholders": [
+        "count"
+      ],
       "files": [
         "staff/msme-profile/same-pan.ts"
       ]
     },
     {
-      "key": "staff.samePan.dialog.closeButton",
+      "key": "staff.samePan.drawer.close",
       "standard": "Close",
       "kind": "button",
       "portal": "staff",
@@ -98759,9 +98837,9 @@
       ]
     },
     {
-      "key": "staff.samePan.dialog.column.address",
-      "standard": "Complete address",
-      "kind": "label",
+      "key": "staff.samePan.drawer.duplicate",
+      "standard": "Duplicate",
+      "kind": "text",
       "portal": "staff",
       "page": "samePan",
       "pageName": "Same pan",
@@ -98771,9 +98849,23 @@
       ]
     },
     {
-      "key": "staff.samePan.dialog.column.unitName",
-      "standard": "Unit name",
-      "kind": "label",
+      "key": "staff.samePan.drawer.duplicateMany",
+      "standard": "{count} units have the same Udyam registration and plant address: duplicates.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "samePan",
+      "pageName": "Same pan",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.samePan.drawer.duplicateOne",
+      "standard": "1 unit has the same Udyam registration and plant address: a duplicate.",
+      "kind": "note",
       "portal": "staff",
       "page": "samePan",
       "pageName": "Same pan",
@@ -98783,8 +98875,44 @@
       ]
     },
     {
-      "key": "staff.samePan.dialog.intro",
-      "standard": "For tracing repeat registrations (PAN {pan}).",
+      "key": "staff.samePan.drawer.loading",
+      "standard": "Loading…",
+      "kind": "note",
+      "portal": "staff",
+      "page": "samePan",
+      "pageName": "Same pan",
+      "placeholders": [],
+      "files": [
+        "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.samePan.drawer.none",
+      "standard": "No other ZED unit is registered with this PAN.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "samePan",
+      "pageName": "Same pan",
+      "placeholders": [],
+      "files": [
+        "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.samePan.drawer.note",
+      "standard": "For tracing repeat registrations: check that each is a different plant before you accept the application.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "samePan",
+      "pageName": "Same pan",
+      "placeholders": [],
+      "files": [
+        "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.samePan.drawer.subtitle",
+      "standard": "PAN {pan}",
       "kind": "note",
       "portal": "staff",
       "page": "samePan",
@@ -98797,23 +98925,20 @@
       ]
     },
     {
-      "key": "staff.samePan.dialog.thisUnit",
-      "standard": "This unit: {name}, {address}",
-      "kind": "note",
+      "key": "staff.samePan.drawer.thisUnit",
+      "standard": "This unit",
+      "kind": "text",
       "portal": "staff",
       "page": "samePan",
       "pageName": "Same pan",
-      "placeholders": [
-        "name",
-        "address"
-      ],
+      "placeholders": [],
       "files": [
         "staff/msme-profile/same-pan.ts"
       ]
     },
     {
-      "key": "staff.samePan.dialog.title",
-      "standard": "Other ZED units with the same PAN",
+      "key": "staff.samePan.drawer.title",
+      "standard": "Units with the same PAN",
       "kind": "heading",
       "portal": "staff",
       "page": "samePan",
@@ -103738,6 +103863,18 @@
       "placeholders": [],
       "files": [
         "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.sideDrawer.closeAria",
+      "standard": "Close",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "sideDrawer",
+      "pageName": "Side drawer",
+      "placeholders": [],
+      "files": [
+        "staff/side-drawer.ts"
       ]
     },
     {

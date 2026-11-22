@@ -87,7 +87,11 @@ describe('SaDetailsPage', () => {
     el = fixture.nativeElement;
   });
 
-  afterEach(() => http.verify());
+  // 2026-11-22: the summary's same-PAN count asks for the units of the PAN (answered here when a test does not).
+  afterEach(() => {
+    for (const r of http.match((q) => q.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
+    http.verify();
+  });
 
   it('shows the overview, the tabs of the old page and only authorised photo addresses', async () => {
     await open(details());
@@ -473,7 +477,11 @@ describe('SaDetailsPage (surveillance)', () => {
     }
   }
 
-  afterEach(() => http.verify());
+  // 2026-11-22: the summary's same-PAN count asks for the units of the PAN (answered here when a test does not).
+  afterEach(() => {
+    for (const r of http.match((q) => q.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
+    http.verify();
+  });
 
   it('shows the agency the surveillance next to the original certification, without the original blocks', async () => {
     await open(surveillanceDetails());

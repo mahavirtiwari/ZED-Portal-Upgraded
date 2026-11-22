@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { SamePanUnits } from '../msme-profile/same-pan';
+import { SamePanCount, SamePanUnits } from '../msme-profile/same-pan';
 import { FormChecksPanel } from '../assessment/form-checks';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Location } from '@angular/common';
@@ -17,6 +17,7 @@ import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterChip, ParameterNav } from '../../msme/shared/parameter-status';
 import { TextPipe, t } from '../../content/page-text';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
+import { QoButton } from '../quality/qo-button';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { ChecklistRecords } from '../quality/checklist-records';
 import { QoTarget } from '../quality/quality.api';
@@ -53,7 +54,7 @@ export function saTabTitle(id: number): string {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits, PageHead, StepTracker, TextPipe],
+  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel, SamePanUnits, SamePanCount, PageHead, StepTracker, TextPipe],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES, UNIT_VIEW_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
@@ -75,6 +76,8 @@ export class SaDetailsPage {
   // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
   protected readonly qoAbouts = ['Lead', 'Co', 'Desktop', 'Agency'];
   protected readonly qoTarget = signal<QoTarget | null>(null);
+  /** 2026-11-22: the observations side panel is open. */
+  protected readonly qoOpen = signal(false);
   private readonly qoAuth = inject(QoAuth);
   /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
   protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);

@@ -99,13 +99,16 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
     /// One unit of the same PAN: its name and complete address. 2026-11-18 (the user: "ZED ID is not required to show"):
     /// no ZED ID at all.
     /// </summary>
-    public sealed record SamePanUnit(string? UnitName, string Address);
+    /// <param name="ZedId">2026-11-22: the Master Admin and its operation admins only (null for agencies, assessors and others).</param>
+    /// <param name="Status">As <paramref name="ZedId"/>: the unit's current level and status ("Silver · Site assessment quality check").</param>
+    /// <param name="Duplicate">As <paramref name="ZedId"/>: the same Udyam registration and plant address as the unit (<see cref="SamePanUnits"/>).</param>
+    public sealed record SamePanUnit(string? UnitName, string Address, string? ZedId = null, string? Status = null, bool? Duplicate = null);
 
     /// <param name="Pan">In full (2026-11-18, the user: PAN, e-mail and mobile are never masked on signed-in pages).</param>
     public sealed record SamePanResponse(string? Pan, SamePanUnit? This, IReadOnlyList<SamePanUnit> Others);
 
     internal const string SamePanSql =
-        "SELECT TOP (50) m.ZedId, m.PUnitName, m.PFlat, m.PBuilding, m.PRoad, m.PArea, m.PCity, m.PDistrictName, m.PStateName, m.PPin, m.PAddress " +
+        "SELECT TOP (50) m.ZedId, m.PUnitName, m.PFlat, m.PBuilding, m.PRoad, m.PArea, m.PCity, m.PDistrictName, m.PStateName, m.PPin, m.PAddress, b.UdyogAadharNo " +
         "FROM dbo.MsmeBasicInformation b INNER JOIN dbo.Msme m ON m.ZedId = b.ZedId " +
         "WHERE NULLIF(LTRIM(RTRIM(b.PanNo)), '') IS NOT NULL AND LTRIM(RTRIM(b.PanNo)) = " +
         "(SELECT TOP (1) LTRIM(RTRIM(x.PanNo)) FROM dbo.MsmeBasicInformation x WHERE x.ZedId = @ZedId) " +
@@ -114,7 +117,7 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
     internal const string PanSql = "SELECT TOP (1) PanNo FROM dbo.MsmeBasicInformation WHERE ZedId = @ZedId;";
 
     public sealed record SamePanRow(string? ZedId, string? PUnitName, string? PFlat, string? PBuilding, string? PRoad, string? PArea,
-        string? PCity, string? PDistrictName, string? PStateName, string? PPin, string? PAddress);
+        string? PCity, string? PDistrictName, string? PStateName, string? PPin, string? PAddress, string? UdyogAadharNo = null);
 
     private sealed record PanRow(string? PanNo);
 
@@ -137,8 +140,21 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
         var pan = (await db.QuerySqlAsync<PanRow>(PanSql, p, ct)).FirstOrDefault()?.PanNo;
         if (string.IsNullOrWhiteSpace(pan)) return new SamePanResponse(null, null, []);
         var rows = await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct);
-        static SamePanUnit Unit(SamePanRow r) => new(r.PUnitName?.Trim(), AddressOf(r));
         var self = rows.FirstOrDefault(r => string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase));
+        // 2026-11-22 (the product owner): the Master Admin and its operation admins also see each unit's ZED ID, its current status
+        // and which one is a duplicate; an agency, an assessor and the other logins see the unit name and address only.
+        var full = IsRole(UserRole.MasterAdmin);
+        var statuses = full
+            ? await SamePanUnits.StatusesAsync(db, host.System, rows.Select(r => r.ZedId?.Trim() ?? "").Where(z => z.Length > 0).ToList(), log, ct)
+            : null;
+        SamePanUnit Unit(SamePanRow r)
+        {
+            if (!full) return new(r.PUnitName?.Trim(), AddressOf(r));
+            var z = r.ZedId?.Trim() ?? "";
+            var isSelf = string.Equals(z, id, StringComparison.OrdinalIgnoreCase);
+            return new(r.PUnitName?.Trim(), AddressOf(r), z, statuses!.GetValueOrDefault(z),
+                !isSelf && self is not null && SamePanUnits.IsDuplicate(r.UdyogAadharNo, r.PAddress, self.UdyogAadharNo, self.PAddress));
+        }
         return new SamePanResponse(pan.Trim().ToUpperInvariant(), self is null ? null : Unit(self),
             rows.Where(r => !string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase)).Select(Unit).ToList());
     }

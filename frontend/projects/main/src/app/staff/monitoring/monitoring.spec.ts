@@ -113,7 +113,8 @@ describe('MonitoringPage', () => {
     expect(rows.length).toBe(2);
     expect(el.querySelector('thead')!.textContent).not.toContain('NC closure');
     expect(rows[1].classList).toContain('mo-nc-open');
-    expect(rows[1].querySelector('.mo-dup')!.textContent!.trim()).toBe('3');
+    // 2026-11-22: the same-PAN count (clickable) with the duplicates noted under it.
+    expect(rows[1].querySelector('.mo-dup')!.textContent!.trim()).toBe('3 duplicate(s)');
     expect(await openMenu(rows[0])).toEqual(['Assessment details', 'View MSME profile']);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     await pick('Assessment details');
@@ -473,7 +474,7 @@ describe('MonitoringPage per system', () => {
     expect(rows[0].textContent).toContain('HAP: May 9, 2026');
     expect(rows[0].textContent).toContain('Expert One');
     expect(rows[1].textContent).toContain('PR1: June 2, 2026');
-    expect(el.querySelector('thead')!.textContent).not.toContain('Duplicates');
+    expect(el.querySelector('thead')!.textContent).not.toContain('Same PAN');
     expect((await menu(rows[0])).map((b) => b.textContent!.trim())).toEqual(['View details', 'View MSME profile']);
   });
 

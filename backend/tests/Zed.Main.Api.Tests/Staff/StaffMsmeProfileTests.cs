@@ -87,30 +87,51 @@ public sealed class StaffMsmeProfileTests : IDisposable
 
     /// <summary>2026-11-17 (the user, approved): the other units of the same PAN, for tracing repeat registrations.</summary>
     [Fact]
-    public async Task The_other_units_of_the_same_pan_are_listed_with_complete_addresses_and_no_zed_ids()
+    public async Task The_other_units_of_the_same_pan_are_listed_with_complete_addresses_and_zed_ids_only_for_the_master_admin()
     {
         _host.Sql.Queries[StaffMsmeProfileController.PanSql] = args => FakeSql.Arg(args, "ZedId") == "ZEDMSME000001" ? [new { PanNo = "ABCDE1234F" }] : [];
         _host.Sql.Queries[StaffMsmeProfileController.SamePanSql] = _ =>
         [
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme Unit 2", "Plot 4", null, "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Unit 1", "Plot-4", "", "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
-            new StaffMsmeProfileController.SamePanRow("ZEDMSME000003", "Acme Services", null, null, null, null, null, "Lucknow", "UTTAR PRADESH", "226001", "12 MG Road, Lucknow"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme Unit 2", "Plot 4", null, "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", "Plot 4 Panki", "UDYAM-UP-29-0003915"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Unit 1", "Plot-4", "", "Industrial Area", "Panki", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", " Plot 4  Panki ", "udyam-up-29-0003915"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000003", "Acme Services", null, null, null, null, null, "Lucknow", "UTTAR PRADESH", "226001", "12 MG Road, Lucknow", "UDYAM-UP-29-0003915"),
+        ];
+        _host.Sql.Queries[SamePanUnits.StatusSql] = _ =>
+        [
+            new { ZedId = "ZEDMSME000001", Certification = "Silver", CertificationStatus = 2, Id = 10L },
+            new { ZedId = "ZEDMSME000002", Certification = "Bronze", CertificationStatus = 16, Id = 5L },
+            new { ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = 8, Id = 9L },
         ];
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = (await master.GetFromJsonAsync<StaffMsmeProfileController.SamePanResponse>("/api/staff/msme-profile/ZEDMSME000001/same-pan"))!;
         Assert.Equal("ABCDE1234F", r.Pan);
         Assert.Equal("Acme Unit 2", r.This!.UnitName);
         Assert.Equal(2, r.Others.Count);
-        // 2026-11-18 (the user): the complete address (flat, road, village / town, city, district, state, PIN), no ZED ID.
+        // 2026-11-18 (the user): the complete address (flat, road, village / town, city, district, state, PIN).
         Assert.Equal(("Acme Unit 1", "Plot-4, Industrial Area, Panki, Kanpur, Kanpur Nagar, UTTAR PRADESH 208001"), (r.Others[0].UnitName, r.Others[0].Address));
         Assert.Equal("12 MG Road, Lucknow, UTTAR PRADESH 226001", r.Others[1].Address);
-        var raw = await master.GetStringAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan");
-        Assert.DoesNotContain("ZEDMSME", raw);
-        Assert.DoesNotContain("zedId", raw, StringComparison.OrdinalIgnoreCase);
+        // 2026-11-22 (the product owner): the Master Admin also sees the ZED ID, the current status (the latest row) and the duplicate
+        // (the same Udyam registration and plant address, any case and spacing).
+        Assert.Equal(("ZEDMSME000001", "Silver · Desktop assessment scheduled, not started", false), (r.This.ZedId, r.This.Status, r.This.Duplicate));
+        Assert.Equal(("ZEDMSME000002", "Silver · Site assessment scheduled, not started", true), (r.Others[0].ZedId, r.Others[0].Status, r.Others[0].Duplicate));
+        Assert.Equal(("ZEDMSME000003", "Registered", false), (r.Others[1].ZedId, r.Others[1].Status, r.Others[1].Duplicate));
 
-        // An agency sees it for its own units only.
-        Assert.Equal(HttpStatusCode.OK, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY1")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);
+        // An agency sees it for its own units only, without the ZED IDs, statuses or duplicates.
+        var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        var raw = await agency.GetStringAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan");
+        Assert.DoesNotContain("ZEDMSME", raw);
+        Assert.DoesNotContain("Registered", raw);
+        Assert.DoesNotContain("\"duplicate\":true", raw);
         Assert.Equal(HttpStatusCode.NotFound, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY2")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);
+    }
+
+    [Fact]
+    public void Same_pan_counts_and_duplicates_follow_the_old_portal_rule()
+    {
+        Assert.True(SamePanUnits.IsDuplicate("UDYAM-1", "Plot 4  Panki", "udyam-1", " Plot 4 Panki"));
+        Assert.False(SamePanUnits.IsDuplicate("UDYAM-1", "Plot 4", "UDYAM-2", "Plot 4"));
+        Assert.False(SamePanUnits.IsDuplicate("UDYAM-1", "Plot 4", "UDYAM-1", "Plot 5"));
+        Assert.False(SamePanUnits.IsDuplicate(null, "Plot 4", null, "Plot 4"));
     }
 
     [Fact]

@@ -66,9 +66,13 @@
             <button class="nav-link" type="button" role="tab" [class.active]="tab() === x.id" [attr.aria-selected]="tab() === x.id" (click)="tab.set(x.id)">{{ x.title }}</button>
           </li>
         }
+        @if (qo.shown()) {
+          <!-- 2026-11-22 (the product owner): the observations as the History-style side panel. -->
+          <li class="nav-item ms-auto" role="presentation"><zed-qo-button [open]="qo.openCount()" (opened)="qoOpen.set(true)" /></li>
+        }
       </ul>
 
-      <zed-qo-panel [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
+      <zed-qo-panel #qo [drawer]="true" [(open)]="qoOpen" [zedId]="d.zedId" [certification]="d.certification" [targets]="qoTargets()" [abouts]="qoAbouts" [(target)]="qoTarget" />
       <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
       <zed-checklist-records [zedId]="d.zedId" [certification]="d.certification" />
       <div class="tab-content">

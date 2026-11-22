@@ -132,6 +132,10 @@ export const UNIT_VIEW_STYLES = `
   .uv-tab-n { display: inline-block; padding: 2px 9px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; line-height: 18px; }
   .nav-link.active .uv-tab-n { background: #3f8a90; color: #fff; }
   .uv-tabs .uv-meta { margin-left: auto; padding: 0 8px; font-size: 12.5px; font-weight: 500; color: #6f8487; }
+  /* 2026-11-22 (the product owner): the observations button at the end of the tab bar (opens the History-style side panel). */
+  .uv-tabs .uv-qo { margin-left: auto; }
+  .uv-tabs .uv-meta + .uv-qo { margin-left: 4px; }
+  .uv-records:empty { display: none; }
   .zed-tabs .tab-content.uv-main { background: transparent; border: 0; border-radius: 0; padding: 0; }
   .uv-grid { display: block; }
   .uv-main, .uv-rail { min-width: 0; }

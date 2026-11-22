@@ -93,7 +93,7 @@
           @if (!ownUnitsOnly) { <th>{{ 'Agency' | t: 'staff.monitoring.column.agency' }}</th> }
           @if (track() !== 'desktop') { <th>{{ 'Mode' | t: 'staff.monitoring.column.mode' }}</th> }
           <th>{{ 'Assessor' | t: 'staff.monitoring.column.assessor' }}</th>
-          @if (main) { <th class="text-center">{{ 'Duplicates' | t: 'staff.monitoring.column.duplicates' }}</th> }
+          @if (main) { <th class="text-center" [title]="'Other units registered with the same PAN; duplicates (same Udyam and plant address) are marked in the list' | t: 'staff.monitoring.column.samePan.tooltip'">{{ 'Same PAN' | t: 'staff.monitoring.column.samePan' }}</th> }
           <th>{{ surveillance ? ('Surveillance dates' | t: 'staff.monitoring.column.surveillanceDates') : ('Assessment dates' | t: 'staff.monitoring.column.assessmentDates') }}</th>
           @if (showSteps()) { <th>{{ 'Progress' | t: 'staff.monitoring.column.progress' }}</th> }
           <!-- 2026-11-21 (audit item 7): the Due column only when a unit of the list has a due date or a TAT. -->
@@ -148,7 +148,10 @@
               @for (p of assessors(s); track $index) { <div><b>{{ p.name }}</b><small class="sub">{{ p.id }}</small></div> }
             </td>
             @if (main) {
-              <td class="text-center"><b class="mo-dupn" [class.mo-dup]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] ?? 0 }}</b></td>
+              <!-- 2026-11-22 (the product owner): the units of the same PAN, clickable (the side panel marks the duplicates). -->
+              <td class="text-center"><zed-same-pan-count [zedId]="col(s, 'ZedId')" [count]="num(s, 'SamePanCount')" />
+                @if (num(s, 'SameUdyamAddress') > 0) { <small class="mo-dup d-block" [title]="'Units with the same Udyam registration and plant address' | t: 'staff.monitoring.duplicates.tooltip'">{{ '{count} duplicate(s)' | t: 'staff.monitoring.duplicates.count' : { count: num(s, 'SameUdyamAddress') } }}</small> }
+              </td>
             }
             <td class="stack text-nowrap">
               <!-- Surveillance: the master admin's column has no allotment date (that portal's page). -->

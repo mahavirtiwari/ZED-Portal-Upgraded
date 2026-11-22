@@ -1,13 +1,20 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, Injectable, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { TextPipe } from '../../content/page-text';
+import { TextPipe, t } from '../../content/page-text';
+import { SideDrawer } from '../side-drawer';
 
 /** 2026-11-18 (the user: "ZED ID is not required to show"): the unit name and its complete address, no ZED ID. */
 export interface SamePanUnit {
   unitName: string | null;
   /** Complete: flat / building, road, village / town, city, district, state and PIN. */
   address: string;
+  /** 2026-11-22: the Master Admin and its operation admins only (absent for agencies and assessors). */
+  zedId?: string | null;
+  /** As zedId: the unit's current level and status. */
+  status?: string | null;
+  /** As zedId: the same Udyam registration and plant address as the unit (the old portal's duplicate). */
+  duplicate?: boolean | null;
 }
 
 export interface SamePanResponse {
@@ -15,6 +22,103 @@ export interface SamePanResponse {
   pan: string | null;
   this: SamePanUnit | null;
   others: SamePanUnit[];
+}
+
+/**
+ * 2026-11-22: the units of a PAN, asked once for a page (the "Same PAN" strip and the summary's count share the answer; kept for a
+ * minute, so a list's counts opened one after the other do not ask twice).
+ */
+@Injectable({ providedIn: 'root' })
+export class SamePanStore {
+  private readonly http = inject(HttpClient);
+  private readonly cache = new Map<string, { at: number; answer: Promise<SamePanResponse> }>();
+
+  get(zedId: string): Promise<SamePanResponse> {
+    const key = zedId.trim().toUpperCase();
+    const hit = this.cache.get(key);
+    if (hit && Date.now() - hit.at < 60_000) return hit.answer;
+    const answer = firstValueFrom(this.http.get<SamePanResponse>(`/api/staff/msme-profile/${encodeURIComponent(zedId)}/same-pan`));
+    this.cache.set(key, { at: Date.now(), answer });
+    answer.catch(() => this.cache.delete(key));
+    return answer;
+  }
+}
+
+/**
+ * 2026-11-22 (the product owner: "show the number of units registered in the same PAN with a clickable ... visible as pop-up ... in
+ * case of master admin and operation admin in pop-up also show ZED ID, current status and which one is duplicate. While in assessor
+ * and assessment agency do not show ZED ID and current status"; then: "side panel as you are showing for history"): the units of
+ * the PAN in the History-style side panel. What each login sees is the server's (the ZED ID, status and duplicate come only for
+ * the Master Admin and its operation admins); this unit first, then the others, a duplicate marked.
+ */
+@Component({
+  selector: 'zed-same-pan-drawer',
+  imports: [TextPipe, SideDrawer],
+  template: `
+    <zed-side-drawer id="same-pan-drawer" [title]="'Units with the same PAN' | t: 'staff.samePan.drawer.title'" [subtitle]="subtitle()" (closed)="closed.emit()">
+      @if (!data()) {
+        <p class="spd-note" role="status">{{ 'Loading…' | t: 'staff.samePan.drawer.loading' }}</p>
+      } @else {
+        @if (duplicates() > 0) {
+          <p class="spd-dup-note" role="status">{{ duplicates() === 1 ? ('1 unit has the same Udyam registration and plant address: a duplicate.' | t: 'staff.samePan.drawer.duplicateOne')
+            : ('{count} units have the same Udyam registration and plant address: duplicates.' | t: 'staff.samePan.drawer.duplicateMany' : { count: duplicates() }) }}</p>
+        }
+        <ol class="spd-list" data-same-pan-list>
+          @if (data()!.this; as me) {
+            <li class="spd-this">
+              <div class="spd-top"><b>{{ me.unitName || '—' }}</b><span class="spd-tag spd-tag-this">{{ 'This unit' | t: 'staff.samePan.drawer.thisUnit' }}</span></div>
+              @if (full()) { <div class="spd-meta"><span>{{ me.zedId }}</span>@if (me.status) { <span>{{ me.status }}</span> }</div> }
+              <span class="spd-addr">{{ me.address || '—' }}</span>
+            </li>
+          }
+          @for (u of data()!.others; track $index) {
+            <li [class.spd-dup]="u.duplicate" [attr.data-duplicate]="u.duplicate ? 'yes' : null">
+              <div class="spd-top"><b>{{ u.unitName || '—' }}</b>
+                @if (u.duplicate) { <span class="spd-tag spd-tag-dup">{{ 'Duplicate' | t: 'staff.samePan.drawer.duplicate' }}</span> }</div>
+              @if (full()) { <div class="spd-meta" data-same-pan-meta><span>{{ u.zedId }}</span>@if (u.status) { <span>{{ u.status }}</span> }</div> }
+              <span class="spd-addr">{{ u.address || '—' }}</span>
+            </li>
+          } @empty {
+            <li class="spd-note">{{ 'No other ZED unit is registered with this PAN.' | t: 'staff.samePan.drawer.none' }}</li>
+          }
+        </ol>
+        <p class="spd-note">{{ 'For tracing repeat registrations: check that each is a different plant before you accept the application.' | t: 'staff.samePan.drawer.note' }}</p>
+      }
+      <div drawer-foot class="spd-foot">
+        <span></span>
+        <button type="button" class="btn btn-default" (click)="closed.emit()">{{ 'Close' | t: 'staff.samePan.drawer.close' }}</button>
+      </div>
+    </zed-side-drawer>
+  `,
+  styles: `
+    .spd-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    .spd-list li { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid #dde7e8; border-radius: 10px; font-size: 12.5px; color: #3d5559; }
+    .spd-list li.spd-this { background: #f4f9f9; }
+    .spd-list li.spd-dup { border-color: #e7b3ad; background: #fdf3f2; }
+    .spd-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .spd-top b { font-size: 14px; color: #17373b; }
+    .spd-tag { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; }
+    .spd-tag-this { background: #e2eff0; color: #24666b; }
+    .spd-tag-dup { background: #b0362b; color: #fff; }
+    .spd-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; font-weight: 600; color: #24666b; }
+    .spd-addr { overflow-wrap: break-word; }
+    .spd-note { margin: 12px 0 0; font-size: 12px; color: #6f8487; border: 0; padding: 0; }
+    .spd-dup-note { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: #fdf3f2; color: #a32d2d; font-size: 12.5px; font-weight: 600; }
+    .spd-foot { display: contents; }
+    .spd-foot .btn { min-height: 40px; min-width: 100px; border-radius: 9px; font-weight: 700; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
+  `,
+})
+export class SamePanDrawer {
+  /** null while loading. */
+  readonly data = input<SamePanResponse | null>(null);
+  readonly closed = output<void>();
+  /** The server sent the ZED IDs (the Master Admin and its operation admins). */
+  protected readonly full = computed(() => {
+    const d = this.data();
+    return !!d && [d.this, ...d.others].some((u) => !!u?.zedId);
+  });
+  protected readonly duplicates = computed(() => (this.data()?.others ?? []).filter((u) => u.duplicate).length);
+  protected readonly subtitle = computed(() => (this.data()?.pan ? t('staff.samePan.drawer.subtitle', 'PAN {pan}', { pan: this.data()!.pan! }) : ''));
 }
 
 /**
@@ -32,7 +136,7 @@ export interface SamePanResponse {
  */
 @Component({
   selector: 'zed-same-pan',
-  imports: [TextPipe],
+  imports: [TextPipe, SamePanDrawer],
   template: `
     @if (data(); as d) {
       @if (d.others.length) {
@@ -50,34 +154,8 @@ export interface SamePanResponse {
           <button type="button" class="btn btn-link btn-sm p-0 sp-view" (click)="open.set(true)">{{ 'View units' | t: 'staff.samePan.viewButton' }}</button>
         </div>
         @if (open()) {
-          <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="same-pan-title" (click)="open.set(false)">
-            <div class="modal-dialog modal-lg modal-popup" (click)="$event.stopPropagation()">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                    <h3 class="registration-title m-0" id="same-pan-title">{{ 'Other ZED units with the same PAN' | t: 'staff.samePan.dialog.title' }}</h3>
-                    <button type="button" class="btn btn-link p-0" data-dismiss [attr.aria-label]="'Close' | t: 'staff.samePan.dialog.closeAria'" (click)="open.set(false)"><img src="Images/svgicons/close.svg" alt="" /></button>
-                  </div>
-                </div>
-                <div class="modal-body">
-                  <p class="sp-intro">{{ 'For tracing repeat registrations (PAN {pan}).' | t: 'staff.samePan.dialog.intro' : { pan: d.pan } }}
-                    @if (d.this; as me) { {{ 'This unit: {name}, {address}' | t: 'staff.samePan.dialog.thisUnit' : { name: me.unitName, address: me.address } }} }</p>
-                  <div class="table-responsive">
-                    <table class="table table-bordered table-zed mb-0" data-same-pan-list>
-                      <thead><tr><th>{{ 'Unit name' | t: 'staff.samePan.dialog.column.unitName' }}</th><th>{{ 'Complete address' | t: 'staff.samePan.dialog.column.address' }}</th></tr></thead>
-                      <tbody>
-                        @for (u of d.others; track $index) {
-                          <tr><td>{{ u.unitName || '—' }}</td><td class="sp-addr">{{ u.address || '—' }}</td></tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                <div class="modal-footer"><button type="button" class="btn btn-default" (click)="open.set(false)">{{ 'Close' | t: 'staff.samePan.dialog.closeButton' }}</button></div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-backdrop show"></div>
+          <!-- 2026-11-22 (the product owner): the History-style side panel instead of the pop-up. -->
+          <zed-same-pan-drawer [data]="d" (closed)="open.set(false)" />
         }
       }
     }
@@ -99,7 +177,7 @@ export interface SamePanResponse {
   `,
 })
 export class SamePanUnits {
-  private readonly http = inject(HttpClient);
+  private readonly store = inject(SamePanStore);
 
   readonly zedId = input.required<string>();
   protected readonly data = signal<SamePanResponse | null>(null);
@@ -115,7 +193,7 @@ export class SamePanUnits {
   private async load(zedId: string): Promise<void> {
     if (!zedId) return;
     try {
-      const d = await firstValueFrom(this.http.get<SamePanResponse>(`/api/staff/msme-profile/${encodeURIComponent(zedId)}/same-pan`));
+      const d = await this.store.get(zedId);
       this.data.set(d);
       // The first time in this browser session for the unit: the list opens by itself.
       if (d.others.length && !this.seen(zedId)) this.open.set(true);
@@ -134,5 +212,62 @@ export class SamePanUnits {
       // Storage blocked: show it each time.
     }
     return false;
+  }
+}
+
+/**
+ * 2026-11-22: the number of the other units of the unit's PAN as a link that opens the side panel (assessment summaries, Monitoring).
+ * Given <code>count</code> (a list's), the units are asked only when it is opened; without it, on show.
+ */
+@Component({
+  selector: 'zed-same-pan-count',
+  imports: [TextPipe, SamePanDrawer],
+  template: `
+    @if (shownCount(); as n) {
+      <button type="button" class="spc" [class.spc-many]="n > 0" data-same-pan-count (click)="openIt()"
+        [attr.aria-label]="'Units with the same PAN: {count}' | t: 'staff.samePan.count.aria' : { count: n }">{{ n }}</button>
+    } @else {
+      <span class="spc-zero" data-same-pan-count>{{ shownCount() === 0 ? '0' : '—' }}</span>
+    }
+    @if (open()) { <zed-same-pan-drawer [data]="data()" (closed)="open.set(false)" /> }
+  `,
+  styles: `
+    :host { display: inline-flex; }
+    .spc { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #24666b; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+    .spc.spc-many { color: #b0362b; }
+    .spc-zero { color: #6f8487; font-weight: 700; }
+  `,
+})
+export class SamePanCount {
+  private readonly store = inject(SamePanStore);
+  readonly zedId = input.required<string>();
+  /** The list's count (Monitoring); null: asked from the server. */
+  readonly count = input<number | null>(null);
+  protected readonly data = signal<SamePanResponse | null>(null);
+  protected readonly open = signal(false);
+  private readonly loaded = signal<number | null>(null);
+  protected readonly shownCount = computed(() => this.count() ?? this.loaded());
+
+  constructor() {
+    effect(() => {
+      const z = this.zedId();
+      if (this.count() === null && z) untracked(() => void this.load(z));
+    });
+  }
+
+  protected openIt(): void {
+    this.open.set(true);
+    if (!this.data()) void this.load(this.zedId());
+  }
+
+  private async load(zedId: string): Promise<void> {
+    try {
+      const d = await this.store.get(zedId);
+      this.data.set(d);
+      this.loaded.set(d.others.length);
+    } catch {
+      this.loaded.set(null);
+      this.open.set(false);
+    }
   }
 }

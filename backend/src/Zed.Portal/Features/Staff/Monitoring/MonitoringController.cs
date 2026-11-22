@@ -171,6 +171,13 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
         var units = Pick(scoped.Where(r => MonitoringInsights.InRange(r["StageDate"], fromDate, toDate)),
             (master ? fields.Concat(MasterAdminFields) : fields).Concat(InsightFields));
         if (status == 5) units = MonitoringInsights.MostDelayedFirst(units);
+        // 2026-11-22 (the product owner): the Duplicates column shows how many other units share the unit's PAN (clickable).
+        if (host.System == PortalSystem.Main)
+        {
+            var samePan = await Zed.Portal.Features.Staff.MsmeProfile.SamePanUnits.CountsAsync(db, units.Select(u => u.Text("ZedId")), log, ct);
+            foreach (var u in units)
+                u["SamePanCount"] = samePan.GetValueOrDefault(Zed.Portal.Features.Staff.Assessment.AssessmentInput.BaseZedId(u.Text("ZedId").Trim()));
+        }
         return new ListResponse(
             units,
             counts,

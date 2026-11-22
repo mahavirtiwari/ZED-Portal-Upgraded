@@ -46,10 +46,14 @@
         </li>
       }
       <li class="uv-meta" role="presentation">{{ metaLine() }}</li>
+      @if (qo.shown()) {
+        <!-- 2026-11-22 (the product owner): the observations open as the History-style side panel (no right rail). -->
+        <li class="uv-qo" role="presentation"><zed-qo-button [open]="qo.openCount()" (opened)="qoOpen.set(true)" /></li>
+      }
     </ul>
 
     <!-- 2026-11-17 (design 14): the quality observations (and the submission checklists) in a right rail that stays while the tabs change. -->
-    <div class="uv-grid" [class.uv-has-rail]="qo.shown() || cr.shown()">
+    <div class="uv-grid">
     <div class="tab-content uv-main">
       @if (tab() === 9) {
         <div class="tab-title">
@@ -98,6 +102,11 @@
               <div class="fact">
                 <dt>{{ 'Result' | t: 'staff.daDetails.summary.result.label' }}</dt>
                 <dd><span class="uv-chip" [class]="'uv-chip ' + result().tone">{{ result().label }}</span></dd>
+              </div>
+              <!-- 2026-11-22 (the product owner): the units registered with the same PAN, a link to the side panel. -->
+              <div class="fact" data-fact="same-pan">
+                <dt>{{ 'Same PAN units' | t: 'staff.daDetails.summary.samePan.label' }}</dt>
+                <dd><zed-same-pan-count [zedId]="d.zedId" /></dd>
               </div>
               @if (surveillance(); as sv) {
                 <div class="fact">
@@ -1060,11 +1069,9 @@
         }
       }
     </div>
-    <aside class="uv-rail" [attr.aria-label]="'Quality observations' | t: 'staff.daDetails.railAria'">
-      <zed-qo-panel #qo [rail]="true" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [scope]="qoScope()" [(target)]="qoTarget" />
-      <!-- 2026-11-17 (approved): the submission checklists ticked with this assessment's submissions. -->
-      <zed-checklist-records #cr [zedId]="d.zedId" [certification]="d.certification" />
-    </aside>
+    <!-- 2026-11-22: the submission checklists under the page (the right rail is gone). -->
+    <div class="uv-records"><zed-checklist-records #cr [zedId]="d.zedId" [certification]="d.certification" /></div>
+    <zed-qo-panel #qo [drawer]="true" [(open)]="qoOpen" [zedId]="d.zedId" [certification]="d.certification" [unitName]="t(msme(), 'PUnitName')" [targets]="qoTargets()" [abouts]="qoAbouts" [scope]="qoScope()" [(target)]="qoTarget" />
     </div>
   </div>
 }

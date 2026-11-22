@@ -20,6 +20,7 @@ import { PageHead } from '../../msme/shared/page-head';
 import { staffCrumbs } from '../staff-crumbs';
 import { ConfirmDialog } from '../confirm-dialog';
 import { UnitFacts } from '../../msme/shared/unit-facts';
+import { QoButton } from '../quality/qo-button';
 import { QualityObservationsPanel } from '../quality/quality-observations-panel';
 import { SubmitChecklist, allTicked } from '../quality/submit-checklist';
 import { ChecklistRecords } from '../quality/checklist-records';
@@ -120,7 +121,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog, TextPipe],
+  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog, TextPipe],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -159,6 +160,8 @@ export class RemoteAssessmentPage {
   // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
   protected readonly qoAbouts = ['Lead', 'Co', 'Agency'];
   protected readonly qoTarget = signal<QoTarget | null>(null);
+  /** 2026-11-22: the observations side panel is open. */
+  protected readonly qoOpen = signal(false);
   private readonly qoAuth = inject(QoAuth);
   /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
   protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);

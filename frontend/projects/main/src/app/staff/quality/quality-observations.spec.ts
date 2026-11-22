@@ -8,6 +8,7 @@ import { setAllLevels } from '../../msme/shared/levels';
 import { AttentionService } from '../attention';
 import { QualityObservationsPage } from './quality-observations-page';
 import { QualityObservationsPanel } from './quality-observations-panel';
+import { QoButton } from './qo-button';
 import { QoObservation, QoTarget, QoUnitView } from './quality.api';
 
 const API = '/api/staff/quality-observations';
@@ -35,6 +36,19 @@ class Host {
   target = signal<QoTarget | null>(null);
 }
 
+/** 2026-11-22: a review page with the observations as the History-style side panel and its button. */
+@Component({
+  imports: [QualityObservationsPanel, QoButton],
+  template: `
+    @if (qo.shown()) { <zed-qo-button [open]="qo.openCount()" (opened)="open.set(true)" /> }
+    <zed-qo-panel #qo [drawer]="true" [(open)]="open" zedId="ZEDMSME000001" certification="Silver" [targets]="targets" [(target)]="target" />`,
+})
+class DrawerHost {
+  targets: QoTarget[] = [{ type: 'Requirement', id: '51', label: '3.2 Process control' }];
+  target = signal<QoTarget | null>(null);
+  open = signal(false);
+}
+
 describe('Quality observations (2026-11-16)', () => {
   let http: HttpTestingController;
   const role = signal(7);
@@ -51,7 +65,7 @@ describe('Quality observations (2026-11-16)', () => {
     role.set(7);
     attention.refreshed = 0;
     await TestBed.configureTestingModule({
-      imports: [Host, QualityObservationsPage],
+      imports: [Host, DrawerHost, QualityObservationsPage],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: AuthService, useValue: { currentUser: () => ({ roleId: role() }) } },
         { provide: AttentionService, useValue: attention }],
     }).compileComponents();
@@ -106,6 +120,41 @@ describe('Quality observations (2026-11-16)', () => {
     expect(attention.refreshed).toBe(1);
     expect(el.textContent).toContain('1 open');
     expect(el.querySelector('[data-qo="101"]')!.textContent).toContain('About Lead assessor: R Sharma');
+  });
+
+  it('opens as a side panel from the page button, raises inside it, and closes (2026-11-22)', async () => {
+    const f = TestBed.createComponent(DrawerHost);
+    const el: HTMLElement = f.nativeElement;
+    await settle(f);
+    http.expectOne(`${API}/ZEDMSME000001/Silver`).flush(view({ items: [obs(), obs({ id: 102, status: 'Closed' })] }));
+    await settle(f);
+    // No card on the page: only the button, with the open count.
+    expect(el.querySelector('[data-qo-panel]')).toBeNull();
+    expect(el.querySelector('[data-qo-open]')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Observations 1');
+    el.querySelector<HTMLButtonElement>('[data-qo-open]')!.click();
+    await settle(f);
+    const drawer = el.querySelector('[data-drawer="qo-drawer"]')!;
+    expect(drawer.querySelector('h3')!.textContent).toContain('ZED quality observations');
+    expect(drawer.querySelectorAll('[data-qo]').length).toBe(2);
+    // "+ Observation" in the footer shows the form inside the panel (no pop-up over it).
+    [...drawer.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent!.trim() === '+ Observation')!.click();
+    await settle(f);
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(drawer.querySelector('h3')!.textContent).toContain('Raise a quality observation');
+    expect(drawer.querySelector('[data-qo-form] #qo-target')).not.toBeNull();
+    // Esc leaves the form first, then closes the panel.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await settle(f);
+    expect(el.querySelector('[data-drawer="qo-drawer"] [data-qo-form]')).toBeNull();
+    expect(el.querySelector('[data-drawer="qo-drawer"]')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await settle(f);
+    expect(el.querySelector('[data-drawer="qo-drawer"]')).toBeNull();
+    expect(f.componentInstance.open()).toBe(false);
+    // A page item's "+ Observation" opens the panel straight on the form, on that item.
+    f.componentInstance.target.set({ type: 'Requirement', id: '51', label: '3.2 Process control' });
+    await settle(f);
+    expect((el.querySelector('[data-drawer="qo-drawer"] #qo-target') as HTMLSelectElement).value).toBe('Requirement|51');
   });
 
   it('lets the agency reply, and shows the time history', async () => {

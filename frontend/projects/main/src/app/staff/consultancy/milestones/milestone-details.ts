@@ -19,6 +19,7 @@ import { staffCrumbs } from '../../staff-crumbs';
 import { ConfirmAsk, ConfirmDialog } from '../../confirm-dialog';
 import { levelName } from '../../../msme/shared/levels';
 import { UnitFacts } from '../../../msme/shared/unit-facts';
+import { QoButton } from '../../quality/qo-button';
 import { QualityObservationsPanel } from '../../quality/quality-observations-panel';
 import { ChecklistItem, SubmissionChecklistApi } from '../../quality/quality.api';
 import { SubmitChecklist, allTicked } from '../../quality/submit-checklist';
@@ -201,7 +202,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [QualityObservationsPanel, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, ConfirmDialog, TextPipe],
+  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, SubmitChecklist, RouterLink, FormsModule, NgTemplateOutlet, DatePipe, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, ConfirmDialog, TextPipe],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
@@ -272,6 +273,8 @@ export class MilestoneDetailsPage {
   // 2026-11-16 (approved): the ZED team's quality observations (panel above the tabs, "+ Observation" on a requirement).
   protected readonly qoAbouts = ['Lead', 'Co', 'Agency'];
   protected readonly qoTarget = signal<QoTarget | null>(null);
+  /** 2026-11-22: the observations side panel is open. */
+  protected readonly qoOpen = signal(false);
   private readonly qoAuth = inject(QoAuth);
   /** Only the Master Admin (and its operation admins) raise them; the panel hides what the login may not see. */
   protected readonly qoMaster = computed(() => this.qoAuth.currentUser()?.roleId === 7);
