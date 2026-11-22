@@ -493,7 +493,7 @@
               <div class="zp-block-head">{{ 'Milestone 1 : Handholding Action Plan' | t: 'msme.siteAssessment.milestone.planHeading' }}</div>
               <div class="zp-block-body">
                 @if (!exempted(s)) {
-                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: ('PLANNED ACTIVIES' | t: 'msme.siteAssessment.milestone.plannedLabel'), items: r.bullets?.handholdingActionPlan }" />
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: ('PLANNED ACTIVITIES' | t: 'msme.siteAssessment.milestone.plannedLabel'), items: r.bullets?.handholdingActionPlan }" />
                   <ng-container *ngTemplateOutlet="textBlock; context: { title: ('ESTIMATED TIME (IN DAYS)' | t: 'msme.siteAssessment.milestone.estimatedLabel'), value: r.milestone['EstimatedTimeInDays'] }" />
                   <ng-container *ngTemplateOutlet="textBlock; context: { title: ('REMARKS, IF ANY' | t: 'msme.siteAssessment.milestone.remarksLabel'), value: r.milestone['HActionPlanRemarks'] }" />
                 } @else {

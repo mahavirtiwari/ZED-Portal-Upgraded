@@ -139,3 +139,17 @@ public sealed class CertificateTests
         }
     }
 }
+
+public sealed class LegacyClockTests
+{
+    [Theory]
+    // 2026-11-22: legacy procedures' FORMAT(x, 'MMMM dd, yyyy HH:mm tt') put a 24-hour time before AM/PM.
+    [InlineData("November 17, 2026 17:29 PM", "November 17, 2026 05:29 PM")]
+    [InlineData("November 17, 2026 00:10 AM", "November 17, 2026 12:10 AM")]
+    [InlineData("November 17, 2026 05:02 PM", "November 17, 2026 05:02 PM")]
+    [InlineData("November 17, 2026 12:30 PM", "November 17, 2026 12:30 PM")]
+    [InlineData("Room 13:45 PMx", "Room 13:45 PMx")]
+    [InlineData("plain text", "plain text")]
+    public void A_24_hour_time_with_am_pm_goes_back_to_the_12_hour_clock(string text, string expected) =>
+        Assert.Equal(expected, Zed.Core.Data.LegacyClock.Fix(text));
+}

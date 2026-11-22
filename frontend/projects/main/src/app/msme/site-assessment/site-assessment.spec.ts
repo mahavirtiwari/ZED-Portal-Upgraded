@@ -268,7 +268,7 @@ describe('SiteAssessmentPage', () => {
     expect(text()).toContain('Milestone 1 : Basic Diagnostic Study');
     expect(text()).toContain('Conformance Partially');
     expect(text()).toContain('GAPS IDENTIFIED Gap one');
-    expect(text()).toContain('PLANNED ACTIVIES Plan one');
+    expect(text()).toContain('PLANNED ACTIVITIES Plan one');
     expect(text()).toContain('ESTIMATED TIME (IN DAYS) 30');
     expect(text()).toContain('SUGGESTED TENCHNOLOGY INTERVENTION ERP');
     expect(text()).toContain('RATIONALE FOR TENCHNOLOGY INTERVENTION Needs ERP');

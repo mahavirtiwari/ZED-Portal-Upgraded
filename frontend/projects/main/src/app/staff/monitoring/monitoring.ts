@@ -23,6 +23,7 @@ import { LevelMedal } from '../assessment/level-medal';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
 import { cleanAddress } from '../address';
+import { dateSpan } from '../site-assessment/site-assessment.api';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -129,6 +130,8 @@ export class MonitoringPage {
   private readonly system = inject(ASSESSMENT_SYSTEM);
   protected readonly main = this.system === 'main';
   protected readonly consultancy = this.system === 'consultancy';
+  /** Consultancy: a visit's first to last day (BDS, HAP). */
+  protected readonly span = dateSpan;
   protected readonly surveillance = this.system === 'surveillance';
   protected readonly title = computed(() => this.consultancy ? t('staff.monitoring.consultancy.title', 'Consultancy Monitoring')
     : this.surveillance ? t('staff.monitoring.surveillance.title', 'Surveillance Monitoring') : t('staff.monitoring.title', 'Assessment Monitoring'));

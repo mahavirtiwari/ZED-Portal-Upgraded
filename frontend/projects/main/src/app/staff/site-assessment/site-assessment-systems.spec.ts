@@ -3,11 +3,12 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { PortalSystem } from '../../portal-system';
 import { ToastService } from '../toast';
 import { RemoteAssessmentsPage } from './remote-assessments';
 import { SaAllotmentPage } from './sa-allotment';
-import { SITE_SYSTEM, isWebLink, todayIso } from './site-assessment.api';
+import { SITE_SYSTEM, dateSpan, isWebLink, todayIso } from './site-assessment.api';
 
 async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
@@ -31,7 +32,7 @@ function inDays(n: number): string {
   return todayIso(d);
 }
 
-function setup<T>(component: Type<T>, system: PortalSystem, params: Record<string, string> = {}) {
+function setup<T>(component: Type<T>, system: PortalSystem, params: Record<string, string> = {}, paramMap = new BehaviorSubject(convertToParamMap(params))) {
   TestBed.configureTestingModule({
     imports: [component],
     providers: [
@@ -39,7 +40,7 @@ function setup<T>(component: Type<T>, system: PortalSystem, params: Record<strin
       provideHttpClient(),
       provideHttpClientTesting(),
       { provide: SITE_SYSTEM, useValue: system },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(params) } } },
+      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(params) }, paramMap } },
     ],
   });
   const fixture = TestBed.createComponent(component);
@@ -272,6 +273,33 @@ describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
     await settle(fixture);
     expect([...el.querySelectorAll('.rm-item')].map((b) => b.textContent!.trim())).toEqual(['View MSME profile']);
     expect(el.textContent).not.toContain('Lead Consultant');
+  });
+
+  it('follows the menu from one milestone to the next on the same page (2026-11-22)', async () => {
+    const params = new BehaviorSubject(convertToParamMap({ milestone: '1' }));
+    const { fixture, http, el } = setup(RemoteAssessmentsPage, 'consultancy', { milestone: '1' }, params);
+    await settle(fixture);
+    http.expectOne('/api/config').flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '' });
+    http.expectOne('/api/staff/site-assessment/consultancy/milestones/1').flush([{ ZedId: 'ZEDMSME000001', Certification: 'Silver', EnterpriseName: 'Acme' }]);
+    await settle(fixture);
+    expect(el.querySelector('h2')!.textContent).toContain('Milestone 1');
+    params.next(convertToParamMap({ milestone: '2' }));
+    await settle(fixture);
+    expect(el.querySelector('h2')!.textContent).toContain('Milestone 2');
+    expect(el.textContent).not.toContain('Acme');
+    http.expectOne('/api/staff/site-assessment/consultancy/milestones/2').flush([]);
+    await settle(fixture);
+    expect(el.textContent).not.toContain('Acme');
+    http.verify();
+  });
+
+  it('shows a visit as its first to last day (2026-11-22)', () => {
+    expect(dateSpan('November 16, 2026', 'November 17, 2026')).toBe('November 16 – 17, 2026');
+    expect(dateSpan('November 30, 2026', 'December 2, 2026')).toBe('November 30 – December 2, 2026');
+    expect(dateSpan('December 31, 2026', 'January 2, 2027')).toBe('December 31, 2026 – January 2, 2027');
+    expect(dateSpan('November 16, 2026', 'November 16, 2026')).toBe('November 16, 2026');
+    expect(dateSpan('November 16, 2026', null)).toBe('November 16, 2026');
+    expect(dateSpan(null, undefined)).toBe('');
   });
 
   it('falls back to milestone 1 for an invalid parameter', () => {

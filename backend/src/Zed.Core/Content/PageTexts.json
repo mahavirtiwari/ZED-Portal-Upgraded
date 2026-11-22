@@ -18998,7 +18998,7 @@
     },
     {
       "key": "msme.siteAssessment.milestone.plannedLabel",
-      "standard": "PLANNED ACTIVIES",
+      "standard": "PLANNED ACTIVITIES",
       "kind": "label",
       "portal": "msme",
       "page": "siteAssessment",
@@ -74370,7 +74370,7 @@
     },
     {
       "key": "staff.milestoneDetails.parameters.plannedLabel",
-      "standard": "PLANNED ACTIVIES",
+      "standard": "PLANNED ACTIVITIES",
       "kind": "label",
       "portal": "staff",
       "page": "milestoneDetails",

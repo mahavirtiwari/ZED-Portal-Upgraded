@@ -72,6 +72,23 @@ export function milestoneReviewLink(zedId: string, certification: string, _miles
   return `/staff/consultancy/milestones/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`;
 }
 
+/**
+ * 2026-11-22 (Consultant audit: Monitoring showed a BDS of 16-17 November as "November 16", the consultant's list as
+ * "November 17"): a visit's days from the procedures' "November 16, 2026" texts, as one span: "November 16 – 17, 2026",
+ * "November 30 – December 2, 2026", or the day alone when both ends are the same (or one is missing).
+ */
+export function dateSpan(from: unknown, to: unknown): string {
+  const a = String(from ?? '').trim();
+  const b = String(to ?? '').trim();
+  if (!a || !b || a === b) return a || b;
+  const re = /^([A-Za-z]+) (\d{1,2}), (\d{4})$/;
+  const x = re.exec(a);
+  const y = re.exec(b);
+  if (!x || !y) return `${a} – ${b}`;
+  if (x[3] !== y[3]) return `${a} – ${b}`;
+  return x[1] === y[1] ? `${x[1]} ${x[2]} – ${y[2]}, ${x[3]}` : `${x[1]} ${x[2]} – ${y[1]} ${y[2]}, ${x[3]}`;
+}
+
 /** Client for api/staff/site-assessment (SiteAssessmentController; ConsultancyAllotmentController under /consultancy). */
 @Injectable({ providedIn: 'root' })
 export class SiteAssessmentApi {

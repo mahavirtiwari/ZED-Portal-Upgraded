@@ -138,8 +138,8 @@
               @if (num(s, 'NcCount') > 1) {
                 <div>{{ s['DocVerifiAllot'] }}</div><div><abbr [title]="'Progress review {round}' | t: 'staff.monitoring.row.reviewDate.title' : { round: num(s, 'NcCount') - 1 }">{{ 'PR{round}' | t: 'staff.monitoring.row.reviewDate.abbr' : { round: num(s, 'NcCount') - 1 } }}</abbr>: {{ s['SaAssessmentDate'] }}</div>
               } @else {
-                <div><abbr [title]="'Baseline Diagnostic Study' | t: 'staff.monitoring.row.bds.title'">{{ 'BDS' | t: 'staff.monitoring.row.bds.abbr' }}</abbr>: {{ s['BdsFromDate'] }}</div>
-                <div><abbr [title]="'Handholding Action Plan' | t: 'staff.monitoring.row.hap.title'">{{ 'HAP' | t: 'staff.monitoring.row.hap.abbr' }}</abbr>: {{ s['HapFromDate'] }}</div>
+                <div><abbr [title]="'Baseline Diagnostic Study' | t: 'staff.monitoring.row.bds.title'">{{ 'BDS' | t: 'staff.monitoring.row.bds.abbr' }}</abbr>: {{ span(s['BdsFromDate'], s['BdsToDate']) }}</div>
+                <div><abbr [title]="'Handholding Action Plan' | t: 'staff.monitoring.row.hap.title'">{{ 'HAP' | t: 'staff.monitoring.row.hap.abbr' }}</abbr>: {{ span(s['HapFromDate'], s['HapToDate']) }}</div>
               }
             </td>
           } @else {

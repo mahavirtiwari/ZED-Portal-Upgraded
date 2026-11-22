@@ -600,6 +600,8 @@ public sealed class SiteReviewController(
     {
         null or DBNull => null,
         DateTime d => d.ToString("MMMM dd, yyyy hh:mm tt", CultureInfo.InvariantCulture),
+        // 2026-11-22: a legacy "HH:mm tt" time text ("17:29 PM") on the 12-hour clock.
+        string s => global::Zed.Core.Data.LegacyClock.Fix(s),
         TimeSpan t => t.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture),
         _ => value,
     };

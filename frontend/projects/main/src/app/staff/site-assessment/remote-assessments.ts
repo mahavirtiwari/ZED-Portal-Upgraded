@@ -1,8 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
+import { Row, SITE_SYSTEM, SiteAssessmentApi, dateSpan, milestoneReviewLink } from './site-assessment.api';
 import { FormsModule } from '@angular/forms';
 import { PagedView, PagerComponent, searchRows } from '../pager';
 import { PageHead } from '../../msme/shared/page-head';
@@ -77,10 +78,11 @@ import { RemoteAllotments } from '../remote-allotments';
                 <!-- 2026-11-18 (the user): the SPOC's mobile and e-mail in full (never masked). -->
                 <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ str(s['UnitSpocMobileNo']) }}</span><span class="sub mail-cut" [title]="str(s['UnitSpocEmailId'])">{{ str(s['UnitSpocEmailId']) }}</span></td>
                 <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
+                <!-- 2026-11-22 (Consultant audit): the visit's first to last day (it showed the last day only), BDS and HAP alike. -->
                 @if (milestone === 1) {
-                  <td>{{ 'BDS: {date}' | t: 'staff.remoteAssessments.row.bds.label' : { date: s['BdsToDate'] } }}<span class="sub">{{ 'HAP: {date}' | t: 'staff.remoteAssessments.row.hap.label' : { date: s['HapToDate'] } }}</span></td>
+                  <td class="ra-dates"><div>{{ 'BDS: {date}' | t: 'staff.remoteAssessments.row.bds.label' : { date: span(s['BdsFromDate'], s['BdsToDate']) } }}</div><div>{{ 'HAP: {date}' | t: 'staff.remoteAssessments.row.hap.label' : { date: span(s['HapFromDate'], s['HapToDate']) } }}</div></td>
                 } @else {
-                  <td>{{ s['BdsToDate'] }}</td>
+                  <td class="ra-dates">{{ span(s['BdsFromDate'], s['BdsToDate']) }}</td>
                 }
                 <td><span [class]="'chip ' + milestoneState(s).tone">{{ milestoneState(s).label }}</span></td>
                 <td class="text-end text-nowrap">
@@ -178,6 +180,7 @@ import { RemoteAllotments } from '../remote-allotments';
     .ra-btns { display: inline-flex; gap: 6px; }
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the buttons keep the skin's 700 weight. */
     .ra-act { margin-right: 6px; }
+    .ra-dates { font-size: 13.5px; color: #17373b; }
   `,
 })
 export class RemoteAssessmentsPage {
@@ -186,14 +189,23 @@ export class RemoteAssessmentsPage {
   private readonly remoteAllotments = inject(RemoteAllotments);
   private readonly router = inject(Router);
   protected readonly str = (v: unknown) => (v === null || v === undefined ? '' : String(v));
+  protected readonly span = dateSpan;
   protected readonly profileMenu = computed<RowMenuItem[]>(() => [{ key: 'profile', label: t('staff.remoteAssessments.menu.profile.label', 'View MSME profile'), icon: 'people' }]);
   private readonly legacyUrl = signal('');
   private readonly system = inject(SITE_SYSTEM);
 
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
-  /** Consultancy: milestone of the list (1-3, route parameter; 1 when missing or invalid). */
-  protected readonly milestone = RemoteAssessmentsPage.milestoneOf(inject(ActivatedRoute).snapshot.paramMap.get('milestone'));
+  private readonly route = inject(ActivatedRoute);
+  /**
+   * Consultancy: milestone of the list (1-3, route parameter; 1 when missing or invalid). 2026-11-22 (Consultant audit: going
+   * from Milestone 1 to Milestone 2 in the menu changed the address but kept Milestone 1's list, Angular reusing the page):
+   * it follows the route parameter.
+   */
+  private readonly milestoneNumber = signal(RemoteAssessmentsPage.milestoneOf(this.route.snapshot.paramMap.get('milestone')));
+  protected get milestone(): number {
+    return this.milestoneNumber();
+  }
   protected readonly subtitle = computed(() => this.consultancy
     ? t('staff.remoteAssessments.milestone.sub', 'Units allotted to you for milestone {number}, with the site visit dates.', { number: this.milestone })
     : this.surveillance ? t('staff.remoteAssessments.surveillance.sub', 'Surveillance assessments allotted to you; assess them on the meeting link.')
@@ -303,6 +315,15 @@ export class RemoteAssessmentsPage {
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
     void this.load();
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((p) => {
+      const n = RemoteAssessmentsPage.milestoneOf(p.get('milestone'));
+      if (!this.consultancy || n === this.milestoneNumber()) return;
+      this.milestoneNumber.set(n);
+      this.stage.set(null);
+      this.search.set('');
+      this.rows.set([]);
+      void this.load();
+    });
   }
 
   static milestoneOf(value: string | null): number {
@@ -311,15 +332,18 @@ export class RemoteAssessmentsPage {
   }
 
   protected async load(): Promise<void> {
+    const asked = this.milestone;
     this.loading.set(true);
     this.error.set('');
     try {
-      const call = this.consultancy ? this.api.milestone(this.milestone) : (this.remoteAllotments.list() as Observable<Row[]>);
-      this.rows.set((await firstValueFrom(call)) ?? []);
+      const call = this.consultancy ? this.api.milestone(asked) : (this.remoteAllotments.list() as Observable<Row[]>);
+      const rows = (await firstValueFrom(call)) ?? [];
+      // A list of the milestone left meanwhile (another menu entry) is dropped.
+      if (asked === this.milestone) this.rows.set(rows);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      if (asked === this.milestone) this.error.set(apiErrorMessage(err));
     } finally {
-      this.loading.set(false);
+      if (asked === this.milestone) this.loading.set(false);
     }
   }
 

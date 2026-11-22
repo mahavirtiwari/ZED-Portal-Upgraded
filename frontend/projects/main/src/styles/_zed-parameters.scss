@@ -62,6 +62,9 @@ $zp-muted: #5f6f70;
 .zp-req-status { margin-left: auto; flex-shrink: 0; display: flex; gap: 6px; align-items: center; }
 .zp-req-body { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; }
 .zp-block { border: 1px solid $zp-line; border-radius: 8px; overflow: hidden; }
+// 2026-11-22 (Consultant audit: a handholding milestone's Parameters showed each milestone box 200 px wide and centred, the
+// rest of the row empty): the old site's .milestone-1/2/3 table-cell rule (_legacy-site.scss) does not apply to these boxes.
+.zp-req-body > .zp-block.zp-milestone { width: auto; text-align: left; vertical-align: baseline !important; background-color: #fff !important; }
 .zp-block-head { background: $zp-strip; border-bottom: 1px solid $zp-soft-line; padding: 6px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: $zp-muted; }
 .zp-block-body { padding: 8px 12px; }
 .zp-block-empty { padding: 8px 12px; color: $zp-muted; }

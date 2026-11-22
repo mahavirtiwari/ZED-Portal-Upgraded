@@ -375,7 +375,7 @@
                           <div class="zp-block-head">{{ 'Milestone 1 : Handholding Action Plan' | t: 'staff.milestoneDetails.parameters.actionPlan.title' }}</div>
                           <div class="zp-block-body">
                             @if (!isExempted) {
-                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: ('PLANNED ACTIVIES' | t: 'staff.milestoneDetails.parameters.plannedLabel') }" />
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: ('PLANNED ACTIVITIES' | t: 'staff.milestoneDetails.parameters.plannedLabel') }" />
                               <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'EstimatedTimeInDays', label: ('ESTIMATED TIME (IN DAYS)' | t: 'staff.milestoneDetails.parameters.estimatedTimeLabel') }" />
                               <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'HActionPlanRemarks', label: ('REMARKS, IF ANY' | t: 'staff.milestoneDetails.parameters.remarksLabel') }" />
                             } @else {

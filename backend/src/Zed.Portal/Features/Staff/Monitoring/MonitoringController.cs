@@ -76,7 +76,8 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
     [
         "RowNumber", "ZedId", "Certification", "PUnitName", "UnitAddress", "AgencyName", "CertificationBodyUserId",
         "SiteAssessorName", "SiteAssessorId", "CoAssessorName", "CoAssessorId", "TechExpertName", "TechExpert",
-        "DocVerifiAllot", "SaAssessmentDate", "BdsFromDate", "HapFromDate", "CertificationStatus", "NcStatus", "NcCount",
+        // 2026-11-22 (Consultant audit: Monitoring showed the BDS's first day, the consultant's list its last): both ends.
+        "DocVerifiAllot", "SaAssessmentDate", "BdsFromDate", "BdsToDate", "HapFromDate", "HapToDate", "CertificationStatus", "NcStatus", "NcCount",
     ];
 
     private static readonly string[] SurveillanceFields =

@@ -459,7 +459,7 @@ describe('MonitoringPage per system', () => {
     expect(el.querySelector('#monitoringMode')).toBeNull();
     list().flush({
       units: [
-        { ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 8, NcCount: 1, BdsFromDate: 'May 1, 2026', HapFromDate: 'May 9, 2026', TechExpertName: 'Expert One' },
+        { ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 8, NcCount: 1, BdsFromDate: 'May 1, 2026', BdsToDate: 'May 3, 2026', HapFromDate: 'May 9, 2026', TechExpertName: 'Expert One' },
         { ZedId: 'ZEDMSME000002', Certification: 'Silver', CertificationStatus: 9, NcCount: 2, SaAssessmentDate: 'June 2, 2026', DocVerifiAllot: 'May 20, 2026' },
       ],
       counts,
@@ -468,7 +468,9 @@ describe('MonitoringPage per system', () => {
     await settle();
     const rows = el.querySelectorAll('tbody tr');
     expect(rows[0].textContent).toContain('Milestone 1');
-    expect(rows[0].textContent).toContain('BDS: May 1, 2026');
+    // 2026-11-22: the visit's first to last day; HAP without its last day shows the one day.
+    expect(rows[0].textContent).toContain('BDS: May 1 – 3, 2026');
+    expect(rows[0].textContent).toContain('HAP: May 9, 2026');
     expect(rows[0].textContent).toContain('Expert One');
     expect(rows[1].textContent).toContain('PR1: June 2, 2026');
     expect(el.querySelector('thead')!.textContent).not.toContain('Duplicates');

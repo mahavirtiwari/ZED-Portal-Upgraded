@@ -3,6 +3,7 @@ import { Injectable, effect, inject, signal } from '@angular/core';
 import { AuthService, type CurrentUser } from '@zed/shared';
 import { Observable, finalize, shareReplay, tap } from 'rxjs';
 import { StaffRole, type StaffMenuItem } from './staff-menu';
+import { PORTAL_SYSTEM } from '../portal-system';
 
 const REMOTE_ROUTE = '/staff/remote-assessments';
 const API = '/api/staff/site-assessment/remote-assessments';
@@ -11,9 +12,13 @@ const API = '/api/staff/site-assessment/remote-assessments';
 export const REMOTE_ALLOTMENTS_CACHE_KEY = 'zed.remoteAllotments';
 export const REMOTE_ALLOTMENTS_TTL_MS = 5 * 60_000;
 
-/** The assessor whose menu follows its remote / onsite assessments (an assessor with site verification), else null. */
-function assessorKey(u: CurrentUser | null): string | null {
-  return u && u.roleId === StaffRole.DesktopAssessor && (u.subRoles ?? []).includes('SiteVerification') ? u.userId : null;
+/**
+ * The assessor whose menu follows its remote / onsite assessments (an assessor with site verification), else null.
+ * 2026-11-22 (Consultant audit: every page of a consultant asked it and got 404): not on Consultancy, whose consultants have
+ * the Milestone 1/2/3 lists instead and whose host does not serve the remote assessments.
+ */
+function assessorKey(u: CurrentUser | null, system: string = PORTAL_SYSTEM): string | null {
+  return system !== 'consultancy' && u && u.roleId === StaffRole.DesktopAssessor && (u.subRoles ?? []).includes('SiteVerification') ? u.userId : null;
 }
 
 function readCache(key: string, now = Date.now()): boolean | null {
