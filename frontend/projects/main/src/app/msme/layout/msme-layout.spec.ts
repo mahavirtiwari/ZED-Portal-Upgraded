@@ -40,6 +40,8 @@ describe('MsmeLayout (2026-11-17 applicant designs)', () => {
     expect(document.querySelector(`script[src="${BHASHINI_PLUGIN_SRC}"]`)!.getAttribute('language-icon-color')).toBe('#ffffff');
     expect(el.querySelector('zed-notification-bell')).not.toBeNull();
     expect(el.querySelector('.msme-footer')!.textContent).toContain('All Rights Reserved');
+    // 2026-11-23 (the user: "remove it from applicant page also"): no links in the footer.
+    expect(el.querySelectorAll('.msme-footer a').length).toBe(0);
   });
 
   it('marks the menu item of each page', () => {

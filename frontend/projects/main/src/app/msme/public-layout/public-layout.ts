@@ -54,12 +54,7 @@ import { closeTopPopup } from '../layout/msme-layout';
       <footer class="pub-footer">
         <div class="container pf">
           <small>{{ 'ZED © {year} All Rights Reserved' | t: 'public.layout.footer.copyrightText' : { year } }}</small>
-          <nav class="pf-links" [attr.aria-label]="'Footer' | t: 'public.layout.footer.aria'">
-            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'public.layout.footer.guidelinesLink' }}</a><span aria-hidden="true">·</span> }
-            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'public.layout.footer.privacyLink' }}</a><span aria-hidden="true">·</span> }
-            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'public.layout.footer.termsLink' }}</a><span aria-hidden="true">·</span> }
-            <a routerLink="/msme/login">{{ 'Login' | t: 'public.layout.footer.loginLink' }}</a>
-          </nav>
+          <!-- 2026-11-23 (the user: "remove it from applicant page also"): no footer links ("Back to Login" stays in the bar). -->
           <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'public.layout.footer.qciLogoAlt'" height="32" />
         </div>
       </footer>
@@ -84,9 +79,6 @@ import { closeTopPopup } from '../layout/msme-layout';
     .pub-footer { background: #1d2f31; color: #c9dcdc; }
     .pf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 12px; }
     .pf small { font-size: 13px; font-weight: 600; color: #fff; }
-    .pf-links { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
-    .pf-links a { color: #c9dcdc; text-decoration: none; }
-    .pf-links a:hover { color: #fff; text-decoration: underline; }
     @media (max-width: 575.98px) {
       .header-top > a:first-child > img, .header-top > img:first-child { height: 64px; }
       .pub-portal { display: none; }

@@ -73,12 +73,7 @@ import { TextPipe } from '../../content/page-text';
       <footer class="msme-footer">
         <div class="container mf">
           <small>{{ 'ZED © {year} All Rights Reserved' | t: 'msme.layout.footer.copyrightText' : { year } }}</small>
-          <nav class="mf-links" [attr.aria-label]="'Footer' | t: 'msme.layout.footer.aria'">
-            @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'msme.layout.footer.guidelinesLink' }}</a><span aria-hidden="true">·</span> }
-            @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'msme.layout.footer.privacyLink' }}</a><span aria-hidden="true">·</span> }
-            @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'msme.layout.footer.termsLink' }}</a><span aria-hidden="true">·</span> }
-            <a routerLink="/msme/contact">{{ 'Help desk' | t: 'msme.layout.footer.helpDeskLink' }}</a>
-          </nav>
+          <!-- 2026-11-23 (the user: "remove it from applicant page also"): no footer links, as the staff pages. -->
           <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'msme.layout.footer.qciLogoAlt'" height="32" />
         </div>
       </footer>
@@ -121,9 +116,6 @@ import { TextPipe } from '../../content/page-text';
     .mf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 12px; }
     .mf { padding: 22px 12px; }
     .mf small { font-size: 13px; font-weight: 600; color: #fff; }
-    .mf-links { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }
-    .mf-links a { color: #c9dcdc; text-decoration: none; }
-    .mf-links a:hover { color: #fff; text-decoration: underline; }
     @media (max-width: 991.98px) {
       .topnav .container { flex-wrap: wrap; }
       .topnav .navbar-nav { gap: 0; }
