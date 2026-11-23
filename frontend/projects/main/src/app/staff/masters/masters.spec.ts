@@ -82,7 +82,7 @@ describe('DocumentsAdminPage', () => {
       .flush({ documents: [doc(40, 'zed guidelines'), doc(41, 'Milestone checklist', { roles: ['consultant'] })], roles: consRoles });
     noSurv();
     await settle(fixture);
-    const tick = (name: string) => [...el.querySelectorAll('.doc-item')].find((i) => i.textContent!.includes(name))!.querySelector('.shown-on label:not([data-surveillance-tick]) input') as HTMLInputElement;
+    const tick = (name: string) => [...el.querySelectorAll('.doc-item')].find((i) => i.textContent!.includes(name))!.querySelector('.shown-on label:not([data-surveillance-tick]):not([data-main-tick]) input') as HTMLInputElement;
     expect(tick('ZED Guidelines').checked).toBe(true);
     expect(tick('How to apply').checked).toBe(false);
     expect(el.querySelector('#doc-cons-h')!.textContent).toContain('Only on the Consultancy portal');
@@ -146,6 +146,75 @@ describe('DocumentsAdminPage', () => {
     await loadAll([]);
     expect(el.querySelector('.alert-success')!.textContent).toContain('shown on the Surveillance portal too');
     http.verify();
+  });
+
+  // 2026-11-23 (the user: "This document only belong to ZED Consultancy. I am not able to amend the same").
+  describe('the ZED Certification tick', () => {
+    const at = (portal: string | null, method = 'GET') => (r: { url: string; method: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) =>
+      r.url === '/api/staff/masters/documents' && r.method === method && r.context.get(ADMIN_PORTAL) === portal;
+    const consRoles = [{ key: 'msme', label: 'MSME Enterprises' }, { key: 'consultant', label: 'Consultants' }];
+    async function loadAll(fixture: ComponentFixture<unknown>, http: HttpTestingController, main: unknown[], cons: unknown[]) {
+      http.expectOne(at(null)).flush({ documents: main, roles });
+      await settle(fixture);
+      http.expectOne(at('consultancy')).flush({ documents: cons, roles: consRoles });
+      http.expectOne(at('surveillance')).flush({ documents: [], roles: [{ key: 'msme', label: 'MSME Enterprises' }] });
+      await settle(fixture);
+    }
+    const mainTick = (el: HTMLElement) => el.querySelector('[data-main-tick] input') as HTMLInputElement;
+
+    it('takes a document shown on Consultancy off ZED Certification, after a confirmation', async () => {
+      const { fixture, http, el } = await setup(DocumentsAdminPage);
+      await loadAll(fixture, http, [doc(9, 'Milestone guide')], [doc(90, 'Milestone guide')]);
+      expect(mainTick(el).checked).toBe(true);
+      const ask = vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
+      mainTick(el).click();
+      await settle(fixture);
+      expect(ask.mock.calls[0][0].message).toContain('It stays on Consultancy');
+      http.expectOne((r) => r.method === 'DELETE' && r.url === '/api/staff/masters/documents/9' && r.context.get(ADMIN_PORTAL) === null).flush({ message: 'Removed.' });
+      await settle(fixture);
+      await loadAll(fixture, http, [], [doc(90, 'Milestone guide')]);
+      expect(el.querySelector('.alert-success')!.textContent).toContain('now shown only on Consultancy');
+      expect(el.querySelector('#doc-cons-h')!.textContent).toContain('Only on the Consultancy portal');
+      http.verify();
+      vi.restoreAllMocks();
+    });
+
+    it('keeps it ticked and says what to do when no other portal shows the document', async () => {
+      const { fixture, http, el } = await setup(DocumentsAdminPage);
+      await loadAll(fixture, http, [doc(9, 'Milestone guide')], []);
+      mainTick(el).click();
+      await settle(fixture);
+      expect(mainTick(el).checked).toBe(true);
+      expect(el.querySelector('.alert-danger')!.textContent).toContain('Tick Consultancy or Surveillance first');
+      http.verify();
+    });
+
+    it('adds a new document on the Consultancy portal only', async () => {
+      const { fixture, http, el } = await setup(DocumentsAdminPage);
+      await loadAll(fixture, http, [], []);
+      await openAdd(fixture, el);
+      type(el, '#documentName', 'Consultancy handbook');
+      chooseFile(el.querySelector('#fileControl') as HTMLInputElement, new File(['%PDF'], 'h.pdf', { type: 'application/pdf' }));
+      tick(el, 'MSME Enterprises');
+      const box = (sel: string) => el.querySelector(sel) as HTMLInputElement;
+      box('[data-on-main]').click();
+      await settle(fixture);
+      upload(el).click();
+      await settle(fixture);
+      expect(el.querySelector('[aria-labelledby="doc-add-title"] .alert-danger')!.textContent).toContain('tick at least one portal');
+      ([...el.querySelectorAll('.doc-also label')].find((l) => l.textContent!.includes('Consultancy'))!.querySelector('input') as HTMLInputElement).click();
+      await settle(fixture);
+      upload(el).click();
+      await settle(fixture);
+      http.expectNone(at(null, 'POST'));
+      const add = http.expectOne(at('consultancy', 'POST'));
+      expect((add.request.body as FormData).get('documentName')).toBe('Consultancy handbook');
+      expect((add.request.body as FormData).get('roles')).toBe('msme');
+      add.flush({ message: 'Document saved.' });
+      await settle(fixture);
+      await loadAll(fixture, http, [], [doc(91, 'Consultancy handbook')]);
+      http.verify();
+    });
   });
 
   it('uploads a file with its description and the roles ticked, and refuses other file types', async () => {

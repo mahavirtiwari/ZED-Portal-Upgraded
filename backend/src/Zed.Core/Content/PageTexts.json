@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9514,
+  "count": 9511,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -13887,18 +13887,6 @@
       ]
     },
     {
-      "key": "msme.layout.footer.aria",
-      "standard": "Footer",
-      "kind": "tooltip",
-      "portal": "msme",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/layout/msme-layout.ts"
-      ]
-    },
-    {
       "key": "msme.layout.footer.copyrightText",
       "standard": "ZED © {year} All Rights Reserved",
       "kind": "note",
@@ -13913,57 +13901,9 @@
       ]
     },
     {
-      "key": "msme.layout.footer.guidelinesLink",
-      "standard": "Scheme guidelines",
-      "kind": "button",
-      "portal": "msme",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/layout/msme-layout.ts"
-      ]
-    },
-    {
-      "key": "msme.layout.footer.helpDeskLink",
-      "standard": "Help desk",
-      "kind": "button",
-      "portal": "msme",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/layout/msme-layout.ts"
-      ]
-    },
-    {
-      "key": "msme.layout.footer.privacyLink",
-      "standard": "Privacy policy",
-      "kind": "button",
-      "portal": "msme",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/layout/msme-layout.ts"
-      ]
-    },
-    {
       "key": "msme.layout.footer.qciLogoAlt",
       "standard": "QCI",
       "kind": "tooltip",
-      "portal": "msme",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/layout/msme-layout.ts"
-      ]
-    },
-    {
-      "key": "msme.layout.footer.termsLink",
-      "standard": "Terms of use",
-      "kind": "button",
       "portal": "msme",
       "page": "layout",
       "pageName": "Layout",
@@ -20935,18 +20875,6 @@
       ]
     },
     {
-      "key": "public.layout.footer.aria",
-      "standard": "Footer",
-      "kind": "tooltip",
-      "portal": "public",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/public-layout/public-layout.ts"
-      ]
-    },
-    {
       "key": "public.layout.footer.copyrightText",
       "standard": "ZED © {year} All Rights Reserved",
       "kind": "note",
@@ -20961,57 +20889,9 @@
       ]
     },
     {
-      "key": "public.layout.footer.guidelinesLink",
-      "standard": "Scheme guidelines",
-      "kind": "button",
-      "portal": "public",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/public-layout/public-layout.ts"
-      ]
-    },
-    {
-      "key": "public.layout.footer.loginLink",
-      "standard": "Login",
-      "kind": "button",
-      "portal": "public",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/public-layout/public-layout.ts"
-      ]
-    },
-    {
-      "key": "public.layout.footer.privacyLink",
-      "standard": "Privacy policy",
-      "kind": "button",
-      "portal": "public",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/public-layout/public-layout.ts"
-      ]
-    },
-    {
       "key": "public.layout.footer.qciLogoAlt",
       "standard": "QCI",
       "kind": "tooltip",
-      "portal": "public",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "msme/public-layout/public-layout.ts"
-      ]
-    },
-    {
-      "key": "public.layout.footer.termsLink",
-      "standard": "Terms of use",
-      "kind": "button",
       "portal": "public",
       "page": "layout",
       "pageName": "Layout",
@@ -47164,6 +47044,30 @@
       ]
     },
     {
+      "key": "staff.documentsVideos.form.onMain.label",
+      "standard": "Show on the ZED Certification portal",
+      "kind": "label",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.form.portal.error",
+      "standard": "Please tick at least one portal to show the document on.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
       "key": "staff.documentsVideos.form.roles.all.label",
       "standard": "Select all",
       "kind": "label",
@@ -47706,20 +47610,22 @@
       ]
     },
     {
-      "key": "staff.documentsVideos.shownOn.main.label",
-      "standard": "ZED Certification ✓",
-      "kind": "label",
+      "key": "staff.documentsVideos.shownOn.main.aria",
+      "standard": "Show {name} on the ZED Certification portal",
+      "kind": "tooltip",
       "portal": "staff",
       "page": "documentsVideos",
       "pageName": "Documents videos",
-      "placeholders": [],
+      "placeholders": [
+        "name"
+      ],
       "files": [
         "staff/masters/documents.ts"
       ]
     },
     {
       "key": "staff.documentsVideos.shownOn.main.tooltip",
-      "standard": "This list is the ZED Certification portal's",
+      "standard": "Untick to show it only on the other portals ticked",
       "kind": "tooltip",
       "portal": "staff",
       "page": "documentsVideos",
@@ -47859,6 +47765,74 @@
       "placeholders": [
         "name",
         "portal"
+      ],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.untickMain.alone.error",
+      "standard": "\"{name}\" is shown only on ZED Certification. Tick Consultancy or Surveillance first, then untick ZED Certification. To remove it everywhere, use Delete.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [
+        "name"
+      ],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.untickMain.button",
+      "standard": "Remove",
+      "kind": "button",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.untickMain.message",
+      "standard": "\"{name}\" is removed from the ZED Certification portal. It stays on {portals}.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [
+        "name",
+        "portals"
+      ],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.untickMain.title",
+      "standard": "Remove from the ZED Certification Portal?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [],
+      "files": [
+        "staff/masters/documents.ts"
+      ]
+    },
+    {
+      "key": "staff.documentsVideos.untickMain.toast",
+      "standard": "\"{name}\" is now shown only on {portals}.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "documentsVideos",
+      "pageName": "Documents videos",
+      "placeholders": [
+        "name",
+        "portals"
       ],
       "files": [
         "staff/masters/documents.ts"

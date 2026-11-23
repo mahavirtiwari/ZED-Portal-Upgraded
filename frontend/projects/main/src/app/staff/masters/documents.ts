@@ -116,7 +116,11 @@ interface DocumentIcon {
             @if (cons() || surv()) {
               <div class="shown-on" role="group" [attr.aria-label]="'Shown on, {name}' | t: 'staff.documentsVideos.shownOn.aria' : { name: d.documentName }">
                 <span class="shown-label">{{ 'Shown on' | t: 'staff.documentsVideos.shownOn.label' }}</span>
-                <span class="portal-tick on" [title]="mainTooltip()">{{ 'ZED Certification ✓' | t: 'staff.documentsVideos.shownOn.main.label' }}</span>
+                <!-- 2026-11-23 (the user: a Consultancy-only document could not be taken off ZED Certification): a real tick. -->
+                <label class="portal-tick on" [title]="mainTooltip()" data-main-tick>
+                  <input type="checkbox" checked [disabled]="saving()" (change)="untickMain(d, $any($event.target))" [attr.aria-label]="'Show {name} on the ZED Certification portal' | t: 'staff.documentsVideos.shownOn.main.aria' : { name: d.documentName }" />
+                  {{ 'ZED Certification' | t: 'staff.documentsVideos.portal.main.label' }}
+                </label>
                 @if (cons()) {
                   <label class="portal-tick" [class.on]="!!twinOf(d)">
                     <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show {name} on the Consultancy portal' | t: 'staff.documentsVideos.shownOn.consultancy.aria' : { name: d.documentName }" />
@@ -275,6 +279,9 @@ interface DocumentIcon {
             </div>
             <div class="modal-footer">
               <span class="me-auto d-flex flex-wrap gap-3 doc-also">
+                @if (cons() || surv()) {
+                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="onMain" data-on-main /> {{ 'Show on the ZED Certification portal' | t: 'staff.documentsVideos.form.onMain.label' }}</label>
+                }
                 @if (cons()) {
                   <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> {{ 'Also show on the Consultancy portal' | t: 'staff.documentsVideos.form.alsoConsultancy.label' }}</label>
                 }
@@ -471,9 +478,9 @@ export class DocumentsAdminPage {
     { key: 'video', label: t('staff.documentsVideos.kindFilter.videos', 'Videos') },
   ]);
   protected readonly documents = signal<DocumentRow[]>([]);
-  /** The tooltip of the fixed "ZED Certification ✓" tick. */
+  /** The tooltip of the "ZED Certification" tick. */
   protected mainTooltip(): string {
-    return t('staff.documentsVideos.shownOn.main.tooltip', "This list is the ZED Certification portal's");
+    return t('staff.documentsVideos.shownOn.main.tooltip', 'Untick to show it only on the other portals ticked');
   }
   protected readonly roles = signal<DocumentRole[]>([]);
   protected readonly search = signal('');
@@ -528,6 +535,8 @@ export class DocumentsAdminPage {
   protected readonly survError = signal('');
   protected readonly survBase = PORTAL_API_BASE.surveillance;
   protected alsoSurveillance = false;
+  /** 2026-11-23: the add pop-up's "Show on the ZED Certification portal" (untick for a Consultancy/Surveillance-only document). */
+  protected onMain = true;
   protected readonly survOnly = computed(() => (this.surv()?.documents ?? []).filter((c) => !this.documents().some((d) => same(d, c))));
   private readonly portals = inject(AdminPortalService);
   protected readonly consOnly = computed(() => (this.cons()?.documents ?? []).filter((c) => !this.documents().some((d) => same(d, c))));
@@ -626,6 +635,37 @@ export class DocumentsAdminPage {
     });
   }
 
+  /**
+   * 2026-11-23 (the user: "This document only belong to ZED Consultancy. I am not able to amend the same"): unticking
+   * "ZED Certification" takes the document off this portal and keeps it on the other portals ticked; it then shows under
+   * "Only on the … portal". A document must stay on one portal at least (Delete removes it).
+   */
+  protected async untickMain(d: DocumentRow, box: HTMLInputElement): Promise<void> {
+    const others = (['consultancy', 'surveillance'] as const).filter((p) => this.twinOf(d, p)).map(portalLabel);
+    if (!others.length) {
+      box.checked = true;
+      this.success.set('');
+      this.error.set(t('staff.documentsVideos.untickMain.alone.error',
+        '"{name}" is shown only on ZED Certification. Tick Consultancy or Surveillance first, then untick ZED Certification. To remove it everywhere, use Delete.',
+        { name: d.documentName }));
+      return;
+    }
+    const portals = others.join(', ');
+    if (!(await this.confirms.ask({
+      title: t('staff.documentsVideos.untickMain.title', 'Remove from the ZED Certification Portal?'),
+      message: t('staff.documentsVideos.untickMain.message', '"{name}" is removed from the ZED Certification portal. It stays on {portals}.', { name: d.documentName, portals }),
+      confirmLabel: t('staff.documentsVideos.untickMain.button', 'Remove'), danger: true,
+    }))) {
+      box.checked = true;
+      return;
+    }
+    await this.run(async () => {
+      await firstValueFrom(this.api.deleteDocument(d.id));
+      return t('staff.documentsVideos.untickMain.toast', '"{name}" is now shown only on {portals}.', { name: d.documentName, portals });
+    });
+    box.checked = true;   // the row has left this list; a failed removal keeps it ticked
+  }
+
   protected async copyToMain(d: DocumentRow, from: OtherPortal = 'consultancy'): Promise<void> {
     await this.run(async () => {
       await this.copy(d, from, 'main', this.rolesFor(d.roles, this.roles(), t('staff.documentsVideos.portal.main.label', 'ZED Certification')));
@@ -672,6 +712,7 @@ export class DocumentsAdminPage {
   protected openAdd(): void {
     this.documentName = this.description = this.videoUrl = '';
     this.kind.set('file');
+    this.onMain = true;
     this.picked.set(new Set());
     this.clearFile();
     this.formError.set('');
@@ -729,8 +770,15 @@ export class DocumentsAdminPage {
       : video && !this.videoUrl.trim() ? t('staff.documentsVideos.form.video.error', 'Please enter the video link.')
       : !video && !this.file ? t('staff.documentsVideos.form.file.error', 'Please select a file to upload.')
       : this.picked().size === 0 ? t('staff.documentsVideos.form.roles.error', 'Please tick at least one role that may open the document.') : '';
-    if (missing) {
-      this.formError.set(missing);
+    const also: OtherPortal[] = [
+      ...(this.alsoConsultancy && this.cons() ? (['consultancy'] as const) : []),
+      ...(this.alsoSurveillance && this.surv() ? (['surveillance'] as const) : []),
+    ];
+    const onMain = this.onMain || !(this.cons() || this.surv());
+    const noPortal = !onMain && !also.length
+      ? t('staff.documentsVideos.form.portal.error', 'Please tick at least one portal to show the document on.') : '';
+    if (missing || noPortal) {
+      this.formError.set(missing || noPortal);
       return;
     }
     await this.run(async () => {
@@ -738,12 +786,10 @@ export class DocumentsAdminPage {
         documentName: this.documentName.trim(), description: this.description.trim(), roles: this.ordered(this.picked()),
         file: video ? null : this.file, videoUrl: video ? this.videoUrl.trim() : null,
       };
-      const r = await firstValueFrom(this.api.addDocument(doc));
-      const also: OtherPortal[] = [
-        ...(this.alsoConsultancy && this.cons() ? (['consultancy'] as const) : []),
-        ...(this.alsoSurveillance && this.surv() ? (['surveillance'] as const) : []),
-      ];
-      for (const p of also) {
+      // Without ZED Certification the first other portal is the one that must take it (its refusal stays in the pop-up).
+      const r = onMain ? await firstValueFrom(this.api.addDocument(doc))
+        : await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.store(also[0])()!.roles, portalLabel(also[0])) }, also[0]));
+      for (const p of onMain ? also : also.slice(1)) {
         const name = portalLabel(p);
         try {
           await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.store(p)()!.roles, name) }, p));
@@ -755,6 +801,7 @@ export class DocumentsAdminPage {
       }
       this.alsoConsultancy = false;
       this.alsoSurveillance = false;
+      this.onMain = true;
       this.documentName = '';
       this.description = '';
       this.videoUrl = '';
