@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9511,
+  "count": 9512,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -83395,6 +83395,18 @@
       "key": "staff.parameters.filter.aria",
       "standard": "Show",
       "kind": "tooltip",
+      "portal": "staff",
+      "page": "parameters",
+      "pageName": "Parameters",
+      "placeholders": [],
+      "files": [
+        "staff/masters/parameters.ts"
+      ]
+    },
+    {
+      "key": "staff.parameters.filter.consultancy",
+      "standard": "In consultancy",
+      "kind": "label",
       "portal": "staff",
       "page": "parameters",
       "pageName": "Parameters",

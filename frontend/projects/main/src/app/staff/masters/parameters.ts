@@ -13,7 +13,7 @@ import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 import { TextPipe, t } from '../../content/page-text';
 
 /** Which parameters the list shows (the buttons beside the search box). */
-type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors' | 'disabled';
+type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy' | 'notConsultancy' | 'sectors' | 'disabled';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
@@ -342,7 +342,11 @@ export class ParametersPage {
     { key: 'all', label: t('staff.parameters.filter.all', 'All') },
     { key: 'surveillance', label: t('staff.parameters.filter.surveillance', 'In surveillance') },
     { key: 'notSurveillance', label: t('staff.parameters.filter.notSurveillance', 'Not in surveillance') },
-    ...(PORTAL_SYSTEM === 'main' ? [{ key: 'notConsultancy' as const, label: t('staff.parameters.filter.notConsultancy', 'Not in consultancy') }] : []),
+    // 2026-11-23 (the user: "Add In consultancy also"): both consultancy filters, as for surveillance.
+    ...(PORTAL_SYSTEM === 'main' ? [
+      { key: 'consultancy' as const, label: t('staff.parameters.filter.consultancy', 'In consultancy') },
+      { key: 'notConsultancy' as const, label: t('staff.parameters.filter.notConsultancy', 'Not in consultancy') },
+    ] : []),
     { key: 'sectors', label: t('staff.parameters.filter.sectors', 'Sector-specific') },
     { key: 'disabled', label: t('staff.parameters.filter.disabled', 'Disabled') },
   ]);
@@ -416,6 +420,7 @@ export class ParametersPage {
     switch (this.filter()) {
       case 'surveillance': return rows.filter((r) => r.inSurveillance);
       case 'notSurveillance': return rows.filter((r) => !r.inSurveillance);
+      case 'consultancy': return rows.filter((r) => r.inConsultancy !== false);
       case 'notConsultancy': return rows.filter((r) => r.inConsultancy === false);
       case 'sectors': return rows.filter((r) => r.nicSectors?.length);
       case 'disabled': return rows.filter((r) => r.disabled);

@@ -842,6 +842,9 @@ describe('ParametersPage', () => {
     ]);
     await settle(fixture);
     expect([...el.querySelectorAll('.consultancy-badge')].map((b) => b.textContent!.trim())).toEqual(['Yes', 'No']);
+    ([...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === 'In consultancy') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim())).toEqual(['P1']);
     ([...el.querySelectorAll('.seg button, .filter-btn, button')].find((b) => b.textContent!.trim() === 'Not in consultancy') as HTMLButtonElement).click();
     await settle(fixture);
     expect([...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim())).toEqual(['P2']);
