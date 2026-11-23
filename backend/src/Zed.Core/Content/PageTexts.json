@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9519,
+  "count": 9514,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -66107,18 +66107,6 @@
       ]
     },
     {
-      "key": "staff.layout.footer.aria",
-      "standard": "Footer",
-      "kind": "tooltip",
-      "portal": "staff",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "staff/staff-layout.ts"
-      ]
-    },
-    {
       "key": "staff.layout.footer.copyrightText",
       "standard": "ZED © {year} All Rights Reserved",
       "kind": "note",
@@ -66133,57 +66121,9 @@
       ]
     },
     {
-      "key": "staff.layout.footer.guidelinesLink",
-      "standard": "Scheme guidelines",
-      "kind": "button",
-      "portal": "staff",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "staff/staff-layout.ts"
-      ]
-    },
-    {
-      "key": "staff.layout.footer.helpDeskLink",
-      "standard": "Help desk",
-      "kind": "button",
-      "portal": "staff",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "staff/staff-layout.ts"
-      ]
-    },
-    {
-      "key": "staff.layout.footer.privacyLink",
-      "standard": "Privacy policy",
-      "kind": "button",
-      "portal": "staff",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "staff/staff-layout.ts"
-      ]
-    },
-    {
       "key": "staff.layout.footer.qciLogoAlt",
       "standard": "QCI",
       "kind": "tooltip",
-      "portal": "staff",
-      "page": "layout",
-      "pageName": "Layout",
-      "placeholders": [],
-      "files": [
-        "staff/staff-layout.ts"
-      ]
-    },
-    {
-      "key": "staff.layout.footer.termsLink",
-      "standard": "Terms of use",
-      "kind": "button",
       "portal": "staff",
       "page": "layout",
       "pageName": "Layout",

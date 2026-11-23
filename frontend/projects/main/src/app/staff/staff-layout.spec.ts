@@ -52,22 +52,14 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     expect(el.querySelector('#staff-menu')!.textContent).not.toContain('|');
   });
 
-  it('shows the footer with the four links of the designs (Admin → Links)', async () => {
+  // 2026-11-23 (the user, staff dashboard: "remove highlighted part"): the footer has the copyright and the logo, no links.
+  it('shows the footer with the copyright and the logo only', async () => {
     const el = await render();
-    const links = [...el.querySelectorAll<HTMLAnchorElement>('.sf-links a')];
-    expect(links.map((a) => a.textContent!.trim())).toEqual(['Scheme guidelines', 'Privacy policy', 'Terms of use', 'Help desk']);
-    expect(links.map((a) => a.getAttribute('href'))).toEqual([
-      PORTAL_LINK_DEFAULTS.guidelines, PORTAL_LINK_DEFAULTS.privacy, PORTAL_LINK_DEFAULTS.terms, PORTAL_LINK_DEFAULTS.contact,
-    ]);
-    expect(el.querySelector('.sfoot')!.textContent).toContain('All Rights Reserved');
-  });
-
-  it('falls back to the portal\'s own pages for a link the Admin switched off, and leaves out the others', async () => {
-    const el = await render({ terms: null, privacy: null, guidelines: null });
-    const links = [...el.querySelectorAll<HTMLAnchorElement>('.sf-links a')];
-    // The account's documents (Master Admin has "Documents") and the main portal's privacy page; no "Terms of use".
-    expect(links.map((a) => a.textContent!.trim())).toEqual(['Scheme guidelines', 'Privacy policy', 'Help desk']);
-    expect(links.slice(0, 2).map((a) => a.getAttribute('href'))).toEqual(['/staff/documents', '/privacy-policy']);
+    const footer = el.querySelector('.sfoot')!;
+    expect(footer.textContent).toContain('All Rights Reserved');
+    expect(footer.querySelector('img')).not.toBeNull();
+    expect(footer.querySelectorAll('a').length).toBe(0);
+    for (const word of ['Scheme guidelines', 'Privacy policy', 'Terms of use', 'Help desk']) expect(footer.textContent).not.toContain(word);
   });
 
   // 2026-11-19 (the user, Admin login: 'make the buttons in dark color'): the dark buttons are scoped to .zed-admin.

@@ -8,7 +8,6 @@ import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
 import { ToastHost } from './toast';
 import { ConfirmHost } from './confirm-dialog';
-import { PORTAL_SYSTEM } from '../portal-system';
 import { TextPipe } from '../content/page-text';
 
 /**
@@ -207,16 +206,8 @@ export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement)
         <div class="footer">
           <div class="container sf">
             <small>{{ 'ZED © {year} All Rights Reserved' | t: 'staff.layout.footer.copyrightText' : { year } }}</small>
-            <!-- 2026-11-18 (the user: staff pages 'not aligned with SVG files'): the designs' four links, as the applicant's footer
-                 (Admin → Links); the account's documents and the portal's privacy page when the Admin cleared a link. -->
-            <nav class="sf-links" [attr.aria-label]="'Footer' | t: 'staff.layout.footer.aria'">
-              @if (links.url('guidelines'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Scheme guidelines' | t: 'staff.layout.footer.guidelinesLink' }}</a> }
-              @else if (hasDocuments()) { <a routerLink="/staff/documents">{{ 'Scheme guidelines' | t: 'staff.layout.footer.guidelinesLink' }}</a> }
-              @if (links.url('privacy'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Privacy policy' | t: 'staff.layout.footer.privacyLink' }}</a> }
-              @else if (main) { <a routerLink="/privacy-policy">{{ 'Privacy policy' | t: 'staff.layout.footer.privacyLink' }}</a> }
-              @if (links.url('terms'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Terms of use' | t: 'staff.layout.footer.termsLink' }}</a> }
-              @if (links.url('contact'); as u) { <a [href]="u" target="_blank" rel="noopener">{{ 'Help desk' | t: 'staff.layout.footer.helpDeskLink' }}</a> }
-            </nav>
+            <!-- 2026-11-23 (the user, staff dashboard: "remove highlighted part"): no links in the staff footer
+                 (Scheme guidelines, Privacy policy, Terms of use, Help desk); the applicant footers keep theirs. -->
             <img [src]="brand.logo('footer', 'Images/footer/footer-icon.png')" [alt]="'QCI' | t: 'staff.layout.footer.qciLogoAlt'" height="36" />
           </div>
         </div>
@@ -261,16 +252,12 @@ export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement)
     .zed-navbar .who b { max-width: 170px; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; font-weight: 700; color: #fff; }
     .zed-navbar .who small { font-size: 10.5px; font-weight: 500; color: #bcd8da; }
     .zed-navbar .nav-tools { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-    /* Footer (#1c2e30): copyright on the left, the links in the middle, the logo on the right. */
+    /* Footer (#1c2e30): copyright on the left, the logo on the right. */
     .sfoot { background: #1c2e30; color: #c9d6d7; }
     .sfoot .footer { min-height: 68px; }
-    .sf { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px 16px; padding: 14px 12px; }
+    .sf { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 16px; padding: 14px 12px; }
     .sf small { font-size: 12.5px; font-weight: 500; }
     .sf img { justify-self: end; width: auto; height: 36px; }
-    .sf-links { display: flex; flex-wrap: wrap; justify-content: center; font-size: 12.5px; font-weight: 500; }
-    .sf-links a { color: #9fb3b5; text-decoration: none; }
-    .sf-links a + a::before { content: '·'; margin: 0 12px; color: #9fb3b5; }
-    .sf-links a:hover { color: #fff; text-decoration: underline; }
     @media (max-width: 767.98px) { .sf { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } .sf img { justify-self: center; } }
     @media (max-width: 991.98px) { .header-top > a:first-child > img, .header-top > img:first-child { height: 64px; } }
     @media (min-width: 992px) {
@@ -327,10 +314,6 @@ export class StaffLayout {
   protected readonly canSearch = computed(() => MSME_PROFILE_ROLES.includes(this.user()?.roleId ?? 0));
   /** The bell: the roles whose work api/staff/attention counts. */
   protected readonly canBell = computed(() => ATTENTION_ROLES.includes(this.user()?.roleId ?? 0));
-  /** Footer: without the Admin's guidelines link, "Scheme guidelines" opens the documents the Admin gave to the account type (not for the Admin). */
-  protected readonly hasDocuments = computed(() => this.menu().some((i) => i.route === '/staff/documents'));
-  /** The privacy policy page is on the main portal. */
-  protected readonly main = PORTAL_SYSTEM === 'main';
   /**
    * The dark buttons (host class zed-admin, styles/_admin-skin.scss): 2026-11-19 the Admin login (RoleId 1); 2026-11-21 (the
    * user: "buttons colour should be in dark") also the Master Admin (RoleId 7) and its Operation Admins, on every portal;
