@@ -29,8 +29,12 @@ public sealed class SchemesAdminController(SchemeStore store, ILogger<SchemesAdm
     private const string MigrationMessage = "The schemes could not be saved. Please ask the administrator to apply database migration 0105.";
 
     /// <summary>A row of the list; the page words the activation and grading itself (Admin → Texts).</summary>
+    /// <param name="Icon">The dashboard card's icon (2026-11-23 list design).</param>
+    /// <param name="CorrectionRounds">The verification's correction rounds.</param>
+    /// <param name="HiddenByTuSetting">On, but units do not see it: the direct Technology Upgradation scheme while the card still
+    /// needs the consultant's recommendation (Main Dashboard Cards).</param>
     public sealed record SchemeSummary(string Code, string Name, bool Active, int OrderNo, string CardTitle,
-        SchemeActivation Activation, SchemeGrading Grading, string Flow);
+        SchemeActivation Activation, SchemeGrading Grading, string Flow, string? Icon = null, int CorrectionRounds = 0, bool HiddenByTuSetting = false);
 
     public sealed record LevelOption(string Code, string Name);
 
@@ -56,9 +60,14 @@ public sealed class SchemesAdminController(SchemeStore store, ILogger<SchemesAdm
     public async Task<SchemesResponse> List(CancellationToken ct)
     {
         var all = await store.EnsureBuiltInAsync(ct);
+        var settings = await store.CardSettingsAsync(ct);
+        settings.TryGetValue(TuCard, out var tu);
+        // As MsmeIncentiveSchemesController: the direct TU scheme is offered only when the card opens without the recommendation.
+        var directCode = SchemeStore.DirectCodeOf(tu);
         return new SchemesResponse(
             all.OrderBy(d => d.OrderNo).ThenBy(d => d.Name).Select(d => new SchemeSummary(d.Code, d.Name, d.Active, d.OrderNo, d.Card.Title,
-                d.Activation, d.Grading, d.Verification.Flow)).ToList(),
+                d.Activation, d.Grading, d.Verification.Flow, d.Card.Icon, d.Verification.CorrectionRounds,
+                d.Active && SchemeStore.Same(d.Code, directCode) && tu?.Direct != true)).ToList(),
             [.. SchemeTemplates.All.Keys],
             Levels(),
             SchemeRules.Sizes);

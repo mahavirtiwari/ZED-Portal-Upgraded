@@ -15,7 +15,7 @@ describe('SchemeEditorPage', () => {
     code: 'FA_STATE', name: 'State FA', active: false, orderNo: 2,
     card: { title: 'State FA', highlight: '75%', details: null, icon: 'rupee' },
     activation: { mode: 'Levels', levels: ['Bronze', 'Silver'] },
-    grading: { mode: 'Level', rows: [{ key: 'Bronze', sharePercent: 75, maxAmount: 50000 }] },
+    grading: { mode: 'Level', rows: [{ key: 'Bronze', sharePercent: 75, maxAmount: 50000 }, { key: 'Silver', sharePercent: 75, maxAmount: 50000 }] },
     form: {
       blocks: { disclaimer: true, instructions: true, unitConfirm: true, bankAccount: true, declaration: true },
       sections: [{
@@ -86,9 +86,48 @@ describe('SchemeEditorPage', () => {
     expect(keys).toEqual(['Registration', 'All']);
     (el.querySelector('[data-grading="Size"]') as HTMLButtonElement).click();
     await settle();
-    (el.querySelector('#se-add-grade') as HTMLButtonElement).click();
+    // 2026-11-23: by size, every size gets its row at once (Save was refused "add the share and maximum of Micro enterprises").
+    expect([...el.querySelectorAll('.se-grades tbody select')].map((x) => (x as HTMLSelectElement).value)).toEqual(['Micro', 'Small', 'Medium']);
+    expect((el.querySelector('#se-add-grade') as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('[data-tab="grading"] .se-issue')).toBeNull();
+  });
+
+  it('marks the tab to fix and does not send, counts the unsaved changes and discards them (2026-11-23 design)', async () => {
+    expect(el.querySelector('#se-dirty')).toBeNull();
+    // Ticking Gold adds its grading row with the first row's share and maximum.
+    (el.querySelector('[data-level="Gold"]') as HTMLButtonElement).click();
     await settle();
+    expect(el.querySelector('#se-dirty')!.textContent).toContain('2 unsaved changes');   // card and grading
+    await tab('grading');
+    expect(el.querySelectorAll('.se-grades tbody tr').length).toBe(3);
+    expect(el.querySelector('#se-example')!.textContent).toContain('Example: a claim of ₹80,000 (Bronze) pays ₹50,000 (the maximum)');
+    // A row removed: Save opens the tab and says what is missing, without sending.
+    const removes = [...el.querySelectorAll('.se-grades tbody .btn-outline-danger')] as HTMLButtonElement[];
+    removes[2].click();
+    await settle();
+    await tab('card');
+    expect(el.querySelector('[data-tab="grading"] .se-issue')!.textContent).toContain('1 to fix');
+    (el.querySelector('#se-save') as HTMLButtonElement).click();
+    await settle();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(el.querySelector('[data-tab="grading"]')!.classList).toContain('active');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Grading: add a row for Gold.');
+    // Discard: back to the saved scheme.
+    (el.querySelector('#se-discard') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('#se-dirty')).toBeNull();
     expect(el.querySelectorAll('.se-grades tbody tr').length).toBe(2);
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(false);
+  });
+
+  it('previews the dashboard card as it is typed', async () => {
+    type('#se-highlight', 'Up to Rs. 1,00,000');
+    await settle();
+    const preview = el.querySelector('#se-preview')!;
+    expect(preview.querySelector('.se-pcard-title')!.textContent).toContain('State FA');
+    expect(preview.querySelector('.se-pcard-hl')!.textContent).toContain('Up to Rs. 1,00,000');
+    expect(preview.textContent).toContain('Off: units do not see this card.');
+    expect(fixture.componentInstance.hasUnsavedChanges()).toBe(true);
   });
 
   it('edits a field, adds an "Add more" section with a field and saves', async () => {
@@ -137,9 +176,11 @@ describe('SchemeEditorPage', () => {
     expect(added).toEqual(expect.objectContaining({ key: 'machines_bought', title: 'Machines bought', repeating: true, minItems: 1, maxItems: 10 }));
     expect(added.pick).toEqual(expect.objectContaining({ kind: 'Technologies', sectorFilter: true, noRepeat: true }));
     expect(added.fields).toEqual([expect.objectContaining({ key: 'invoice_date', type: 'date', dateMin: 'certified', dateMax: null, maxLength: null })]);
-    put.flush({ title: '"Machines bought": add at least one field.' }, { status: 400, statusText: 'Bad Request' });
+    put.flush({ title: 'Grading: the share is 0–100 %.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('add at least one field');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('the share is 0–100 %');
+    // The server's refusal opens its tab.
+    expect(el.querySelector('[data-tab="grading"]')!.classList).toContain('active');
   });
 
   it('sets the verification and shows the server message on save', async () => {
@@ -158,6 +199,7 @@ describe('SchemeEditorPage', () => {
     put.flush({ message: 'Scheme saved.' });
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Scheme saved.');
+    expect(el.querySelector('#se-dirty')).toBeNull();
   });
 
   // 2026-11-20: the scheme's own disclaimer, instructions and declaration.

@@ -1,6 +1,26 @@
 /* Admin → Incentive Schemes → a scheme: the page, the tabs and the card / grading / verification parts. */
 .se-code, .se-mono { font-family: monospace; }
 .se-tabs { margin-bottom: 14px; max-width: 100%; flex-wrap: wrap; }
+/* 2026-11-23 (approved design): the head stays on screen; the tabs say what is changed or to fix; the card's preview. */
+.se-head { position: sticky; top: 48px; z-index: 20; background: #f3f7f7; padding: 10px 0 8px; margin-top: -10px; }
+.se-dirty { align-self: center; font-size: 12.5px; font-weight: 700; color: #8a5a06; background: #fdf2dc; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+.se-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.se-tabs button.has-issue:not(.active) { color: #a12f2f; background: #fdeaea; }
+.se-issue { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; background: #a12f2f; color: #fff; }
+.se-changed { font-size: 10px; color: #c98a10; }
+.form-grid > .se-label { display: block; padding: 0; background: none; border-radius: 0; text-transform: none; letter-spacing: normal; text-align: left; white-space: normal; line-height: inherit; }
+.se-card-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.se-preview { position: sticky; top: 140px; }
+.se-preview-cap { font-size: 12px; font-weight: 700; color: #6f8487; margin: 0 0 8px; }
+.se-pcard { border: 1px solid #dde7e8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; background: #fff; }
+.se-pcard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.se-pcard-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: #1f5c61; }
+.se-pcard-avail { font-size: 11px; font-weight: 700; color: #fff; background: #3d9aa1; border-radius: 6px; padding: 3px 8px; }
+.se-pcard-title { font-size: 15px; color: #17373b; }
+.se-pcard-hl { font-size: 13px; font-weight: 700; color: #1f7a8c; }
+.se-pcard-details { font-size: 12.5px; color: #4d6366; overflow-wrap: anywhere; }
+.se-preview-note, .se-example { font-size: 12.5px; color: #4d6366; margin: 10px 0 0; }
+.se-example { background: #e6f2f3; border-radius: 8px; padding: 8px 12px; display: inline-block; }
 .zed-card { margin-bottom: 16px; }
 .se-narrow { max-width: 160px; }
 .se-h { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 10px; }
@@ -9,7 +29,7 @@
 .se-chip:hover { border-color: #45a5ad; background: #eef6f6; }
 .se-chip.on { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
 .se-or { font-size: 12.5px; color: #5f6f70; margin: 0 4px; }
-.se-grades { max-width: 720px; }
+.se-grades { width: 100%; }
 .se-grades td { vertical-align: middle; }
 .se-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .se-pair > input { max-width: 110px; }
@@ -32,6 +52,11 @@
 .se-row-actions > * { margin-left: 4px; }
 .se-rule { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
 .se-count { max-width: 80px; }
-@media (max-width: 991.98px) { .se-form { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 991.98px) { .se-form, .se-card-layout { grid-template-columns: minmax(0, 1fr); } .se-preview { position: static; } }
+@media (max-width: 767.98px) {
+  .se-head { position: static; margin-top: 0; }
+  .se-tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .se-tabs button { white-space: nowrap; flex: none; }
+}
 .se-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .se-photos label { font-weight: 400; margin: 0; }

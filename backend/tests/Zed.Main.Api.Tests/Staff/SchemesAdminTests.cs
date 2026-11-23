@@ -70,6 +70,28 @@ public sealed class SchemesAdminTests : IDisposable
     }
 
     [Fact]
+    public async Task The_list_gives_the_icon_the_rounds_and_whether_the_tu_setting_hides_the_direct_scheme()
+    {
+        // 2026-11-23 (list design): "On, not shown" for the direct TU scheme while the card needs the recommendation.
+        var tu = SchemeTemplates.TechnologyUpgradation() with { Active = true };
+        Seed(tu);
+        Seed(SchemeTemplates.FinancialAssistance(SchemeTemplates.FaCode) with { Active = true });
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        JsonElement Row(JsonElement body, string code) => body.GetProperty("schemes").EnumerateArray().Single(s => s.GetProperty("code").GetString() == code);
+
+        var body = await client.GetFromJsonAsync<JsonElement>(Url);
+        Assert.True(Row(body, SchemeTemplates.DirectTuCode).GetProperty("hiddenByTuSetting").GetBoolean());
+        Assert.False(Row(body, SchemeTemplates.FaCode).GetProperty("hiddenByTuSetting").GetBoolean());
+        Assert.Equal(tu.Card.Icon, Row(body, SchemeTemplates.DirectTuCode).GetProperty("icon").GetString());
+        Assert.Equal(tu.Verification.CorrectionRounds, Row(body, SchemeTemplates.DirectTuCode).GetProperty("correctionRounds").GetInt32());
+
+        // The card opens the direct scheme: units see it.
+        _cards[1] = new("TECHNOLOGY_UPGRADATION", null, false, SchemeTemplates.DirectTuCode);
+        body = await client.GetFromJsonAsync<JsonElement>(Url);
+        Assert.False(Row(body, SchemeTemplates.DirectTuCode).GetProperty("hiddenByTuSetting").GetBoolean());
+    }
+
+    [Fact]
     public async Task The_main_dashboard_cards_page_sets_up_the_built_in_schemes_too()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

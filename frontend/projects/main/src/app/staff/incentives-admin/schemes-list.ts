@@ -1,11 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
 import {
-  SchemeSummary, SchemesAdminApi, SchemesResponse, activationLabel, codeFrom, flowLabel, gradeKeyLabel, gradingModeLabel, rupees,
+  SchemeSummary, SchemesAdminApi, SchemesResponse, activationLabel, codeFrom, flowLabel, gradingModeLabel, gradingSummary, noBenefit,
 } from './schemes-admin.api';
 
 interface NewScheme { name: string; code: string; codeTouched: boolean; template: string }
@@ -17,7 +18,7 @@ interface NewScheme { name: string; code: string; codeTouched: boolean; template
  */
 @Component({
   selector: 'zed-staff-schemes-list',
-  imports: [FormsModule, RouterLink, TextPipe],
+  imports: [FormsModule, RouterLink, TextPipe, DashIcon],
   template: `
     <div class="page-head">
       <div>
@@ -33,48 +34,51 @@ interface NewScheme { name: string; code: string; codeTouched: boolean; template
     @if (success()) { <div class="alert alert-success" role="status">{{ success() }}</div> }
 
     @if (data(); as d) {
-      <div class="table-responsive">
-        <table class="table table-zed sl-table">
-          <thead>
-            <tr>
-              <th>{{ 'Scheme' | t: 'staff.incentivesAdmin.list.column.name' }}</th>
-              <th>{{ 'Card title' | t: 'staff.incentivesAdmin.list.column.card' }}</th>
-              <th>{{ 'Opens after' | t: 'staff.incentivesAdmin.list.column.opens' }}</th>
-              <th>{{ 'Grading' | t: 'staff.incentivesAdmin.list.column.grading' }}</th>
-              <th>{{ 'Verification' | t: 'staff.incentivesAdmin.list.column.flow' }}</th>
-              <th>{{ 'Active' | t: 'staff.incentivesAdmin.list.column.active' }}</th>
-              <th class="text-end">{{ 'Action' | t: 'staff.incentivesAdmin.list.column.action' }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (s of d.schemes; track s.code) {
-              <tr [class.is-off]="!s.active" [attr.data-code]="s.code">
-                <td><strong>{{ s.name }}</strong><small class="muted d-block sl-code">{{ s.code }}</small></td>
-                <td>{{ s.cardTitle }}</td>
-                <td>{{ opens(s) }}</td>
-                <td>
-                  <span class="type-name">{{ gradingMode(s) }}</span>
-                  @for (g of s.grading.rows; track g.key) {
-                    <small class="d-block sl-grade">{{ '{key}: {share}% up to {max}' | t: 'staff.incentivesAdmin.list.gradeRow' : gradeRow(g) }}</small>
-                  }
-                </td>
-                <td>{{ flow(s) }}</td>
-                <td>
-                  <label class="af-switch" [class.off]="!s.active">
-                    <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()"
-                           [attr.aria-label]="'Switch {name} on or off' | t: 'staff.incentivesAdmin.list.switchAria' : { name: s.name }"
-                           (click)="$event.preventDefault(); toggle(s)" />
-                    <span class="af-track" aria-hidden="true"></span>{{ s.active ? ('On' | t: 'staff.incentivesAdmin.list.on') : ('Off' | t: 'staff.incentivesAdmin.list.off') }}
-                  </label>
-                </td>
-                <td class="text-end"><a class="btn btn-outline-primary btn-sm" [routerLink]="[s.code]">{{ 'Edit' | t: 'staff.incentivesAdmin.list.editButton' }}</a></td>
-              </tr>
-            } @empty {
-              <tr><td colspan="7" class="no-data">{{ 'No scheme yet. Use New scheme to add one.' | t: 'staff.incentivesAdmin.list.emptyNoScheme' }}</td></tr>
-            }
-          </tbody>
-        </table>
+      <div class="sl-stats" role="list">
+        <div class="sl-stat" role="listitem"><b>{{ d.schemes.length }}</b><span>{{ 'Schemes' | t: 'staff.incentivesAdmin.list.stat.total' }}</span></div>
+        <div class="sl-stat" role="listitem"><b>{{ counts().seen }}</b><span>{{ 'Seen by units' | t: 'staff.incentivesAdmin.list.stat.seen' }}</span></div>
+        <div class="sl-stat" role="listitem"><b>{{ counts().hidden }}</b><span>{{ 'On, waiting on a setting' | t: 'staff.incentivesAdmin.list.stat.hidden' }}</span></div>
+        <div class="sl-stat" role="listitem"><b>{{ counts().off }}</b><span>{{ 'Off' | t: 'staff.incentivesAdmin.list.stat.off' }}</span></div>
       </div>
+
+      <ul class="sl-list zed-card">
+        @for (s of d.schemes; track s.code) {
+          <li class="sl-row" [class.is-off]="!s.active" [attr.data-code]="s.code">
+            <span class="sl-icon" aria-hidden="true"><zed-dash-icon [name]="s.icon || 'star'" [size]="20" [stroke]="1.8" /></span>
+            <div class="sl-main">
+              <div class="sl-name"><strong>{{ s.name }}</strong> <small class="sl-code">{{ s.code }}</small></div>
+              <div class="sl-meta">
+                {{ 'Opens after {opens}' | t: 'staff.incentivesAdmin.list.opensAfter' : { opens: opens(s) } }}
+                · {{ flow(s) }}
+                @if (s.correctionRounds) { · {{ '{n} correction rounds' | t: 'staff.incentivesAdmin.list.rounds' : { n: s.correctionRounds } }} }
+                @if (s.cardTitle && s.cardTitle !== s.name) { · {{ 'Card: {title}' | t: 'staff.incentivesAdmin.list.cardTitle' : { title: s.cardTitle } }} }
+              </div>
+            </div>
+            <div class="sl-grading">
+              <span class="sl-mode">{{ gradingMode(s) }}</span>
+              @for (line of grading(s); track $index) { <span class="sl-chip">{{ line }}</span> }
+              @if (noBenefit(s)) { <span class="sl-chip sl-bad" data-no-benefit>{{ 'No benefit set (0%)' | t: 'staff.incentivesAdmin.list.noBenefit' }}</span> }
+            </div>
+            <div class="sl-state">
+              @switch (status(s)) {
+                @case ('seen') { <span class="sl-pill sl-seen">{{ 'Units see it' | t: 'staff.incentivesAdmin.list.status.seen' }}</span> }
+                @case ('hidden') { <span class="sl-pill sl-hidden" [title]="hiddenHelp()">{{ 'On, not shown' | t: 'staff.incentivesAdmin.list.status.hidden' }}</span> }
+                @default { <span class="sl-pill sl-off">{{ 'Off' | t: 'staff.incentivesAdmin.list.status.off' }}</span> }
+              }
+              <label class="af-switch" [class.off]="!s.active">
+                <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()"
+                       [attr.aria-label]="'Switch {name} on or off' | t: 'staff.incentivesAdmin.list.switchAria' : { name: s.name }"
+                       (click)="$event.preventDefault(); toggle(s)" />
+                <span class="af-track" aria-hidden="true"></span>{{ s.active ? ('On' | t: 'staff.incentivesAdmin.list.on') : ('Off' | t: 'staff.incentivesAdmin.list.off') }}
+              </label>
+              <a class="btn btn-primary btn-sm" [routerLink]="[s.code]">{{ 'Edit' | t: 'staff.incentivesAdmin.list.editButton' }}</a>
+            </div>
+          </li>
+        } @empty {
+          <li class="no-data">{{ 'No scheme yet. Use New scheme to add one.' | t: 'staff.incentivesAdmin.list.emptyNoScheme' }}</li>
+        }
+      </ul>
+      @if (counts().hidden) { <p class="muted sl-note" data-hidden-note>{{ hiddenHelp() }}</p> }
       <p class="muted sl-note">{{ 'A scheme is never deleted: switch it off. Applications already made continue.' | t: 'staff.incentivesAdmin.list.note' }}</p>
     }
 
@@ -117,14 +121,36 @@ interface NewScheme { name: string; code: string; codeTouched: boolean; template
     @if (busy()) { <div class="loadingdiv"><div class="loader"></div></div> }
   `,
   styles: `
-    .sl-table { min-width: 860px; }
-    .sl-table td { vertical-align: middle; overflow-wrap: break-word; }
-    .sl-table tr.is-off td { color: #8a9899; }
-    .sl-code { font-family: monospace; font-size: 12px; }
-    .sl-grade { font-size: 12px; color: #5f6f70; }
+    .sl-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 14px; }
+    .sl-stat { background: #fff; border: 1px solid #dde7e8; border-radius: 12px; padding: 12px 16px; }
+    .sl-stat b { display: block; font-size: 22px; line-height: 28px; color: #17373b; }
+    .sl-stat span { font-size: 12.5px; color: #5f7a7d; }
+    .sl-list { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+    .sl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 18px; border-bottom: 1px solid #edf2f2; }
+    .sl-row:last-child { border-bottom: 0; }
+    .sl-icon { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: #1f5c61; }
+    .sl-main { flex: 1 1 260px; min-width: 0; }
+    .sl-name strong { font-size: 15px; color: #17373b; }
+    .sl-code { font-family: monospace; font-size: 12px; color: #6f8487; margin-left: 6px; }
+    .sl-meta { font-size: 12.5px; color: #5f7a7d; margin-top: 2px; overflow-wrap: anywhere; }
+    .sl-grading { flex: 1 1 220px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .sl-mode { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6f8487; margin-right: 2px; }
+    .sl-chip { font-size: 12px; font-weight: 600; color: #1f5c61; background: #e6f2f3; border-radius: 6px; padding: 3px 8px; }
+    .sl-bad { color: #a12f2f; background: #fdeaea; }
+    .sl-state { flex: none; display: flex; align-items: center; gap: 12px; margin-left: auto; }
+    .sl-pill { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+    .sl-seen { color: #1e6b3a; background: #e3f3e8; }
+    .sl-hidden { color: #8a5a06; background: #fdf2dc; cursor: help; }
+    .sl-off { color: #5f7a7d; background: #eef1f1; }
+    .sl-row.is-off .sl-icon { background: #eef1f1; color: #8aa0a2; }
+    .sl-row.is-off .sl-name strong, .sl-row.is-off .sl-meta { color: #7d9295; }
     .sl-note { font-size: 13px; margin-top: 8px; }
     .sl-choice { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 4px 0; cursor: pointer; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 767.98px) {
+      .sl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sl-state { margin-left: 0; width: 100%; justify-content: space-between; }
+    }
   `,
 })
 export class SchemesListPage {
@@ -151,8 +177,32 @@ export class SchemesListPage {
     return gradingModeLabel(s.grading.mode);
   }
 
-  protected gradeRow(g: { key: string; sharePercent: number; maxAmount: number }): Record<string, unknown> {
-    return { key: gradeKeyLabel(g.key, this.data()?.levels ?? []), share: g.sharePercent, max: rupees(g.maxAmount) };
+  /** 2026-11-23 (list design): one line when every row is the same. */
+  protected grading(s: SchemeSummary): string[] {
+    return gradingSummary(s.grading, this.data()?.levels ?? []);
+  }
+
+  protected noBenefit(s: SchemeSummary): boolean {
+    return noBenefit(s.grading);
+  }
+
+  /** Units see it; on, but hidden by the Technology Upgradation card's setting; or off. */
+  protected status(s: SchemeSummary): 'seen' | 'hidden' | 'off' {
+    return !s.active ? 'off' : s.hiddenByTuSetting ? 'hidden' : 'seen';
+  }
+
+  protected readonly counts = computed(() => {
+    const list = this.data()?.schemes ?? [];
+    return {
+      seen: list.filter((s) => this.status(s) === 'seen').length,
+      hidden: list.filter((s) => this.status(s) === 'hidden').length,
+      off: list.filter((s) => !s.active).length,
+    };
+  });
+
+  protected hiddenHelp(): string {
+    return t('staff.incentivesAdmin.list.hiddenHelp',
+      '"On, not shown": Technology Upgradation still opens after the consultant\'s recommendation, so units do not see the direct scheme. Change it in Main Dashboard Cards.');
   }
 
   protected flow(s: SchemeSummary): string {

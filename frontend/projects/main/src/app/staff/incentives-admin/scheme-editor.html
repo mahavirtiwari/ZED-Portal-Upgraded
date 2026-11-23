@@ -1,4 +1,5 @@
-<div class="page-head">
+<!-- 2026-11-23 (approved design): the head stays on screen with Save, Discard and the unsaved changes. -->
+<div class="page-head se-head">
   <div>
     <h3 class="registration-title">{{ def()?.name || ('Incentive scheme' | t: 'staff.incentivesAdmin.editor.title') }}</h3>
     <p class="page-sub">
@@ -7,7 +8,12 @@
     </p>
   </div>
   <div class="page-actions">
-    <a class="btn btn-default" routerLink="..">{{ 'Back to schemes' | t: 'staff.incentivesAdmin.editor.backLink' }}</a>
+    @if (changedTabs().length; as n) {
+      <span class="se-dirty" id="se-dirty" role="status">{{ n === 1 ? ('1 unsaved change' | t: 'staff.incentivesAdmin.editor.dirtyOne') : ('{n} unsaved changes' | t: 'staff.incentivesAdmin.editor.dirtyMany' : { n: n }) }}</span>
+      <button type="button" class="btn btn-default" id="se-discard" [disabled]="busy()" (click)="discard()">{{ 'Discard' | t: 'staff.incentivesAdmin.editor.discardButton' }}</button>
+    } @else {
+      <a class="btn btn-default" routerLink="..">{{ 'Back to schemes' | t: 'staff.incentivesAdmin.editor.backLink' }}</a>
+    }
     <button type="button" class="btn btn-primary" id="se-save" [disabled]="busy() || !def()" (click)="save()">{{ 'Save' | t: 'staff.incentivesAdmin.editor.saveButton' }}</button>
   </div>
 </div>
@@ -17,12 +23,17 @@
 @if (def(); as d) {
   <div class="seg se-tabs" role="tablist" [attr.aria-label]="'Parts of the scheme' | t: 'staff.incentivesAdmin.editor.tabsAria'">
     @for (x of tabs; track x; let n = $index) {
-      <button type="button" role="tab" [attr.data-tab]="x" [class.active]="tab() === x" [attr.aria-selected]="tab() === x" (click)="tab.set(x)">{{ n + 1 }}. {{ tabLabel(x) }}</button>
+      <button type="button" role="tab" [attr.data-tab]="x" [class.active]="tab() === x" [class.has-issue]="issues(d, x).length" [attr.aria-selected]="tab() === x" (click)="tab.set(x)">
+        {{ n + 1 }}. {{ tabLabel(x) }}
+        @if (issues(d, x).length; as k) { <span class="se-issue" [attr.data-issues]="k">{{ '{n} to fix' | t: 'staff.incentivesAdmin.editor.toFix' : { n: k } }}</span> }
+        @else if (changedTabs().includes(x)) { <span class="se-changed" [title]="'Changed, not saved' | t: 'staff.incentivesAdmin.editor.changedTitle'">●</span> }
+      </button>
     }
   </div>
 
   <!-- 1. Card and activation -->
   @if (tab() === 'card') {
+    <div class="se-card-layout">
     <section class="zed-card" role="tabpanel">
       <div class="form-grid">
         <label for="se-name">{{ 'Scheme name' | t: 'staff.incentivesAdmin.editor.card.name' }}<span class="req">*</span></label>
@@ -39,12 +50,12 @@
         </select>
         <label for="se-order">{{ 'Order on the dashboard' | t: 'staff.incentivesAdmin.editor.card.order' }}</label>
         <input id="se-order" type="number" class="form-control se-narrow" min="0" [(ngModel)]="d.orderNo" />
-        <span class="label">{{ 'Active' | t: 'staff.incentivesAdmin.editor.card.active' }}</span>
+        <span class="label se-label">{{ 'Active' | t: 'staff.incentivesAdmin.editor.card.active' }}</span>
         <label class="af-switch" [class.off]="!d.active">
           <input type="checkbox" role="switch" id="se-active" [(ngModel)]="d.active" />
           <span class="af-track" aria-hidden="true"></span>{{ d.active ? ('On: eligible units see the card' | t: 'staff.incentivesAdmin.editor.card.on') : ('Off: units do not see it' | t: 'staff.incentivesAdmin.editor.card.off') }}
         </label>
-        <span class="label top">{{ 'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter' }}<span class="req">*</span></span>
+        <span class="label se-label top">{{ 'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter' }}<span class="req">*</span></span>
         <div>
           <div class="se-chips" role="group" [attr.aria-label]="'Activates after' | t: 'staff.incentivesAdmin.editor.card.activatesAfter'">
             <!-- 2026-11-20: Financial Assistance opens after certification levels only. -->
@@ -64,6 +75,21 @@
         </div>
       </div>
     </section>
+    <aside class="zed-card se-preview" id="se-preview" [attr.aria-label]="'Preview of the card' | t: 'staff.incentivesAdmin.editor.preview.aria'">
+      <p class="se-preview-cap">{{ "Preview: the card on the unit's dashboard" | t: 'staff.incentivesAdmin.editor.preview.title' }}</p>
+      <div class="se-pcard">
+        <div class="se-pcard-top">
+          <span class="se-pcard-icon"><zed-dash-icon [name]="d.card.icon || 'star'" [size]="22" [stroke]="1.8" /></span>
+          <span class="se-pcard-avail">{{ 'Avail' | t: 'staff.incentivesAdmin.editor.preview.avail' }}</span>
+        </div>
+        <b class="se-pcard-title">{{ d.card.title || '—' }}</b>
+        @if (d.card.highlight) { <span class="se-pcard-hl">{{ d.card.highlight }}</span> }
+        @if (d.card.details) { <span class="se-pcard-details">{{ d.card.details }}</span> }
+      </div>
+      @if (!d.active) { <p class="se-preview-note">{{ 'Off: units do not see this card.' | t: 'staff.incentivesAdmin.editor.preview.off' }}</p> }
+      @if (example(d); as ex) { <p class="se-preview-note">{{ ex }}</p> }
+    </aside>
+    </div>
   }
 
   <!-- 2. Grading -->
@@ -101,6 +127,7 @@
         </table>
       </div>
       <button type="button" class="btn btn-outline-primary btn-sm" id="se-add-grade" [disabled]="!freeKeys(d).length" (click)="addGrade(d)">{{ 'Add row' | t: 'staff.incentivesAdmin.editor.grading.addButton' }}</button>
+      @if (example(d); as ex) { <p class="se-example" id="se-example">{{ ex }}</p> }
     </section>
   }
 

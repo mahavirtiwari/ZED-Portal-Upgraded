@@ -117,6 +117,32 @@ export interface SchemeSummary {
   activation: SchemeActivation;
   grading: SchemeGrading;
   flow: VerificationFlow;
+  /** 2026-11-23 (list design): the card's icon, the correction rounds, and "on but not shown" (the direct TU scheme while
+   *  the Technology Upgradation card still needs the consultant's recommendation). */
+  icon?: string | null;
+  correctionRounds?: number;
+  hiddenByTuSetting?: boolean;
+}
+
+/** One line for a grading: "All levels: 75% up to ₹50,000" when every row is the same, else each row (or shares with one cap). */
+export function gradingSummary(g: SchemeGrading, levels: readonly LevelOption[]): string[] {
+  const rows = g.rows;
+  if (!rows.length) return [];
+  const same = rows.every((r) => r.sharePercent === rows[0].sharePercent && r.maxAmount === rows[0].maxAmount);
+  if (same && rows.length > 1) {
+    const all = g.mode === 'Size' ? t('staff.incentivesAdmin.grading.allSizes', 'All sizes') : t('staff.incentivesAdmin.grading.allLevels', 'All levels');
+    return [t('staff.incentivesAdmin.grading.summaryRow', '{key}: {share}% up to {max}', { key: all, share: rows[0].sharePercent, max: rupees(rows[0].maxAmount) })];
+  }
+  if (rows.length > 1 && rows.every((r) => r.maxAmount === rows[0].maxAmount)) {
+    const shares = rows.map((r) => `${gradeKeyLabel(r.key, levels)} ${r.sharePercent}%`).join(' · ');
+    return [t('staff.incentivesAdmin.grading.summaryShares', '{shares} up to {max}', { shares, max: rupees(rows[0].maxAmount) })];
+  }
+  return rows.map((r) => t('staff.incentivesAdmin.grading.summaryRow', '{key}: {share}% up to {max}', { key: gradeKeyLabel(r.key, levels), share: r.sharePercent, max: rupees(r.maxAmount) }));
+}
+
+/** No benefit: every row pays 0 % or up to ₹0. */
+export function noBenefit(g: SchemeGrading): boolean {
+  return !g.rows.length || g.rows.every((r) => !r.sharePercent || !r.maxAmount);
 }
 
 export interface LevelOption { code: string; name: string }

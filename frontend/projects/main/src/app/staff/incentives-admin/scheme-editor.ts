@@ -1,13 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
+import { HasUnsavedChanges } from '../unsaved-changes.guard';
 import { FieldDialogComponent } from './field-dialog';
 import {
   ActivationMode, CARD_ICONS, DocumentRule, FA_SCHEME_CODE, FormField, FormSection, GradingMode, LevelOption, SCHEME_LIMITS, SchemeDefinition, SchemesAdminApi,
-  VerificationFlow, CheckStage, checkStageLabel, fieldTypeLabel, gradeKeyLabel, keyFrom,
+  VerificationFlow, CheckStage, checkStageLabel, fieldTypeLabel, gradeKeyLabel, keyFrom, rupees,
 } from './schemes-admin.api';
 
 export type EditorTab = 'card' | 'grading' | 'form' | 'verification';
@@ -43,11 +45,11 @@ export function normalise(d: SchemeDefinition): SchemeDefinition {
  */
 @Component({
   selector: 'zed-staff-scheme-editor',
-  imports: [FormsModule, RouterLink, TextPipe, FieldDialogComponent],
+  imports: [FormsModule, RouterLink, TextPipe, FieldDialogComponent, DashIcon],
   templateUrl: './scheme-editor.html',
   styleUrl: './scheme-editor.scss',
 })
-export class SchemeEditorPage {
+export class SchemeEditorPage implements HasUnsavedChanges {
   private readonly api = inject(SchemesAdminApi);
   private readonly code = inject(ActivatedRoute).snapshot.paramMap.get('code') ?? '';
 
@@ -65,6 +67,8 @@ export class SchemeEditorPage {
   protected readonly success = signal('');
   /** Sections and fields added since the last save: their key can still change (answers are stored by key). */
   private fresh = new WeakSet<object>();
+  /** 2026-11-23 (approved design): the definition as last loaded or saved, per tab, to count the unsaved changes. */
+  private saved: Record<EditorTab, string> | null = null;
 
   constructor() {
     void this.load();
@@ -105,6 +109,7 @@ export class SchemeEditorPage {
       mode: 'Levels',
       levels: levels.some((l) => l.toLowerCase() === code.toLowerCase()) ? levels.filter((l) => l.toLowerCase() !== code.toLowerCase()) : [...levels, code],
     };
+    this.fitGrading(d);
   }
 
   // ----- Grading -----
@@ -138,12 +143,35 @@ export class SchemeEditorPage {
     d.grading.rows = d.grading.rows.filter((_, n) => n !== i);
   }
 
-  /** Keeps the rows that still fit the mode and activation; one row when none does. */
+  /**
+   * Keeps the rows that still fit the mode and activation, and adds the rows every claim needs (2026-11-23: switching to
+   * "By enterprise size" left one row, so Save was refused "add the share and maximum of Micro enterprises"): each size, or
+   * each level the scheme opens after (unless an All row covers them), with the share and maximum of the first row.
+   */
   private fitGrading(d: SchemeDefinition): void {
     const keys = this.gradeKeys(d);
+    const first = d.grading.rows[0];
     const kept = d.grading.rows.filter((r) => keys.includes(r.key));
-    if (!kept.length && keys.length) kept.push({ key: keys[0], sharePercent: d.grading.rows[0]?.sharePercent ?? 0, maxAmount: d.grading.rows[0]?.maxAmount ?? 0 });
+    const template = kept[0] ?? first;
+    const needed = d.grading.mode === 'Size' ? keys : kept.some((r) => r.key === 'All') ? [] : keys.filter((k) => k !== 'All');
+    for (const k of needed) {
+      if (!kept.some((r) => r.key === k)) kept.push({ key: k, sharePercent: template?.sharePercent ?? 0, maxAmount: template?.maxAmount ?? 0 });
+    }
+    if (!kept.length && keys.length) kept.push({ key: keys[0], sharePercent: template?.sharePercent ?? 0, maxAmount: template?.maxAmount ?? 0 });
     d.grading.rows = kept;
+  }
+
+  /** "A claim of ₹80,000 at Silver pays ₹50,000 (the cap)": the first row with a share and a maximum, or null. */
+  protected example(d: SchemeDefinition): string | null {
+    const g = d.grading.rows.find((r) => (r.sharePercent ?? 0) > 0 && (r.maxAmount ?? 0) > 0);
+    if (!g) return null;
+    const capAt = (g.maxAmount * 100) / g.sharePercent;
+    const claim = Math.max(10000, Math.ceil((capAt * 1.2) / 10000) * 10000);
+    const pays = Math.min(Math.round((claim * g.sharePercent) / 100), g.maxAmount);
+    return t('staff.incentivesAdmin.editor.grading.example', 'Example: a claim of {claim} ({key}) pays {pays}{cap}', {
+      claim: rupees(claim), key: this.keyLabel(g.key), pays: rupees(pays),
+      cap: pays === g.maxAmount ? t('staff.incentivesAdmin.editor.grading.exampleCap', ' (the maximum)') : '',
+    });
   }
 
   // ----- Form: sections -----
@@ -305,9 +333,16 @@ export class SchemeEditorPage {
   protected async save(): Promise<void> {
     const d = this.def();
     if (!d) return;
-    this.busy.set(true);
     this.error.set('');
     this.success.set('');
+    // 2026-11-23 (approved design): the checks the server makes most often, shown on their tab before sending.
+    const bad = this.tabs.find((x) => this.issues(d, x).length);
+    if (bad) {
+      this.tab.set(bad);
+      this.error.set(this.issues(d, bad)[0]);
+      return;
+    }
+    this.busy.set(true);
     try {
       // An emptied number box is null: the server's whole numbers need a value.
       const n = (v: number | null | undefined) => v ?? 0;
@@ -331,8 +366,11 @@ export class SchemeEditorPage {
       };
       this.success.set((await firstValueFrom(this.api.save(body))).message);
       this.fresh = new WeakSet<object>();
+      this.saved = this.snapshot(d);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      const message = apiErrorMessage(err);
+      this.error.set(message);
+      this.tab.set(this.tabOfProblem(message));
     } finally {
       this.busy.set(false);
     }
@@ -344,11 +382,96 @@ export class SchemeEditorPage {
       const [meta, d] = await Promise.all([firstValueFrom(this.api.list()), firstValueFrom(this.api.get(this.code))]);
       this.levels.set(meta.levels);
       this.sizes.set(meta.sizes);
-      this.def.set(normalise(d));
+      const def = normalise(d);
+      this.def.set(def);
+      this.saved = this.snapshot(def);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }
+  }
+
+  // ----- Unsaved changes and checks (2026-11-23, approved design) -----
+
+  /** Each tab's part of the definition as JSON. */
+  private snapshot(d: SchemeDefinition): Record<EditorTab, string> {
+    return {
+      card: JSON.stringify([d.name, d.card, d.orderNo, d.active, d.activation]),
+      grading: JSON.stringify(d.grading),
+      form: JSON.stringify([d.form, d.disclaimer ?? null, d.instructions ?? null, d.declaration ?? null]),
+      verification: JSON.stringify(d.verification),
+    };
+  }
+
+  /** The tabs with changes not saved yet. */
+  protected changedTabs(): EditorTab[] {
+    const d = this.def();
+    if (!d || !this.saved) return [];
+    const now = this.snapshot(d);
+    return this.tabs.filter((x) => now[x] !== this.saved![x]);
+  }
+
+  hasUnsavedChanges(): boolean {
+    return !this.busy() && this.changedTabs().length > 0;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  protected beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.hasUnsavedChanges()) event.preventDefault();
+  }
+
+  /** Discard: back to the definition as last loaded or saved. */
+  protected discard(): void {
+    const d = this.def();
+    if (!d || !this.saved) return;
+    const back = normalise({
+      ...d,
+      ...(([name, card, orderNo, active, activation]) => ({ name, card, orderNo, active, activation }))(JSON.parse(this.saved.card)),
+      grading: JSON.parse(this.saved.grading),
+      ...(([form, disclaimer, instructions, declaration]) => ({ form, disclaimer, instructions, declaration }))(JSON.parse(this.saved.form)),
+      verification: JSON.parse(this.saved.verification),
+    });
+    this.def.set(back);
+    this.fresh = new WeakSet<object>();
+    this.error.set('');
+    this.success.set(t('staff.incentivesAdmin.editor.discarded', 'Changes discarded.'));
+  }
+
+  /** What would stop Save on a tab (the server's commonest refusals), in its words. */
+  protected issues(d: SchemeDefinition, tab: EditorTab): string[] {
+    const out: string[] = [];
+    if (tab === 'card') {
+      if (!d.name?.trim()) out.push(t('staff.incentivesAdmin.editor.issue.name', 'Card and activation: enter the scheme name.'));
+      if (!d.card.title?.trim()) out.push(t('staff.incentivesAdmin.editor.issue.title', 'Card and activation: enter the card title.'));
+      if (d.activation.mode === 'Levels' && !d.activation.levels.length) out.push(t('staff.incentivesAdmin.editor.issue.levels', 'Card and activation: choose when the scheme opens.'));
+    } else if (tab === 'grading') {
+      const has = (k: string) => d.grading.rows.some((r) => r.key.toLowerCase() === k.toLowerCase());
+      const missing = d.grading.mode === 'Size' ? this.sizes().filter((k) => !has(k))
+        : has('All') ? [] : this.gradeKeys(d).filter((k) => k !== 'All' && !has(k));
+      if (missing.length) out.push(t('staff.incentivesAdmin.editor.issue.gradeMissing', 'Grading: add a row for {keys}.', { keys: missing.map((k) => this.keyLabel(k)).join(', ') }));
+      if (d.grading.rows.some((r) => r.sharePercent == null || r.sharePercent < 0 || r.sharePercent > 100)) out.push(t('staff.incentivesAdmin.editor.issue.share', 'Grading: the share is 0 to 100 %.'));
+      if (d.grading.rows.some((r) => r.maxAmount == null || r.maxAmount < 0)) out.push(t('staff.incentivesAdmin.editor.issue.max', 'Grading: enter the maximum of each row.'));
+    } else if (tab === 'form') {
+      if (!d.form.sections.length) out.push(t('staff.incentivesAdmin.editor.issue.noSection', 'Form: add at least one section.'));
+      d.form.sections.forEach((s, i) => {
+        if (!s.title?.trim()) out.push(t('staff.incentivesAdmin.editor.issue.sectionTitle', 'Form: section {n} has no title.', { n: i + 1 }));
+        if (!s.fields.length) out.push(t('staff.incentivesAdmin.editor.issue.sectionFields', 'Form: "{title}" has no field.', { title: s.title || i + 1 }));
+      });
+    } else {
+      const v = d.verification;
+      if (v.correctionRounds == null || v.correctionRounds < 0 || v.correctionRounds > 5) out.push(t('staff.incentivesAdmin.editor.issue.rounds', 'Verification: correction rounds 0 to 5.'));
+      if (v.correctionDays == null || v.correctionDays < 1 || v.correctionDays > 180) out.push(t('staff.incentivesAdmin.editor.issue.days', 'Verification: days to answer a correction 1 to 180.'));
+    }
+    return out;
+  }
+
+  /** The tab a server refusal is about, from its first words. */
+  private tabOfProblem(message: string): EditorTab {
+    const m = message.toLowerCase();
+    if (m.startsWith('grading')) return 'grading';
+    if (/^(correction|choose the verification|onsite photos)/.test(m)) return 'verification';
+    if (/(scheme name|card title|icon|opens after|activat|order)/.test(m)) return 'card';
+    return m.includes('section') || m.includes('field') || m.includes('document') || m.includes('disclaimer') || m.includes('instructions') || m.includes('declaration') ? 'form' : this.tab();
   }
 }

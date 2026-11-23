@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
+import { unsavedChangesGuard } from '../unsaved-changes.guard';
 
 const admin = authGuard('/staff', [StaffRole.Admin]);
 
@@ -10,5 +11,5 @@ const admin = authGuard('/staff', [StaffRole.Admin]);
  */
 export const INCENTIVES_ADMIN_ROUTES: Routes = [
   { path: '', title: 'ZED | Incentive Schemes', canActivate: [admin], loadComponent: () => import('./schemes-list').then((m) => m.SchemesListPage) },
-  { path: ':code', title: 'ZED | Incentive Scheme', canActivate: [admin], loadComponent: () => import('./scheme-editor').then((m) => m.SchemeEditorPage) },
+  { path: ':code', title: 'ZED | Incentive Scheme', canActivate: [admin], canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./scheme-editor').then((m) => m.SchemeEditorPage) },
 ];

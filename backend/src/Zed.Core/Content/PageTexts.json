@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9488,
+  "count": 9519,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -63529,6 +63529,18 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.editor.changedTitle",
+      "standard": "Changed, not saved",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.delete",
       "standard": "Delete",
       "kind": "tooltip",
@@ -63538,6 +63550,56 @@
       "placeholders": [],
       "files": [
         "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.dirtyMany",
+      "standard": "{n} unsaved changes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.dirtyOne",
+      "standard": "1 unsaved change",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.discardButton",
+      "standard": "Discard",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.discarded",
+      "standard": "Changes discarded.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
       ]
     },
     {
@@ -63865,6 +63927,35 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.editor.grading.example",
+      "standard": "Example: a claim of {claim} ({key}) pays {pays}{cap}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "claim",
+        "key",
+        "pays",
+        "cap"
+      ],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.grading.exampleCap",
+      "standard": " (the maximum)",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.editor.grading.levelColumn",
       "standard": "Level",
       "kind": "label",
@@ -63970,6 +64061,144 @@
       "placeholders": [],
       "files": [
         "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.days",
+      "standard": "Verification: days to answer a correction 1 to 180.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.gradeMissing",
+      "standard": "Grading: add a row for {keys}.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "keys"
+      ],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.levels",
+      "standard": "Card and activation: choose when the scheme opens.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.max",
+      "standard": "Grading: enter the maximum of each row.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.name",
+      "standard": "Card and activation: enter the scheme name.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.noSection",
+      "standard": "Form: add at least one section.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.rounds",
+      "standard": "Verification: correction rounds 0 to 5.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.sectionFields",
+      "standard": "Form: \"{title}\" has no field.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "title"
+      ],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.sectionTitle",
+      "standard": "Form: section {n} has no title.",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.share",
+      "standard": "Grading: the share is 0 to 100 %.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.issue.title",
+      "standard": "Card and activation: enter the card title.",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.ts"
       ]
     },
     {
@@ -64114,6 +64343,54 @@
       "placeholders": [],
       "files": [
         "staff/incentives-admin/scheme-editor.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.preview.aria",
+      "standard": "Preview of the card",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.preview.avail",
+      "standard": "Avail",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.preview.off",
+      "standard": "Off: units do not see this card.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.preview.title",
+      "standard": "Preview: the card on the unit's dashboard",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
       ]
     },
     {
@@ -64508,6 +64785,20 @@
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
       "placeholders": [],
+      "files": [
+        "staff/incentives-admin/scheme-editor.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.editor.toFix",
+      "standard": "{n} to fix",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "n"
+      ],
       "files": [
         "staff/incentives-admin/scheme-editor.html"
       ]
@@ -65175,6 +65466,30 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.grading.allLevels",
+      "standard": "All levels",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.grading.allSizes",
+      "standard": "All sizes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.grading.byLevel",
       "standard": "By level",
       "kind": "button",
@@ -65201,93 +65516,54 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.grading.summaryRow",
+      "standard": "{key}: {share}% up to {max}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "key",
+        "share",
+        "max"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.grading.summaryShares",
+      "standard": "{shares} up to {max}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "shares",
+        "max"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-admin.api.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.cardTitle",
+      "standard": "Card: {title}",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "title"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.list.cardsLink",
       "standard": "Main Dashboard Cards",
       "kind": "button",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.action",
-      "standard": "Action",
-      "kind": "button",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.active",
-      "standard": "Active",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.card",
-      "standard": "Card title",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.flow",
-      "standard": "Verification",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.grading",
-      "standard": "Grading",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.name",
-      "standard": "Scheme",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/schemes-list.ts"
-      ]
-    },
-    {
-      "key": "staff.incentivesAdmin.list.column.opens",
-      "standard": "Opens after",
-      "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
@@ -65311,6 +65587,18 @@
     {
       "key": "staff.incentivesAdmin.list.emptyNoScheme",
       "standard": "No scheme yet. Use New scheme to add one.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.hiddenHelp",
+      "standard": "\"On, not shown\": Technology Upgradation still opens after the consultant's recommendation, so units do not see the direct scheme. Change it in Main Dashboard Cards.",
       "kind": "text",
       "portal": "staff",
       "page": "incentivesAdmin",
@@ -65321,25 +65609,21 @@
       ]
     },
     {
-      "key": "staff.incentivesAdmin.list.gradeRow",
-      "standard": "{key}: {share}% up to {max}",
-      "kind": "note",
+      "key": "staff.incentivesAdmin.list.newButton",
+      "standard": "New scheme",
+      "kind": "button",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
-      "placeholders": [
-        "key",
-        "share",
-        "max"
-      ],
+      "placeholders": [],
       "files": [
         "staff/incentives-admin/schemes-list.ts"
       ]
     },
     {
-      "key": "staff.incentivesAdmin.list.newButton",
-      "standard": "New scheme",
-      "kind": "button",
+      "key": "staff.incentivesAdmin.list.noBenefit",
+      "standard": "No benefit set (0%)",
+      "kind": "text",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",
@@ -65375,6 +65659,118 @@
     {
       "key": "staff.incentivesAdmin.list.on",
       "standard": "On",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.opensAfter",
+      "standard": "Opens after {opens}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "opens"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.rounds",
+      "standard": "{n} correction rounds",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.stat.hidden",
+      "standard": "On, waiting on a setting",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.stat.off",
+      "standard": "Off",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.stat.seen",
+      "standard": "Seen by units",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.stat.total",
+      "standard": "Schemes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.status.hidden",
+      "standard": "On, not shown",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.status.off",
+      "standard": "Off",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/schemes-list.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesAdmin.list.status.seen",
+      "standard": "Units see it",
       "kind": "label",
       "portal": "staff",
       "page": "incentivesAdmin",

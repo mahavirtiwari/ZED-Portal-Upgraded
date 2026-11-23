@@ -50,7 +50,7 @@ describe('SchemesListPage', () => {
   afterEach(() => http.verify());
 
   it('lists the schemes with when they open, the grading and the flow', () => {
-    const row = el.querySelector('tr[data-code="TU_DIRECT"]') as HTMLElement;
+    const row = el.querySelector('li[data-code="TU_DIRECT"]') as HTMLElement;
     expect(row.textContent).toContain('Technology Upgradation (direct)');
     expect(row.textContent).toContain('Bronze, Silver');
     expect(row.textContent).toContain('By enterprise size');
@@ -60,8 +60,43 @@ describe('SchemesListPage', () => {
     expect(row.querySelector('a')!.getAttribute('href')).toBe('/TU_DIRECT');
   });
 
+  it('shows the counts, the one-line grading and whether units see each scheme (2026-11-23 design)', async () => {
+    const page = TestBed.createComponent(SchemesListPage);
+    page.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    http.expectOne(url).flush({
+      ...list(),
+      schemes: [
+        { code: 'FA', name: 'Financial Assistance', active: true, orderNo: 1, cardTitle: 'Financial Assistance', icon: 'rupee', correctionRounds: 2,
+          activation: { mode: 'Levels', levels: ['Bronze', 'Silver'] }, flow: 'Desktop',
+          grading: { mode: 'Level', rows: [{ key: 'Bronze', sharePercent: 75, maxAmount: 50000 }, { key: 'Silver', sharePercent: 75, maxAmount: 50000 }] } },
+        { code: 'TU_DIRECT', name: 'Technology Upgradation (direct)', active: true, orderNo: 2, cardTitle: 'Technology Upgradation', hiddenByTuSetting: true,
+          activation: { mode: 'Levels', levels: ['Silver'] }, flow: 'Desktop',
+          grading: { mode: 'Size', rows: [{ key: 'Micro', sharePercent: 80, maxAmount: 300000 }, { key: 'Small', sharePercent: 60, maxAmount: 300000 }] } },
+        { code: 'STOCK', name: 'Stock Market', active: false, orderNo: 3, cardTitle: 'Stock Market',
+          activation: { mode: 'Levels', levels: ['Bronze'] }, flow: 'Desktop', grading: { mode: 'Level', rows: [{ key: 'All', sharePercent: 0, maxAmount: 0 }] } },
+      ],
+    });
+    await new Promise((r) => setTimeout(r));
+    await page.whenStable();
+    page.detectChanges();
+    const p = page.nativeElement as HTMLElement;
+    expect([...p.querySelectorAll('.sl-stat b')].map((b) => b.textContent!.trim())).toEqual(['3', '1', '1', '1']);
+    const fa = p.querySelector('li[data-code="FA"]')!;
+    expect(fa.textContent).toContain('All levels: 75% up to ₹50,000');
+    expect(fa.textContent).toContain('2 correction rounds');
+    expect(fa.querySelector('.sl-seen')!.textContent).toContain('Units see it');
+    const tu = p.querySelector('li[data-code="TU_DIRECT"]')!;
+    expect(tu.textContent).toContain('Micro 80% · Small 60% up to ₹3,00,000');
+    expect(tu.querySelector('.sl-hidden')!.textContent).toContain('On, not shown');
+    expect(p.querySelector('[data-hidden-note]')!.textContent).toContain("consultant's recommendation");
+    const stock = p.querySelector('li[data-code="STOCK"]')!;
+    expect(stock.querySelector('[data-no-benefit]')).not.toBeNull();
+    expect(stock.querySelector('.sl-off')).not.toBeNull();
+  });
+
   it('switches a scheme on', async () => {
-    (el.querySelector('tr[data-code="TU_DIRECT"] input[role="switch"]') as HTMLInputElement).click();
+    (el.querySelector('li[data-code="TU_DIRECT"] input[role="switch"]') as HTMLInputElement).click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${url}/TU_DIRECT/active`);
     expect(post.request.body).toEqual({ active: true });
@@ -70,7 +105,7 @@ describe('SchemesListPage', () => {
     http.expectOne(url).flush(list(true));
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('switched on');
-    expect(el.querySelector('tr[data-code="TU_DIRECT"]')!.classList).not.toContain('is-off');
+    expect(el.querySelector('li[data-code="TU_DIRECT"]')!.classList).not.toContain('is-off');
   });
 
   it('creates a scheme from a template and opens it', async () => {
