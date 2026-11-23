@@ -209,6 +209,16 @@ public sealed class MsmeIncentiveSchemesTests : IDisposable
     private static SchemeApplications.Row Row(int id, string status, string level, string cert) =>
         new() { Id = id, SchemeCode = Code, SchemeStatus = status, SchemeLevel = level, SchemeCertNo = cert, VerificationStatus = status == "Paid" ? 6 : 1 };
 
+    [Theory]
+    [InlineData("24 - Manufacture of basic metals", "24")]
+    [InlineData("24", "24")]
+    [InlineData(" 10-Food products", "10")]
+    [InlineData("Manufacturing", null)]
+    [InlineData(null, null)]
+    public void Technologies_are_matched_on_the_sector_code(string? activity, string? code) =>
+        // 2026-11-23 (end-to-end run): Masters stores "24-Name", the unit "24 - Name"; the SQL matches ",24-" on the code.
+        Assert.Equal(code, Zed.Portal.Features.Incentives.Applicant.MsmeIncentiveSchemesController.SectorCode(activity));
+
     [Fact]
     public void Windows_follow_the_levels_upgrades_payments_and_recertification()
     {

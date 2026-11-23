@@ -32,10 +32,20 @@ public sealed class MsmeIncentiveSchemesController(
     public const string TuCard = "TECHNOLOGY_UPGRADATION";
     public const string FaCard = "FINANCIAL_ASSISTANCE";
 
-    /// <summary>Masters → Technologies (main), active ones, of the unit's 2-digit NIC sector (as SP_TECHNOLOGIES_GET_LIST) when filtered.</summary>
+    /// <summary>
+    /// Masters → Technologies (main), active ones, of the unit's 2-digit NIC sector when filtered. 2026-11-23 (end-to-end run):
+    /// by the code, not the whole text: Masters stores "24-Manufacture of basic metals,25-…" while the unit has
+    /// "24 - Manufacture of basic metals", so the old CHARINDEX of the text never matched a technology given sectors.
+    /// </summary>
     public const string TechnologiesSql =
         "SELECT TechnologyCode AS Code, TechnologyName AS Name, Description FROM dbo.Technologies WHERE IsActive = 1 AND TechnologyCode IS NOT NULL " +
-        "AND (@Filter = 0 OR Sectors IS NULL OR (@Sector IS NOT NULL AND CHARINDEX(@Sector, Sectors) > 0)) ORDER BY OrderNo, TechnologyCode;";
+        "AND (@Filter = 0 OR Sectors IS NULL OR LTRIM(RTRIM(Sectors)) = '' " +
+        "OR (@Sector IS NOT NULL AND ',' + REPLACE(Sectors, ' ', '') LIKE '%,' + @Sector + '-%')) ORDER BY OrderNo, TechnologyCode;";
+
+    /// <summary>The 2-digit NIC code at the start of the unit's sector ("24 - Manufacture of basic metals" → "24"), or null.</summary>
+    internal static string? SectorCode(string? twoDigitActivity) =>
+        twoDigitActivity is null ? null
+        : System.Text.RegularExpressions.Regex.Match(twoDigitActivity, @"^\s*(\d{1,4})") is { Success: true } m ? m.Groups[1].Value : null;
 
     /// <summary>The answers of a draft (or of an application in correction).</summary>
     public const string SaveAnswersSql =
@@ -564,7 +574,7 @@ public sealed class MsmeIncentiveSchemesController(
     {
         if (s.Pick is not { } p) return null;
         if (p.Kind == SchemeRules.PickOptions) return p.Options.Select(o => new PickEntry(o, o, null)).ToList();
-        var sector = c.Facts.TwoDigitActivity?.Trim();
+        var sector = SectorCode(c.Facts.TwoDigitActivity);
         try
         {
             return (await db.QuerySqlAsync<PickEntry>(TechnologiesSql, new
