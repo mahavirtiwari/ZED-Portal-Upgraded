@@ -217,31 +217,31 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
 
     // ---- Questionnaire parameters (Sections) ---------------------------------------------------
 
-    // ZED_CONSULTANT has no questionnaire tables (Sections, Requirements, ...: database/README.md), so the parameters are
-    // not served on Consultancy; its live Questionaire pages failed the same way.
+    // 2026-11-23 (migration 0113): ZED_CONSULTANT has its own questionnaire tables (Sections, Requirements, ...), first a copy
+    // of main's parameters used in consultancy, then edited separately: the Consultancy portal serves them as Surveillance
+    // does, with main's levels (ZED_CONSULTANT.dbo.SectionTypes has no level columns). The handholding milestone payment
+    // copies them into the unit's questionnaire.
     // The levels are those of Administration → Certification Levels (Bronze, Silver, Gold, ZED-X, ...; migration 0028).
 
     /// <param name="NicSectors">The NIC 2-digit sectors the parameter applies to (V4, Sections.NicSectors); empty = all sectors.</param>
     /// <param name="InSurveillance">Assessed again in surveillance (legacy Sections.SurveMandatories = 'Yes'): the surveillance
     /// payment copies only these parameters of the unit's certification (ZED_SURVEILLANCE SP_MSME_PAYMENT_GATEWAY_DETAILS).</param>
-    /// <param name="InConsultancy">Used in consultancy / handholding (V4 one Admin, Sections.InConsultancy, migration 0035; NULL or
-    /// 'Yes' = used): the others are taken out of a unit's handholding questionnaire after its milestone payment.</param>
     /// <param name="Disabled">2026-11-16 (Sections.IsDisabled, migrations 0092 / 0093): left out of new applications (or surveillance
     /// rounds) when they are paid; the ones already paid keep it.</param>
     public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description, IReadOnlyList<string>? NicSectors = null,
-        bool InSurveillance = false, bool InConsultancy = true, bool Disabled = false);
+        bool InSurveillance = false, bool Disabled = false);
 
     public sealed record LevelOption(string Code, string Name, bool IsEnabled);
 
     /// <summary>The certification levels whose questionnaires the Admin manages (disabled ones included: ZED-X is prepared before it opens).</summary>
     [HttpGet("parameter-levels")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<IReadOnlyList<LevelOption>> ParameterLevels(CancellationToken ct) =>
-        (await CertificationLevels.AllAsync(db, log, ct)).Select(l => new LevelOption(l.Code, l.Name, l.IsEnabled)).ToList();
+        (await CertificationLevels.AllAsync(db, log, ct, LevelsFromMain(HttpContext))).Select(l => new LevelOption(l.Code, l.Name, l.IsEnabled)).ToList();
 
     /// <summary>Parameters of a certification level (first set of SP_MASTER_GET_SECTIONS).</summary>
     [HttpGet("parameters/{sectionType}")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<ActionResult<IReadOnlyList<Parameter>>> Parameters(string sectionType, CancellationToken ct)
     {
         var type = await SectionTypeAsync(sectionType, ct);
@@ -250,12 +250,10 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     }
 
     /// <param name="InSurveillance">Null: unchanged (a new parameter is not assessed in surveillance).</param>
-    /// <param name="InConsultancy">Null: unchanged (a new parameter is used in consultancy).</param>
-    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null,
-        bool? InConsultancy = null);
+    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null);
 
     [HttpPost("parameters/{sectionType}")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> AddParameter(string sectionType, ParameterRequest req, CancellationToken ct)
     {
         var type = await SectionTypeAsync(sectionType, ct);
@@ -275,10 +273,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         var saved = await SaveNicSectorsAsync(NicSectorsByCodeSql, new { SectionType = type, SectionCode = code, NicSectors = sectors }, ct);
         if (req.InSurveillance is { } surveillance && KeepsSurveillanceFlag)
             await db.ExecuteSqlAsync(SurveillanceByCodeSql, new { SectionType = type, SectionCode = code, SurveMandatories = surveillance ? "Yes" : null }, ct);
-        var consultancySaved = req.InConsultancy is not false || !KeepsSurveillanceFlag
-            || await SaveConsultancyAsync(ConsultancyByCodeSql, new { SectionType = type, SectionCode = code, InConsultancy = "No" }, ct);
         log.LogInformation("Parameter {Type}/{Code} added by {Actor}", type, code, UserId);
-        return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved) + (consultancySaved ? "" : ConsultancyNotSaved));
+        return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved));
     }
 
     /// <summary>
@@ -287,11 +283,11 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     /// ones already paid keep it, with their answers and scores. The legacy procedures read SELECT *, so nothing else changes.
     /// </summary>
     [HttpPost("parameters/{sectionType}/{id:int}/disable")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public Task<ActionResult<MessageResponse>> DisableParameter(string sectionType, int id, CancellationToken ct) => SetParameterDisabledAsync(sectionType, id, true, ct);
 
     [HttpPost("parameters/{sectionType}/{id:int}/enable")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public Task<ActionResult<MessageResponse>> EnableParameter(string sectionType, int id, CancellationToken ct) => SetParameterDisabledAsync(sectionType, id, false, ct);
 
     internal const string ParameterDisableSql = "UPDATE dbo.Sections SET IsDisabled = @Disabled WHERE Id = @Id AND SectionType = @SectionType;";
@@ -311,16 +307,19 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
             return this.Problem400("Parameters cannot be disabled yet: please ask the administrator to apply database migrations 0092 and 0093.");
         }
         log.LogInformation("Parameter {Type}/{Code} {Action} by {Actor}", type, parameter.SectionCode, disabled ? "disabled" : "enabled", UserId);
+        if (LevelsFromMain(HttpContext))
+            return new MessageResponse(disabled
+                ? $"Parameter {parameter.SectionCode} disabled. Handholding milestones paid from now on leave it out; the ones already paid keep it."
+                : $"Parameter {parameter.SectionCode} enabled. Handholding milestones paid from now on get it again.");
         return new MessageResponse(disabled
             ? $"Parameter {parameter.SectionCode} disabled. New applications leave it out; the ones already paid keep it."
             : $"Parameter {parameter.SectionCode} enabled. New applications get it again.");
     }
 
-    public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null,
-        bool? InConsultancy = null);
+    public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null);
 
     [HttpPut("parameters/{sectionType}/{id:int}")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> UpdateParameter(string sectionType, int id, ParameterUpdateRequest req, CancellationToken ct)
     {
         var type = await SectionTypeAsync(sectionType, ct);
@@ -341,14 +340,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
             await db.ExecuteSqlAsync(SurveillanceByIdSql, new { Id = id, SurveMandatories = surveillance ? "Yes" : null }, ct);
             log.LogWarning("Parameter {Id} ({Type}) {State} surveillance by {Actor}", id, type, surveillance ? "added to" : "removed from", UserId);
         }
-        var consultancySaved = true;
-        if (req.InConsultancy is { } consultancy && consultancy != current.InConsultancy && KeepsSurveillanceFlag)
-        {
-            consultancySaved = await SaveConsultancyAsync(ConsultancyByIdSql, new { Id = id, InConsultancy = consultancy ? "Yes" : "No" }, ct);
-            log.LogWarning("Parameter {Id} ({Type}) {State} consultancy by {Actor}", id, type, consultancy ? "added to" : "removed from", UserId);
-        }
         log.LogInformation("Parameter {Id} updated by {Actor}", id, UserId);
-        return new MessageResponse("Parameter data updated." + (saved ? "" : NicSectorsNotSaved) + (consultancySaved ? "" : ConsultancyNotSaved));
+        return new MessageResponse("Parameter data updated." + (saved ? "" : NicSectorsNotSaved));
     }
 
     /// <summary>
@@ -365,24 +358,12 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
     internal const string NicSectorsByIdSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE Id = @Id;";
     internal const string SurveillanceByCodeSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string SurveillanceByIdSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE Id = @Id;";
-    internal const string ConsultancyByCodeSql = "UPDATE dbo.Sections SET InConsultancy = @InConsultancy WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
-    internal const string ConsultancyByIdSql = "UPDATE dbo.Sections SET InConsultancy = @InConsultancy WHERE Id = @Id;";
-    private const string ConsultancyNotSaved = " Whether it is used in consultancy could not be saved: please ask the administrator to apply database migration 0035.";
-
-    /// <summary>Sections.InConsultancy (migration 0035, main database only, as the surveillance flag).</summary>
-    private async Task<bool> SaveConsultancyAsync(string sql, object args, CancellationToken ct)
-    {
-        try
-        {
-            await db.ExecuteSqlAsync(sql, args, ct);
-            return true;
-        }
-        catch (System.Data.Common.DbException ex)
-        {
-            log.LogError(ex, "Consultancy flag of a parameter not saved (is migration 0035 applied?)");
-            return false;
-        }
-    }
+    /// <summary>
+    /// The Consultancy host reads main's certification levels (ZED_CONSULTANT.dbo.SectionTypes is the legacy table without the
+    /// level columns of migration 0028); the Surveillance host has its own.
+    /// </summary>
+    internal static bool LevelsFromMain(HttpContext http) =>
+        http.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Consultancy;
     /// <summary>
     /// Sections.SurveMandatories ("assessed again in surveillance") is a column of the Main database only: the surveillance
     /// payment copies those parameters of the unit's Main certification. ZED_SURVEILLANCE.dbo.Sections has no such column,
@@ -422,7 +403,7 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
 
     /// <summary>The stored code of a certification level (any case), or null.</summary>
     internal async Task<string?> SectionTypeAsync(string value, CancellationToken ct) =>
-        (await CertificationLevels.FindAsync(db, value, log, ct))?.Code;
+        (await CertificationLevels.FindAsync(db, value, log, ct, LevelsFromMain(HttpContext)))?.Code;
 
     private static string SectorLabel(CodeName s) => s.Code + "-" + s.Name;
     private static string CategoryLabel(CodeName c) => c.Code + " -" + c.Name;
@@ -453,8 +434,7 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .Select(r => new Parameter(Id(r), r.Text("SectionType"), r.Text("SectionCode"), r.Text("SectionName"),
                 r.Text("iButton") is { Length: > 0 } d ? d : null, SplitList(r.Text("NicSectors")),
-                string.Equals(r.Text("SurveMandatories").Trim(), "Yes", StringComparison.OrdinalIgnoreCase),
-                !string.Equals(r.Text("InConsultancy").Trim(), "No", StringComparison.OrdinalIgnoreCase), SectorDisabled(r)))
+                string.Equals(r.Text("SurveMandatories").Trim(), "Yes", StringComparison.OrdinalIgnoreCase), SectorDisabled(r)))
             .Where(p => p.Id > 0);
 
     private static (string? Code, string? Name, string? Error) ValidateCodeName(CodeNameRequest req, string label)

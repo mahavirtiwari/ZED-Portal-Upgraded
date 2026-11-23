@@ -103,8 +103,6 @@ export interface Parameter {
   description: string | null;
   /** Assessed again in surveillance (legacy Sections.SurveMandatories): the surveillance copies only these. */
   inSurveillance?: boolean;
-  /** Main portal: used in consultancy / handholding (false = taken out of the handholding questionnaire). */
-  inConsultancy?: boolean;
   /** NIC 2-digit sectors it applies to (V4); empty = all sectors. */
   nicSectors?: string[] | null;
   /** 2026-11-16 (migrations 0092 / 0093): left out of new applications when they are paid; the ones already paid keep it. */
@@ -208,14 +206,12 @@ export class MastersApi {
     return this.http.get<ParameterLevel[]>(`${this.base}/parameter-levels`);
   }
 
-  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean,
-    inConsultancy?: boolean): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description, nicSectors, inSurveillance, inConsultancy });
+  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description, nicSectors, inSurveillance });
   }
 
-  updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean,
-    inConsultancy?: boolean): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors, inSurveillance, inConsultancy });
+  updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors, inSurveillance });
   }
 
   setParameterDisabled(sectionType: string, id: number, disabled: boolean): Observable<MessageResponse> {

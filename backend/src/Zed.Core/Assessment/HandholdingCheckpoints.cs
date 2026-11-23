@@ -14,8 +14,11 @@ namespace Zed.Core.Assessment;
 /// </summary>
 public static class HandholdingCheckpoints
 {
-    /// <summary>Handholding reads main's questionnaire (the payment copies ZEDCS_V2_LIVE's parameters).</summary>
-    public const string Master = "ZEDCS_V2_LIVE.dbo";
+    /// <summary>
+    /// Handholding reads the Consultancy questionnaire (migration 0113, 2026-11-23: ZED_CONSULTANT's own Sections,
+    /// Requirements, ...; the milestone payment copies them). By name, so it works from any portal's connection.
+    /// </summary>
+    public const string Master = "ZED_CONSULTANT.dbo";
 
     /// <summary>Milestone 1 answers the baseline, milestones 2 and 3 the progress reviews.</summary>
     public static CheckpointAnswers.Stage? StageOf(int milestone) => milestone switch

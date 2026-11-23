@@ -24,8 +24,11 @@ export const ALL_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surv
  * page, so its banner was shown nowhere).
  */
 export const BANNER_PORTALS: readonly AdminPortal[] = ['main'];
-/** The portals with their own questionnaire (parameters, requirements, checkpoints): ZED Certification and Surveillance. */
-export const QUESTIONNAIRE_PORTALS: readonly AdminPortal[] = ['main', 'surveillance'];
+/**
+ * The portals with their own questionnaire (parameters, requirements, checkpoints): ZED Certification, Consultancy (2026-11-23,
+ * migration 0113: its own copy, edited separately) and Surveillance.
+ */
+export const QUESTIONNAIRE_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
 /** The portals whose app has a site tour (Admin → Site Tour Sections): the site assessor app, the consultant app's milestone 1. */
 export const SITE_TOUR_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
 /**

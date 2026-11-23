@@ -33,7 +33,7 @@ public sealed partial class QuestionnaireController
     /// <summary>The level's code as stored and its parameters in code order (P1, P2 … P10); null for an unknown level.</summary>
     private async Task<(string Type, List<Section> Sections)?> LevelAsync(string sectionType, CancellationToken ct)
     {
-        var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct))?.Code;
+        var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct, Masters.StaffMastersController.LevelsFromMain(HttpContext)))?.Code;
         if (type is null) return null;
         var sections = (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .Select(r => new Section(type, r.Text("SectionCode").Trim(), r.Text("SectionName")))

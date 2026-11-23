@@ -323,15 +323,26 @@ public sealed class ConsultancyStaffTests : IDisposable
     }
 
     [Fact]
-    public async Task The_questionnaire_is_not_served_here_as_ZED_CONSULTANT_has_no_section_tables()
+    public async Task The_consultancy_questionnaire_is_served_here_from_its_own_tables_with_mains_levels()
     {
+        // 2026-11-23 (migration 0113): ZED_CONSULTANT has its own questionnaire (a copy of main's, edited separately).
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([new { Id = 7, SectionCode = "1", SectionName = "Leadership", SectionType = "Silver", IsDisabled = (bool?)null }]);
         var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/masters/parameters/Silver")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/staff/masters/parameters/Silver", new { sectionCode = "P1", sectionName = "Lead" })).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/questionnaire/Silver/P1/requirements")).StatusCode);
-        // Nor the ESG checklist: Consultancy's apps have none.
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/parameters/Silver");
+        Assert.Equal("Leadership", list[0].GetProperty("sectionName").GetString());
+        Assert.False(list[0].TryGetProperty("inConsultancy", out _));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/masters/parameters/Silver", new { sectionCode = "2", sectionName = "Safety", inSurveillance = true })).StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MASTER_INSERT_SECTION");
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("SurveMandatories", StringComparison.Ordinal) || c.Name.Contains("InConsultancy", StringComparison.Ordinal));
+        var disabled = await client.PostAsync("/api/staff/masters/parameters/Silver/7/disable", null);
+        Assert.Equal(HttpStatusCode.OK, disabled.StatusCode);
+        Assert.Contains("Handholding milestones", await disabled.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/staff/masters/parameter-levels")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/staff/questionnaire/Silver/1/requirements")).StatusCode);
+        // The levels are main's (ZED_CONSULTANT.dbo.SectionTypes has no level columns).
+        Assert.Contains(_host.Sql.Calls, c => c.Name.Contains("ZEDCS_V2_LIVE.dbo.SectionTypes", StringComparison.Ordinal));
+        // Not the ESG checklist: Consultancy's apps have none.
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/settings/esg-checklist")).StatusCode);
-        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("SP_MASTER_GET_SECTIONS", StringComparison.Ordinal));
     }
 
     private static Dictionary<string, object?> FeeRow(int id, string cert, string milestone, decimal? coupon) => new()

@@ -144,7 +144,8 @@ These compile but fail at runtime on the code path that reaches the missing obje
   `dbo.SaPhotoList`. Only `SaPhotoList_delete` exists.
 * ZED_CONSULTANT uses the self-assessment master tables `dbo.Requirements`, `Sections`,
   `Options`, `SubOptions` and `Evidences`. These tables exist in ZEDCS_V2_LIVE and
-  ZED_SURVEILLANCE, but not in ZED_CONSULTANT. The procedures that use them are:
+  ZED_SURVEILLANCE, but not in ZED_CONSULTANT. Migration 0113 (2026-11-23) creates them there as the
+  Consultancy questionnaire (a copy of main's, then edited separately). The procedures that use them are:
   * `SP_MSME_PAYMENT_GATEWAY_DETAILS`
   * `SP_INSERT_SELF_ASSESSMENT_STEP_1`
   * `SP_GET_SELF_ASSESSMENT_SUMMARY`, `SP_GET_SELF_ASSESSMENT_QUESTIONS_OLD`

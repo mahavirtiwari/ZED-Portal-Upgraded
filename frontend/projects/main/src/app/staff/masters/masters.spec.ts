@@ -734,8 +734,8 @@ describe('ParametersPage', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Parameters (ZED-X)');
     expect(el.querySelector('.level-tab.active')!.textContent).toContain('ZED-X');
     expect(el.querySelector('.level-tab.active .tab-note')!.textContent).toContain('Not open to MSMEs yet');
-    // The level's counts: 2 parameters, 1 in surveillance, 2 used in consultancy (not set = used), 1 limited to NIC sectors.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '2', '1', '0']);
+    // The level's counts: 2 parameters, 1 in surveillance, 1 limited to NIC sectors, none disabled.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '1', '0']);
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
     expect(rows[0]).toContain('62');
     expect(rows[1]).toContain('All sectors');
@@ -763,8 +763,8 @@ describe('ParametersPage', () => {
     (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/ZEDX');
-    // A new parameter is assessed in surveillance and used in consultancy unless unticked.
-    expect(post.request.body).toEqual({ sectionCode: '3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true, inConsultancy: true });
+    // A new parameter is assessed in surveillance unless unticked (2026-11-23: no "used in consultancy" tick any more).
+    expect(post.request.body).toEqual({ sectionCode: '3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true });
     post.flush({ message: 'Parameter saved.' });
     await settle(fixture);
     expect(el.querySelector('form.add-form')).toBeNull();
@@ -832,33 +832,43 @@ describe('ParametersPage', () => {
     http.verify();
   });
 
-  it('marks a parameter as not used in consultancy', async () => {
+  it('has no consultancy tick on ZED Certification: Consultancy has its own questionnaire (2026-11-23)', async () => {
     const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
     http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
     flushLevels(http);
     http.expectOne('/api/staff/masters/parameters/Bronze').flush([
-      { id: 3, sectionType: 'Bronze', sectionCode: 'P1', sectionName: 'Leadership', description: '', inSurveillance: true, inConsultancy: true },
-      { id: 4, sectionType: 'Bronze', sectionCode: 'P2', sectionName: 'Safety', description: '', inSurveillance: false, inConsultancy: false },
+      { id: 3, sectionType: 'Bronze', sectionCode: 'P1', sectionName: 'Leadership', description: '', inSurveillance: true },
     ]);
     await settle(fixture);
-    expect([...el.querySelectorAll('.consultancy-badge')].map((b) => b.textContent!.trim())).toEqual(['Yes', 'No']);
-    ([...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === 'In consultancy') as HTMLButtonElement).click();
-    await settle(fixture);
-    expect([...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim())).toEqual(['P1']);
-    ([...el.querySelectorAll('.seg button, .filter-btn, button')].find((b) => b.textContent!.trim() === 'Not in consultancy') as HTMLButtonElement).click();
-    await settle(fixture);
-    expect([...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim())).toEqual(['P2']);
-
+    expect(el.querySelector('.consultancy-badge')).toBeNull();
+    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.trim())).not.toContain('In consultancy');
     ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Edit') as HTMLButtonElement).click();
     await settle(fixture);
-    const box = el.querySelector('#edit-inConsultancy') as HTMLInputElement;
-    expect(box.checked).toBe(false);
-    box.click();
+    expect(el.querySelector('#edit-inConsultancy')).toBeNull();
+    expect(el.querySelector('#edit-inSurveillance')).not.toBeNull();
+    http.verify();
+  });
+
+  it('shows the Consultancy questionnaire without surveillance (2026-11-23)', async () => {
+    const consultancy = [{ provide: AdminPortalService, useValue: { enabled: true, effective: () => 'consultancy', select: () => undefined } }];
+    const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } }, consultancy);
+    http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    flushLevels(http);
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush([
+      { id: 3, sectionType: 'Bronze', sectionCode: '1', sectionName: 'Leadership', description: '' },
+    ]);
     await settle(fixture);
+    expect(el.querySelector('.page-sub')!.textContent).toContain('handholding questionnaire of Consultancy');
+    expect([...el.querySelectorAll('.portal-switch .ps-tab')].map((b) => b.textContent!.trim())).toEqual(['ZED Certification', 'Consultancy', 'Surveillance']);
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).not.toContain('Surveillance');
+    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.trim())).not.toContain('In surveillance');
+    ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Edit') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('#edit-inSurveillance')).toBeNull();
     (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
-    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/parameters/Bronze/4');
-    expect(put.request.body.inConsultancy).toBe(true);
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/parameters/Bronze/3');
+    expect(put.request.body.inSurveillance).toBeUndefined();
     put.flush({ message: 'Parameter data updated.' });
     await settle(fixture);
     http.expectOne('/api/staff/masters/parameters/Bronze').flush([]);

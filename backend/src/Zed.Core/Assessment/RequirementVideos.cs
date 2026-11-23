@@ -12,7 +12,7 @@ namespace Zed.Core.Assessment;
 /// </summary>
 public static class RequirementVideos
 {
-    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZEDCS_V2_LIVE.dbo" (handholding).</param>
+    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZED_CONSULTANT.dbo" (handholding).</param>
     public static string Sql(string master) =>
         $"SELECT LTRIM(RTRIM(SectionCode)) AS SectionCode, LTRIM(RTRIM(RequirementCode)) AS RequirementCode, LTRIM(RTRIM(VideoUrl)) AS VideoUrl " +
         $"FROM {master}.Requirements WHERE SectionType = @SectionType AND NULLIF(LTRIM(RTRIM(VideoUrl)), '') IS NOT NULL;";

@@ -43,7 +43,6 @@ public sealed partial class StaffMastersController
         new("Description", "Shown with the parameter (up to 1990 characters). Optional."),
         new("NIC sectors", "Codes of the sectors it applies to, separated by commas, e.g. 10, 13. Empty = all sectors."),
         new("In surveillance", "Yes: assessed again in surveillance; No or empty: not."),
-        new("In consultancy", "Yes or empty: used in consultancy (handholding); No: taken out of the handholding questionnaire."),
     ], 1, ByCode + $" Only the {level} parameters are read and changed.");
 
     // ---- Sectors ------------------------------------------------------------------------------
@@ -218,7 +217,7 @@ public sealed partial class StaffMastersController
     // ---- Questionnaire parameters ------------------------------------------------------------
 
     [HttpGet("parameters/{sectionType}/excel")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<ActionResult> ParametersExcel(string sectionType, CancellationToken ct)
     {
         if (await SectionTypeAsync(sectionType, ct) is not { } type) return NotFound();
@@ -226,12 +225,12 @@ public sealed partial class StaffMastersController
     }
 
     [HttpGet("parameters/{sectionType}/excel/template")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     public async Task<ActionResult> ParametersTemplate(string sectionType, CancellationToken ct) =>
         await SectionTypeAsync(sectionType, ct) is { } type ? MasterSheet.Template(ParameterSheet(type)) : NotFound();
 
     [HttpPost("parameters/{sectionType}/excel/check")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     [RequestSizeLimit(MasterSheet.MaxFileBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = MasterSheet.MaxFileBytes + 64 * 1024)]
     public async Task<ActionResult<SheetCheck>> ParametersCheck(string sectionType, IFormFile? file, CancellationToken ct)
@@ -241,7 +240,7 @@ public sealed partial class StaffMastersController
     }
 
     [HttpPost("parameters/{sectionType}/excel/apply")]
-    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
     [RequestSizeLimit(MasterSheet.MaxFileBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = MasterSheet.MaxFileBytes + 64 * 1024)]
     public async Task<ActionResult<SheetApplied>> ParametersApply(string sectionType, IFormFile? file, CancellationToken ct)
@@ -253,10 +252,9 @@ public sealed partial class StaffMastersController
         {
             var sectors = MasterSheet.Codes(row.Cell(3));
             var surveillance = row.Cell(4) == "Yes";
-            var consultancy = row.Cell(5) == "Yes";
             return row.Current is null
-                ? MasterSheet.Refusal((await AddParameter(type, new ParameterRequest(row.Cell(0), row.Cell(1), row.Cell(2), sectors, surveillance, consultancy), ct)).Result)
-                : MasterSheet.Refusal((await UpdateParameter(type, ids[row.Cell(0)], new ParameterUpdateRequest(row.Cell(1), row.Cell(2), sectors, surveillance, consultancy), ct)).Result);
+                ? MasterSheet.Refusal((await AddParameter(type, new ParameterRequest(row.Cell(0), row.Cell(1), row.Cell(2), sectors, surveillance), ct)).Result)
+                : MasterSheet.Refusal((await UpdateParameter(type, ids[row.Cell(0)], new ParameterUpdateRequest(row.Cell(1), row.Cell(2), sectors, surveillance), ct)).Result);
         }, ct);
     }
 
@@ -275,21 +273,14 @@ public sealed partial class StaffMastersController
             row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), sectors, "NIC sector", "Master → Sectors");
             if (MasterSheet.YesNo(row.Cell(4)) is { } yes) row.Cells[4] = yes;
             else row.Errors.Add("In surveillance must be Yes or No.");
-            if (MasterSheet.YesNo(row.Cell(5), "Yes") is { } used) row.Cells[5] = used;
-            else row.Errors.Add("In consultancy must be Yes or No.");
             if (!keepsFlag && row.Cells[4] != (row.Current?[4] ?? "No"))
             {
                 row.Notes.Add("In surveillance is kept in the main portal's parameters only; it is not changed here.");
                 row.Cells[4] = row.Current?[4] ?? "No";
             }
-            if (!keepsFlag && row.Cells[5] != (row.Current?[5] ?? "Yes"))
-            {
-                row.Notes.Add("In consultancy is kept in the main portal's parameters only; it is not changed here.");
-                row.Cells[5] = row.Current?[5] ?? "Yes";
-            }
         });
     }
 
     private static string[] ParameterCells(Parameter p) =>
-        [p.SectionCode.Trim(), p.SectionName, p.Description ?? "", MasterSheet.CodeList(p.NicSectors ?? []), p.InSurveillance ? "Yes" : "No", p.InConsultancy ? "Yes" : "No"];
+        [p.SectionCode.Trim(), p.SectionName, p.Description ?? "", MasterSheet.CodeList(p.NicSectors ?? []), p.InSurveillance ? "Yes" : "No"];
 }

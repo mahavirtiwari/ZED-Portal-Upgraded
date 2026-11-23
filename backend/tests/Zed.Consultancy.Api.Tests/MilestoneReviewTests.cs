@@ -249,11 +249,11 @@ public sealed class MilestoneReviewTests : IDisposable
     public async Task The_baseline_checkpoints_add_their_actions_to_the_action_plan_once()
     {
         var q = _host.Sql.Queries;
-        q[CheckpointAnswers.CheckpointSql("ZEDCS_V2_LIVE.dbo")] = args => FakeSql.Arg(args, "ZedId") == Zed
+        q[CheckpointAnswers.CheckpointSql(HandholdingCheckpoints.Master)] = args => FakeSql.Arg(args, "ZedId") == Zed
             ? [new { RequirementRowId = 11L, Id = 801L, OptionCode = "1", OptionName = "Written policy", ActionsNeeded = "Write the policy\nDisplay it" },
                new { RequirementRowId = 11L, Id = 802L, OptionCode = "2", OptionName = "Staff know it", ActionsNeeded = "Train the staff" }]
             : [];
-        q[CheckpointAnswers.EvidenceSql("ZEDCS_V2_LIVE.dbo")] = _ =>
+        q[CheckpointAnswers.EvidenceSql(HandholdingCheckpoints.Master)] = _ =>
             [new { RequirementRowId = 11L, Id = 91L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = false, IsVerified = (string?)null }];
         var photos = 0;
         q[MilestoneReviewController.PhotoCountSql] = _ => [new { Total = photos }];

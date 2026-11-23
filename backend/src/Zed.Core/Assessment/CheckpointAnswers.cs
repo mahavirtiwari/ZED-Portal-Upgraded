@@ -61,7 +61,7 @@ public static class CheckpointAnswers
         {join}
         """;
 
-    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZEDCS_V2_LIVE.dbo" (handholding).</param>
+    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZED_CONSULTANT.dbo" (handholding).</param>
     /// <remarks>
     /// The questionnaire's checkpoint is looked for within the unit's requirement only, by id and text first (2026-11-08):
     /// surveillance copies a unit's rows from main with main's ids, which are not the ids of surveillance's own questionnaire,

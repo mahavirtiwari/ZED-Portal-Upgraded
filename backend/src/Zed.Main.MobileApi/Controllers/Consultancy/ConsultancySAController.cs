@@ -378,7 +378,7 @@ public sealed partial class ConsultancySAController(
         }
         else response.siteTourSections = [];
         // Handholding uses main's questionnaire, and so its videos.
-        await AppRequirementVideos.FillAsync(db, "ZEDCS_V2_LIVE.dbo", certification, response.allottedParameters, null, ct);
+        await AppRequirementVideos.FillAsync(db, HandholdingCheckpoints.Master, certification, response.allottedParameters, null, ct);
         if (!dfo) await AttachCheckpointsAsync(response.allottedParameters, zedId, certification, ct);
         return new UnitAnswer(response, null);
     }

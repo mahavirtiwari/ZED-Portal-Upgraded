@@ -343,7 +343,7 @@ public sealed class ConsultancyAppWriteTests : IDisposable
     [Fact]
     public async Task Baseline_checkpoints_are_saved_on_the_plan_row_and_their_actions_join_the_action_plan()
     {
-        const string master = "ZEDCS_V2_LIVE.dbo";
+        const string master = global::Zed.Core.Assessment.HandholdingCheckpoints.Master;
         _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.CheckpointSql(master)] = args => FakeSql.Arg(args, "ZedId") == Zed
             ? [new { RequirementRowId = 11L, Id = 801L, OptionCode = "1", OptionName = "Written policy", ActionsNeeded = "Write the policy\nDisplay it" }]
             : [];

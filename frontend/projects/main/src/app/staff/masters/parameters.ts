@@ -8,12 +8,11 @@ import { MastersApi, Parameter, ParameterLevel } from './masters.api';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
-import { PORTAL_SYSTEM } from '../../portal-system';
-import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
+import { AdminPortalService, PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 import { TextPipe, t } from '../../content/page-text';
 
 /** Which parameters the list shows (the buttons beside the search box). */
-type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy' | 'notConsultancy' | 'sectors' | 'disabled';
+type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors' | 'disabled';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
@@ -23,18 +22,23 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
  * the description under the parameter's name (folded to two lines), a search box with the surveillance / sector filter
  * and the list paged (Show N Entries); a card per parameter on phones. A parameter can be limited to NIC sectors (all
  * sectors when none is chosen).
+ * 2026-11-23 (migration 0113): the switch also offers Consultancy, its own questionnaire (first a copy of ZED Certification's
+ * parameters used in consultancy, then edited separately); so ZED Certification has no "Used in consultancy" tick any more.
+ * Consultancy has no surveillance, so its page has no surveillance column, tick or filters.
  */
 @Component({
   selector: 'zed-staff-parameters',
   imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent, PortalSwitchComponent, TextPipe],
   template: `
-    <!-- 2026-11-08: the Admin edits Surveillance's questionnaire from here too. -->
+    <!-- 2026-11-08: the Admin edits Surveillance's questionnaire from here too; 2026-11-23: and Consultancy's. -->
     <zed-portal-switch [portals]="questionnairePortals" [title]="'Questionnaire of' | t: 'staff.parameters.portalSwitch.label'" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ 'Parameters ({level})' | t: 'staff.parameters.title' : { level: levelName() } }}</h3>
-        <p class="page-sub">{{ onMain
-          ? ('The {level} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again and whether consultancy uses it. Requirements opens its questions.' | t: 'staff.parameters.main.sub' : { level: levelName() })
+        <p class="page-sub">{{ onConsultancy
+          ? ('The {level} handholding questionnaire of Consultancy: each parameter and the NIC sectors it applies to. It started as a copy of the ZED Certification questionnaire and is edited separately. Requirements opens its questions.' | t: 'staff.parameters.consultancy.sub' : { level: levelName() })
+          : onMain
+          ? ('The {level} questionnaire: each parameter, the NIC sectors it applies to and whether surveillance assesses it again. Consultancy has its own questionnaire. Requirements opens its questions.' | t: 'staff.parameters.main.sub' : { level: levelName() })
           : ('The {level} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again. Requirements opens its questions.' | t: 'staff.parameters.sub' : { level: levelName() }) }}</p>
       </div>
       <div class="page-actions">
@@ -62,12 +66,11 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
 
     <div class="param-stats">
       <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">{{ 'Parameters' | t: 'staff.parameters.count.total' }}</span></div>
-      <div class="stat"><span class="stat-value">{{ stats().surveillance }}</span><span class="stat-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.count.surveillance' }}</span></div>
-      @if (onMain) {
-        <div class="stat"><span class="stat-value">{{ stats().consultancy }}</span><span class="stat-label">{{ 'Used in consultancy' | t: 'staff.parameters.count.consultancy' }}</span></div>
+      @if (!onConsultancy) {
+        <div class="stat"><span class="stat-value">{{ stats().surveillance }}</span><span class="stat-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.count.surveillance' }}</span></div>
       }
       <div class="stat"><span class="stat-value">{{ stats().sectorSpecific }}</span><span class="stat-label">{{ 'Limited to NIC sectors' | t: 'staff.parameters.count.sectors' }}</span></div>
-      <div class="stat stat-off" data-disabled-count><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">{{ 'Disabled (left out of new applications)' | t: 'staff.parameters.count.disabled' }}</span></div>
+      <div class="stat stat-off" data-disabled-count><span class="stat-value">{{ stats().disabled }}</span><span class="stat-label">{{ onConsultancy ? ('Disabled (left out of handholding milestones paid from now on)' | t: 'staff.parameters.consultancy.count.disabled') : ('Disabled (left out of new applications)' | t: 'staff.parameters.count.disabled') }}</span></div>
     </div>
 
     @if (error()) {
@@ -95,8 +98,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
             <col style="width: 84px" />
             <col />
             <col style="width: 170px" />
-            <col style="width: 116px" />
-            @if (onMain) { <col style="width: 116px" /> }
+            @if (!onConsultancy) { <col style="width: 116px" /> }
             <col style="width: 290px" />
           </colgroup>
           <thead>
@@ -104,8 +106,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
               <th class="text-center">{{ 'Code' | t: 'staff.parameters.column.code' }}</th>
               <th>{{ 'Parameter' | t: 'staff.parameters.column.parameter' }}</th>
               <th>{{ 'NIC Sectors' | t: 'staff.parameters.column.sectors' }}</th>
-              <th class="text-center">{{ 'Surveillance' | t: 'staff.parameters.column.surveillance' }}</th>
-              @if (onMain) { <th class="text-center">{{ 'Consultancy' | t: 'staff.parameters.column.consultancy' }}</th> }
+              @if (!onConsultancy) { <th class="text-center">{{ 'Surveillance' | t: 'staff.parameters.column.surveillance' }}</th> }
               <th class="text-center">{{ 'Actions' | t: 'staff.parameters.column.actions' }}</th>
             </tr>
           </thead>
@@ -114,7 +115,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
               <tr [class.row-off]="s.disabled">
                 <td class="text-center code-cell" [attr.data-label]="'Code' | t: 'staff.parameters.column.code'"><span class="code-badge">{{ s.sectionCode }}</span></td>
                 <td [attr.data-label]="'Parameter' | t: 'staff.parameters.column.parameter'">
-                  <div class="param-name">{{ s.sectionName }} @if (s.disabled) { <span class="off-badge" [title]="'Left out of new applications; the ones already paid keep it' | t: 'staff.parameters.row.disabled.tooltip'">{{ 'Disabled' | t: 'staff.parameters.row.disabled.label' }}</span> }</div>
+                  <div class="param-name">{{ s.sectionName }} @if (s.disabled) { <span class="off-badge" [title]="onConsultancy ? ('Left out of handholding milestones paid from now on; the ones already paid keep it' | t: 'staff.parameters.consultancy.row.disabled.tooltip') : ('Left out of new applications; the ones already paid keep it' | t: 'staff.parameters.row.disabled.tooltip')">{{ 'Disabled' | t: 'staff.parameters.row.disabled.label' }}</span> }</div>
                   @if (s.description) {
                     <pre [class.clamp-2]="!expanded().has(s.id)" [title]="s.description">{{ s.description }}</pre>
                     @if (isLong(s.description)) {
@@ -129,12 +130,9 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
                     <span class="muted all-sectors">{{ 'All sectors' | t: 'staff.parameters.row.allSectors.label' }}</span>
                   }
                 </td>
-                <td class="text-center" [attr.data-label]="'Surveillance' | t: 'staff.parameters.column.surveillance'">
-                  <span class="status-badge" [class.is-success]="s.inSurveillance" [class.is-inactive]="!s.inSurveillance">{{ s.inSurveillance ? ('Yes' | t: 'staff.parameters.row.yes.label') : ('No' | t: 'staff.parameters.row.no.label') }}</span>
-                </td>
-                @if (onMain) {
-                  <td class="text-center" [attr.data-label]="'Consultancy' | t: 'staff.parameters.column.consultancy'">
-                    <span class="status-badge consultancy-badge" [class.is-success]="s.inConsultancy !== false" [class.is-inactive]="s.inConsultancy === false">{{ s.inConsultancy === false ? ('No' | t: 'staff.parameters.row.no.label') : ('Yes' | t: 'staff.parameters.row.yes.label') }}</span>
+                @if (!onConsultancy) {
+                  <td class="text-center" [attr.data-label]="'Surveillance' | t: 'staff.parameters.column.surveillance'">
+                    <span class="status-badge" [class.is-success]="s.inSurveillance" [class.is-inactive]="!s.inSurveillance">{{ s.inSurveillance ? ('Yes' | t: 'staff.parameters.row.yes.label') : ('No' | t: 'staff.parameters.row.no.label') }}</span>
                   </td>
                 }
                 <td [attr.data-label]="'Actions' | t: 'staff.parameters.column.actions'">
@@ -148,7 +146,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
                 </td>
               </tr>
             } @empty {
-              <tr class="empty-row"><td [attr.colspan]="onMain ? 6 : 5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? ('No parameter matches the search' | t: 'staff.parameters.noMatch.empty') : ('No Data' | t: 'staff.parameters.empty') }}</div></td></tr>
+              <tr class="empty-row"><td [attr.colspan]="onConsultancy ? 4 : 5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? ('No parameter matches the search' | t: 'staff.parameters.noMatch.empty') : ('No Data' | t: 'staff.parameters.empty') }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -188,16 +186,11 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
                     <zed-multi-select inputId="nicSectors" [label]="'NIC Sectors' | t: 'staff.parameters.form.sectors.label'" [options]="sectorOptions()" [(value)]="nicSectors" />
                     <small class="muted d-block mt-1">{{ 'None chosen: the parameter applies to every sector.' | t: 'staff.parameters.addDialog.sectors.note' }}</small>
                   </div>
-                  <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
-                  <div class="form-check">
-                    <input id="inSurveillance" name="inSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="inSurveillance" />
-                    <label for="inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
-                  </div>
-                  @if (onMain) {
-                    <span class="label-like">{{ 'Consultancy' | t: 'staff.parameters.form.consultancy.label' }}</span>
+                  @if (!onConsultancy) {
+                    <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
                     <div class="form-check">
-                      <input id="inConsultancy" name="inConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="inConsultancy" />
-                      <label for="inConsultancy" class="form-check-label">{{ 'Used in consultancy (handholding)' | t: 'staff.parameters.form.consultancy.tick.label' }}</label>
+                      <input id="inSurveillance" name="inSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="inSurveillance" />
+                      <label for="inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
                     </div>
                   }
                 </div>
@@ -236,16 +229,11 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'consultancy
                     <zed-multi-select inputId="edit-nicSectors" [label]="'NIC Sectors' | t: 'staff.parameters.form.sectors.label'" [options]="sectorOptions()" [(value)]="e.nicSectors" />
                     <small class="muted d-block mt-1">{{ 'None chosen: every sector.' | t: 'staff.parameters.editDialog.sectors.note' }}</small>
                   </div>
-                  <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
-                  <div class="form-check">
-                    <input id="edit-inSurveillance" name="editInSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="e.inSurveillance" />
-                    <label for="edit-inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
-                  </div>
-                  @if (onMain) {
-                    <span class="label-like">{{ 'Consultancy' | t: 'staff.parameters.form.consultancy.label' }}</span>
+                  @if (!onConsultancy) {
+                    <span class="label-like">{{ 'Surveillance' | t: 'staff.parameters.form.surveillance.label' }}</span>
                     <div class="form-check">
-                      <input id="edit-inConsultancy" name="editInConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="e.inConsultancy" />
-                      <label for="edit-inConsultancy" class="form-check-label">{{ 'Used in consultancy (handholding)' | t: 'staff.parameters.form.consultancy.tick.label' }}</label>
+                      <input id="edit-inSurveillance" name="editInSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="e.inSurveillance" />
+                      <label for="edit-inSurveillance" class="form-check-label">{{ 'Assessed again in surveillance' | t: 'staff.parameters.form.surveillance.tick.label' }}</label>
                     </div>
                   }
                 </div>
@@ -340,13 +328,10 @@ export class ParametersPage {
   private readonly rows = signal<Parameter[]>([]);
   protected readonly filters = computed((): readonly { key: ParameterFilter; label: string }[] => [
     { key: 'all', label: t('staff.parameters.filter.all', 'All') },
-    { key: 'surveillance', label: t('staff.parameters.filter.surveillance', 'In surveillance') },
-    { key: 'notSurveillance', label: t('staff.parameters.filter.notSurveillance', 'Not in surveillance') },
-    // 2026-11-23 (the user: "Add In consultancy also"): both consultancy filters, as for surveillance.
-    ...(PORTAL_SYSTEM === 'main' ? [
-      { key: 'consultancy' as const, label: t('staff.parameters.filter.consultancy', 'In consultancy') },
-      { key: 'notConsultancy' as const, label: t('staff.parameters.filter.notConsultancy', 'Not in consultancy') },
-    ] : []),
+    ...(this.onConsultancy ? [] : [
+      { key: 'surveillance' as const, label: t('staff.parameters.filter.surveillance', 'In surveillance') },
+      { key: 'notSurveillance' as const, label: t('staff.parameters.filter.notSurveillance', 'Not in surveillance') },
+    ]),
     { key: 'sectors', label: t('staff.parameters.filter.sectors', 'Sector-specific') },
     { key: 'disabled', label: t('staff.parameters.filter.disabled', 'Disabled') },
   ]);
@@ -356,7 +341,6 @@ export class ParametersPage {
     return {
       total: rows.length,
       surveillance: rows.filter((r) => r.inSurveillance).length,
-      consultancy: rows.filter((r) => r.inConsultancy !== false).length,
       sectorSpecific: rows.filter((r) => r.nicSectors?.length).length,
       disabled: rows.filter((r) => r.disabled).length,
     };
@@ -364,10 +348,13 @@ export class ParametersPage {
   protected readonly pager = new ClientPager<Parameter>(10);
   protected readonly adding = signal(false);
   protected readonly editing = signal<{
-    id: number; code: string; sectionName: string; description: string; nicSectors: string[]; inSurveillance: boolean; inConsultancy: boolean;
+    id: number; code: string; sectionName: string; description: string; nicSectors: string[]; inSurveillance: boolean;
   } | null>(null);
-  /** Main portal: whether a parameter is used in consultancy (the handholding questionnaire is copied from main's). */
-  protected readonly onMain = PORTAL_SYSTEM === 'main';
+  /** The portal whose questionnaire the page shows (the switch recreates the page). */
+  private readonly portal = inject(AdminPortalService).effective(QUESTIONNAIRE_PORTALS);
+  protected readonly onMain = this.portal === 'main';
+  /** Consultancy's own questionnaire (migration 0113): no surveillance there. */
+  protected readonly onConsultancy = this.portal === 'consultancy';
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
@@ -380,8 +367,6 @@ export class ParametersPage {
   protected description = '';
   /** A new parameter is assessed in surveillance unless unticked (the surveillance copies only these). */
   protected inSurveillance = true;
-  /** A new parameter is used in consultancy unless unticked. */
-  protected inConsultancy = true;
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
@@ -420,8 +405,6 @@ export class ParametersPage {
     switch (this.filter()) {
       case 'surveillance': return rows.filter((r) => r.inSurveillance);
       case 'notSurveillance': return rows.filter((r) => !r.inSurveillance);
-      case 'consultancy': return rows.filter((r) => r.inConsultancy !== false);
-      case 'notConsultancy': return rows.filter((r) => r.inConsultancy === false);
       case 'sectors': return rows.filter((r) => r.nicSectors?.length);
       case 'disabled': return rows.filter((r) => r.disabled);
       default: return rows;
@@ -463,7 +446,6 @@ export class ParametersPage {
   protected openAdd(): void {
     this.code = this.name = this.description = '';
     this.inSurveillance = true;
-    this.inConsultancy = true;
     this.nicSectors = [];
     this.submitted.set(false);
     this.addError.set('');
@@ -486,7 +468,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors, this.inSurveillance, this.onMain ? this.inConsultancy : undefined))).message);
+      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors, this.onConsultancy ? undefined : this.inSurveillance))).message);
       this.adding.set(false);
       await this.load();
     } catch (err) {
@@ -499,7 +481,7 @@ export class ParametersPage {
   protected edit(p: Parameter): void {
     this.editError.set('');
     this.success.set('');
-    this.editing.set({ id: p.id, code: p.sectionCode, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance, inConsultancy: p.inConsultancy !== false });
+    this.editing.set({ id: p.id, code: p.sectionCode, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance });
   }
 
   /** The parameter whose Disable / Enable is being saved. */
@@ -529,7 +511,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors, e.inSurveillance, this.onMain ? e.inConsultancy : undefined))).message);
+      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors, this.onConsultancy ? undefined : e.inSurveillance))).message);
       this.editing.set(null);
       await this.load();
     } catch (err) {

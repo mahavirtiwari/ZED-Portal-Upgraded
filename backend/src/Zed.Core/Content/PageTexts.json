@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9539,
+  "count": 9536,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -83486,18 +83486,6 @@
       ]
     },
     {
-      "key": "staff.parameters.column.consultancy",
-      "standard": "Consultancy",
-      "kind": "label",
-      "portal": "staff",
-      "page": "parameters",
-      "pageName": "Parameters",
-      "placeholders": [],
-      "files": [
-        "staff/masters/parameters.ts"
-      ]
-    },
-    {
       "key": "staff.parameters.column.parameter",
       "standard": "Parameter",
       "kind": "label",
@@ -83534,13 +83522,39 @@
       ]
     },
     {
-      "key": "staff.parameters.count.consultancy",
-      "standard": "Used in consultancy",
+      "key": "staff.parameters.consultancy.count.disabled",
+      "standard": "Disabled (left out of handholding milestones paid from now on)",
       "kind": "label",
       "portal": "staff",
       "page": "parameters",
       "pageName": "Parameters",
       "placeholders": [],
+      "files": [
+        "staff/masters/parameters.ts"
+      ]
+    },
+    {
+      "key": "staff.parameters.consultancy.row.disabled.tooltip",
+      "standard": "Left out of handholding milestones paid from now on; the ones already paid keep it",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "parameters",
+      "pageName": "Parameters",
+      "placeholders": [],
+      "files": [
+        "staff/masters/parameters.ts"
+      ]
+    },
+    {
+      "key": "staff.parameters.consultancy.sub",
+      "standard": "The {level} handholding questionnaire of Consultancy: each parameter and the NIC sectors it applies to. It started as a copy of the ZED Certification questionnaire and is edited separately. Requirements opens its questions.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "parameters",
+      "pageName": "Parameters",
+      "placeholders": [
+        "level"
+      ],
       "files": [
         "staff/masters/parameters.ts"
       ]
@@ -83756,32 +83770,8 @@
       ]
     },
     {
-      "key": "staff.parameters.filter.consultancy",
-      "standard": "In consultancy",
-      "kind": "label",
-      "portal": "staff",
-      "page": "parameters",
-      "pageName": "Parameters",
-      "placeholders": [],
-      "files": [
-        "staff/masters/parameters.ts"
-      ]
-    },
-    {
       "key": "staff.parameters.filter.disabled",
       "standard": "Disabled",
-      "kind": "label",
-      "portal": "staff",
-      "page": "parameters",
-      "pageName": "Parameters",
-      "placeholders": [],
-      "files": [
-        "staff/masters/parameters.ts"
-      ]
-    },
-    {
-      "key": "staff.parameters.filter.notConsultancy",
-      "standard": "Not in consultancy",
       "kind": "label",
       "portal": "staff",
       "page": "parameters",
@@ -83867,30 +83857,6 @@
       "key": "staff.parameters.form.code.placeholder",
       "standard": "e.g. 1",
       "kind": "placeholder",
-      "portal": "staff",
-      "page": "parameters",
-      "pageName": "Parameters",
-      "placeholders": [],
-      "files": [
-        "staff/masters/parameters.ts"
-      ]
-    },
-    {
-      "key": "staff.parameters.form.consultancy.label",
-      "standard": "Consultancy",
-      "kind": "label",
-      "portal": "staff",
-      "page": "parameters",
-      "pageName": "Parameters",
-      "placeholders": [],
-      "files": [
-        "staff/masters/parameters.ts"
-      ]
-    },
-    {
-      "key": "staff.parameters.form.consultancy.tick.label",
-      "standard": "Used in consultancy (handholding)",
-      "kind": "label",
       "portal": "staff",
       "page": "parameters",
       "pageName": "Parameters",
@@ -83997,7 +83963,7 @@
     },
     {
       "key": "staff.parameters.main.sub",
-      "standard": "The {level} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again and whether consultancy uses it. Requirements opens its questions.",
+      "standard": "The {level} questionnaire: each parameter, the NIC sectors it applies to and whether surveillance assesses it again. Consultancy has its own questionnaire. Requirements opens its questions.",
       "kind": "note",
       "portal": "staff",
       "page": "parameters",

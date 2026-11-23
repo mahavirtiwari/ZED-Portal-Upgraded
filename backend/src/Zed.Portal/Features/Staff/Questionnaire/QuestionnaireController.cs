@@ -26,7 +26,7 @@ namespace Zed.Portal.Features.Staff.Questionnaire;
 /// </para>
 /// </summary>
 [Route("api/staff/questionnaire/{sectionType}/{sectionCode}/requirements")]
-[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.Admin)]
 public sealed partial class QuestionnaireController(
     ISqlExecutor db,
@@ -163,7 +163,7 @@ public sealed partial class QuestionnaireController(
     /// <summary>The parameter, as stored (canonical level and code), or null when it does not exist.</summary>
     internal async Task<Section?> SectionAsync(string sectionType, string sectionCode, CancellationToken ct)
     {
-        var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct))?.Code;
+        var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct, StaffMastersController.LevelsFromMain(HttpContext)))?.Code;
         if (type is null || string.IsNullOrWhiteSpace(sectionCode) || sectionCode.Length > 50) return null;
         var row = (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .FirstOrDefault(r => string.Equals(r.Text("SectionCode").Trim(), sectionCode.Trim(), StringComparison.OrdinalIgnoreCase));

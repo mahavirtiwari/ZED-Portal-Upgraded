@@ -20,7 +20,7 @@ namespace Zed.Core.Assessment;
 /// </summary>
 public static class RequirementTexts
 {
-    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZEDCS_V2_LIVE.dbo" (handholding).</param>
+    /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZED_CONSULTANT.dbo" (handholding).</param>
     /// <summary>Every level's requirement texts (the record's level is <c>@SectionType</c>; the others tell a cross-level copy).</summary>
     public static string Sql(string master) =>
         $"SELECT LTRIM(RTRIM(SectionType)) AS SectionType, LTRIM(RTRIM(SectionCode)) AS SectionCode, LTRIM(RTRIM(RequirementCode)) AS RequirementCode, " +
