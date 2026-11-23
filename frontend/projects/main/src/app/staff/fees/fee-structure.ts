@@ -6,7 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { HANDHOLDING_LEVEL_CODES, levelCodes, levelName } from '../../msme/shared/levels';
-import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, OffCategory, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
+import { ENTERPRISE_TYPES, FeeRow, FeeSet, FeesApi, LevelFee, OffCategory, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
 import { ConfirmService } from '../confirm-dialog';
 import { TextPipe, t } from '../../content/page-text';
 
@@ -145,6 +145,30 @@ interface SharePreview {
     <!-- One Admin (V4): the portal whose settings these are (each portal has its own fees). -->
     <zed-portal-switch />
 
+    <!-- 2026-11-23 (the user: "put the new fees effect from date ... keep date range"): the fees as dated fee sets, as
+         Expenditure rates keeps its rate sets. Every fee below belongs to the set chosen here. -->
+    <section class="zed-card fs-sets" aria-labelledby="fs-sets-label" data-fee-sets>
+      <div class="fs-sets-row">
+        <label class="fs-type-label" id="fs-sets-label" for="fs-set">{{ 'Date of effect' | t: 'staff.feeStructure.sets.label' }}</label>
+        <select class="form-select fs-set-select" id="fs-set" [ngModel]="setPick()" (ngModelChange)="chooseSet($event)" [disabled]="busy()">
+          @for (s of sets(); track s.key) { <option [value]="s.key">{{ setLabel(s) }}</option> }
+          <option value="new">{{ '+ New fee set' | t: 'staff.feeStructure.sets.newOption' }}</option>
+        </select>
+        @if (newSet()) {
+          <input type="date" class="form-control fs-set-date" id="fs-set-from" [min]="today" [(ngModel)]="newSetFrom"
+                 [attr.aria-label]="'Date of effect of the new fee set' | t: 'staff.feeStructure.sets.dateAria'" />
+          <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="addSet()">{{ 'Add Fee Set' | t: 'staff.feeStructure.sets.addButton' }}</button>
+          <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="cancelNewSet()">{{ 'Cancel' | t: 'staff.feeStructure.sets.cancelButton' }}</button>
+        } @else if (shownSet()?.status === 'future') {
+          <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="deleteSet()">{{ 'Delete Fee Set' | t: 'staff.feeStructure.sets.deleteButton' }}</button>
+        }
+      </div>
+      <p class="muted fs-sets-note" data-set-note>{{ setNote() }}</p>
+      @if (upcoming(); as u) {
+        <p class="fs-upcoming" data-upcoming>{{ 'New fees from {date}: choose that date above to see or change them.' | t: 'staff.feeStructure.sets.upcoming' : { date: dmy(u.from) } }}</p>
+      }
+    </section>
+
     @if (consultancy && loaded()) {
       <section class="zed-card schedule" aria-labelledby="fs-schedule">
         <h5 class="fs-h" id="fs-schedule">{{ 'Payment schedule' | t: 'staff.feeStructure.schedule.title' }}
@@ -169,7 +193,7 @@ interface SharePreview {
         }
         <div class="save-bar" [class.is-dirty]="schedChanged()">
           @if (schedChanged()) { <span class="unsaved me-auto">{{ 'Not saved yet.' | t: 'staff.feeStructure.schedule.unsaved.note' }}</span> } @else { <span class="muted me-auto">{{ 'No unsaved changes.' | t: 'staff.feeStructure.schedule.saved.note' }}</span> }
-          <button type="button" class="btn btn-primary" [disabled]="busy() || !schedChanged()" (click)="saveSchedule()">{{ 'Save Schedule' | t: 'staff.feeStructure.schedule.saveButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="busy() || !schedChanged() || readOnly()" (click)="saveSchedule()">{{ 'Save Schedule' | t: 'staff.feeStructure.schedule.saveButton' }}</button>
         </div>
       </section>
 
@@ -221,13 +245,13 @@ interface SharePreview {
         <div class="fs-rates">
           <div>
             <label class="form-label" for="fs-fee">{{ 'Fee (before GST)' | t: 'staff.feeStructure.rates.fee.label' }}<span class="req">*</span></label>
-            <input class="form-control" id="fs-fee" type="number" min="0" step="0.01" [(ngModel)]="feeInput" (ngModelChange)="feeChanged.set(true)" />
+            <input class="form-control" id="fs-fee" type="number" min="0" step="0.01" [disabled]="readOnly()" [(ngModel)]="feeInput" (ngModelChange)="feeChanged.set(true)" />
             <small class="muted">{{ 'With GST: ₹ {amount}' | t: 'staff.feeStructure.rates.withGst' : { amount: ((feeInput ?? 0) * 1.18 | number: '1.2-2') } }}</small>
           </div>
           @if (f.hasCouponRows && !rejected() && !consultancy) {
             <div>
               <label class="form-label" for="fs-reward">{{ 'Joining reward (₹)' | t: 'staff.feeStructure.rates.reward.label' }}<span class="req">*</span></label>
-              <input class="form-control" id="fs-reward" type="number" min="0" step="0.01" [(ngModel)]="rewardInput" (ngModelChange)="feeChanged.set(true)" />
+              <input class="form-control" id="fs-reward" type="number" min="0" step="0.01" [disabled]="readOnly()" [(ngModel)]="rewardInput" (ngModelChange)="feeChanged.set(true)" />
               <small class="muted">{{ 'Comes off the total with GST for units that get it.' | t: 'staff.feeStructure.rates.reward.note' }}</small>
             </div>
           }
@@ -242,7 +266,7 @@ interface SharePreview {
         </div>
         <div class="save-bar" [class.is-dirty]="feeChanged()">
           @if (feeChanged()) { <span class="unsaved me-auto">{{ 'Not saved yet.' | t: 'staff.feeStructure.rates.unsaved.note' }}</span> } @else { <span class="muted me-auto">{{ 'No unsaved changes.' | t: 'staff.feeStructure.rates.saved.note' }}</span> }
-          <button type="button" class="btn btn-primary" [disabled]="busy() || !feeChanged()" (click)="saveFee()">{{ 'Save Fee' | t: 'staff.feeStructure.rates.saveButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="busy() || !feeChanged() || readOnly()" (click)="saveFee()">{{ 'Save Fee' | t: 'staff.feeStructure.rates.saveButton' }}</button>
         </div>
       </section>
 
@@ -283,7 +307,7 @@ interface SharePreview {
                   <td class="text-end" [attr.data-label]="gstColumn()">₹ {{ s.row.gstAfterSubsidy | number: '1.2-2' }}</td>
                   <td class="text-end" [attr.data-label]="'MSME taxable' | t: 'staff.feeStructure.column.taxable'"><strong>₹ {{ s.row.subsidyPer | number: '1.2-2' }}</strong></td>
                   <td class="fs-actions">
-                    @if (!rejected() && !s.row.isCouponRow) {
+                    @if (!rejected() && !s.row.isCouponRow && !readOnly()) {
                       <!-- Left-aligned: Edit stays at the same place on every row, with or without Disable / Enable. -->
                       <div class="row-actions justify-content-start">
                         <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit the subsidy of {name}' | t: 'staff.feeStructure.row.editAria' : { name: s.name }" (click)="edit(s)">{{ 'Edit' | t: 'staff.feeStructure.row.editButton' }}</button>
@@ -409,7 +433,7 @@ interface SharePreview {
         <p class="add-note">{{ addNote() }}</p>
         <div class="save-bar">
           <span class="muted me-auto">{{ 'Nothing is saved until you press Add Fees.' | t: 'staff.feeStructure.add.saveNote' }}</span>
-          <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="addFees()">{{ 'Add Fees' | t: 'staff.feeStructure.add.addButton' }}</button>
+          <button type="button" class="btn btn-primary" [disabled]="busy() || readOnly()" (click)="addFees()">{{ 'Add Fees' | t: 'staff.feeStructure.add.addButton' }}</button>
         </div>
       </section>
     }
@@ -521,6 +545,12 @@ interface SharePreview {
     .page-head { align-items: flex-end; }
     .fs-type { flex-direction: column; align-items: flex-start; gap: 4px; }
     .fs-type-label { font-size: 12px; font-weight: 600; color: #5f6f70; }
+    .fs-sets { padding-top: 12px; padding-bottom: 12px; }
+    .fs-sets-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+    .fs-set-select { width: auto; min-width: 260px; max-width: 100%; }
+    .fs-set-date { width: auto; }
+    .fs-sets-note { margin: 8px 0 0; font-size: 13px; }
+    .fs-upcoming { margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: #fff4d6; color: #8a6100; font-size: 13px; font-weight: 600; }
 
     /* A card per level: picks the level shown below. */
     .lv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -830,6 +860,19 @@ export class FeeStructurePage {
   protected readonly disabling = signal<{ category: number; name: string; reason: string } | null>(null);
   protected readonly switchError = signal('');
   protected readonly loaded = signal(false);
+  /** The portal's fee sets, oldest first (migration 0112). */
+  protected readonly sets = signal<FeeSet[]>([]);
+  /** The set the Admin chose; null: the set in force today (the server picks it). */
+  private readonly setKey = signal<string | null>(null);
+  /** The set the fees below belong to (from the server). */
+  protected readonly shownSet = signal<FeeSet | null>(null);
+  protected readonly newSet = signal(false);
+  protected newSetFrom = '';
+  protected readonly setPick = computed(() => this.newSet() ? 'new' : (this.setKey() ?? this.shownSet()?.key ?? ''));
+  /** An ended set is history: nothing on it can be changed. */
+  protected readonly readOnly = computed(() => this.shownSet()?.status === 'past');
+  /** The next set after the one in force, while the set in force is shown. */
+  protected readonly upcoming = computed(() => this.shownSet()?.status === 'current' ? (this.sets().find((s) => s.status === 'future') ?? null) : null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -881,7 +924,7 @@ export class FeeStructurePage {
       this.error.set(t('staff.feeStructure.error.scheduleDate', 'Please enter the date from which units pay all three milestones at milestone 1.'));
       return;
     }
-    await this.run(() => this.api.saveSchedule(this.sched.payAll, this.sched.payAll ? this.sched.from : null));
+    await this.run(() => this.api.saveSchedule(this.sched.payAll, this.sched.payAll ? this.sched.from : null, this.setKey()));
   }
 
   protected async addFees(): Promise<void> {
@@ -894,7 +937,7 @@ export class FeeStructurePage {
       certification: this.level(), assessmentFee: a.fee, reward: this.rejected() ? null : (a.reward ?? 0), generalShare: this.rejected() ? null : a.general,
       additionalShares: this.rejected() ? {} : a.additional, alsoTypes: a.alsoOthers ? this.otherTypes() : [],
       ...(this.consultancy ? { levels: this.addLevels() } : {}),
-    }));
+    }, this.setKey()));
   }
 
   protected pickLevel(level: string): void {
@@ -941,11 +984,102 @@ export class FeeStructurePage {
     await this.run(() => this.api.save(this.type(), [{
       certification: f.certification, assessmentFee: this.feeInput, coupon: reward && !this.consultancy ? this.rewardInput : null,
       ...(this.consultancy ? { level: this.hhLevel() } : {}),
-    }]));
+    }], this.setKey()));
   }
 
   protected offOf(category: number): OffCategory | undefined {
     return this.offCategories().find((o) => o.category === category);
+  }
+
+  /** A fee set in the "Date of effect" list: its dates and whether it ended, is in force or is still to come. */
+  protected setLabel(s: FeeSet): string {
+    const status = s.status === 'past' ? t('staff.feeStructure.sets.status.past', 'ended')
+      : s.status === 'future' ? t('staff.feeStructure.sets.status.future', 'future') : t('staff.feeStructure.sets.status.current', 'in force');
+    const from = this.dmy(s.from);
+    const to = this.dmy(s.to);
+    if (!s.from && !s.to) return t('staff.feeStructure.sets.label.always', 'Since the start ({status})', { status });
+    if (!s.from) return t('staff.feeStructure.sets.label.until', 'Until {to} ({status})', { to, status });
+    if (!s.to) return t('staff.feeStructure.sets.label.from', 'From {from} ({status})', { from, status });
+    return t('staff.feeStructure.sets.label.range', '{from} – {to} ({status})', { from, to, status });
+  }
+
+  /** What the chosen set means for the units. */
+  protected setNote(): string {
+    const s = this.shownSet();
+    if (this.newSet()) return t('staff.feeStructure.sets.note.new', 'A new fee set starts with every fee of this portal in force on its date (each enterprise type, level and subsidy category). Change them after adding it; units pay them from that date.');
+    if (!s) return '';
+    if (s.status === 'past') return t('staff.feeStructure.sets.note.past', 'Units paid these fees until {to}. An ended fee set is kept as history and cannot be changed.', { to: this.dmy(s.to) });
+    if (s.status === 'future') return t('staff.feeStructure.sets.note.future', 'Units pay these fees from {from}. Until then they pay the fee set in force. The fees, shares and schedule saved here apply to this set only.', { from: this.dmy(s.from) });
+    return s.to ? t('staff.feeStructure.sets.note.currentUntil', 'Units pay these fees now, until {to}.', { to: this.dmy(s.to) })
+      : t('staff.feeStructure.sets.note.current', 'Units pay these fees now. To change the fees from a later date, choose "+ New fee set".');
+  }
+
+  protected chooseSet(key: string): void {
+    this.success.set('');
+    this.error.set('');
+    if (key === 'new') {
+      this.newSet.set(true);
+      this.newSetFrom = '';
+      return;
+    }
+    this.newSet.set(false);
+    const current = this.sets().find((s) => s.status === 'current')?.key;
+    this.setKey.set(key === current ? null : key);
+    this.add = FeeStructurePage.emptyAdd();
+    void this.load();
+  }
+
+  protected cancelNewSet(): void {
+    this.newSet.set(false);
+    this.newSetFrom = '';
+  }
+
+  protected async addSet(): Promise<void> {
+    const from = this.newSetFrom;
+    if (!from) {
+      this.error.set(t('staff.feeStructure.sets.error.date', 'Please enter the date of effect.'));
+      return;
+    }
+    if (from < this.today) {
+      this.error.set(t('staff.feeStructure.sets.error.past', 'The date of effect cannot be in the past.'));
+      return;
+    }
+    if (!(await this.confirms.ask({
+      title: t('staff.feeStructure.sets.confirm.title', 'Add a Fee Set from {date}?', { date: this.dmy(from) }),
+      message: t('staff.feeStructure.sets.confirm.message', 'Every fee of this portal in force on {date} is copied into the new set. You then change its fees; units pay them from {date}.', { date: this.dmy(from) }),
+      confirmLabel: t('staff.feeStructure.sets.confirm.button', 'Add Fee Set'),
+    }))) return;
+    await this.run(async () => {
+      const r = await firstValueFrom(this.api.addSet(from));
+      this.newSet.set(false);
+      this.newSetFrom = '';
+      this.setKey.set(from === this.today ? null : from);
+      return r;
+    });
+  }
+
+  protected async deleteSet(): Promise<void> {
+    const s = this.shownSet();
+    if (!s || s.status !== 'future') return;
+    if (!(await this.confirms.ask({
+      title: t('staff.feeStructure.sets.delete.title', 'Delete the Fee Set from {date}?', { date: this.dmy(s.from) }),
+      message: t('staff.feeStructure.sets.delete.message', 'Its fees are deleted and the fee set before it stays in force after {date}. This cannot be undone.', { date: this.dmy(s.from) }),
+      confirmLabel: t('staff.feeStructure.sets.delete.button', 'Delete'),
+      danger: true,
+    }))) return;
+    await this.run(async () => {
+      const r = await firstValueFrom(this.api.deleteSet(s.key));
+      this.setKey.set(null);
+      return r;
+    });
+  }
+
+  private async loadSets(): Promise<void> {
+    try {
+      this.sets.set((await firstValueFrom(this.api.sets())).sets ?? []);
+    } catch {
+      this.sets.set([]);
+    }
   }
 
   private async loadSwitches(): Promise<void> {
@@ -990,7 +1124,7 @@ export class FeeStructurePage {
         certification: this.level(), category: e.category, allLevels: e.allLevels,
         baseShare: e.category === 0 ? e.base : null, additionalShare: e.category === 0 ? null : e.additional,
         ...(this.consultancy ? { level: this.hhLevel() } : {}),
-      }));
+      }, this.setKey()));
       this.editing.set(null);
       return r;
     });
@@ -1024,7 +1158,9 @@ export class FeeStructurePage {
     this.error.set('');
     try {
       void this.loadSwitches();
-      const res = await firstValueFrom(this.api.fees(this.type()));
+      void this.loadSets();
+      const res = await firstValueFrom(this.api.fees(this.type(), this.setKey()));
+      this.shownSet.set(res.set ?? null);
       this.levelFees.set(res.levels);
       this.rows.set(res.rows);
       this.schedule.set(res.schedule ?? null);

@@ -384,4 +384,109 @@ public sealed class FeesTests : IDisposable
         Assert.Equal(message, await r.ProblemTitle());
         Assert.Empty(Inserts());
     }
+
+    // ---- fee sets by date of effect (migration 0112) -------------------------------------------
+
+    private static readonly DateTime Today = DateTime.Today;
+    private static string Day(DateTime d) => d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Three sets: the initial one ended 10 days ago, one in force since then, one starting in 20 days.</summary>
+    private void ThreeSets()
+    {
+        _host.Sql.Queries[FeeSets.SetsSql] = _ => new object[]
+        {
+            new { EffectiveFrom = (DateTime?)null, EffectiveTo = (DateTime?)Today.AddDays(-11), Rows = 4 },
+            new { EffectiveFrom = (DateTime?)Today.AddDays(-10), EffectiveTo = (DateTime?)Today.AddDays(19), Rows = 4 },
+            new { EffectiveFrom = (DateTime?)Today.AddDays(20), EffectiveTo = (DateTime?)null, Rows = 4 },
+        };
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ =>
+        {
+            Dictionary<string, object?> R(int id, decimal fee, DateTime? from, DateTime? to)
+            {
+                var r = Row(id, "Micro", "Bronze", fee, null, 80m);
+                r["EffectiveFrom"] = from;
+                r["EffectiveTo"] = to;
+                return r;
+            }
+            return FakeSql.Sets([R(1, 8000m, null, Today.AddDays(-11)), R(11, 10000m, Today.AddDays(-10), Today.AddDays(19)), R(21, 12000m, Today.AddDays(20), null)]);
+        };
+        _host.Sql.Queries[FeeSets.ColumnsSql] = _ => new object[] { "EnterpriseTypee", "Certification", "AssessmentFee" };
+    }
+
+    [Fact]
+    public async Task Lists_the_fee_sets_and_shows_the_one_in_force_unless_another_is_chosen()
+    {
+        ThreeSets();
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var sets = (await admin.GetFromJsonAsync<JsonElement>("/api/staff/fees/sets")).GetProperty("sets");
+        Assert.Equal(["initial:past", $"{Day(Today.AddDays(-10))}:current", $"{Day(Today.AddDays(20))}:future"],
+            sets.EnumerateArray().Select(s => s.GetProperty("key").GetString() + ":" + s.GetProperty("status").GetString()));
+
+        var current = await admin.GetFromJsonAsync<JsonElement>("/api/staff/fees/Micro");
+        Assert.Equal(11, current.GetProperty("rows")[0].GetProperty("id").GetInt32());
+        Assert.Equal("current", current.GetProperty("set").GetProperty("status").GetString());
+        var past = await admin.GetFromJsonAsync<JsonElement>("/api/staff/fees/Micro?set=initial");
+        Assert.Equal(1, Assert.Single(past.GetProperty("rows").EnumerateArray()).GetProperty("id").GetInt32());
+        var future = await admin.GetFromJsonAsync<JsonElement>($"/api/staff/fees/Micro?set={Day(Today.AddDays(20))}");
+        Assert.Equal(12000m, Assert.Single(future.GetProperty("rows").EnumerateArray()).GetProperty("assessmentFee").GetDecimal());
+        Assert.Equal("This fee set does not exist. Please choose the date of effect again.", await (await admin.GetAsync("/api/staff/fees/Micro?set=2001-01-01")).ProblemTitle());
+    }
+
+    [Fact]
+    public async Task An_ended_fee_set_cannot_be_changed_and_a_future_one_changes_only_its_rows()
+    {
+        ThreeSets();
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var levels = new { levels = new[] { new { certification = "Bronze", assessmentFee = 15000m, coupon = (decimal?)null } } };
+        var r = await admin.PutAsJsonAsync("/api/staff/fees/Micro?set=initial", levels);
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.StartsWith($"The fee set that ended on {Today.AddDays(-11):dd-MM-yyyy} can no longer be changed.", await r.ProblemTitle());
+        Assert.Empty(Updates());
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"/api/staff/fees/Micro?set={Day(Today.AddDays(20))}", levels)).StatusCode);
+        Assert.Equal("21", FakeSql.Arg(Assert.Single(Updates()).Args, "Id"));
+    }
+
+    [Fact]
+    public async Task A_new_fee_set_copies_the_fees_in_force_on_its_date()
+    {
+        ThreeSets();
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal("The date of effect cannot be in the past.", await (await admin.PostAsJsonAsync("/api/staff/fees/sets", new { from = Day(Today.AddDays(-1)) })).ProblemTitle());
+        Assert.Equal($"A fee set already starts on {Today.AddDays(20):dd-MM-yyyy}.", await (await admin.PostAsJsonAsync("/api/staff/fees/sets", new { from = Day(Today.AddDays(20)) })).ProblemTitle());
+        Assert.Equal("Please enter the date of effect.", await (await admin.PostAsJsonAsync("/api/staff/fees/sets", new { from = "" })).ProblemTitle());
+
+        var r = await admin.PostAsJsonAsync("/api/staff/fees/sets", new { from = Day(Today.AddDays(5)) });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var copy = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO dbo.AssessmentFee", StringComparison.Ordinal));
+        Assert.Equal(FeeSets.CopySql(["EnterpriseTypee", "Certification", "AssessmentFee"]), copy.Name);
+        Assert.Contains("[EnterpriseTypee], [Certification], [AssessmentFee], EffectiveFrom, EffectiveTo", copy.Name);
+        Assert.Equal(Today.AddDays(5), (DateTime)copy.Args!.GetType().GetProperty("From")!.GetValue(copy.Args)!);
+        Assert.Equal(Today.AddDays(20), (DateTime?)copy.Args.GetType().GetProperty("Next")!.GetValue(copy.Args));
+        Assert.Throws<InvalidOperationException>(() => FeeSets.CopySql(["Fee]; DROP TABLE x;--"]));
+    }
+
+    [Fact]
+    public async Task Only_a_fee_set_that_has_not_started_can_be_deleted()
+    {
+        ThreeSets();
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal("Only a fee set that has not started yet can be deleted.", await (await admin.DeleteAsync($"/api/staff/fees/sets/{Day(Today.AddDays(-10))}")).ProblemTitle());
+        Assert.Equal("This fee set does not exist.", await (await admin.DeleteAsync("/api/staff/fees/sets/initial")).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == FeeSets.DeleteSql);
+        Assert.Equal(HttpStatusCode.OK, (await admin.DeleteAsync($"/api/staff/fees/sets/{Day(Today.AddDays(20))}")).StatusCode);
+        Assert.Single(_host.Sql.Calls, c => c.Name == FeeSets.DeleteSql);
+    }
+
+    [Fact]
+    public void Fee_set_status_follows_today()
+    {
+        var today = new DateOnly(2026, 11, 23);
+        var sets = FeeSets.Build([new FeeSets.SetRow { EffectiveFrom = null, EffectiveTo = new DateTime(2026, 11, 22), Rows = 2 },
+            new FeeSets.SetRow { EffectiveFrom = new DateTime(2026, 11, 23), Rows = 2 }], today);
+        Assert.Equal(["past", "current"], sets.Select(s => s.Status));
+        Assert.Equal("2026-11-23", FeeSets.Pick(sets, null)!.Key);
+        Assert.Equal("initial", FeeSets.On(sets, new DateOnly(2026, 1, 1))!.Key);
+        Assert.Equal("initial", Assert.Single(FeeSets.Build([], today)).Key);
+    }
 }

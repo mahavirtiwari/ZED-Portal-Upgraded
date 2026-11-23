@@ -10,6 +10,8 @@ import { ConfirmService } from '../confirm-dialog';
 /** The subsidy switches the page reads beside the fees (2026-11-13): none switched off. */
 function flushSwitches(http: HttpTestingController): void {
   http.match('/api/staff/fees/subsidy-switches').forEach((r) => r.flush({ ready: true, off: [] }));
+  // 2026-11-23: the fee sets the page reads beside the fees (one set, in force).
+  http.match('/api/staff/fees/sets').forEach((r) => r.flush({ sets: [{ key: 'initial', from: null, to: null, status: 'current', rows: 5 }] }));
 }
 
 function row(id: number, certification: string, category: number, pct: number, fee: number, coupon: number | null = null): FeeRow {
@@ -284,6 +286,80 @@ describe('FeeStructurePage', () => {
     http.expectOne('/api/staff/fees/Micro').flush(micro);
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Fees added');
+  });
+
+  describe('fee sets by date of effect', () => {
+    const iso = (days: number) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const dmy = (v: string) => v.split('-').reverse().join('-');
+    const past = { key: 'initial', from: null, to: iso(-11), status: 'past' as const, rows: 5 };
+    const current = { key: iso(-10), from: iso(-10), to: iso(19), status: 'current' as const, rows: 5 };
+    const future = { key: iso(20), from: iso(20), to: null, status: 'future' as const, rows: 5 };
+    const select = () => el.querySelector('#fs-set') as HTMLSelectElement;
+    const choose = async (value: string) => { select().value = value; select().dispatchEvent(new Event('change')); await settle(); };
+
+    beforeEach(async () => {
+      http.expectOne('/api/staff/fees/sets').flush({ sets: [past, current, future] });
+      await settle();
+    });
+
+    it('lists the sets and shows the set in force, with the next one announced', async () => {
+      // The first load had no set from the server; the page shows the set the server picks.
+      expect([...select().options].map((o) => o.textContent!.trim())).toEqual([
+        `Until ${dmy(past.to)} (ended)`, `${dmy(current.from)} – ${dmy(current.to)} (in force)`, `From ${dmy(future.from)} (future)`, '+ New fee set']);
+    });
+
+    it('shows an ended set read-only', async () => {
+      await choose('initial');
+      http.expectOne((r) => r.urlWithParams === '/api/staff/fees/Micro?set=initial').flush({ ...micro, set: past });
+      await settle();
+      expect(el.querySelector('[data-set-note]')!.textContent).toContain(`Units paid these fees until ${dmy(past.to)}`);
+      expect((el.querySelector('#fs-fee') as HTMLInputElement).disabled).toBe(true);
+      expect(button('Save Fee').disabled).toBe(true);
+      expect(button('Edit')).toBeUndefined();
+    });
+
+    it('changes a future set only, and deletes it', async () => {
+      vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
+      await choose(future.key);
+      http.expectOne((r) => r.urlWithParams === `/api/staff/fees/Micro?set=${future.key}`).flush({ ...micro, set: future });
+      await settle();
+      expect(el.querySelector('[data-set-note]')!.textContent).toContain(`Units pay these fees from ${dmy(future.from!)}`);
+      await typeIn('#fs-fee', '12000');
+      button('Save Fee').click();
+      await settle();
+      const put = http.expectOne((r) => r.method === 'PUT' && r.urlWithParams === `/api/staff/fees/Micro?set=${future.key}`);
+      expect(put.request.body.levels[0].assessmentFee).toBe(12000);
+      put.flush({ message: 'Data updated.' });
+      await settle();
+      http.expectOne((r) => r.urlWithParams === `/api/staff/fees/Micro?set=${future.key}`).flush({ ...micro, set: future });
+      await settle();
+
+      button('Delete Fee Set').click();
+      await settle();
+      http.expectOne((r) => r.method === 'DELETE' && r.url === `/api/staff/fees/sets/${future.key}`).flush({ message: 'Deleted.' });
+      await settle();
+      http.expectOne('/api/staff/fees/Micro').flush({ ...micro, set: current });
+      await settle();
+      expect(el.querySelector('.alert-success')!.textContent).toContain('Deleted.');
+    });
+
+    it('adds a new set from a date and opens it', async () => {
+      vi.spyOn(TestBed.inject(ConfirmService), 'ask').mockResolvedValue(true);
+      await choose('new');
+      button('Add Fee Set').click();
+      await settle();
+      expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter the date of effect.');
+      await typeIn('#fs-set-from', iso(5));
+      button('Add Fee Set').click();
+      await settle();
+      const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/fees/sets');
+      expect(post.request.body).toEqual({ from: iso(5) });
+      post.flush({ message: 'New fee set added.' });
+      await settle();
+      http.expectOne((r) => r.urlWithParams === `/api/staff/fees/Micro?set=${iso(5)}`).flush({ ...micro, set: { key: iso(5), from: iso(5), to: iso(19), status: 'future', rows: 5 } });
+      await settle();
+      expect(el.querySelector('.alert-success')!.textContent).toContain('New fee set added.');
+    });
   });
 });
 

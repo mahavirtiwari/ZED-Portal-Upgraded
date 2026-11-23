@@ -221,7 +221,8 @@ public sealed partial class RemoteAssessmentController(
     /// <summary>The surveillance fee of a unit's level and enterprise type (ZED_SURVEILLANCE AssessmentFee, the General row).</summary>
     public const string SurveillanceFeeSql =
         "SELECT TOP (1) F.AssessmentFee FROM dbo.AssessmentFee F JOIN dbo.Msme M ON M.EnterpriseTypee = F.EnterpriseTypee " +
-        "WHERE M.ZedId = @ZedId AND F.Certification = @Level AND F.Coupon IS NULL AND ISNULL(F.SpecialCategory, 0) = 0 ORDER BY F.Id;";
+        "WHERE M.ZedId = @ZedId AND F.Certification = @Level AND F.Coupon IS NULL AND ISNULL(F.SpecialCategory, 0) = 0 " +
+        "AND CAST(GETDATE() AS date) BETWEEN ISNULL(F.EffectiveFrom, '19000101') AND ISNULL(F.EffectiveTo, '99991231') ORDER BY F.Id;";
 
     public sealed record NcReview(int Round, bool Submitted);
 

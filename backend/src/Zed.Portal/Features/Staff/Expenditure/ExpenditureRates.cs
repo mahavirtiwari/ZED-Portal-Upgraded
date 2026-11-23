@@ -76,7 +76,8 @@ public static class ExpenditureRates
     /// </summary>
     internal const string MilestoneCountSql =
         "SELECT Certification AS Level, MAX(MileStone) AS Milestones FROM ZED_CONSULTANT.dbo.AssessmentFee " +
-        "WHERE MileStone IS NOT NULL AND ISNULL(IsActive, 1) = 1 AND PayAllAtMilestone1 IS NULL GROUP BY Certification;";
+        "WHERE MileStone IS NOT NULL AND ISNULL(IsActive, 1) = 1 AND PayAllAtMilestone1 IS NULL " +
+        "AND CAST(GETDATE() AS date) BETWEEN ISNULL(EffectiveFrom, '19000101') AND ISNULL(EffectiveTo, '99991231') GROUP BY Certification;";
 
     public sealed class MilestoneCountRow
     {

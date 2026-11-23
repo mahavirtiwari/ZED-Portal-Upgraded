@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9512,
+  "count": 9539,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -57994,6 +57994,358 @@
       "page": "feeStructure",
       "pageName": "Fee structure",
       "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.addButton",
+      "standard": "Add Fee Set",
+      "kind": "button",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.cancelButton",
+      "standard": "Cancel",
+      "kind": "button",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.confirm.button",
+      "standard": "Add Fee Set",
+      "kind": "button",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.confirm.message",
+      "standard": "Every fee of this portal in force on {date} is copied into the new set. You then change its fees; units pay them from {date}.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.confirm.title",
+      "standard": "Add a Fee Set from {date}?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.dateAria",
+      "standard": "Date of effect of the new fee set",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.delete.button",
+      "standard": "Delete",
+      "kind": "button",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.delete.message",
+      "standard": "Its fees are deleted and the fee set before it stays in force after {date}. This cannot be undone.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.delete.title",
+      "standard": "Delete the Fee Set from {date}?",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "date"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.deleteButton",
+      "standard": "Delete Fee Set",
+      "kind": "button",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.error.date",
+      "standard": "Please enter the date of effect.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.error.past",
+      "standard": "The date of effect cannot be in the past.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.label",
+      "standard": "Date of effect",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.label.always",
+      "standard": "Since the start ({status})",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "status"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.label.from",
+      "standard": "From {from} ({status})",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "from",
+        "status"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.label.range",
+      "standard": "{from} – {to} ({status})",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "from",
+        "to",
+        "status"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.label.until",
+      "standard": "Until {to} ({status})",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "to",
+        "status"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.newOption",
+      "standard": "+ New fee set",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.note.current",
+      "standard": "Units pay these fees now. To change the fees from a later date, choose \"+ New fee set\".",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.note.currentUntil",
+      "standard": "Units pay these fees now, until {to}.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "to"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.note.future",
+      "standard": "Units pay these fees from {from}. Until then they pay the fee set in force. The fees, shares and schedule saved here apply to this set only.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "from"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.note.new",
+      "standard": "A new fee set starts with every fee of this portal in force on its date (each enterprise type, level and subsidy category). Change them after adding it; units pay them from that date.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.note.past",
+      "standard": "Units paid these fees until {to}. An ended fee set is kept as history and cannot be changed.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "to"
+      ],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.status.current",
+      "standard": "in force",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.status.future",
+      "standard": "future",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.status.past",
+      "standard": "ended",
+      "kind": "label",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [],
+      "files": [
+        "staff/fees/fee-structure.ts"
+      ]
+    },
+    {
+      "key": "staff.feeStructure.sets.upcoming",
+      "standard": "New fees from {date}: choose that date above to see or change them.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "feeStructure",
+      "pageName": "Fee structure",
+      "placeholders": [
+        "date"
+      ],
       "files": [
         "staff/fees/fee-structure.ts"
       ]

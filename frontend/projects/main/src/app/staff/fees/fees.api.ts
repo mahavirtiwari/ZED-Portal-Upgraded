@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
@@ -57,6 +57,20 @@ export interface PaymentSchedule {
   prepared: boolean;
 }
 
+/**
+ * A fee set (migration 0112): every fee of the portal with the same date of effect, as Expenditure rates keeps its rate sets.
+ * key is 'initial' (the set the portal started with) or the date of effect; it goes back to the API as ?set=.
+ */
+export interface FeeSet {
+  key: string;
+  /** yyyy-MM-dd; null: since the start. */
+  from: string | null;
+  /** yyyy-MM-dd, the last day; null: no later set yet. */
+  to: string | null;
+  status: 'past' | 'current' | 'future';
+  rows: number;
+}
+
 export interface FeesResponse {
   enterpriseType: string;
   levels: LevelFee[];
@@ -64,6 +78,8 @@ export interface FeesResponse {
   /** "Certification", or "MileStone" on Consultancy (levels[].certification is then the milestone). */
   groupBy?: string;
   schedule?: PaymentSchedule | null;
+  /** The fee set shown. */
+  set?: FeeSet | null;
 }
 
 export interface LevelRequest {
@@ -111,24 +127,44 @@ export interface OffCategory {
 export class FeesApi {
   private readonly http = inject(HttpClient);
 
-  fees(type: string): Observable<FeesResponse> {
-    return this.http.get<FeesResponse>(`/api/staff/fees/${encodeURIComponent(type)}`);
+  /** ?set= for a chosen fee set; none: the set in force today. */
+  private static params(set?: string | null): { params?: HttpParams } {
+    return set ? { params: new HttpParams().set('set', set) } : {};
   }
 
-  preview(type: string, levels: LevelRequest[]): Observable<FeesResponse> {
-    return this.http.post<FeesResponse>(`/api/staff/fees/${encodeURIComponent(type)}/preview`, { levels });
+  fees(type: string, set?: string | null): Observable<FeesResponse> {
+    return this.http.get<FeesResponse>(`/api/staff/fees/${encodeURIComponent(type)}`, FeesApi.params(set));
   }
 
-  save(type: string, levels: LevelRequest[]): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}`, { levels });
+  preview(type: string, levels: LevelRequest[], set?: string | null): Observable<FeesResponse> {
+    return this.http.post<FeesResponse>(`/api/staff/fees/${encodeURIComponent(type)}/preview`, { levels }, FeesApi.params(set));
   }
 
-  add(type: string, req: AddFeesRequest): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/add`, req);
+  save(type: string, levels: LevelRequest[], set?: string | null): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}`, { levels }, FeesApi.params(set));
   }
 
-  saveSubsidy(type: string, req: SubsidyRequest): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/subsidy`, req);
+  add(type: string, req: AddFeesRequest, set?: string | null): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/add`, req, FeesApi.params(set));
+  }
+
+  saveSubsidy(type: string, req: SubsidyRequest, set?: string | null): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/subsidy`, req, FeesApi.params(set));
+  }
+
+  /** The fee sets of the portal, oldest first. */
+  sets(): Observable<{ sets: FeeSet[] }> {
+    return this.http.get<{ sets: FeeSet[] }>('/api/staff/fees/sets');
+  }
+
+  /** A new fee set from a date (yyyy-MM-dd): a copy of the fees in force that day. */
+  addSet(from: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>('/api/staff/fees/sets', { from });
+  }
+
+  /** Deletes a fee set that has not started yet. */
+  deleteSet(key: string): Observable<MessageResponse> {
+    return this.http.delete<MessageResponse>(`/api/staff/fees/sets/${encodeURIComponent(key)}`);
   }
 
   /** The switched-off subsidy categories; ready is false before migration 0070. */
@@ -142,7 +178,7 @@ export class FeesApi {
   }
 
   /** Consultancy: milestone by milestone, or all three at milestone 1 from a date (Micro, Small and Medium alike). */
-  saveSchedule(payAllAtMilestone1: boolean, from: string | null): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>('/api/staff/fees/schedule', { payAllAtMilestone1, from });
+  saveSchedule(payAllAtMilestone1: boolean, from: string | null, set?: string | null): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>('/api/staff/fees/schedule', { payAllAtMilestone1, from }, FeesApi.params(set));
   }
 }

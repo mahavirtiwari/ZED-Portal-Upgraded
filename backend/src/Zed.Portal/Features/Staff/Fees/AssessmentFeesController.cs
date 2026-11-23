@@ -50,8 +50,9 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     public sealed record LevelFee(string Certification, decimal? AssessmentFee, decimal? Coupon, bool HasCouponRows, string? Level = null);
     /// <param name="GroupBy">"Certification" (one fee per level), or "MileStone" on Consultancy (Levels[].Certification is then the milestone).</param>
     /// <param name="Schedule">Consultancy: how units pay the three milestones.</param>
+    /// <param name="Set">The fee set shown (migration 0112): its dates and whether it is past, in force or future.</param>
     public sealed record FeesResponse(string EnterpriseType, IReadOnlyList<LevelFee> Levels, IReadOnlyList<FeeRow> Rows, string GroupBy = "Certification",
-        PaymentSchedule? Schedule = null);
+        PaymentSchedule? Schedule = null, FeeSets.FeeSet? Set = null);
 
     /// <param name="PayAllAtMilestone1">Units starting handholding from <paramref name="From"/> pay all three milestones at milestone 1.</param>
     /// <param name="Prepared">The milestone-1 rows of that schedule exist (made when it is first switched on).</param>
@@ -69,16 +70,79 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         _ => EnterpriseTypes,
     });
 
-    private FeesResponse Response(string type, List<FeeRow> rows) =>
-        ByMilestone ? new FeesResponse(type, MilestoneSummary(rows), rows, "MileStone", ScheduleOf(rows)) : new FeesResponse(type, Summary(rows), rows);
+    private FeesResponse Response(string type, List<FeeRow> rows, FeeSets.FeeSet set) =>
+        ByMilestone ? new FeesResponse(type, MilestoneSummary(rows), rows, "MileStone", ScheduleOf(rows), set) : new FeesResponse(type, Summary(rows), rows, Set: set);
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    // ---- fee sets (migration 0112) -----------------------------------------------------------
+
+    private async Task<List<FeeSets.FeeSet>> SetsAsync(CancellationToken ct) =>
+        FeeSets.Build(await db.QuerySqlAsync<FeeSets.SetRow>(FeeSets.SetsSql, null, ct), Today);
+
+    /// <summary>The set a request means (?set=; none: the set in force today), or the error to answer with.</summary>
+    private async Task<(FeeSets.FeeSet? Set, ActionResult? Error)> SetAsync(string? key, bool forWrite, CancellationToken ct)
+    {
+        var set = FeeSets.Pick(await SetsAsync(ct), key);
+        if (set is null) return (null, this.Problem400("This fee set does not exist. Please choose the date of effect again."));
+        if (forWrite && set.Status == FeeSets.Past)
+            return (null, this.Problem400($"The fee set that ended on {set.ToDate:dd-MM-yyyy} can no longer be changed. Please choose the fee set in force or add a new one."));
+        return (set, null);
+    }
+
+    public sealed record SetsResponse(IReadOnlyList<FeeSets.FeeSet> Sets);
+
+    /// <summary>The fee sets of the portal, oldest first (the page's "Date of effect").</summary>
+    [HttpGet("sets")]
+    public async Task<SetsResponse> Sets(CancellationToken ct) => new(await SetsAsync(ct));
+
+    /// <param name="From">The date of effect of the new set (yyyy-MM-dd): today or later.</param>
+    public sealed record NewSetRequest(string? From);
+
+    /// <summary>
+    /// A new fee set from a date: a copy of every fee of the portal in force that day (each enterprise type, level, milestone
+    /// and subsidy category), which the Admin then changes. The set before it ends the day before; a later set keeps its date.
+    /// </summary>
+    [HttpPost("sets")]
+    public async Task<ActionResult<MessageResponse>> AddSet(NewSetRequest req, CancellationToken ct)
+    {
+        if (!DateOnly.TryParseExact(req.From?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var from))
+            return this.Problem400("Please enter the date of effect.");
+        if (from < Today) return this.Problem400("The date of effect cannot be in the past.");
+        if (from.Year > 2100) return this.Problem400("Please enter a valid date of effect.");
+        var sets = await SetsAsync(ct);
+        if (sets.Any(s => s.FromDate == from)) return this.Problem400($"A fee set already starts on {from:dd-MM-yyyy}.");
+        var source = FeeSets.On(sets, from);
+        if (source is null || source.Rows == 0) return this.Problem400("There are no fees to copy yet. Please add the fees first.");
+        var next = sets.Where(s => s.FromDate > from).Select(s => s.FromDate).Min();
+        var columns = await db.QuerySqlAsync<string>(FeeSets.ColumnsSql, null, ct);
+        await db.ExecuteSqlAsync(FeeSets.CopySql(columns), new { From = from.ToDateTime(TimeOnly.MinValue), Next = next?.ToDateTime(TimeOnly.MinValue) }, ct);
+        loggers.CreateLogger(AuditCategory).LogWarning("Fee set from {From} added by {Actor} (system {System}), copied from the set {Source} ({Rows} row(s)); next set {Next}",
+            from, UserId, host.System, source.Key, source.Rows, next);
+        return new MessageResponse($"New fee set from {from:dd-MM-yyyy} added with the fees in force that day. Change them below; units pay them from {from:dd-MM-yyyy}.");
+    }
+
+    /// <summary>Removes a fee set that has not started yet; the set before it then runs on.</summary>
+    [HttpDelete("sets/{key}")]
+    public async Task<ActionResult<MessageResponse>> DeleteSet(string key, CancellationToken ct)
+    {
+        var set = FeeSets.Pick(await SetsAsync(ct), key);
+        if (set?.FromDate is not { } from) return this.Problem400("This fee set does not exist.");
+        if (set.Status != FeeSets.Future) return this.Problem400("Only a fee set that has not started yet can be deleted.");
+        await db.ExecuteSqlAsync(FeeSets.DeleteSql, new { From = from.ToDateTime(TimeOnly.MinValue) }, ct);
+        loggers.CreateLogger(AuditCategory).LogWarning("Fee set from {From} deleted by {Actor} (system {System}): {Rows} row(s)", from, UserId, host.System, set.Rows);
+        return new MessageResponse($"The fee set from {from:dd-MM-yyyy} was deleted.");
+    }
 
     [HttpGet("{enterpriseType}")]
-    public async Task<ActionResult<FeesResponse>> Get(string enterpriseType, CancellationToken ct)
+    public async Task<ActionResult<FeesResponse>> Get(string enterpriseType, [FromQuery] string? set, CancellationToken ct)
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
-        var rows = await LoadAsync(type, ct);
-        return Response(type, rows);
+        var (fs, error) = await SetAsync(set, false, ct);
+        if (error is not null) return error;
+        var rows = await LoadAsync(type, fs!, ct);
+        return Response(type, rows, fs!);
     }
 
     /// <param name="Level">Consultancy: the handholding level whose milestone fee changes (null: Silver and Gold alike).</param>
@@ -87,26 +151,30 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
 
     /// <summary>The rows as they would be saved, without saving (the page shows the computed amounts while editing).</summary>
     [HttpPost("{enterpriseType}/preview")]
-    public async Task<ActionResult<FeesResponse>> Preview(string enterpriseType, FeesRequest req, CancellationToken ct)
+    public async Task<ActionResult<FeesResponse>> Preview(string enterpriseType, FeesRequest req, [FromQuery] string? set, CancellationToken ct)
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
-        var current = await LoadAsync(type, ct);
+        var (fs, setError) = await SetAsync(set, false, ct);
+        if (setError is not null) return setError;
+        var current = await LoadAsync(type, fs!, ct);
         var (updated, error) = ByMilestone ? ApplyConsultancy(current, req) : Apply(type, current, req);
         if (error is not null) return this.Problem400(error);
-        return Response(type, updated!);
+        return Response(type, updated!, fs!);
     }
 
     [HttpPut("{enterpriseType}")]
-    public async Task<ActionResult<MessageResponse>> Update(string enterpriseType, FeesRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> Update(string enterpriseType, FeesRequest req, [FromQuery] string? set, CancellationToken ct)
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
-        var current = await LoadAsync(type, ct);
+        var (fs, setError) = await SetAsync(set, true, ct);
+        if (setError is not null) return setError;
+        var current = await LoadAsync(type, fs!, ct);
         var (updated, error) = ByMilestone ? ApplyConsultancy(current, req) : Apply(type, current, req);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
-        loggers.CreateLogger(AuditCategory).LogInformation("Assessment fees of {EnterpriseType} saved by {Actor}: {Changed} row(s) changed", type, UserId, changed);
+        loggers.CreateLogger(AuditCategory).LogInformation("Assessment fees of {EnterpriseType} (fee set {Set}) saved by {Actor}: {Changed} row(s) changed", type, fs!.Key, UserId, changed);
         return new MessageResponse(changed == 0 ? "No changes to save." : "Data updated.");
     }
 
@@ -134,17 +202,21 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// milestone (its Silver and Gold rows alike, as its fee), or for every milestone.
     /// </summary>
     [HttpPut("{enterpriseType}/subsidy")]
-    public async Task<ActionResult<MessageResponse>> UpdateSubsidy(string enterpriseType, SubsidyRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> UpdateSubsidy(string enterpriseType, SubsidyRequest req, [FromQuery] string? set, CancellationToken ct)
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
         if (IsFullFee(type)) return this.Problem400(type == "Rejected" ? "Rejected units get no subsidy." : $"{type} fees have no subsidy.");
-        var current = await LoadAsync(type, ct);
+        var (fs, setError) = await SetAsync(set, true, ct);
+        if (setError is not null) return setError;
+        var current = await LoadAsync(type, fs!, ct);
         var (updated, error) = ByMilestone ? ApplyConsultancySubsidy(current, req) : ApplySubsidy(current, req);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
-        // 2026-11-17 (the user): the Andhra Pradesh state fee rows take the share too (ZED_SURVEILLANCE has none).
-        var stateChanged = host.System == PortalSystem.Surveillance ? 0 : await StateFeeSubsidy.ApplyAsync(db, type, current, updated!, ByMilestone, ct);
+        // 2026-11-17 (the user): the Andhra Pradesh state fee rows take the share too (ZED_SURVEILLANCE has none). They have no
+        // date of effect (StateAssessmentFee), so only a change of the set in force reaches them.
+        var stateChanged = host.System == PortalSystem.Surveillance || fs!.Status != FeeSets.Current
+            ? 0 : await StateFeeSubsidy.ApplyAsync(db, type, current, updated!, ByMilestone, ct);
         loggers.CreateLogger(AuditCategory).LogInformation(
             "Subsidy share of {EnterpriseType} {Certification} category {Category} saved by {Actor} (all levels {AllLevels}): {Changed} row(s) changed, {StateChanged} state row(s)",
             type, req.AllLevels ? "all" : req.Certification, req.Category, UserId, req.AllLevels, changed, stateChanged);
@@ -169,10 +241,12 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// reward (Coupon IS NULL / IS NOT NULL); Rejected units one row at full fee. Every amount comes from <see cref="FeeCalculator"/>.
     /// </summary>
     [HttpPost("{enterpriseType}/add")]
-    public async Task<ActionResult<MessageResponse>> Add(string enterpriseType, AddRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> Add(string enterpriseType, AddRequest req, [FromQuery] string? set, CancellationToken ct)
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
+        var (fs, setError) = await SetAsync(set, true, ct);
+        if (setError is not null) return setError;
         var group = ByMilestone
             ? ConsultancyMilestones.FirstOrDefault(m => m == req.Certification?.Trim())
             : Canonical(req.Certification, Levels);
@@ -187,7 +261,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var skipped = new List<string>();
         foreach (var t in types)
         {
-            var current = await LoadAsync(t, ct);
+            var current = await LoadAsync(t, fs!, ct);
             if (current.Any(r => !PayAllRows.IsPayAll(r) && (ByMilestone
                     ? Same(r.MileStone, group) && levels!.Any(l => Same(r.Certification, l))
                     : Same(r.Certification, group))))
@@ -198,11 +272,11 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             }
             var (rows, error) = NewRows(t, group, req, host.System);
             if (error is not null) return this.Problem400(error);
-            await InsertAsync(rows!, ct);
+            await InsertAsync(rows!, fs!, ct);
             added.Add(t);
             // The schedule "pay all at milestone 1" is on: the new milestone may complete a level's three.
             if (ByMilestone && ScheduleOf(current) is { PayAllAtMilestone1: true, From: { } from })
-                await AddPayAllRowsAsync(t, from, ct);
+                await AddPayAllRowsAsync(t, from, fs!, ct);
             loggers.CreateLogger(AuditCategory).LogInformation(
                 "Fees of {EnterpriseType} {Group} added by {Actor} (system {System}): {Rows} row(s), fee {Fee}, reward {Reward}, general share {Share}",
                 t, group, UserId, host.System, rows!.Count, req.AssessmentFee, req.Reward, req.GeneralShare);
@@ -252,12 +326,14 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// a unit that paid all three still has nothing more to pay.
     /// </summary>
     [HttpPut("schedule")]
-    public async Task<ActionResult<MessageResponse>> UpdateSchedule(ScheduleRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> UpdateSchedule(ScheduleRequest req, [FromQuery] string? set, CancellationToken ct)
     {
         if (!ByMilestone) return NotFound();
+        var (fs, setError) = await SetAsync(set, true, ct);
+        if (setError is not null) return setError;
         var today = DateOnly.FromDateTime(DateTime.Now);
         var before = new List<PaymentSchedule>();
-        foreach (var t in ConsultancyEnterpriseTypes) before.Add(ScheduleOf(await LoadAsync(t, ct)));
+        foreach (var t in ConsultancyEnterpriseTypes) before.Add(ScheduleOf(await LoadAsync(t, fs!, ct)));
         DateOnly? from = null;
         if (req.PayAllAtMilestone1)
         {
@@ -269,11 +345,11 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var incomplete = new List<string>();
         foreach (var t in ConsultancyEnterpriseTypes)
         {
-            if (from is { } start) await AddPayAllRowsAsync(t, start, ct);
-            var rows = await LoadAsync(t, ct);
+            if (from is { } start) await AddPayAllRowsAsync(t, start, fs!, ct);
+            var rows = await LoadAsync(t, fs!, ct);
             var (normal, payAll) = Split(rows);
             await WriteAsync(payAll, PayAllRows.Sync(normal, payAll), ct);
-            await db.ExecuteSqlAsync(ScheduleSql, new { EnterpriseTypee = t, From = from?.ToDateTime(TimeOnly.MinValue) }, ct);
+            await db.ExecuteSqlAsync(ScheduleSql, new { EnterpriseTypee = t, From = from?.ToDateTime(TimeOnly.MinValue), SetFrom = fs!.FromDate?.ToDateTime(TimeOnly.MinValue) }, ct);
             if (from is not null) incomplete.AddRange(PayAllRows.IncompleteLevels(normal).Select(l => $"{t} {l}"));
         }
         loggers.CreateLogger(AuditCategory).LogWarning("Handholding payment schedule set by {Actor}: pay all at milestone 1 {PayAll} from {From}",
@@ -287,17 +363,18 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         return new MessageResponse(message);
     }
 
-    /// <summary>Starts or stops the schedule of a type: the date on its milestone-1 PayAllAtMilestone1 rows (NULL: off).</summary>
+    /// <summary>Starts or stops the schedule of a type in a fee set: the date on its milestone-1 PayAllAtMilestone1 rows (NULL: off).</summary>
     internal const string ScheduleSql =
-        "UPDATE AssessmentFee SET PayAllFrom = @From WHERE EnterpriseTypee = @EnterpriseTypee AND PayAllAtMilestone1 = 1 AND MileStone = 1;";
+        "UPDATE AssessmentFee SET PayAllFrom = @From WHERE EnterpriseTypee = @EnterpriseTypee AND PayAllAtMilestone1 = 1 AND MileStone = 1 " +
+        "AND ((@SetFrom IS NULL AND EffectiveFrom IS NULL) OR EffectiveFrom = @SetFrom);";
 
     /// <summary>Makes the PayAllAtMilestone1 rows a type is missing (levels and categories with fees for all three milestones).</summary>
-    private async Task AddPayAllRowsAsync(string type, DateOnly from, CancellationToken ct)
+    private async Task AddPayAllRowsAsync(string type, DateOnly from, FeeSets.FeeSet set, CancellationToken ct)
     {
-        var (normal, payAll) = Split(await LoadAsync(type, ct));
+        var (normal, payAll) = Split(await LoadAsync(type, set, ct));
         var missing = PayAllRows.Missing(normal, payAll, from);
         if (missing.Count == 0) return;
-        await InsertAsync(missing, ct);
+        await InsertAsync(missing, set, ct);
         loggers.CreateLogger(AuditCategory).LogInformation("Pay-all-at-milestone-1 rows of {EnterpriseType} added by {Actor}: {Rows} row(s)", type, UserId, missing.Count);
     }
 
@@ -381,8 +458,8 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         return (rows, null);
     }
 
-    /// <summary>The new rows in one transaction (AssessmentFee is the legacy table the procedures read; no procedure inserts one).</summary>
-    private async Task InsertAsync(IReadOnlyList<FeeRow> rows, CancellationToken ct)
+    /// <summary>The new rows of a fee set in one transaction (AssessmentFee is the legacy table the procedures read; no procedure inserts one).</summary>
+    private async Task InsertAsync(IReadOnlyList<FeeRow> rows, FeeSets.FeeSet set, CancellationToken ct)
     {
         var p = new Dapper.DynamicParameters();
         var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRANSACTION;\n");
@@ -410,6 +487,8 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             p.Add($"NetPaybleTds75{i}", r.NetPaybleTds75);
             if (r.MileStone is not null) p.Add($"MileStone{i}", int.Parse(r.MileStone, CultureInfo.InvariantCulture));
             if (PayAllRows.IsPayAll(r)) p.Add($"PayAllFrom{i}", r.PayAllFrom?.ToDateTime(TimeOnly.MinValue));
+            p.Add($"EffectiveFrom{i}", set.FromDate?.ToDateTime(TimeOnly.MinValue), System.Data.DbType.Date);
+            p.Add($"EffectiveTo{i}", set.ToDate?.ToDateTime(TimeOnly.MinValue), System.Data.DbType.Date);
         }
         sql.Append("COMMIT;");
         await db.ExecuteSqlAsync(sql.ToString(), p, ct);
@@ -420,10 +499,10 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     internal static string InsertSql(int i, bool milestone, bool payAll = false) =>
         "INSERT INTO AssessmentFee (EnterpriseTypee, Certification, SpecialCategory, IsActive, SubsidyPercentage, AssessmentFee, Gst, Total, Coupon, " +
         "AssessmentFeeAfterCoupon, GstAfterCoupon, TotalAfterCoupon, SubsidyPer, SubsidyAmount, GstAfterSubsidy, ApplicantContributionAfterSubsidy, " +
-        "Tds15, Tds75, NetPaybleTds15, NetPaybleTds75" + (milestone ? ", MileStone" : "") + (payAll ? ", PayAllAtMilestone1, PayAllFrom" : "") + ") VALUES (" +
+        "Tds15, Tds75, NetPaybleTds15, NetPaybleTds75, EffectiveFrom, EffectiveTo" + (milestone ? ", MileStone" : "") + (payAll ? ", PayAllAtMilestone1, PayAllFrom" : "") + ") VALUES (" +
         $"@EnterpriseTypee{i}, @Certification{i}, @SpecialCategory{i}, 1, @SubsidyPercentage{i}, @AssessmentFee{i}, @Gst{i}, @Total{i}, @Coupon{i}, " +
         $"@AssessmentFeeAfterCoupon{i}, @GstAfterCoupon{i}, @TotalAfterCoupon{i}, @SubsidyPer{i}, @SubsidyPer{i}, @GstAfterSubsidy{i}, " +
-        $"@ApplicantContributionAfterSubsidy{i}, @Tds15{i}, @Tds75{i}, @NetPaybleTds15{i}, @NetPaybleTds75{i}" + (milestone ? $", @MileStone{i}" : "") +
+        $"@ApplicantContributionAfterSubsidy{i}, @Tds15{i}, @Tds75{i}, @NetPaybleTds15{i}, @NetPaybleTds75{i}, @EffectiveFrom{i}, @EffectiveTo{i}" + (milestone ? $", @MileStone{i}" : "") +
         (payAll ? $", 1, @PayAllFrom{i}" : "") + ");";
 
     /// <summary>The subsidy share of a row: SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.</summary>
@@ -493,9 +572,10 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     private static string? Canonical(string? value, string[] allowed) =>
         allowed.FirstOrDefault(a => string.Equals(a, value?.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    private async Task<List<FeeRow>> LoadAsync(string type, CancellationToken ct) =>
+    /// <summary>The rows of a type in one fee set (the procedure returns every set's rows: SELECT *).</summary>
+    private async Task<List<FeeRow>> LoadAsync(string type, FeeSets.FeeSet set, CancellationToken ct) =>
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_ASSESSMENT_FEE", new { MsmeType = type }, ct))[0]
-            .Select(FeeRow.From).Where(r => r.Id > 0).OrderBy(r => r.Id).ToList();
+            .Select(FeeRow.From).Where(r => r.Id > 0 && FeeSets.KeyOf(r.EffectiveFrom) == set.Key).OrderBy(r => r.Id).ToList();
 
     /// <summary>Fee and coupon shown in the level inputs: those of the level's first row and first coupon row (as the old page bound them).</summary>
     private static List<LevelFee> Summary(IReadOnlyList<FeeRow> rows) =>
@@ -691,7 +771,7 @@ public sealed record FeeRow(
     decimal? Coupon, decimal? AssessmentFeeAfterCoupon, decimal? GstAfterCoupon, decimal? TotalAfterCoupon,
     decimal? SubsidyPer, decimal? GstAfterSubsidy, decimal? ApplicantContributionAfterSubsidy,
     decimal? Tds15, decimal? Tds75, decimal? NetPaybleTds15, decimal? NetPaybleTds75, string? MileStone = null,
-    bool? PayAllAtMilestone1 = null, DateOnly? PayAllFrom = null)
+    bool? PayAllAtMilestone1 = null, DateOnly? PayAllFrom = null, DateOnly? EffectiveFrom = null, DateOnly? EffectiveTo = null)
 {
     /// <summary>Rows with a coupon value are the coupon variants (the payment procedures pick them with Coupon IS NOT NULL).</summary>
     public bool IsCouponRow => Coupon is not null;
@@ -706,13 +786,16 @@ public sealed record FeeRow(
         Dec(r, "Tds15"), Dec(r, "Tds75"), Dec(r, "NetPaybleTds15"), Dec(r, "NetPaybleTds75"),
         r.Text("MileStone") is { Length: > 0 } m ? m : null,
         r.Text("PayAllAtMilestone1") is "1" or "True" or "true" ? true : null,
-        r.TryGetValue("PayAllFrom", out var from) ? from switch
+        Date(r, "PayAllFrom"), Date(r, "EffectiveFrom"), Date(r, "EffectiveTo"));
+
+    private static DateOnly? Date(IDictionary<string, object?> r, string column) =>
+        r.TryGetValue(column, out var v) ? v switch
         {
             DateTime d => DateOnly.FromDateTime(d),
             DateOnly d => d,
             string t when DateOnly.TryParse(t, CultureInfo.InvariantCulture, out var d) => d,
             _ => null,
-        } : null);
+        } : null;
 
     private static decimal? Dec(IDictionary<string, object?> r, string column) =>
         r.TryGetValue(column, out var v) && v is not null and not DBNull

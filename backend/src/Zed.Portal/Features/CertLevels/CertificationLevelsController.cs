@@ -82,7 +82,7 @@ public sealed partial class CertificationLevelsController(
     /// <summary>The Micro / Small / Medium fee with GST of each level (one value per type; the categories differ only in subsidy).</summary>
     internal const string FeesSql =
         "SELECT LTRIM(RTRIM(Certification)) AS Certification, LTRIM(RTRIM(EnterpriseTypee)) AS Type, MAX(Total) AS Total FROM dbo.AssessmentFee " +
-        "WHERE EnterpriseTypee IN ('Micro', 'Small', 'Medium') GROUP BY LTRIM(RTRIM(Certification)), LTRIM(RTRIM(EnterpriseTypee));";
+        "WHERE EnterpriseTypee IN ('Micro', 'Small', 'Medium') AND CAST(GETDATE() AS date) BETWEEN ISNULL(EffectiveFrom, '19000101') AND ISNULL(EffectiveTo, '99991231') GROUP BY LTRIM(RTRIM(Certification)), LTRIM(RTRIM(EnterpriseTypee));";
 
     public sealed record LevelsResponse(IReadOnlyList<LevelItem> Levels, IReadOnlyList<string> Tokens, bool Stored);
 
