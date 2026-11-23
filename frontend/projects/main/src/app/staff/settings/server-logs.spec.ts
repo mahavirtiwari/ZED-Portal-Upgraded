@@ -74,6 +74,28 @@ describe('ServerLogsPage', () => {
     expect(el.querySelector('[role=dialog]')).toBeNull();
   });
 
+  it('says where the log is kept, and warns when the portal cannot write it', async () => {
+    // 2026-11-23: the page was empty on every portal; an unwritable folder must not look like "no problems".
+    http.expectOne((r) => r.url === url).flush({
+      source: 'main', more: false, from: '', to: '', sources: [{ name: 'main', days: [] }], entries: [], folder: 'E:\\ZedV4\\main\\logs', writeProblem: null,
+    });
+    await settle();
+    expect(el.querySelector('[data-log-folder]')!.textContent).toContain('E:\\ZedV4\\main\\logs');
+    expect(el.querySelector('[data-write-problem]')).toBeNull();
+
+    (el.querySelector('.sl-actions .btn-primary') as HTMLButtonElement).click();
+    await settle();
+    http.expectOne((r) => r.url === url).flush({
+      source: 'main', more: false, from: '', to: '', sources: [{ name: 'main', days: [] }], entries: [],
+      folder: 'E:\\ZedV4\\main\\logs', writeProblem: "Access to the path 'E:\\ZedV4\\main\\logs' is denied.",
+    });
+    await settle();
+    const warning = el.querySelector('[data-write-problem]')!;
+    expect(warning.textContent).toContain('cannot write its log');
+    expect(warning.textContent).toContain('is denied');
+    expect(el.querySelector('[data-log-folder]')).toBeNull();
+  });
+
   it('searches by the reference and shows a refusal', async () => {
     http.expectOne((r) => r.url === url).flush({ source: 'main', more: false, from: '', to: '', sources: [{ name: 'main', days: [] }], entries: [] });
     await settle();

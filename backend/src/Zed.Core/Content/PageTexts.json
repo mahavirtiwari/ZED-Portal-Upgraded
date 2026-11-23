@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9484,
+  "count": 9488,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -103646,6 +103646,20 @@
       ]
     },
     {
+      "key": "staff.serverLogs.folder",
+      "standard": "Recording to {folder}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "folder"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
       "key": "staff.serverLogs.level.critical",
       "standard": "Critical only",
       "kind": "label",
@@ -103857,6 +103871,45 @@
       "key": "staff.serverLogs.view",
       "standard": "View",
       "kind": "button",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.writeProblem.detail",
+      "standard": "Folder {folder}: {problem}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "folder",
+        "problem"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.writeProblem.fix",
+      "standard": "On the server, give the portal's app pool Modify on this folder (the deploy script does it for each portal's logs folder).",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.writeProblem.title",
+      "standard": "This portal cannot write its log, so nothing new is recorded.",
+      "kind": "heading",
       "portal": "staff",
       "page": "serverLogs",
       "pageName": "Server logs",

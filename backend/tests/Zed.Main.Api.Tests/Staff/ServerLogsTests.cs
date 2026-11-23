@@ -71,6 +71,26 @@ public sealed class ServerLogsTests : IDisposable
     }
 
     [Fact]
+    public void The_provider_says_why_it_cannot_write_its_folder()
+    {
+        // 2026-11-23: Server Logs was empty on every portal; a folder the host cannot write must not look like "no problems".
+        using var ok = Provider();
+        Assert.Null(ok.Probe());
+        Assert.Empty(Directory.EnumerateFiles(_folder));   // the probe leaves nothing behind
+
+        var blocker = Path.Combine(_folder, "not-a-folder");
+        File.WriteAllText(blocker, "");
+        using var bad = new FileLoggerProvider(Microsoft.Extensions.Options.Options.Create(new FileLogOptions { Folder = blocker }), new Env(_folder),
+            new ConfigurationBuilder().Build());
+        Assert.NotNull(bad.Probe());
+        Assert.NotNull(bad.WriteProblem);
+
+        using var off = new FileLoggerProvider(Microsoft.Extensions.Options.Options.Create(new FileLogOptions { Folder = _folder, Enabled = false }), new Env(_folder),
+            new ConfigurationBuilder().Build());
+        Assert.Contains("switched off", off.Probe());
+    }
+
+    [Fact]
     public void A_search_stops_after_its_byte_budget_and_skips_lines_of_other_levels()
     {
         Directory.CreateDirectory(_folder);
@@ -123,6 +143,9 @@ public sealed class ServerLogsTests : IDisposable
 
         var list = await admin.GetFromJsonAsync<JsonElement>(Url);
         Assert.Equal("main", list.GetProperty("source").GetString());
+        // 2026-11-23: the folder and whether this host can write it.
+        Assert.Equal(Path.GetFullPath(folder), Path.GetFullPath(list.GetProperty("folder").GetString()!));
+        Assert.Equal(JsonValueKind.Null, list.GetProperty("writeProblem").ValueKind);
         // (The test portal's own warnings may be in the file too.)
         var messages = list.GetProperty("entries").EnumerateArray().Select(e => e.GetProperty("m").GetString()).ToList();
         Assert.True(messages.IndexOf("An unhandled exception has occurred while executing the request.") < messages.IndexOf("Slow"));   // newest first

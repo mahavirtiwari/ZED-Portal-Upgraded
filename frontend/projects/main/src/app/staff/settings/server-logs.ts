@@ -28,6 +28,9 @@ interface ServerLogsResponse {
   more: boolean;
   from: string;
   to: string;
+  /** 2026-11-23: this portal's log folder on the server, and why it cannot be written (null when it can). */
+  folder?: string | null;
+  writeProblem?: string | null;
 }
 
 const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
@@ -82,10 +85,18 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
     </div>
 
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+    @if (writeProblem()) {
+      <div class="alert alert-danger" role="alert" data-write-problem>
+        <strong>{{ 'This portal cannot write its log, so nothing new is recorded.' | t: 'staff.serverLogs.writeProblem.title' }}</strong>
+        <span class="d-block">{{ 'Folder {folder}: {problem}' | t: 'staff.serverLogs.writeProblem.detail' : { folder: folder(), problem: writeProblem() } }}</span>
+        <span class="d-block">{{ "On the server, give the portal's app pool Modify on this folder (the deploy script does it for each portal's logs folder)." | t: 'staff.serverLogs.writeProblem.fix' }}</span>
+      </div>
+    }
 
     <div class="sl-counts" role="status">
       <span class="chip chip-error">{{ '{n} errors' | t: 'staff.serverLogs.count.errors' : { n: errors() } }}</span>
       <span class="chip chip-warn">{{ '{n} warnings' | t: 'staff.serverLogs.count.warnings' : { n: warnings() } }}</span>
+      @if (folder() && !writeProblem()) { <span class="muted sl-folder" data-log-folder>{{ 'Recording to {folder}' | t: 'staff.serverLogs.folder' : { folder: folder() } }}</span> }
       @if (more()) { <span class="muted">{{ 'Showing the newest {n}: narrow the days or the search to see older ones.' | t: 'staff.serverLogs.more' : { n: entries().length } }}</span> }
     </div>
 
@@ -159,6 +170,7 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
     .sl-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 0 1 170px; font-size: 12px; font-weight: 700; color: #5f6f70; }
     .sl-search { flex: 1 1 240px; }
     .sl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+    .sl-folder { overflow-wrap: anywhere; font-size: 12px; }
     .sl-counts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; font-size: 13px; }
     .chip { display: inline-block; border-radius: 10px; padding: 2px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
     .chip-error { background: #fde3e1; color: #8f1f15; }
@@ -203,6 +215,8 @@ export class ServerLogsPage {
   protected readonly sources = signal<{ name: string; days: string[] }[]>([]);
   protected readonly entries = signal<ServerLogEntry[]>([]);
   protected readonly more = signal(false);
+  protected readonly folder = signal<string | null>(null);
+  protected readonly writeProblem = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly open = signal<ServerLogEntry | null>(null);
@@ -266,6 +280,8 @@ export class ServerLogsPage {
       this.source.set(r.source);
       this.entries.set(r.entries);
       this.more.set(r.more);
+      this.folder.set(r.folder ?? null);
+      this.writeProblem.set(r.writeProblem ?? null);
     } catch (err) {
       this.entries.set([]);
       this.error.set(apiErrorMessage(err));

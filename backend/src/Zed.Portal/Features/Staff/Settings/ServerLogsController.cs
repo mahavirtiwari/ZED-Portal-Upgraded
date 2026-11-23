@@ -22,7 +22,10 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
 
     public sealed record SourceDto(string Name, IReadOnlyList<string> Days);
 
-    public sealed record ListResponse(string Source, IReadOnlyList<SourceDto> Sources, IReadOnlyList<LogEntry> Entries, bool More, string From, string To);
+    /// <param name="Folder">This host's log folder on the server.</param>
+    /// <param name="WriteProblem">Why this host cannot write its log (2026-11-23), null when it can.</param>
+    public sealed record ListResponse(string Source, IReadOnlyList<SourceDto> Sources, IReadOnlyList<LogEntry> Entries, bool More, string From, string To,
+        string? Folder = null, string? WriteProblem = null);
 
     /// <summary>2026-11-21 (review): the folders are scanned once a minute, not on every search.</summary>
     private static (DateTime At, IReadOnlyList<FileLogReader.Source> List)? _sources;
@@ -32,6 +35,7 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
         var kept = _sources;
         if (kept is { } k && DateTime.UtcNow - k.At < TimeSpan.FromMinutes(1) && k.List.Count > 0 && k.List[0].Folder == files.Folder) return k.List;
         var list = FileLogReader.Sources(files.Folder, files.Source);
+        files.Probe();
         _sources = (DateTime.UtcNow, list);
         return list;
     }
@@ -76,7 +80,8 @@ public sealed class ServerLogsController(FileLoggerProvider files) : StaffApiCon
         {
             var (entries, more) = FileLogReader.Read(chosen.Folder, new FileLogReader.Query(fromDay, toDay, min.Value, q, PageSize), ct);
             return new ListResponse(chosen.Name, sources.Select(s => new SourceDto(s.Name, DaysOf(s.Folder))).ToList(), entries, more,
-                fromDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), toDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                fromDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), toDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                files.Folder, files.WriteProblem);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

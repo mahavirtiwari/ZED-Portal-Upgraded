@@ -107,6 +107,30 @@ public sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScope
     public string Folder => _folder;
     public string Source => _source;
 
+    /// <summary>
+    /// 2026-11-23 (Admin → Server Logs was empty on every portal): why the last write to the folder failed (null when the last
+    /// write or <see cref="Probe"/> worked). The logger cannot log its own failures, so the page shows this instead.
+    /// </summary>
+    public string? WriteProblem { get; private set; }
+
+    /// <summary>Checks that the folder can be created and written (a file made and removed); returns the problem or null.</summary>
+    public string? Probe()
+    {
+        if (!_options.Enabled) return WriteProblem = "File logging is switched off (Logging:File:Enabled).";
+        try
+        {
+            Directory.CreateDirectory(_folder);
+            var test = Path.Combine(_folder, ".write-test-" + Environment.ProcessId);
+            File.WriteAllText(test, "");
+            File.Delete(test);
+            return WriteProblem = null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return WriteProblem = ex.Message;
+        }
+    }
+
     public ILogger CreateLogger(string categoryName) => new FileLogger(this, categoryName);
 
     public void SetScopeProvider(IExternalScopeProvider scopeProvider) => _scopes = scopeProvider;
@@ -170,9 +194,9 @@ public sealed class FileLoggerProvider : ILoggerProvider, ISupportExternalScope
                             continue;
                         }
                         await writer.WriteLineAsync(JsonSerializer.Serialize(e, FileLog.Json));
+                        WriteProblem = null;
                     }
-                    catch (IOException) { writer?.Dispose(); writer = null; }
-                    catch (UnauthorizedAccessException) { writer?.Dispose(); writer = null; }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { WriteProblem = ex.Message; writer?.Dispose(); writer = null; }
                 }
                 try { if (writer is not null) await writer.FlushAsync(); }
                 catch (IOException) { writer?.Dispose(); writer = null; }
