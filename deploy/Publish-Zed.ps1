@@ -63,7 +63,8 @@ foreach ($tool in 'dotnet', 'npm', 'npx') {
 if (-not $SkipNpmCi) { Invoke-Native 'npm ci' { npm ci --no-audit --no-fund } $frontend }
 
 if (-not $SkipTests) {
-    Invoke-Native 'Backend tests' { dotnet test (Join-Path $backend 'Zed.slnx') -c Release }
+    # One test project at a time (-m:1): all five at once ran a server out of memory (2026-11-22).
+    Invoke-Native 'Backend tests' { dotnet test (Join-Path $backend 'Zed.slnx') -c Release -m:1 }
     Invoke-Native 'Frontend tests' { npx ng test main --watch=false } $frontend
 }
 

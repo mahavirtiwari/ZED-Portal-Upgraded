@@ -36,6 +36,10 @@
   release: use -IncludeMobile:$false to leave them).
 .PARAMETER IncludeJobs
   Also replaces Zed.Jobs (the background service).
+.PARAMETER SkipTests
+  Does not run the backend and frontend test suites on the server before the build. They pass on the development
+  machine before every push; on the server (SQL Server and seven applications running) the 27-minute backend run ran
+  out of memory on 2026-11-22 and stopped the deploy before anything was installed.
 .PARAMETER Yes
   Skips the DEPLOY question.
 .PARAMETER DryRunOnly
@@ -43,6 +47,9 @@
 .EXAMPLE
   .\deploy\Deploy-Zed.ps1
   Dry run, then asks you to type DEPLOY, then the update and the checks.
+.EXAMPLE
+  .\deploy\Deploy-Zed.ps1 -IncludeJobs -SkipTests
+  The same, replacing Zed.Jobs too, without running the test suites on the server.
 .EXAMPLE
   .\deploy\Deploy-Zed.ps1 -DryRunOnly
   Only shows what would be installed and which migrations would run.
@@ -52,6 +59,7 @@ param(
     [string]$Ref = 'main',
     [switch]$IncludeMobile = $true,
     [switch]$IncludeJobs,
+    [switch]$SkipTests,
     [switch]$Yes,
     [switch]$DryRunOnly,
     [string]$InstallRoot = 'E:\ZedV4',
@@ -98,6 +106,7 @@ try {
     $common = @{ Environment = 'Production'; Ref = $Ref; Settings = $Settings; InstallRoot = $InstallRoot }
     if ($IncludeMobile) { $common.IncludeMobile = $true }
     if ($IncludeJobs) { $common.IncludeJobs = $true }
+    if ($SkipTests) { $common.SkipTests = $true }
 
     # ---------------------------------------------------------------- 2. Dry run
     Step '2. Dry run (nothing changes)'
