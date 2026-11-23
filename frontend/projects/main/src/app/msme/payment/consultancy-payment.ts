@@ -38,7 +38,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
   selector: 'zed-consultancy-payment',
   imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead, StepTracker, PayDisclaimer, TextPipe],
   templateUrl: './consultancy-payment.html',
-  styleUrl: './payment-step.scss',
+  styleUrls: ['./payment-step.scss', './consultancy-co.scss'],
 })
 export class ConsultancyPaymentPage implements OnInit {
   private readonly api = inject(ConsultancyPaymentApi);
