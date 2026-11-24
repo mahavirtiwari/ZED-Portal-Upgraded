@@ -1,62 +1,70 @@
-/* Admin → Incentive Schemes → a scheme: the page, the tabs and the card / grading / verification parts. */
+/* Admin → Incentive Schemes → a scheme: the page, the steps, the Card tab and the Save bar (2026-11-24 redesign). */
 .se-code, .se-mono { font-family: monospace; }
-.se-tabs { margin-bottom: 14px; max-width: 100%; flex-wrap: wrap; }
-/* 2026-11-23 (approved design): the head stays on screen; the tabs say what is changed or to fix; the card's preview. */
-.se-head { position: sticky; top: 48px; z-index: 20; background: #f3f7f7; padding: 10px 0 8px; margin-top: -10px; }
-.se-dirty { align-self: center; font-size: 12.5px; font-weight: 700; color: #8a5a06; background: #fdf2dc; border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
-.se-tabs button { display: inline-flex; align-items: center; gap: 6px; }
-.se-tabs button.has-issue:not(.active) { color: #a12f2f; background: #fdeaea; }
+.se-state { display: inline-block; vertical-align: middle; margin-left: 8px; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px;
+  background: #e3f3ea; color: #1d6b43; }
+.se-state.off { background: #eef1f1; color: #5f6f70; }
+
+/* The four steps */
+.se-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.se-step { display: flex; align-items: flex-start; gap: 10px; text-align: left; padding: 12px 14px; border: 1px solid #dde7e8; border-radius: 12px;
+  background: #fff; color: #23474a; transition: border-color .15s, box-shadow .15s; }
+.se-step:hover { border-color: #9cc9cd; }
+.se-step.active { border-color: var(--zt-dark, #1f5c61); box-shadow: 0 0 0 1px var(--zt-dark, #1f5c61); }
+.se-step.has-issue:not(.active) { border-color: #e7b3b3; background: #fdf5f5; }
+.se-step-no { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+  background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
+.se-step.active .se-step-no { background: var(--zt-dark, #1f5c61); color: #fff; }
+.se-step-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.se-step-text b { font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.se-step-text small { font-size: 12px; color: #6f8487; overflow-wrap: anywhere; }
 .se-issue { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; background: #a12f2f; color: #fff; }
 .se-changed { font-size: 10px; color: #c98a10; }
-.form-grid > .se-label { display: block; padding: 0; background: none; border-radius: 0; text-transform: none; letter-spacing: normal; text-align: left; white-space: normal; line-height: inherit; }
+
+/* Card tab */
+.zed-card { margin-bottom: 16px; }
+.se-h { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 12px; }
+.se-h-gap { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e6eeef; }
+.se-fields2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.se-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.se-f > label, .se-flabel { font-size: 13px; font-weight: 600; color: #3c5558; margin: 0; }
+.se-wide { grid-column: 1 / -1; }
+.se-active { margin-top: 16px; }
 .se-card-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
-.se-preview { position: sticky; top: 140px; }
-.se-preview-cap { font-size: 12px; font-weight: 700; color: #6f8487; margin: 0 0 8px; }
-.se-pcard { border: 1px solid #dde7e8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; background: #fff; }
+.se-preview { position: sticky; top: 70px; background: #f6fafa; }
+.se-preview-cap { font-size: 12px; font-weight: 700; color: #6f8487; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .3px; }
+.se-pcard { border: 1px solid #dde7e8; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 4px; background: #fff;
+  box-shadow: 0 4px 14px rgba(16, 61, 64, .08); }
+.se-pcard.off { opacity: .55; }
 .se-pcard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .se-pcard-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: #1f5c61; }
 .se-pcard-avail { font-size: 11px; font-weight: 700; color: #fff; background: #3d9aa1; border-radius: 6px; padding: 3px 8px; }
 .se-pcard-title { font-size: 15px; color: #17373b; }
 .se-pcard-hl { font-size: 13px; font-weight: 700; color: #1f7a8c; }
 .se-pcard-details { font-size: 12.5px; color: #4d6366; overflow-wrap: anywhere; }
-.se-preview-note, .se-example { font-size: 12.5px; color: #4d6366; margin: 10px 0 0; }
-.se-example { background: #e6f2f3; border-radius: 8px; padding: 8px 12px; display: inline-block; }
-.zed-card { margin-bottom: 16px; }
-.se-narrow { max-width: 160px; }
-.se-h { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 10px; }
+.se-preview-note { font-size: 12.5px; color: #4d6366; margin: 10px 0 0; }
 .se-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.se-chip { border: 1px solid #cbd9da; background: #fff; color: #23474a; border-radius: 16px; padding: 4px 14px; font-size: 13px; font-weight: 600; }
+.se-chip { border: 1px solid #cbd9da; background: #fff; color: #23474a; border-radius: 16px; padding: 5px 14px; font-size: 13px; font-weight: 600; }
 .se-chip:hover { border-color: #45a5ad; background: #eef6f6; }
 .se-chip.on { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
 .se-or { font-size: 12.5px; color: #5f6f70; margin: 0 4px; }
-.se-grades { width: 100%; }
-.se-grades td { vertical-align: middle; }
 .se-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .se-pair > input { max-width: 110px; }
 .se-checks { display: flex; flex-direction: column; gap: 4px; }
 .se-checks label { display: flex; align-items: center; gap: 8px; font-weight: 400; cursor: pointer; margin: 0; }
+
+/* The Save bar */
+.se-bar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 4px;
+  padding: 12px 16px; background: #fff; border: 1px solid #dde7e8; border-radius: 12px; box-shadow: 0 -6px 18px rgba(16, 61, 64, .08); }
+.se-dirty { margin-right: auto; font-size: 12.5px; font-weight: 700; color: #8a5a06; background: #fdf2dc; border-radius: 999px; padding: 5px 12px; }
+.se-clean { margin-right: auto; font-size: 12.5px; color: #6f8487; }
 .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-/* Admin → Incentive Schemes → a scheme → Form: the blocks, the sections beside the selected one, the fields and the rules. */
-.se-blocks { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 4px; }
-.se-form { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; margin-top: 18px; align-items: start; }
-.se-sections { background: #f4f8f8; border-radius: 10px; padding: 12px; }
-.se-sec { display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 8px; margin-bottom: 4px; }
-.se-sec.active { background: #fff; box-shadow: 0 0 0 1px #9cc9cd; }
-.se-sec-name { flex: 1 1 auto; min-width: 0; text-align: left; border: 0; background: none; padding: 4px 6px; font-weight: 600; color: #23474a;
-  overflow-wrap: break-word; }
-.se-sec-name .zed-chip { margin-left: 4px; font-size: 11px; }
-.se-add { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-.se-section { min-width: 0; }
-.se-fields td { vertical-align: middle; overflow-wrap: break-word; }
-.se-row-actions { white-space: nowrap; }
-.se-row-actions > * { margin-left: 4px; }
-.se-rule { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
-.se-count { max-width: 80px; }
-@media (max-width: 991.98px) { .se-form, .se-card-layout { grid-template-columns: minmax(0, 1fr); } .se-preview { position: static; } }
-@media (max-width: 767.98px) {
-  .se-head { position: static; margin-top: 0; }
-  .se-tabs { flex-wrap: nowrap; overflow-x: auto; }
-  .se-tabs button { white-space: nowrap; flex: none; }
+
+@media (max-width: 991.98px) {
+  .se-card-layout { grid-template-columns: minmax(0, 1fr); }
+  .se-preview { position: static; }
+  .se-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.se-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.se-photos label { font-weight: 400; margin: 0; }
+@media (max-width: 575.98px) {
+  .se-steps, .se-fields2 { grid-template-columns: minmax(0, 1fr); }
+  .se-bar { flex-wrap: wrap; }
+}

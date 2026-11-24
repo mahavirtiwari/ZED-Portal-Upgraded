@@ -244,14 +244,24 @@ public static class SchemeEligibility
                                        && (a.CertifiedOn is null || a.CertifiedOn < opened));
     }
 
-    /// <summary>The grade of a claim: the row of its level (or "All"), or of the unit's enterprise size.</summary>
+    /// <summary>
+    /// The grade of a claim: the row of its level (or "All"), or of the unit's enterprise size. By level, the additional share
+    /// of the unit's size (2026-11-24) is added to the row's share, at most 100%; the maximum stays the row's.
+    /// </summary>
     public static SchemeGrade? Grade(SchemeGrading? grading, string level, UnitFacts unit)
     {
         if (grading is null) return null;
         var key = grading.Mode == SchemeRules.BySize ? unit.Size : level;
-        return grading.Rows.FirstOrDefault(r => string.Equals(r.Key, key, StringComparison.OrdinalIgnoreCase))
+        var row = grading.Rows.FirstOrDefault(r => string.Equals(r.Key, key, StringComparison.OrdinalIgnoreCase))
             ?? grading.Rows.FirstOrDefault(r => string.Equals(r.Key, "All", StringComparison.OrdinalIgnoreCase));
+        if (row is null || grading.Mode == SchemeRules.BySize) return row;
+        var extra = AdditionalShare(grading, unit.Size);
+        return extra == 0 ? row : row with { SharePercent = Math.Min(100m, row.SharePercent + extra) };
     }
+
+    /// <summary>The additional share (%) of an enterprise size (0 when none is set, or for an unknown size).</summary>
+    public static decimal AdditionalShare(SchemeGrading grading, string? size) =>
+        size is null ? 0m : (grading.SizeAdditional ?? []).FirstOrDefault(a => string.Equals(a.Size, size, StringComparison.OrdinalIgnoreCase))?.AdditionalPercent ?? 0m;
 
     /// <summary>Eligible = share % of the claim (whole rupees), at most the grade's maximum (FA / TU: truncate, then the share).</summary>
     public static decimal Eligible(decimal claim, SchemeGrade? grade) =>

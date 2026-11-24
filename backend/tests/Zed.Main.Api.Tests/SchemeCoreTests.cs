@@ -81,6 +81,31 @@ public sealed class SchemeCoreTests
         Assert.Equal((SchemeRules.Handholding, "77"), (w!.Level, w.CertRef));
     }
 
+    [Fact]
+    public void The_size_additional_share_adds_to_the_level_share_up_to_100_and_keeps_the_level_maximum()
+    {
+        // 2026-11-24 (the user: "Micro 80 + 10").
+        var grading = new SchemeGrading
+        {
+            Mode = SchemeRules.ByLevel, Rows = [new("Bronze", 80, 50000), new("Silver", 95, 100000)],
+            SizeAdditional = [new("Micro", 10), new("Small", 5), new("Medium", 0)],
+        };
+        var micro = Unit(Cert("Bronze", "B-1", 1)) with { Size = "Micro" };
+        Assert.Equal((90m, 50000m), (Grade(grading, "Bronze", micro)!.SharePercent, Grade(grading, "Bronze", micro)!.MaxAmount));
+        Assert.Equal(85m, Grade(grading, "Bronze", micro with { Size = "Small" })!.SharePercent);
+        Assert.Equal(80m, Grade(grading, "Bronze", micro with { Size = "Medium" })!.SharePercent);
+        Assert.Equal(80m, Grade(grading, "Bronze", micro with { Size = null })!.SharePercent);
+        Assert.Equal(100m, Grade(grading, "Silver", micro)!.SharePercent); // 95 + 10, at most 100
+        Assert.Equal(45000m, Eligible(50000, Grade(grading, "Bronze", micro)));
+        Assert.Equal(50000m, Eligible(80000, Grade(grading, "Bronze", micro))); // the level's maximum
+
+        var fa = SchemeTemplates.FinancialAssistance(SchemeTemplates.FaCode);
+        Assert.Null(SchemeRules.Problem(fa with { Grading = fa.Grading with { SizeAdditional = [new("Micro", 10)] } }, Levels));
+        Assert.Contains("unknown enterprise size", SchemeRules.Problem(fa with { Grading = fa.Grading with { SizeAdditional = [new("Tiny", 10)] } }, Levels));
+        Assert.Contains("0–100", SchemeRules.Problem(fa with { Grading = fa.Grading with { SizeAdditional = [new("Micro", 120)] } }, Levels));
+        Assert.Contains("listed twice", SchemeRules.Problem(fa with { Grading = fa.Grading with { SizeAdditional = [new("Micro", 1), new("Micro", 2)] } }, Levels));
+    }
+
     [Theory]
     [InlineData(300000.75, 80, 300000, 240000)]   // whole rupees, then the share
     [InlineData(500000, 80, 300000, 300000)]      // capped

@@ -27,7 +27,9 @@ export const SCHEME_LIMITS = { sections: 10, fields: 40, items: 50, options: 50,
 export interface SchemeCard { title: string; highlight?: string | null; details?: string | null; icon: string }
 export interface SchemeActivation { mode: ActivationMode; levels: string[] }
 export interface SchemeGrade { key: string; sharePercent: number; maxAmount: number }
-export interface SchemeGrading { mode: GradingMode; rows: SchemeGrade[] }
+/** 2026-11-24: by level, the share added on top of the level's share for a unit of that size (at most 100%; the maximum stays the level's). */
+export interface SizeShare { size: string; additionalPercent: number }
+export interface SchemeGrading { mode: GradingMode; rows: SchemeGrade[]; sizeAdditional?: SizeShare[] }
 export interface SchemeBlocks { disclaimer: boolean; instructions: boolean; unitConfirm: boolean; bankAccount: boolean; declaration: boolean }
 export interface PickSource { kind: PickKind; label: string; options: string[]; sectorFilter: boolean; noRepeat: boolean }
 

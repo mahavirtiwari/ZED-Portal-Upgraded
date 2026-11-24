@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { DashIcon } from '../../msme/dashboard/dash-icon';
 import { TextPipe, t } from '../../content/page-text';
 import { HasUnsavedChanges } from '../unsaved-changes.guard';
+import { SideDrawer } from '../side-drawer';
 import { FieldDialogComponent } from './field-dialog';
 import {
   ActivationMode, CARD_ICONS, DocumentRule, FA_SCHEME_CODE, FormField, FormSection, GradingMode, LevelOption, SCHEME_LIMITS, SchemeDefinition, SchemesAdminApi,
@@ -13,6 +14,17 @@ import {
 } from './schemes-admin.api';
 
 export type EditorTab = 'card' | 'grading' | 'form' | 'verification';
+/** The scheme's own applicant texts (Form → standard blocks), edited in the side drawer. */
+export type SchemeText = 'disclaimer' | 'instructions' | 'declaration';
+
+/** The standard blocks of the applicant's form, in their order; those with a text of the scheme have it. */
+const BLOCKS: readonly { key: keyof SchemeDefinition['form']['blocks']; text: SchemeText | null }[] = [
+  { key: 'disclaimer', text: 'disclaimer' },
+  { key: 'instructions', text: 'instructions' },
+  { key: 'unitConfirm', text: null },
+  { key: 'bankAccount', text: null },
+  { key: 'declaration', text: 'declaration' },
+];
 
 interface FieldEdit { section: FormSection; index: number; field: FormField; isNew: boolean; taken: string[]; copies: { value: string; label: string }[] }
 
@@ -22,7 +34,7 @@ export function normalise(d: SchemeDefinition): SchemeDefinition {
     ...d,
     card: { title: '', icon: 'star', ...(d.card as Partial<SchemeDefinition['card']> | undefined) },
     activation: { mode: d.activation?.mode ?? 'Levels', levels: [...(d.activation?.levels ?? [])] },
-    grading: { mode: d.grading?.mode ?? 'Level', rows: (d.grading?.rows ?? []).map((r) => ({ ...r })) },
+    grading: { mode: d.grading?.mode ?? 'Level', rows: (d.grading?.rows ?? []).map((r) => ({ ...r })), sizeAdditional: (d.grading?.sizeAdditional ?? []).map((a) => ({ ...a })) },
     form: {
       blocks: { disclaimer: true, instructions: true, unitConfirm: true, bankAccount: true, declaration: true, ...(d.form?.blocks as Partial<SchemeDefinition['form']['blocks']> | undefined) },
       sections: (d.form?.sections ?? []).map((s) => ({
@@ -45,9 +57,10 @@ export function normalise(d: SchemeDefinition): SchemeDefinition {
  */
 @Component({
   selector: 'zed-staff-scheme-editor',
-  imports: [FormsModule, RouterLink, TextPipe, FieldDialogComponent, DashIcon],
+  imports: [FormsModule, RouterLink, TextPipe, FieldDialogComponent, DashIcon, SideDrawer],
   templateUrl: './scheme-editor.html',
-  styleUrl: './scheme-editor.scss',
+  // 2026-11-24 (redesign): the page, the Form tab and the steps / grading / verification each in their own sheet (8 kB budget).
+  styleUrls: ['./scheme-editor.scss', './scheme-editor-form.scss', './scheme-editor-parts.scss'],
 })
 export class SchemeEditorPage implements HasUnsavedChanges {
   private readonly api = inject(SchemesAdminApi);
@@ -80,6 +93,31 @@ export class SchemeEditorPage implements HasUnsavedChanges {
       case 'grading': return t('staff.incentivesAdmin.editor.tab.grading', 'Grading');
       case 'form': return t('staff.incentivesAdmin.editor.tab.form', 'Form');
       case 'verification': return t('staff.incentivesAdmin.editor.tab.verification', 'Verification');
+    }
+  }
+
+  /** 2026-11-24 (redesign): the one-line summary under each step. */
+  protected stepSummary(d: SchemeDefinition, tab: EditorTab): string {
+    switch (tab) {
+      case 'card':
+        return d.active ? t('staff.incentivesAdmin.editor.step.cardOn', 'Shown to eligible units') : t('staff.incentivesAdmin.editor.step.cardOff', 'Off: not shown');
+      case 'grading': {
+        const shares = [...new Set(d.grading.rows.map((r) => r.sharePercent ?? 0))];
+        const extra = (d.grading.sizeAdditional ?? []).some((a) => (a.additionalPercent ?? 0) > 0);
+        return t('staff.incentivesAdmin.editor.step.grading', '{rows} rows · {shares}%{extra}', {
+          rows: d.grading.rows.length, shares: shares.join(' / '),
+          extra: d.grading.mode === 'Level' && extra ? t('staff.incentivesAdmin.editor.step.gradingExtra', ' + by size') : '',
+        });
+      }
+      case 'form':
+        return t('staff.incentivesAdmin.editor.step.form', '{blocks} of 5 blocks · {sections} sections', {
+          blocks: BLOCKS.filter((b) => d.form.blocks[b.key]).length, sections: d.form.sections.length,
+        });
+      case 'verification':
+        return t('staff.incentivesAdmin.editor.step.verification', '{flow} · {rounds} rounds', {
+          flow: d.verification.flow === 'DesktopOnsite' ? t('staff.incentivesAdmin.flow.desktopOnsite', 'Desktop + Onsite') : t('staff.incentivesAdmin.flow.desktop', 'Desktop'),
+          rounds: d.verification.correctionRounds ?? 0,
+        });
     }
   }
 
@@ -161,6 +199,44 @@ export class SchemeEditorPage implements HasUnsavedChanges {
     d.grading.rows = kept;
   }
 
+  // ----- Grading: the additional share by enterprise size (2026-11-24) -----
+
+  /** The additional share (%) of a size; null while its box is empty. */
+  protected sizeShare(d: SchemeDefinition, size: string): number | null {
+    return (d.grading.sizeAdditional ?? []).find((a) => a.size === size)?.additionalPercent ?? null;
+  }
+
+  protected setSizeShare(d: SchemeDefinition, size: string, value: number | null): void {
+    const rest = (d.grading.sizeAdditional ?? []).filter((a) => a.size !== size);
+    d.grading.sizeAdditional = value == null ? rest : [...rest, { size, additionalPercent: value }].sort((a, b) => this.sizes().indexOf(a.size) - this.sizes().indexOf(b.size));
+  }
+
+  /** A level's share with a size's additional share, at most 100. */
+  protected totalShare(d: SchemeDefinition, base: number | null | undefined, size: string | null): number {
+    const extra = d.grading.mode === 'Level' && size ? this.sizeShare(d, size) ?? 0 : 0;
+    return Math.min(100, (base ?? 0) + extra);
+  }
+
+  /** "Try it": a sample claim worked out as the server does (the row of the level or All, the size's share, the row's maximum). */
+  protected readonly tryKey = signal('');
+  protected readonly trySize = signal('');
+  protected readonly tryBill = signal<number | null>(null);
+
+  protected tryResult(d: SchemeDefinition): string | null {
+    const bill = this.tryBill();
+    if (!bill || bill <= 0) return null;
+    const size = this.trySize() || this.sizes()[0] || null;
+    const key = d.grading.mode === 'Size' ? size : this.tryKey() || d.grading.rows[0]?.key;
+    const row = d.grading.rows.find((r) => r.key === key) ?? d.grading.rows.find((r) => r.key === 'All');
+    if (!row) return null;
+    const share = d.grading.mode === 'Size' ? row.sharePercent ?? 0 : this.totalShare(d, row.sharePercent, size);
+    const pays = Math.min(Math.round(Math.trunc(bill) * share) / 100, row.maxAmount ?? 0);
+    return t('staff.incentivesAdmin.editor.try.result', '{share}% of {bill} = {pays}{cap}', {
+      share, bill: rupees(bill), pays: rupees(pays),
+      cap: pays === row.maxAmount ? t('staff.incentivesAdmin.editor.grading.exampleCap', ' (the maximum)') : '',
+    });
+  }
+
   /** "A claim of ₹80,000 at Silver pays ₹50,000 (the cap)": the first row with a share and a maximum, or null. */
   protected example(d: SchemeDefinition): string | null {
     const g = d.grading.rows.find((r) => (r.sharePercent ?? 0) > 0 && (r.maxAmount ?? 0) > 0);
@@ -172,6 +248,69 @@ export class SchemeEditorPage implements HasUnsavedChanges {
       claim: rupees(claim), key: this.keyLabel(g.key), pays: rupees(pays),
       cap: pays === g.maxAmount ? t('staff.incentivesAdmin.editor.grading.exampleCap', ' (the maximum)') : '',
     });
+  }
+
+  // ----- Form: the standard blocks and their texts (2026-11-24 redesign: the texts open in the side drawer) -----
+
+  protected readonly blocks = BLOCKS;
+  protected readonly textEdit = signal<SchemeText | null>(null);
+  protected textDraft = '';
+
+  protected blockLabel(key: string): string {
+    switch (key) {
+      case 'disclaimer': return t('staff.incentivesAdmin.editor.form.block.disclaimer', 'Disclaimer');
+      case 'instructions': return t('staff.incentivesAdmin.editor.form.block.instructions', 'Instructions');
+      case 'unitConfirm': return t('staff.incentivesAdmin.editor.form.block.unitConfirm', 'Unit details and confirmation');
+      case 'bankAccount': return t('staff.incentivesAdmin.editor.form.block.bankAccount', 'Bank account and cancelled cheque');
+      default: return t('staff.incentivesAdmin.editor.form.block.declaration', 'Declaration');
+    }
+  }
+
+  protected blockHelp(key: string): string {
+    switch (key) {
+      case 'disclaimer': return t('staff.incentivesAdmin.editor.form.blockHelp.disclaimer', 'The terms the unit accepts before it starts.');
+      case 'instructions': return t('staff.incentivesAdmin.editor.form.blockHelp.instructions', 'What to keep ready and how to fill the form.');
+      case 'unitConfirm': return t('staff.incentivesAdmin.editor.form.blockHelp.unitConfirm', 'The unit checks its registered details and confirms them.');
+      case 'bankAccount': return t('staff.incentivesAdmin.editor.form.blockHelp.bankAccount', 'Account number, IFSC and a photo of a cancelled cheque.');
+      default: return t('staff.incentivesAdmin.editor.form.blockHelp.declaration', 'The statement the unit signs off before it submits.');
+    }
+  }
+
+  protected textOf(d: SchemeDefinition, text: SchemeText): string {
+    return (d[text] ?? '').trim();
+  }
+
+  /** "Own text · 14 lines", or the common wording of Admin → Texts. */
+  protected textStatus(d: SchemeDefinition, text: SchemeText): string {
+    const own = this.textOf(d, text);
+    return own
+      ? t('staff.incentivesAdmin.editor.form.ownText', 'Own text · {n} lines', { n: own.split('\n').filter((l) => l.trim()).length })
+      : t('staff.incentivesAdmin.editor.form.commonText', 'Common wording');
+  }
+
+  protected textTitle(text: SchemeText): string {
+    return this.blockLabel(text);
+  }
+
+  protected openText(d: SchemeDefinition, text: SchemeText): void {
+    this.textDraft = d[text] ?? '';
+    this.textEdit.set(text);
+  }
+
+  /** Apply: the draft becomes the scheme's text (saved with Save); empty = the common wording. */
+  protected applyText(d: SchemeDefinition): void {
+    const text = this.textEdit();
+    if (text) d[text] = this.textDraft;
+    this.textEdit.set(null);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected closeTextOnEscape(): void {
+    if (this.textEdit()) this.textEdit.set(null);
+  }
+
+  protected useCommonText(): void {
+    this.textDraft = '';
   }
 
   // ----- Form: sections -----
@@ -328,6 +467,12 @@ export class SchemeEditorPage implements HasUnsavedChanges {
     d.verification.flow = flow;
   }
 
+  /** The − / + of a number of the verification, kept within its limits. */
+  protected step(d: SchemeDefinition, key: 'correctionRounds' | 'correctionDays' | 'onsitePhotosMin' | 'onsitePhotosMax', by: number, min: number, max: number): void {
+    const v = d.verification as unknown as Record<string, number | null | undefined>;
+    v[key] = Math.max(min, Math.min(max, (v[key] ?? min) + by));
+  }
+
   // ----- Save -----
 
   protected async save(): Promise<void> {
@@ -353,7 +498,11 @@ export class SchemeEditorPage implements HasUnsavedChanges {
         disclaimer: d.disclaimer?.trim() || null,
         instructions: d.instructions?.trim() || null,
         declaration: d.declaration?.trim() || null,
-        grading: { ...d.grading, rows: d.grading.rows.map((g) => ({ ...g, sharePercent: n(g.sharePercent), maxAmount: n(g.maxAmount) })) },
+        grading: {
+          ...d.grading, rows: d.grading.rows.map((g) => ({ ...g, sharePercent: n(g.sharePercent), maxAmount: n(g.maxAmount) })),
+          // 2026-11-24: only by level; an emptied box is no additional share.
+          sizeAdditional: d.grading.mode === 'Level' ? (d.grading.sizeAdditional ?? []).filter((a) => a.additionalPercent != null).map((a) => ({ ...a, additionalPercent: n(a.additionalPercent) })) : [],
+        },
         form: {
           ...d.form,
           sections: d.form.sections.map((s) => ({ ...s, minItems: n(s.minItems), maxItems: n(s.maxItems) })),
@@ -452,6 +601,8 @@ export class SchemeEditorPage implements HasUnsavedChanges {
       if (missing.length) out.push(t('staff.incentivesAdmin.editor.issue.gradeMissing', 'Grading: add a row for {keys}.', { keys: missing.map((k) => this.keyLabel(k)).join(', ') }));
       if (d.grading.rows.some((r) => r.sharePercent == null || r.sharePercent < 0 || r.sharePercent > 100)) out.push(t('staff.incentivesAdmin.editor.issue.share', 'Grading: the share is 0 to 100 %.'));
       if (d.grading.rows.some((r) => r.maxAmount == null || r.maxAmount < 0)) out.push(t('staff.incentivesAdmin.editor.issue.max', 'Grading: enter the maximum of each row.'));
+      if (d.grading.mode === 'Level' && (d.grading.sizeAdditional ?? []).some((a) => a.additionalPercent != null && (a.additionalPercent < 0 || a.additionalPercent > 100)))
+        out.push(t('staff.incentivesAdmin.editor.issue.sizeShare', 'Grading: the additional share by size is 0 to 100 %.'));
     } else if (tab === 'form') {
       if (!d.form.sections.length) out.push(t('staff.incentivesAdmin.editor.issue.noSection', 'Form: add at least one section.'));
       d.form.sections.forEach((s, i) => {

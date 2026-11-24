@@ -66,9 +66,18 @@ public sealed record SchemeGrading
 {
     public string Mode { get; init; } = SchemeRules.ByLevel;
     public IReadOnlyList<SchemeGrade> Rows { get; init; } = [];
+    /// <summary>
+    /// 2026-11-24 (the user: "additional subsidy based on enterprise size ... Micro 80 + 10"): by level only, the share added
+    /// on top of the level's share for a unit of that size (Micro, Small, Medium; at most 100% in all). The maximum stays the
+    /// level's. Empty (or 0) = no additional share, as before.
+    /// </summary>
+    public IReadOnlyList<SizeShare> SizeAdditional { get; init; } = [];
 }
 
 public sealed record SchemeGrade(string Key, decimal SharePercent, decimal MaxAmount);
+
+/// <summary>The additional share (%) of an enterprise size, on top of the level's share (<see cref="SchemeGrading.SizeAdditional"/>).</summary>
+public sealed record SizeShare(string Size, decimal AdditionalPercent);
 
 /// <summary>The applicant's form: the standard blocks, the Admin's sections and the document rules.</summary>
 public sealed record SchemeForm
@@ -287,6 +296,15 @@ public static partial class SchemeRules
             if (g.MaxAmount is < 0 || g.MaxAmount > AmountCeiling) return $"Grading {g.Key}: the maximum is 0 to 10 crore.";
         }
         if (d.Grading.Rows.GroupBy(g => g.Key, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1)) return "Grading: a row is listed twice.";
+        foreach (var a in d.Grading.SizeAdditional ?? [])
+        {
+            if (!Sizes.Contains(a.Size)) return $"Grading: unknown enterprise size {a.Size}.";
+            if (a.AdditionalPercent is < 0 or > 100) return $"Grading {a.Size}: the additional share is 0–100 %.";
+            if (a.AdditionalPercent != decimal.Round(a.AdditionalPercent, 2)) return $"Grading {a.Size}: the additional share can have at most 2 decimals.";
+        }
+        if ((d.Grading.SizeAdditional ?? []).GroupBy(a => a.Size, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1)) return "Grading: an enterprise size is listed twice.";
+        if (d.Grading.Mode == BySize && (d.Grading.SizeAdditional ?? []).Any(a => a.AdditionalPercent != 0))
+            return "Grading: the additional share by enterprise size goes with grading by level.";
         if (GradingGap(d.Activation, d.Grading) is { } gap) return gap;
 
         foreach (var (label, text) in new[] { ("disclaimer", d.Disclaimer), ("instructions", d.Instructions), ("declaration", d.Declaration) })

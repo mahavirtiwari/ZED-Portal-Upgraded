@@ -205,21 +205,55 @@ describe('SchemeEditorPage', () => {
   // 2026-11-20: the scheme's own disclaimer, instructions and declaration.
   it('edits the applicant texts of the scheme and saves them trimmed', async () => {
     await tab('form');
-    const area = (id: string, value: string) => {
-      const t = el.querySelector(id) as HTMLTextAreaElement;
+    // 2026-11-24 (redesign): each text opens in the side drawer; Apply puts it in the scheme, Save sends it.
+    const edit = async (text: string, value: string) => {
+      (el.querySelector(`button[data-text="${text}"]`) as HTMLButtonElement).click();
+      await settle();
+      const t = el.querySelector('#se-text-area') as HTMLTextAreaElement;
       t.value = value;
       t.dispatchEvent(new Event('input'));
+      await settle();
+      (el.querySelector('#se-text-apply') as HTMLButtonElement).click();
+      await settle();
     };
-    area('#se-disclaimer', '  Line 1\nLine 2  ');
-    area('#se-instructions', '   ');
-    area('#se-declaration', 'We declare.');
-    await settle();
+    await edit('disclaimer', '  Line 1\nLine 2  ');
+    await edit('instructions', '   ');
+    await edit('declaration', 'We declare.');
+    expect(el.querySelector('[data-block="disclaimer"] .sf-badge')!.textContent).toContain('Own text · 2 lines');
+    expect(el.querySelector('[data-block="instructions"] .sf-badge')!.textContent).toContain('Common wording');
+    expect(el.querySelector('#se-text-drawer')).toBeNull();
     (el.querySelector('#se-save') as HTMLButtonElement).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT');
     expect([put.request.body.disclaimer, put.request.body.instructions, put.request.body.declaration]).toEqual(['Line 1\nLine 2', null, 'We declare.']);
     put.flush({ message: 'Scheme saved.' });
     await settle();
+  });
+
+  // 2026-11-24 (the user: "Micro 80 + 10"): the additional share by enterprise size, on top of the level's share.
+  it('adds an additional share by enterprise size, shows the totals and works out a claim', async () => {
+    await tab('grading');
+    type('#se-size-Micro', '10');
+    type('#se-size-Small', '5');
+    await settle();
+    expect(el.querySelector('tr[data-size="Micro"] .sg-total')!.textContent).toContain('85%');
+    expect(el.querySelector('tr[data-size="Medium"] .sg-total')!.textContent).toContain('75%');
+    type('#se-try-bill', '40000');
+    await settle();
+    expect(el.querySelector('#se-try-out')!.textContent).toContain('85% of ₹40,000 = ₹34,000');
+    type('#se-try-bill', '80000');
+    await settle();
+    expect(el.querySelector('#se-try-out')!.textContent).toContain('= ₹50,000 (the maximum)');
+    (el.querySelector('#se-save') as HTMLButtonElement).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT');
+    expect(put.request.body.grading.sizeAdditional).toEqual([{ size: 'Micro', additionalPercent: 10 }, { size: 'Small', additionalPercent: 5 }]);
+    put.flush({ message: 'Scheme saved.' });
+    await settle();
+    // By enterprise size has no additional share.
+    (el.querySelector('[data-grading="Size"]') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('#se-size-extra')).toBeNull();
   });
 
   it('reads and writes the date limits', () => {
