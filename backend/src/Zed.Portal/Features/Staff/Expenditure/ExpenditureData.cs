@@ -81,7 +81,8 @@ public sealed record ExpenditureParty(string Id, string Name, string? CreatedBy,
 public static class ExpenditureParties
 {
     internal const string PartiesSql = "SELECT UserId, UserName, CreatedBy, IsActive FROM dbo.Users WHERE RoleId = 2;";
-    internal const string MastersSql = "SELECT UserId FROM dbo.Users WHERE RoleId = 7;";
+    /// <summary>2026-11-24: not an Incentives Master Admin (no Expenditure screen): what it created stays with the Master Admins.</summary>
+    internal const string MastersSql = "SELECT UserId FROM dbo.Users WHERE RoleId = 7 AND ISNULL(ScreenAccess, '') <> 'incentives';";
 
     public sealed class Row
     {

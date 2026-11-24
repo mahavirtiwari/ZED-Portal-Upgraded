@@ -105,7 +105,9 @@ public sealed record ZedUser(
             Get(ZedClaims.DistrictCode), Get(ZedClaims.UnitName),
             principal.FindAll(ZedClaims.SubRole).Select(c => c.Value).ToList(),
             Get(ZedClaims.ActingUserId), Get(ZedClaims.ActingUserName),
-            Get(ZedClaims.ActingUserId) is null ? null : principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList(),
+            // A sub-user's screens (none given: empty); 2026-11-24: also an Incentives Master Admin's (others have none: null).
+            principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList() is { Count: > 0 } routes ? routes
+                : Get(ZedClaims.ActingUserId) is null ? null : [],
             Get(ZedClaims.ActingStamp), principal.FindFirst(ZedClaims.Screens)?.Value);
     }
 }

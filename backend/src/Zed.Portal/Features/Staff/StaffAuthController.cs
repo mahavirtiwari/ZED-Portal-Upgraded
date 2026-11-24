@@ -95,12 +95,21 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
         // 2026-11-20 (incentive schemes): an incentive verification agency (desktop or onsite) and its assessors carry their kind (staff menu).
         if (HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main)
             subRoles.AddRange(await Incentives.Agencies.IncentiveAgencies.SubRolesAsync(db, userId, roleId, log, ct));
+        // 2026-11-24 (approved design): an Incentives Master Admin has only the incentive screens (and works on the main portal only).
+        var incentivesOnly = await Users.IncentivesAdmins.SubRolesAsync(db, userId, roleId, log, ct);
+        if (incentivesOnly.Count > 0 && HttpContext.RequestServices.GetRequiredService<PortalHost>().System != PortalSystem.Main)
+        {
+            log.LogWarning("Incentives Master Admin {UserId} refused on the {System} portal", userId, HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
+            return this.Problem400("This login is for the incentives on the main ZED portal. Please sign in there.");
+        }
+        subRoles.AddRange(incentivesOnly);
 
         await db.ExecuteProcAsync("SP_UPDATE_LOGIN",
             new { UserId = userId, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), RoleId = roleId.ToString() }, ct);
 
         var user = new ZedUser(userId, row.Text("UserName"), roleId, row.Text("Email"), row.Text("MobileNo"),
             row.Text("StateCode"), row.Text("DistrictCode"), SubRoles: subRoles,
+            PermissionRoutes: incentivesOnly.Count > 0 ? Users.IncentivesAdmins.Routes(PortalSystem.Main) : null,
             Screens: roleId is (int)UserRole.SuperAdmin or (int)UserRole.StateCoordinator ? await Users.DashboardAdmins.ScreensAsync(db, userId, log, ct) : null);
         await HttpContext.SignInZedUserAsync(user);
         return CurrentUserResponse.From(user);
@@ -200,8 +209,14 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
         var subRoles = SubRoles.All.Where(s => subRow?.Text(s) == "1").ToList();
         if (HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main)
             subRoles.AddRange(await Incentives.Agencies.IncentiveAgencies.SubRolesAsync(db, ownerId, roleId, log, ct));
+        // 2026-11-24: an Operation Admin of an Incentives Master Admin has its owner's limit (and the incentives dashboard as home).
+        var incentivesOnly = await Users.IncentivesAdmins.SubRolesAsync(db, ownerId, roleId, log, ct);
+        if (incentivesOnly.Count > 0 && HttpContext.RequestServices.GetRequiredService<PortalHost>().System != PortalSystem.Main)
+            return this.Problem400("This login is for the incentives on the main ZED portal. Please sign in there.");
+        subRoles.AddRange(incentivesOnly);
         var routes = SubUserPermissions.Granted(sub.Permissions, roleId, subRoles, HttpContext.RequestServices.GetRequiredService<PortalHost>().System)
             .SelectMany(p => p.Routes).Distinct().ToList();
+        if (incentivesOnly.Count > 0) routes.Insert(0, Users.IncentivesAdmins.DashboardRoute);
         await store.LoginSucceededAsync(sub.UserId, ct);
         log.LogInformation("Sub-user {UserId} signed in for {Owner}", sub.UserId, ownerId);
 

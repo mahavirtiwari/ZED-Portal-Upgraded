@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9575,
+  "count": 9657,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -66917,6 +66917,973 @@
       ]
     },
     {
+      "key": "staff.incentivesDashboard.card.approvedAmount",
+      "standard": "Approved amount",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html",
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.barItemAria",
+      "standard": "{stage} {count}",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "stage",
+        "count"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.claimed",
+      "standard": "Claimed",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html",
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.openSchemes",
+      "standard": "Open Scheme Applications",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.total",
+      "standard": "Total applications",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.totalLabel",
+      "standard": "total applications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.crumb",
+      "standard": "Incentives Dashboard",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.count",
+      "standard": "Count",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.error",
+      "standard": "The dashboard could not be exported. Please try again.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.fa",
+      "standard": "Financial Assistance",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.figure",
+      "standard": "Figure",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.filter",
+      "standard": "Filter",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.filters",
+      "standard": "Filters",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.headline",
+      "standard": "Headline",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.month",
+      "standard": "Month",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.months",
+      "standard": "By month",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.paidAmount",
+      "standard": "Amount paid",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.scheme",
+      "standard": "Scheme",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.schemes",
+      "standard": "Schemes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.states",
+      "standard": "By state",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.status",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.export.value",
+      "standard": "Value",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.exportButton",
+      "standard": "Export",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.exportingButton",
+      "standard": "Exporting…",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.approved",
+      "standard": "Approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.inVerification",
+      "standard": "In verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.open",
+      "standard": "Open Financial Assistance",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.reimbursed",
+      "standard": "Reimbursed",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.rejected",
+      "standard": "Rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.title",
+      "standard": "Financial Assistance",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.toAllot",
+      "standard": "Awaiting an agency",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.all",
+      "standard": "All",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html",
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.clear",
+      "standard": "Clear filters",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.from",
+      "standard": "Submitted from",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.fromAria",
+      "standard": "From",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.range",
+      "standard": "Submitted between",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.rangeError",
+      "standard": "The 'from' date is after the 'to' date.",
+      "kind": "message",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.scheme",
+      "standard": "Scheme",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html",
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.state",
+      "standard": "State",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html",
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.to",
+      "standard": "Submitted to",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.toAria",
+      "standard": "To",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.filter.toText",
+      "standard": "to",
+      "kind": "label",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.agencies",
+      "standard": "Verification agencies",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.agenciesNote",
+      "standard": "{desktop} desktop · {onsite} onsite",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "desktop",
+        "onsite"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.applications",
+      "standard": "Scheme applications",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.approved",
+      "standard": "Approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.approvedAmount",
+      "standard": "Amount approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.claimedNote",
+      "standard": "{amount} claimed",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "amount"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.inVerification",
+      "standard": "In verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.onHoldNote",
+      "standard": "{count} on hold",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.paidNote",
+      "standard": "{count} paid",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "count"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.kpi.rejected",
+      "standard": "Rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.loadingText",
+      "standard": "Loading the figures…",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.noSchemes",
+      "standard": "No incentive schemes are defined yet (Admin → Incentive Schemes).",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.refreshButton",
+      "standard": "Refresh",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.schemesHeading",
+      "standard": "Applications by scheme",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.approved",
+      "standard": "Approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.desktop",
+      "standard": "Desktop verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.onHold",
+      "standard": "On hold",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.onsite",
+      "standard": "Onsite verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.paid",
+      "standard": "Paid",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.qc",
+      "standard": "Final QC",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.stage.rejected",
+      "standard": "Rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.approved",
+      "standard": "Approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.heading",
+      "standard": "By state",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.inVerification",
+      "standard": "In verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.none",
+      "standard": "No scheme applications for these filters.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.paid",
+      "standard": "Paid",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.rejected",
+      "standard": "Rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.state",
+      "standard": "State",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.states.total",
+      "standard": "Applications",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.title",
+      "standard": "Incentives Dashboard",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.approved",
+      "standard": "Approved",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.aria",
+      "standard": "Scheme applications in the last 12 months",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.heading",
+      "standard": "Scheme applications by month",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.rejected",
+      "standard": "Rejected",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.submitted",
+      "standard": "Submitted",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.tryAgainButton",
+      "standard": "Try Again",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.updatedSub",
+      "standard": "Updated {time}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [
+        "time"
+      ],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
       "key": "staff.layout.crumb.home",
       "standard": "Home",
       "kind": "label",
@@ -72697,6 +73664,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.incentivesDashboardLabel",
+      "standard": "Dashboard",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.lgDirectoryLabel",
       "standard": "LG Directory",
       "kind": "label",
@@ -73359,6 +74338,18 @@
     {
       "key": "staff.menu.role.dashboardAdminLabel",
       "standard": "Dashboard Admin",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
+      "key": "staff.menu.role.incentivesMasterAdminLabel",
+      "standard": "Incentives Master Admin",
       "kind": "label",
       "portal": "staff",
       "page": "menu",
@@ -118159,6 +119150,18 @@
     {
       "key": "staff.userManagement.typeHint.dfo",
       "standard": "Financial Assistance and Handholding NEFT of its states and districts.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "userManagement",
+      "pageName": "User management",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/accounts.ts"
+      ]
+    },
+    {
+      "key": "staff.userManagement.typeHint.incentivesMasterAdmin",
+      "standard": "The incentives only: Financial Assistance, scheme applications, verification agencies, API incentives and its dashboard.",
       "kind": "text",
       "portal": "staff",
       "page": "userManagement",

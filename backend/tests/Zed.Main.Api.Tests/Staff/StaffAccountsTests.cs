@@ -44,8 +44,8 @@ public sealed class StaffAccountsTests : IDisposable
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var list = (await admin.GetFromJsonAsync<StaffAccountsController.AccountsResponse>("/api/staff/accounts"))!;
-        // One Dashboard Admin instead of Super Admin, Citizen Feedback and QC (2026-11-07).
-        Assert.Equal(["Master Admin", "Ministry", "MSME DFO", "Dashboard Admin"], list.Types.Select(t => t.Label));
+        // One Dashboard Admin instead of Super Admin, Citizen Feedback and QC (2026-11-07); 2026-11-24: the Incentives Master Admin.
+        Assert.Equal(["Master Admin", "Incentives Master Admin", "Ministry", "MSME DFO", "Dashboard Admin"], list.Types.Select(t => t.Label));
         Assert.Contains(list.States, s => s is { Code: "9", Name: "UTTAR PRADESH" });
         Assert.Equal("MINISTRY1", Assert.Single(list.Accounts).UserId);
     }

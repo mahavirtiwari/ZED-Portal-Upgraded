@@ -37,8 +37,14 @@ public sealed class StaffAccountsController(
     /// <param name="HasLevels">False for the MSME DFO (its scope is category, states and districts).</param>
     /// <param name="HasDistricts">MSME DFO (2026-11-07): the districts among its states.</param>
     /// <param name="HasNeftLists">MSME DFO: Financial Assistance (main) and / or Handholding (Technology Upgradation).</param>
+    /// <param name="IncentivesOnly">2026-11-24: the Incentives Master Admin, a Master Admin with only the incentive screens
+    /// (<see cref="IncentivesAdmins"/>; dbo.Users.ScreenAccess 'incentives').</param>
     public sealed record AccountType(int RoleId, string Label, bool NeedsState, PortalSystem[] Systems, bool HasScope = false, bool HasStateScope = false,
-        bool HasScreens = false, bool CanAdd = true, bool HasLevels = true, bool HasDistricts = false, bool HasNeftLists = false);
+        bool HasScreens = false, bool CanAdd = true, bool HasLevels = true, bool HasDistricts = false, bool HasNeftLists = false, bool IncentivesOnly = false)
+    {
+        /// <summary>The type's id in the page (the role, but <see cref="IncentivesAdmins.TypeId"/> for the Incentives Master Admin).</summary>
+        public int TypeId => IncentivesOnly ? IncentivesAdmins.TypeId : RoleId;
+    }
 
     private static readonly PortalSystem[] All = [PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance];
 
@@ -46,6 +52,8 @@ public sealed class StaffAccountsController(
     public static readonly IReadOnlyList<AccountType> Types =
     [
         new((int)UserRole.MasterAdmin, "Master Admin", false, All, HasScope: true, HasStateScope: true),
+        // 2026-11-24 (approved design): a Master Admin of the incentive screens only; the incentives are on the main portal only.
+        new((int)UserRole.MasterAdmin, IncentivesAdmins.Label, false, [PortalSystem.Main], HasScope: true, HasStateScope: true, IncentivesOnly: true),
         new((int)UserRole.Ministry, "Ministry", false, All, HasScope: true),
         // One MSME DFO for Financial Assistance and Handholding (2026-11-07): category, states and districts; added on main.
         new((int)UserRole.StateCoordinator, "MSME DFO", false, [PortalSystem.Main, PortalSystem.Consultancy],
@@ -67,6 +75,9 @@ public sealed class StaffAccountsController(
         public IReadOnlyList<string> Districts { get; init; } = [];
         /// <summary>Dashboard Admin: the ticked "{portal}:{key}" screens; MSME DFO: its NEFT lists ("main:neft", ...); null = every one.</summary>
         public IReadOnlyList<string>? Screens { get; init; }
+
+        /// <summary>2026-11-24: the login type (<see cref="AccountType.TypeId"/>): the role, or the Incentives Master Admin's.</summary>
+        public int TypeId { get; init; } = RoleId;
     }
 
     public sealed record LevelOption(string Code, string Name);
@@ -86,9 +97,10 @@ public sealed class StaffAccountsController(
     /// <param name="Screens">Dashboard Admin: the ticked "{portal}:{key}" screens.</param>
     /// <param name="Districts">MSME DFO: district codes among its states.</param>
     /// <param name="NeftLists">MSME DFO: "main" (Financial Assistance) and / or "consultancy" (Handholding).</param>
+    /// <param name="TypeId">2026-11-24: the login type when it is not the role (<see cref="IncentivesAdmins.TypeId"/>).</param>
     public sealed record AccountRequest(string? UserId, int RoleId, string? UserName, string? Email, string? MobileNo, string? StateCode,
         string? SectorActivity = null, List<string>? Levels = null, List<string>? States = null, List<string>? Screens = null,
-        List<string>? Districts = null, List<string>? NeftLists = null);
+        List<string>? Districts = null, List<string>? NeftLists = null, int? TypeId = null);
 
     public sealed record CreatedAccountResponse(string Message, string UserId);
 
@@ -97,7 +109,7 @@ public sealed class StaffAccountsController(
         Types.Where(t => t.Systems.Contains(host.System))
             .Select(t => (t.HasScreens || t.HasNeftLists) && host.System != PortalSystem.Main ? t with { CanAdd = false } : t).ToList();
 
-    private int[] MyRoles => Mine.Select(t => t.RoleId).ToArray();
+    private int[] MyRoles => Mine.Select(t => t.RoleId).Distinct().ToArray();
 
     [HttpGet]
     public async Task<AccountsResponse> List(CancellationToken ct)
@@ -110,6 +122,7 @@ public sealed class StaffAccountsController(
         var screens = await ScreensAsync(ct);
         return new AccountsResponse(Mine, States, rows.Select(r => WithScope(r, scopes) with
         {
+            TypeId = TypeIdOf(r.RoleId, screens.GetValueOrDefault(r.UserId)),
             Screens = r.RoleId is (int)UserRole.SuperAdmin or (int)UserRole.StateCoordinator && screens.TryGetValue(r.UserId, out var sc) ? DashboardScreens.Parse(sc)!.ToList() : null,
             Districts = r.RoleId == (int)UserRole.StateCoordinator && scopes.TryGetValue(r.UserId, out var sd) ? LoginScope.Split(sd.ScopeDistricts) : [],
         }).ToList()) { Levels = LevelOptions, Screens = ScreenOptions };
@@ -117,8 +130,32 @@ public sealed class StaffAccountsController(
 
     // ---- Dashboard Admin screens (migration 0058) --------------------------------------------------
 
-    internal const string ScreensListSql = "SELECT UserId, ScreenAccess FROM Users WHERE RoleId IN (6, 10) AND ScreenAccess IS NOT NULL;";
-    internal const string SaveScreensSql = "UPDATE Users SET ScreenAccess = @ScreenAccess WHERE UserId = @UserId AND RoleId IN (6, 10);";
+    // 2026-11-24: also a Master Admin's ('incentives': the Incentives Master Admin, IncentivesAdmins).
+    internal const string ScreensListSql = "SELECT UserId, ScreenAccess FROM Users WHERE RoleId IN (6, 7, 10) AND ScreenAccess IS NOT NULL;";
+    internal const string SaveScreensSql = "UPDATE Users SET ScreenAccess = @ScreenAccess WHERE UserId = @UserId AND RoleId IN (6, 7, 10);";
+    internal const string ScreenOfSql = "SELECT TOP (1) UserId, ScreenAccess FROM Users WHERE UserId = @UserId AND RoleId = @RoleId;";
+
+    /// <summary>The login type of a row: its role, or the Incentives Master Admin's for a Master Admin with ScreenAccess 'incentives'.</summary>
+    internal static int TypeIdOf(int roleId, string? screenAccess) =>
+        roleId == (int)UserRole.MasterAdmin && IncentivesAdmins.IsStored(screenAccess) ? IncentivesAdmins.TypeId : roleId;
+
+    /// <summary>The login type of one row (its role when the screens cannot be read).</summary>
+    private async Task<int> TypeIdOfAsync(AccountRow row, CancellationToken ct)
+    {
+        if (row.RoleId != (int)UserRole.MasterAdmin) return row.RoleId;
+        try
+        {
+            var r = (await db.QuerySqlAsync<ScreenRow>(ScreenOfSql, new { row.UserId, row.RoleId }, ct)).FirstOrDefault();
+            return TypeIdOf(row.RoleId, r?.ScreenAccess);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Screens of {UserId} not read (is migration 0058 applied?)", row.UserId);
+            return row.RoleId;
+        }
+    }
+
+    private string LabelOf(int typeId) => Types.FirstOrDefault(t => t.TypeId == typeId)?.Label ?? "Dashboard Admin";
 
     public sealed record ScreenRow(string UserId, string? ScreenAccess);
 
@@ -314,7 +351,7 @@ public sealed class StaffAccountsController(
     {
         var userId = req.UserId?.Trim() ?? "";
         if (userId.Length < 4 || !StaffUserRules.IsUserId(userId)) return this.Problem400("Please enter a User ID of 4 to 50 letters and digits.");
-        var (type, values, error) = Validate(req, req.RoleId);
+        var (type, values, error) = Validate(req, req.TypeId ?? req.RoleId);
         if (error is not null) return this.Problem400(error);
         if (!type!.CanAdd) return this.Problem400("A Dashboard Admin is created on the main ZED portal: it opens this portal from there.");
         var (scope, scopeError) = ValidateScope(type!, req);
@@ -336,6 +373,7 @@ public sealed class StaffAccountsController(
         await passwords.SetAsync(userId, password, ct);
         await SaveScopeAsync(userId, type, scope!, ct);
         if (type.HasScreens || type.HasNeftLists) await SaveScreensAsync(userId, screens, ct);
+        if (type.IncentivesOnly) await SaveScreensAsync(userId, IncentivesAdmins.ScreenAccess, ct);
         log.LogInformation("{Type} login {NewUserId} created by {Actor}", type.Label, userId, UserId);
         // 2026-11-21: the account's history starts with its creation and what it was created with.
         if (await StaffUserActions.HistoryProfileAsync(() => ProfileAsync(values.UserName, values.Email, values.MobileNo, values.StateCode, type,
@@ -354,7 +392,8 @@ public sealed class StaffAccountsController(
     public async Task<ActionResult<MessageResponse>> Update(string userId, AccountRequest req, CancellationToken ct)
     {
         if (await FindAsync(userId, ct) is not { } row) return NotFound();
-        var (type, values, error) = Validate(req, row.RoleId);
+        // The type is kept (a Master Admin and an Incentives Master Admin are not changed into each other).
+        var (type, values, error) = Validate(req, await TypeIdOfAsync(row, ct));
         if (error is not null) return this.Problem400(error);
         var (scope, scopeError) = ValidateScope(type!, req);
         if (scopeError is not null) return this.Problem400(scopeError);
@@ -404,7 +443,7 @@ public sealed class StaffAccountsController(
             new { Password = passwords.StoredValueFor(password), row.UserId, row.RoleId }, ct);
         log.LogInformation("Password of {UserId} reset by {Actor}", row.UserId, UserId);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
-        var label = Types.FirstOrDefault(t => t.RoleId == row.RoleId)?.Label ?? "Dashboard Admin";
+        var label = LabelOf(await TypeIdOfAsync(row, ct));
         var sent = await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, label, new StaffWelcomeLogin(password, null), reset: true, ct);
         // 2026-11-21: in the account's history (where it was sent; never the password).
         if (sent)
@@ -436,7 +475,7 @@ public sealed class StaffAccountsController(
             new { IsActive = active, row.UserId, row.RoleId }, ct);
         log.LogInformation("Login {UserId} {Action} by {Actor}", row.UserId, active ? "unblocked" : "blocked", UserId);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
-        var label = Types.FirstOrDefault(t => t.RoleId == row.RoleId)?.Label ?? "Dashboard Admin";
+        var label = LabelOf(await TypeIdOfAsync(row, ct));
         await StaffUserActions.RecordAndMailLoginAsync(this, db, host, new StaffUserMail(email, templates, portal, addresses, log), row.UserId, row.RoleId,
             row.UserName, row.Email, label, blocked: !active, reason!, UserId, log, ct);
         return new MessageResponse(active ? "Login unblocked." : "Login blocked.");
@@ -467,9 +506,9 @@ public sealed class StaffAccountsController(
         return p;
     }
 
-    private (AccountType? Type, Values? Values, string? Error) Validate(AccountRequest req, int roleId)
+    private (AccountType? Type, Values? Values, string? Error) Validate(AccountRequest req, int typeId)
     {
-        var type = Mine.FirstOrDefault(t => t.RoleId == roleId);
+        var type = Mine.FirstOrDefault(t => t.TypeId == typeId);
         if (type is null) return (null, null, "Please select the login type.");
         if (!StaffUserRules.TryText(req.UserName, 100, required: true, multiline: false, out var name)) return (null, null, "Please enter the name (up to 100 characters).");
         var mail = req.Email?.Trim();

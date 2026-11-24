@@ -46,6 +46,9 @@ public static class SubUserPermissions
     /// <summary>The Desktop Assessment details page, opened from monitoring, allotment and the result lists.</summary>
     private const string DaDetails = "/api/staff/assessment/da/";
 
+    /// <summary>2026-11-24: the incentives dashboard (the Incentives Master Admin's home; Users/IncentivesAdmins), with any incentive screen.</summary>
+    private const string IncentivesDashboard = Users.IncentivesAdmins.DashboardApi;
+
     /// <summary>A handholding milestone page (Consultancy), opened from monitoring and the result lists.</summary>
     private const string Milestones = "/api/consultancy/milestones/";
 
@@ -83,21 +86,21 @@ public static class SubUserPermissions
         new("history", "ZED ID History", UserRole.MasterAdmin, Main, None,
             ["/staff/history"], ["/api/staff/history"]),
         new("financial-assistance", "Financial Assistance", UserRole.MasterAdmin, Main, None,
-            ["/staff/financial-assistance"], ["/api/staff/schemes/fa"]),
+            ["/staff/financial-assistance"], ["/api/staff/schemes/fa", IncentivesDashboard]),
         // 2026-11-16 (approved): raise, close and reopen the ZED team's quality observations, and their dashboard.
         new("quality-observations", "Quality observations", UserRole.MasterAdmin, All, None,
             ["/staff/quality-observations"], ["/api/staff/quality-observations"]),
         new("incentive-upload", "Upload API Incentives", UserRole.MasterAdmin, Main, None,
-            ["/staff/incentives/upload"], ["/api/staff/schemes/incentives/upload", "/api/staff/schemes/incentives/template"]),
+            ["/staff/incentives/upload"], ["/api/staff/schemes/incentives/upload", "/api/staff/schemes/incentives/template", IncentivesDashboard]),
         // 2026-11-18 (approved): Expenditure (cases, payable, POs, the monthly invoices' review).
         new("expenditure", "Expenditure", UserRole.MasterAdmin, [PortalSystem.Main, PortalSystem.Consultancy], None,
             ["/staff/expenditure"], ["/api/staff/expenditure"]),
         // 2026-11-20: the incentive schemes (Features/Incentives).
         new("scheme-applications", "Scheme Applications", UserRole.MasterAdmin, Main, None,
-            ["/staff/schemes-verify/applications"], ["/api/staff/scheme-applications"]),
+            ["/staff/schemes-verify/applications"], ["/api/staff/scheme-applications", IncentivesDashboard]),
         // 2026-11-20: the incentive verification agencies, desktop and onsite (the key stays: it is stored in dbo.V4SubUsers.Permissions).
         new("scheme-onsite-agencies", "Incentive Verification Agencies", UserRole.MasterAdmin, Main, None,
-            ["/staff/scheme-agencies", "/staff/scheme-onsite/agencies"], ["/api/staff/scheme-agencies", "/api/staff/scheme-onsite/agencies"]),
+            ["/staff/scheme-agencies", "/staff/scheme-onsite/agencies"], ["/api/staff/scheme-agencies", "/api/staff/scheme-onsite/agencies", IncentivesDashboard]),
         new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
             ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
 
@@ -143,8 +146,10 @@ public static class SubUserPermissions
     public static IReadOnlyList<SubUserPermission> For(int roleId, IReadOnlyCollection<string> subRoles, PortalSystem system)
     {
         // An incentive verification agency has only its own screens (never the assessment ones, nor the other stage's scheme ones).
+        // 2026-11-24: an Incentives Master Admin has only the incentive screens (Users/IncentivesAdmins).
         var agency = roleId == (int)UserRole.Agency;
-        var only = !agency ? null
+        var only = Users.IncentivesAdmins.Is(roleId, subRoles) ? Users.IncentivesAdmins.Keys
+            : !agency ? null
             : subRoles.Contains(Incentives.Agencies.IncentiveAgencies.OnsiteSubRole) ? OnsiteAgencyKeys
             : subRoles.Contains(Incentives.Agencies.IncentiveAgencies.DesktopSubRole) ? DesktopAgencyKeys
             : null;

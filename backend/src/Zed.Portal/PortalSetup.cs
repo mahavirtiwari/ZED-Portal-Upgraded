@@ -94,6 +94,9 @@ public static class PortalSetup
         // Dashboard Admins: only the screens the Admin ticked (migration 0058).
         services.AddScoped<Features.Staff.Users.DashboardScreenFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.DashboardScreenFilter>());
+        // 2026-11-24: Incentives Master Admins (and their Operation Admins): only the incentive screens.
+        services.AddScoped<Features.Staff.Users.IncentivesAdminFilter>();
+        services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.IncentivesAdminFilter>());
         services.AddScoped<Features.Staff.Users.ScopeAccessFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.ScopeAccessFilter>());
         return builder;

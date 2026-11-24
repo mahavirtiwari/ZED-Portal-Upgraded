@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute, CanActivateChildFn, Router, RouterLink } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { TextPipe } from '../content/page-text';
-import { menuFor, subUserAlwaysOpen } from './staff-menu';
+import { INCENTIVES_DASHBOARD_ROUTE, INCENTIVES_SUB_ROLE, isIncentivesAdmin, menuFor, subUserAlwaysOpen } from './staff-menu';
 
 /**
  * 2026-11-21 (Operation Admin audit): a sub-user (operation admin, agency sub-user) opening a screen of its owner's menu that it
@@ -13,11 +13,13 @@ import { menuFor, subUserAlwaysOpen } from './staff-menu';
 export function blockedScreen(path: string, roleId: number, subRoles: readonly string[], granted: readonly string[] | null | undefined): string | null {
   if (!granted) return null;
   const clean = path.split(/[?#]/)[0].replace(/\/+$/, '');
-  const screen = menuFor(roleId, subRoles, undefined, null)
+  // 2026-11-24: an Incentives Master Admin (and its Operation Admins) is checked against the whole Master Admin's menu.
+  const incentives = subRoles.includes(INCENTIVES_SUB_ROLE);
+  const screen = menuFor(roleId, incentives ? subRoles.filter((s) => s !== INCENTIVES_SUB_ROLE) : subRoles, undefined, null)
     .map((i) => i.route)
     .filter((r): r is string => !!r && r !== '/staff' && r.startsWith('/staff/') && (clean === r || clean.startsWith(r + '/')))
     .sort((a, b) => b.length - a.length)[0];
-  if (!screen || ALWAYS_OPEN.some((r) => screen === r || screen.startsWith(r + '/')) || subUserAlwaysOpen(screen, roleId)) return null;
+  if (!screen || ALWAYS_OPEN.some((r) => screen === r || screen.startsWith(r + '/')) || subUserAlwaysOpen(screen, roleId, subRoles)) return null;
   return granted.some((r) => screen === r || screen.startsWith(r + '/')) ? null : screen;
 }
 
@@ -26,6 +28,8 @@ const ALWAYS_OPEN = ['/staff/dashboard', '/staff/home', '/staff/msme-profile', '
 
 export const subUserScreenGuard: CanActivateChildFn = (_route, state) => {
   const user = inject(AuthService).currentUser();
+  // 2026-11-24: the Incentives Master Admin's dashboard is the incentives one (the Master Admin's shows the assessments).
+  if (isIncentivesAdmin(user) && /^\/staff\/dashboard(?:[/?#]|$)/.test(state.url)) return inject(Router).parseUrl(INCENTIVES_DASHBOARD_ROUTE);
   if (!user?.permissionRoutes) return true;
   const blocked = blockedScreen(state.url, user.roleId, user.subRoles ?? [], user.permissionRoutes);
   return blocked ? inject(Router).createUrlTree(['/staff/no-access'], { queryParams: { screen: blocked } }) : true;

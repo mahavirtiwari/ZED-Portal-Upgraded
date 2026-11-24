@@ -183,7 +183,8 @@ const ONSITE_MODES: readonly Mode[] = ['onsiteAllotment', 'onsiteQc'];
 export class SchemeListPage {
   private readonly api = inject(SchemeVerificationApi);
   private readonly toast = inject(ToastService);
-  protected readonly mode = signal<Mode>((inject(ActivatedRoute).snapshot.data['mode'] as Mode) ?? 'admin');
+  private readonly snapshot = inject(ActivatedRoute).snapshot;
+  protected readonly mode = signal<Mode>((this.snapshot.data['mode'] as Mode) ?? 'admin');
   protected readonly onsite = computed(() => ONSITE_MODES.includes(this.mode()));
   protected readonly role = computed<SchemeRole>(() =>
     this.mode() === 'admin' ? 'admin' : this.mode() === 'assessor' ? 'assessor' : this.onsite() ? 'onsite' : 'agency');
@@ -214,7 +215,12 @@ export class SchemeListPage {
   protected readonly rows = computed(() => this.data()?.rows ?? []);
   protected readonly schemes = computed<SchemeOption[]>(() => this.data()?.schemes ?? []);
   protected readonly states = computed(() => this.data()?.states ?? []);
-  protected readonly filter = signal<SchemeFilter>({ ...NO_SCHEME_FILTER, status: FIRST[this.mode()] });
+  // 2026-11-24: ?status= (a status of this list's tiles) opens it on that status (the bell and the incentives dashboard link there).
+  protected readonly filter = signal<SchemeFilter>({ ...NO_SCHEME_FILTER, status: this.startStatus() });
+  private startStatus(): string {
+    const asked = this.snapshot.queryParamMap?.get('status') ?? '';
+    return asked && (TILES[this.mode()] as readonly string[]).includes(asked) ? asked : FIRST[this.mode()];
+  }
   protected readonly filtering = computed(() => { const f = this.filter(); return !!(f.scheme || f.state || f.from || f.to); });
   protected readonly search = signal('');
   protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));

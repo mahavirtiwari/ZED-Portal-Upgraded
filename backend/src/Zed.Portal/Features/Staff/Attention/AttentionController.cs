@@ -83,6 +83,12 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
 
     private async Task MasterAdminAsync(List<Item> items, CancellationToken ct)
     {
+        // 2026-11-24: an Incentives Master Admin (and its Operation Admins) has the incentive screens' work only.
+        if (Users.IncentivesAdmins.Is(CurrentUser))
+        {
+            await IncentivesAsync(items, ct);
+            return;
+        }
         if (Opens(Allot))
         {
             // The Allot page's list (all rows, both ALLOT and RE-ALLOT), within the login's scope.
@@ -113,6 +119,28 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
             if (open is not null)
                 items.Add(new Item("quality-open", "Quality observations open", open.Count, Quality, Query("status", "Open"), "info", "chat"));
         }
+    }
+
+    private const string SchemeApplications = "/staff/schemes-verify/applications";
+    private const string FinancialAssistance = "/staff/financial-assistance";
+
+    /// <summary>
+    /// 2026-11-24 (Incentives Master Admin): scheme applications awaiting allotment, onsite allotments left to it, applications on
+    /// hold, Financial Assistance awaiting an agency (Incentives/Staff/IncentivesDashboardController.AttentionAsync).
+    /// </summary>
+    private async Task IncentivesAsync(List<Item> items, CancellationToken ct)
+    {
+        var store = HttpContext.RequestServices.GetRequiredService<Incentives.SchemeStore>();
+        var c = await Try("incentives", async () => await Incentives.Staff.IncentivesDashboardController.AttentionAsync(HttpContext, db, store, ct));
+        if (c is null) return;
+        if (Opens(SchemeApplications))
+        {
+            items.Add(new Item("scheme-allot", "Scheme applications awaiting allotment", c.SchemeToAllot, SchemeApplications, Query("status", "Submitted"), "warn", "people"));
+            items.Add(new Item("scheme-onsite-allot", "Onsite verifications to allot", c.OnsiteToAllot, SchemeApplications, Query("status", "OnsiteAllot"), "warn", "people"));
+            items.Add(new Item("scheme-hold", "Scheme applications on hold", c.OnHold, SchemeApplications, Query("status", "OnHold"), "info", "clock"));
+        }
+        if (Opens(FinancialAssistance))
+            items.Add(new Item("fa-allot", "Financial Assistance awaiting an agency", c.FaToAllot, FinancialAssistance, null, "warn", "people"));
     }
 
     private async Task AgencyAsync(List<Item> items, CancellationToken ct)
@@ -280,9 +308,9 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
 
     // ------------------------------------------------------------------ helpers
 
-    /// <summary>A sub-user lists only the pages it was given; the owner every page of its role.</summary>
+    /// <summary>A sub-user (2026-11-24: and an Incentives Master Admin) lists only the pages it was given; the owner every page of its role.</summary>
     private bool Opens(string route) =>
-        !CurrentUser.IsSubUser || (CurrentUser.PermissionRoutes ?? []).Contains(route, StringComparer.OrdinalIgnoreCase);
+        (!CurrentUser.IsSubUser && !Users.IncentivesAdmins.Is(CurrentUser)) || (CurrentUser.PermissionRoutes ?? []).Contains(route, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>One source; a database that cannot answer it (a procedure or table missing on this portal) drops the item.</summary>
     private async Task<T?> Try<T>(string what, Func<Task<T>> read) where T : class

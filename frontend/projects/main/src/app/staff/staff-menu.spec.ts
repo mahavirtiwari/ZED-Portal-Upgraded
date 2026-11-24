@@ -1,4 +1,4 @@
-import { DESKTOP_SCHEME_SUB_ROLE, ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, menuScreenAllows, staffRoleName } from './staff-menu';
+import { DESKTOP_SCHEME_SUB_ROLE, INCENTIVES_SUB_ROLE, ONSITE_SUB_ROLE, StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, menuScreenAllows, staffRoleName } from './staff-menu';
 import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
@@ -297,6 +297,32 @@ describe('staff menu', () => {
     it('is null for a screen this portal has no menu entry for', () => {
       expect(menuScreenAllows('/staff/assessment/site-verification', StaffRole.DesktopAssessor, [], 'main')).toBeNull();
       expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['FinancialVerification'], 'surveillance')).toBeNull();
+    });
+  });
+
+  describe('Incentives Master Admin (2026-11-24)', () => {
+    const routes = (items: StaffMenuItem[]) => items.map((i) => i.route);
+
+    it('has its dashboard, the Schemes screens and its Operation Admins only', () => {
+      expect(routes(menuFor(StaffRole.MasterAdmin, [INCENTIVES_SUB_ROLE], 'main'))).toEqual([
+        '/staff/incentives/dashboard', '/staff/financial-assistance', '/staff/incentives/upload', '/staff/schemes-verify/applications',
+        '/staff/scheme-agencies', '/staff/sub-users',
+      ]);
+    });
+
+    it('leaves the Master Admin menu as it was (no incentives dashboard)', () => {
+      const master = routes(menuFor(StaffRole.MasterAdmin, [], 'main'));
+      expect(master).toContain('/staff/monitoring');
+      expect(master).toContain('/staff/schemes-verify/applications');
+      expect(master).not.toContain('/staff/incentives/dashboard');
+    });
+
+    it('lands on the incentives dashboard and is named for itself', () => {
+      expect(homeFor(StaffRole.MasterAdmin, 'main', [INCENTIVES_SUB_ROLE])).toBe('/staff/incentives/dashboard');
+      expect(homeFor(StaffRole.MasterAdmin, 'main')).toBe('/staff/dashboard');
+      expect(staffRoleName({ roleId: 7, role: 'MasterAdmin', subRoles: [INCENTIVES_SUB_ROLE] }, 'main')).toBe('Incentives Master Admin');
+      expect(staffRoleName({ roleId: 7, role: 'MasterAdmin', subRoles: [INCENTIVES_SUB_ROLE], actingUserId: 'OP1' }, 'main')).toBe('Operation Admin');
+      expect(menuScreenAllows('/staff/monitoring', StaffRole.MasterAdmin, [INCENTIVES_SUB_ROLE], 'main')).toBe(false);
     });
   });
 });

@@ -19,7 +19,13 @@ import { plain } from '../users/user-display';
 import { revealError } from '../reveal-error';
 
 interface AccountType {
+  /**
+   * The login type's id on this page: the role (Users.RoleId), but 107 for the Incentives Master Admin (2026-11-24: a Master
+   * Admin, role 7, with only the incentive screens). The API sends it as `typeId`; `role` is then the role.
+   */
   roleId: number;
+  typeId?: number;
+  role?: number;
   label: string;
   needsState: boolean;
   /** Master Admin and Ministry (2026-11-07): MSME category and certification levels. */
@@ -59,7 +65,9 @@ const SECTOR_SCOPES: SectorScope[] = ['Manufacturing', 'Services', 'Both'];
 interface Account {
   userId: string;
   userName: string | null;
+  /** The login type (AccountType.roleId): the API's `typeId` when it sends one. */
   roleId: number;
+  typeId?: number;
   email: string | null;
   mobileNo: string | null;
   stateCode: string | null;
@@ -106,6 +114,7 @@ const NEFT_API = '/api/staff/neft-admins';
 function typeHintOf(roleId: number): string {
   switch (roleId) {
     case 7: return t('staff.userManagement.typeHint.masterAdmin', 'Agencies, assessors and the assessment work.');
+    case 107: return t('staff.userManagement.typeHint.incentivesMasterAdmin', 'The incentives only: Financial Assistance, scheme applications, verification agencies, API incentives and its dashboard.');
     case 8: return t('staff.userManagement.typeHint.ministry', 'The Ministry of MSME: dashboards and reports.');
     case 6: return t('staff.userManagement.typeHint.dfo', 'Financial Assistance and Handholding NEFT of its states and districts.');
     case 10: return t('staff.userManagement.typeHint.dashboardAdmin', 'Dashboards and the screens you tick below, on the three portals.');
@@ -925,8 +934,12 @@ export class AccountsPage {
       return;
     }
     const { sectorActivity, levels, states, screens, districts, neftLists, ...details } = f;
+    const type = this.types().find((x) => x.roleId === f.roleId);
     const body = {
       ...details,
+      // 2026-11-24: the role, and the login type when it differs (the Incentives Master Admin).
+      roleId: type?.role ?? f.roleId,
+      ...(type?.typeId !== undefined && type.typeId !== type.role ? { typeId: type.typeId } : {}),
       stateCode: this.needsState() ? f.stateCode : null,
       // Master Admin / Ministry: the scope (Master Admin also its states).
       ...(scope ? { sectorActivity, levels, states: scope.hasStateScope ? states : [] } : {}),
@@ -1036,9 +1049,10 @@ export class AccountsPage {
     this.busy.set(true);
     try {
       const r = await firstValueFrom(this.http.get<AccountsResponse>(this.api));
-      this.types.set(r.types);
+      // 2026-11-24: the page tells the login types apart by `roleId`: the type's id (the Incentives Master Admin's is not its role).
+      this.types.set(r.types.map((ty) => (ty.typeId !== undefined ? { ...ty, role: ty.roleId, roleId: ty.typeId } : ty)));
       this.states.set(r.states);
-      this.accounts.set(r.accounts);
+      this.accounts.set(r.accounts.map((a) => (a.typeId !== undefined ? { ...a, roleId: a.typeId } : a)));
       this.levels.set(r.levels ?? []);
       this.screenOptions.set(r.screens ?? []);
       this.loaded.set(true);

@@ -9,7 +9,7 @@ const MSME_ROLE = 5;
 /** Sends a role to its landing page of the old login (dashboard, fee master, ...); the others get the card home. */
 export const staffHomeRedirect: CanActivateFn = () => {
   const user = inject(AuthService).currentUser();
-  const home = user ? homeFor(user.roleId) : null;
+  const home = user ? homeFor(user.roleId, undefined, user.subRoles ?? []) : null;
   return home ? inject(Router).parseUrl(home) : true;
 };
 

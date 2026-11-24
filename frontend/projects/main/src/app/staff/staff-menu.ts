@@ -35,13 +35,29 @@ export const ONSITE_SUB_ROLE = 'SchemeOnsite';
 export const DESKTOP_SCHEME_SUB_ROLE = 'SchemeDesktop';
 
 /**
- * The kind of agency an agency user (or an assessor, by its agency) is: an assessment agency, or an incentive verification agency
- * (desktop / onsite), from the sign-in's sub-roles.
+ * 2026-11-24 (approved design): the pseudo sub-role of an Incentives Master Admin (a Master Admin with Users.ScreenAccess 'incentives')
+ * and its Operation Admins, added at sign-in (IncentivesAdmins.SubRole). They see only the entries for `incentives`.
  */
-export type AgencyKind = 'assessment' | 'desktop' | 'onsite';
+export const INCENTIVES_SUB_ROLE = 'IncentivesOnly';
+
+/** The Incentives Master Admin's home: the incentives dashboard. */
+export const INCENTIVES_DASHBOARD_ROUTE = '/staff/incentives/dashboard';
+
+/**
+ * The kind of agency an agency user (or an assessor, by its agency) is: an assessment agency, or an incentive verification agency
+ * (desktop / onsite), from the sign-in's sub-roles. 2026-11-24: `incentives` is an Incentives Master Admin (not an agency kind; the
+ * entries of the Master Admin's menu are for the Master Admin, `assessment`, unless they list it).
+ */
+export type AgencyKind = 'assessment' | 'desktop' | 'onsite' | 'incentives';
 
 export function agencyKindOf(subRoles: readonly string[]): AgencyKind {
-  return subRoles.includes(ONSITE_SUB_ROLE) ? 'onsite' : subRoles.includes(DESKTOP_SCHEME_SUB_ROLE) ? 'desktop' : 'assessment';
+  return subRoles.includes(ONSITE_SUB_ROLE) ? 'onsite' : subRoles.includes(DESKTOP_SCHEME_SUB_ROLE) ? 'desktop'
+    : subRoles.includes(INCENTIVES_SUB_ROLE) ? 'incentives' : 'assessment';
+}
+
+/** An Incentives Master Admin or one of its Operation Admins. */
+export function isIncentivesAdmin(user: { roleId: number; subRoles?: readonly string[] | null } | null | undefined): boolean {
+  return !!user && user.roleId === StaffRole.MasterAdmin && (user.subRoles ?? []).includes(INCENTIVES_SUB_ROLE);
 }
 
 export interface StaffMenuItem {
@@ -124,6 +140,8 @@ export function menuEntries(items: readonly StaffMenuItem[]): StaffMenuEntry[] {
 const R = StaffRole;
 const ALL_KINDS: readonly AgencyKind[] = ['assessment', 'desktop', 'onsite'];
 const ASSESSMENT_ONLY: readonly AgencyKind[] = ['assessment'];
+/** 2026-11-24: the Master Admin's entries the Incentives Master Admin has too. */
+const WITH_INCENTIVES: readonly AgencyKind[] = ['assessment', 'incentives'];
 
 /**
  * Main's staff menu per role, as in the role branches of Views/Shared/_Layout.cshtml. Screens are moved from
@@ -169,16 +187,18 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Assessment' },
 
   // Schemes and finance
-  { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.MasterAdmin], group: 'Schemes' },
+  // 2026-11-24: the Incentives Master Admin's home (its menu: this, the Schemes entries and its Operation Admins).
+  { label: 'Incentives Dashboard', route: INCENTIVES_DASHBOARD_ROUTE, roles: [R.MasterAdmin], agencyKinds: ['incentives'] },
+  { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.Agency, R.DesktopAssessor], subRoles: ['FinancialVerification'] },
   { label: 'Incentive Submissions', legacyPath: '/Incentive/Submissions', route: '/staff/incentives/submissions', roles: [R.SuperAdmin] },
-  { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes' },
+  { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
   // 2026-11-20: the incentive schemes the Admin defines (verified like the assessment). 2026-11-20 (the product owner): desktop and
   // onsite are done by separate agencies the Master Admin adds (Incentive Verification Agencies, by state and district), never by the
   // assessment agencies: the desktop agency's allotment and QC, its assessors' verification; the onsite agency's onsite allotment and
   // final QC (its assessors verify in the app).
-  { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes' },
-  { label: 'Incentive Verification Agencies', route: '/staff/scheme-agencies', roles: [R.MasterAdmin], group: 'Schemes' },
+  { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
+  { label: 'Incentive Verification Agencies', route: '/staff/scheme-agencies', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
   { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
   { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
   { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor], agencyKinds: ['desktop'] },
@@ -254,7 +274,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
   { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
-  { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
+  { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin], agencyKinds: WITH_INCENTIVES },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency], agencyKinds: ALL_KINDS },
 ];
 
@@ -441,6 +461,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Financial Assistance': () => t('staff.menu.item.financialAssistanceLabel', 'Financial Assistance'),
   'Incentive Submissions': () => t('staff.menu.item.incentiveSubmissionsLabel', 'Incentive Submissions'),
   'Upload API Incentives': () => t('staff.menu.item.uploadApiIncentivesLabel', 'Upload API Incentives'),
+  'Incentives Dashboard': () => t('staff.menu.item.incentivesDashboardLabel', 'Dashboard'),
   'NEFT: New Transactions': () => t('staff.menu.item.neftNewTransactionsLabel', 'NEFT: New Transactions'),
   'NEFT: Approved Transactions': () => t('staff.menu.item.neftApprovedTransactionsLabel', 'NEFT: Approved Transactions'),
   'NEFT: Rejected Transactions': () => t('staff.menu.item.neftRejectedTransactionsLabel', 'NEFT: Rejected Transactions'),
@@ -547,7 +568,7 @@ export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, c
  * Consultant Organisation (2) and Consultant/Expert (3), otherwise the role name with spaces ("MasterAdmin" -> "Master Admin").
  */
 export function staffRoleName(
-  user: { roleId: number; role?: string | null; isNeftAdmin?: boolean; actingUserId?: string | null } | null | undefined,
+  user: { roleId: number; role?: string | null; isNeftAdmin?: boolean; actingUserId?: string | null; subRoles?: readonly string[] | null } | null | undefined,
   system: PortalSystem = PORTAL_SYSTEM,
 ): string {
   if (!user) return '';
@@ -557,6 +578,8 @@ export function staffRoleName(
     return t('staff.menu.role.subUserLabel', '{role} Sub-User', { role: staffRoleName({ ...user, actingUserId: null }, system) });
   }
   if (user.roleId === 10) return t('staff.menu.role.dashboardAdminLabel', 'Dashboard Admin');
+  // 2026-11-24: a Master Admin of the incentive screens only.
+  if (isIncentivesAdmin(user)) return t('staff.menu.role.incentivesMasterAdminLabel', 'Incentives Master Admin');
   if (user.roleId === 6) return user.isNeftAdmin ? t('staff.menu.role.neftAdminLabel', 'NEFT Admin') : t('staff.menu.role.msmeDfoLabel', 'MSME DFO');
   // 2026-11-15: Consultancy's agencies and assessors are its Consultant Organisations and Consultants/Experts ("Desktop Assessor, ZED Handholding").
   if (system === 'consultancy' && (user.roleId === R.Agency || user.roleId === R.DesktopAssessor))
@@ -585,8 +608,9 @@ export const HOME_ROUTES: Record<PortalSystem, Partial<Record<number, string>>> 
   surveillance: {},
 };
 
-/** The landing page of a role after sign-in, or null for the card home. */
-export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM): string | null {
+/** The landing page of a role after sign-in, or null for the card home (2026-11-24: the Incentives Master Admin's dashboard). */
+export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM, subRoles: readonly string[] = []): string | null {
+  if (isIncentivesAdmin({ roleId, subRoles })) return INCENTIVES_DASHBOARD_ROUTE;
   return HOME_ROUTES[system][roleId] ?? (DASHBOARD_ROLE_IDS.includes(roleId) ? '/staff/dashboard' : null);
 }
 
@@ -645,8 +669,9 @@ export function menuScreenAllows(route: string, roleId: number, subRoles: readon
  */
 const SUB_USER_ALWAYS_OPEN = ['/staff/documents'];
 
-export function subUserAlwaysOpen(route: string | undefined, roleId: number): boolean {
-  return !!route && roleId !== StaffRole.SuperAdmin && SUB_USER_ALWAYS_OPEN.includes(route);
+export function subUserAlwaysOpen(route: string | undefined, roleId: number, subRoles: readonly string[] = []): boolean {
+  // 2026-11-24: not an Incentives Master Admin's Operation Admin (its owner has no Documents page).
+  return !!route && roleId !== StaffRole.SuperAdmin && !isIncentivesAdmin({ roleId, subRoles }) && SUB_USER_ALWAYS_OPEN.includes(route);
 }
 
 /**
@@ -662,7 +687,7 @@ export function menuFor(
   return expandLevels(MENUS[system]).filter(
     (i) =>
       menuItemAllows(i, roleId, subRoles) &&
-      (!permissionRoutes || subUserAlwaysOpen(i.route, roleId) || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
+      (!permissionRoutes || subUserAlwaysOpen(i.route, roleId, subRoles) || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
       (!i.onlyWithout || (!!permissionRoutes && !permissionRoutes.includes(i.onlyWithout))),
   );
 }

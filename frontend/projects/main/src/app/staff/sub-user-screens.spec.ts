@@ -54,3 +54,23 @@ describe('role guard (authGuard, audit item 11)', () => {
     expect(show(await run(authGuard('/login', [1, 2, 7]), '/staff/monitoring', { roleId: 5 }))).toBe('/login');
   });
 });
+
+describe('Incentives Master Admin screens (2026-11-24)', () => {
+  const incentives = ['IncentivesOnly'];
+  const routes = ['/staff/incentives/dashboard', '/staff/financial-assistance', '/staff/schemes-verify/applications', '/staff/scheme-agencies',
+    '/staff/scheme-onsite/agencies', '/staff/incentives/upload', '/staff/sub-users'];
+
+  it('blocks the Master Admin screens it does not have, and its Documents', () => {
+    expect(blockedScreen('/staff/monitoring', 7, incentives, routes)).toBe('/staff/monitoring');
+    expect(blockedScreen('/staff/users/agencies/new', 7, incentives, routes)).toBe('/staff/users/agencies');
+    expect(blockedScreen('/staff/expenditure', 7, incentives, routes)).toBe('/staff/expenditure');
+    expect(blockedScreen('/staff/documents', 7, incentives, routes)).toBe('/staff/documents');
+  });
+
+  it('opens its incentive screens, their pages and its dashboard', () => {
+    expect(blockedScreen('/staff/schemes-verify/applications?status=Submitted', 7, incentives, routes)).toBeNull();
+    expect(blockedScreen('/staff/financial-assistance/ZEDM000005', 7, incentives, routes)).toBeNull();
+    expect(blockedScreen('/staff/incentives/dashboard', 7, incentives, routes)).toBeNull();
+    expect(blockedScreen('/staff/sub-users', 7, incentives, routes)).toBeNull();
+  });
+});

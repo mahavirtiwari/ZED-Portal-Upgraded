@@ -1,0 +1,159 @@
+<zed-page-head [crumbs]="crumbs()" [title]="'Incentives Dashboard' | t: 'staff.incentivesDashboard.title'" [subtitle]="updated()" [level]="1">
+  <button type="button" class="btn btn-primary id-btn" [disabled]="loading()" (click)="refresh()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg> {{ 'Refresh' | t: 'staff.incentivesDashboard.refreshButton' }}
+  </button>
+  <button type="button" class="btn btn-primary id-btn" [disabled]="!data() || exporting()" (click)="export()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+    {{ exporting() ? ('Exporting…' | t: 'staff.incentivesDashboard.exportingButton') : ('Export' | t: 'staff.incentivesDashboard.exportButton') }}
+  </button>
+</zed-page-head>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">
+    {{ error() }} <button type="button" class="btn btn-link" (click)="load()">{{ 'Try Again' | t: 'staff.incentivesDashboard.tryAgainButton' }}</button>
+  </div>
+}
+
+<div class="id-box">
+  <div class="id-filters">
+    <div class="filter">
+      <label class="form-label" for="id-scheme">{{ 'Scheme' | t: 'staff.incentivesDashboard.filter.scheme' }}</label>
+      <select id="id-scheme" class="form-select" [ngModel]="filter().scheme" (ngModelChange)="set('scheme', $event)">
+        <option value="">{{ 'All' | t: 'staff.incentivesDashboard.filter.all' }}</option>
+        @for (s of data()?.schemeOptions ?? []; track s.code) { <option [value]="s.code">{{ s.name }}</option> }
+      </select>
+    </div>
+    <div class="filter">
+      <label class="form-label" for="id-state">{{ 'State' | t: 'staff.incentivesDashboard.filter.state' }}</label>
+      <select id="id-state" class="form-select" [ngModel]="filter().state" (ngModelChange)="set('state', $event)">
+        <option value="">{{ 'All' | t: 'staff.incentivesDashboard.filter.all' }}</option>
+        @for (s of data()?.stateOptions ?? []; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+    </div>
+    <div class="filter id-range">
+      <span class="form-label" id="id-range-label">{{ 'Submitted between' | t: 'staff.incentivesDashboard.filter.range' }}</span>
+      <div class="id-range-inputs" role="group" aria-labelledby="id-range-label">
+        <input id="id-from" type="date" class="form-control" [attr.aria-label]="'From' | t: 'staff.incentivesDashboard.filter.fromAria'" [max]="filter().to || today"
+               [ngModel]="filter().from" (ngModelChange)="set('from', $event)" [class.is-invalid]="rangeInverted()" />
+        <span class="id-to">{{ 'to' | t: 'staff.incentivesDashboard.filter.toText' }}</span>
+        <input id="id-to" type="date" class="form-control" [attr.aria-label]="'To' | t: 'staff.incentivesDashboard.filter.toAria'" [min]="filter().from" [max]="today"
+               [ngModel]="filter().to" (ngModelChange)="set('to', $event)" [class.is-invalid]="rangeInverted()" />
+      </div>
+    </div>
+    <button type="button" class="btn btn-link id-clear" [disabled]="!filtering()" (click)="clear()">{{ 'Clear filters' | t: 'staff.incentivesDashboard.filter.clear' }}</button>
+  </div>
+  @if (rangeInverted()) {
+    <div class="invalid-feedback d-block" role="alert">{{ "The 'from' date is after the 'to' date." | t: 'staff.incentivesDashboard.filter.rangeError' }}</div>
+  }
+</div>
+
+@if (data(); as d) {
+  <div class="id-kpis" [class.is-busy]="loading()">
+    @for (k of kpis(); track k.key) {
+      <div class="id-kpi" [style.--accent]="k.color" [attr.data-kpi]="k.key">
+        <span class="id-kpi-value">{{ k.value }}</span>
+        <span class="id-kpi-line"><span class="id-kpi-label">{{ k.label }}</span>@if (k.note) { <span class="id-kpi-note">{{ k.note }}</span> }</span>
+      </div>
+    }
+  </div>
+
+  <zed-attention-row />
+
+  <h2 class="id-h">{{ 'Applications by scheme' | t: 'staff.incentivesDashboard.schemesHeading' }}</h2>
+  <div class="app-grid">
+    @for (c of d.schemes; track c.code; let i = $index) {
+      <div class="app-card" [class]="'app-card ' + band(i)" [attr.data-scheme]="c.code">
+        <div class="app-band">
+          <span class="app-level" [title]="c.name">{{ c.name }}</span>
+          <span class="app-total">
+            <span class="app-total-value">{{ count(c.total) }}</span>
+            <span class="app-total-label">{{ 'total applications' | t: 'staff.incentivesDashboard.card.totalLabel' }}</span>
+          </span>
+        </div>
+        <div class="app-body">
+          <div class="app-bar" role="img" [attr.aria-label]="barLabel(c, schemeStages)">
+            @for (s of schemeStages; track s.field) { <span [class]="'app-seg is-' + s.kind" [style.width.%]="share(c, s.field)" [title]="s.label() + ': ' + count(value(c, s.field))"></span> }
+          </div>
+          <ul class="app-stats">
+            @for (s of schemeStages; track s.field) {
+              <li [class]="'is-' + s.kind">
+                <span class="app-dot" aria-hidden="true"></span>
+                <span class="app-label" [title]="s.label()">{{ s.label() }}</span>
+                <span class="app-figure"><span class="app-value" [attr.data-field]="s.field">{{ count(value(c, s.field)) }}</span>
+                  <span class="app-share">({{ share(c, s.field) | number: '1.0-1' }}%)</span></span>
+              </li>
+            }
+          </ul>
+          <div class="app-money">
+            <span>{{ 'Claimed' | t: 'staff.incentivesDashboard.card.claimed' }} <b>{{ rupees(c.claimAmount) }}</b></span>
+            <span>{{ 'Approved amount' | t: 'staff.incentivesDashboard.card.approvedAmount' }} <b>{{ rupees(c.approvedAmount) }}</b></span>
+          </div>
+          <a class="app-link" routerLink="/staff/schemes-verify/applications">{{ 'Open Scheme Applications' | t: 'staff.incentivesDashboard.card.openSchemes' }}</a>
+        </div>
+      </div>
+    }
+    <div class="app-card band-fa" data-scheme="fa">
+      <div class="app-band">
+        <span class="app-level">{{ 'Financial Assistance' | t: 'staff.incentivesDashboard.fa.title' }}</span>
+        <span class="app-total">
+          <span class="app-total-value">{{ count(d.fa.total) }}</span>
+          <span class="app-total-label">{{ 'total applications' | t: 'staff.incentivesDashboard.card.totalLabel' }}</span>
+        </span>
+      </div>
+      <div class="app-body">
+        <div class="app-bar" role="img" [attr.aria-label]="barLabel(d.fa, faStages)">
+          @for (s of faStages; track s.field) { <span [class]="'app-seg is-' + s.kind" [style.width.%]="share(d.fa, s.field)" [title]="s.label() + ': ' + count(value(d.fa, s.field))"></span> }
+        </div>
+        <ul class="app-stats">
+          @for (s of faStages; track s.field) {
+            <li [class]="'is-' + s.kind">
+              <span class="app-dot" aria-hidden="true"></span>
+              <span class="app-label" [title]="s.label()">{{ s.label() }}</span>
+              <span class="app-figure"><span class="app-value" [attr.data-field]="s.field">{{ count(value(d.fa, s.field)) }}</span>
+                <span class="app-share">({{ share(d.fa, s.field) | number: '1.0-1' }}%)</span></span>
+            </li>
+          }
+        </ul>
+        <a class="app-link" routerLink="/staff/financial-assistance">{{ 'Open Financial Assistance' | t: 'staff.incentivesDashboard.fa.open' }}</a>
+      </div>
+    </div>
+  </div>
+  @if (!d.schemes.length) {
+    <p class="id-none">{{ 'No incentive schemes are defined yet (Admin → Incentive Schemes).' | t: 'staff.incentivesDashboard.noSchemes' }}</p>
+  }
+
+  <div class="id-mid">
+    <section class="id-card" aria-labelledby="id-trend-h">
+      <div class="id-card-head">
+        <h3 id="id-trend-h">{{ 'Scheme applications by month' | t: 'staff.incentivesDashboard.trend.heading' }}</h3>
+        <ul class="id-legend">
+          @for (s of series(); track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
+        </ul>
+      </div>
+      <zed-grouped-column-chart [items]="trend()" [series]="series()" [colors]="trendColors" [legend]="false"
+                                [ariaLabel]="'Scheme applications in the last 12 months' | t: 'staff.incentivesDashboard.trend.aria'" />
+    </section>
+    <section class="id-card" aria-labelledby="id-states-h">
+      <div class="id-card-head"><h3 id="id-states-h">{{ 'By state' | t: 'staff.incentivesDashboard.states.heading' }}</h3></div>
+      @if (d.states.length) {
+        <div class="id-table-wrap">
+          <table class="table id-table">
+            <thead><tr>@for (c of stateColumns(); track c) { <th scope="col">{{ c }}</th> }</tr></thead>
+            <tbody>
+              @for (s of d.states; track s.state) {
+                <tr><th scope="row">{{ s.state }}</th><td>{{ count(s.total) }}</td><td>{{ count(s.inVerification) }}</td><td>{{ count(s.approved) }}</td>
+                  <td>{{ count(s.paid) }}</td><td>{{ count(s.rejected) }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="id-none">{{ 'No scheme applications for these filters.' | t: 'staff.incentivesDashboard.states.none' }}</p>
+      }
+    </section>
+  </div>
+}
+
+@if (loading() && !data()) {
+  <div class="id-loading" role="status">{{ 'Loading the figures…' | t: 'staff.incentivesDashboard.loadingText' }}</div>
+}
