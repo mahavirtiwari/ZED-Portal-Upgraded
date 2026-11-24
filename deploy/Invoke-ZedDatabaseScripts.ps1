@@ -243,7 +243,7 @@ $Migrations = @(
     # Fee sets by date of effect: ZED_CONSULTANT first (main's and ZED_SURVEILLANCE's procedures read its new columns).
     @{ File = '0112_fee_date_of_effect.sql'; Dbs = @($Cons, $Main, $Surv); Markers = @('COL:dbo.AssessmentFee.EffectiveFrom', 'COL:dbo.AssessmentFee.EffectiveTo', 'DEF:dbo.SP_MSME_GET_PAYMENT_DETAILS:/*V4_0112*/') }
     # Consultancy's own questionnaire: ZED_CONSULTANT first (main's and ZED_SURVEILLANCE's procedures read its new tables).
-    @{ File = '0113_consultancy_questionnaire.sql'; Dbs = @($Cons, $Main, $Surv); Markers = @('DEF:dbo.SP_CONSULTANCY_MSME_PAYMENT_GATEWAY_DETAILS:/*V4_0113*/'),
+    @{ File = '0113_consultancy_questionnaire.sql'; Dbs = @($Cons, $Main, $Surv); Markers = @('DEF:dbo.SP_CONSULTANCY_MSME_PAYMENT_GATEWAY_DETAILS:/*V4_0113*/')
        DbMarkers = @{ $Cons = @('U:dbo.Sections', 'U:dbo.Evidences', 'DEF:dbo.SP_MSME_ZERO_PAYMENT_DETAILS:/*V4_0113*/', 'DEF:dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO:/*V4_0113*/') } }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
