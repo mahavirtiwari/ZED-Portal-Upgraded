@@ -163,6 +163,22 @@ public sealed class ServerLogsTests : IDisposable
         var file = await admin.GetAsync(Url + "/download");
         file.EnsureSuccessStatusCode();
         Assert.Contains("insufficient system memory", await file.Content.ReadAsStringAsync());
+
+        // 2026-11-24: the same filters as an Excel workbook (time in IST, the full error, the reference).
+        var excel = await admin.GetAsync(Url + "/excel?level=Error&q=insufficient");
+        excel.EnsureSuccessStatusCode();
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excel.Content.Headers.ContentType?.MediaType);
+        Assert.EndsWith(".xlsx", excel.Content.Headers.ContentDisposition?.FileNameStar ?? excel.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        using (var zip = new System.IO.Compression.ZipArchive(await excel.Content.ReadAsStreamAsync()))
+        {
+            using var reader = new StreamReader(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open());
+            var sheet = await reader.ReadToEndAsync();
+            Assert.Contains("Time (IST)", sheet);
+            Assert.Contains("insufficient system memory", sheet);
+            Assert.Contains("0af7651916cd43dd8448eb211c80319c", sheet);
+            Assert.DoesNotContain(">Slow<", sheet);
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync(Url + "/excel?level=Debug")).StatusCode);
     }
 
     [Fact]

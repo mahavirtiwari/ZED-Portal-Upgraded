@@ -111,4 +111,33 @@ describe('ServerLogsPage', () => {
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('at most 31 days');
   });
+
+  it('pages the entries and downloads the chosen filters as Excel (2026-11-24)', async () => {
+    const many = Array.from({ length: 120 }, (_, i) => entry({ m: `Entry ${i + 1}`, l: i < 3 ? 'Error' : 'Warning' }));
+    http.expectOne((r) => r.url === url).flush({ source: 'main', more: false, from: '2026-11-01', to: '2026-11-24', sources: [{ name: 'main', days: [] }], entries: many });
+    await settle();
+    // 50 a page; the counts are of all the entries loaded.
+    expect(el.querySelectorAll('tbody tr').length).toBe(50);
+    expect(el.textContent).toContain('3 errors');
+    expect(el.textContent).toContain('117 warnings');
+    const next = [...el.querySelectorAll('.zp-btn')].find((b) => b.textContent!.trim() === 'Next') as HTMLButtonElement;
+    next.click();
+    await settle();
+    expect(el.querySelector('tbody tr')!.textContent).toContain('Entry 51');
+
+    (el.querySelector('[data-excel]') as HTMLButtonElement).click();
+    await settle();
+    const req = http.expectOne((r) => r.url === url + '/excel');
+    expect(req.request.params.get('level')).toBe('Warning');
+    expect(req.request.params.get('source')).toBe('main');
+    expect(req.request.responseType).toBe('blob');
+    const createUrl = vi.fn(() => 'blob:x');
+    Object.assign(URL, { createObjectURL: createUrl, revokeObjectURL: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    req.flush(new Blob(['x']));
+    await settle();
+    expect(createUrl).toHaveBeenCalled();
+    vi.restoreAllMocks();
+    expect(el.querySelector('.alert-danger')).toBeNull();
+  });
 });

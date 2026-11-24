@@ -105677,8 +105677,20 @@
       ]
     },
     {
-      "key": "staff.serverLogs.download",
-      "standard": "Download day",
+      "key": "staff.serverLogs.empty",
+      "standard": "Nothing logged for these filters.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.excel",
+      "standard": "Download Excel",
       "kind": "button",
       "portal": "staff",
       "page": "serverLogs",
@@ -105689,9 +105701,9 @@
       ]
     },
     {
-      "key": "staff.serverLogs.empty",
-      "standard": "Nothing logged for these filters.",
-      "kind": "note",
+      "key": "staff.serverLogs.excel.busy",
+      "standard": "Preparing…",
+      "kind": "button",
       "portal": "staff",
       "page": "serverLogs",
       "pageName": "Server logs",
@@ -105880,18 +105892,6 @@
       "placeholders": [
         "n"
       ],
-      "files": [
-        "staff/settings/server-logs.ts"
-      ]
-    },
-    {
-      "key": "staff.serverLogs.noFile",
-      "standard": "Nothing was logged on that day.",
-      "kind": "text",
-      "portal": "staff",
-      "page": "serverLogs",
-      "pageName": "Server logs",
-      "placeholders": [],
       "files": [
         "staff/settings/server-logs.ts"
       ]

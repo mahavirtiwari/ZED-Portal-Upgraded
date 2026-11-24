@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PortalSwitchComponent } from '../admin-portal';
+import { ClientPager, PagerComponent } from '../pager';
 import { indianTime } from '../utc-time';
 import { TextPipe, t } from '../../content/page-text';
 
@@ -40,10 +41,12 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
  * (and the mobile API hosts' beside it) with the full error, the page or API address, the user and the reference an error
  * message shows (the trace id): filter by days, level and text, open an entry, download a day's file. Each portal keeps its
  * own log: the portal switch reads the others.
+ * 2026-11-24 (the user: "add pagination", "Provide excel download"; "Download day" said "Nothing was logged on that day" when the
+ * To day had no file yet): up to 2,000 entries paged here, and the chosen days, level and search download as Excel.
  */
 @Component({
   selector: 'zed-staff-server-logs',
-  imports: [FormsModule, PortalSwitchComponent, TextPipe],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent, TextPipe],
   template: `
     <div class="page-head">
       <div>
@@ -80,7 +83,8 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
       </label>
       <div class="sl-actions">
         <button type="button" class="btn btn-primary" (click)="load()" [disabled]="busy()">{{ 'Show' | t: 'staff.serverLogs.show' }}</button>
-        <button type="button" class="btn btn-outline-primary" (click)="download()" [disabled]="busy()">{{ 'Download day' | t: 'staff.serverLogs.download' }}</button>
+        <button type="button" class="btn btn-outline-primary" data-excel (click)="downloadExcel()" [disabled]="busy() || exporting() || !entries().length">
+          {{ exporting() ? ('Preparing…' | t: 'staff.serverLogs.excel.busy') : ('Download Excel' | t: 'staff.serverLogs.excel') }}</button>
       </div>
     </div>
 
@@ -114,7 +118,7 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
             </tr>
           </thead>
           <tbody>
-            @for (e of entries(); track $index) {
+            @for (e of pager.page(); track $index) {
               <tr [class.is-error]="isError(e)">
                 <td class="sl-time">{{ time(e.t) }}</td>
                 <td><span class="chip" [class.chip-error]="isError(e)" [class.chip-warn]="!isError(e)">{{ levelName(e.l) }}</span></td>
@@ -133,6 +137,7 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
           </tbody>
         </table>
       </div>
+      @if (entries().length) { <zed-pager [pager]="pager" [sizes]="pageSizes" /> }
     </div>
 
     @if (open(); as e) {
@@ -221,6 +226,9 @@ export class ServerLogsPage {
   protected readonly error = signal('');
   protected readonly open = signal<ServerLogEntry | null>(null);
   protected readonly copied = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly pageSizes: readonly number[] = [20, 50, 100, 200];
+  protected readonly pager = new ClientPager<ServerLogEntry>(50);
   protected readonly errors = computed(() => this.entries().filter((e) => this.isError(e)).length);
   protected readonly warnings = computed(() => this.entries().length - this.errors());
 
@@ -279,36 +287,40 @@ export class ServerLogsPage {
       this.sources.set(r.sources);
       this.source.set(r.source);
       this.entries.set(r.entries);
+      this.pager.set(r.entries);
       this.more.set(r.more);
       this.folder.set(r.folder ?? null);
       this.writeProblem.set(r.writeProblem ?? null);
     } catch (err) {
       this.entries.set([]);
+      this.pager.set([]);
       this.error.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }
   }
 
-  /** The "To" day's file of the log shown (as it is: one JSON entry per line). */
-  protected async download(): Promise<void> {
+  /** The entries of the chosen log, days, level and search as an Excel workbook (built by the server, up to 50,000 rows). */
+  protected async downloadExcel(): Promise<void> {
     this.error.set('');
+    this.exporting.set(true);
     try {
-      let params = new HttpParams().set('day', this.to());
+      let params = new HttpParams().set('from', this.from()).set('to', this.to()).set('level', this.level());
+      if (this.q().trim()) params = params.set('q', this.q().trim());
       if (this.source()) params = params.set('source', this.source()!);
-      const blob = await firstValueFrom(this.http.get(`${ServerLogsPage.url}/download`, { params, responseType: 'blob' }));
+      const blob = await firstValueFrom(this.http.get(`${ServerLogsPage.url}/excel`, { params, responseType: 'blob' }));
       const a = document.createElement('a');
       const href = URL.createObjectURL(blob);
       a.href = href;
-      a.download = `${this.source() ?? 'main'}-zed-${this.to().replace(/-/g, '')}.jsonl`;
+      a.download = `${this.source() ?? 'main'}-server-logs-${this.from().replace(/-/g, '')}-${this.to().replace(/-/g, '')}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     } catch (err) {
-      this.error.set((err as { status?: number })?.status === 404
-        ? t('staff.serverLogs.noFile', 'Nothing was logged on that day.')
-        : apiErrorMessage(err));
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.exporting.set(false);
     }
   }
 
