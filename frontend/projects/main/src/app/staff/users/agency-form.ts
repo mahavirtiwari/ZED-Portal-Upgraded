@@ -84,8 +84,8 @@ function emptyAgency(): AgencyRequest {
     .fs-note { display: flex; align-items: center; gap: 6px; align-self: end; margin: 0 0 11px; font-size: 12px; font-weight: 500; color: #6f8487; }
     .fs-note .ic { width: 14px; height: 14px; }
     .fs-hint { font-size: 12px; color: #6f8487; }
-    .seg { display: inline-flex; padding: 3px; border-radius: 9px; background: #eef3f3; }
-    .seg label { position: relative; flex: 1; margin: 0; padding: 6px 18px; border-radius: 7px; text-align: center; cursor: pointer; color: #6f8487; font-size: 13px; font-weight: 500; }
+    .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; padding: 3px; border-radius: 9px; background: #eef3f3; }
+    .seg label { position: relative; flex: 1; margin: 0; padding: 6px 12px; border-radius: 7px; text-align: center; cursor: pointer; color: #6f8487; font-size: 13px; font-weight: 500; }
     .seg label.active { background: #fff; color: #24666b; font-weight: 700; box-shadow: inset 0 0 0 1.5px #24666b; }
     .seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
     .seg label:focus-within { outline: 2px solid var(--zt-mid2, #2a8a8c); }

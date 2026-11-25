@@ -326,7 +326,9 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
 
     .as-list { padding: 0; overflow: hidden; }
     .as-table { margin: 0; }
-    .as-table.is-main { min-width: 1240px; table-layout: fixed; }
+    /* The assessor's name has its own width: with only the other columns sized it got what was left (64px on a laptop). */
+    .as-table.is-main { min-width: 1440px; table-layout: fixed; }
+    .as-table .c-who { width: 264px; }
     .as-table .c-lv { width: 230px; }
     .as-table .c-alloc { width: 190px; }
     .as-table .c-sec { width: 140px; }
