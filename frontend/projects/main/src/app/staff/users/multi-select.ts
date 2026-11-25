@@ -134,6 +134,8 @@ export interface MultiSelectOption {
     .ms-actions { margin-left: auto; display: flex; gap: 6px; }
     .ms-actions .btn { font-size: 12px; padding: 2px 10px; }
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-width: 0; }
+    /* 2026-11-25 (the user: a long NIC sector ran out of the box): as strong as the site's ".zed-legacy.zed-v4 .chip" (nowrap). */
+    .chips .chip, .msc-box .chip { white-space: normal; overflow-wrap: anywhere; }
     /* 2026-11-21 (Assessment Agency UI audit, item 2): a long option (an NIC code's description) wraps inside its chip instead
        of widening the page on a phone or tablet (the old site styles give chips white-space: nowrap). */
     .chip { display: inline-flex; align-items: center; background: #e4f3f4; border: 1px solid #b9dfe2; border-radius: 14px; padding: 1px 6px 1px 10px; font-size: 12px; color: #1f5c61;
