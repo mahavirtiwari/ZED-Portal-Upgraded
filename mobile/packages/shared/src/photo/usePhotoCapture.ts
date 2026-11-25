@@ -27,6 +27,8 @@ export type PhotoCaptureOptions = {
    * with these coordinates instead of failing.
    */
   noFixCoordinates?: Coordinates;
+  /** The largest PDF in MB; not set = 2 MB (2026-11-25: the ZED MSME app's incentive scheme documents take 5 MB). */
+  maxPdfMb?: number;
 };
 
 export type Capturer = {
@@ -99,6 +101,7 @@ export function usePhotoCapture(options: PhotoCaptureOptions): Capturer {
         loginId: o.loginId,
         associatedId: o.associatedId,
         coords: coordsRef.current,
+        maxPdfMb: o.maxPdfMb,
         onTimeNotAutomatic: () =>
           ui.alert(null, TIME_NOT_AUTOMATIC, [{ text: 'Ok', onPress: () => o.onTimeNotAutomatic?.() }], false),
       };

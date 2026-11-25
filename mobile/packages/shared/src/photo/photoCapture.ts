@@ -8,6 +8,8 @@ import { newPhotoId, PHOTO_DEFAULT, withoutBase64, type PhotoData } from './phot
 /** PhotosHelper.addPhoto size check. */
 export const MAX_PDF_BYTES = 2 * 1024 * 1024;
 export const PDF_TOO_LARGE = 'File size cannot exceed 2 MB';
+/** The size message of a limit in MB (2026-11-25: the incentive scheme documents take 5 MB, as the portal). */
+export const pdfTooLarge = (mb: number) => `File size cannot exceed ${mb} MB`;
 export const PHOTO_SAVE_FAILED = 'Failed to save the captured photo, please try again';
 export const TIME_NOT_AUTOMATIC =
   'Your Date and Time settings are not set to Automatic Time zone. Please change and continue.';
@@ -23,6 +25,8 @@ export type CaptureContext = {
   coords: Coordinates | null;
   /** The legacy getCurrentTimeStamp showed TIME_NOT_AUTOMATIC and closed the screen when auto time was off. */
   onTimeNotAutomatic?: () => void;
+  /** The largest PDF in MB; not set = 2 MB (PhotosHelper.addPhoto). */
+  maxPdfMb?: number;
 };
 
 export type CaptureOutcome =
@@ -88,7 +92,8 @@ export async function storeImage(
 
 /** PhotoCaptureHelper.handlePickedPdf with PhotosHelper.copyPdf. */
 export async function storePdf(ctx: CaptureContext, uri: string, size: number): Promise<CaptureOutcome> {
-  if (size > MAX_PDF_BYTES) return { kind: 'error', message: PDF_TOO_LARGE, alert: true };
+  const limit = ctx.maxPdfMb ? ctx.maxPdfMb * 1024 * 1024 : MAX_PDF_BYTES;
+  if (size > limit) return { kind: 'error', message: ctx.maxPdfMb ? pdfTooLarge(ctx.maxPdfMb) : PDF_TOO_LARGE, alert: true };
   if (ctx.associatedId == null) return { kind: 'error', message: PHOTO_SAVE_FAILED, alert: false };
   checkAutoTime(ctx);
   const path = await zedDevice().copyPdf(uri);

@@ -5,7 +5,7 @@ import { useMsme } from '../app/context';
  * The photo capture of a legacy screen: this app's photo table and owner id; the "Automatic Time" alert closes the
  * screen (finish()). Activities toasted "Finding your location...", dialog fragments showed a snackbar.
  */
-export function useScreenCapture(findingStyle: 'toast' | 'snackbar' = 'toast', onTimeNotAutomatic?: () => void) {
+export function useScreenCapture(findingStyle: 'toast' | 'snackbar' = 'toast', onTimeNotAutomatic?: () => void, maxPdfMb?: number) {
   const app = useMsme();
   const nav = useNavigation();
   return usePhotoCapture({
@@ -14,6 +14,7 @@ export function useScreenCapture(findingStyle: 'toast' | 'snackbar' = 'toast', o
     associatedId: app.associatedId,
     findingStyle,
     onTimeNotAutomatic: onTimeNotAutomatic ?? (() => nav.pop()),
+    maxPdfMb,
   });
 }
 

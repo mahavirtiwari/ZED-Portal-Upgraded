@@ -359,7 +359,8 @@ export function IncentiveSchemeScreen() {
 
   // ----- documents -----
 
-  const capturer = useScreenCapture('snackbar');
+  // 2026-11-25 (the user: "make it 5 mb"): the scheme documents take PDFs up to 5 MB, as the portal.
+  const capturer = useScreenCapture('snackbar', undefined, 5);
 
   /** A document taken on the phone, uploaded at once; its stored name, or null. The phone's copy is removed after the upload. */
   const upload = async (section: string, item: number, field: FormField): Promise<string | null> => {
