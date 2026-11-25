@@ -44,10 +44,11 @@ const NEW = '';
     .xr-head .xr-from { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; color: #6f8487; }
     .xr-head .form-select, .xr-head .form-control { width: auto; height: 36px; }
     .xr-card table { margin: 0; table-layout: fixed; min-width: 560px; }
-    .xr-c-level { width: 116px; }
-    .xr-c-flow { width: 136px; }
-    .xr-c-count { width: 96px; }
-    .xr-level, .xr-flow { white-space: nowrap; }
+    .xr-c-level { width: 130px; }
+    .xr-c-flow { width: 140px; }
+    .xr-c-count { width: 100px; }
+    /* Long level names ("ZED-X (Export)") and flows wrap inside their own column instead of running into the next one. */
+    .xr-level, .xr-flow { white-space: normal; overflow-wrap: break-word; }
     .xr-card th { white-space: normal; overflow-wrap: normal; vertical-align: bottom; }
     .xr-card input.form-control { width: 100%; max-width: 120px; margin-left: auto; text-align: right; height: 34px; }
     .xr-na { color: #9aa9ab; font-size: 12px; }
