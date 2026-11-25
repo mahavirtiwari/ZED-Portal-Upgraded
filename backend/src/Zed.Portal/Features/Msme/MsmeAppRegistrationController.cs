@@ -172,10 +172,14 @@ public sealed class MsmeAppRegistrationController(
         return Success();
     }
 
-    /// <summary>MsmeController.SendPledgeEmailOtp: a 4-character OTP to the pledge e-mail.</summary>
+    /// <summary>
+    /// MsmeController.SendPledgeEmailOtp: an OTP to the pledge e-mail. 2026-11-25 (the user: the web sends 6 digits, the app 4
+    /// characters; "Please check and fix"): app builds from today send <paramref name="otpDigits"/> = 6 and get the web's 6-digit
+    /// OTP; older builds (their OTP box takes 4 capitals) still get the 4-character one until they are updated.
+    /// </summary>
     [HttpPost("/Msme/SendPledgeEmailOtp")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
-    public async Task<IActionResult> SendPledgeEmailOtp(string? email, CancellationToken ct)
+    public async Task<IActionResult> SendPledgeEmailOtp(string? email, int? otpDigits, CancellationToken ct)
     {
         if (!await CaptchaPassedAsync(ct)) return Fail(CaptchaFirst);
         if (Email(email) is not { } address) return Fail("Invalid email.");
@@ -195,7 +199,7 @@ public sealed class MsmeAppRegistrationController(
             return Fail("Too many OTP requests. Please try again after 30 minutes.");
         }
 
-        var otp = SecureRandom.UpperCode(4);
+        var otp = otpDigits == 6 ? SecureRandom.Otp() : SecureRandom.UpperCode(4);
         state.OtpHash = AppRegistrationState.HashOtp(address, otp);
         state.OtpIssuedUtc = now;
         state.Sends++;

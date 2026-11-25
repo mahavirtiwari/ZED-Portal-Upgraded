@@ -36,7 +36,7 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    [GeneratedRegex(@"<b>\s*([A-Z0-9]{4})\s*</b>")] private static partial Regex OtpInMail();
+    [GeneratedRegex(@"<b>\s*([0-9]{6}|[A-Z0-9]{4})\s*</b>")] private static partial Regex OtpInMail();
 
     private static async Task<(string Status, string? Message)> Answer(HttpResponseMessage r)
     {
@@ -64,15 +64,25 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         ["ActivityDetails"] = new Dictionary<string, object> { ["Activity"] = "Manufacturing", ["Two_DigitActivity"] = twoDigit, ["Four_DigitActivity"] = "2431", ["Five_DigitActivity"] = "24311" },
     };
 
-    private async Task<string> CaptchaPlantAndOtpAsync(HttpClient app)
+    private async Task<string> CaptchaPlantAndOtpAsync(HttpClient app, int? otpDigits = null)
     {
         Assert.Equal("1", (await Answer(await Post(app, "ValidateCaptcha", new { token = "safetynet-token" }))).Status);
         Assert.Equal("1", (await Answer(await Post(app, "ValidatePlantAndActivity",
             new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" }))).Status);
-        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge }))).Status);
+        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", otpDigits is null ? new { email = Pledge } : (object)new { email = Pledge, otpDigits }))).Status);
         var mail = _host.Email.Sent.Last(m => m.To == Pledge);
         Assert.Equal(EmailProfiles.Otp, mail.Profile);
         return OtpInMail().Match(mail.HtmlBody).Groups[1].Value;
+    }
+
+    [Fact]
+    public async Task The_new_app_gets_the_same_6_digit_otp_as_the_web_and_older_builds_keep_4_characters()
+    {
+        // 2026-11-25: the web's OTP is 6 digits; app builds from today ask for the same.
+        var app = _host.CreateClient();
+        var otp = await CaptchaPlantAndOtpAsync(app, otpDigits: 6);
+        Assert.Matches("^[0-9]{6}$", otp);
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
     }
 
     [Fact]
