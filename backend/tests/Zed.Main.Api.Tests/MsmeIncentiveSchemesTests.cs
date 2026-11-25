@@ -14,7 +14,7 @@ namespace Zed.Main.Api.Tests;
 /// 2026-11-20 (incentive schemes, approved design, part B): the applicant's claim windows, the dashboard tiles, the draft, the
 /// "Add more" items, the submission (amounts, documents, the staff workflow), the correction round and the FA card's levels.
 /// </summary>
-public sealed class MsmeIncentiveSchemesTests : IDisposable
+public sealed partial class MsmeIncentiveSchemesTests : IDisposable
 {
     private const string Me = MsmeSchemesTestSupport.Me;
     private const string Code = "TU_DIRECT";

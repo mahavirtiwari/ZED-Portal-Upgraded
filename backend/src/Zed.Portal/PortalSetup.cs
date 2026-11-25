@@ -76,6 +76,8 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.Assessment.AgencyRejections>();
         // 2026-11-20: incentive schemes the Admin defines (Features/Incentives, migration 0105).
         services.AddScoped<Features.Incentives.SchemeStore>();
+        // 2026-11-25: the applicant's side of the schemes, shared by the web page and the ZED MSME app (app sign-in token).
+        services.AddScoped<Features.Incentives.Applicant.SchemeApplicantService>();
         services.AddScoped<Features.Incentives.ISchemeWorkflow, Features.Incentives.Staff.SchemeWorkflow>();
         services.AddScoped<Features.Incentives.Staff.SchemeAllotment>();
         services.AddScoped<Features.Incentives.Staff.SchemeSweep>();

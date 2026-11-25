@@ -66,6 +66,16 @@ switched off; docs/mobile/MSME-APP.md).
 | `app.msme.offline.note` | Offline: banner | DNT:225 `offline_note`; `activity_base.xml` | | Main, Surveillance |
 | `app.msme.offline.evidenceNote` | Offline: evidence not synced | DNT:226 `offline_note_2`; `utils/EvidenceListAdapter.kt:91` | | Main, Surveillance |
 
+### ZED MSME app: incentive schemes (2026-11-25)
+
+My Incentives and the scheme screens of the ZED MSME app (`mobile/apps/zedmsme`: `src/screens/IncentivesScreen.tsx`,
+`src/screens/IncentiveSchemeScreen.tsx`, `src/incentiveSchemes.ts`) read every wording from `app.msme.incentiveSchemes.*`
+(Main; about 140 short texts, grouped in Admin → Texts as "Incentive schemes: …": the list's states and notes, why a scheme is
+locked, the statuses, the steps, the unit, the buttons, "Add more", the fields and documents, the bank account, the errors, the
+claim, the correction round and the history; `{{…}}` fields as named in `ContentCatalogue.Apps.cs`). They mirror the web page's
+`msme.incentiveScheme.*`. A scheme's own disclaimer, instructions and declaration come with the scheme (Admin → Incentive
+Schemes); without them the app shows `app.msme.schemes.fa.disclaimer`, `.instructions` and `.accountDeclaration.checkbox`.
+
 ## Assessor app (`ZED_SA_Studio`, package `com.geostat.assessment`)
 
 Files under `app/src/main/java/com/geostat/assessment/activities/`.
