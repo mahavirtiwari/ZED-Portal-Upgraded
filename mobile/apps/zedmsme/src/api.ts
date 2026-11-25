@@ -34,6 +34,7 @@ import {
   type RequestContext,
 } from '@zed/shared';
 import type { FinancialAssistance } from './financialAssistance';
+import type { SchemeAccount, SchemePage, SchemesDashboard, SchemeUpload } from './incentiveSchemes';
 import type { BasicInformation, CertificationType, Element, LoginResponse, MsmeStatus, NcDetails, ProductDetailsNc } from './models';
 
 export type EsgField = {
@@ -250,6 +251,11 @@ export type PublicIncentiveCards = {
   incentives: PublicIncentive[];
 };
 
+/** 2026-11-25: Msme/AppIncentiveSchemes… (the web's api/msme/incentive-schemes with the sign-in token). */
+export type SchemesDashboardResponse = BaseServiceResponse & { dashboard?: SchemesDashboard | null };
+export type SchemePageResponse = BaseServiceResponse & { page?: SchemePage | null };
+export type SchemeUploadResponse = BaseServiceResponse & { upload?: SchemeUpload | null };
+
 export type DocumentsResponse = BaseServiceResponse & {
   Guidelines?: GuidelineDocument[] | null;
   Certificates?: CertificateLinks[] | null;
@@ -259,6 +265,9 @@ export type DocumentsResponse = BaseServiceResponse & {
 function filePart(name: string, photo: PhotoData, fileName: string): MultipartField {
   return { name, file: { uri: fileUri(photo.photoPath ?? ''), name: fileName, type: photo.isPdf ? 'application/pdf' : 'image/*' } };
 }
+
+/** A form's values as sent: a cleared value (null) as "" so that it reaches the server (postJson leaves nulls out). */
+const sent = (values: Record<string, string | null>) => Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v ?? '']));
 
 /** The upload copy of a photo: the base64 cleared (`it.photo = null`) before its JSON goes into the form. */
 const metadata = (p: PhotoData) => gsonJson({ ...p, photo: null });
@@ -645,6 +654,67 @@ export class MsmeApi {
 
   getEditHistory(pageNo: number, pageSize = 20) {
     return this.http.getJson<EditHistoryResponse>(this.portalMsme + `AppEditHistory?pageNo=${pageNo}&pageSize=${pageSize}`);
+  }
+
+  // ----- Incentive schemes, as on the web (portal Msme/AppIncentiveSchemes, sign-in token; 2026-11-25) -----
+
+  private scheme(code: string, rest = '') {
+    return this.portalMsme + 'AppIncentiveSchemes/' + encodeURIComponent(code) + rest;
+  }
+
+  /** The tiles of My Incentives: the Admin's schemes, the Financial Assistance and Technology Upgradation cards' schemes. */
+  getIncentiveSchemes() {
+    return this.http.getJson<SchemesDashboardResponse>(this.portalMsme + 'AppIncentiveSchemes');
+  }
+
+  /** One scheme's page: the form, the unit, the claim window, the application and its history. */
+  getIncentiveScheme(code: string) {
+    return this.http.getJson<SchemePageResponse>(this.scheme(code));
+  }
+
+  /** Starts (or returns) the application of the open claim window. */
+  startSchemeDraft(code: string) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/Draft'), {});
+  }
+
+  /** A plain section's values (a cleared value is sent empty, not left out). */
+  saveSchemeSection(code: string, section: string, values: Record<string, string | null>) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/Section'), { section, values: sent(values) });
+  }
+
+  /** An "Add more" item (index = the number of items: a new one). */
+  saveSchemeItem(code: string, section: string, index: number, pick: string | null, values: Record<string, string | null>) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/Item'), { section, index, pick, values: sent(values) });
+  }
+
+  removeSchemeItem(code: string, section: string, index: number) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/RemoveItem'), { section, index });
+  }
+
+  /** One document of a field (or the cancelled cheque: section "_bank", field "cheque"): the photo or PDF taken on the phone. */
+  uploadSchemeDocument(code: string, section: string, item: number, field: string, photo: PhotoData) {
+    return this.http.postMultipart<SchemeUploadResponse>(this.scheme(code, '/Document'), [
+      { name: 'section', value: section },
+      { name: 'item', value: String(item) },
+      { name: 'field', value: field },
+      {
+        name: 'file',
+        file: { uri: fileUri(photo.photoPath ?? ''), name: fileNameOf(photo.photoPath ?? ''), type: photo.isPdf ? 'application/pdf' : 'image/jpeg' },
+      },
+    ]);
+  }
+
+  /** The address of one of the unit's scheme documents (Msme/AppIncentiveSchemes/{code}/File), downloaded with the token. */
+  schemeDocumentUrl(code: string, name: string) {
+    return this.scheme(code, '/File?name=' + encodeURIComponent(name));
+  }
+
+  submitScheme(code: string, body: { account: SchemeAccount | null; cheque: string[]; unitConfirmed: boolean; declaration: boolean }) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/Submit'), body);
+  }
+
+  submitSchemeCorrection(code: string, body: { account: SchemeAccount | null; cheque: string[] | null }) {
+    return this.http.postJson<SchemePageResponse>(this.scheme(code, '/Correction'), body);
   }
 
   /**

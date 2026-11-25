@@ -89,4 +89,286 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.voice.failed": "Voice typing could not start, please try again.",
   // Voice typing: text cut to the box's limit (MainAndSurveillance)
   "app.msme.voice.cut": "Only part of what you said was added: this box takes up to {{Max}} characters.",
+  // Incentive schemes: My Incentives: state: open (Main)
+  "app.msme.incentiveSchemes.list.state.open": "Open",
+  // Incentive schemes: My Incentives: state: in progress (Main)
+  "app.msme.incentiveSchemes.list.state.progress": "In progress",
+  // Incentive schemes: My Incentives: state: on hold (Main)
+  "app.msme.incentiveSchemes.list.state.onhold": "On hold",
+  // Incentive schemes: My Incentives: state: availed (Main)
+  "app.msme.incentiveSchemes.list.state.availed": "Availed",
+  // Incentive schemes: My Incentives: state: locked (Main)
+  "app.msme.incentiveSchemes.list.state.locked": "Locked",
+  // Incentive schemes: My Incentives: not available (Main)
+  "app.msme.incentiveSchemes.list.notEligible": "Not yet available for your unit",
+  // Incentive schemes: My Incentives: not certified (Main)
+  "app.msme.incentiveSchemes.list.notCertified": "Unlocks once your unit is certified",
+  // Incentive schemes: My Incentives: earlier application in progress (Main)
+  "app.msme.incentiveSchemes.list.legacyInProgress": "Your earlier application for this benefit is still in progress. You can follow it on the ZED portal.",
+  // Incentive schemes: My Incentives: schemes not loaded (Main)
+  "app.msme.incentiveSchemes.list.loadFailed": "The incentive schemes could not be loaded. Pull down or open My Incentives again to retry.",
+  // Incentive schemes: Locked: not eligible for benefits (Main)
+  "app.msme.incentiveSchemes.locked.notEligible": "You are not eligible for benefits. Please contact ZED team.",
+  // Incentive schemes: Locked: not certified (Main)
+  "app.msme.incentiveSchemes.locked.notCertified": "Opens after your unit is ZED certified",
+  // Incentive schemes: Locked: not certified at the levels (Main)
+  "app.msme.incentiveSchemes.locked.notCertifiedLevels": "Opens after {{Levels}} certification",
+  // Incentive schemes: Locked: level not covered (Main)
+  "app.msme.incentiveSchemes.locked.levelNotCovered": "For units certified at {{Levels}}",
+  // Incentive schemes: Locked: after handholding (Main)
+  "app.msme.incentiveSchemes.locked.handholding": "Opens once your Handholding support is completed",
+  // Incentive schemes: Locked: financial assistance blocked (Main)
+  "app.msme.incentiveSchemes.locked.financialBlocked": "Financial assistance is not available for your unit. Please contact ZED team.",
+  // Incentive schemes: Locked: certificate suspended (Main)
+  "app.msme.incentiveSchemes.locked.suspended": "Your highest certificate is suspended or withdrawn. The scheme opens again once it is active.",
+  // Incentive schemes: Locked: not set up for the unit (Main)
+  "app.msme.incentiveSchemes.locked.notGraded": "This scheme is not yet set up for your unit's certification or size. Please contact ZED team.",
+  // Incentive schemes: Locked: earlier application in progress (Main)
+  "app.msme.incentiveSchemes.locked.legacyInProgress": "Your earlier application for this benefit is still in progress. It continues on its own page.",
+  // Incentive schemes: Locked: not taking applications (Main)
+  "app.msme.incentiveSchemes.locked.closed": "This scheme is not taking new applications now.",
+  // Incentive schemes: Page: availed (Main)
+  "app.msme.incentiveSchemes.availed": "You have availed this scheme for your current certification.",
+  // Incentive schemes: Page: on hold (Main)
+  "app.msme.incentiveSchemes.onHold": "The application is on hold.",
+  // Incentive schemes: Page: on hold: certificate suspended (Main)
+  "app.msme.incentiveSchemes.hold.suspended": "Your certificate is suspended; the ZED team will resume or close the application.",
+  // Incentive schemes: Page: on hold: certificate withdrawn (Main)
+  "app.msme.incentiveSchemes.hold.withdrawn": "Your certificate is withdrawn; the ZED team will resume or close the application.",
+  // Incentive schemes: Page: on hold: other (Main)
+  "app.msme.incentiveSchemes.hold.other": "The ZED team will resume or close the application.",
+  // Incentive schemes: Status: draft (Main)
+  "app.msme.incentiveSchemes.status.draft": "Draft",
+  // Incentive schemes: Status: submitted (Main)
+  "app.msme.incentiveSchemes.status.submitted": "Submitted",
+  // Incentive schemes: Status: desktop verification (Main)
+  "app.msme.incentiveSchemes.status.desktop": "Desktop verification",
+  // Incentive schemes: Status: correction (Main)
+  "app.msme.incentiveSchemes.status.correction": "Correction",
+  // Incentive schemes: Status: agency QC (Main)
+  "app.msme.incentiveSchemes.status.qc": "Agency QC",
+  // Incentive schemes: Status: approved (Main)
+  "app.msme.incentiveSchemes.status.approved": "Approved",
+  // Incentive schemes: Status: paid (Main)
+  "app.msme.incentiveSchemes.status.paid": "Paid",
+  // Incentive schemes: Status: rejected (Main)
+  "app.msme.incentiveSchemes.status.rejected": "Rejected",
+  // Incentive schemes: Status: on hold (Main)
+  "app.msme.incentiveSchemes.status.onHold": "On hold",
+  // Incentive schemes: Steps: disclaimer (Main)
+  "app.msme.incentiveSchemes.step.disclaimer": "Disclaimer",
+  // Incentive schemes: Steps: instructions (Main)
+  "app.msme.incentiveSchemes.step.instructions": "Instructions",
+  // Incentive schemes: Steps: confirm unit (Main)
+  "app.msme.incentiveSchemes.step.unit": "Confirm unit",
+  // Incentive schemes: Steps: bank account (Main)
+  "app.msme.incentiveSchemes.step.bank": "Bank account",
+  // Incentive schemes: Steps: review and submit (Main)
+  "app.msme.incentiveSchemes.step.summary": "Review &amp; submit",
+  // Incentive schemes: Steps: step of steps (Main)
+  "app.msme.incentiveSchemes.step.of": "Step {{Step}} of {{Total}}",
+  // Incentive schemes: Disclaimer: consent (checkbox) (Main)
+  "app.msme.incentiveSchemes.disclaimer.consent": "I have read and understood the disclaimer and accept it.",
+  // Incentive schemes: Unit: heading (Main)
+  "app.msme.incentiveSchemes.unit.title": "Confirm your unit",
+  // Incentive schemes: Unit: enterprise (Main)
+  "app.msme.incentiveSchemes.unit.enterprise": "Enterprise",
+  // Incentive schemes: Unit: ZED ID (Main)
+  "app.msme.incentiveSchemes.unit.zedId": "ZED ID",
+  // Incentive schemes: Unit: Udyam number (Main)
+  "app.msme.incentiveSchemes.unit.udyam": "Udyam number",
+  // Incentive schemes: Unit: enterprise size (Main)
+  "app.msme.incentiveSchemes.unit.size": "Enterprise size",
+  // Incentive schemes: Unit: unit (Main)
+  "app.msme.incentiveSchemes.unit.unit": "Unit",
+  // Incentive schemes: Unit: activity (Main)
+  "app.msme.incentiveSchemes.unit.activity": "Activity",
+  // Incentive schemes: Unit: address (Main)
+  "app.msme.incentiveSchemes.unit.address": "Address",
+  // Incentive schemes: Unit: confirm (checkbox) (Main)
+  "app.msme.incentiveSchemes.unit.confirm": "I confirm that the unit details above are correct and the claim is for this unit.",
+  // Incentive schemes: Buttons: back (Main)
+  "app.msme.incentiveSchemes.button.back": "Back",
+  // Incentive schemes: Buttons: proceed (Main)
+  "app.msme.incentiveSchemes.button.proceed": "Proceed",
+  // Incentive schemes: Buttons: accept and proceed (Main)
+  "app.msme.incentiveSchemes.button.accept": "Accept &amp; proceed",
+  // Incentive schemes: Buttons: save and proceed (Main)
+  "app.msme.incentiveSchemes.button.saveProceed": "Save &amp; proceed",
+  // Incentive schemes: Buttons: submit application (Main)
+  "app.msme.incentiveSchemes.button.submit": "Submit application",
+  // Incentive schemes: Buttons: apply again (Main)
+  "app.msme.incentiveSchemes.button.applyAgain": "Apply again",
+  // Incentive schemes: Buttons: retry (Main)
+  "app.msme.incentiveSchemes.button.retry": "Retry",
+  // Incentive schemes: Buttons: back to My Incentives (Main)
+  "app.msme.incentiveSchemes.button.done": "Back to My Incentives",
+  // Incentive schemes: Add more: count (Main)
+  "app.msme.incentiveSchemes.items.count": "{{Count}} of up to {{Max}}",
+  // Incentive schemes: Add more: item without a name (Main)
+  "app.msme.incentiveSchemes.items.item": "Item",
+  // Incentive schemes: Add more: documents of an item (Main)
+  "app.msme.incentiveSchemes.items.docs": "{{Count}} document(s)",
+  // Incentive schemes: Add more: edit (Main)
+  "app.msme.incentiveSchemes.items.edit": "Edit",
+  // Incentive schemes: Add more: remove (Main)
+  "app.msme.incentiveSchemes.items.remove": "Remove",
+  // Incentive schemes: Add more: cancel (Main)
+  "app.msme.incentiveSchemes.items.cancel": "Cancel",
+  // Incentive schemes: Add more: save item (Main)
+  "app.msme.incentiveSchemes.items.save": "Save item",
+  // Incentive schemes: Add more: add button (Main)
+  "app.msme.incentiveSchemes.items.add": "+ Add more {{Section}}",
+  // Incentive schemes: Add more: choose (no label) (Main)
+  "app.msme.incentiveSchemes.items.pickLabel": "Choose",
+  // Incentive schemes: Add more: an entry (Main)
+  "app.msme.incentiveSchemes.items.pickFallback": "an entry",
+  // Incentive schemes: Fields: choose one (Main)
+  "app.msme.incentiveSchemes.field.select": "-Select-",
+  // Incentive schemes: Fields: yes (Main)
+  "app.msme.incentiveSchemes.field.yes": "Yes",
+  // Incentive schemes: Fields: no (Main)
+  "app.msme.incentiveSchemes.field.no": "No",
+  // Incentive schemes: Fields: found not valid (Main)
+  "app.msme.incentiveSchemes.field.notValid": "Not valid",
+  // Incentive schemes: Fields: a PDF document (Main)
+  "app.msme.incentiveSchemes.field.pdf": "PDF document {{Number}}",
+  // Incentive schemes: Fields: an image (Main)
+  "app.msme.incentiveSchemes.field.image": "Image {{Number}}",
+  // Incentive schemes: Fields: no file (Main)
+  "app.msme.incentiveSchemes.field.noFile": "No file uploaded",
+  // Incentive schemes: Fields: upload button (Main)
+  "app.msme.incentiveSchemes.field.upload": "+ Upload",
+  // Incentive schemes: Fields: uploading (Main)
+  "app.msme.incentiveSchemes.field.uploading": "Uploading…",
+  // Incentive schemes: Fields: photo hint (Main)
+  "app.msme.incentiveSchemes.field.photoHint": "JPG / PNG up to 5 MB, up to {{Count}} file(s)",
+  // Incentive schemes: Fields: document hint (Main)
+  "app.msme.incentiveSchemes.field.documentHint": "PDF / JPG / PNG up to 5 MB, up to {{Count}} file(s)",
+  // Incentive schemes: Fields: a photo only (Main)
+  "app.msme.incentiveSchemes.field.photoError": "Please upload a photo (JPG / PNG).",
+  // Incentive schemes: Fields: add document (sheet title) (Main)
+  "app.msme.incentiveSchemes.field.sheetTitle": "Add document",
+  // Incentive schemes: Fields: add document (sheet note) (Main)
+  "app.msme.incentiveSchemes.field.sheetSubtitle": "Choose how to add this document",
+  // Incentive schemes: Fields: take photo (Main)
+  "app.msme.incentiveSchemes.field.takePhoto": "Take Photo",
+  // Incentive schemes: Fields: pick photo (Main)
+  "app.msme.incentiveSchemes.field.pickPhoto": "Pick Photo from Gallery",
+  // Incentive schemes: Fields: pick PDF (Main)
+  "app.msme.incentiveSchemes.field.pickPdf": "Pick PDF from Gallery",
+  // Incentive schemes: Fields: cancel (Main)
+  "app.msme.incentiveSchemes.field.cancel": "Cancel",
+  // Incentive schemes: Fields: camera hint (Main)
+  "app.msme.incentiveSchemes.field.cameraHint": "Use the camera now",
+  // Incentive schemes: Fields: gallery hint (Main)
+  "app.msme.incentiveSchemes.field.galleryHint": "JPG or PNG",
+  // Incentive schemes: Fields: PDF hint (Main)
+  "app.msme.incentiveSchemes.field.pdfHint": "One PDF file",
+  // Incentive schemes: Fields: upload failed (Main)
+  "app.msme.incentiveSchemes.field.uploadFailed": "The document could not be uploaded. Please try again.",
+  // Incentive schemes: Fields: document not opened (Main)
+  "app.msme.incentiveSchemes.field.openFailed": "The document could not be opened. Please try again.",
+  // Incentive schemes: Fields: date placeholder (Main)
+  "app.msme.incentiveSchemes.field.datePlaceholder": "Choose a date",
+  // Incentive schemes: Fields: characters (Main)
+  "app.msme.incentiveSchemes.field.count": "{{Count}} / {{Max}}",
+  // Incentive schemes: Bank: heading (Main)
+  "app.msme.incentiveSchemes.bank.title": "Account details of reimbursement",
+  // Incentive schemes: Bank: account number (Main)
+  "app.msme.incentiveSchemes.bank.accountNo": "Account No.",
+  // Incentive schemes: Bank: account number again (Main)
+  "app.msme.incentiveSchemes.bank.accountAgain": "Re-Enter Account No.",
+  // Incentive schemes: Bank: IFSC (Main)
+  "app.msme.incentiveSchemes.bank.ifsc": "IFSC Code",
+  // Incentive schemes: Bank: bank name (Main)
+  "app.msme.incentiveSchemes.bank.bank": "Name of the Bank",
+  // Incentive schemes: Bank: branch address (Main)
+  "app.msme.incentiveSchemes.bank.branch": "Branch Address",
+  // Incentive schemes: Bank: bank and branch (summary) (Main)
+  "app.msme.incentiveSchemes.bank.bankBranch": "Bank / branch",
+  // Incentive schemes: Bank: cancelled cheque (Main)
+  "app.msme.incentiveSchemes.bank.cheque": "Cancelled cheque copy",
+  // Incentive schemes: Bank: numbers differ (Main)
+  "app.msme.incentiveSchemes.bank.mismatch": "Account Numbers must match.",
+  // Incentive schemes: Errors: disclaimer (Main)
+  "app.msme.incentiveSchemes.error.consent": "Please accept the disclaimer.",
+  // Incentive schemes: Errors: unit (Main)
+  "app.msme.incentiveSchemes.error.unit": "Please confirm the unit details.",
+  // Incentive schemes: Errors: item being edited (Main)
+  "app.msme.incentiveSchemes.error.unsaved": "Please save or cancel the item you are editing.",
+  // Incentive schemes: Errors: at least (Main)
+  "app.msme.incentiveSchemes.error.minItems": "Please add at least {{Count}}.",
+  // Incentive schemes: Errors: choose (Main)
+  "app.msme.incentiveSchemes.error.pick": "Please choose {{Label}}.",
+  // Incentive schemes: Errors: required field (Main)
+  "app.msme.incentiveSchemes.error.required": "Please fill in \"{{Label}}\".",
+  // Incentive schemes: Errors: bank details (Main)
+  "app.msme.incentiveSchemes.error.bankRequired": "Please enter the account details.",
+  // Incentive schemes: Errors: account number (Main)
+  "app.msme.incentiveSchemes.error.accountNo": "Please enter a valid account number (9 to 18 digits).",
+  // Incentive schemes: Errors: account numbers differ (Main)
+  "app.msme.incentiveSchemes.error.accountMismatch": "Account Number and Re-Enter Account Number must match.",
+  // Incentive schemes: Errors: IFSC (Main)
+  "app.msme.incentiveSchemes.error.ifsc": "Invalid IFSC Code format. Please enter the correct 11-digit code.",
+  // Incentive schemes: Errors: cancelled cheque (Main)
+  "app.msme.incentiveSchemes.error.cheque": "Please upload the cancelled cheque.",
+  // Incentive schemes: Errors: declaration (Main)
+  "app.msme.incentiveSchemes.error.declaration": "Please accept the declaration.",
+  // Incentive schemes: Errors: page not loaded (Main)
+  "app.msme.incentiveSchemes.error.load": "The scheme could not be loaded. Check your internet connection and try again.",
+  // Incentive schemes: Errors: offline (Main)
+  "app.msme.incentiveSchemes.error.offline": "Please connect to the internet to continue.",
+  // Incentive schemes: Errors: request failed (Main)
+  "app.msme.incentiveSchemes.error.failed": "Something went wrong. Please try again.",
+  // Incentive schemes: Review: heading (Main)
+  "app.msme.incentiveSchemes.summary.title": "Review &amp; submit",
+  // Incentive schemes: Answers: nothing added (Main)
+  "app.msme.incentiveSchemes.answers.none": "Nothing added.",
+  // Incentive schemes: Answers: view a document (Main)
+  "app.msme.incentiveSchemes.answers.view": "View {{Number}}",
+  // Incentive schemes: Claim: heading (Main)
+  "app.msme.incentiveSchemes.claim.title": "Your claim",
+  // Incentive schemes: Claim: claimed (Main)
+  "app.msme.incentiveSchemes.claim.claimed": "Claimed: ₹ {{Amount}}",
+  // Incentive schemes: Claim: eligible (Main)
+  "app.msme.incentiveSchemes.claim.eligible": "Eligible: ₹ {{Amount}}",
+  // Incentive schemes: Claim: share and cap (Main)
+  "app.msme.incentiveSchemes.claim.grade": "{{Share}}% of the claim, up to ₹ {{Max}}",
+  // Incentive schemes: Claim: approved (Main)
+  "app.msme.incentiveSchemes.claim.approved": "Approved: ₹ {{Amount}}",
+  // Incentive schemes: Claim: level (Main)
+  "app.msme.incentiveSchemes.claim.level": "Claim for: {{Level}}",
+  // Incentive schemes: Claim: open since (Main)
+  "app.msme.incentiveSchemes.claim.openedOn": "Open since {{Date}}",
+  // Incentive schemes: Application: heading (Main)
+  "app.msme.incentiveSchemes.application.title": "Your application",
+  // Incentive schemes: Application: number (Main)
+  "app.msme.incentiveSchemes.application.number": "Application no. {{Id}}",
+  // Incentive schemes: Application: submitted (Main)
+  "app.msme.incentiveSchemes.application.submitted": "Your application has been submitted.",
+  // Incentive schemes: Rejected: heading (Main)
+  "app.msme.incentiveSchemes.rejected.title": "Your application was rejected.",
+  // Incentive schemes: Rejected: reason (Main)
+  "app.msme.incentiveSchemes.rejected.reason": "Reason: {{Reason}}",
+  // Incentive schemes: Correction: what to do (Main)
+  "app.msme.incentiveSchemes.correction.intro": "Please correct the answers marked below and submit the corrections by {{Date}}.",
+  // Incentive schemes: Correction: date passed (Main)
+  "app.msme.incentiveSchemes.correction.closed": "The date for the corrections has passed.",
+  // Incentive schemes: Correction: save (Main)
+  "app.msme.incentiveSchemes.correction.save": "Save",
+  // Incentive schemes: Correction: saved (Main)
+  "app.msme.incentiveSchemes.correction.saved": "Saved.",
+  // Incentive schemes: Correction: submit (Main)
+  "app.msme.incentiveSchemes.correction.submit": "Submit corrections",
+  // Incentive schemes: Correction: submitted (Main)
+  "app.msme.incentiveSchemes.correction.submitted": "Your corrections have been submitted.",
+  // Incentive schemes: History: heading (Main)
+  "app.msme.incentiveSchemes.history.title": "Earlier applications",
+  // Incentive schemes: History: one application (Main)
+  "app.msme.incentiveSchemes.history.row": "{{Date}} · {{Status}}",
+  // Incentive schemes: History: amount (Main)
+  "app.msme.incentiveSchemes.history.amount": "₹ {{Amount}}",
+  // Incentive schemes: History: reason (Main)
+  "app.msme.incentiveSchemes.history.reason": "Reason: {{Reason}}",
 };

@@ -258,15 +258,16 @@ describe('My Incentives: the Admin cards (Main Dashboard Cards, 2026-11-08)', ()
     const app = await signedInApp(cardsServer(ADMIN_CARDS));
     await app.refreshIncentiveCards();
     const r = render(app, 'Incentives');
+    // 2026-11-25: the web's order: the dashboard incentives before the four stakeholders' lists.
     expect(cardIds(r)).toEqual([
       'incentive-joining-reward',
       'incentive-graded-0',
+      'incentive-admin-7',
+      'incentive-admin-8',
       'incentive-graded-2',
       'incentive-graded-3',
       'incentive-graded-4',
       'incentive-graded-5',
-      'incentive-admin-7',
-      'incentive-admin-8',
     ]);
     const shown = strings(r);
     expect(shown).toEqual(

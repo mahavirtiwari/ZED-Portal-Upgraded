@@ -30,6 +30,7 @@ import { EditHistoryScreen } from './src/screens/EditHistoryScreen';
 import { PendingUploadsScreen } from './src/screens/PendingUploadsScreen';
 import { FinancialAssistanceScreen } from './src/screens/FinancialAssistanceScreen';
 import { IncentivesScreen } from './src/screens/IncentivesScreen';
+import { IncentiveSchemeScreen } from './src/screens/IncentiveSchemeScreen';
 import { MyDocumentsScreen } from './src/screens/MyDocumentsScreen';
 import { ChangePasswordScreen, ForgotPasswordScreen } from './src/screens/PasswordScreens';
 import { RegistrationScreen } from './src/screens/RegistrationScreen';
@@ -43,6 +44,8 @@ export const SCREENS: ScreenMap = {
   MyDocuments: MyDocumentsScreen,
   Incentives: IncentivesScreen,
   FinancialAssistance: FinancialAssistanceScreen,
+  // 2026-11-25: a scheme of Admin → Incentive Schemes with its full form (was the web).
+  IncentiveScheme: IncentiveSchemeScreen,
   ChangePassword: ChangePasswordScreen,
   MyAccount: MyAccountScreen,
   MyCertifications: MyCertificationsScreen,

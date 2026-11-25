@@ -20,6 +20,7 @@ import {
 } from '@zed/shared';
 import { MsmeApi, type PublicIncentiveCards, type PublicLevel } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
+import type { SchemesDashboard } from '../incentiveSchemes';
 import { BUILT_IN_BASIC_INFO, MSME_BASIC_INFO } from '../forms';
 import { associatedIdOf, normalizeLoginResponse, type LoginResponse } from '../models';
 
@@ -84,6 +85,12 @@ export class MsmeApp {
    */
   private _incentiveCards: PublicIncentiveCards | null = null;
   private incentiveCardsAt = 0;
+  /**
+   * 2026-11-25: the incentive schemes' tiles of the signed-in unit (Msme/AppIncentiveSchemes): the Admin's schemes and the
+   * Financial Assistance / Technology Upgradation cards' schemes. Not kept on the phone (the states change with each
+   * application); null until the portal has answered since the sign-in (My Incentives then shows the cards as before).
+   */
+  private _incentiveSchemes: SchemesDashboard | null = null;
   private _user: LoginResponse | null = null;
   private _loginId: string | null = null;
   private listeners = new Set<() => void>();
@@ -152,6 +159,26 @@ export class MsmeApp {
       await this.cache.set(INCENTIVE_CARDS_KEY, cards);
     } catch {
       // offline or an older server: the last answer stays
+    }
+  }
+
+  get incentiveSchemes(): SchemesDashboard | null {
+    return this._incentiveSchemes;
+  }
+
+  /**
+   * The unit's scheme tiles from the portal (each time My Incentives opens, and after an application changes). A failure keeps
+   * the last answer of this sign-in without a message; an older portal without the endpoint leaves it null.
+   */
+  async refreshIncentiveSchemes(): Promise<void> {
+    try {
+      const r = await this.api.getIncentiveSchemes();
+      const d = r && String(r.status) === '1' ? r.dashboard : null;
+      if (!d || !Array.isArray(d.schemes) || !d.tu || !d.fa) return;
+      this._incentiveSchemes = d;
+      this.touch();
+    } catch {
+      // offline, signed out or an older portal: the last answer stays
     }
   }
 
@@ -238,6 +265,7 @@ export class MsmeApp {
   /** resetUser; the sign-in token is no longer sent (the stored one stays for an offline sign-in). */
   resetUser(): void {
     this._user = null;
+    this._incentiveSchemes = null;
     this._loginId = null;
     this.session.clear();
     this.touch();

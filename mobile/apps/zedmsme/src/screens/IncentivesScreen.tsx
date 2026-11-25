@@ -22,6 +22,7 @@ import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { isAnyCertificationCompleted } from '../models';
 import type { PublicBuiltInIncentiveCard, PublicIncentive, PublicIncentiveCards } from '../api';
+import { lockedNote, stateLabel, useSchemeTexts, type SchemeState, type SchemeTile, type SchemeT } from '../incentiveSchemes';
 
 /**
  * The incentives that open the incentives page once a level is certified (GradedIncentivesActivity for all of them):
@@ -117,7 +118,26 @@ export function builtInCard(cards: PublicIncentiveCards | null, code: string | n
   };
 }
 
-/** MyIncentivesFragment ("My Incentives"). */
+/** The four stakeholders' lists (GRADED 2-5), the last cards of My Incentives as on the web. */
+const STAKEHOLDERS = [2, 3, 4, 5];
+
+/** A card's state chip and line, from a scheme's tile (2026-11-25, as the web's tiles). */
+type CardState = { state: SchemeState; note: string | null };
+
+/** The chip and line of a scheme's tile: the state, and why it is locked (the Admin's wording of the reason). */
+export function schemeCardState(t: SchemeT, tile: SchemeTile): CardState {
+  if (tile.state !== 'locked') return { state: tile.state, note: null };
+  return { state: 'locked', note: lockedNote(t, tile.note, tile.activationLevels ?? []) ?? tile.message ?? t('list.notEligible') };
+}
+
+/**
+ * MyIncentivesFragment ("My Incentives"). 2026-11-25 (the product owner): the same cards in the same order as the web dashboard's
+ * My Incentives (frontend msme/dashboard incentiveTiles): Joining Reward, Financial Assistance (the FA scheme of Admin → Incentive
+ * Schemes when the portal has it), Handholding, Technology Upgradation (the direct scheme while the card needs no recommendation),
+ * every active scheme of the Admin, the Admin's dashboard incentives, then the four stakeholders' lists. A built-in card the
+ * Admin turned off is hidden and carries the Admin's wording. A scheme opens its own screens (IncentiveScheme: the full form).
+ * Without the portal's answer (offline, an older portal) the cards work as before.
+ */
 export function IncentivesScreen() {
   const app = useMsme();
   const ui = useUi();
@@ -138,11 +158,18 @@ export function IncentivesScreen() {
   };
 
   // New in V4 (2026-11-08): the Admin's cards (Admin → Incentives → Main Dashboard Cards), asked when the screen opens.
+  // 2026-11-25: and the unit's incentive schemes (Msme/AppIncentiveSchemes), each time the screen shows (after an application too).
   useFocusEffect(
     useCallback(() => {
       void app.refreshIncentiveCards();
+      void app.refreshIncentiveSchemes();
     }, [app]),
   );
+  const t = useSchemeTexts();
+  const schemes = app.incentiveSchemes;
+  const openScheme = (code: string) => nav.push('IncentiveScheme', { code });
+  /** An application made before the framework, still in progress: it continues on the portal (no screen of its own here). */
+  const legacy = (title: string) => ui.alert(title, t('list.legacyInProgress'), [{ text: 'OK' }]);
   const cards = app.incentiveCards;
   const reward = builtInCard(cards, 'JOINING_REWARD', 'Joining Reward', JOINING_REWARD_TEXT, 12);
   const assistance = builtInCard(cards, 'FINANCIAL_ASSISTANCE', 'Financial Assistance', FINANCIAL_ASSISTANCE_TEXT, 34);
@@ -175,38 +202,108 @@ export function IncentivesScreen() {
             />
           ) : null}
           {assistance.visible ? (
-            <Incentive
-              title={assistance.title}
-              highlight={assistance.highlight}
-              logo={images.financial_assistance_logo}
-              detail={assistance.detail}
-              enabled={status?.financialAssistanceStatus === 1}
-              right={icons.ic_incentive_arrow_enabled}
-              onPress={() => nav.push('FinancialAssistance')}
-              testID="incentive-financial-assistance"
-            />
-          ) : null}
-          {GRADED.map((g, i) => {
-            const card = builtInCard(cards, g.code, g.title, g.detail, g.blue);
-            return card.visible ? (
+            schemes?.fa.legacy ? (
+              // An application made on the old page, still in progress (the web card opens the old page for it).
               <Incentive
-                key={g.title}
-                title={card.title}
-                highlight={card.highlight}
-                logo={g.logo}
-                detail={card.detail}
-                enabled={certified}
+                title={assistance.title}
+                highlight={assistance.highlight}
+                logo={images.financial_assistance_logo}
+                detail={assistance.detail}
+                state={{ state: 'progress', note: null }}
                 right={icons.ic_incentive_arrow_enabled}
-                // 2026-11-21: Handholding Support opens the app's own screens (levels, milestones, payment); the others the web.
-                onPress={() => (g.code === 'HANDHOLDING' ? nav.push('Handholding') : open(app.api.incentivesUrl))}
-                testID={`incentive-graded-${i}`}
+                onPress={() => legacy(assistance.title)}
+                testID="incentive-financial-assistance"
               />
-            ) : null;
+            ) : schemes?.fa.scheme ? (
+              <Incentive
+                title={assistance.title}
+                highlight={assistance.highlight}
+                logo={images.financial_assistance_logo}
+                detail={assistance.detail}
+                state={schemeCardState(t, schemes.fa.scheme)}
+                enabled={schemes.fa.scheme.state !== 'locked'}
+                right={icons.ic_incentive_arrow_enabled}
+                onPress={() => openScheme(schemes.fa.scheme!.code)}
+                testID="incentive-financial-assistance"
+              />
+            ) : schemes ? (
+              // The portal answered without the scheme (switched off): no new application, as on the web.
+              <Incentive
+                title={assistance.title}
+                highlight={assistance.highlight}
+                logo={images.financial_assistance_logo}
+                detail={assistance.detail}
+                state={{ state: 'locked', note: certified ? t('list.notEligible') : t('list.notCertified') }}
+                enabled={false}
+                right={icons.ic_incentive_arrow_enabled}
+                onPress={() => undefined}
+                testID="incentive-financial-assistance"
+              />
+            ) : (
+              <Incentive
+                title={assistance.title}
+                highlight={assistance.highlight}
+                logo={images.financial_assistance_logo}
+                detail={assistance.detail}
+                enabled={status?.financialAssistanceStatus === 1}
+                right={icons.ic_incentive_arrow_enabled}
+                onPress={() => nav.push('FinancialAssistance')}
+                testID="incentive-financial-assistance"
+              />
+            )
+          ) : null}
+          {GRADED.slice(0, 2).map((g, i) => {
+            const card = builtInCard(cards, g.code, g.title, g.detail, g.blue);
+            if (!card.visible) return null;
+            const common = { title: card.title, highlight: card.highlight, logo: g.logo, detail: card.detail, right: icons.ic_incentive_arrow_enabled, testID: `incentive-graded-${i}` };
+            // 2026-11-21: Handholding Support opens the app's own screens (levels, milestones, payment).
+            if (g.code === 'HANDHOLDING') return <Incentive key={g.title} {...common} enabled={certified} onPress={() => nav.push('Handholding')} />;
+            // Technology Upgradation (2026-11-25, as the web card): a consultant-recommended application in progress continues on
+            // the portal; the direct scheme opens its screens; direct without the scheme is not available; else as before.
+            const tu = schemes?.tu;
+            if (tu?.direct && tu.legacy) return <Incentive key={g.title} {...common} state={{ state: 'progress', note: null }} onPress={() => legacy(card.title)} />;
+            if (tu?.scheme) {
+              const tile = tu.scheme;
+              return <Incentive key={g.title} {...common} state={schemeCardState(t, tile)} enabled={tile.state !== 'locked'} onPress={() => openScheme(tile.code)} />;
+            }
+            if (tu?.direct) return <Incentive key={g.title} {...common} state={{ state: 'locked', note: t('list.notEligible') }} enabled={false} onPress={() => undefined} />;
+            return <Incentive key={g.title} {...common} enabled={certified} onPress={() => open(app.api.incentivesUrl)} />;
           })}
+          {/* 2026-11-25: every active scheme of Admin → Incentive Schemes, in the Admin's order, with its state. */}
+          {(schemes?.schemes ?? []).map(tile => (
+            <Incentive
+              key={`scheme-${tile.code}`}
+              title={tile.title}
+              highlight={textOf(tile.highlight)}
+              logo={images.graded_incentives_logo}
+              detail={plainOf(tile.details) ?? ''}
+              state={schemeCardState(t, tile)}
+              enabled={tile.state !== 'locked'}
+              right={icons.ic_incentive_arrow_enabled}
+              onPress={() => openScheme(tile.code)}
+              testID={`incentive-scheme-${tile.code}`}
+            />
+          ))}
           {/* New in V4 (2026-11-08): the Admin's dashboard incentives, in the server's order. */}
           {(cards?.incentives ?? []).map((incentive, i) => (
             <AdminIncentive key={`${incentive.id ?? ''}-${i}`} incentive={incentive} onLink={openLink} testID={`incentive-admin-${incentive.id ?? i}`} />
           ))}
+          {/* The stakeholders' lists last, as on the web. */}
+          {STAKEHOLDERS.map(i => {
+            const g = GRADED[i]!;
+            return (
+              <Incentive
+                key={g.title}
+                title={g.title}
+                logo={g.logo}
+                detail={g.detail}
+                enabled={certified}
+                right={icons.ic_incentive_arrow_enabled}
+                onPress={() => open(app.api.incentivesUrl)}
+                testID={`incentive-graded-${i}`}
+              />
+            );
+          })}
         </ScrollView>
       </View>
     </ScreenFrame>
@@ -225,6 +322,7 @@ function Incentive({
   detail,
   right,
   enabled = true,
+  state,
   onPress,
   testID,
 }: {
@@ -234,9 +332,12 @@ function Incentive({
   detail: React.ReactNode;
   right: IconDefinition;
   enabled?: boolean;
+  /** 2026-11-25: a scheme's state (chip) and why it is locked (line), as the web's tile. */
+  state?: CardState;
   onPress: () => void;
   testID: string;
 }) {
+  const t = useSchemeTexts();
   return (
     <Pressable style={styles.card} onPress={enabled ? onPress : undefined} disabled={!enabled} testID={testID}>
       <View style={styles.top}>
@@ -254,9 +355,30 @@ function Incentive({
       <Text style={styles.detail} numberOfLines={4}>
         {detail}
       </Text>
+      {state ? (
+        <View style={styles.stateRow}>
+          <Text style={[styles.chip, CHIP[state.state]]} testID={`${testID}-state`}>
+            {stateLabel(t, state.state)}
+          </Text>
+          {state.note ? (
+            <Text style={styles.note} testID={`${testID}-note`}>
+              {state.note}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </Pressable>
   );
 }
+
+/** The chip's colours by state (the web tiles' tones). */
+const CHIP: Record<SchemeState, { backgroundColor: string; color: string }> = {
+  open: { backgroundColor: '#E3F3E6', color: '#1E6B34' },
+  progress: { backgroundColor: '#E3EEF6', color: '#1F4F7A' },
+  onhold: { backgroundColor: '#FFF4D6', color: '#7A5A00' },
+  availed: { backgroundColor: '#EDEDED', color: '#4A4A4A' },
+  locked: { backgroundColor: '#F4E6E6', color: '#8A2F2F' },
+};
 
 /**
  * New in V4 (2026-11-08): an incentive the Admin shows on the dashboard: title, highlight line, details (plain text, a
@@ -332,4 +454,15 @@ const styles = StyleSheet.create({
   infoLink: { color: colors.appColor, textDecorationLine: 'underline' },
   links: { flexDirection: 'row', flexWrap: 'wrap', marginTop: dimens.padding2, marginHorizontal: -dimens.padding2 },
   linkButton: { paddingVertical: dimens.padding2, paddingHorizontal: dimens.padding4 },
+  stateRow: { marginTop: dimens.padding2 },
+  chip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: dimens.padding2,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+    fontSize: dimens.textSize14,
+    fontWeight: 'bold',
+  },
+  note: { color: colors.labelColor, fontSize: dimens.textSize14, lineHeight: lineHeight(dimens.textSize14), marginTop: dimens.padding1 },
 });
