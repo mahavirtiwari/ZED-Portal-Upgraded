@@ -287,6 +287,35 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.Equal("agency@x.test", Assert.Single(_host.Email.Sent).To);
     }
 
+    [Theory]
+    // 2026-11-25 (the user: Bronze set to Onsite only, yet every agency was offered): the level's flow decides the permissions.
+    [InlineData("Onsite", "AGENCYSV,AGENCYBOTH")]
+    [InlineData("Remote", "AGENCYSV,AGENCYBOTH")]
+    [InlineData("Desktop", "AGENCY1,AGENCYBOTH")]
+    [InlineData("DesktopOnsite", "AGENCYSV,AGENCYBOTH")]
+    [InlineData("DesktopRemote", "AGENCYSV,AGENCYBOTH")]
+    public async Task Master_admin_is_offered_only_agencies_with_the_permissions_of_the_levels_flow(string flow, string offered)
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets([
+            new { UserId = "AGENCY1", UserName = "Desktop only", DesktopVerification = true, SiteVerification = false },
+            new { UserId = "AGENCYSV", UserName = "Remote/Onsite only", DesktopVerification = false, SiteVerification = true },
+            new { UserId = "AGENCYBOTH", UserName = "Both", DesktopVerification = true, SiteVerification = true },
+        ]);
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.LevelFlows.ReadSql] = _ =>
+            [new { Code = "Bronze", AssessmentFlow = flow, SurveillanceMode = "Remote" }];
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+
+        var agencies = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot/agencies?zedId=ZEDMSME000001&certification=Bronze");
+        Assert.Equal(offered.Split(','), agencies.EnumerateArray().Select(a => a.GetProperty("userId").GetString()));
+        if (flow == "Onsite")
+        {
+            // The agency without onsite permission is refused by the server too (the pop-up is not the only guard).
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot",
+                new { zedId = "ZEDMSME000001", certification = "Bronze", agencyUserId = "AGENCY1" })).StatusCode);
+            Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+        }
+    }
+
     [Fact]
     public async Task Master_admin_list_returns_only_displayed_columns()
     {

@@ -30,8 +30,12 @@ internal static class AllotmentAgencies
         var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
         // Bronze surveillance goes only to agencies allowed for it (the old Allot page filtered on AllowBronzeSurveillance).
         // 2026-11-08: a V4 level assessed at the desktop only goes to desktop-verification agencies, as Bronze.
-        var column = level == "Bronze" ? (host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification")
-            : LevelRegistry.IsDesktop(level) ? "DesktopVerification" : "SiteVerification";
+        string[] columns = [level == "Bronze" ? (host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification")
+            : LevelRegistry.IsDesktop(level) ? "DesktopVerification" : "SiteVerification"];
+        // 2026-11-25 (the user: Bronze set to Onsite only, no agency has onsite permission, yet every agency was offered): on main
+        // the level's flow (Admin → Certification Levels) decides: a flow with a visit (Remote or Onsite, alone or after the desktop
+        // step) needs Remote/Onsite (SiteVerification), as Silver and Gold always did; Desktop only needs Desktop verification.
+        if (host.System == PortalSystem.Main) columns = FlowColumns(await CertLevels.LevelFlows.FlowAsync(db, level, log, ct));
         // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
         var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
@@ -46,7 +50,7 @@ internal static class AllotmentAgencies
         var po = (await Expenditure.PoLimits.StatusAsync(db, host, null, level, log, ct))
             .ToDictionary(s => s.PartyId, StringComparer.OrdinalIgnoreCase);
         var levelName = LevelRegistry.NameOf(level);
-        return rows.Where(r => AllotmentLists.Flag(r, column) && !disabled.Contains(r.Text("UserId").Trim()))
+        return rows.Where(r => columns.All(c => AllotmentLists.Flag(r, c)) && !disabled.Contains(r.Text("UserId").Trim()))
             .Select(r =>
             {
                 var id = r.Text("UserId");
@@ -58,6 +62,10 @@ internal static class AllotmentAgencies
             .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category))
             .ToList();
     }
+
+    /// <summary>The agency permission a level of this flow needs: SiteVerification when it has a visit, else DesktopVerification.</summary>
+    internal static string[] FlowColumns(string flow) =>
+        CertLevels.LevelFlows.ModesOf(flow).Any(m => m is 'R' or 'O') ? ["SiteVerification"] : ["DesktopVerification"];
 
     /// <summary>
     /// The allotment itself, once the agency is known to be allowed: SP_ASSESSMENT_ALLOT_TO_AGENCY (its MsmeHistory line), on main
