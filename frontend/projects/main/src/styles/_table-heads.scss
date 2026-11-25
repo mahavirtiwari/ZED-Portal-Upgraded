@@ -1,0 +1,29 @@
+// 2026-11-26 (the user, Monitoring: "Please put color in headers" … "use this everywhere mean all users login and sections"): the
+// head row of every table of the portal (every staff login, the Admin, the signed-in MSME pages and the public pages) in the
+// theme's teal with white capitals, in place of the pale tint. Loaded last, under ".zed-legacy:not(#zed-x)" (styles.scss): an
+// id's weight over the pages' own head rules, which are class-based (some with !important). The colour follows an Admin →
+// Branding theme (--zt-mid2 is made from it, styles/_themes.scss).
+$head: var(--zt-mid2, #2f7c83);
+
+table > thead > tr,
+table > thead > tr.btn-default {
+  background: $head !important;
+}
+table > thead > tr > :is(th, td) {
+  --bs-table-bg: #{$head};
+  --bs-table-color: #fff;
+  --bs-table-bg-state: #{$head};
+  background: $head !important;
+  color: #fff !important;
+  border-bottom-color: $head !important;
+}
+// The lines between the head's columns a light white (the lists draw them, 2026-11-25).
+table > thead > tr > :is(th, td):not(:last-child) {
+  border-right-color: rgba(255, 255, 255, .28) !important;
+}
+// What sits in a head cell (sort buttons, links, small notes, labels, icons drawn with currentColor) is white too; a badge or
+// a chip keeps its own colours.
+table > thead > tr > :is(th, td) :is(button, a, small, label, span:not(.badge):not(.chip):not(.zed-chip)) {
+  color: inherit !important;
+}
+table > thead > tr > :is(th, td) a:hover { color: #fff !important; text-decoration: underline; }

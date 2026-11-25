@@ -69,6 +69,12 @@ body {
 // 2026-11-15: Admin → Branding colour themes (only with <html data-zed-theme>; ZED Teal unchanged).
 @include meta.load-css('styles/themes');
 
+// 2026-11-26 (the user: "use this everywhere mean all users login and sections"): every table's head row in teal with white
+// text, on every login (staff, Admin, MSME) and the public pages; an id's weight over the pages' own head rules.
+.zed-legacy:not(#zed-x) {
+  @include meta.load-css('styles/table-heads');
+}
+
 // Content/zed-login.css was only loaded by the login page; keep it scoped to the login pages.
 .zed-login {
   @include meta.load-css('styles/legacy-login');

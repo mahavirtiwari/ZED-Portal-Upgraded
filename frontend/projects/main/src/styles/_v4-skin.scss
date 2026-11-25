@@ -371,6 +371,7 @@ $card-shadow: 0 3px 10px rgba(0, 0, 0, 0.09);
   .list-card table.table > :is(thead, tbody, tfoot) > tr > :is(th, td):not(:last-child) { border-right: 1px solid $card-line; }
   table.table.table-zed > thead > tr > :is(th, td):not(:last-child),
   .list-card table.table > thead > tr > :is(th, td):not(:last-child) { border-right-color: color-mix(in srgb, var(--zt-mid, #45a5ad) 28%, #fff); }
+  // 2026-11-26: the head row's teal and white are styles/_table-heads.scss (every login and section).
   table.table.table-zed > tbody > tr:hover > td, .list-card table.table > tbody > tr:hover > td { --bs-table-bg-state: #f4fafa; background: #f4fafa; }
   .table-responsive:has(> table.table-zed) { border: 1px solid $card-line; border-radius: 14px; box-shadow: $card-shadow; }
   :is(.zed-card, .list-card) .table-responsive:has(> table.table-zed) { border: 0; border-radius: 0; box-shadow: none; }

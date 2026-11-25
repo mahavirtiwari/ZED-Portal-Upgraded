@@ -30,6 +30,7 @@ html[data-zed-theme] {
   .btn-link:not(.nav-link) { color: var(--zt-dark) !important; }
 
   // Table headings (2026-11-17: the light header, in the theme's pale tint, with its ink).
+  // (2026-11-26: the head rows are teal everywhere, styles/_table-heads.scss, in the theme's --zt-mid2; this tint is overridden.)
   .table-zed > thead > tr > th, .table-zed thead th { background: color-mix(in srgb, var(--zt-soft) 55%, #fff) !important; color: var(--zt-ink) !important; border-color: var(--zt-soft) !important; }
 
   // Pop-up title bars and their numbers.
