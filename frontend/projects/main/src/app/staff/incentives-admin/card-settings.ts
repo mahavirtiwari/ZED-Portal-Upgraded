@@ -111,6 +111,9 @@ export class CardSettingsState {
   styles: `
     .cs-box { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed #9cc9cd; border-radius: 8px; background: #fff; font-size: 13px; }
     .cs-label { font-weight: 700; color: #23474a; }
+    /* The switch's label wraps inside the box (switches are one line by default and ran out of the narrow card). */
+    .cs-box .af-switch { white-space: normal; margin: 0; }
+    .cs-box .af-track { flex: none; }
     .cs-levels { display: flex; flex-wrap: wrap; gap: 4px 14px; }
     .cs-levels label { display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; }
     .cs-save { align-self: flex-start; }
