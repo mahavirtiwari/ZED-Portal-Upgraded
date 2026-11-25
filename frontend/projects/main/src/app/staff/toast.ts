@@ -42,7 +42,7 @@ export class ToastService {
   }
 }
 
-/** The toasts, bottom right (once, in the staff layout). */
+/** The toasts, in the middle of the screen (once, in the staff layout). */
 @Component({
   selector: 'zed-toast',
   imports: [NgTemplateOutlet, TextPipe],
@@ -72,7 +72,8 @@ export class ToastService {
   styles: `
     /* 2026-11-18 (the user: staff pages 'not aligned with SVG files'): as the designs, at the bottom left of the page (on its left edge
        on wide screens), 400px, 12px corners, a 24px round icon, the title 13.5px bold and the line under it 12px. */
-    :host { position: fixed; left: max(16px, calc((100vw - 1296px) / 2)); bottom: 16px; z-index: 1080; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
+    /* 2026-11-25 (the user: "Please show the notifications in center not in bottom"): in the middle of the screen. */
+    :host { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1080; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 32px));
       pointer-events: none; }
     .tt-live { display: flex; flex-direction: column; gap: 8px; }
     .tt-live:empty { display: none; }
@@ -86,7 +87,7 @@ export class ToastService {
     .tt-text small { font-size: 12px; font-weight: 500; color: #bcd8da; }
     .tt-x { flex: none; border: 0; background: none; color: #bcd8da; font-size: 22px; line-height: 1; padding: 0 2px; }
     .tt-x:hover, .tt-x:focus-visible { color: #fff; }
-    @keyframes tt-in { from { opacity: 0; transform: translateY(8px); } }
+    @keyframes tt-in { from { opacity: 0; transform: scale(.96); } }
     @media (prefers-reduced-motion: reduce) { .tt { animation: none; } }
   `,
 })
