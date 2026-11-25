@@ -56,7 +56,9 @@ export class SamePanStore {
   imports: [TextPipe, SideDrawer],
   template: `
     <zed-side-drawer id="same-pan-drawer" [title]="'Units with the same PAN' | t: 'staff.samePan.drawer.title'" [subtitle]="subtitle()" (closed)="closed.emit()">
-      @if (!data()) {
+      @if (failed()) {
+        <p class="spd-error" role="alert">{{ 'The units with this PAN could not be loaded. Please try again in a moment.' | t: 'staff.samePan.drawer.failed' }}</p>
+      } @else if (!data()) {
         <p class="spd-note" role="status">{{ 'Loading…' | t: 'staff.samePan.drawer.loading' }}</p>
       } @else {
         @if (duplicates() > 0) {
@@ -103,6 +105,7 @@ export class SamePanStore {
     .spd-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; font-weight: 600; color: #24666b; }
     .spd-addr { overflow-wrap: break-word; }
     .spd-note { margin: 12px 0 0; font-size: 12px; color: #6f8487; border: 0; padding: 0; }
+    .spd-error { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fdf3f2; color: #a32d2d; font-size: 13px; font-weight: 600; }
     .spd-dup-note { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: #fdf3f2; color: #a32d2d; font-size: 12.5px; font-weight: 600; }
     .spd-foot { display: contents; }
     .spd-foot .btn { min-height: 40px; min-width: 100px; border-radius: 9px; font-weight: 700; background: #e7eeee; border-color: #e7eeee; color: #17373b; }
@@ -111,6 +114,8 @@ export class SamePanStore {
 export class SamePanDrawer {
   /** null while loading. */
   readonly data = input<SamePanResponse | null>(null);
+  /** 2026-11-26: the list could not be loaded (the panel says so instead of closing by itself). */
+  readonly failed = input(false);
   readonly closed = output<void>();
   /** The server sent the ZED IDs (the Master Admin and its operation admins). */
   protected readonly full = computed(() => {
@@ -229,7 +234,7 @@ export class SamePanUnits {
     } @else {
       <span class="spc-zero" data-same-pan-count>{{ shownCount() === 0 ? '0' : '—' }}</span>
     }
-    @if (open()) { <zed-same-pan-drawer [data]="data()" (closed)="open.set(false)" /> }
+    @if (open()) { <zed-same-pan-drawer [data]="data()" [failed]="failed()" (closed)="open.set(false)" /> }
   `,
   styles: `
     :host { display: inline-flex; }
@@ -245,6 +250,7 @@ export class SamePanCount {
   readonly count = input<number | null>(null);
   protected readonly data = signal<SamePanResponse | null>(null);
   protected readonly open = signal(false);
+  protected readonly failed = signal(false);
   private readonly loaded = signal<number | null>(null);
   protected readonly shownCount = computed(() => this.count() ?? this.loaded());
 
@@ -261,13 +267,15 @@ export class SamePanCount {
   }
 
   private async load(zedId: string): Promise<void> {
+    this.failed.set(false);
     try {
       const d = await this.store.get(zedId);
       this.data.set(d);
       this.loaded.set(d.others.length);
     } catch {
-      this.loaded.set(null);
-      this.open.set(false);
+      // 2026-11-26: the panel stays open and says the list could not be loaded (it used to close: the click seemed to do nothing).
+      this.failed.set(true);
+      if (this.count() === null) this.loaded.set(null);
     }
   }
 }

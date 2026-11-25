@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9660,
+  "count": 9661,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -101029,6 +101029,18 @@
       "key": "staff.samePan.drawer.duplicateOne",
       "standard": "1 unit has the same Udyam registration and plant address: a duplicate.",
       "kind": "note",
+      "portal": "staff",
+      "page": "samePan",
+      "pageName": "Same pan",
+      "placeholders": [],
+      "files": [
+        "staff/msme-profile/same-pan.ts"
+      ]
+    },
+    {
+      "key": "staff.samePan.drawer.failed",
+      "standard": "The units with this PAN could not be loaded. Please try again in a moment.",
+      "kind": "message",
       "portal": "staff",
       "page": "samePan",
       "pageName": "Same pan",

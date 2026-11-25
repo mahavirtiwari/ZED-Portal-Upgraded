@@ -104,6 +104,26 @@ describe('SamePanUnits (2026-11-17)', () => {
     expect(el.querySelector('button[data-same-pan-count]')).toBeNull();
   });
 
+  // 2026-11-26 (zedv3, Monitoring): the call failed and the panel closed by itself, so the click seemed to do nothing.
+  it('keeps the side panel open with a message when the units cannot be loaded', async () => {
+    const fixture = TestBed.createComponent(SamePanCount);
+    fixture.componentRef.setInput('zedId', 'ZEDM000005');
+    fixture.componentRef.setInput('count', 2);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button[data-same-pan-count]')!.click();
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne('/api/staff/msme-profile/ZEDM000005/same-pan')
+      .flush({ title: 'An error occurred' }, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    const drawer = el.querySelector('[data-drawer="same-pan-drawer"]')!;
+    expect(drawer).not.toBeNull();
+    expect(drawer.querySelector('[role="alert"]')!.textContent).toContain('could not be loaded');
+    expect(el.querySelector('button[data-same-pan-count]')!.textContent!.trim()).toBe('2');
+  });
+
   it('shows nothing when the PAN has no other unit', async () => {
     const el = await render({ pan: 'ABCDE1234F', this: null, others: [] });
     expect(el.querySelector('[data-same-pan]')).toBeNull();

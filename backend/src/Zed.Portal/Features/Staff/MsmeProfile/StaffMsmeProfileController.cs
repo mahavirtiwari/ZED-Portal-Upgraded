@@ -139,7 +139,11 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
         var p = new { ZedId = AssessmentInput.Ansi(id) };
         var pan = (await db.QuerySqlAsync<PanRow>(PanSql, p, ct)).FirstOrDefault()?.PanNo;
         if (string.IsNullOrWhiteSpace(pan)) return new SamePanResponse(null, null, []);
-        var rows = await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct);
+        // 2026-11-26 (zedv3: the Monitoring "Same PAN" count opened nothing, the call answered 500): a unit with two
+        // MsmeBasicInformation rows came twice, and its status lookup refused the repeated ZED ID. One row per unit.
+        var rows = (await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct))
+            .Where(r => !string.IsNullOrWhiteSpace(r.ZedId))
+            .GroupBy(r => r.ZedId!.Trim(), StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
         var self = rows.FirstOrDefault(r => string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase));
         // 2026-11-22 (the product owner): the Master Admin and its operation admins also see each unit's ZED ID, its current status
         // and which one is a duplicate; an agency, an assessor and the other logins see the unit name and address only.

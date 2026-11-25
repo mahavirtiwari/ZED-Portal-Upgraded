@@ -125,6 +125,27 @@ public sealed class StaffMsmeProfileTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY2")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);
     }
 
+    /// <summary>2026-11-26 (zedv3, Monitoring: the "Same PAN" count opened nothing, the call answered 500).</summary>
+    [Fact]
+    public async Task A_unit_with_two_basic_information_rows_is_listed_once_and_the_list_still_loads()
+    {
+        _host.Sql.Queries[StaffMsmeProfileController.PanSql] = _ => [new { PanNo = "ABCDE1234F" }];
+        _host.Sql.Queries[StaffMsmeProfileController.SamePanSql] = _ =>
+        [
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme", null, null, null, null, null, "Kanpur Nagar", "UTTAR PRADESH", "208001", "Plot 4", "U-1"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme", null, null, null, null, null, "Kanpur Nagar", "UTTAR PRADESH", "208001", "Plot 4", "U-1"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Two", null, null, null, null, null, "Lucknow", "UTTAR PRADESH", "226001", "12 MG Road", "U-2"),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002 ", "Acme Two", null, null, null, null, null, "Lucknow", "UTTAR PRADESH", "226001", "12 MG Road", "U-2"),
+        ];
+        _host.Sql.Queries[SamePanUnits.StatusSql] = _ => [new { ZedId = "ZEDMSME000002", Certification = "Bronze", CertificationStatus = 2, Id = 3L }];
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var response = await master.GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var r = (await response.Content.ReadFromJsonAsync<StaffMsmeProfileController.SamePanResponse>())!;
+        Assert.Equal("Acme", r.This!.UnitName);
+        Assert.Equal("ZEDMSME000002", Assert.Single(r.Others).ZedId);
+    }
+
     [Fact]
     public void Same_pan_counts_and_duplicates_follow_the_old_portal_rule()
     {

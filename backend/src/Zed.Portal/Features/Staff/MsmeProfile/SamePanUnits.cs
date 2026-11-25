@@ -56,11 +56,13 @@ public static class SamePanUnits
     public static async Task<IReadOnlyDictionary<string, string>> StatusesAsync(ISqlExecutor db, PortalSystem system, IReadOnlyCollection<string> zedIds,
         ILogger log, CancellationToken ct)
     {
-        var result = zedIds.ToDictionary(z => z, _ => "Registered", StringComparer.OrdinalIgnoreCase);
-        if (zedIds.Count == 0) return result;
+        // A ZED ID given twice is counted once (ToDictionary refused it, 2026-11-26).
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var z in zedIds) result[z] = "Registered";
+        if (result.Count == 0) return result;
         try
         {
-            foreach (var g in (await db.QuerySqlAsync<StatusRow>(StatusSql, new { Ids = zedIds.ToList() }, ct))
+            foreach (var g in (await db.QuerySqlAsync<StatusRow>(StatusSql, new { Ids = result.Keys.ToList() }, ct))
                          .Where(r => r.ZedId is { Length: > 0 }).GroupBy(r => r.ZedId!, StringComparer.OrdinalIgnoreCase))
             {
                 var latest = g.OrderByDescending(r => r.Id).First();
