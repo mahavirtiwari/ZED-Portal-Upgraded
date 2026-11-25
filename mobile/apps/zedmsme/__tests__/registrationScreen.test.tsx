@@ -110,9 +110,9 @@ describe('Registration (legacy look, immediate messages)', () => {
     type(r, 'email-again', 'pledge@acme.test');
     expect(texts(r)).not.toContain('Email ID is not matching');
     await press(r, 'email-proceed');
-    expect(server.last('Msme/SendPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test' });
+    expect(server.last('Msme/SendPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test', otpDigits: 6 });
     expect(texts(r)).toContain('If you have not received the OTP, then please re-check the Email ID.');
-    type(r, 'otp', 'ab12');
+    type(r, 'otp', '12a3456');
     await press(r, 'otp-submit');
 
     // Summary: each section with its edit pencil; the e-mail one reopens the e-mail dialog.

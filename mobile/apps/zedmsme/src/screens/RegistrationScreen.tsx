@@ -726,7 +726,7 @@ function EmailDialog({ initial, onClose, onProceed }: { initial: string; onClose
   );
 }
 
-/** VerifyEmailOtpDialogFragment: 4 characters; Resend after a countdown. */
+/** VerifyEmailOtpDialogFragment: the 6-digit OTP, as on the web (2026-11-25; was 4 characters); Resend after a countdown. */
 function OtpDialog({ email, onClose, onSubmit, onResend }: { email: string; onClose: () => void; onSubmit: (otp: string) => void; onResend: () => void }) {
   const sent = useAppText('app.msme.registration.otpSent', { Email: email });
   const [otp, setOtp] = useState('');
@@ -747,9 +747,9 @@ function OtpDialog({ email, onClose, onSubmit, onResend }: { email: string; onCl
       <Text style={styles.otpLabel}>Please enter the OTP</Text>
       <RegInput
         value={otp}
-        onChangeText={t => (setOtp(t.toUpperCase()), setError(undefined))}
-        maxLength={4}
-        autoCapitalize="characters"
+        onChangeText={t => (setOtp(t.replace(/\D/g, '')), setError(undefined))}
+        maxLength={6}
+        keyboardType="number-pad"
         placeholder="OTP (One Time Password)"
         error={error}
         testID="otp"

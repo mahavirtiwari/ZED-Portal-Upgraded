@@ -455,7 +455,8 @@ export class MsmeApi {
   }
 
   sendPledgeEmailOtp(email: string) {
-    return this.http.postJson<BaseServiceResponse>(this.portalMsme + 'SendPledgeEmailOtp', { email });
+    // 2026-11-25: the same 6-digit OTP as the web registration (builds before this got 4 characters).
+    return this.http.postJson<BaseServiceResponse>(this.portalMsme + 'SendPledgeEmailOtp', { email, otpDigits: 6 });
   }
 
   verifyPledgeEmailOtp(email: string, otp: string) {

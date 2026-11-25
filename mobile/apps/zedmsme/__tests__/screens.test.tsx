@@ -334,10 +334,10 @@ describe('ZED MSME applicant screens', () => {
     expect(texts(r)).toContain('Email ID is not matching');
     type(r, 'email-again', 'pledge@acme.test');
     await press(r, 'email-proceed');
-    expect(server.last('Msme/SendPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test' });
-    type(r, 'otp', 'ab12');
+    expect(server.last('Msme/SendPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test', otpDigits: 6 });
+    type(r, 'otp', '12a3456');
     await press(r, 'otp-submit');
-    expect(server.last('Msme/VerifyPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test', otp: 'AB12' });
+    expect(server.last('Msme/VerifyPledgeEmailOtp')!.json).toEqual({ email: 'pledge@acme.test', otp: '123456' });
 
     expect(byTestId(r, 'registration-page-3')).toHaveLength(1);
     expect(handler(r, 'footer-proceed', 'onPress').props.disabled).toBe(true);
