@@ -140,8 +140,13 @@ export function menuEntries(items: readonly StaffMenuItem[]): StaffMenuEntry[] {
 const R = StaffRole;
 const ALL_KINDS: readonly AgencyKind[] = ['assessment', 'desktop', 'onsite'];
 const ASSESSMENT_ONLY: readonly AgencyKind[] = ['assessment'];
-/** 2026-11-24: the Master Admin's entries the Incentives Master Admin has too. */
+/** 2026-11-24: the Master Admin's entries the Incentives Master Admin has too (now only Operation Admins). */
 const WITH_INCENTIVES: readonly AgencyKind[] = ['assessment', 'incentives'];
+/**
+ * 2026-11-25 (the product owner: "shift the old from certification/handholding master admin to incentive master admin"): the
+ * incentive screens are the Incentives Master Admin's only; the main Master Admin's Schemes menu is gone (the API refuses it too).
+ */
+const INCENTIVES_ONLY: readonly AgencyKind[] = ['incentives'];
 
 /**
  * Main's staff menu per role, as in the role branches of Views/Shared/_Layout.cshtml. Screens are moved from
@@ -189,16 +194,16 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // Schemes and finance
   // 2026-11-24: the Incentives Master Admin's home (its menu: this, the Schemes entries and its Operation Admins).
   { label: 'Incentives Dashboard', route: INCENTIVES_DASHBOARD_ROUTE, roles: [R.MasterAdmin], agencyKinds: ['incentives'] },
-  { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
+  { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: INCENTIVES_ONLY },
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.Agency, R.DesktopAssessor], subRoles: ['FinancialVerification'] },
   { label: 'Incentive Submissions', legacyPath: '/Incentive/Submissions', route: '/staff/incentives/submissions', roles: [R.SuperAdmin] },
-  { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
+  { label: 'Upload API Incentives', legacyPath: '/Incentive/UploadIncentives', route: '/staff/incentives/upload', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: INCENTIVES_ONLY },
   // 2026-11-20: the incentive schemes the Admin defines (verified like the assessment). 2026-11-20 (the product owner): desktop and
   // onsite are done by separate agencies the Master Admin adds (Incentive Verification Agencies, by state and district), never by the
   // assessment agencies: the desktop agency's allotment and QC, its assessors' verification; the onsite agency's onsite allotment and
   // final QC (its assessors verify in the app).
-  { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
-  { label: 'Incentive Verification Agencies', route: '/staff/scheme-agencies', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: WITH_INCENTIVES },
+  { label: 'Scheme Applications', route: '/staff/schemes-verify/applications', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: INCENTIVES_ONLY },
+  { label: 'Incentive Verification Agencies', route: '/staff/scheme-agencies', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: INCENTIVES_ONLY },
   { label: 'Scheme Allotment', route: '/staff/schemes-verify/allotment', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
   { label: 'Scheme QC', route: '/staff/schemes-verify/qc', roles: [R.Agency], group: 'Schemes', agencyKinds: ['desktop'] },
   { label: 'Scheme Verification', route: '/staff/schemes-verify/verification', roles: [R.DesktopAssessor], agencyKinds: ['desktop'] },

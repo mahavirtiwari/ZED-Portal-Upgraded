@@ -563,7 +563,7 @@ export class SubUsersPage {
       } else {
         const body: SubUserForm = {
           userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: p.key === 'unblock',
-          states: [...(u.states ?? [])], agencies: [...(u.agencies ?? [])],
+          states: [...(u.states ?? [])], agencies: this.agencyOptions() ? [...(u.agencies ?? [])] : [],
         };
         await firstValueFrom(this.http.put<MessageResponse>(`${API}/${id}`, body));
         const v = { name: u.userName, id: u.userId };
@@ -658,7 +658,9 @@ export class SubUsersPage {
     }
     this.busy.set(true);
     try {
-      const r = await firstValueFrom(id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, f) : this.http.post<MessageResponse>(API, f));
+      // 2026-11-25: no agency list where the scope has none (the Incentives Master Admin's Operation Admins: an older saved list is cleared).
+      const body: SubUserForm = this.agencyOptions() ? f : { ...f, agencies: [] };
+      const r = await firstValueFrom(id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(API, body));
       this.close();
       // 2026-11-21 (UI audit): the success message once the list is loaded again (the loading veil hid it while the list
       // reloaded), and for 8 seconds; with the user's name when the API sends no message.

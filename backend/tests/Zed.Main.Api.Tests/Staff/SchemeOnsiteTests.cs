@@ -9,6 +9,7 @@ using Zed.Portal.Features.Incentives.Agencies;
 using Zed.Portal.Features.Incentives.Onsite;
 using Zed.Portal.Features.Incentives.Staff;
 using Zed.Portal.Features.Staff.SubUsers;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Main.Api.Tests.Staff;
 
@@ -25,6 +26,7 @@ public sealed class SchemeOnsiteTests : IDisposable
     private static readonly Dictionary<string, (int Role, string? Kind, string? CreatedBy)> Users = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MADMIN"] = (7, null, null),
+        ["MAINADMIN"] = (7, null, null), // 2026-11-25: a certification Master Admin (MADMIN is the Incentives Master Admin)
         ["AGENCY1"] = (2, null, "MADMIN"),
         ["DA1"] = (3, null, "AGENCY1"),
         ["ONSITE1"] = (2, "SchemeOnsite", "MADMIN"),
@@ -153,6 +155,9 @@ public sealed class SchemeOnsiteTests : IDisposable
 
     private async Task<HttpClient> SignIn(string user)
     {
+        // 2026-11-25: the incentive screens are the Incentives Master Admin's (MADMIN).
+        _host.Sql.Queries[IncentivesAdmins.ScreenAccessSql] = args =>
+            [new IncentivesAdmins.ScreenRow(string.Equals(FakeSql.Arg(args, "UserId"), "MADMIN", StringComparison.OrdinalIgnoreCase) ? "incentives" : null)];
         var client = await _host.CreateBrowserAsync();
         (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = user, password = "Right#Pass1" })).EnsureSuccessStatusCode();
         return client;
@@ -442,7 +447,8 @@ public sealed class SchemeOnsiteTests : IDisposable
         var normal = SubUserPermissions.For((int)UserRole.Agency, [SubRoles.DesktopVerification], PortalSystem.Main).Select(p => p.Key).ToList();
         Assert.DoesNotContain("scheme-onsite", normal);
         Assert.DoesNotContain("scheme-verification", normal);
-        Assert.Contains("scheme-onsite-agencies", SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key));
+        Assert.Contains("scheme-onsite-agencies", SubUserPermissions.For((int)UserRole.MasterAdmin, [IncentivesAdmins.SubRole], PortalSystem.Main).Select(p => p.Key));
+        Assert.DoesNotContain("scheme-onsite-agencies", SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key));
     }
 
     // ----- the normal Assessment Agencies page -----
@@ -457,7 +463,7 @@ public sealed class SchemeOnsiteTests : IDisposable
         _host.Sql.Queries[IncentiveAgencies.IdsSql] = _ => [new { UserId = "ONSITE1" }, new { UserId = "DESK1" }];
         _host.Sql.Procs["SP_GET_USER_DETAILS_BY_USER_ID"] = args => FakeSql.Sets(
             [new { UserId = FakeSql.Arg(args, "UserId"), UserName = "x", RoleId = 2, IsActive = true, CreatedBy = "MADMIN" }], [], [], []);
-        var admin = await SignIn("MADMIN");
+        var admin = await SignIn("MAINADMIN");
         var list = await admin.GetFromJsonAsync<JsonElement>("/api/staff/users/agencies");
         Assert.Equal(["AGENCY1"], list.EnumerateArray().Select(a => a.GetProperty("UserId").GetString()!).ToArray());
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/users/agencies/ONSITE1")).StatusCode);

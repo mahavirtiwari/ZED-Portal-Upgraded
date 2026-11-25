@@ -66,6 +66,9 @@ public sealed class SubUsersController(
 
     private bool ForMasterAdmin => RoleId == (int)UserRole.MasterAdmin;
 
+    /// <summary>2026-11-25: the scope's assessment agencies, for the main Master Admin's Operation Admins only (not the Incentives Master Admin's).</summary>
+    private bool AgencyScope => ForMasterAdmin && !Users.IncentivesAdmins.Is(CurrentUser);
+
     public sealed record CreatedSubUserResponse(string Message, string UserId);
 
     private string AccountType => RoleId == (int)UserRole.MasterAdmin ? "Operation Admin" : "Sub-User";
@@ -82,7 +85,7 @@ public sealed class SubUsersController(
             rows.Select(r => Item(r, available)).ToList())
         {
             States = await StateOptionsAsync(ct),
-            Agencies = ForMasterAdmin ? await AgencyOptionsAsync(ct) : null,
+            Agencies = AgencyScope ? await AgencyOptionsAsync(ct) : null,
         };
     }
 
@@ -196,7 +199,7 @@ public sealed class SubUsersController(
         var agencies = Clean(req.Agencies);
         if (agencies.Count > 0)
         {
-            if (!ForMasterAdmin) return (null, "Only an operation admin can be limited to assessment agencies.");
+            if (!AgencyScope) return (null, "Only an operation admin can be limited to assessment agencies.");
             var known = (await AgencyOptionsAsync(ct)).Select(o => o.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (agencies.Any(a => !known.Contains(a))) return (null, "Please select only the assessment agencies shown.");
         }

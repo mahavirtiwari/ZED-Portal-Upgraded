@@ -14,7 +14,8 @@ namespace Zed.Portal.Features.Staff.Users;
 /// dbo.Users.ScreenAccess is <see cref="ScreenAccess"/>; its sign-in carries the pseudo sub-role <see cref="SubRole"/> (as the
 /// incentive verification agencies carry theirs). It and its own Operation Admins have only the incentive screens
 /// (<see cref="Keys"/>), the incentives dashboard and (itself) its Operation Admins; <see cref="IncentivesAdminFilter"/> refuses the
-/// other staff APIs. The main Master Admin is unchanged and keeps the incentive screens too.
+/// other staff APIs. 2026-11-25 (the product owner: "shift the old from certification/handholding master admin to incentive master
+/// admin"): the main Master Admin and its Operation Admins no longer have the incentive screens (<see cref="IsIncentiveApi"/>).
 /// </summary>
 public static class IncentivesAdmins
 {
@@ -41,6 +42,20 @@ public static class IncentivesAdmins
     {
         "financial-assistance", "scheme-applications", "scheme-onsite-agencies", "incentive-upload",
     };
+
+    /// <summary>The incentive screens of the Master Admins' catalogue on this system (none off the main portal).</summary>
+    public static IReadOnlyList<SubUserPermission> Screens(PortalSystem system) =>
+        SubUserPermissions.Catalogue.Where(p => p.OwnerRole == UserRole.MasterAdmin && p.Systems.Contains(system) && Keys.Contains(p.Key)).ToList();
+
+    /// <summary>
+    /// 2026-11-25: an API of the incentive screens (the incentives dashboard among them), refused to the main Master Admin; with an
+    /// agency's scheme ticks (Incentives/Staff/SchemeTicksController), which only incentive verification agencies may have.
+    /// </summary>
+    public static bool IsIncentiveApi(string path, PortalSystem system) =>
+        SubUserPermissions.Covers(Screens(system), path) || (system == PortalSystem.Main && AgencyTicks.IsMatch(path));
+
+    private static readonly System.Text.RegularExpressions.Regex AgencyTicks =
+        new(@"^/api/staff/users/agencies/[^/]+/schemes/?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
 
     /// <summary>Read-only calls its screens make whatever they are (sign-in, the bell, the MSME pages opened from a case, Export).</summary>
     private static readonly string[] Always =
@@ -91,6 +106,7 @@ public static class IncentivesAdmins
         if (HttpMethods.IsPost(method) && path.Equals("/api/staff/export/xlsx", StringComparison.OrdinalIgnoreCase)) return true;
         if (HttpMethods.IsGet(method) && SubUserPermissions.Under(path, DashboardApi)) return true;
         if (!subUser && SubUserPermissions.Under(path, SubUsersApi)) return true;
+        if (system == PortalSystem.Main && AgencyTicks.IsMatch(path)) return true;
         return SubUserPermissions.Covers(SubUserPermissions.For((int)UserRole.MasterAdmin, [SubRole], system), path);
     }
 }
@@ -98,7 +114,8 @@ public static class IncentivesAdmins
 /// <summary>
 /// Global filter: an Incentives Master Admin and its Operation Admins call only the staff APIs of the incentive screens
 /// (<see cref="IncentivesAdmins.Allows"/>); anything else answers 403, as a screen of another role. (An Operation Admin is also
-/// checked against the screens it was given, <see cref="SubUserAccessFilter"/>.)
+/// checked against the screens it was given, <see cref="SubUserAccessFilter"/>.) 2026-11-25: the other way round, the main Master
+/// Admin and its Operation Admins are refused the incentive screens' APIs (<see cref="IncentivesAdmins.IsIncentiveApi"/>).
 /// </summary>
 public sealed class IncentivesAdminFilter(PortalHost host, ILogger<IncentivesAdminFilter> log) : IAsyncAuthorizationFilter
 {
@@ -108,13 +125,22 @@ public sealed class IncentivesAdminFilter(PortalHost host, ILogger<IncentivesAdm
     {
         var http = context.HttpContext;
         var path = http.Request.Path.Value ?? "";
-        if (ZedUser.FromPrincipal(http.User) is { } user && IncentivesAdmins.Is(user)
+        if (ZedUser.FromPrincipal(http.User) is not { RoleId: (int)UserRole.MasterAdmin } user) return Task.CompletedTask;
+        if (IncentivesAdmins.Is(user)
             && SubUserPermissions.CheckedRoots.Any(root => SubUserPermissions.Under(path, root))
             && !IncentivesAdmins.Allows(http.Request.Method, path, user.IsSubUser, host.System))
         {
             log.LogInformation("Incentives Master Admin {UserId}: {Method} {Path} is not an incentive screen", user.UserId, http.Request.Method, path);
-            context.Result = new ObjectResult(new ProblemDetails { Title = NoAccess, Status = StatusCodes.Status403Forbidden }) { StatusCode = StatusCodes.Status403Forbidden };
+            context.Result = Forbidden();
+        }
+        else if (!IncentivesAdmins.Is(user) && IncentivesAdmins.IsIncentiveApi(path, host.System))
+        {
+            log.LogInformation("Master Admin {UserId}: {Method} {Path} is an incentive screen (the Incentives Master Admin's)", user.UserId, http.Request.Method, path);
+            context.Result = Forbidden();
         }
         return Task.CompletedTask;
     }
+
+    private static ObjectResult Forbidden() =>
+        new(new ProblemDetails { Title = NoAccess, Status = StatusCodes.Status403Forbidden }) { StatusCode = StatusCodes.Status403Forbidden };
 }

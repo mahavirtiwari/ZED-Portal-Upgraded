@@ -118,11 +118,13 @@ describe('staff menu', () => {
   });
 
   describe('menu bar drop-downs (the old layout grouped the long menus)', () => {
-    const bar = (roleId: number, system: 'main' | 'consultancy' | 'surveillance') =>
-      menuEntries(menuFor(roleId, [], system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
+    const bar = (roleId: number, system: 'main' | 'consultancy' | 'surveillance', subRoles: string[] = []) =>
+      menuEntries(menuFor(roleId, subRoles, system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
 
     it('groups the long menus into a few drop-downs (V4)', () => {
-      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (4)', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
+      // 2026-11-25: no Schemes drop-down: the incentive screens are the Incentives Master Admin's.
+      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'main', [INCENTIVES_SUB_ROLE])).toContain('Schemes (4)');
       expect(bar(StaffRole.Admin, 'main')).toEqual([
         'All settings', 'Master (7)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (6)', 'User Management', 'Administration (18)', 'Expenditure',
       ]);
@@ -184,8 +186,10 @@ describe('staff menu', () => {
       expect(labels(StaffRole.DesktopAssessor, [ONSITE_SUB_ROLE])).toEqual([]);
     });
 
-    it('gives the master admin the Incentive Verification Agencies page under Schemes', () => {
-      const schemes = menuFor(StaffRole.MasterAdmin, []).filter((i) => i.group === 'Schemes');
+    it('gives the Incentives Master Admin the Incentive Verification Agencies page under Schemes', () => {
+      // 2026-11-25: the Incentives Master Admin's (the main Master Admin no longer has the Schemes screens).
+      expect(menuFor(StaffRole.MasterAdmin, []).filter((i) => i.group === 'Schemes')).toEqual([]);
+      const schemes = menuFor(StaffRole.MasterAdmin, [INCENTIVES_SUB_ROLE]).filter((i) => i.group === 'Schemes');
       expect(schemes.map((i) => `${i.label} ${i.route}`)).toContain('Incentive Verification Agencies /staff/scheme-agencies');
       expect(schemes.map((i) => i.label)).not.toContain('Onsite Verification Agencies');
       // A sub-user of an onsite agency given the onsite screens.
@@ -283,8 +287,9 @@ describe('staff menu', () => {
     it('needs the sub-roles of the entry', () => {
       expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['DesktopVerification'], 'main')).toBe(false);
       expect(menuScreenAllows('/staff/financial-assistance', StaffRole.DesktopAssessor, ['FinancialVerification'], 'main')).toBe(true);
-      // The Master Admin's own entry has no sub-role.
-      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.MasterAdmin, [], 'main')).toBe(true);
+      // The Incentives Master Admin's entry (2026-11-25: not the main Master Admin's any more).
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.MasterAdmin, [INCENTIVES_SUB_ROLE], 'main')).toBe(true);
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.MasterAdmin, [], 'main')).toBe(false);
     });
 
     it('needs the kind of agency of the entry', () => {
@@ -310,11 +315,16 @@ describe('staff menu', () => {
       ]);
     });
 
-    it('leaves the Master Admin menu as it was (no incentives dashboard)', () => {
+    it('takes the incentive screens off the main Master Admin (2026-11-25), its other screens stay', () => {
       const master = routes(menuFor(StaffRole.MasterAdmin, [], 'main'));
       expect(master).toContain('/staff/monitoring');
-      expect(master).toContain('/staff/schemes-verify/applications');
-      expect(master).not.toContain('/staff/incentives/dashboard');
+      expect(master).toContain('/staff/sub-users');
+      for (const r of ['/staff/incentives/dashboard', '/staff/financial-assistance', '/staff/incentives/upload', '/staff/schemes-verify/applications', '/staff/scheme-agencies'])
+        expect(master).not.toContain(r);
+      // Its route guards refuse them too (an address typed in); the agencies' Financial Assistance verification is unchanged.
+      expect(menuScreenAllows('/staff/schemes-verify/applications', StaffRole.MasterAdmin, [], 'main')).toBe(false);
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.MasterAdmin, [], 'main')).toBe(false);
+      expect(menuScreenAllows('/staff/financial-assistance', StaffRole.Agency, ['FinancialVerification'], 'main')).toBe(true);
     });
 
     it('lands on the incentives dashboard and is named for itself', () => {

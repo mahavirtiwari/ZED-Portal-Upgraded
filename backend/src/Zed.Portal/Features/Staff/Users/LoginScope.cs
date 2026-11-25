@@ -174,6 +174,8 @@ public static class LoginScopeExtensions
         var sub = await http.RequestServices.GetRequiredService<SubUsers.SubUserStore>().FindCachedAsync(user.ActingUserId!, ct);
         return sub is null || (sub.ScopeStates is null && sub.ScopeAgencies is null)
             ? scope
-            : scope.Narrow(sub.ScopeStates, sub.ScopeAgencies, agencies: user.RoleId == (int)Zed.Core.Security.UserRole.MasterAdmin);
+            // 2026-11-25: not the Incentives Master Admin's Operation Admins' agencies (assessment agencies do not verify incentives;
+            // a stored list would only hide applications).
+            : scope.Narrow(sub.ScopeStates, sub.ScopeAgencies, agencies: user.RoleId == (int)Zed.Core.Security.UserRole.MasterAdmin && !IncentivesAdmins.Is(user));
     }
 }

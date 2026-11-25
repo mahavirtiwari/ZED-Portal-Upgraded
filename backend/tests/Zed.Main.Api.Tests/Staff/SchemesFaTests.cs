@@ -14,6 +14,7 @@ internal static class SchemesTestUsers
     private static readonly Dictionary<string, (int Role, string? State, bool Fv)> Users = new(StringComparer.OrdinalIgnoreCase)
     {
         ["MADMIN"] = (7, null, true),
+        ["MAINADMIN"] = (7, null, true),
         ["AGENCY1"] = (2, null, true),
         ["AGENCY2"] = (2, null, true),
         ["AGENCYNOFV"] = (2, null, false),
@@ -38,6 +39,10 @@ internal static class SchemesTestUsers
             var fv = FakeSql.Arg(args, "UserId") is { } id && Users.TryGetValue(id, out var u) && u.Fv;
             return FakeSql.Sets([new { DesktopVerification = 1, SiteVerification = 1, FinancialVerification = fv ? 1 : 0 }]);
         };
+        // 2026-11-25: the incentive screens are the Incentives Master Admin's (MADMIN); MAINADMIN is a certification Master Admin.
+        host.Sql.Queries[Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenAccessSql] = args =>
+            [new Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenRow(
+                string.Equals(FakeSql.Arg(args, "UserId"), "MADMIN", StringComparison.OrdinalIgnoreCase) ? "incentives" : null)];
     }
 
     public static async Task<HttpClient> SignInAsync(TestHost host, string userId)

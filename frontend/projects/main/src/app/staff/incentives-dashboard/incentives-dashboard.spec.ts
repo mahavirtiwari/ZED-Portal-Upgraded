@@ -81,6 +81,19 @@ describe('IncentivesDashboardPage (2026-11-24)', () => {
     expect(el.querySelectorAll('.id-table tbody tr').length).toBe(1);
   });
 
+  it('tells the scheme cards from the Financial Assistance card and shows a line, not a flat chart, with no application (2026-11-25)', async () => {
+    expect(el.querySelector('[data-scheme="SCH1"] .app-src')?.textContent?.trim()).toBe('Scheme Applications');
+    expect(el.querySelector('[data-scheme="fa"] .app-src')?.textContent?.trim()).toBe('Financial Assistance screen');
+    expect(el.querySelector('zed-grouped-column-chart')).not.toBeNull();
+    (el.querySelector('.id-btn') as HTMLButtonElement).click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/incentives-dashboard').flush({ ...data, months: data.months.map((m) => ({ ...m, submitted: 0, approved: 0 })) });
+    await settle();
+    flushOthers();
+    expect(el.querySelector('zed-grouped-column-chart')).toBeNull();
+    expect(el.querySelector('.id-empty-chart')?.textContent).toContain('No scheme application was submitted in the last 12 months.');
+  });
+
   it('writes amounts in rupees with Indian grouping, short in lakh and crore', () => {
     expect(rupees(1234567)).toBe('₹12,34,567');
     expect(rupees(1234567, true)).toBe('₹12.35 L');

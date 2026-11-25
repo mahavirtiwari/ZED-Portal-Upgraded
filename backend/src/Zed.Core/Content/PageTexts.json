@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9657,
+  "count": 9660,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -66970,6 +66970,18 @@
       ]
     },
     {
+      "key": "staff.incentivesDashboard.card.sourceSchemes",
+      "standard": "Scheme Applications",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
       "key": "staff.incentivesDashboard.card.total",
       "standard": "Total applications",
       "kind": "text",
@@ -67267,6 +67279,18 @@
       "placeholders": [],
       "files": [
         "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.fa.source",
+      "standard": "Financial Assistance screen",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
       ]
     },
     {
@@ -67825,6 +67849,18 @@
       "key": "staff.incentivesDashboard.trend.heading",
       "standard": "Scheme applications by month",
       "kind": "heading",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.trend.none",
+      "standard": "No scheme application was submitted in the last 12 months.",
+      "kind": "note",
       "portal": "staff",
       "page": "incentivesDashboard",
       "pageName": "Incentives dashboard",

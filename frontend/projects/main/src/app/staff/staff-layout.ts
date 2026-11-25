@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
-import { StaffMenuEntry, StaffMenuItem, StaffRole, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, isIncentivesAdmin, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
@@ -110,9 +110,12 @@ export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement)
           </button>
           <div class="collapse navbar-collapse" id="staff-menu" [class.show]="menuOpen()">
             <ul class="navbar-nav nav mb-2 mb-lg-0" #bar>
-              <li class="nav-item tag">
-                <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" [attr.aria-label]="'Home' | t: 'staff.layout.menu.homeLink'">{{ 'Home' | t: 'staff.layout.menu.homeLink' }}</a>
-              </li>
+              <!-- 2026-11-25: not for the Incentives Master Admin, whose home is its Dashboard entry (both opened the same page). -->
+              @if (!incentivesAdmin()) {
+                <li class="nav-item tag">
+                  <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" [attr.aria-label]="'Home' | t: 'staff.layout.menu.homeLink'">{{ 'Home' | t: 'staff.layout.menu.homeLink' }}</a>
+                </li>
+              }
               @for (entry of entries(); track $index) {
                 @if ('group' in entry) {
                   <li class="nav-item dropdown tag" [class.d-lg-none]="$index >= fit()">
@@ -322,6 +325,7 @@ export class StaffLayout {
   protected readonly darkButtons = computed(() => !!this.user());
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
+  protected readonly incentivesAdmin = computed(() => isIncentivesAdmin(this.user()));
   /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */
   protected readonly menuText = menuText;
   protected readonly menuGroupText = menuGroupText;
@@ -363,8 +367,9 @@ export class StaffLayout {
     const bar = this.bar()?.nativeElement;
     if (!bar || window.innerWidth < 992) return;
     const items = Array.from(bar.children) as HTMLElement[];
-    // Home icon first, then the entries, then "More" (absent while all are shown) and the user menu.
-    const widths = items.slice(1, 1 + this.entries().length).map((li) => li.getBoundingClientRect().width);
+    // Home icon first (none for the Incentives Master Admin), then the entries, then "More" (absent while all are shown) and the user menu.
+    const first = this.incentivesAdmin() ? 0 : 1;
+    const widths = items.slice(first, first + this.entries().length).map((li) => li.getBoundingClientRect().width);
     if (widths.length !== this.entries().length || widths.some((w) => w === 0)) return;
     this.widths = widths;
     this.layout();
@@ -388,7 +393,7 @@ export class StaffLayout {
     const brand = (nav.querySelector('.navbar-brand') as HTMLElement | null)?.getBoundingClientRect().width ?? 0;
     const style = getComputedStyle(nav);
     const available = nav.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - brand - 24;
-    const home = (bar.firstElementChild as HTMLElement | null)?.getBoundingClientRect().width ?? 60;
+    const home = this.incentivesAdmin() ? 0 : ((bar.firstElementChild as HTMLElement | null)?.getBoundingClientRect().width ?? 60);
     // The user menu, with the search box and bell beside it.
     const user = ((bar.querySelector('.user-menu') as HTMLElement | null)?.getBoundingClientRect().width ?? 160)
       + ((bar.querySelector('.nav-tools') as HTMLElement | null)?.getBoundingClientRect().width ?? 0);

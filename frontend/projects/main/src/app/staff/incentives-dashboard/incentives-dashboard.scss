@@ -36,6 +36,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .id-table thead th { position: sticky; top: 0; background: #f3f7f7; font-size: 12px; font-weight: 700; color: #3d5559; }
 .id-table tbody th { font-weight: 600; color: #17373b; }
 .id-none, .id-loading { padding: 24px; text-align: center; color: #6b7f80; }
+.id-empty-chart { display: grid; place-items: center; min-height: 190px; margin: 0; border: 1px dashed #d3e1e2; border-radius: 10px; background: #fafcfc; }
 @media (max-width: 1199.98px) { .id-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 991.98px) { .id-mid { grid-template-columns: 1fr; } }
 @media (max-width: 767.98px) { .id-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

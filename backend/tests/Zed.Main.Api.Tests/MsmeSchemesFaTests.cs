@@ -40,6 +40,8 @@ internal static class MsmeSchemesTestSupport
 
     public static async Task<HttpClient> StaffAsync(TestHost host)
     {
+        // 2026-11-25: the incentive screens are the Incentives Master Admin's.
+        host.Sql.Queries[Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenAccessSql] = _ => [new Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenRow("incentives")];
         var client = await host.CreateBrowserAsync();
         (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = Staff, password = "Right#Pass1" })).EnsureSuccessStatusCode();
         return client;

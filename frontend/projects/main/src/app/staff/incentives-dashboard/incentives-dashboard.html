@@ -64,7 +64,8 @@
     @for (c of d.schemes; track c.code; let i = $index) {
       <div class="app-card" [class]="'app-card ' + band(i)" [attr.data-scheme]="c.code">
         <div class="app-band">
-          <span class="app-level" [title]="c.name">{{ c.name }}</span>
+          <span class="app-title"><span class="app-level" [title]="c.name">{{ c.name }}</span>
+            <span class="app-src">{{ 'Scheme Applications' | t: 'staff.incentivesDashboard.card.sourceSchemes' }}</span></span>
           <span class="app-total">
             <span class="app-total-value">{{ count(c.total) }}</span>
             <span class="app-total-label">{{ 'total applications' | t: 'staff.incentivesDashboard.card.totalLabel' }}</span>
@@ -94,7 +95,8 @@
     }
     <div class="app-card band-fa" data-scheme="fa">
       <div class="app-band">
-        <span class="app-level">{{ 'Financial Assistance' | t: 'staff.incentivesDashboard.fa.title' }}</span>
+        <span class="app-title"><span class="app-level">{{ 'Financial Assistance' | t: 'staff.incentivesDashboard.fa.title' }}</span>
+          <span class="app-src">{{ 'Financial Assistance screen' | t: 'staff.incentivesDashboard.fa.source' }}</span></span>
         <span class="app-total">
           <span class="app-total-value">{{ count(d.fa.total) }}</span>
           <span class="app-total-label">{{ 'total applications' | t: 'staff.incentivesDashboard.card.totalLabel' }}</span>
@@ -130,8 +132,12 @@
           @for (s of series(); track s; let i = $index) { <li><span [style.background]="trendColors[i]"></span>{{ s }}</li> }
         </ul>
       </div>
-      <zed-grouped-column-chart [items]="trend()" [series]="series()" [colors]="trendColors" [legend]="false"
-                                [ariaLabel]="'Scheme applications in the last 12 months' | t: 'staff.incentivesDashboard.trend.aria'" />
+      @if (trendEmpty()) {
+        <p class="id-none id-empty-chart">{{ 'No scheme application was submitted in the last 12 months.' | t: 'staff.incentivesDashboard.trend.none' }}</p>
+      } @else {
+        <zed-grouped-column-chart [items]="trend()" [series]="series()" [colors]="trendColors" [legend]="false"
+                                  [ariaLabel]="'Scheme applications in the last 12 months' | t: 'staff.incentivesDashboard.trend.aria'" />
+      }
     </section>
     <section class="id-card" aria-labelledby="id-states-h">
       <div class="id-card-head"><h3 id="id-states-h">{{ 'By state' | t: 'staff.incentivesDashboard.states.heading' }}</h3></div>

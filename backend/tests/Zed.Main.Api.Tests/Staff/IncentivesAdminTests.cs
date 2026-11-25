@@ -88,17 +88,31 @@ public sealed class IncentivesAdminTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await inc.GetAsync("/api/staff/incentives-dashboard")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await inc.GetAsync("/api/staff/scheme-applications")).StatusCode);
         Assert.NotEqual(HttpStatusCode.Forbidden, (await inc.GetAsync("/api/staff/sub-users")).StatusCode);
+
+        // 2026-11-25: its Operation Admins are not limited to assessment agencies (they do not verify incentives).
+        var subUsers = await inc.GetFromJsonAsync<JsonElement>("/api/staff/sub-users");
+        Assert.True(!subUsers.TryGetProperty("agencies", out var agencies) || agencies.ValueKind == JsonValueKind.Null);
+        var refused = await inc.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Op", email = "op@zed.test", permissions = new[] { "scheme-applications" }, agencies = new[] { "AGENCY1" } });
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
     }
 
     [Fact]
-    public async Task The_main_master_admin_is_not_limited()
+    public async Task The_main_master_admin_keeps_its_screens_but_no_longer_the_incentive_ones()
     {
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var me = await master.GetFromJsonAsync<JsonElement>("/api/auth/me");
         Assert.DoesNotContain(IncentivesAdmins.SubRole, me.GetProperty("subRoles").EnumerateArray().Select(s => s.GetString()));
         Assert.True(!me.TryGetProperty("permissionRoutes", out var routes) || routes.ValueKind == JsonValueKind.Null);
         Assert.NotEqual(HttpStatusCode.Forbidden, (await master.GetAsync("/api/staff/monitoring")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await master.GetAsync("/api/staff/incentives-dashboard")).StatusCode);
+        // 2026-11-25 (the product owner): the incentive screens moved to the Incentives Master Admin.
+        foreach (var path in new[] { "/api/staff/incentives-dashboard", "/api/staff/scheme-applications", "/api/staff/schemes/fa/submissions",
+                     "/api/staff/scheme-agencies", "/api/staff/schemes/incentives/template" })
+        {
+            var status = (await master.GetAsync(path)).StatusCode;
+            Assert.True(status == HttpStatusCode.Forbidden, $"{path}: {status}");
+        }
+        Assert.Equal(HttpStatusCode.Forbidden, (await master.GetAsync("/api/staff/users/agencies/AGENCY1/schemes")).StatusCode);
     }
 
     [Fact]
@@ -178,7 +192,10 @@ public sealed class IncentivesAdminTests : IDisposable
     {
         var keys = SubUserPermissions.For((int)UserRole.MasterAdmin, [IncentivesAdmins.SubRole], PortalSystem.Main).Select(p => p.Key).Order().ToArray();
         Assert.Equal(["financial-assistance", "incentive-upload", "scheme-applications", "scheme-onsite-agencies"], keys);
-        Assert.Contains("monitoring", SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key));
+        var main = SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key).ToList();
+        Assert.Contains("monitoring", main);
+        // 2026-11-25: the main Master Admin's Operation Admins no longer get the incentive screens.
+        Assert.Empty(main.Intersect(IncentivesAdmins.Keys));
 
         Assert.True(IncentivesAdmins.Allows("GET", "/api/staff/scheme-applications/4", subUser: false, PortalSystem.Main));
         Assert.True(IncentivesAdmins.Allows("POST", "/api/staff/sub-users", subUser: false, PortalSystem.Main));

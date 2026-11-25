@@ -167,6 +167,8 @@ export class IncentivesDashboardPage {
     t('staff.incentivesDashboard.trend.rejected', 'Rejected'),
   ]);
   protected readonly trendColors = ['#00909a', '#2f9e58', '#9aa7a9'];
+  /** 2026-11-25 (UI): no application in the 12 months; the chart gives way to a line (it drew a row of flat dashes). */
+  protected readonly trendEmpty = computed(() => this.trend().every((p) => p.values.every((v) => !v)));
   protected readonly trend = computed<TrendPoint[]>(() =>
     (this.data()?.months ?? []).map((m) => {
       const at = new Date(`${m.month}-01T00:00:00`);

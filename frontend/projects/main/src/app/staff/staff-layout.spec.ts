@@ -17,7 +17,7 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= NoResizeObserver;
   });
 
-  type SignedIn = { userId: string; userName: string; roleId: number; role: string };
+  type SignedIn = { userId: string; userName: string; roleId: number; role: string; subRoles?: string[] };
   const MASTER_ADMIN: SignedIn = { userId: 'ZEDV4MA01', userName: 'MASTER ADMIN', roleId: 7, role: 'MasterAdmin' };
 
   async function render(links: Partial<Record<PortalLinkKey, string | null>> = {}, user: SignedIn = MASTER_ADMIN) {
@@ -30,7 +30,7 @@ describe('StaffLayout (2026-11-18 designs)', () => {
         { provide: PortalLinksService, useValue: { url: (k: PortalLinkKey) => (k in links ? links[k]! : PORTAL_LINK_DEFAULTS[k]) } },
       ],
     });
-    TestBed.inject(AuthService).setUser({ ...user, subRoles: [] });
+    TestBed.inject(AuthService).setUser({ subRoles: [], ...user });
     const fixture = TestBed.createComponent(StaffLayout);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
@@ -50,6 +50,14 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     // The menu starts with Home; no "|" separators are written in the markup.
     expect(el.querySelector('#staff-menu .nav > li:first-child')!.textContent!.trim()).toBe('Home');
     expect(el.querySelector('#staff-menu')!.textContent).not.toContain('|');
+  });
+
+  // 2026-11-25: the Incentives Master Admin's home is its Dashboard entry; "Home" opened the same page beside it.
+  it('has no Home link for the Incentives Master Admin', async () => {
+    const el = await render({}, { userId: 'INC1', userName: 'Incentive Desk', roleId: 7, role: 'MasterAdmin', subRoles: ['IncentivesOnly'] });
+    const first = el.querySelector('#staff-menu .nav > li:first-child')!.textContent!.trim();
+    expect(first).toBe('Dashboard');
+    expect(el.querySelector('#staff-menu .nav')!.textContent).not.toContain('Home');
   });
 
   // 2026-11-23 (the user, staff dashboard: "remove highlighted part"): the footer has the copyright and the logo, no links.
