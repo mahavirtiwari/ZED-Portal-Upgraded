@@ -109,6 +109,9 @@ export class AssessorFormPage implements HasUnsavedChanges {
   protected readonly isAgency = this.auth.currentUser()?.roleId === StaffRole.Agency;
   /** 2026-11-20: the signed-in agency is an incentive verification agency (desktop / onsite): its assessors are ticked for schemes. */
   protected readonly incentiveAgency = this.isAgency && agencyKindOf(this.auth.currentUser()?.subRoles ?? []) !== 'assessment';
+  /** 2026-11-26: the incentive agency's one mode (its assessors verify in it only): 'desktop' or 'onsite'; null for the others. */
+  protected readonly incentiveMode: 'desktop' | 'onsite' | null = !this.incentiveAgency ? null
+    : agencyKindOf(this.auth.currentUser()?.subRoles ?? []) === 'onsite' ? 'onsite' : 'desktop';
   protected readonly isNew = !this.userId;
   /** Agencies create and edit their assessors; the MasterAdmin only views them. */
   protected readonly canEdit = signal(this.isNew && this.isAgency);
@@ -550,7 +553,9 @@ export class AssessorFormPage implements HasUnsavedChanges {
       this.areas.set(options.areasOfKnowledge.map((a) => ({ value: a, label: a })));
       const mode = options.verification?.mode;
       this.verification.set(mode === 'TrainingPortal' || mode === 'Api' ? mode : 'Off');
-      this.levels.set(this.consultancy ? [] : options.levels ?? []);
+      // 2026-11-26: an incentive agency's assessor has no certification levels (it verifies schemes): no grid, the plain type.
+      this.levels.set(this.consultancy || this.incentiveAgency ? [] : options.levels ?? []);
+      if (this.incentiveAgency && this.isNew) this.model.assessorType = 'Assessor';
       if (this.isNew && !this.consultancy) {
         const own = (await firstValueFrom(this.api.agencySectorActivity())).message;
         this.agencyActivity.set(own === 'Manufacturing' || own === 'Services' || own === 'Both' ? own : null);

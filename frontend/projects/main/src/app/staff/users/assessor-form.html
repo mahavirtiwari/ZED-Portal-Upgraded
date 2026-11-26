@@ -52,8 +52,16 @@
     }
     @if (isNew) {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? ('{noun} type and certificate' | t: 'staff.assessorForm.type.consultancyTitle' : { noun: noun }) : ('Assessments and certificate' | t: 'staff.assessorForm.type.title') }}</h4>
-        @if (consultancy || !levels().length) {
+        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? ('{noun} type and certificate' | t: 'staff.assessorForm.type.consultancyTitle' : { noun: noun }) : incentiveAgency ? ('Verification and certificate' | t: 'staff.assessorForm.incentive.title') : ('Assessments and certificate' | t: 'staff.assessorForm.type.title') }}</h4>
+        @if (incentiveAgency) {
+          <!-- 2026-11-26 (the user: "Onsite is visible. But the agency have only permissions to do the desktop only"): an incentive
+               verification agency's assessor verifies scheme applications in the agency's one mode, never a certification level. -->
+          <div class="af-incentive" data-incentive-mode>
+            <span class="af-label">{{ 'Verifies' | t: 'staff.assessorForm.incentive.label' }}</span>
+            <span class="af-chip active">{{ incentiveMode === 'onsite' ? ('Onsite verification of incentive schemes' | t: 'staff.assessorForm.incentive.onsite') : ('Desktop verification of incentive schemes' | t: 'staff.assessorForm.incentive.desktop') }}</span>
+            <p class="af-hint">{{ 'The schemes are ticked on the assessor’s page once it is created (within the agency’s own schemes).' | t: 'staff.assessorForm.incentive.hint' }}</p>
+          </div>
+        } @else if (consultancy || !levels().length) {
           <div class="form-grid">
             <span class="af-label top" id="assessorType-label">{{ consultancy ? ('Consultant/Expert' | t: 'staff.assessorForm.type.consultancyLabel') : ('Assessor Type' | t: 'staff.assessorForm.type.label') }}<span class="req">*</span></span>
             <div>
@@ -240,8 +248,11 @@
               @if (submitted() && !model.sectorActivity) { <span class="help-block">{{ 'This is required.' | t: 'staff.assessorForm.requiredError' }}</span> }
             </div>
           }
-          <label class="top" for="areas">{{ 'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel' }}</label>
-          <zed-multi-select inputId="areas" [label]="'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel'" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
+          <!-- 2026-11-26 (the user, incentive verification agency: "not required"): not for an incentive agency's assessor. -->
+          @if (!incentiveAgency) {
+            <label class="top" for="areas">{{ 'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel' }}</label>
+            <zed-multi-select inputId="areas" [label]="'Area of Knowledge and Expertise' | t: 'staff.assessorForm.cover.areasLabel'" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" (valueChange)="dirty.set(true)" />
+          }
         </div>
       </section>
 
@@ -266,9 +277,10 @@
   }
 </form>
 <!-- 2026-11-20 (incentive schemes, Part C): the schemes the assessor verifies (its agency ticks them, within its own), saved on its own.
-     2026-11-20 (the product owner): only an incentive verification agency (desktop / onsite) verifies schemes, so only its assessors have them. -->
+     2026-11-20 (the product owner): only an incentive verification agency (desktop / onsite) verifies schemes, so only its assessors have them.
+     2026-11-26: only the agency's own mode's column. -->
 @if (!isNew && !consultancy && userId && incentiveAgency) {
-  <zed-scheme-ticks-panel kind="assessors" [userId]="userId" />
+  <zed-scheme-ticks-panel kind="assessors" [userId]="userId" [only]="incentiveMode" />
 }
 
 </div>
@@ -305,9 +317,11 @@
         <dt>{{ 'NIC sectors' | t: 'staff.assessorForm.rail.coverage.sectorsLabel' }}</dt>
         <dd>{{ firstOf(model.nicSectors, sectors()) }}
           @if (coverageOpen() && model.nicSectors.length > 1) { <small>{{ labelsOf(model.nicSectors, sectors()).join(', ') }}</small> }</dd>
-        <dt>{{ 'Areas of knowledge' | t: 'staff.assessorForm.rail.coverage.areasLabel' }}</dt>
-        <dd>{{ firstOf(model.areasOfKnowledge, areas()) }}
-          @if (coverageOpen() && model.areasOfKnowledge.length > 1) { <small>{{ labelsOf(model.areasOfKnowledge, areas()).join(', ') }}</small> }</dd>
+        @if (!incentiveAgency) {
+          <dt>{{ 'Areas of knowledge' | t: 'staff.assessorForm.rail.coverage.areasLabel' }}</dt>
+          <dd>{{ firstOf(model.areasOfKnowledge, areas()) }}
+            @if (coverageOpen() && model.areasOfKnowledge.length > 1) { <small>{{ labelsOf(model.areasOfKnowledge, areas()).join(', ') }}</small> }</dd>
+        }
       </dl>
     </section>
     @if (openCount() !== null) {

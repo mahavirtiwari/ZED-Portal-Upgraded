@@ -139,6 +139,8 @@ export function menuEntries(items: readonly StaffMenuItem[]): StaffMenuEntry[] {
 
 const R = StaffRole;
 const ALL_KINDS: readonly AgencyKind[] = ['assessment', 'desktop', 'onsite'];
+/** 2026-11-26: every login kind, the Incentives Master Admin too (Documents: each kind has its own audience). */
+const EVERY_KIND: readonly AgencyKind[] = ['assessment', 'desktop', 'onsite', 'incentives'];
 const ASSESSMENT_ONLY: readonly AgencyKind[] = ['assessment'];
 /** 2026-11-24: the Master Admin's entries the Incentives Master Admin has too (now only Operation Admins). */
 const WITH_INCENTIVES: readonly AgencyKind[] = ['assessment', 'incentives'];
@@ -180,6 +182,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
 
   // Assessment workflow
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Assessment' },
+  // 2026-11-26: an incentive verification agency's home too (the applications allotted to it).
+  { label: 'Incentives Dashboard', route: INCENTIVES_DASHBOARD_ROUTE, roles: [R.MasterAdmin, R.Agency], agencyKinds: ['incentives', 'desktop', 'onsite'] },
   { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency], agencyKinds: ALL_KINDS },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'], group: 'Allotment' },
   { label: 'SA Allotment', legacyPath: '/Assessment/SaAllotment', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Allotment' },
@@ -193,7 +197,6 @@ export const MAIN_MENU: StaffMenuItem[] = [
 
   // Schemes and finance
   // 2026-11-24: the Incentives Master Admin's home (its menu: this, the Schemes entries and its Operation Admins).
-  { label: 'Incentives Dashboard', route: INCENTIVES_DASHBOARD_ROUTE, roles: [R.MasterAdmin], agencyKinds: ['incentives'] },
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.MasterAdmin], group: 'Schemes', agencyKinds: INCENTIVES_ONLY },
   { label: 'Financial Assistance', legacyPath: '/FinancialAssistance/Submissions', route: '/staff/financial-assistance', roles: [R.Agency, R.DesktopAssessor], subRoles: ['FinancialVerification'] },
   { label: 'Incentive Submissions', legacyPath: '/Incentive/Submissions', route: '/staff/incentives/submissions', roles: [R.SuperAdmin] },
@@ -277,7 +280,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
   // 2026-11-26 (the user: "put document section", "Observation is missing"): the Incentives Master Admin has both too (Admin
   // gives it its own documents; Quality Observations as it is). It signs in on the main portal only.
-  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: WITH_INCENTIVES },
+  // 2026-11-26 (the user: incentive agency "missing Documents section"): every kind of login, each with its own documents.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: EVERY_KIND },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
   { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency], agencyKinds: WITH_INCENTIVES },
@@ -353,7 +357,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
   // 2026-11-26 (the user: "put document section", "Observation is missing"): the Incentives Master Admin has both too (Admin
   // gives it its own documents; Quality Observations as it is). It signs in on the main portal only.
-  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: WITH_INCENTIVES },
+  // 2026-11-26 (the user: incentive agency "missing Documents section"): every kind of login, each with its own documents.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: EVERY_KIND },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
   { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency], agencyKinds: WITH_INCENTIVES },
@@ -619,7 +624,8 @@ export const HOME_ROUTES: Record<PortalSystem, Partial<Record<number, string>>> 
 
 /** The landing page of a role after sign-in, or null for the card home (2026-11-24: the Incentives Master Admin's dashboard). */
 export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM, subRoles: readonly string[] = []): string | null {
-  if (isIncentivesAdmin({ roleId, subRoles })) return INCENTIVES_DASHBOARD_ROUTE;
+  // 2026-11-26: an incentive verification agency (desktop / onsite) too: its applications on the incentives dashboard.
+  if (isIncentivesAdmin({ roleId, subRoles }) || (roleId === StaffRole.Agency && ['desktop', 'onsite'].includes(agencyKindOf(subRoles)))) return INCENTIVES_DASHBOARD_ROUTE;
   return HOME_ROUTES[system][roleId] ?? (DASHBOARD_ROLE_IDS.includes(roleId) ? '/staff/dashboard' : null);
 }
 
@@ -676,7 +682,8 @@ export function menuScreenAllows(route: string, roleId: number, subRoles: readon
  * menu every sub-user has, whatever it was given (the API's SubUserPermissions.AlwaysReadable). Not a limited Dashboard Admin
  * (role 10), whose screens (Documents among them) are the Admin's ticks.
  */
-const SUB_USER_ALWAYS_OPEN = ['/staff/documents'];
+// 2026-11-26: and the incentives dashboard, an incentive verification agency's home (its sub-users' too).
+const SUB_USER_ALWAYS_OPEN = ['/staff/documents', INCENTIVES_DASHBOARD_ROUTE];
 
 export function subUserAlwaysOpen(route: string | undefined, roleId: number, subRoles: readonly string[] = []): boolean {
   // (2026-11-26: an Incentives Master Admin's Operation Admin too: its owner has a Documents page now.)

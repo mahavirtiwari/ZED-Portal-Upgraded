@@ -75,3 +75,6 @@ fieldset:disabled .af-chip:not(.active) { background: #f4f6f6; color: #6f8487; }
 
 /* 2026-11-21 (audit item 5): the PAN card number taken from the PAN field, shown read-only. */
 .af-pan-proof { display: inline-block; padding: 8px 12px; border: 1px solid #dde7e8; border-radius: 9px; background: #f6fafa; font-weight: 600; letter-spacing: .04em; color: #17373b; }
+/* 2026-11-26: an incentive agency's assessor: its one verification mode, shown (not chosen). */
+.af-incentive { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
+.af-incentive .af-hint { flex-basis: 100%; margin: 0; }

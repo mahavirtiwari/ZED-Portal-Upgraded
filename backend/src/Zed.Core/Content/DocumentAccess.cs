@@ -30,6 +30,12 @@ public static class DocumentRoles
     /// </summary>
     public const string IncentivesAdmin = "incentivesadmin";
 
+    /// <summary>2026-11-26: the incentive verification agencies (desktop / onsite, Users.AgencyKind) and their sub-users; not the assessment agencies' documents.</summary>
+    public const string IncentiveAgency = "incentiveagency";
+
+    /// <summary>2026-11-26: the assessors of the incentive verification agencies.</summary>
+    public const string IncentiveAssessor = "incentiveassessor";
+
     /// <summary>Role key of each staff role (the Admin manages the documents and sees them all).</summary>
     private static readonly (string Key, UserRole Role)[] StaffKeys =
     [
@@ -61,6 +67,7 @@ public static class DocumentRoles
         [
             new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new(IncentivesAdmin, "Incentives Master Admin"),
             new("agency", "Assessment Agencies"), new("assessor", "Assessors"),
+            new(IncentiveAgency, "Incentive Verification Agencies"), new(IncentiveAssessor, "Incentive Verification Assessors"),
             new("coordinator", "MSME DFO / NEFT Admin"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
         ],
     };

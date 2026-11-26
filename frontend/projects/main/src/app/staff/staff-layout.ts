@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
-import { StaffMenuEntry, StaffMenuItem, StaffRole, isIncentivesAdmin, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, isIncentivesAdmin, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
@@ -325,7 +325,11 @@ export class StaffLayout {
   protected readonly darkButtons = computed(() => !!this.user());
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
-  protected readonly incentivesAdmin = computed(() => isIncentivesAdmin(this.user()));
+  /** 2026-11-25/26: the login's home is the incentives dashboard (the Incentives Master Admin, an incentive agency): no "Home" beside its Dashboard. */
+  protected readonly incentivesAdmin = computed(() => {
+    const u = this.user();
+    return !!u && (isIncentivesAdmin(u) || homeFor(u.roleId, undefined, u.subRoles ?? []) === '/staff/incentives/dashboard');
+  });
   /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */
   protected readonly menuText = menuText;
   protected readonly menuGroupText = menuGroupText;

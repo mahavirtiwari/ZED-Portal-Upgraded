@@ -319,6 +319,10 @@ public sealed class StaffAssessorsController(
     /// Users.PanNo. The assessor is mailed a one-time link to set its password
     /// (<see cref="StaffWelcomeLogin"/>), and the generated password is never returned.
     /// </summary>
+    /// <summary>2026-11-26: signed in as an incentive verification agency (desktop / onsite) or one of its sub-users.</summary>
+    private bool IncentiveAgency => IsRole(UserRole.Agency) && (CurrentUser.SubRoles ?? []).Any(r =>
+        r is global::Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.DesktopSubRole or global::Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.OnsiteSubRole);
+
     [HttpPost]
     [StaffRoles(UserRole.Agency)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
@@ -328,6 +332,8 @@ public sealed class StaffAssessorsController(
         var mode = await ProfessionalVerification.ModeAsync(settings, ct);
         // 2026-11-14: one kind of assessor; the agency ticks the levels and modes, and the old type follows them.
         (string Stored, string Type)? scope = null;
+        // 2026-11-26: an incentive verification agency's assessor verifies schemes, never a certification level (the form sends none).
+        if (IncentiveAgency) req = req with { Assessments = null, AssessorType = "Assessor" };
         if (!host.IsConsultancy() && req.Assessments is not null)
         {
             var (scopeText, map, scopeError) = AssessorScope.Validate(req.Assessments, await AssessorScope.FlowsAsync(db, log, ct));
@@ -498,7 +504,7 @@ public sealed class StaffAssessorsController(
         var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
         if (activityError is not null) return this.Problem400(activityError);
         (string Stored, string Type)? scope = null;
-        if (!host.IsConsultancy() && req.Assessments is not null)
+        if (!host.IsConsultancy() && req.Assessments is not null && !IncentiveAgency)
         {
             var (scopeText, map, scopeError) = AssessorScope.Validate(req.Assessments, await AssessorScope.FlowsAsync(db, log, ct));
             if (scopeError is not null) return this.Problem400(scopeError);

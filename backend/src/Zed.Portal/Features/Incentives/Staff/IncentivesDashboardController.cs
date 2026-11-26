@@ -15,8 +15,11 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// (its applications by stage), the Financial Assistance card, the applications per month and per state. Within the login's scope
 /// (states, levels, category) as Scheme Applications and Financial Assistance; filtered by scheme, state and submitted from / to.
 /// </summary>
+/// 2026-11-26 (the user, signed in as an incentive verification agency: "Dashboard is still same as main certification assessment
+/// agency dashboard"): an incentive verification agency (and its sub-users) has it too, with the applications allotted to it only
+/// (a desktop agency: the desktop allotment; an onsite agency: the onsite one), no Financial Assistance and no agency counts.
 [Route(IncentivesAdmins.DashboardApi)]
-[StaffRoles(UserRole.MasterAdmin)]
+[StaffRoles(UserRole.MasterAdmin, UserRole.Agency)]
 [PortalSystems(PortalSystem.Main)]
 public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore store, ILogger<IncentivesDashboardController> log) : StaffApiController
 {
@@ -67,8 +70,20 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
 
     public sealed record Option(string Code, string Name);
 
+    /// <param name="Agency">2026-11-26: "Desktop" / "Onsite" for an incentive verification agency (its own applications), null for the
+    /// Master Admins.</param>
     public sealed record DashboardResponse(DateTime GeneratedAt, Headline Headline, IReadOnlyList<SchemeCard> Schemes, FaCard Fa,
-        IReadOnlyList<MonthPoint> Months, IReadOnlyList<StateRow> States, IReadOnlyList<Option> SchemeOptions, IReadOnlyList<string> StateOptions);
+        IReadOnlyList<MonthPoint> Months, IReadOnlyList<StateRow> States, IReadOnlyList<Option> SchemeOptions, IReadOnlyList<string> StateOptions,
+        string? Agency = null);
+
+    /// <summary>The signed-in incentive verification agency's kind ("Desktop" / "Onsite"); null for a Master Admin, "" for another agency.</summary>
+    private string? AgencyKind()
+    {
+        if (!IsRole(UserRole.Agency)) return null;
+        var subRoles = CurrentUser.SubRoles ?? [];
+        return subRoles.Contains(Agencies.IncentiveAgencies.OnsiteSubRole) ? "Onsite"
+            : subRoles.Contains(Agencies.IncentiveAgencies.DesktopSubRole) ? "Desktop" : "";
+    }
 
     /// <summary>GET api/staff/incentives-dashboard?scheme=&amp;state=&amp;from=&amp;to=</summary>
     [HttpGet]
@@ -76,12 +91,18 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
         [FromQuery] DateOnly? to, CancellationToken ct)
     {
         if (SchemeReview.Filter(scheme, null, state, from, to, out var problem) is not { } filter) return this.Problem400(problem!);
+        var kind = AgencyKind();
+        // An assessment agency has the certification dashboard (this one is the incentive agencies' and the Master Admins').
+        if (kind == "") return StatusCode(StatusCodes.Status403Forbidden);
         var all = await SchemeRowsAsync(ct);
+        var mine = kind is null ? all.Rows : all.Rows.Where(r => string.Equals(kind == "Onsite" ? r.OnsiteAgency?.Trim() : r.Agency?.Trim(), UserId, StringComparison.OrdinalIgnoreCase)).ToList();
+        all = all with { Rows = mine };
         var rows = all.Rows.Where(filter.MatchesBase).ToList();
-        var fa = (await FaRowsAsync(ct)).Where(r => (filter.State is null || string.Equals(r.PStateName?.Trim(), filter.State, StringComparison.OrdinalIgnoreCase))
+        // The Financial Assistance (Bronze / Silver / Gold) is verified by assessment agencies: not on an incentive agency's dashboard.
+        var fa = (kind is not null ? [] : await FaRowsAsync(ct)).Where(r => (filter.State is null || string.Equals(r.PStateName?.Trim(), filter.State, StringComparison.OrdinalIgnoreCase))
             && (filter.From is null || (r.CreatedDate is { } c && DateOnly.FromDateTime(c) >= filter.From))
             && (filter.To is null || (r.CreatedDate is { } d && DateOnly.FromDateTime(d) <= filter.To))).ToList();
-        var agencies = await AgenciesAsync(ct);
+        var agencies = kind is null ? await AgenciesAsync(ct) : [];
 
         var headline = new Headline(rows.Count, rows.Count(r => InVerification(r.Status)), rows.Count(r => r.Status == Approved), rows.Count(r => r.Status == Paid),
             rows.Count(r => r.Status == Rejected), rows.Count(r => r.Status == OnHold), rows.Sum(r => r.ClaimAmount ?? 0),
@@ -113,7 +134,7 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
         var stateOptions = all.Rows.Select(r => r.State).Concat(fa.Select(r => r.PStateName?.Trim())).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s!)
             .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList();
         return new DashboardResponse(DateTime.Now, headline, cards, faCard, months, states,
-            all.Schemes.Select(s => new Option(s.Code, s.Name)).ToList(), stateOptions);
+            all.Schemes.Select(s => new Option(s.Code, s.Name)).ToList(), stateOptions, kind);
     }
 
     private static bool InVerification(string status) => DesktopStatuses.Contains(status) || OnsiteStatuses.Contains(status) || status == Qc;

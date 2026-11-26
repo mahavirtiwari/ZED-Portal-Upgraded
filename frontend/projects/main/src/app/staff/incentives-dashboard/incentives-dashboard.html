@@ -48,7 +48,11 @@
 </div>
 
 @if (data(); as d) {
-  <div class="id-kpis" [class.is-busy]="loading()">
+  @if (d.agency) {
+    <p class="id-agency-note" data-agency-note>{{ d.agency === 'Onsite' ? ('Applications allotted to your agency for the onsite verification.' | t: 'staff.incentivesDashboard.agency.onsiteNote')
+      : ('Applications allotted to your agency for the desktop verification.' | t: 'staff.incentivesDashboard.agency.desktopNote') }}</p>
+  }
+  <div class="id-kpis" [class.is-busy]="loading()" [class.five]="!!d.agency">
     @for (k of kpis(); track k.key) {
       <div class="id-kpi" [style.--accent]="k.color" [attr.data-kpi]="k.key">
         <span class="id-kpi-value">{{ k.value }}</span>
@@ -89,10 +93,11 @@
             <span>{{ 'Claimed' | t: 'staff.incentivesDashboard.card.claimed' }} <b>{{ rupees(c.claimAmount) }}</b></span>
             <span>{{ 'Approved amount' | t: 'staff.incentivesDashboard.card.approvedAmount' }} <b>{{ rupees(c.approvedAmount) }}</b></span>
           </div>
-          <a class="app-link" routerLink="/staff/schemes-verify/applications">{{ 'Open Scheme Applications' | t: 'staff.incentivesDashboard.card.openSchemes' }}</a>
+          <a class="app-link" [routerLink]="schemesLink()">{{ d.agency ? ('Open my applications' | t: 'staff.incentivesDashboard.card.openMine') : ('Open Scheme Applications' | t: 'staff.incentivesDashboard.card.openSchemes') }}</a>
         </div>
       </div>
     }
+    @if (!d.agency) {
     <div class="app-card band-fa" data-scheme="fa">
       <div class="app-band">
         <span class="app-title"><span class="app-level">{{ 'Financial Assistance' | t: 'staff.incentivesDashboard.fa.title' }}</span>
@@ -119,6 +124,7 @@
         <a class="app-link" routerLink="/staff/financial-assistance">{{ 'Open Financial Assistance' | t: 'staff.incentivesDashboard.fa.open' }}</a>
       </div>
     </div>
+    }
   </div>
   @if (!d.schemes.length) {
     <p class="id-none">{{ 'No incentive schemes are defined yet (Admin → Incentive Schemes).' | t: 'staff.incentivesDashboard.noSchemes' }}</p>

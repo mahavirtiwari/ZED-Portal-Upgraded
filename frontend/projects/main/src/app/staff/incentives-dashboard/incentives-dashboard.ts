@@ -60,6 +60,8 @@ export interface IncentivesDashboard {
   states: { state: string; total: number; inVerification: number; approved: number; paid: number; rejected: number }[];
   schemeOptions: { code: string; name: string }[];
   stateOptions: string[];
+  /** 2026-11-26: 'Desktop' / 'Onsite' for an incentive verification agency (its own applications); absent for a Master Admin. */
+  agency?: 'Desktop' | 'Onsite' | null;
 }
 
 export const INCENTIVES_DASHBOARD_API = '/api/staff/incentives-dashboard';
@@ -157,9 +159,16 @@ export class IncentivesDashboardPage {
       { key: 'rejected', value: formatCount(h.rejected), label: t('staff.incentivesDashboard.kpi.rejected', 'Rejected'), color: '#6f8487', note: '' },
       { key: 'amount', value: rupees(h.approvedAmount, true), label: t('staff.incentivesDashboard.kpi.approvedAmount', 'Amount approved'), color: '#6250d6',
         note: t('staff.incentivesDashboard.kpi.claimedNote', '{amount} claimed', { amount: rupees(h.claimAmount, true) }) },
-      { key: 'agencies', value: formatCount(h.desktopAgencies + h.onsiteAgencies), label: t('staff.incentivesDashboard.kpi.agencies', 'Verification agencies'), color: '#00909a',
-        note: t('staff.incentivesDashboard.kpi.agenciesNote', '{desktop} desktop · {onsite} onsite', { desktop: h.desktopAgencies, onsite: h.onsiteAgencies }) },
+      // Not for an incentive agency (its own applications only).
+      ...(this.data()?.agency ? [] : [{ key: 'agencies', value: formatCount(h.desktopAgencies + h.onsiteAgencies), label: t('staff.incentivesDashboard.kpi.agencies', 'Verification agencies'), color: '#00909a',
+        note: t('staff.incentivesDashboard.kpi.agenciesNote', '{desktop} desktop · {onsite} onsite', { desktop: h.desktopAgencies, onsite: h.onsiteAgencies }) }]),
     ];
+  });
+
+  /** 2026-11-26: where a scheme card opens: the agency's own list, or the Master Admin's Scheme Applications. */
+  protected readonly schemesLink = computed(() => {
+    const a = this.data()?.agency;
+    return a === 'Onsite' ? '/staff/scheme-onsite/allotment' : a === 'Desktop' ? '/staff/schemes-verify/allotment' : '/staff/schemes-verify/applications';
   });
 
   protected readonly series = computed(() => [

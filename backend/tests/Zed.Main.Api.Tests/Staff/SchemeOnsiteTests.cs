@@ -451,6 +451,26 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.DoesNotContain("scheme-onsite-agencies", SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key));
     }
 
+    /// <summary>2026-11-26 (the user: an incentive agency's "Dashboard is still same as main certification assessment agency dashboard").</summary>
+    [Fact]
+    public async Task An_incentive_agency_has_the_incentives_dashboard_with_its_own_applications()
+    {
+        _host.Sql.Queries[SchemeReview.ListAllSql] = _ =>
+        [
+            new { Id = 1, ZedId = "ZEDM1", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Verifying", VerificationStatus = 2, PStateName = "GOA", ClaimAmount = 1000m, SubmittedOn = DateTime.Today, CertificationBodyUserId = "DESK1" },
+            new { Id = 2, ZedId = "ZEDM2", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "OnsiteWithAgency", VerificationStatus = 2, PStateName = "GOA", ClaimAmount = 2000m, SubmittedOn = DateTime.Today, CertificationBodyUserId = "DESK2", OnsiteAgencyId = "ONSITE1" },
+            new { Id = 3, ZedId = "ZEDM3", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Verifying", VerificationStatus = 2, PStateName = "GOA", ClaimAmount = 3000m, SubmittedOn = DateTime.Today, CertificationBodyUserId = "DESK2" },
+        ];
+        var desk = await (await SignIn("DESK1")).GetFromJsonAsync<JsonElement>(IncentivesAdmins.DashboardApi);
+        Assert.Equal(("Desktop", 1, 1000m), (desk.GetProperty("agency").GetString(), desk.GetProperty("headline").GetProperty("applications").GetInt32(),
+            desk.GetProperty("headline").GetProperty("claimAmount").GetDecimal()));
+        Assert.Equal(0, desk.GetProperty("fa").GetProperty("total").GetInt32());
+        var onsite = await (await SignIn("ONSITE1")).GetFromJsonAsync<JsonElement>(IncentivesAdmins.DashboardApi);
+        Assert.Equal(("Onsite", 1), (onsite.GetProperty("agency").GetString(), onsite.GetProperty("headline").GetProperty("applications").GetInt32()));
+        // An assessment agency keeps the certification dashboard.
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn("AGENCY1")).GetAsync(IncentivesAdmins.DashboardApi)).StatusCode);
+    }
+
     // ----- the normal Assessment Agencies page -----
 
     [Fact]

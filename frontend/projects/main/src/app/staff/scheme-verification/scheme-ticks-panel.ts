@@ -31,16 +31,16 @@ import { SchemeTick, SchemeVerificationApi } from './scheme-verification.api';
           <thead>
             <tr>
               <th>{{ 'Scheme' | t: 'staff.schemeVerification.ticks.scheme' }}</th>
-              <th>{{ 'Desktop verification' | t: 'staff.schemeVerification.ticks.desktop' }}</th>
-              <th>{{ 'Onsite verification' | t: 'staff.schemeVerification.ticks.onsite' }}</th>
+              @if (only() !== 'onsite') { <th>{{ 'Desktop verification' | t: 'staff.schemeVerification.ticks.desktop' }}</th> }
+              @if (only() !== 'desktop') { <th>{{ 'Onsite verification' | t: 'staff.schemeVerification.ticks.onsite' }}</th> }
             </tr>
           </thead>
           <tbody>
             @for (r of rows(); track r.code; let i = $index) {
               <tr>
                 <td>{{ r.name }} <small class="sub">{{ r.code }}</small></td>
-                <td><input type="checkbox" [attr.aria-label]="r.name + ' – desktop'" [checked]="r.desktop" [disabled]="!editable() || (!r.canDesktop && !r.desktop)" (change)="toggle(i, 'desktop', $any($event.target).checked)" /></td>
-                <td><input type="checkbox" [attr.aria-label]="r.name + ' – onsite'" [checked]="r.onsite" [disabled]="!editable() || (!r.canOnsite && !r.onsite)" (change)="toggle(i, 'onsite', $any($event.target).checked)" /></td>
+                @if (only() !== 'onsite') { <td><input type="checkbox" [attr.aria-label]="r.name + ' – desktop'" [checked]="r.desktop" [disabled]="!editable() || (!r.canDesktop && !r.desktop)" (change)="toggle(i, 'desktop', $any($event.target).checked)" /></td> }
+                @if (only() !== 'desktop') { <td><input type="checkbox" [attr.aria-label]="r.name + ' – onsite'" [checked]="r.onsite" [disabled]="!editable() || (!r.canOnsite && !r.onsite)" (change)="toggle(i, 'onsite', $any($event.target).checked)" /></td> }
               </tr>
             }
           </tbody>
@@ -68,6 +68,8 @@ export class SchemeTicksPanel {
   /** 'agencies' (the Master Admin) or 'assessors' (its agency). */
   readonly kind = input.required<'agencies' | 'assessors'>();
   readonly userId = input.required<string>();
+  /** 2026-11-26: only this mode's column (an incentive agency's assessor verifies in the agency's one mode); null: both. */
+  readonly only = input<'desktop' | 'onsite' | null>(null);
 
   protected readonly rows = signal<SchemeTick[]>([]);
   protected readonly editable = signal(false);

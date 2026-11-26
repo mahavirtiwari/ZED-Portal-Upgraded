@@ -61,8 +61,14 @@ public sealed class StaffRoleDocumentsController(
     {
         var all = await StaffDocumentsController.ListAsync(db, access, ct, "/api/staff/documents");
         if (IsRole(UserRole.Admin)) return all;
-        // 2026-11-26: the Incentives Master Admin (and its Operation Admins) has its own documents, not the Master Admin's.
-        var key = Users.IncentivesAdmins.Is(CurrentUser) ? DocumentRoles.IncentivesAdmin : DocumentRoles.KeyOf(RoleId);
+        // 2026-11-26: the Incentives Master Admin (and its Operation Admins), the incentive verification agencies (and their sub-users)
+        // and their assessors have their own documents, not the Master Admin's, the assessment agencies' or their assessors'.
+        var incentiveAgency = (CurrentUser.SubRoles ?? []).Any(r =>
+            r is Incentives.Agencies.IncentiveAgencies.DesktopSubRole or Incentives.Agencies.IncentiveAgencies.OnsiteSubRole);
+        var key = Users.IncentivesAdmins.Is(CurrentUser) ? DocumentRoles.IncentivesAdmin
+            : incentiveAgency && IsRole(UserRole.Agency) ? DocumentRoles.IncentiveAgency
+            : incentiveAgency && IsRole(UserRole.DesktopAssessor) ? DocumentRoles.IncentiveAssessor
+            : DocumentRoles.KeyOf(RoleId);
         return key is null ? [] : all.Where(d => d.Roles?.Contains(key, StringComparer.OrdinalIgnoreCase) == true);
     }
 }

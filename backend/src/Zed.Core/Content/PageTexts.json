@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9675,
+  "count": 9683,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -33141,6 +33141,66 @@
       "key": "staff.assessorForm.idProof.typeLabel",
       "standard": "ID Proof",
       "kind": "label",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.incentive.desktop",
+      "standard": "Desktop verification of incentive schemes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.incentive.hint",
+      "standard": "The schemes are ticked on the assessor’s page once it is created (within the agency’s own schemes).",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.incentive.label",
+      "standard": "Verifies",
+      "kind": "label",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.incentive.onsite",
+      "standard": "Onsite verification of incentive schemes",
+      "kind": "text",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.html"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.incentive.title",
+      "standard": "Verification and certificate",
+      "kind": "heading",
       "portal": "staff",
       "page": "assessorForm",
       "pageName": "Assessor form",
@@ -67115,6 +67175,30 @@
       ]
     },
     {
+      "key": "staff.incentivesDashboard.agency.desktopNote",
+      "standard": "Applications allotted to your agency for the desktop verification.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.agency.onsiteNote",
+      "standard": "Applications allotted to your agency for the onsite verification.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
       "key": "staff.incentivesDashboard.card.approvedAmount",
       "standard": "Approved amount",
       "kind": "text",
@@ -67153,6 +67237,18 @@
       "files": [
         "staff/incentives-dashboard/incentives-dashboard.html",
         "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.openMine",
+      "standard": "Open my applications",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
       ]
     },
     {
