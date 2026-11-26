@@ -113,11 +113,13 @@ public sealed class SubUsersTests : IDisposable
     [Fact]
     public async Task Owners_give_states_and_a_master_admin_also_agencies()
     {
-        _host.Sql.Queries[SubUsersController.AgenciesSql] = _ => [new { Code = "AGENCY1", Name = "Acme Assessors" }];
+        // 2026-11-26: on main, the assessment agencies only (MainAgenciesSql leaves out the incentive verification agencies).
+        Assert.Contains("NOT IN ('SchemeDesktop', 'SchemeOnsite')", SubUsersController.MainAgenciesSql);
+        _host.Sql.Queries[SubUsersController.MainAgenciesSql] = _ => [new { Code = "AGENCY1", Name = "Acme Assessors" }, new { Code = "AGENCY2", Name = "Beta" }];
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var list = (await master.GetFromJsonAsync<SubUsersController.SubUsersResponse>("/api/staff/sub-users"))!;
         Assert.Contains(list.States, s => s.Code == "28");
-        Assert.Equal(["AGENCY1"], list.Agencies!.Select(a => a.Code));
+        Assert.Equal(["AGENCY1", "AGENCY2"], list.Agencies!.Select(a => a.Code));
 
         Assert.Equal("Please select only the states shown.", await (await master.PostAsJsonAsync("/api/staff/sub-users",
             new { userName = "Ops", email = "ops@zed.test", permissions = new[] { "allot" }, states = new[] { "999" } })).ProblemTitle());
@@ -127,6 +129,10 @@ public sealed class SubUsersTests : IDisposable
             new { userName = "Ops", email = "ops@zed.test", permissions = new[] { "allot" }, states = new[] { "28", "36" }, agencies = new[] { "agency1" } })).EnsureSuccessStatusCode();
         var scope = Assert.Single(Sql("UPDATE dbo.V4SubUsers SET ScopeStates"));
         Assert.Equal(("28,36", "agency1"), (FakeSql.Arg(scope.Args, "ScopeStates"), FakeSql.Arg(scope.Args, "ScopeAgencies")));
+        // 2026-11-26: every agency ticked is no limit (an agency added later is seen too).
+        (await master.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Ops2", email = "ops2@zed.test", permissions = new[] { "allot" }, agencies = new[] { "AGENCY1", "AGENCY2" } })).EnsureSuccessStatusCode();
+        Assert.Null(FakeSql.Arg(Sql("UPDATE dbo.V4SubUsers SET ScopeStates").Last().Args, "ScopeAgencies"));
 
         // An agency gives states only.
         var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");

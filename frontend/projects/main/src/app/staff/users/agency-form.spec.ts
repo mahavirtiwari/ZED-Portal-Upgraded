@@ -110,7 +110,7 @@ describe('AgencyFormPage', () => {
     expect(el.querySelector('[data-no-partners]')!.textContent).toContain('No organising partner has been added yet');
   });
 
-  it('consultancy: the old Category boxes, Handholding Support and Technology Intervention excluding each other', async () => {
+  it('consultancy: the Category is Handholding Support only (Technology Intervention moved to the incentive schemes, 2026-11-26)', async () => {
     await create(null, true);
     http.expectOne('/api/staff/users/agencies/options').flush({ ...options, tuStates: [{ code: '09', name: 'UTTAR PRADESH' }] });
     await settle();
@@ -120,24 +120,13 @@ describe('AgencyFormPage', () => {
     expect(el.querySelector('label[for="gstNumber"]')!.textContent).toContain('GST Number');
     const label = (name: string) => el.querySelector(`input[name=${name}]`)!.closest('label')!.querySelector('.choice-name')!.textContent!.trim();
     expect(label('siteVerification')).toBe('Handholding Support');
-    expect(label('financialVerification')).toBe('Technology Intervention');
-
+    expect(el.querySelector('input[name=financialVerification]')).toBeNull();
+    expect(el.textContent).not.toContain('Technology Intervention');
     const site = () => el.querySelector('input[name=siteVerification]') as HTMLInputElement;
-    const tu = () => el.querySelector('input[name=financialVerification]') as HTMLInputElement;
-    // Ticking one unticks and disables the other, as the old form's script.
     site().click();
     await settle();
     expect(site().checked).toBe(true);
-    expect(tu().disabled).toBe(true);
-    expect(el.querySelector('#tuPreferredState')).toBeNull();
-    site().click();
-    await settle();
-    expect(tu().disabled).toBe(false);
-    tu().click();
-    await settle();
-    expect(tu().checked).toBe(true);
-    expect(site().disabled).toBe(true);
-    expect(el.querySelector('#tuPreferredState')).not.toBeNull();
+    expect(site().disabled).toBe(false);
   });
 
   it('loads an agency for update and only offers its own organising partner', async () => {

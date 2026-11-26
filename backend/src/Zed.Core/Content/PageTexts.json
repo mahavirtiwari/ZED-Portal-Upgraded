@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9693,
+  "count": 9692,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -25309,18 +25309,6 @@
     {
       "key": "staff.agencyForm.cover.categoryNote",
       "standard": "The work it may take up; choose at least one.",
-      "kind": "note",
-      "portal": "staff",
-      "page": "agencyForm",
-      "pageName": "Agency form",
-      "placeholders": [],
-      "files": [
-        "staff/users/agency-form.html"
-      ]
-    },
-    {
-      "key": "staff.agencyForm.cover.consultancyCategoryNote",
-      "standard": "Handholding Support or Technology Intervention (not both).",
       "kind": "note",
       "portal": "staff",
       "page": "agencyForm",

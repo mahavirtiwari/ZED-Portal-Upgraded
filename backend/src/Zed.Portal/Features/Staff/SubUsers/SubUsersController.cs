@@ -64,6 +64,11 @@ public sealed class SubUsersController(
 
     internal const string AgenciesSql = "SELECT UserId AS Code, UserName AS Name FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND UserId IS NOT NULL ORDER BY UserName;";
 
+    /// <summary>2026-11-26: main's assessment agencies only (not the incentive verification agencies, Users.AgencyKind, migration 0106).</summary>
+    internal const string MainAgenciesSql =
+        "SELECT UserId AS Code, UserName AS Name FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND UserId IS NOT NULL " +
+        "AND ISNULL(AgencyKind, '') NOT IN ('SchemeDesktop', 'SchemeOnsite') ORDER BY UserName;";
+
     private bool ForMasterAdmin => RoleId == (int)UserRole.MasterAdmin;
 
     /// <summary>2026-11-25: the scope's assessment agencies, for the main Master Admin's Operation Admins only (not the Incentives Master Admin's).</summary>
@@ -179,7 +184,7 @@ public sealed class SubUsersController(
     }
 
     private async Task<IReadOnlyList<Option>> AgencyOptionsAsync(CancellationToken ct) =>
-        (await db.QuerySqlAsync<Option>(AgenciesSql, null, ct)).Where(a => !string.IsNullOrWhiteSpace(a.Code))
+        (await db.QuerySqlAsync<Option>(host.System == PortalSystem.Main ? MainAgenciesSql : AgenciesSql, null, ct)).Where(a => !string.IsNullOrWhiteSpace(a.Code))
             .Select(a => a with { Code = a.Code.Trim(), Name = (a.Name ?? a.Code).Trim() }).ToList();
 
     /// <summary>The fields, then the states (known ones, within the owner's) and the agencies (Master Admin; active agencies).</summary>
@@ -195,6 +200,8 @@ public sealed class SubUsersController(
         {
             var allowed = (await StateOptionsAsync(ct)).Select(o => o.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (states.Any(s => !allowed.Contains(s))) return (null, "Please select only the states shown.");
+            // 2026-11-26: every state ticked (the owner itself not limited) is "every state", not a fixed list.
+            if ((await HttpContext.LoginScopeAsync(ct)).StateCodes.Count == 0 && allowed.All(states.Contains)) states = [];
         }
         var agencies = Clean(req.Agencies);
         if (agencies.Count > 0)
@@ -202,6 +209,9 @@ public sealed class SubUsersController(
             if (!AgencyScope) return (null, "Only an operation admin can be limited to assessment agencies.");
             var known = (await AgencyOptionsAsync(ct)).Select(o => o.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (agencies.Any(a => !known.Contains(a))) return (null, "Please select only the assessment agencies shown.");
+            // 2026-11-26 (zedv3: a consultant organisation added later was not in the list of an Operation Admin saved with every
+            // organisation ticked): every agency ticked is "every agency", so the ones added later are seen too.
+            if (known.All(agencies.Contains)) agencies = [];
         }
         return (values! with { States = LoginScope.Join(states), Agencies = LoginScope.Join(agencies) }, null);
     }

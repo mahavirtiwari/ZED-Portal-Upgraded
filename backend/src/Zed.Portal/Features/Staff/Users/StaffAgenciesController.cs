@@ -199,6 +199,28 @@ public sealed class StaffAgenciesController(
 
     public sealed record CreatedUserResponse(string Message, string? UserId);
 
+    /// <summary>2026-11-26: adds the new agency to the creating Operation Admin's agency list (when it has one).</summary>
+    internal const string AddToScopeSql =
+        "UPDATE dbo.V4SubUsers SET ScopeAgencies = ScopeAgencies + ',' + @AgencyId WHERE UserId = @SubUserId " +
+        "AND NULLIF(LTRIM(RTRIM(ScopeAgencies)), '') IS NOT NULL;";
+
+    /// <summary>
+    /// 2026-11-26 (zedv3: an Operation Admin limited to some organisations added ZEDCO0208 and did not see it in its own list): an
+    /// Operation Admin's new agency joins its agency list, so it sees what it created. Never fails the creation.
+    /// </summary>
+    private async Task AddToOwnScopeAsync(string agencyId, CancellationToken ct)
+    {
+        if (!CurrentUser.IsSubUser || string.IsNullOrWhiteSpace(CurrentUser.ActingUserId)) return;
+        try
+        {
+            await db.ExecuteSqlAsync(AddToScopeSql, new { AgencyId = agencyId.Trim(), SubUserId = CurrentUser.ActingUserId.Trim() }, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Agency {AgencyId} not added to the agency list of Operation Admin {SubUser}", agencyId, CurrentUser.ActingUserId);
+        }
+    }
+
     /// <summary>
     /// Creates an agency (SP_INSERT_USER, RoleId 2) with a generated password that nobody is told: the SPOC is mailed a
     /// one-time link to set its own (<see cref="StaffWelcomeLogin"/>).
@@ -232,6 +254,7 @@ public sealed class StaffAgenciesController(
         }
         log.LogInformation("Agency {NewUserId} created by {Actor}", newId, UserId);
         await passwords.SetAsync(newId!, password, ct);
+        await AddToOwnScopeAsync(newId!, ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
         // 2026-11-21: the account's history starts with its creation and what it was created with.
         var partners = host.IsConsultancy() ? [] : Partners(sets[1]);

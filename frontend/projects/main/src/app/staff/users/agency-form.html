@@ -140,14 +140,18 @@
                 <span><span class="choice-name">{{ consultancy ? ('Handholding Support' | t: 'staff.agencyForm.cover.handholdingLabel') : ('Remote / Onsite' | t: 'staff.agencyForm.cover.siteLabel') }}</span>
                   @if (consultancy && siteLocked()) { <small>{{ 'Not with Technology Intervention.' | t: 'staff.agencyForm.cover.notWithTechnology' }}</small> }</span>
               </label>
+              <!-- 2026-11-26 (the user: "remove this"; technology upgradation moved to the incentive schemes): no Technology Intervention
+                   for a consultant organisation (an older one that has it keeps it until edited). -->
+              @if (!consultancy || model.financialVerification) {
               <label class="chk" [class.active]="model.financialVerification" [class.locked]="financialLocked()">
                 <input type="checkbox" class="form-check-input" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
                        [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
                 <span><span class="choice-name">{{ consultancy ? ('Technology Intervention' | t: 'staff.agencyForm.cover.technologyLabel') : ('Financial assistance' | t: 'staff.agencyForm.cover.financialLabel') }}</span>
                   @if (consultancy && financialLocked()) { <small>{{ 'Not with Handholding Support.' | t: 'staff.agencyForm.cover.notWithHandholding' }}</small> }</span>
               </label>
+              }
             </div>
-            <small class="fs-hint">{{ consultancy ? ('Handholding Support or Technology Intervention (not both).' | t: 'staff.agencyForm.cover.consultancyCategoryNote') : ('The work it may take up; choose at least one.' | t: 'staff.agencyForm.cover.categoryNote') }}</small>
+            @if (!consultancy) { <small class="fs-hint">{{ 'The work it may take up; choose at least one.' | t: 'staff.agencyForm.cover.categoryNote' }}</small> }
             @if (submitted() && noCategory()) { <span class="help-block" data-category-error>{{ consultancy ? ('Please select a category.' | t: 'staff.agencyForm.error.categoryRequired') : ('Please select at least one assessment category.' | t: 'staff.agencyForm.error.assessmentCategoryRequired') }}</span> }
           </div>
           @if (consultancy && model.financialVerification) {

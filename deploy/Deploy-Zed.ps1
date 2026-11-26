@@ -13,7 +13,7 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0114 by their objects and
+    5. Verify       reads the databases: every migration of this release is there (0073-0115 by their objects and
                     procedure texts), and the three portals answer over HTTPS.
   2026-11-19: migration 0102 (surveillance rounds go by round robin to another agency, never the certifying one; one
   agency login serves Bronze, Silver and Gold surveillance; blocked agencies are not offered on Allot Surveillance); 0103 (agency rejection reasons and automatic re-allotment); 0104 (My Documents with two records of a level).
@@ -193,6 +193,7 @@ try {
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0112 fee sets by date of effect'; Test = (Has-Col 'dbo.AssessmentFee' 'EffectiveFrom') + ' AND ' + (Has-Col 'dbo.AssessmentFee' 'EffectiveTo') + ' AND ' + (Has-Text 'dbo.SP_MSME_GET_PAYMENT_DETAILS' '/*V4_0112*/') }
         @{ Dbs = @('ZED_CONSULTANT'); Name = '0113 consultancy questionnaire'; Test = "OBJECT_ID(N'dbo.Sections', N'U') IS NOT NULL AND OBJECT_ID(N'dbo.Evidences', N'U') IS NOT NULL AND " + (Has-Text 'dbo.SP_MSME_ZERO_PAYMENT_DETAILS' '/*V4_0113*/') }
         @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0113 consultancy questionnaire'; Test = (Has-Text 'dbo.SP_CONSULTANCY_MSME_PAYMENT_GATEWAY_DETAILS' '/*V4_0113*/') }
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0115 Operation Admins with every agency'; Test = "EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0 AND major_id = OBJECT_ID(N'dbo.V4SubUsers') AND name = N'V4_0115_EveryAgency')" }
         @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0114 incentive screens to the Incentives Master Admin'; Test = "EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0 AND major_id = OBJECT_ID(N'dbo.V4SubUsers') AND name = N'V4_0114_IncentiveScreens')" }
     )
     foreach ($r in $release) {
