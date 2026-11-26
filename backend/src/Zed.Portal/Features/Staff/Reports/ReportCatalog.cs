@@ -120,6 +120,15 @@ public static class ReportCatalog
         (UserRole.SuperAdmin, "Basic Info of FINANCIAL PERFORMANCE (PREVIOUS FINANCIAL YEAR)", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_09", null, null),
         (UserRole.SuperAdmin, "List Of Technolgy Upgradation Statuses", "SP_DYNAMIC_REPORT_LIST_TECH_UPGRADE_STATUSES", null, null),
 
+        // 2026-11-26 (the user: "yes add the consultancy reports for ministry"; the old consultancy portal had none for it): the
+        // handholding lists the Ministry can read (the registered, latest status and payment procedures read its state, RoleId 8;
+        // the organisation lists are national). Not the milestone lists (one organisation's own) nor technology upgradation.
+        (UserRole.Ministry, "List Of Consultancy", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.Ministry, "List Of Consultancy latest status only", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_LATEST_RECORDS", null, null),
+        (UserRole.Ministry, "List of Consultancy Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
+        (UserRole.Ministry, "List Of Consultant Organisations", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES", null, null),
+        (UserRole.Ministry, "List Of Consultants", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS", null, null),
+
         (UserRole.StateCoordinator, "List Of New Transactions", "SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS", null, null),
         (UserRole.StateCoordinator, "List Of Approved Transactions", "SP_DYNAMIC_REPORT_LIST_OF_APPROVED_TRANSACTIONS", null, null),
 

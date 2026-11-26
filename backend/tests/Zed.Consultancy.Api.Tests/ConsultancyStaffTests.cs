@@ -730,6 +730,17 @@ public sealed class ConsultancyStaffTests : IDisposable
         var coNames = (await co.GetFromJsonAsync<JsonElement>("/api/staff/reports")).EnumerateArray().Select(e => e.GetProperty("name").GetString()).ToList();
         Assert.Equal(6, coNames.Count); // site verification: the milestone lists only
         Assert.Equal(HttpStatusCode.NotFound, (await co.GetAsync("/api/staff/reports/list-of-consultancy-payment-received/download")).StatusCode);
+
+        // 2026-11-26 (the user: "yes add the consultancy reports for ministry"): the handholding lists, no milestone or technology list.
+        var min = await ConsultancyLogin.SignInAsync(_host, "MIN1");
+        var minList = (await min.GetFromJsonAsync<JsonElement>("/api/staff/reports")).EnumerateArray().ToList();
+        var minNames = minList.Select(e => e.GetProperty("name").GetString()).ToList();
+        Assert.Equal(["List Of Consultancy", "List Of Consultancy latest status only", "List of Consultancy Payment Received",
+            "List Of Consultant Organisations", "List Of Consultants"], minNames);
+        _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME1", UnitName = "Unit One" }]);
+        var download = await min.GetAsync($"/api/staff/reports/{minList[0].GetProperty("id").GetString()}/download");
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        Assert.Equal("8", FakeSql.Arg(Call("SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME").Args, "RoleId"));
     }
 
     [Fact]
