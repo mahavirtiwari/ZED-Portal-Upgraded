@@ -52,7 +52,7 @@
     }
     @if (isNew) {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? ('{noun} type and certificate' | t: 'staff.assessorForm.type.consultancyTitle' : { noun: noun }) : incentiveAgency ? ('Verification and certificate' | t: 'staff.assessorForm.incentive.title') : ('Assessments and certificate' | t: 'staff.assessorForm.type.title') }}</h4>
+        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? ('{noun} type and certificate' | t: 'staff.assessorForm.type.consultancyTitle' : { noun: noun }) : incentiveAgency ? ('Verification' | t: 'staff.assessorForm.incentive.title') : ('Assessments and certificate' | t: 'staff.assessorForm.type.title') }}</h4>
         @if (incentiveAgency) {
           <!-- 2026-11-26 (the user: "Onsite is visible. But the agency have only permissions to do the desktop only"): an incentive
                verification agency's assessor verifies scheme applications in the agency's one mode, never a certification level. -->

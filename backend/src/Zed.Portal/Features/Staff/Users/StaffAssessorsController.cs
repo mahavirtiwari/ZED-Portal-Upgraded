@@ -329,6 +329,8 @@ public sealed class StaffAssessorsController(
     public async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> Create(CreateRequest req, CancellationToken ct)
     {
         if (host.IsConsultancy() && req.AssessorType == ConsultancyUsers.TechnicalExpert) return await CreateTechnicalExpertAsync(req, ct);
+        // 2026-11-26 (the user: "There is no certificate issuance" for an incentive scheme officer): typed, as a technical expert.
+        if (IncentiveAgency) return await CreateOfficerAsync(req, ct);
         var mode = await ProfessionalVerification.ModeAsync(settings, ct);
         // 2026-11-14: one kind of assessor; the agency ticks the levels and modes, and the old type follows them.
         (string Stored, string Type)? scope = null;
@@ -423,13 +425,38 @@ public sealed class StaffAssessorsController(
             history: Profile(name!, mail!, mobile, values!, sectors, null, ConsultancyUsers.TechnicalExpert, null, null, null, null));
     }
 
+    /// <summary>
+    /// 2026-11-26: an incentive verification agency's Verification Officer (RoleId 3): not a certified professional, so the agency
+    /// types the name, e-mail and mobile number; no certificate, PAN, lookup or certification levels.
+    /// </summary>
+    private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> CreateOfficerAsync(CreateRequest req, CancellationToken ct)
+    {
+        if (!StaffUserRules.TryText(req.UserName, 100, true, false, out var name)) return this.Problem400("Please enter the name (up to 100 characters).");
+        var mail = req.EmailId?.Trim();
+        if (!StaffUserRules.IsEmail(mail)) return this.Problem400("Please enter a valid Email ID.");
+        var mobile = req.MobileNo?.Trim();
+        if (mobile is null || !StaffUserRules.MobilePattern().IsMatch(mobile)) return this.Problem400("Please enter a valid 10 digit mobile number.");
+        var (sectors, areas) = await LoadOptionsAsync(ct);
+        var (values, valuesError) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, null,
+            req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: null);
+        if (valuesError is not null) return this.Problem400(valuesError);
+        var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
+        if (activityError is not null) return this.Problem400(activityError);
+
+        var password = SecureRandom.Password();
+        const string type = StaffUserRules.AssessorTypeAssessor;
+        return await InsertAsync(Parameters(values!, null, name!, mail!, mobile, Passwords.StoredValueFor(password), type, null, null),
+            name!, mail!, mobile, password, bronze: false, type, ct, activity,
+            history: Profile(name!, mail!, mobile, values!, sectors, null, type, null, null, activity, null), officer: true);
+    }
+
     /// <summary>Hashes for the passwords set here (docs/PASSWORDS.md); <c>password</c> below is the generated one (mailed only when set-password links are off), the procedure gets its stored value.</summary>
     private PasswordStore Passwords => PasswordStore.For(db, HttpContext.RequestServices);
 
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
         object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct,
-        string? activity = null, string? pan = null, string? scope = null, AccountProfile? history = null)
+        string? activity = null, string? pan = null, string? scope = null, AccountProfile? history = null, bool officer = false)
     {
         var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", parameters, ct);
         var newId = result.Scalar(0);
@@ -459,6 +486,7 @@ public sealed class StaffAssessorsController(
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
+            : officer ? "Verification Officer Login Details for the ZED incentive schemes - " + newId
             : (bronze ? "Bronze Assessor" : "Assessor") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId;
         // A one-time link to set the password, not the password (StaffWelcomeLogin); the office's copy has neither.
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId!, (int)UserRole.DesktopAssessor, password, UserId, ct);

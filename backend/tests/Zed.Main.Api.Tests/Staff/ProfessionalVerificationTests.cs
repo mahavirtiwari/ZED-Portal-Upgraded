@@ -110,6 +110,24 @@ public sealed class ProfessionalVerificationTests : IDisposable
         Assert.Equal("typed@zed.test", Assert.Single(_host.Email.Sent).To);
     }
 
+    /// <summary>2026-11-26 (the user: "There is no certificate issuance" for an incentive scheme officer).</summary>
+    [Fact]
+    public async Task An_incentive_agency_adds_a_verification_officer_without_certificate_or_pan()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.Incentives.Agencies.IncentiveAgencies.KindOfSql] = args =>
+            FakeSql.Arg(args, "UserId") == "AGENCY1" ? [new { RoleId = 2, AgencyKind = "SchemeDesktop", CreatorKind = (string?)null }] : [];
+        var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        var r = await client.PostAsJsonAsync("/api/staff/users/assessors", Body(new() { ["certificateNo"] = null, ["pan"] = null, ["assessorType"] = null }));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var insert = Call("SP_INSERT_USER");
+        Assert.Equal(("Typed Pro", "typed@zed.test", "9222222222"), (FakeSql.Arg(insert.Args, "UserName"), FakeSql.Arg(insert.Args, "Email"), FakeSql.Arg(insert.Args, "MobileNo")));
+        Assert.Null(FakeSql.Arg(insert.Args, "CertificateNo"));
+        Assert.StartsWith("Verification Officer Login Details", Assert.Single(_host.Email.Sent).Subject);
+        // The typed details are still required.
+        var bad = await client.PostAsJsonAsync("/api/staff/users/assessors", Body(new() { ["certificateNo"] = null, ["pan"] = null, ["mobileNo"] = "12" }));
+        Assert.Equal("Please enter a valid 10 digit mobile number.", await bad.ProblemTitle());
+    }
+
     [Theory]
     [InlineData("pan", null, "Please enter a valid PAN (e.g. ABCDE1234F).")]
     [InlineData("pan", "ABCD1234F", "Please enter a valid PAN (e.g. ABCDE1234F).")]

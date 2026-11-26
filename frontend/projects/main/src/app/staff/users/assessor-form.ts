@@ -476,7 +476,9 @@ export class AssessorFormPage implements HasUnsavedChanges {
 
   /** Consultancy technical expert: no lookup, the details are typed. */
   protected get typed(): boolean {
-    return this.consultancy && this.model.assessorType === 'TechnicalExpert';
+    // 2026-11-26 (the user: "not required for incentive scheme officer addition. There is no certificate issuance"): an incentive
+    // agency's verification officer is typed too (no certificate number, PAN or lookup).
+    return (this.consultancy && this.model.assessorType === 'TechnicalExpert') || (this.incentiveAgency && this.isNew);
   }
 
   /** Verification off: a certified professional's certificate number, PAN, name, e-mail and mobile are typed (no SEARCH). */
@@ -530,6 +532,7 @@ export class AssessorFormPage implements HasUnsavedChanges {
     const noun = this.noun.toLowerCase();
     if (!this.isAgency) return null;
     if (!this.isNew) return t('staff.assessorForm.editSubtitle', 'Address, ID proof, states, sectors and areas of the {noun}.', { noun });
+    if (this.typed && this.incentiveAgency) return t('staff.assessorForm.officerSubtitle', 'Enter the name, e-mail and mobile number of the verification officer.');
     if (this.typed) return t('staff.assessorForm.typedSubtitle', 'Enter the name, e-mail and mobile number of the technical expert.');
     if (this.verifyOff) return t('staff.assessorForm.verifyOffSubtitle', 'Enter the certificate number, PAN, name, e-mail and mobile number of the {noun} as on the certificate.', { noun });
     return this.byApi

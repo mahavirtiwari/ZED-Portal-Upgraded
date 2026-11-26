@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9692,
+  "count": 9693,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -33223,7 +33223,7 @@
     },
     {
       "key": "staff.assessorForm.incentive.title",
-      "standard": "Verification and certificate",
+      "standard": "Verification",
       "kind": "heading",
       "portal": "staff",
       "page": "assessorForm",
@@ -33361,6 +33361,18 @@
       "key": "staff.assessorForm.noun.consultant",
       "standard": "Consultant/Expert",
       "kind": "text",
+      "portal": "staff",
+      "page": "assessorForm",
+      "pageName": "Assessor form",
+      "placeholders": [],
+      "files": [
+        "staff/users/assessor-form.ts"
+      ]
+    },
+    {
+      "key": "staff.assessorForm.officerSubtitle",
+      "standard": "Enter the name, e-mail and mobile number of the verification officer.",
+      "kind": "heading",
       "portal": "staff",
       "page": "assessorForm",
       "pageName": "Assessor form",
