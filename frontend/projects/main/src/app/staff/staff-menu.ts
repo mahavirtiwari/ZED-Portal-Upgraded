@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
-import { LABELS } from '../portal-labels';
+import { INCENTIVE_OFFICER, LABELS } from '../portal-labels';
 import { INCENTIVE_GROUPS, groupText } from './schemes/incentives.api';
 import { allLevels, isLegacyLevel, levelName } from '../msme/shared/levels';
 import { t } from '../content/page-text';
@@ -184,7 +184,9 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'], group: 'Assessment' },
   // 2026-11-26: an incentive verification agency's home too (the applications allotted to it).
   { label: 'Incentives Dashboard', route: INCENTIVES_DASHBOARD_ROUTE, roles: [R.MasterAdmin, R.Agency], agencyKinds: ['incentives', 'desktop', 'onsite'] },
-  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency], agencyKinds: ALL_KINDS },
+  { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency] },
+  // 2026-11-26: an incentive verification agency calls them its Verification Officers (the same page).
+  { label: 'Verification Officers', route: '/staff/users/my-assessors', roles: [R.Agency], agencyKinds: ['desktop', 'onsite'] },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'], group: 'Allotment' },
   { label: 'SA Allotment', legacyPath: '/Assessment/SaAllotment', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Allotment' },
   { label: 'Desktop Verification', legacyPath: '/Assessment/DaVerification', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
@@ -457,6 +459,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Assessment Agencies': () => t('staff.menu.item.assessmentAgenciesLabel', 'Assessment Agencies'),
   'Agency Level Allocation': () => t('staff.menu.item.agencyLevelAllocationLabel', 'Agency Level Allocation'),
   'Assessors': () => t('staff.menu.item.assessorsLabel', 'Assessors'),
+  'Verification Officers': () => t('staff.menu.item.verificationOfficersLabel', 'Verification Officers'),
   'Payment Received': () => t('staff.menu.item.paymentReceivedLabel', 'Payment Received'),
   'Allot Assessment': () => t('staff.menu.item.allotAssessmentLabel', 'Allot Assessment'),
   'Assessment Monitoring': () => t('staff.menu.item.assessmentMonitoringLabel', 'Assessment Monitoring'),
@@ -594,6 +597,8 @@ export function staffRoleName(
   if (user.roleId === 10) return t('staff.menu.role.dashboardAdminLabel', 'Dashboard Admin');
   // 2026-11-24: a Master Admin of the incentive screens only.
   if (isIncentivesAdmin(user)) return t('staff.menu.role.incentivesMasterAdminLabel', 'Incentives Master Admin');
+  // 2026-11-26: an incentive verification agency's assessor is its Verification Officer.
+  if (user.roleId === R.DesktopAssessor && ['desktop', 'onsite'].includes(agencyKindOf(user.subRoles ?? []))) return INCENTIVE_OFFICER.assessor;
   if (user.roleId === 6) return user.isNeftAdmin ? t('staff.menu.role.neftAdminLabel', 'NEFT Admin') : t('staff.menu.role.msmeDfoLabel', 'MSME DFO');
   // 2026-11-15: Consultancy's agencies and assessors are its Consultant Organisations and Consultants/Experts ("Desktop Assessor, ZED Handholding").
   if (system === 'consultancy' && (user.roleId === R.Agency || user.roleId === R.DesktopAssessor))

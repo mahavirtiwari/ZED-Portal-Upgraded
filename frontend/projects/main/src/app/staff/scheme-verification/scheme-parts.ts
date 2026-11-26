@@ -32,7 +32,7 @@ export interface CheckEdit {
         <div><dt>{{ 'Claim for' | t: 'staff.schemeVerification.detail.level' }}</dt><dd>{{ a.levelName || '–' }}@if (a.certNo) { · {{ a.certNo }} }</dd></div>
         <div><dt>{{ 'Submitted on' | t: 'staff.schemeVerification.detail.submitted' }}</dt><dd>{{ day(a.submittedOn) || '–' }}</dd></div>
         <div><dt>{{ 'Agency' | t: 'staff.schemeVerification.detail.agency' }}</dt><dd>{{ a.agency ? (a.agency.name || a.agency.userId) + ' (' + a.agency.userId + ')' : '–' }}</dd></div>
-        <div><dt>{{ 'Assessor' | t: 'staff.schemeVerification.detail.assessor' }}</dt><dd>{{ a.assessor ? (a.assessor.name || a.assessor.userId) + ' (' + a.assessor.userId + ')' : '–' }}</dd></div>
+        <div><dt>{{ 'Verification Officer' | t: 'staff.schemeVerification.detail.assessor' }}</dt><dd>{{ a.assessor ? (a.assessor.name || a.assessor.userId) + ' (' + a.assessor.userId + ')' : '–' }}</dd></div>
         <div><dt>{{ 'Correction rounds' | t: 'staff.schemeVerification.detail.rounds' }}</dt>
           <dd>{{ '{used} of {total}' | t: 'staff.schemeVerification.detail.roundsValue' : { used: a.correctionRound, total: a.correctionRounds } }}@if (a.status === 'Correction' && a.correctionDueOn) { · {{ 'due {due}' | t: 'staff.schemeVerification.detail.due' : { due: day(a.correctionDueOn) } }} }</dd></div>
         @if (a.accountNo) {
@@ -219,7 +219,7 @@ const BANK_SECTION = '_bank';
         <div><dt>{{ 'Onsite agency' | t: 'staff.schemeVerification.onsite.agency' }}</dt>
           <dd>@if (o.agency) { {{ (o.agency.name || o.agency.userId) + ' (' + o.agency.userId + ')' }}@if (o.allotmentType === 'RoundRobin') { <span class="zed-chip so-auto">{{ 'Auto' | t: 'staff.schemeVerification.row.auto' }}</span> } } @else { {{ 'Not yet allotted' | t: 'staff.schemeVerification.row.notAllotted' }} }</dd></div>
         <div><dt>{{ 'Allotted on' | t: 'staff.schemeVerification.onsite.allotted' }}</dt><dd>{{ day(o.allotmentDate) || '–' }}</dd></div>
-        <div><dt>{{ 'Onsite assessor' | t: 'staff.schemeVerification.onsite.assessor' }}</dt>
+        <div><dt>{{ 'Onsite verification officer' | t: 'staff.schemeVerification.onsite.assessor' }}</dt>
           <dd>{{ o.assessor ? (o.assessor.name || o.assessor.userId) + ' (' + o.assessor.userId + ')' : ('Not yet named' | t: 'staff.schemeVerification.row.notNamed') }}</dd></div>
         <div><dt>{{ 'Date of verification' | t: 'staff.schemeVerification.onsite.visit' }}</dt><dd data-visit>{{ o.visitStartedOn ? day(o.visitStartedOn) + ' ' + time(o.visitStartedOn) : ('Visit not started' | t: 'staff.schemeVerification.onsite.notStarted') }}</dd></div>
         @if (o.visitSubmittedOn) { <div><dt>{{ 'Report submitted on' | t: 'staff.schemeVerification.onsite.submitted' }}</dt><dd>{{ day(o.visitSubmittedOn) }}</dd></div> }
@@ -238,7 +238,7 @@ const BANK_SECTION = '_bank';
         </div>
       }
       @if (o.remarks) {
-        <p class="so-remarks"><b>{{ 'Assessor’s remarks' | t: 'staff.schemeVerification.onsite.remarks' }}:</b> {{ o.remarks }}</p>
+        <p class="so-remarks"><b>{{ 'Verification Officer’s remarks' | t: 'staff.schemeVerification.onsite.remarks' }}:</b> {{ o.remarks }}</p>
       }
       @if (o.photos.length) {
         <h5>{{ 'Photos' | t: 'staff.schemeVerification.onsite.photos' }} <small>{{ '{min} to {max} per item' | t: 'staff.schemeVerification.onsite.photosRule' : { min: o.photosMin, max: o.photosMax } }}</small></h5>

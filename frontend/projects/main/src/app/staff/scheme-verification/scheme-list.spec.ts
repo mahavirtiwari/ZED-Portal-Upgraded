@@ -121,7 +121,7 @@ describe('SchemeListPage', () => {
     // Nothing chosen: the pop-up says so and sends nothing.
     (el.querySelector('zed-confirm-dialog .cd-ok') as HTMLButtonElement).click();
     await settle();
-    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('Please select an assessor.');
+    expect(el.querySelector('zed-confirm-dialog')!.textContent).toContain('Please select a verification officer.');
     const select = el.querySelector('zed-confirm-dialog select') as HTMLSelectElement;
     select.value = 'DA1';
     select.dispatchEvent(new Event('change'));

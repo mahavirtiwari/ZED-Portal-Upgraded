@@ -151,6 +151,13 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
 
     private async Task AgencyAsync(List<Item> items, CancellationToken ct)
     {
+        // 2026-11-26 (the user, incentive verification agency: its home showed the certification work): an incentive agency's own
+        // work only: applications allotted to it to accept (naming a verification officer) and its QC due.
+        if (CurrentUser.HasSubRole(Incentives.Agencies.IncentiveAgencies.DesktopSubRole) || CurrentUser.HasSubRole(Incentives.Agencies.IncentiveAgencies.OnsiteSubRole))
+        {
+            await IncentiveAgencyAsync(items, CurrentUser.HasSubRole(Incentives.Agencies.IncentiveAgencies.OnsiteSubRole), ct);
+            return;
+        }
         var desktop = CurrentUser.HasSubRole(SubRoles.DesktopVerification);
         var site = CurrentUser.HasSubRole(SubRoles.SiteVerification);
         const string daAllotment = "/staff/assessment/da-allotment";
@@ -203,6 +210,22 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
             if (open is not null)
                 items.Add(new Item("quality-agency", "Quality observations to answer", open.Value, Quality, Query("status", "Open"), "bad", "chat"));
         }
+    }
+
+    private async Task IncentiveAgencyAsync(List<Item> items, bool onsite, CancellationToken ct)
+    {
+        var allotment = onsite ? "/staff/scheme-onsite/allotment" : "/staff/schemes-verify/allotment";
+        var qc = onsite ? "/staff/scheme-onsite/qc" : "/staff/schemes-verify/qc";
+        var store = HttpContext.RequestServices.GetRequiredService<Incentives.SchemeStore>();
+        var rows = await Try("incentive-agency", async () => (await Incentives.Staff.SchemeReview.ListAsync(db, store,
+            onsite ? Incentives.Staff.SchemeReview.ListOnsiteAgencySql : Incentives.Staff.SchemeReview.ListAgencySql, UserId,
+            new Incentives.Staff.SchemeReview.ListFilter(null, null, null, null, null), ct)).Rows);
+        if (rows is null) return;
+        var toAccept = onsite ? Incentives.SchemeApplications.OnsiteWithAgency : Incentives.SchemeApplications.WithAgency;
+        if (Opens(allotment))
+            items.Add(new Item("scheme-accept", "Applications to accept", rows.Count(r => r.Status == toAccept), allotment, null, "warn", "people"));
+        if (Opens(qc))
+            items.Add(new Item("scheme-qc", "Applications awaiting your QC", rows.Count(r => r.Status == Incentives.SchemeApplications.Qc), qc, null, "info", "check"));
     }
 
     private async Task AssessorAsync(List<Item> items, CancellationToken ct)

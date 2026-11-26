@@ -236,7 +236,7 @@ internal sealed class SchemeNotifier(
     public Task ReturnedByAssessorAsync(SchemeCase c, string assessor, string reason, CancellationToken ct) => SafeAsync(async () =>
     {
         var (unit, scheme) = await BasicsAsync(c, ct);
-        await Mailer.SendAsync<StaffSchemeReturnedByAssessorEmail>(await EmailOfAsync(c.Agency, ct), $"Returned by the assessor: {scheme} – {c.ZedId}", new()
+        await Mailer.SendAsync<StaffSchemeReturnedByAssessorEmail>(await EmailOfAsync(c.Agency, ct), $"Returned by the verification officer: {scheme} – {c.ZedId}", new()
         {
             [nameof(StaffSchemeReturnedByAssessorEmail.ZedId)] = c.ZedId,
             [nameof(StaffSchemeReturnedByAssessorEmail.UnitName)] = unit?.Name ?? "",

@@ -92,7 +92,7 @@ public sealed class OnsiteAgencyController(
             var renaming = c.Status == OnsiteWithAssessor && c.Row.VisitStartedOn is null;
             if (c.Status != OnsiteWithAgency && !renaming) return this.Problem400("This application has already been processed.");
             var assessor = (await AssessorOptions(c.Code, ct)).FirstOrDefault(a => string.Equals(a.UserId, req.AssessorUserId?.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (assessor is null) return this.Problem400("Please select one of your assessors ticked for onsite verification of this scheme.");
+            if (assessor is null) return this.Problem400("Please select one of your verification officers ticked for onsite verification of this scheme.");
             var before = c.OnsiteAssessor;
             c.OnsiteAssessor = assessor.UserId;
             c.Status = OnsiteWithAssessor;
@@ -101,7 +101,7 @@ public sealed class OnsiteAgencyController(
                 ? $"Onsite assessor changed from {before} to {assessor.UserId} by agency {UserId}"
                 : $"Scheme application accepted for onsite verification by agency {UserId}; assessor {assessor.UserId}", ct);
             await Notifier.OnsiteAllottedToAssessorAsync(c, ct);
-            return new MessageResponse(renaming ? "Assessor changed." : "Application accepted. The assessor verifies it at the unit in the assessor app.");
+            return new MessageResponse(renaming ? "Verification officer changed." : "Application accepted. The verification officer verifies it at the unit in the assessor app.");
         }
     }
 
@@ -177,19 +177,19 @@ public sealed class OnsiteAgencyController(
     public async Task<ActionResult<MessageResponse>> Back(int id, BackRequest req, CancellationToken ct)
     {
         if (SchemeReview.Text(req.Remarks, SchemeReview.MaxRemarks) is not { } remarks)
-            return this.Problem400($"Please enter the remarks for the assessor (up to {SchemeReview.MaxRemarks} characters).");
+            return this.Problem400($"Please enter the remarks for the verification officer (up to {SchemeReview.MaxRemarks} characters).");
         using (await SchemeCaseLock.EnterAsync(ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != Qc) return this.Problem400("This application is not waiting for QC.");
-            if (c.OnsiteAssessor is null) return this.Problem400("No assessor is named for this application.");
+            if (c.OnsiteAssessor is null) return this.Problem400("No verification officer is named for this application.");
             c.ReasonForRejectionAgency = $"Onsite QC remarks: {remarks}";
             c.EligibleAmount = null;
             c.Status = OnsiteWithAssessor;
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application sent back to the onsite assessor in QC by agency {UserId}: {remarks}", ct);
             await Notifier.OnsiteQcSentBackAsync(c, remarks, ct);
-            return new MessageResponse("Application sent back to the assessor.");
+            return new MessageResponse("Application sent back to the verification officer.");
         }
     }
 

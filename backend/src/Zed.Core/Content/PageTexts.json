@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9688,
+  "count": 9692,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -1084,6 +1084,30 @@
       "placeholders": [],
       "files": [
         "staff/excel-tools.ts"
+      ]
+    },
+    {
+      "key": "common.incentive.officerLabel",
+      "standard": "Verification Officer",
+      "kind": "label",
+      "portal": "common",
+      "page": "incentive",
+      "pageName": "Incentive",
+      "placeholders": [],
+      "files": [
+        "portal-labels.ts"
+      ]
+    },
+    {
+      "key": "common.incentive.officersLabel",
+      "standard": "Verification Officers",
+      "kind": "label",
+      "portal": "common",
+      "page": "incentive",
+      "pageName": "Incentive",
+      "placeholders": [],
+      "files": [
+        "portal-labels.ts"
       ]
     },
     {
@@ -74714,6 +74738,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.verificationOfficersLabel",
+      "standard": "Verification Officers",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.zedIdHistoryLabel",
       "standard": "ZED ID History",
       "kind": "label",
@@ -80218,6 +80254,18 @@
     {
       "key": "staff.myAssessors.empty.consultancyText",
       "standard": "Add a consultant/expert: search the certified professional by certificate number and registered e-mail, then fill in the address and ID proof.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "myAssessors",
+      "pageName": "My assessors",
+      "placeholders": [],
+      "files": [
+        "staff/users/my-assessors.ts"
+      ]
+    },
+    {
+      "key": "staff.myAssessors.empty.incentiveText",
+      "standard": "Add your first verification officer with the certificate details, then tick the schemes they verify on their page.",
       "kind": "note",
       "portal": "staff",
       "page": "myAssessors",
@@ -101628,7 +101676,7 @@
     },
     {
       "key": "staff.schemeOnsite.column.assessors",
-      "standard": "Assessors",
+      "standard": "Verification Officers",
       "kind": "label",
       "portal": "staff",
       "page": "schemeOnsite",
@@ -102448,7 +102496,7 @@
     },
     {
       "key": "staff.schemeVerification.action.back",
-      "standard": "Back to assessor",
+      "standard": "Back to verification officer",
       "kind": "button",
       "portal": "staff",
       "page": "schemeVerification",
@@ -102514,7 +102562,7 @@
     },
     {
       "key": "staff.schemeVerification.action.rename",
-      "standard": "Change assessor",
+      "standard": "Change verification officer",
       "kind": "button",
       "portal": "staff",
       "page": "schemeVerification",
@@ -102602,7 +102650,7 @@
     },
     {
       "key": "staff.schemeVerification.allotment.sub",
-      "standard": "Accept the applications allotted to your agency naming an assessor, or reject them with a reason.",
+      "standard": "Accept the applications allotted to your agency naming a verification officer, or reject them with a reason.",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
@@ -102838,7 +102886,7 @@
     },
     {
       "key": "staff.schemeVerification.column.assessor",
-      "standard": "Assessor",
+      "standard": "Verification Officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -102946,7 +102994,7 @@
     },
     {
       "key": "staff.schemeVerification.detail.assessor",
-      "standard": "Assessor",
+      "standard": "Verification Officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103138,7 +103186,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.acceptTitle",
-      "standard": "Accept and name an assessor",
+      "standard": "Accept and name a verification officer",
       "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103320,7 +103368,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.assessorLabel",
-      "standard": "Assessor",
+      "standard": "Verification Officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103332,7 +103380,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.assessorRequired",
-      "standard": "Please select an assessor.",
+      "standard": "Please select a verification officer.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103368,7 +103416,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.backLabel",
-      "standard": "Remarks for the assessor",
+      "standard": "Remarks for the verification officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103380,7 +103428,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.backTitle",
-      "standard": "Back to the assessor",
+      "standard": "Back to the verification officer",
       "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103416,7 +103464,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.noAssessor",
-      "standard": "None of your assessors is ticked for this scheme. Tick one on its page first.",
+      "standard": "None of your verification officers is ticked for this scheme. Tick one on its page first.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103440,7 +103488,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.noOnsiteAssessor",
-      "standard": "None of your assessors is ticked for onsite verification of this scheme. Tick one on its page first.",
+      "standard": "None of your verification officers is ticked for onsite verification of this scheme. Tick one on its page first.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103452,7 +103500,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.onsiteAcceptMessage",
-      "standard": "No date is fixed: the day the assessor starts the visit in the assessor app is saved as the date of verification.",
+      "standard": "No date is fixed: the day the verification officer starts the visit in the assessor app is saved as the date of verification.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103464,7 +103512,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.onsiteAcceptTitle",
-      "standard": "Accept and name the onsite assessor",
+      "standard": "Accept and name the onsite verification officer",
       "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103514,7 +103562,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.onsiteBackMessage",
-      "standard": "Your assessor verifies the application again at the unit in the assessor app.",
+      "standard": "Your verification officer verifies the application again at the unit in the assessor app.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103660,7 +103708,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.renameTitle",
-      "standard": "Name another assessor",
+      "standard": "Name another verification officer",
       "kind": "heading",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103732,7 +103780,7 @@
     },
     {
       "key": "staff.schemeVerification.dialog.returnMessage",
-      "standard": "Your agency names another assessor.",
+      "standard": "Your agency names another verification officer.",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -103948,7 +103996,7 @@
     },
     {
       "key": "staff.schemeVerification.onsite.assessor",
-      "standard": "Onsite assessor",
+      "standard": "Onsite verification officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104085,7 +104133,7 @@
     },
     {
       "key": "staff.schemeVerification.onsite.remarks",
-      "standard": "Assessor’s remarks",
+      "standard": "Verification Officer’s remarks",
       "kind": "text",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104181,7 +104229,7 @@
     },
     {
       "key": "staff.schemeVerification.onsiteAllotment.sub",
-      "standard": "Accept the applications allotted to your agency for onsite verification naming an assessor (no date: the day of the visit is the date of verification), or reject them with a reason.",
+      "standard": "Accept the applications allotted to your agency for onsite verification naming a verification officer (no date: the day of the visit is the date of verification), or reject them with a reason.",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104206,7 +104254,7 @@
     },
     {
       "key": "staff.schemeVerification.onsiteQc.sub",
-      "standard": "Check your assessor’s onsite report and approve the amount, or send the application back to the assessor with remarks.",
+      "standard": "Check your verification officer’s onsite report and approve the amount, or send the application back to the verification officer with remarks.",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104231,7 +104279,7 @@
     },
     {
       "key": "staff.schemeVerification.qc.sub",
-      "standard": "Approve the amount your assessor recommended, or send the application back with remarks.",
+      "standard": "Approve the amount your verification officer recommended, or send the application back with remarks.",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104438,7 +104486,7 @@
     },
     {
       "key": "staff.schemeVerification.status.onsiteWithAssessor",
-      "standard": "With onsite assessor",
+      "standard": "With onsite verification officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104522,7 +104570,7 @@
     },
     {
       "key": "staff.schemeVerification.status.withAssessor",
-      "standard": "With assessor",
+      "standard": "With verification officer",
       "kind": "label",
       "portal": "staff",
       "page": "schemeVerification",
@@ -104546,7 +104594,7 @@
     },
     {
       "key": "staff.schemeVerification.ticks.assessorHelp",
-      "standard": "The agency can name this assessor for the schemes ticked here (within the agency’s own ticks).",
+      "standard": "The agency can name this verification officer for the schemes ticked here (within the agency’s own ticks).",
       "kind": "note",
       "portal": "staff",
       "page": "schemeVerification",

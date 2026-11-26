@@ -24,7 +24,7 @@ import { SchemeTick, SchemeVerificationApi } from './scheme-verification.api';
       @if (open()) {
       <p class="sub">{{ kind() === 'agencies'
         ? ('Applications of a scheme go by round robin to the agencies ticked for it (in the unit’s state and district).' | t: 'staff.schemeVerification.ticks.agencyAreaHelp')
-        : ('The agency can name this assessor for the schemes ticked here (within the agency’s own ticks).' | t: 'staff.schemeVerification.ticks.assessorHelp') }}</p>
+        : ('The agency can name this verification officer for the schemes ticked here (within the agency’s own ticks).' | t: 'staff.schemeVerification.ticks.assessorHelp') }}</p>
       @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
       @if (rows().length) {
         <table class="table stp-table">

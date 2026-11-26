@@ -469,6 +469,17 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.Equal(("Onsite", 1), (onsite.GetProperty("agency").GetString(), onsite.GetProperty("headline").GetProperty("applications").GetInt32()));
         // An assessment agency keeps the certification dashboard.
         Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn("AGENCY1")).GetAsync(IncentivesAdmins.DashboardApi)).StatusCode);
+
+        // Its bell: its own work only (applications to accept, its QC), no certification items.
+        _host.Sql.Queries[SchemeReview.ListAgencySql] = _ =>
+        [
+            new { Id = 1, ZedId = "ZEDM1", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "WithAgency", VerificationStatus = 2, CertificationBodyUserId = "DESK1" },
+            new { Id = 4, ZedId = "ZEDM4", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Qc", VerificationStatus = 5, CertificationBodyUserId = "DESK1" },
+            new { Id = 5, ZedId = "ZEDM5", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Qc", VerificationStatus = 5, CertificationBodyUserId = "DESK1" },
+        ];
+        var bell = await (await SignIn("DESK1")).GetFromJsonAsync<JsonElement>("/api/staff/attention?fresh=true");
+        var items = bell.GetProperty("items").EnumerateArray().ToDictionary(i => i.GetProperty("key").GetString()!, i => i.GetProperty("count").GetInt32());
+        Assert.Equal(new Dictionary<string, int> { ["scheme-accept"] = 1, ["scheme-qc"] = 2 }, items);
     }
 
     // ----- the normal Assessment Agencies page -----

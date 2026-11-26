@@ -11,12 +11,12 @@ export function statusLabel(status: SchemeStatus | string): string {
   switch (status) {
     case 'Submitted': return t('staff.schemeVerification.status.submitted', 'Waiting for allotment');
     case 'WithAgency': return t('staff.schemeVerification.status.withAgency', 'With agency');
-    case 'WithAssessor': return t('staff.schemeVerification.status.withAssessor', 'With assessor');
+    case 'WithAssessor': return t('staff.schemeVerification.status.withAssessor', 'With verification officer');
     case 'Verifying': return t('staff.schemeVerification.status.verifying', 'Verifying');
     case 'Correction': return t('staff.schemeVerification.status.correction', 'Correction with unit');
     case 'OnsiteAllot': return t('staff.schemeVerification.status.onsiteAllot', 'Waiting for onsite agency');
     case 'OnsiteWithAgency': return t('staff.schemeVerification.status.onsiteWithAgency', 'With onsite agency');
-    case 'OnsiteWithAssessor': return t('staff.schemeVerification.status.onsiteWithAssessor', 'With onsite assessor');
+    case 'OnsiteWithAssessor': return t('staff.schemeVerification.status.onsiteWithAssessor', 'With onsite verification officer');
     case 'OnsiteVisit': return t('staff.schemeVerification.status.onsiteVisit', 'Onsite visit started');
     case 'Qc': return t('staff.schemeVerification.status.qc', 'Agency QC');
     case 'Approved': return t('staff.schemeVerification.status.approved', 'Approved');
@@ -191,18 +191,18 @@ export const schemeAsks = {
     const options = await firstValueFrom(api.assessors(a.id, role));
     return {
       ask: {
-        title: rename ? t('staff.schemeVerification.dialog.renameTitle', 'Name another assessor')
-          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptTitle', 'Accept and name the onsite assessor')
-          : t('staff.schemeVerification.dialog.acceptTitle', 'Accept and name an assessor'),
+        title: rename ? t('staff.schemeVerification.dialog.renameTitle', 'Name another verification officer')
+          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptTitle', 'Accept and name the onsite verification officer')
+          : t('staff.schemeVerification.dialog.acceptTitle', 'Accept and name a verification officer'),
         subtitle: subtitle(a),
         message: !options.length
-          ? (onsite ? t('staff.schemeVerification.dialog.noOnsiteAssessor', 'None of your assessors is ticked for onsite verification of this scheme. Tick one on its page first.')
-            : t('staff.schemeVerification.dialog.noAssessor', 'None of your assessors is ticked for this scheme. Tick one on its page first.'))
-          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptMessage', 'No date is fixed: the day the assessor starts the visit in the assessor app is saved as the date of verification.') : null,
+          ? (onsite ? t('staff.schemeVerification.dialog.noOnsiteAssessor', 'None of your verification officers is ticked for onsite verification of this scheme. Tick one on its page first.')
+            : t('staff.schemeVerification.dialog.noAssessor', 'None of your verification officers is ticked for this scheme. Tick one on its page first.'))
+          : onsite ? t('staff.schemeVerification.dialog.onsiteAcceptMessage', 'No date is fixed: the day the verification officer starts the visit in the assessor app is saved as the date of verification.') : null,
         choice: {
-          label: t('staff.schemeVerification.dialog.assessorLabel', 'Assessor'),
+          label: t('staff.schemeVerification.dialog.assessorLabel', 'Verification Officer'),
           options: options.map((o) => ({ value: o.userId, label: `${o.userName} (${o.userId})` })),
-          requiredMessage: t('staff.schemeVerification.dialog.assessorRequired', 'Please select an assessor.'),
+          requiredMessage: t('staff.schemeVerification.dialog.assessorRequired', 'Please select a verification officer.'),
         },
         confirmLabel: rename ? t('staff.schemeVerification.dialog.renameButton', 'Save') : t('staff.schemeVerification.dialog.acceptButton', 'Accept'),
       },
@@ -268,10 +268,10 @@ export const schemeAsks = {
   back(api: SchemeVerificationApi, a: SchemeRef, onsite = false): { ask: ConfirmAsk; run: DialogRun } {
     return {
       ask: {
-        title: t('staff.schemeVerification.dialog.backTitle', 'Back to the assessor'),
+        title: t('staff.schemeVerification.dialog.backTitle', 'Back to the verification officer'),
         subtitle: subtitle(a),
-        message: onsite ? t('staff.schemeVerification.dialog.onsiteBackMessage', 'Your assessor verifies the application again at the unit in the assessor app.') : null,
-        reason: { label: t('staff.schemeVerification.dialog.backLabel', 'Remarks for the assessor'), maxLength: 1000 },
+        message: onsite ? t('staff.schemeVerification.dialog.onsiteBackMessage', 'Your verification officer verifies the application again at the unit in the assessor app.') : null,
+        reason: { label: t('staff.schemeVerification.dialog.backLabel', 'Remarks for the verification officer'), maxLength: 1000 },
         confirmLabel: t('staff.schemeVerification.dialog.backButton', 'Send back'),
       },
       run: async (r) => (await firstValueFrom(onsite ? api.back(a.id, r.reason, 'onsite') : api.back(a.id, r.reason))).message,
@@ -296,7 +296,7 @@ export const schemeAsks = {
       ask: {
         title: t('staff.schemeVerification.dialog.returnTitle', 'Return to the agency'),
         subtitle: subtitle(a),
-        message: t('staff.schemeVerification.dialog.returnMessage', 'Your agency names another assessor.'),
+        message: t('staff.schemeVerification.dialog.returnMessage', 'Your agency names another verification officer.'),
         reason: { label: t('staff.schemeVerification.dialog.returnLabel', 'Reason'), maxLength: 1000 },
         confirmLabel: t('staff.schemeVerification.dialog.returnButton', 'Return'),
         danger: true,

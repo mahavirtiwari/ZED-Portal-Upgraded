@@ -1,7 +1,7 @@
 @* 2026-11-20 (incentive schemes): to the MSME when an onsite assessor is named for its application (an onsite visit is due). Editable under Admin → Email Templates → Incentive mails. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
-    <p style="font-size: 13px; margin-bottom: 0;">Your application for <b>@SchemeName</b> has passed the desktop verification. An assessor will visit your unit for the onsite verification. The details are as follows:</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your application for <b>@SchemeName</b> has passed the desktop verification. A verification officer will visit your unit for the onsite verification. The details are as follows:</p>
     <StaffSchemeDetailTable Rows="@Rows" />
     <p style="font-size: 13px; margin-bottom: 0;">Please keep the documents and the items of your application ready for verification.</p>
     <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your correspondence.</p>
@@ -18,5 +18,5 @@
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 
     private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
-        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Assessor Name", AssessorName), new("Assessor Mobile", AssessorMobile), new("Agency", AgencyName)];
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Verification Officer", AssessorName), new("Verification Officer Mobile", AssessorMobile), new("Agency", AgencyName)];
 }

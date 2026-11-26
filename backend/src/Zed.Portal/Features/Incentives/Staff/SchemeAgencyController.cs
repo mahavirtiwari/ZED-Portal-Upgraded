@@ -78,7 +78,7 @@ public sealed class SchemeAgencyController(
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != WithAgency) return this.Problem400("This application has already been processed.");
             var assessor = (await AssessorOptions(c.Code, ct)).FirstOrDefault(a => string.Equals(a.UserId, req.AssessorUserId?.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (assessor is null) return this.Problem400("Please select one of your assessors ticked for this scheme.");
+            if (assessor is null) return this.Problem400("Please select one of your verification officers ticked for this scheme.");
             c.Assessor = assessor.UserId;
             c.AssessorAcceptedOn = null;
             c.Status = WithAssessor;
@@ -160,7 +160,7 @@ public sealed class SchemeAgencyController(
     public async Task<ActionResult<MessageResponse>> Back(int id, BackRequest req, CancellationToken ct)
     {
         if (SchemeReview.Text(req.Remarks, SchemeReview.MaxRemarks) is not { } remarks)
-            return this.Problem400($"Please enter the remarks for the assessor (up to {SchemeReview.MaxRemarks} characters).");
+            return this.Problem400($"Please enter the remarks for the verification officer (up to {SchemeReview.MaxRemarks} characters).");
         using (await SchemeCaseLock.EnterAsync(ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
@@ -171,7 +171,7 @@ public sealed class SchemeAgencyController(
             if (!await SchemeCases.SaveAsync(db, c, ct)) return Changed();
             await SchemeCases.HistoryAsync(db, log, c, $"Scheme application sent back to the assessor in QC by agency {UserId}: {remarks}", ct);
             await Notifier.QcSentBackAsync(c, remarks, ct);
-            return new MessageResponse("Application sent back to the assessor.");
+            return new MessageResponse("Application sent back to the verification officer.");
         }
     }
 

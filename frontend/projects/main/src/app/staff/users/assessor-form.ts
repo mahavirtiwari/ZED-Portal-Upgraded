@@ -3,6 +3,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
+import { INCENTIVE_OFFICER } from '../../portal-labels';
 import { firstValueFrom } from 'rxjs';
 import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
@@ -197,7 +198,7 @@ export class AssessorFormPage implements HasUnsavedChanges {
   protected readonly managesLogin = this.isAgency || this.auth.currentUser()?.roleId === StaffRole.MasterAdmin;
 
   protected get crumbs() {
-    return staffCrumbs({ label: this.consultancy ? t('staff.assessorForm.crumb.consultants', 'Consultants/Experts') : t('staff.assessorForm.crumb.assessors', 'Assessors'), link: this.backLink },
+    return staffCrumbs({ label: this.consultancy ? t('staff.assessorForm.crumb.consultants', 'Consultants/Experts') : this.incentiveAgency ? INCENTIVE_OFFICER.assessors : t('staff.assessorForm.crumb.assessors', 'Assessors'), link: this.backLink },
       { label: this.userId ?? t('staff.assessorForm.crumb.add', 'Add') });
   }
 
@@ -459,7 +460,8 @@ export class AssessorFormPage implements HasUnsavedChanges {
   protected readonly siteVerification = (this.auth.currentUser()?.subRoles ?? []).includes('SiteVerification');
 
   protected get noun(): string {
-    return this.consultancy ? t('staff.assessorForm.noun.consultant', 'Consultant/Expert') : t('staff.assessorForm.noun.assessor', 'Assessor');
+    // 2026-11-26: an incentive verification agency's assessor is its Verification Officer.
+    return this.consultancy ? t('staff.assessorForm.noun.consultant', 'Consultant/Expert') : this.incentiveAgency ? INCENTIVE_OFFICER.assessor : t('staff.assessorForm.noun.assessor', 'Assessor');
   }
 
   /** Consultancy: Technical Expert is offered only to a CO with SiteVerification. */

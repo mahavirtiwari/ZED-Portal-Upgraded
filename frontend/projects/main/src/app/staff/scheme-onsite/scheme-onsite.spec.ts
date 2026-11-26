@@ -81,7 +81,7 @@ describe('scheme onsite verification pages', () => {
     // The onsite assessor is shown, not the desktop one.
     expect(el.textContent).toContain('Onsite Assessor');
     expect(el.textContent).not.toContain('Desk Assessor');
-    expect(button('Change assessor').length).toBe(1);
+    expect(button('Change verification officer').length).toBe(1);
 
     button('Accept')[0].click();
     await settle();

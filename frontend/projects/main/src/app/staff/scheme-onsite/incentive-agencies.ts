@@ -56,7 +56,7 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
               <th>{{ 'SPOC' | t: 'staff.schemeOnsite.column.spoc' }}</th>
               <th>{{ 'States and districts' | t: 'staff.schemeOnsite.column.area' }}</th>
               <th>{{ 'Schemes' | t: 'staff.schemeOnsite.column.schemes' }}</th>
-              <th class="text-end">{{ 'Assessors' | t: 'staff.schemeOnsite.column.assessors' }}</th>
+              <th class="text-end">{{ 'Verification Officers' | t: 'staff.schemeOnsite.column.assessors' }}</th>
               <th>{{ 'Status' | t: 'staff.schemeOnsite.column.status' }}</th>
               <th class="text-end">{{ 'Action' | t: 'staff.schemeOnsite.column.action' }}</th>
             </tr>

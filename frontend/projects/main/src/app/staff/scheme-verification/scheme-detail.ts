@@ -43,10 +43,10 @@ type DetailAction = 'allot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'a
           <button type="button" class="btn btn-primary" (click)="act('accept')">{{ 'Accept' | t: 'staff.schemeVerification.action.accept' }}</button>
         }
         @if (d.actions.onsiteAssessor) {
-          <button type="button" class="btn btn-outline-primary" (click)="act('onsiteRename')">{{ 'Change assessor' | t: 'staff.schemeVerification.action.rename' }}</button>
+          <button type="button" class="btn btn-outline-primary" (click)="act('onsiteRename')">{{ 'Change verification officer' | t: 'staff.schemeVerification.action.rename' }}</button>
         }
         @if (d.actions.onsiteQc) {
-          <button type="button" class="btn btn-outline-primary" (click)="act('back')">{{ 'Back to assessor' | t: 'staff.schemeVerification.action.back' }}</button>
+          <button type="button" class="btn btn-outline-primary" (click)="act('back')">{{ 'Back to verification officer' | t: 'staff.schemeVerification.action.back' }}</button>
           <button type="button" class="btn btn-primary" (click)="act('approve')">{{ 'Approve' | t: 'staff.schemeVerification.action.approve' }}</button>
         }
         @if (d.actions.hold) {
@@ -58,7 +58,7 @@ type DetailAction = 'allot' | 'resume' | 'rejectHold' | 'accept' | 'reject' | 'a
           <button type="button" class="btn btn-primary" (click)="act('accept')">{{ 'Accept' | t: 'staff.schemeVerification.action.accept' }}</button>
         }
         @if (d.actions.qc) {
-          <button type="button" class="btn btn-outline-primary" (click)="act('back')">{{ 'Back to assessor' | t: 'staff.schemeVerification.action.back' }}</button>
+          <button type="button" class="btn btn-outline-primary" (click)="act('back')">{{ 'Back to verification officer' | t: 'staff.schemeVerification.action.back' }}</button>
           <button type="button" class="btn btn-primary" (click)="act('approve')">{{ 'Approve' | t: 'staff.schemeVerification.action.approve' }}</button>
         }
       </div>

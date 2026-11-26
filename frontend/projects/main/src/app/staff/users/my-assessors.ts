@@ -1,10 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { LABELS } from '../../portal-labels';
-import { STAFF_SYSTEM } from '../staff-menu';
+import { INCENTIVE_OFFICER, LABELS } from '../../portal-labels';
+import { STAFF_SYSTEM, agencyKindOf } from '../staff-menu';
 import { FormsModule } from '@angular/forms';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { RouterLink } from '@angular/router';
-import { MessageResponse, apiErrorMessage } from '@zed/shared';
+import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { assessorBlockAsk, assessorBlockNote, assessorTypeLabel, initialsOf, levelMedals } from './assessor-list';
 import { OwnAssessorRow, UsersApi } from './users.api';
@@ -44,7 +44,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
-    @if (totalTiles().length) {
+    <!-- 2026-11-26: not for an incentive verification agency (its work is scheme applications, not certification levels). -->
+    @if (totalTiles().length && !incentiveAgency) {
       <!-- 2026-11-18 (the user: "same logic in the assessment agency login"): the agency's own units per certification level. -->
       <h3 class="ma-cap">{{ 'Units Allocated to Your Agency' | t: 'staff.myAssessors.totals.title' }}</h3>
       <zed-list-counts class="ma-totals" [counts]="totalTiles()" [label]="'Units allocated to your agency per level' | t: 'staff.myAssessors.totals.aria'" />
@@ -61,6 +62,8 @@ type StatusFilter = 'all' | 'active' | 'blocked';
         <p class="muted ma-empty-text">
           @if (consultancy) {
             {{ 'Add a consultant/expert: search the certified professional by certificate number and registered e-mail, then fill in the address and ID proof.' | t: 'staff.myAssessors.empty.consultancyText' }}
+          } @else if (incentiveAgency) {
+            {{ 'Add your first verification officer with the certificate details, then tick the schemes they verify on their page.' | t: 'staff.myAssessors.empty.incentiveText' }}
           } @else {
             {{ 'Add your first assessor: search the certified professional by certificate number and registered e-mail, then fill in the address, ID proof, states, NIC sectors and sector type.' | t: 'staff.myAssessors.empty.text' }}
           }
@@ -92,7 +95,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   <th class="text-center">{{ 'Status' | t: 'staff.myAssessors.column.status' }}</th>
                   <th class="text-end">{{ 'Action(s)' | t: 'staff.myAssessors.column.consultancyActions' }}</th>
                 } @else {
-                  <th>{{ 'Assessor' | t: 'staff.myAssessors.column.assessor' }}</th>
+                  <th>{{ incentiveAgency ? labels.assessor : ('Assessor' | t: 'staff.myAssessors.column.assessor') }}</th>
                   <th>{{ 'Levels and modes' | t: 'staff.myAssessors.column.levels' }}</th>
                   <th>{{ 'Allocated' | t: 'staff.myAssessors.column.allocated' }}</th>
                   <th>{{ 'Sector' | t: 'staff.myAssessors.column.sector' }}</th>
@@ -244,7 +247,11 @@ type StatusFilter = 'all' | 'active' | 'blocked';
 export class MyAssessorsPage {
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly consultancy = this.system === 'consultancy';
-  protected readonly labels = LABELS[this.system];
+  /** 2026-11-26: an incentive verification agency's assessors are its Verification Officers. */
+  protected readonly incentiveAgency = ['desktop', 'onsite'].includes(agencyKindOf(inject(AuthService).currentUser()?.subRoles ?? []));
+  protected readonly labels = this.incentiveAgency
+    ? { ...LABELS[this.system], get assessor() { return INCENTIVE_OFFICER.assessor; }, get assessors() { return INCENTIVE_OFFICER.assessors; } }
+    : LABELS[this.system];
   protected readonly crumbs = computed(() => staffCrumbs({ label: this.labels.assessors }));
   private readonly api = inject(UsersApi);
   private readonly toast = inject(ToastService);

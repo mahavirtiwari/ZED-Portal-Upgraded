@@ -167,7 +167,7 @@ describe('staff menu', () => {
   describe('onsite verification agencies (2026-11-20, incentive schemes phase 2)', () => {
     it('gives an onsite agency only its assessors, sub-users and the scheme onsite allotment and QC', () => {
       // 2026-11-26: its own dashboard (the incentives one, its applications) and Documents (its own audience) too.
-      expect(labels(StaffRole.Agency, [ONSITE_SUB_ROLE])).toEqual(['Incentives Dashboard', 'Assessors', 'Scheme Onsite Allotment', 'Scheme Onsite QC', 'Documents', 'Sub-Users']);
+      expect(labels(StaffRole.Agency, [ONSITE_SUB_ROLE])).toEqual(['Incentives Dashboard', 'Verification Officers', 'Scheme Onsite Allotment', 'Scheme Onsite QC', 'Documents', 'Sub-Users']);
       expect(menuFor(StaffRole.Agency, [ONSITE_SUB_ROLE]).map((i) => i.route)).toEqual([
         '/staff/incentives/dashboard', '/staff/users/my-assessors', '/staff/scheme-onsite/allotment', '/staff/scheme-onsite/qc', '/staff/documents', '/staff/sub-users',
       ]);
@@ -201,7 +201,7 @@ describe('staff menu', () => {
 
   describe('desktop verification agencies (2026-11-20, the product owner)', () => {
     it('gives a desktop agency only its assessors, sub-users and the scheme allotment and QC', () => {
-      expect(labels(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE])).toEqual(['Incentives Dashboard', 'Assessors', 'Scheme Allotment', 'Scheme QC', 'Documents', 'Sub-Users']);
+      expect(labels(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE])).toEqual(['Incentives Dashboard', 'Verification Officers', 'Scheme Allotment', 'Scheme QC', 'Documents', 'Sub-Users']);
       expect(menuFor(StaffRole.Agency, [DESKTOP_SCHEME_SUB_ROLE]).map((i) => i.route)).toEqual([
         '/staff/incentives/dashboard', '/staff/users/my-assessors', '/staff/schemes-verify/allotment', '/staff/schemes-verify/qc', '/staff/documents', '/staff/sub-users',
       ]);

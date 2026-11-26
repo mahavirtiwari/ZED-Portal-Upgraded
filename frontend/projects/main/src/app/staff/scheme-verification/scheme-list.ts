@@ -89,7 +89,7 @@ const ONSITE_MODES: readonly Mode[] = ['onsiteAllotment', 'onsiteQc'];
               <th class="text-end">{{ 'Claimed (Rs.)' | t: 'staff.schemeVerification.column.claimed' }}</th>
               <th class="text-end">{{ 'Eligible / approved (Rs.)' | t: 'staff.schemeVerification.column.eligible' }}</th>
               @if (mode() === 'admin') { <th>{{ 'Agency' | t: 'staff.schemeVerification.column.agency' }}</th> }
-              @if (mode() !== 'assessor') { <th>{{ 'Assessor' | t: 'staff.schemeVerification.column.assessor' }}</th> }
+              @if (mode() !== 'assessor') { <th>{{ 'Verification Officer' | t: 'staff.schemeVerification.column.assessor' }}</th> }
               @if (onsite()) { <th>{{ 'Date of verification' | t: 'staff.schemeVerification.column.visit' }}</th> }
               <th>{{ 'Status' | t: 'staff.schemeVerification.column.status' }}</th>
               <th class="text-end">{{ 'Action' | t: 'staff.schemeVerification.column.action' }}</th>
@@ -201,11 +201,11 @@ export class SchemeListPage {
   });
   protected readonly subtitle = computed(() => {
     switch (this.mode()) {
-      case 'allotment': return t('staff.schemeVerification.allotment.sub', 'Accept the applications allotted to your agency naming an assessor, or reject them with a reason.');
-      case 'qc': return t('staff.schemeVerification.qc.sub', 'Approve the amount your assessor recommended, or send the application back with remarks.');
+      case 'allotment': return t('staff.schemeVerification.allotment.sub', 'Accept the applications allotted to your agency naming a verification officer, or reject them with a reason.');
+      case 'qc': return t('staff.schemeVerification.qc.sub', 'Approve the amount your verification officer recommended, or send the application back with remarks.');
       case 'assessor': return t('staff.schemeVerification.assessor.sub', 'Accept the applications your agency named you for and verify each answer and document.');
-      case 'onsiteAllotment': return t('staff.schemeVerification.onsiteAllotment.sub', 'Accept the applications allotted to your agency for onsite verification naming an assessor (no date: the day of the visit is the date of verification), or reject them with a reason.');
-      case 'onsiteQc': return t('staff.schemeVerification.onsiteQc.sub', 'Check your assessor’s onsite report and approve the amount, or send the application back to the assessor with remarks.');
+      case 'onsiteAllotment': return t('staff.schemeVerification.onsiteAllotment.sub', 'Accept the applications allotted to your agency for onsite verification naming a verification officer (no date: the day of the visit is the date of verification), or reject them with a reason.');
+      case 'onsiteQc': return t('staff.schemeVerification.onsiteQc.sub', 'Check your verification officer’s onsite report and approve the amount, or send the application back to the verification officer with remarks.');
       default: return t('staff.schemeVerification.admin.sub', 'Applications go to agencies by round robin as they are submitted; you can allot, re-allot and decide on those on hold.');
     }
   });
@@ -296,10 +296,10 @@ export class SchemeListPage {
           add('accept', t('staff.schemeVerification.action.accept', 'Accept'), 'people');
           add('reject', t('staff.schemeVerification.action.reject', 'Reject'), 'trash', true);
         }
-        if (r.status === 'OnsiteWithAssessor' && !r.visitStartedOn) add('onsiteRename', t('staff.schemeVerification.action.rename', 'Change assessor'), 'people');
+        if (r.status === 'OnsiteWithAssessor' && !r.visitStartedOn) add('onsiteRename', t('staff.schemeVerification.action.rename', 'Change verification officer'), 'people');
         if (r.status === 'Qc') {
           add('approve', t('staff.schemeVerification.action.approve', 'Approve'), 'award');
-          add('back', t('staff.schemeVerification.action.back', 'Back to assessor'), 'refresh');
+          add('back', t('staff.schemeVerification.action.back', 'Back to verification officer'), 'refresh');
         }
         break;
       case 'allotment':
@@ -310,7 +310,7 @@ export class SchemeListPage {
         }
         if (r.status === 'Qc') {
           add('approve', t('staff.schemeVerification.action.approve', 'Approve'), 'award');
-          add('back', t('staff.schemeVerification.action.back', 'Back to assessor'), 'refresh');
+          add('back', t('staff.schemeVerification.action.back', 'Back to verification officer'), 'refresh');
         }
         break;
       case 'assessor':

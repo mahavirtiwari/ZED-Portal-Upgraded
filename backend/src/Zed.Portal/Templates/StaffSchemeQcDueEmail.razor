@@ -22,5 +22,5 @@
     private string LoginUrl => PublicBaseUrl.TrimEnd('/') + "/login";
 
     private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
-        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Assessor ID", AssessorUserId), new("Claimed Amount (Rs.)", ClaimAmount), new("Eligible Amount (Rs.)", EligibleAmount)];
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Scheme", SchemeName), new("Verification Officer ID", AssessorUserId), new("Claimed Amount (Rs.)", ClaimAmount), new("Eligible Amount (Rs.)", EligibleAmount)];
 }

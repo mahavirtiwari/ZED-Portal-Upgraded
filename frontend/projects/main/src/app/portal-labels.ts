@@ -46,5 +46,14 @@ export const LABELS: Record<PortalSystem, PortalLabels> = {
   },
 };
 
+/**
+ * 2026-11-26 (the user: "suggest alternative name for Assessors in incentive scheme", chosen "Verification Officers"): what the
+ * incentive verification agencies (desktop / onsite) call their assessors; the certification logins keep "Assessors".
+ */
+export const INCENTIVE_OFFICER = {
+  get assessor() { return t('common.incentive.officerLabel', 'Verification Officer'); },
+  get assessors() { return t('common.incentive.officersLabel', 'Verification Officers'); },
+};
+
 /** Labels of this build. */
 export const PORTAL_LABELS: PortalLabels = LABELS[PORTAL_SYSTEM];
