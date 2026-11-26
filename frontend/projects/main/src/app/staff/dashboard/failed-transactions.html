@@ -30,11 +30,11 @@
         <th class="text-center">{{ 'Size/Gender' | t: 'staff.failedTransactions.column.sizeGender' }}</th>
         <th class="text-center">{{ 'Social Category' | t: 'staff.failedTransactions.column.social' }}</th>
         <th class="text-center">{{ 'Joining Reward' | t: 'staff.failedTransactions.column.reward' }}</th>
-        <th>{{ 'StateName' | t: 'staff.failedTransactions.column.state' }}<br />{{ 'District Name' | t: 'staff.failedTransactions.column.district' }}</th>
+        <th>{{ 'State' | t: 'staff.failedTransactions.column.state' }}<br />{{ 'District' | t: 'staff.failedTransactions.column.district' }}</th>
         <th class="text-center">{{ 'Amount Paid (Rs.)' | t: 'staff.failedTransactions.column.amount' }}</th>
-        <th class="text-center">{{ 'TAN (%)' | t: 'staff.failedTransactions.column.tds' }}</th>
+        <th class="text-center">{{ 'TDS (%)' | t: 'staff.failedTransactions.column.tds' }}</th>
         <th class="text-center">{{ 'Subsidy (%)' | t: 'staff.failedTransactions.column.subsidy' }}</th>
-        <th class="text-center">{{ 'GSTIN/ TAN Number' | t: 'staff.failedTransactions.column.tax' }}</th>
+        <th class="text-center">{{ 'GSTIN / TAN' | t: 'staff.failedTransactions.column.tax' }}</th>
       </tr>
     </thead>
     <tbody>
@@ -89,8 +89,8 @@
           </div>
           <div class="modal-body">
             <div class="label-highlight mb-3">
-              <div><strong>{{ 'ZedId:' | t: 'staff.failedTransactions.update.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
-              <div><strong>{{ 'UnitName:' | t: 'staff.failedTransactions.update.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
+              <div><strong>{{ 'ZED ID:' | t: 'staff.failedTransactions.update.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
+              <div><strong>{{ 'Unit name:' | t: 'staff.failedTransactions.update.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
               <div><strong>{{ 'Certification:' | t: 'staff.failedTransactions.update.certificationLabel' }}</strong> {{ m['Certification'] }}</div>
             </div>
             <div class="row">

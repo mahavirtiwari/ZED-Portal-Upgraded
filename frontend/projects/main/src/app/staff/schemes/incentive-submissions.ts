@@ -90,7 +90,7 @@ import { staffCrumbs } from '../staff-crumbs';
       <div class="label-highlight4">
         <div class="no-incentive-block">
           <img src="Images/svgicons/no-incentive.svg" alt="" />
-          <p>{{ 'No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.' | t: 'staff.incentiveSubmissions.empty' }}</p>
+          <p>{{ 'No incentive has been reported for the units yet.' | t: 'staff.incentiveSubmissions.emptyStaff' }}</p>
         </div>
       </div>
     }

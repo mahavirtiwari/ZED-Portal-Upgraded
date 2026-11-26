@@ -7,6 +7,7 @@ import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 import { TextPipe } from '../../content/page-text';
+import { formatCount } from './charts';
 
 /**
  * Financial support per unit (SuperAdmin, CitizenFeedback). Port of Views/Dashboard/FinancialSupport.cshtml.
@@ -55,12 +56,13 @@ import { TextPipe } from '../../content/page-text';
               <td class="text-center">{{ pager.serial($index) }}</td>
               <td class="text-center">{{ s['Certification'] }}</td>
               <td class="cell-lines"><strong>{{ s['PUnitName'] }}</strong><span>{{ s['ZedId'] }}</span><strong>{{ s['EnterpriseType'] }}</strong></td>
-              <td class="text-center">@if (s['ZedIdStatus']) { <span class="status-badge is-info">{{ s['ZedIdStatus'] }}</span> }</td>
+              <td class="text-center">@if (s['ZedIdStatus']) { <span class="status-badge" [class.is-info]="s['ZedIdStatus'] !== 'Rejected'" [class.is-danger]="s['ZedIdStatus'] === 'Rejected'">{{ s['ZedIdStatus'] }}</span> }</td>
               <td>{{ s['UnitAddress'] }}</td>
               <td>{{ s['PStateName'] }}</td>
-              <td class="text-center">{{ s['CertificationFee'] }}</td>
-              <td class="text-center">{{ s['Amount'] }}</td>
-              <td class="text-center">{{ s['FinancialSupport'] }}</td>
+              <!-- 2026-11-26 (Dashboard Admin audit): amounts with Indian grouping (10,000), a dash where the procedure has none. -->
+              <td class="text-end amount">{{ money(s['CertificationFee']) }}</td>
+              <td class="text-end amount">{{ money(s['Amount']) }}</td>
+              <td class="text-end amount"><strong>{{ money(s['FinancialSupport']) }}</strong></td>
             </tr>
           } @empty {
             @if (!loading()) { <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
@@ -76,6 +78,7 @@ import { TextPipe } from '../../content/page-text';
     /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
+    .amount { white-space: nowrap; font-variant-numeric: tabular-nums; }
   `,
 })
 export class FinancialSupportPage {
@@ -100,6 +103,13 @@ export class FinancialSupportPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** An amount as 10,000 (Indian grouping); '—' when empty (Financial Assistance rows have no fee or payment). */
+  protected money(value: unknown): string {
+    if (value === null || value === undefined || value === '') return '—';
+    const n = Number(value);
+    return Number.isFinite(n) ? formatCount(n) : String(value);
   }
 
   protected onFilter(f: ListFilter): void {

@@ -44,7 +44,7 @@ public sealed class ReportsTests : IDisposable
             ((IEnumerable<string>)args!.GetType().GetProperty("Names")!.GetValue(args)!).Where(n => !n.Contains("_MINISTRY_UPTO_")).Select(n => (object)n);
         var super = await _host.SignInAsync("SUPER1");
         var names = (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).EnumerateArray().Select(r => r.GetProperty("name").GetString()).ToList();
-        Assert.Equal(49, names.Count);
+        Assert.Equal(47, names.Count); // 49 before 2026-11-26 (one per name)
         Assert.DoesNotContain("Master Report Of Registered Units (Up to 2025-26)", names);
     }
 
@@ -61,7 +61,13 @@ public sealed class ReportsTests : IDisposable
         Assert.Equal(2, (await state.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
         var super = await _host.SignInAsync("SUPER1");
         // 43 before MSME KAWACH was removed (its five reports); 2026-11-08 the Dashboard Admin also has Citizen Feedback's 12.
-        Assert.Equal(50, (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
+        // 2026-11-26: one per name (the Citizen Feedback agency and assessor lists repeated the Super Admin's names).
+        var superList = await super.GetFromJsonAsync<JsonElement>("/api/staff/reports");
+        Assert.Equal(48, superList.GetArrayLength());
+        var superNames = superList.EnumerateArray().Select(r => r.GetProperty("name").GetString()!).ToList();
+        Assert.Equal(superNames.Count, superNames.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Contains("List Of ZED Assessment Agencies", superNames);
+        Assert.Equal("list-of-assessment-agencies", superList.EnumerateArray().Single(r => r.GetProperty("name").GetString() == "List Of ZED Assessment Agencies").GetProperty("id").GetString());
 
         // A Citizen Feedback report runs as the old Citizen Feedback login (RoleId 11).
         _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_PAID"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000001" }]);

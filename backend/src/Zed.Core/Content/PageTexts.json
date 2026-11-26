@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9692,
+  "count": 9693,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -44529,6 +44529,18 @@
       ]
     },
     {
+      "key": "staff.dashboard.analytics.status.headingAll",
+      "standard": "Applications by level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "dashboard",
+      "pageName": "Dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/analytics.ts"
+      ]
+    },
+    {
       "key": "staff.dashboard.analytics.surveillance.basisCompletedLabel",
       "standard": "By surveillance completion date",
       "kind": "label",
@@ -55633,7 +55645,7 @@
     },
     {
       "key": "staff.failedTransactions.column.district",
-      "standard": "District Name",
+      "standard": "District",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -55693,7 +55705,7 @@
     },
     {
       "key": "staff.failedTransactions.column.state",
-      "standard": "StateName",
+      "standard": "State",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -55717,7 +55729,7 @@
     },
     {
       "key": "staff.failedTransactions.column.tax",
-      "standard": "GSTIN/ TAN Number",
+      "standard": "GSTIN / TAN",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -55729,7 +55741,7 @@
     },
     {
       "key": "staff.failedTransactions.column.tds",
-      "standard": "TAN (%)",
+      "standard": "TDS (%)",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -56199,7 +56211,7 @@
     },
     {
       "key": "staff.failedTransactions.update.unitNameLabel",
-      "standard": "UnitName:",
+      "standard": "Unit name:",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -56211,7 +56223,7 @@
     },
     {
       "key": "staff.failedTransactions.update.zedIdLabel",
-      "standard": "ZedId:",
+      "standard": "ZED ID:",
       "kind": "label",
       "portal": "staff",
       "page": "failedTransactions",
@@ -62026,8 +62038,8 @@
       ]
     },
     {
-      "key": "staff.incentiveSubmissions.empty",
-      "standard": "No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.",
+      "key": "staff.incentiveSubmissions.emptyStaff",
+      "standard": "No incentive has been reported for the units yet.",
       "kind": "note",
       "portal": "staff",
       "page": "incentiveSubmissions",
@@ -90983,7 +90995,7 @@
     },
     {
       "key": "staff.registeredMsme.disable.unitNameLabel",
-      "standard": "UnitName:",
+      "standard": "Unit name:",
       "kind": "label",
       "portal": "staff",
       "page": "registeredMsme",
@@ -90995,7 +91007,7 @@
     },
     {
       "key": "staff.registeredMsme.disable.zedIdLabel",
-      "standard": "ZedId:",
+      "standard": "ZED ID:",
       "kind": "label",
       "portal": "staff",
       "page": "registeredMsme",

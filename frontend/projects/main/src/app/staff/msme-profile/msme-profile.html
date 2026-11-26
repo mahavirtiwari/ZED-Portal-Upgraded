@@ -63,7 +63,7 @@
         } @else {
         <dl class="pf-facts">
           @for (r of s.rows; track r.field) {
-            <div class="pf-fact" [class.wide]="r.wide">
+            <div class="pf-fact" [class.wide]="r.wide || isLongEdit(r.edit)">
               <dt>{{ r.label }}</dt>
               <dd [attr.data-field]="r.field">
                 @if (editing() && r.edit === 'twoDigitActivity') {

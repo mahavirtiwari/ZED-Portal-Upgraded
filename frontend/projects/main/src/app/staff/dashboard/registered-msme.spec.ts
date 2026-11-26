@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AuthService } from '@zed/shared';
 import { RegisteredMsmePage } from './registered-msme';
+import { AdminPortalService } from '../admin-portal';
 
 describe('RegisteredMsmePage', () => {
   let fixture: ComponentFixture<RegisteredMsmePage>;
@@ -46,7 +47,10 @@ describe('RegisteredMsmePage', () => {
     }).compileComponents();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.verify();
+    sessionStorage.removeItem('zed.adminPortal');
+  });
 
   it('shows QC users the list and current-portal links but no admin column or actions', async () => {
     await render(17);
@@ -94,6 +98,27 @@ describe('RegisteredMsmePage', () => {
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
     expect(el.textContent).toContain('DISABLED');
+  });
+
+  it('a Dashboard Admin on Handholding gets the handholding columns and actions, not the certification ones (2026-11-26)', async () => {
+    TestBed.inject(AdminPortalService).select('consultancy');
+    await render(10, { Certification: 'Silver', CertificationPhase: null, MileStoneNo: 1, CertificationStatus: 2, CertificationBodyUserId: 'ZEDCO0207', UserName: 'abc1' });
+    const heads = [...el.querySelectorAll('thead th')].map((h) => h.textContent!.trim());
+    expect(heads).toContain('Milestone');
+    expect(heads).not.toContain('Certification Phase');
+    expect(heads.some((h) => h.includes('First Surveillance'))).toBe(false);
+    expect(heads.some((h) => h.startsWith('Consultant Organisation'))).toBe(true);
+    expect(button('Resend Details')).toBeUndefined();
+    expect(button('Assessment')).toBeUndefined();
+    expect(button('IN-ACTIVE MSME')).toBeDefined();
+  });
+
+  it('shows a dash for a unit that has not applied, and the surveillance date label only with a date', async () => {
+    await render(10, { Certification: null, CertificationPhase: null, CertificationStatus: null });
+    const cells = [...el.querySelectorAll('tbody tr td')].map((c) => c.textContent!.trim());
+    expect(cells[1]).toBe('—');
+    expect(cells[2]).toBe('—');
+    expect(el.textContent).not.toContain('Surveillance 1 date:');
   });
 
   it('searches by the chosen field from page 1', async () => {

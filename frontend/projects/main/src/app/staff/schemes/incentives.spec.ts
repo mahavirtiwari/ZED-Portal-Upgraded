@@ -66,7 +66,8 @@ describe('incentive pages', () => {
     expect(req.request.params.has('certification')).toBe(false);
     req.flush([]);
     await settle();
-    expect(el.textContent).toContain('No Ministry of MSME Incentives available currently');
+    // 2026-11-26: staff wording (the old line was the MSME page's).
+    expect(el.textContent).toContain('No incentive has been reported for the units yet.');
   });
 
   const typeIn = (id: string, value: string) => {

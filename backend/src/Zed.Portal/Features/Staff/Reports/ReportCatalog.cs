@@ -24,11 +24,11 @@ public static class ReportCatalog
 {
     private static readonly (UserRole Role, string Name, string Procedure)[] Entries =
     [
-        (UserRole.SuperAdmin, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES"),
-        (UserRole.SuperAdmin, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS"),
+        (UserRole.SuperAdmin, "List Of ZED Assessment Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES"),
+        (UserRole.SuperAdmin, "List Of ZED Assessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS"),
         (UserRole.SuperAdmin, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED"),
         (UserRole.SuperAdmin, "List of ZED Payment Failed", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_FAILED_TRANSACTIONS"),
-        (UserRole.SuperAdmin, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
+        (UserRole.SuperAdmin, "List Of ZED Registered MSME", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
         (UserRole.SuperAdmin, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME"),
         (UserRole.SuperAdmin, "ZED Status Report", "SP_DYNAMIC_REPORT_ZEDID_STATUS"),
         (UserRole.SuperAdmin, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME"),
@@ -63,14 +63,14 @@ public static class ReportCatalog
         (UserRole.SuperAdmin, "New Status Report Of Silver with Dates", "SP_DYNAMIC_REPORT_ZEDID_ALL_DATES_SILVER"),
         (UserRole.SuperAdmin, "New Status Report Of Gold with Dates", "SP_DYNAMIC_REPORT_ZEDID_ALL_DATES_GOLD"),
 
-        (UserRole.CitizenFeedback, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
+        (UserRole.CitizenFeedback, "List Of ZED Registered MSME", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
         (UserRole.CitizenFeedback, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME"),
         (UserRole.CitizenFeedback, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED"),
         (UserRole.CitizenFeedback, "List of ZED Payment Received who paid through paymentGateway", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_PAID"),
         (UserRole.CitizenFeedback, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME"),
         (UserRole.CitizenFeedback, "List Of ZED Financial Support", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS_WITH_DATES"),
-        (UserRole.CitizenFeedback, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY"),
-        (UserRole.CitizenFeedback, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY"),
+        (UserRole.CitizenFeedback, "List Of ZED Assessment Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY"),
+        (UserRole.CitizenFeedback, "List Of ZED Assessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY"),
         (UserRole.CitizenFeedback, "Master Report", "SP_DYNAMIC_REPORT_LIST_OF_UNITS_STATUS_MINISTRY"),
         (UserRole.CitizenFeedback, "Master Report 2022-2023", "SP_DYNAMIC_REPORT_LIST_OF_UNITS_STATUS_MINISTRY_2022-2023"),
         (UserRole.CitizenFeedback, "Master Report 2023-2024", "SP_DYNAMIC_REPORT_LIST_OF_UNITS_STATUS_MINISTRY_2023-2024"),
@@ -83,7 +83,7 @@ public static class ReportCatalog
         (UserRole.CitizenFeedback, "Master Report Of Registered Units (Up to 2025-26)", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_UNITS_MINISTRY_UPTO_2025_26"),
         (UserRole.CitizenFeedback, "Master Report Of Registered Units (From 2026-27)", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_UNITS_MINISTRY_FROM_2026_27"),
 
-        (UserRole.Ministry, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
+        (UserRole.Ministry, "List Of ZED Registered MSME", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
         (UserRole.Ministry, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME"),
 
         (UserRole.Agency, "List Of ZED Cases In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
@@ -118,7 +118,7 @@ public static class ReportCatalog
         (UserRole.SuperAdmin, "Basic Info of MEASUREMENT & ANALYSIS", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_07", null, null),
         (UserRole.SuperAdmin, "Basic Info of NATURAL RESOURCES MANAGEMENT", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_08", null, null),
         (UserRole.SuperAdmin, "Basic Info of FINANCIAL PERFORMANCE (PREVIOUS FINANCIAL YEAR)", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_09", null, null),
-        (UserRole.SuperAdmin, "List Of Technolgy Upgradation Statuses", "SP_DYNAMIC_REPORT_LIST_TECH_UPGRADE_STATUSES", null, null),
+        (UserRole.SuperAdmin, "List Of Technology Upgradation Statuses", "SP_DYNAMIC_REPORT_LIST_TECH_UPGRADE_STATUSES", null, null),
 
         // 2026-11-26 (the user: "yes add the consultancy reports for ministry"; the old consultancy portal had none for it): the
         // handholding lists the Ministry can read (the registered, latest status and payment procedures read its state, RoleId 8;
@@ -145,10 +145,10 @@ public static class ReportCatalog
     private static readonly (UserRole Role, string Name, string Procedure, string? SubRole, string? NotSubRole)[] SurveillanceEntries =
     [
         (UserRole.SuperAdmin, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
-        (UserRole.SuperAdmin, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.SuperAdmin, "List Of ZED Registered MSME", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
         (UserRole.SuperAdmin, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
         (UserRole.SuperAdmin, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
-        (UserRole.SuperAdmin, "List Of 1st Suveillance Payment Records who applied for 2nd", "SP_DYNAMIC_REPORT_SECOND_SURVELLIANCE", null, null),
+        (UserRole.SuperAdmin, "List Of 1st Surveillance Payment Records who applied for 2nd", "SP_DYNAMIC_REPORT_SECOND_SURVELLIANCE", null, null),
         (UserRole.SuperAdmin, "ZED Surveillance Report", "SP_DYNAMIC_REPORT_ZED_SURVEILLANCE_REPORT", null, null),
 
         (UserRole.CitizenFeedback, "List Of Surveillance Inprogress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
@@ -156,8 +156,8 @@ public static class ReportCatalog
         (UserRole.CitizenFeedback, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Financial Support", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS", null, null),
-        (UserRole.CitizenFeedback, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY", null, null),
-        (UserRole.CitizenFeedback, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Assessment Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Assessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY", null, null),
 
         (UserRole.Ministry, "List Of Surveillance Inprogress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
         (UserRole.Ministry, "List of Surveillance Completed", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
@@ -167,14 +167,14 @@ public static class ReportCatalog
         (UserRole.Agency, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
     ];
 
-    /// <summary>Reports of a role on a system, filtered by the user's sub-roles where the old page did.</summary>
+    /// <summary>Reports of a role on a system, filtered by the user's sub-roles where the old page did (one per name, as <see cref="For(int)"/>).</summary>
     public static IReadOnlyList<ReportDefinition> For(PortalSystem system, int roleId, IReadOnlyCollection<string> subRoles)
     {
         if (system == PortalSystem.Main) return For(roleId);
         var entries = system == PortalSystem.Consultancy ? ConsultancyEntries : SurveillanceEntries;
         return entries
             .Where(e => Covers(roleId, e.Role) && (e.SubRole is null || subRoles.Contains(e.SubRole)) && (e.NotSubRole is null || !subRoles.Contains(e.NotSubRole)))
-            .Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id).ToList();
+            .Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id).DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>
@@ -207,7 +207,11 @@ public static class ReportCatalog
         procedure.Replace("SP_DYNAMIC_REPORT_", "", StringComparison.Ordinal).Replace('_', '-').ToLowerInvariant();
 
     public static IReadOnlyList<ReportDefinition> For(int roleId) =>
-        Entries.Where(e => Covers(roleId, e.Role)).Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id).ToList();
+        Entries.Where(e => Covers(roleId, e.Role)).Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id)
+            // 2026-11-26 (Dashboard Admin audit): one report per name. A Dashboard Admin has the Super Admin's and the Citizen
+            // Feedback's lists; the latter's agency and assessor lists (the _MINISTRY procedures: the same columns without the
+            // allotment counts) were listed a second time under the same name. The Super Admin's, listed first, stay.
+            .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
     public static ReportDefinition? Find(int roleId, string id) =>
         For(roleId).FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.Ordinal));

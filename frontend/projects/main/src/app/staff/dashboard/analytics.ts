@@ -9,7 +9,7 @@ import { CERTIFICATIONS, SIZES, STATE_NAMES } from './dashboard-filters';
 import { KeyedSheet, sharePercent } from './dashboard-export';
 import { PortalSystem } from '../../portal-system';
 import { levelCodes, levelName } from '../../msme/shared/levels';
-import { STAFF_SYSTEM } from '../staff-menu';
+import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { TextPipe, t } from '../../content/page-text';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -249,7 +249,8 @@ const TREND_COLORS = ['#3ba3ad', '#2f9e58'];
 
       <!-- The page's status cards: the user's applications, with the filters. -->
       <div class="an-status" data-export="levels" [class.is-hidden]="!data()">
-        <h5 class="an-h">{{ 'Applications under your charge' | t: 'staff.dashboard.analytics.status.heading' }}</h5>
+        <!-- 2026-11-26 (Dashboard Admin audit): "under your charge" only for the logins that see their own allotments. -->
+        <h5 class="an-h">{{ ownOnly ? ('Applications under your charge' | t: 'staff.dashboard.analytics.status.heading') : ('Applications by level' | t: 'staff.dashboard.analytics.status.headingAll') }}</h5>
         <ng-content />
       </div>
 
@@ -372,6 +373,8 @@ export class StaffAnalytics {
     return mine.length ? mine : all;
   })();
 
+  /** An agency or assessor: the status cards count its own allotments (StaffDashboardController's ownOnly). */
+  protected readonly ownOnly = ([StaffRole.Agency, StaffRole.DesktopAssessor] as number[]).includes(inject(AuthService).currentUser()?.roleId ?? 0);
   protected readonly states = STATE_NAMES;
   protected readonly sizes = SIZES;
   /** Main: every level (Administration → Certification Levels, the Admin's too; 2026-11-08); elsewhere the portal's own. */

@@ -104,7 +104,8 @@ describe('StaffDashboardPage', () => {
       .toEqual(['Registered units: 7,24,287', 'Certified units: 5,12,808', 'Bronze certified: 5,00,112', 'Silver certified: 7,735', 'Gold certified: 4,961', 'ZED-X certified: 64']);
 
     // The status cards (no Financial Assistance), after the filters and the totals.
-    expect(text(el.querySelector('.an-status h5'))).toBe('Applications under your charge');
+    // 2026-11-26: "under your charge" only for an agency or assessor (their own allotments).
+    expect(text(el.querySelector('.an-status h5'))).toBe('Applications by level');
     expect(el.querySelector('.page-sub')).toBeNull();
     expect(el.querySelector('.an-status [data-field="BronzeTotal"]')!.textContent).toBe('12');
     expect(el.querySelector('[data-field="SaGoldCompleted"]')!.textContent).toBe('7');
@@ -408,6 +409,14 @@ describe('StaffDashboardPage', () => {
     again.flush({ total: 0, items: [] });
     await settle();
     expect(el.querySelector('zed-attention-row section')).toBeNull();
+  });
+
+  it('an agency sees its level cards as "under your charge" (its own allotments; 2026-11-26)', async () => {
+    await create('main', 2);
+    analyticsCall().flush(analytics());
+    for (const r of http.match((x) => x.url === '/api/staff/attention')) r.flush({ total: 0, items: [] });
+    await settle();
+    expect(text(el.querySelector('.an-status h5'))).toBe('Applications under your charge');
   });
 
   it('Export: a pop-up with the filters, the sections and the format; Excel sends the loaded figures, CSV one table', async () => {

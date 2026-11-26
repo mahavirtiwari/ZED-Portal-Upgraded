@@ -4,12 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { AuthService, ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { StaffRole } from '../staff-menu';
+import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { flag, text } from './dashboard-filters';
 import { ListFiltersBar } from './list-controls';
-import { PORTAL_SYSTEM } from '../../portal-system';
-import { PORTAL_LABELS } from '../../portal-labels';
+import { LABELS } from '../../portal-labels';
 import { staffProfileLink } from '../msme-profile/msme-profile';
 import { PagerComponent, ServerPager } from '../pager';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
@@ -38,9 +37,15 @@ export class RegisteredMsmePage {
   private readonly api = inject(DashboardApi);
   private readonly user = inject(AuthService).currentUser;
 
-  /** Resend / In-active (main): a Dashboard Admin with "Can make changes" (2026-11-08). */
-  protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin && dashboardSetting(this.user(), 'main', 'edits'));
-  private readonly hidesNames = computed(() => dashboardSetting(this.user(), PORTAL_SYSTEM, 'hide-names'));
+  /**
+   * The portal shown: a Dashboard Admin's choice on the page's switch (dashboardSystemProvider), else the build's. 2026-11-26
+   * (Dashboard Admin audit): the columns, actions and settings follow it; they followed the build, so Handholding's list showed
+   * the certification columns and actions.
+   */
+  private readonly system = inject(STAFF_SYSTEM);
+  /** Resend (main) / In-active: a Dashboard Admin with "Can make changes" on the portal shown (2026-11-08). */
+  protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin && dashboardSetting(this.user(), this.system, 'edits'));
+  private readonly hidesNames = computed(() => dashboardSetting(this.user(), this.system, 'hide-names'));
   /**
    * The customer (ZED ID) history merged in (V4, 2026-10-27): each ZED ID links to its history, for the logins that see
    * it (api/staff/history: SuperAdmin, Citizen Feedback, QC; MasterAdmin has no list here).
@@ -50,17 +55,17 @@ export class RegisteredMsmePage {
   /** Agency / Udyam column: SuperAdmin, and MasterAdmin on Consultancy and Surveillance (the API sends it to both). */
   protected readonly showsAgency = computed(() =>
     (this.user()?.roleId === StaffRole.SuperAdmin && !this.hidesNames()) || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));
-  protected readonly main = PORTAL_SYSTEM === 'main';
-  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
-  protected readonly surveillance = PORTAL_SYSTEM === 'surveillance';
-  /** The agency's name on this portal (the Admin's wording, read where shown). */
+  protected readonly main = this.system === 'main';
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly surveillance = this.system === 'surveillance';
+  /** The agency's name on the portal shown (the Admin's wording, read where shown). */
   protected get agencyLabel(): string {
-    return PORTAL_LABELS.agency;
+    return LABELS[this.system].agency;
   }
   /** The API's searchBy values; searchText() gives the wording shown. */
   protected readonly searchFields = ['Zed Id', 'Udyam Number', 'Unit Name'];
   /** As the old pages: main and surveillance up to 1000 per page, consultancy up to 100. */
-  protected readonly pageSizes = PORTAL_SYSTEM === 'consultancy' ? [10, 20, 50, 100] : [10, 20, 50, 100, 200, 1000];
+  protected readonly pageSizes = this.consultancy ? [10, 20, 50, 100] : [10, 20, 50, 100, 200, 1000];
 
   protected readonly filter = signal<ListFilter>({});
   protected searchBy = 'Zed Id';
@@ -141,7 +146,7 @@ export class RegisteredMsmePage {
 
   /** Assessment Details page (DA for status 1-6, SA for 9-16), or null; Consultancy has no assessment pages (handholding). */
   protected assessmentLink(row: Row): string[] | null {
-    if (PORTAL_SYSTEM === 'consultancy') return null;
+    if (this.consultancy) return null;
     const s = this.status(row);
     const ids = [text(row, 'ZedId'), text(row, 'Certification')];
     if (s > 0 && s <= 6) return ['/staff/assessment/da-details', ...ids];

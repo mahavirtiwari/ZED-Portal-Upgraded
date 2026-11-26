@@ -50,8 +50,9 @@
       @for (s of rows(); track $index) {
         <tr>
           <td class="text-center">{{ s['RowNumber'] }}</td>
-          <td class="text-center">{{ s['Certification'] }}</td>
-          @if (main) { <td class="text-center">{{ s['CertificationPhase'] }}</td> }
+          <!-- 2026-11-26 (Dashboard Admin audit): a unit that has not applied yet shows a dash, not an empty cell. -->
+          <td class="text-center">{{ s['Certification'] || '—' }}</td>
+          @if (main) { <td class="text-center">{{ s['CertificationPhase'] || '—' }}</td> }
           @if (consultancy) { <td class="text-center">{{ s['MileStoneNo'] }}</td> }
           @if (surveillance) { <td class="text-center">{{ s['SurveillanceNo'] }}</td> }
           <td class="cell-lines">
@@ -65,9 +66,12 @@
           </td>
           <td class="text-center">@if (s['AssessmentStatus']) { <span class="status-badge is-info wrap">{{ s['AssessmentStatus'] }}</span> }</td>
           @if (main) {
+            <!-- 2026-11-26: the label only with a date (it stood alone, "Surveillance 1 date:", before certification). -->
             <td class="cell-lines text-center">
-              <span class="muted">{{ s['Certification'] === 'Bronze' ? ('Surveillance date:' | t: 'staff.registeredMsme.surveillanceDateLabel') : ('Surveillance 1 date:' | t: 'staff.registeredMsme.surveillance1DateLabel') }}</span>
-              <span>{{ s['FirstSurveDueDate'] }}</span>
+              @if (s['FirstSurveDueDate']) {
+                <span class="muted">{{ s['Certification'] === 'Bronze' ? ('Surveillance date:' | t: 'staff.registeredMsme.surveillanceDateLabel') : ('Surveillance 1 date:' | t: 'staff.registeredMsme.surveillance1DateLabel') }}</span>
+                <span>{{ s['FirstSurveDueDate'] }}</span>
+              } @else { <span class="muted">—</span> }
             </td>
           }
           <td>{{ s['UnitAddress'] }}</td>
@@ -122,8 +126,8 @@
         </div>
         <div class="modal-body">
           <div class="label-highlight mb-3">
-            <div><strong>{{ 'ZedId:' | t: 'staff.registeredMsme.disable.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
-            <div><strong>{{ 'UnitName:' | t: 'staff.registeredMsme.disable.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
+            <div><strong>{{ 'ZED ID:' | t: 'staff.registeredMsme.disable.zedIdLabel' }}</strong> {{ m['ZedId'] }}</div>
+            <div><strong>{{ 'Unit name:' | t: 'staff.registeredMsme.disable.unitNameLabel' }}</strong> {{ m['PUnitName'] }}</div>
           </div>
           <label class="form-label" for="disableRemarks">{{ 'Reason for Deactivate' | t: 'staff.registeredMsme.disable.reasonLabel' }}<span class="req">*</span></label>
           <textarea id="disableRemarks" class="form-control" maxlength="2000" [(ngModel)]="disableRemarks"></textarea>

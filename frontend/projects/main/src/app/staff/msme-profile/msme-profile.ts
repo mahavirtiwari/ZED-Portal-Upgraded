@@ -176,6 +176,13 @@ export class StaffMsmeProfilePage {
   /** EDIT PROFILE: SuperAdmin only, and only the main portal's procedure updates the unit. */
   protected readonly canEdit = this.roleId === 10 && PORTAL_SYSTEM === 'main' && dashboardSetting(inject(AuthService).currentUser(), 'main', 'edits');
   protected readonly editing = signal(false);
+  /**
+   * 2026-11-26 (Dashboard Admin audit): while editing, the long fields (names, NIC activities) take the whole row; in half a
+   * row "METAL TO MEAL (Food Cart Manufacturer)" or a 5-digit activity was cut off in its box.
+   */
+  protected isLongEdit(field: string | undefined): boolean {
+    return this.editing() && !!field && field !== 'ownerName' && field !== 'emailId';
+  }
   protected readonly saving = signal(false);
   protected form: StaffMsmeProfileUpdate = emptyForm();
   private readonly sectors = signal<string[]>([]);
