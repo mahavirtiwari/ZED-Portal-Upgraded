@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9715,
+  "count": 9728,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -95819,6 +95819,162 @@
       "key": "staff.reports.empty",
       "standard": "No reports",
       "kind": "note",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.clearButton",
+      "standard": "Clear filters",
+      "kind": "button",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.dateOf.certification",
+      "standard": "Certification / completion",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.dateOf.payment",
+      "standard": "Payment / transaction",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.dateOf.registration",
+      "standard": "Registration",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.dateOfLabel",
+      "standard": "Date of",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.fromAria",
+      "standard": "From date",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.noteOff",
+      "standard": "Choose filters to download only the matching rows.",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.noteOn",
+      "standard": "Each download keeps the rows that match, where the report has the column; its Filters sheet shows what was applied.",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.rangeLabel",
+      "standard": "Between",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.statusLabel",
+      "standard": "Status",
+      "kind": "label",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.statusPlaceholder",
+      "standard": "Any status",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.toAria",
+      "standard": "To date",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "reports",
+      "pageName": "Reports",
+      "placeholders": [],
+      "files": [
+        "staff/reports/reports.ts"
+      ]
+    },
+    {
+      "key": "staff.reports.filter.toWord",
+      "standard": "to",
+      "kind": "label",
       "portal": "staff",
       "page": "reports",
       "pageName": "Reports",

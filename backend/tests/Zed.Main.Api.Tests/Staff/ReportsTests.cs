@@ -127,6 +127,54 @@ public sealed class ReportsTests : IDisposable
         Assert.DoesNotContain("222", none);
     }
 
+    [Fact]
+    public async Task The_page_filters_keep_the_matching_rows_and_say_where_they_applied()
+    {
+        // 2026-11-26 (the user: filters on Reports): state, level, size, gender, status and a date range, on the columns the report has.
+        _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"] = _ => FakeSql.Sets([
+            new { ZedId = "ZEDM000001", PStateName = "DELHI", Certification = "Bronze", EnterpriseType = "Micro", Gender = "Male", UnitStatus = "Certified", RegistrationDate = new DateTime(2026, 11, 10) },
+            new { ZedId = "ZEDM000002", PStateName = "DELHI", Certification = "Bronze", EnterpriseType = "Micro", Gender = "Female", UnitStatus = "Certified", RegistrationDate = new DateTime(2026, 11, 12) },
+            new { ZedId = "ZEDM000003", PStateName = "GOA", Certification = "Silver", EnterpriseType = "Small", Gender = "Male", UnitStatus = "In progress", RegistrationDate = new DateTime(2026, 10, 1) },
+            new { ZedId = "ZEDM000004", PStateName = "DELHI", Certification = "Bronze", EnterpriseType = "Micro", Gender = "Male", UnitStatus = "Certified", RegistrationDate = new DateTime(2026, 9, 1) },
+        ]);
+        var super = await _host.SignInAsync("SUPER1");
+        var bytes = await super.GetByteArrayAsync("/api/staff/reports/list-of-registered-msme/download?state=7&certification=Bronze&size=Micro&gender=male&status=certified&from=2026-11-01&to=2026-11-30&dateOf=registration");
+        var sheet = SheetText(bytes);
+        Assert.Contains("ZEDM000001", sheet);
+        Assert.DoesNotContain("ZEDM000002", sheet); // female
+        Assert.DoesNotContain("ZEDM000003", sheet); // Goa, Silver, Small, in progress
+        Assert.DoesNotContain("ZEDM000004", sheet); // registered in September
+
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        XNamespace m = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+        Assert.Equal(["Table", "Filters"], XDocument.Load(zip.GetEntry("xl/workbook.xml")!.Open()).Descendants(m + "sheet").Select(x => (string)x.Attribute("name")!));
+        var filters = XDocument.Load(zip.GetEntry("xl/worksheets/sheet2.xml")!.Open()).ToString();
+        Assert.Contains("Applied on column RegistrationDate", filters);
+        Assert.Contains("Applied on column UnitStatus", filters);
+        Assert.Contains("1 of 4", filters);
+
+        // A filter the report has no column for is said so, and keeps the rows.
+        var noGender = await super.GetByteArrayAsync("/api/staff/reports/list-of-registered-msme/download?dateOf=payment&from=2026-01-01");
+        using var zip2 = new ZipArchive(new MemoryStream(noGender));
+        Assert.Contains("Not applied", XDocument.Load(zip2.GetEntry("xl/worksheets/sheet2.xml")!.Open()).ToString());
+        Assert.Contains("ZEDM000004", SheetText(noGender));
+        // Without filters: no Filters sheet.
+        using var zip3 = new ZipArchive(new MemoryStream(await super.GetByteArrayAsync("/api/staff/reports/list-of-registered-msme/download")));
+        Assert.Null(zip3.GetEntry("xl/worksheets/sheet2.xml"));
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await super.GetAsync("/api/staff/reports/list-of-registered-msme/download?from=2026-12-01&to=2026-11-01")).StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, (await super.GetAsync("/api/staff/reports/list-of-registered-msme/download?status=%3Cscript%3E")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(46336.0, 2026, 11, 10)]
+    [InlineData("10-11-2026", 2026, 11, 10)]
+    [InlineData("November 10, 2026", 2026, 11, 10)]
+    [InlineData("2026-11-10T09:30:00", 2026, 11, 10)]
+    [InlineData("Nov 10 2026  5:35:29:627PM", 2026, 11, 10)]
+    [InlineData("10 Nov 2026", 2026, 11, 10)]
+    public void Report_dates_are_read_from_day_numbers_and_text(object value, int y, int mo, int d) =>
+        Assert.Equal(new DateOnly(y, mo, d), ReportFilters.DateOf(value));
+
     private static string SheetText(byte[] xlsx)
     {
         using var zip = new ZipArchive(new MemoryStream(xlsx));

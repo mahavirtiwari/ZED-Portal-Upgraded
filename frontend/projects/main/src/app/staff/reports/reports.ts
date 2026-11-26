@@ -1,10 +1,12 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { searchRows } from '../pager';
-import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
+import { ListFiltersBar } from '../dashboard/list-controls';
+import { ListFilter } from '../dashboard/dashboard.api';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCounts } from '../list-counts';
 import { staffCrumbs } from '../staff-crumbs';
@@ -38,13 +40,49 @@ async function blobError(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-staff-reports',
-  imports: [FormsModule, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
+  imports: [FormsModule, DashboardPortalSwitchComponent, PageHead, ListCounts, ListFiltersBar, TextPipe],
   host: { class: 'list-v2 d-block' },
+  // The level list of the portal chosen on the switch (Handholding: its levels).
+  providers: [dashboardSystemProvider(['reports'])],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['reports']" />
     <zed-page-head [crumbs]="crumbs()" [title]="'Reports' | t: 'staff.reports.title'" [subtitle]="'The reports of your role, each downloaded as an Excel file.' | t: 'staff.reports.sub'" />
     <zed-list-counts class="rp-counts" [counts]="counts()" />
+    <!-- 2026-11-26 (the user: "Please put filters like statuses, date range, size, gender, etc."): applied to every download where
+         the report has the column; the file's Filters sheet says what was applied (ReportFilters). -->
+    <div class="zed-card rp-filterbox">
+      <zed-list-filters [filter]="filter()" (filterChange)="filter.set($event)">
+        <div class="filter">
+          <label class="form-label" for="rp-status">{{ 'Status' | t: 'staff.reports.filter.statusLabel' }}</label>
+          <input type="text" id="rp-status" class="form-control" maxlength="60" list="rp-statuses" [placeholder]="'Any status' | t: 'staff.reports.filter.statusPlaceholder'"
+                 [ngModel]="status()" (ngModelChange)="status.set($event)" />
+          <datalist id="rp-statuses">@for (s of statuses; track s) { <option [value]="s"></option> }</datalist>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="rp-dateof">{{ 'Date of' | t: 'staff.reports.filter.dateOfLabel' }}</label>
+          <select id="rp-dateof" class="form-select" [ngModel]="dateOf()" (ngModelChange)="dateOf.set($event)">
+            <option value="registration">{{ 'Registration' | t: 'staff.reports.filter.dateOf.registration' }}</option>
+            <option value="certification">{{ 'Certification / completion' | t: 'staff.reports.filter.dateOf.certification' }}</option>
+            <option value="payment">{{ 'Payment / transaction' | t: 'staff.reports.filter.dateOf.payment' }}</option>
+          </select>
+        </div>
+        <div class="filter rp-range">
+          <label class="form-label" for="rp-from">{{ 'Between' | t: 'staff.reports.filter.rangeLabel' }}</label>
+          <div class="rp-dates">
+            <input type="date" id="rp-from" class="form-control" [max]="to() || today" [ngModel]="from()" (ngModelChange)="from.set($event)" [attr.aria-label]="'From date' | t: 'staff.reports.filter.fromAria'" />
+            <span>{{ 'to' | t: 'staff.reports.filter.toWord' }}</span>
+            <input type="date" id="rp-to" class="form-control" [min]="from()" [max]="today" [ngModel]="to()" (ngModelChange)="to.set($event)" [attr.aria-label]="'To date' | t: 'staff.reports.filter.toAria'" />
+          </div>
+        </div>
+        @if (anyFilter()) {
+          <div class="filter rp-clear"><button type="button" class="btn btn-link" (click)="clear()">{{ 'Clear filters' | t: 'staff.reports.filter.clearButton' }}</button></div>
+        }
+      </zed-list-filters>
+      <p class="rp-note">{{ anyFilter()
+        ? ('Each download keeps the rows that match, where the report has the column; its Filters sheet shows what was applied.' | t: 'staff.reports.filter.noteOn')
+        : ('Choose filters to download only the matching rows.' | t: 'staff.reports.filter.noteOff') }}</p>
+    </div>
     <div class="zed-card rp-filters">
       <input type="search" id="reports-search" class="form-control rp-q" maxlength="50" [placeholder]="'Search reports' | t: 'staff.reports.search.placeholder'" [attr.aria-label]="'Search reports' | t: 'staff.reports.search.placeholder'"
              [ngModel]="search()" (ngModelChange)="search.set($event)" />
@@ -84,7 +122,13 @@ async function blobError(err: unknown): Promise<string> {
   `,
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .reports, .rp-filters, .rp-counts { max-width: 960px; }
+    /* 2026-11-26: the search and the list as wide as the filters card. */
+    .rp-filterbox { padding: 12px 14px 8px; margin-bottom: 14px; }
+    .rp-dates { display: flex; align-items: center; gap: 8px; }
+    .rp-dates span { font-size: 12.5px; color: #6f8487; }
+    .rp-range { flex: 1 1 300px; }
+    .rp-clear { align-self: flex-end; }
+    .rp-note { margin: 8px 0 0; font-size: 12px; color: #6f8487; }
     .rp-counts { max-width: 240px; }
     .rp-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 14px; }
     .rp-q { flex: 1 1 260px; max-width: 460px; }
@@ -106,6 +150,43 @@ export class ReportsPage {
   protected readonly error = signal('');
   protected readonly downloading = signal<string | null>(null);
 
+  /** The filters sent with each download (ReportFilters on the API). */
+  protected readonly filter = signal<ListFilter>({});
+  protected readonly status = signal('');
+  protected readonly dateOf = signal<'registration' | 'certification' | 'payment'>('registration');
+  protected readonly from = signal('');
+  protected readonly to = signal('');
+  protected readonly today = new Date().toISOString().slice(0, 10);
+  /** Suggestions for the Status box (the reports' own wording; any text is matched within the status columns). */
+  protected readonly statuses = ['Payment Pending By MSME', 'Payment done', 'Evidence upload done', 'DA Verification', 'SA Verification', 'In Progress',
+    'Completed', 'Certified', 'Rejected', 'Suspended', 'Active', 'Success', 'Failed'];
+  protected readonly anyFilter = computed(() => {
+    const f = this.filter();
+    return !!(f.state || f.certification || f.size || f.gender || this.status().trim() || this.from() || this.to());
+  });
+
+  protected clear(): void {
+    this.filter.set({});
+    this.status.set('');
+    this.from.set('');
+    this.to.set('');
+  }
+
+  private filterParams(): HttpParams {
+    const f = this.filter();
+    let p = new HttpParams();
+    const set = (k: string, v: string | undefined | null) => { if (v && v.trim()) p = p.set(k, v.trim()); };
+    set('state', f.state);
+    set('certification', f.certification);
+    set('size', f.size);
+    set('gender', f.gender);
+    set('status', this.status());
+    set('from', this.from());
+    set('to', this.to());
+    if (this.from() || this.to()) p = p.set('dateOf', this.dateOf());
+    return p;
+  }
+
   constructor() {
     void this.load();
   }
@@ -125,7 +206,7 @@ export class ReportsPage {
     this.downloading.set(report.id);
     try {
       const blob = await firstValueFrom(
-        this.http.get(`/api/staff/reports/${encodeURIComponent(report.id)}/download`, { responseType: 'blob' }),
+        this.http.get(`/api/staff/reports/${encodeURIComponent(report.id)}/download`, { responseType: 'blob', params: this.filterParams() }),
       );
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

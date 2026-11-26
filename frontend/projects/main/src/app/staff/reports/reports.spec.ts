@@ -57,6 +57,36 @@ describe('ReportsPage', () => {
     click.mockRestore();
   });
 
+  it('sends the chosen filters with the download (2026-11-26)', async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    const pick = (sel: string, value: string) => {
+      const box = el.querySelector(sel) as HTMLSelectElement | HTMLInputElement;
+      box.value = value;
+      box.dispatchEvent(new Event(box.tagName === 'SELECT' ? 'change' : 'input'));
+    };
+    // One box at a time, as a person does (the bar reads the page's filter after each change).
+    pick('#f-gender', 'female');
+    await settle();
+    pick('#f-size', 'Micro');
+    await settle();
+    pick('#rp-status', 'Certified');
+    pick('#rp-from', '2026-11-01');
+    await settle();
+    expect(el.textContent).toContain('Filters sheet');
+    (el.querySelector('tbody tr button') as HTMLButtonElement).click();
+    await settle();
+    const req = http.expectOne((r) => r.url === '/api/staff/reports/list-of-registered-msme/download');
+    expect(req.request.params.get('gender')).toBe('female');
+    expect(req.request.params.get('size')).toBe('Micro');
+    expect(req.request.params.get('status')).toBe('Certified');
+    expect(req.request.params.get('from')).toBe('2026-11-01');
+    expect(req.request.params.get('dateOf')).toBe('registration');
+    expect(req.request.params.has('state')).toBe(false);
+    req.flush(new Blob(['xlsx']));
+    await settle();
+    click.mockRestore();
+  });
+
   it('shows the API message when a report fails', async () => {
     (el.querySelectorAll('tbody tr button')[1] as HTMLButtonElement).click();
     await settle();

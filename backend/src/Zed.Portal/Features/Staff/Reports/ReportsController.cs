@@ -75,9 +75,24 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
     /// <summary>Runs an allow-listed report with the signed-in user's RoleId/UserId and returns it as .xlsx.</summary>
     [HttpGet("{id}/download")]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
-    public async Task<IActionResult> Download(string id, CancellationToken ct)
+    public async Task<IActionResult> Download(string id, CancellationToken ct, string? state = null, string? certification = null, string? size = null,
+        string? gender = null, string? status = null, string? from = null, string? to = null, string? dateOf = null)
     {
         if (!MayUseReports() || ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report) return NotFound();
+        // 2026-11-26: the page's filters (ReportFilters), checked as the list pages check theirs.
+        var invalid = false;
+        var stateCode = Dashboard.DashboardFilters.Pick(state, Dashboard.DashboardFilters.States.Keys, ref invalid);
+        var level = Dashboard.DashboardFilters.Pick(certification, Dashboard.DashboardFilters.Certifications, ref invalid);
+        var sizeValue = Dashboard.DashboardFilters.Pick(size, Dashboard.DashboardFilters.Sizes, ref invalid);
+        var genderValue = Dashboard.DashboardFilters.Pick(gender, Dashboard.DashboardFilters.Genders, ref invalid);
+        var dateBasis = Dashboard.DashboardFilters.Pick(dateOf, ReportFilter.DateBases, ref invalid) ?? ReportFilter.Registration;
+        var statusText = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
+        if (statusText is { Length: > 60 } || (statusText is not null && !statusText.All(c => char.IsLetterOrDigit(c) || " -/().,&'".Contains(c)))) invalid = true;
+        if (invalid) return this.Problem400("Invalid filter.");
+        if (!TryDate(from, out var fromDate) || !TryDate(to, out var toDate)) return this.Problem400("Please enter the dates as yyyy-MM-dd.");
+        if (fromDate is { } fd && toDate is { } td && fd > td) return this.Problem400("The From date is after the To date.");
+        var filter = new ReportFilter(stateCode is not null && Dashboard.DashboardFilters.States.TryGetValue(stateCode, out var sn) ? sn : null,
+            level, sizeValue, genderValue, statusText, fromDate, toDate, dateBasis);
 
         ResultSets sets;
         try
@@ -105,6 +120,7 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
         }
 
         var sheets = new List<XlsxSheet>();
+        var filtered = new List<(string, IReadOnlyList<AppliedFilter>, int, int)>();
         for (var i = 0; i < sets.Count; i++)
         {
             IReadOnlyList<IDictionary<string, object?>> rows = units is null ? sets[i]
@@ -112,13 +128,31 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
             // A Ministry login with a scope (migration 0057): its units and levels only.
             rows = await ScopeFilter.ApplyAsync(HttpContext, rows, ct, "ZedId", "Certification", "CertificationType", "CertificationLevel");
             var columns = rows.FirstOrDefault()?.Keys.Where(k => !ResultSets.SensitiveColumns.Contains(k)).ToList() ?? [];
-            sheets.Add(new XlsxSheet(i == 0 ? "Table" : "Table" + i, columns,
+            var sheetName = i == 0 ? "Table" : "Table" + i;
+            if (filter.Any)
+            {
+                var before = rows.Count;
+                (rows, var applied) = ReportFilters.Apply(rows, filter);
+                filtered.Add((sheetName, applied, before, rows.Count));
+            }
+            sheets.Add(new XlsxSheet(sheetName, columns,
                 rows.Select(r => (IReadOnlyList<object?>)columns.Select(c => r.TryGetValue(c, out var v) ? v : null).ToList())));
         }
 
+        if (filtered.Count > 0) sheets.Add(ReportFilters.Sheet(filtered));
         log.LogInformation("{UserId} (role {RoleId}) downloaded report {Report}", UserId, RoleId, report.Id);
         var fileName = string.Concat(report.Name.Select(ch => char.IsLetterOrDigit(ch) || ch is '-' ? ch : '_')) + ".xlsx";
         Response.Headers.CacheControl = "no-store";
         return File(XlsxWriter.Write(sheets), XlsxWriter.ContentType, fileName);
+    }
+
+    private static bool TryDate(string? value, out DateOnly? date)
+    {
+        date = null;
+        if (string.IsNullOrWhiteSpace(value)) return true;
+        if (!DateOnly.TryParseExact(value.Trim(), "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var d) || d.Year < 2015 || d.Year > 2100) return false;
+        date = d;
+        return true;
     }
 }
