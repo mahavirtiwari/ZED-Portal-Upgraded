@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9661,
+  "count": 9675,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -60387,6 +60387,204 @@
       ]
     },
     {
+      "key": "staff.incentiveAgencies.area.all",
+      "standard": "All {n} states · whole",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.close",
+      "standard": "Close",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.districts",
+      "standard": "{n} districts",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.edit",
+      "standard": "Edit area",
+      "kind": "button",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.mixed",
+      "standard": "{states} · {districts} · {whole} whole",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "states",
+        "districts",
+        "whole"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.more",
+      "standard": "{few} +{n} more",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "few",
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/incentive-agencies.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.none",
+      "standard": "No state or district matches the search.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.oneDistrict",
+      "standard": "1 district",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.oneState",
+      "standard": "1 state",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.search",
+      "standard": "Search a state or district",
+      "kind": "placeholder",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.states",
+      "standard": "{n} states",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "n"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.statesDistricts",
+      "standard": "{states} · {districts}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "states",
+        "districts"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.statesWhole",
+      "standard": "{states} · whole",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [
+        "states"
+      ],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.title",
+      "standard": "States and districts",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
+      "key": "staff.incentiveAgencies.area.wholeState",
+      "standard": "Whole state",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveAgencies",
+      "pageName": "Incentive agencies",
+      "placeholders": [],
+      "files": [
+        "staff/scheme-onsite/agency-area-drawer.ts"
+      ]
+    },
+    {
       "key": "staff.incentiveAgencies.column.type",
       "standard": "Type",
       "kind": "label",
@@ -102015,7 +102213,7 @@
     {
       "key": "staff.schemeOnsite.row.districts",
       "standard": "{n} district(s)",
-      "kind": "note",
+      "kind": "text",
       "portal": "staff",
       "page": "schemeOnsite",
       "pageName": "Scheme onsite",
@@ -102023,7 +102221,7 @@
         "n"
       ],
       "files": [
-        "staff/scheme-onsite/incentive-agencies.ts"
+        "staff/scheme-onsite/agency-area-drawer.ts"
       ]
     },
     {
@@ -102048,18 +102246,6 @@
       "placeholders": [
         "name"
       ],
-      "files": [
-        "staff/scheme-onsite/incentive-agencies.ts"
-      ]
-    },
-    {
-      "key": "staff.schemeOnsite.row.wholeState",
-      "standard": "whole state",
-      "kind": "note",
-      "portal": "staff",
-      "page": "schemeOnsite",
-      "pageName": "Scheme onsite",
-      "placeholders": [],
       "files": [
         "staff/scheme-onsite/incentive-agencies.ts"
       ]

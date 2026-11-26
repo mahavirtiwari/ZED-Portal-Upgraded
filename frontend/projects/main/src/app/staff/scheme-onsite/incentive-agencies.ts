@@ -9,6 +9,7 @@ import { PagedView, PagerComponent, searchRows } from '../pager';
 import { RowMenu, RowMenuItem } from '../row-menu';
 import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
+import { AgencyAreaDrawer, areaSummary } from './agency-area-drawer';
 import { IncentiveAgencyType, OnsiteAgencyRow, SchemeOnsiteApi } from './scheme-onsite.api';
 
 type Action = 'edit' | 'deactivate' | 'activate' | 'reset';
@@ -28,7 +29,7 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
  */
 @Component({
   selector: 'zed-staff-incentive-agencies',
-  imports: [RouterLink, PageHead, PagerComponent, RowMenu, ConfirmDialog, TextPipe],
+  imports: [RouterLink, PageHead, PagerComponent, RowMenu, ConfirmDialog, TextPipe, AgencyAreaDrawer],
   host: { class: 'list-v2 d-block' },
   template: `
     <zed-page-head [crumbs]="crumbs" [title]="'Incentive Verification Agencies' | t: 'staff.incentiveAgencies.title'"
@@ -66,12 +67,15 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
                 <td class="unit-cell"><b>{{ r.userName }}</b><small>{{ r.userId }}</small></td>
                 <td><span class="chip" [attr.data-type]="r.type">{{ typeLabel(r.type) }}</span></td>
                 <td class="unit-cell"><b>{{ r.spocName || '–' }}</b><small>{{ r.email }}@if (r.mobileNo) { · {{ r.mobileNo }} }</small></td>
+                <!-- 2026-11-26 (the user: every state on its own line "is not looking good"): a summary, its first states, and the
+                     whole list in the side panel. -->
                 <td class="oa-area">
-                  @for (a of r.states; track a.state) {
-                    <span class="d-block">{{ a.state }} <small>{{ a.districts.length ? ('{n} district(s)' | t: 'staff.schemeOnsite.row.districts' : { n: a.districts.length }) : ('whole state' | t: 'staff.schemeOnsite.row.wholeState') }}</small></span>
-                  } @empty { <span class="sub">–</span> }
+                  @if (r.states.length) {
+                    <button type="button" class="oa-area-btn" data-area (click)="areaOf.set(r)">{{ summary(r) }}</button>
+                    <small class="oa-area-few">{{ firstStates(r) }}</small>
+                  } @else { <span class="sub">–</span> }
                 </td>
-                <td>{{ r.schemes.join(', ') || '–' }}</td>
+                <td>{{ schemeNames(r) || '–' }}</td>
                 <td class="text-end">{{ r.assessors }}</td>
                 <td><span [class]="'chip ' + (r.isActive ? 'is-good' : 'is-bad')">{{ r.isActive ? ('Active' | t: 'staff.schemeOnsite.row.active') : ('Inactive' | t: 'staff.schemeOnsite.row.inactive') }}</span></td>
                 <td class="text-end">
@@ -94,6 +98,7 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
     @if (dialog(); as d) {
       <zed-confirm-dialog [ask]="d.ask" [busy]="busy()" [failed]="failed()" inputId="oa-dialog-text" (decided)="confirm($event)" (cancel)="close()" />
     }
+    @if (areaOf(); as a) { <zed-agency-area-drawer [agency]="a" [totalStates]="totalStates()" (closed)="areaOf.set(null)" /> }
     @if (loading()) { <div class="loadingdiv"><div class="loader"></div></div> }
   `,
   styles: `
@@ -107,7 +112,9 @@ export function agencyTypeLabel(type: IncentiveAgencyType): string {
       .oa-filters { flex-wrap: wrap; }
       .oa-filters > .oa-q, .oa-filters > .oa-type { flex: 1 1 100%; max-width: none; width: auto; }
     }
-    .oa-area small { color: #5f6f70; }
+    .oa-area { min-width: 170px; }
+    .oa-area-btn { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: #24666b; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+    .oa-area-few { display: block; margin-top: 2px; font-size: 11.5px; color: #5f6f70; }
     .oa-act { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -130,9 +137,42 @@ export class IncentiveAgenciesPage {
   protected readonly dialog = signal<{ ask: ConfirmAsk; run: (r: ConfirmResult) => Promise<string> } | null>(null);
   protected readonly busy = signal(false);
   protected readonly failed = signal('');
+  /** The agency whose states and districts the side panel shows. */
+  protected readonly areaOf = signal<OnsiteAgencyRow | null>(null);
+  /** The master list's states (for "All 36 states") and the schemes' names (the list sends codes). */
+  protected readonly totalStates = signal(0);
+  private readonly schemeName = signal<Record<string, string>>({});
 
   constructor() {
     void this.load();
+    void this.loadOptions();
+  }
+
+  private async loadOptions(): Promise<void> {
+    try {
+      const o = await firstValueFrom(this.api.options());
+      this.totalStates.set(o.states.length);
+      this.schemeName.set(Object.fromEntries([...o.desktopSchemes, ...o.schemes].map((x) => [x.code, x.name])));
+    } catch {
+      // The codes and the plain state count stay shown.
+    }
+  }
+
+  protected summary(r: OnsiteAgencyRow): string {
+    return areaSummary(r, this.totalStates());
+  }
+
+  /** "UTTAR PRADESH (4), BIHAR, GOA +33 more": the first three states, a district count where not whole. */
+  protected firstStates(r: OnsiteAgencyRow): string {
+    if (this.totalStates() > 0 && r.states.length >= this.totalStates() && r.states.every((a) => !a.districts.length)) return '';
+    const few = r.states.slice(0, 3).map((a) => (a.districts.length ? `${a.state} (${a.districts.length})` : a.state)).join(', ');
+    const more = r.states.length - 3;
+    return more > 0 ? t('staff.incentiveAgencies.area.more', '{few} +{n} more', { few, n: more }) : few;
+  }
+
+  protected schemeNames(r: OnsiteAgencyRow): string {
+    const names = this.schemeName();
+    return r.schemes.map((c) => names[c] ?? c).join(', ');
   }
 
   protected async load(): Promise<void> {

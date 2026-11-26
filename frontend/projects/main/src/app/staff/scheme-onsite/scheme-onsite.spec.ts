@@ -167,12 +167,32 @@ describe('scheme onsite verification pages', () => {
       { userId: 'ZEDAA0100', userName: 'Desk Partners', spocName: 'D K', email: 'spoc@desk.test', mobileNo: '9876543211', isActive: true,
         states: [{ state: 'GOA', districts: [] }], schemes: ['FA'], assessors: 1, type: 'Desktop' },
     ]);
+    http.expectOne('/api/staff/scheme-agencies/options').flush({
+      states: ['GOA', 'UTTAR PRADESH'], schemes: [{ code: 'FA_ONSITE', name: 'FA Onsite', active: true }], desktopSchemes: [{ code: 'FA', name: 'Financial Assistance', active: true }],
+    });
     await settle();
     expect(el.textContent).toContain('Incentive Verification Agencies');
-    expect(el.textContent).toContain('2 district(s)');
-    expect(el.textContent).toContain('whole state');
     expect(el.textContent).toContain('spoc@onsite.test · 9876543210');
-    expect(el.textContent).toContain('FA_ONSITE');
+    // 2026-11-26 (the user: every state on its own line "is not looking good"): a summary and the first states; scheme names.
+    const area = el.querySelectorAll<HTMLButtonElement>('[data-area]');
+    expect(area[0].textContent!.trim()).toBe('2 states · 2 districts · 1 whole');
+    expect(el.querySelector('.oa-area-few')!.textContent).toContain('UTTAR PRADESH (2), GOA');
+    expect(area[1].textContent!.trim()).toBe('1 state · whole');
+    expect(el.textContent).toContain('FA Onsite');
+    expect(el.textContent).not.toContain('FA_ONSITE');
+    // The side panel: each state, its districts by name.
+    area[0].click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/scheme-agencies/districts' && r.params.get('state') === 'UTTAR PRADESH')
+      .flush([{ code: '163', name: 'KANPUR DEHAT' }, { code: '164', name: 'KANPUR NAGAR' }]);
+    await settle();
+    const drawer = el.querySelector('[data-drawer="agency-area-drawer"]')!;
+    expect(drawer.querySelector('[data-area-summary]')!.textContent).toContain('2 states · 2 districts · 1 whole');
+    expect(drawer.querySelector('[data-area-list]')!.textContent).toContain('KANPUR NAGAR');
+    expect(drawer.textContent).toContain('Whole state');
+    (drawer.querySelector('.ad-foot .btn-default') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('[data-drawer="agency-area-drawer"]')).toBeNull();
     expect(el.querySelector('[data-type="Desktop"]')!.textContent).toContain('Desktop verification');
     expect(el.querySelector('[data-type="Onsite"]')!.textContent).toContain('Onsite verification');
 
@@ -243,6 +263,7 @@ describe('scheme onsite verification pages', () => {
     create.flush({ message: 'Agency created successfully.', userId: 'ZEDAA0100' });
     await settle();
     http.expectOne('/api/staff/scheme-agencies').flush([]);
+    http.expectOne('/api/staff/scheme-agencies/options').flush({ states: [], schemes: [], desktopSchemes: [] });
     await settle();
   });
 
@@ -333,6 +354,7 @@ describe('scheme onsite verification pages', () => {
     create.flush({ message: 'Agency created successfully.', userId: 'ZEDAA0099' });
     await settle();
     http.expectOne('/api/staff/scheme-agencies').flush([]);
+    http.expectOne('/api/staff/scheme-agencies/options').flush({ states: [], schemes: [], desktopSchemes: [] });
     await settle();
   });
 });
