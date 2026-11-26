@@ -13,7 +13,10 @@ describe('IncentivesDashboardPage (2026-11-24)', () => {
   const data: IncentivesDashboard = {
     generatedAt: '2026-11-24T10:00:00',
     headline: { applications: 4, inVerification: 2, approved: 0, paid: 1, rejected: 0, onHold: 1, claimAmount: 6500, approvedAmount: 2500, paidAmount: 2500, desktopAgencies: 2, onsiteAgencies: 1 },
-    schemes: [{ code: 'SCH1', name: 'Capital Subsidy', total: 4, desktop: 1, onsite: 1, qc: 0, approved: 0, paid: 1, rejected: 0, onHold: 1, claimAmount: 6500, approvedAmount: 2500 }],
+    schemes: [
+      { code: 'SCH1', name: 'Capital Subsidy', total: 4, desktop: 1, onsite: 1, qc: 0, approved: 0, paid: 1, rejected: 0, onHold: 1, claimAmount: 6500, approvedAmount: 2500, flow: 'DesktopOnsite', active: true },
+      { code: 'SCH2', name: 'Stock Market', total: 0, desktop: 0, onsite: 0, qc: 0, approved: 0, paid: 0, rejected: 0, onHold: 0, claimAmount: 0, approvedAmount: 0, flow: 'Desktop', active: false },
+    ],
     fa: { total: 3, toAllot: 1, inVerification: 1, approved: 0, reimbursed: 1, rejected: 0 },
     months: [{ month: '2026-10', submitted: 1, approved: 0, rejected: 0 }, { month: '2026-11', submitted: 3, approved: 1, rejected: 0 }],
     states: [{ state: 'GOA', total: 3, inVerification: 2, approved: 0, paid: 0, rejected: 0 }, { state: 'KERALA', total: 1, inVerification: 0, approved: 0, paid: 1, rejected: 0 }],
@@ -64,6 +67,14 @@ describe('IncentivesDashboardPage (2026-11-24)', () => {
     expect(scheme.querySelector('[data-field="onsite"]')?.textContent?.trim()).toBe('1');
     expect(scheme.textContent).toContain('₹6,500');
     expect(el.querySelector('[data-scheme="fa"] [data-field="toAllot"]')?.textContent?.trim()).toBe('1');
+    // 2026-11-26 (the user: "dynamic as per incentive scheme"): each card follows its scheme's flow; a scheme without applications
+    // shows one line; an off scheme is marked.
+    expect(scheme.querySelector('[data-flow]')?.textContent?.trim()).toBe('Desktop + Onsite');
+    const desk = el.querySelector('[data-scheme="SCH2"]')!;
+    expect(desk.querySelector('[data-flow]')?.textContent?.trim()).toBe('Desktop verification');
+    expect(desk.querySelector('[data-off]')).not.toBeNull();
+    expect(desk.querySelector('[data-empty]')?.textContent).toContain('No application yet');
+    expect(desk.querySelector('[data-field]')).toBeNull();
     expect(el.querySelectorAll('.id-table tbody tr').length).toBe(2);
     expect(el.textContent).toContain('Needs your attention');
     expect(el.textContent).toContain('Scheme applications awaiting allotment');

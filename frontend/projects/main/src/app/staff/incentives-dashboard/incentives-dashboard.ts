@@ -40,6 +40,9 @@ export interface IncentivesSchemeCard {
   onHold: number;
   claimAmount: number;
   approvedAmount: number;
+  /** 2026-11-26: the scheme's verification flow ('Desktop' / 'DesktopOnsite') and whether it is on. */
+  flow?: string | null;
+  active?: boolean;
 }
 
 export interface IncentivesFaCard {
@@ -216,6 +219,16 @@ export class IncentivesDashboardPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** 2026-11-26 (the user: "dynamic as per incentive scheme"): a desktop-only scheme's card has no onsite stage. */
+  protected stagesOf(c: IncentivesSchemeCard): Stage[] {
+    return c.flow === 'DesktopOnsite' ? SCHEME_STAGES : SCHEME_STAGES.filter((s) => s.field !== 'onsite');
+  }
+
+  protected flowLabel(c: IncentivesSchemeCard): string {
+    return c.flow === 'DesktopOnsite' ? t('staff.incentivesDashboard.card.flowDesktopOnsite', 'Desktop + Onsite')
+      : t('staff.incentivesDashboard.card.flowDesktop', 'Desktop verification');
   }
 
   protected band(i: number): string {

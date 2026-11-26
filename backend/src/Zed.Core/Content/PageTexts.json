@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9683,
+  "count": 9688,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -67240,6 +67240,54 @@
       ]
     },
     {
+      "key": "staff.incentivesDashboard.card.empty",
+      "standard": "No application yet",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.flowDesktop",
+      "standard": "Desktop verification",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.flowDesktopOnsite",
+      "standard": "Desktop + Onsite",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.ts"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.off",
+      "standard": "Off",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
       "key": "staff.incentivesDashboard.card.openMine",
       "standard": "Open my applications",
       "kind": "button",
@@ -67267,6 +67315,18 @@
       "key": "staff.incentivesDashboard.card.sourceSchemes",
       "standard": "Scheme Applications",
       "kind": "text",
+      "portal": "staff",
+      "page": "incentivesDashboard",
+      "pageName": "Incentives dashboard",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-dashboard/incentives-dashboard.html"
+      ]
+    },
+    {
+      "key": "staff.incentivesDashboard.card.stagesWord",
+      "standard": "stages",
+      "kind": "note",
       "portal": "staff",
       "page": "incentivesDashboard",
       "pageName": "Incentives dashboard",

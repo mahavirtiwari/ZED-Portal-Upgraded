@@ -69,23 +69,33 @@
       <div class="app-card" [class]="'app-card ' + band(i)" [attr.data-scheme]="c.code">
         <div class="app-band">
           <span class="app-title"><span class="app-level" [title]="c.name">{{ c.name }}</span>
-            <span class="app-src">{{ 'Scheme Applications' | t: 'staff.incentivesDashboard.card.sourceSchemes' }}</span></span>
+            <span class="app-src">{{ 'Scheme Applications' | t: 'staff.incentivesDashboard.card.sourceSchemes' }}</span>
+            <span class="app-tags"><span class="app-tag" data-flow>{{ flowLabel(c) }}</span>
+              @if (c.active === false) { <span class="app-tag app-off" data-off>{{ 'Off' | t: 'staff.incentivesDashboard.card.off' }}</span> }</span></span>
           <span class="app-total">
             <span class="app-total-value">{{ count(c.total) }}</span>
             <span class="app-total-label">{{ 'total applications' | t: 'staff.incentivesDashboard.card.totalLabel' }}</span>
           </span>
         </div>
         <div class="app-body">
-          <div class="app-bar" role="img" [attr.aria-label]="barLabel(c, schemeStages)">
-            @for (s of schemeStages; track s.field) { <span [class]="'app-seg is-' + s.kind" [style.width.%]="share(c, s.field)" [title]="s.label() + ': ' + count(value(c, s.field))"></span> }
+          @if (!c.total) {
+            <!-- 2026-11-26 (UI): no application yet: one line, not a column of zeros. -->
+            <div class="app-empty" data-empty>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z M14 3v6h6 M9 14h6 M9 17h4" /></svg>
+              <span>{{ 'No application yet' | t: 'staff.incentivesDashboard.card.empty' }}</span>
+              <small>{{ stagesOf(c).length }} {{ 'stages' | t: 'staff.incentivesDashboard.card.stagesWord' }} · {{ flowLabel(c) }}</small>
+            </div>
+          } @else {
+          <div class="app-bar" role="img" [attr.aria-label]="barLabel(c, stagesOf(c))">
+            @for (s of stagesOf(c); track s.field) { <span [class]="'app-seg is-' + s.kind" [style.width.%]="share(c, s.field)" [title]="s.label() + ': ' + count(value(c, s.field))"></span> }
           </div>
-          <ul class="app-stats">
-            @for (s of schemeStages; track s.field) {
+          <ul class="app-rows">
+            @for (s of stagesOf(c); track s.field) {
               <li [class]="'is-' + s.kind">
                 <span class="app-dot" aria-hidden="true"></span>
-                <span class="app-label" [title]="s.label()">{{ s.label() }}</span>
-                <span class="app-figure"><span class="app-value" [attr.data-field]="s.field">{{ count(value(c, s.field)) }}</span>
-                  <span class="app-share">({{ share(c, s.field) | number: '1.0-1' }}%)</span></span>
+                <span class="app-label">{{ s.label() }}</span>
+                <span class="app-value" [attr.data-field]="s.field">{{ count(value(c, s.field)) }}</span>
+                <span class="app-share">{{ share(c, s.field) | number: '1.0-0' }}%</span>
               </li>
             }
           </ul>
@@ -93,6 +103,7 @@
             <span>{{ 'Claimed' | t: 'staff.incentivesDashboard.card.claimed' }} <b>{{ rupees(c.claimAmount) }}</b></span>
             <span>{{ 'Approved amount' | t: 'staff.incentivesDashboard.card.approvedAmount' }} <b>{{ rupees(c.approvedAmount) }}</b></span>
           </div>
+          }
           <a class="app-link" [routerLink]="schemesLink()">{{ d.agency ? ('Open my applications' | t: 'staff.incentivesDashboard.card.openMine') : ('Open Scheme Applications' | t: 'staff.incentivesDashboard.card.openSchemes') }}</a>
         </div>
       </div>
@@ -108,19 +119,26 @@
         </span>
       </div>
       <div class="app-body">
+        @if (!d.fa.total) {
+          <div class="app-empty" data-empty>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z M14 3v6h6 M9 14h6 M9 17h4" /></svg>
+            <span>{{ 'No application yet' | t: 'staff.incentivesDashboard.card.empty' }}</span>
+          </div>
+        } @else {
         <div class="app-bar" role="img" [attr.aria-label]="barLabel(d.fa, faStages)">
           @for (s of faStages; track s.field) { <span [class]="'app-seg is-' + s.kind" [style.width.%]="share(d.fa, s.field)" [title]="s.label() + ': ' + count(value(d.fa, s.field))"></span> }
         </div>
-        <ul class="app-stats">
+        <ul class="app-rows">
           @for (s of faStages; track s.field) {
             <li [class]="'is-' + s.kind">
               <span class="app-dot" aria-hidden="true"></span>
-              <span class="app-label" [title]="s.label()">{{ s.label() }}</span>
-              <span class="app-figure"><span class="app-value" [attr.data-field]="s.field">{{ count(value(d.fa, s.field)) }}</span>
-                <span class="app-share">({{ share(d.fa, s.field) | number: '1.0-1' }}%)</span></span>
+              <span class="app-label">{{ s.label() }}</span>
+              <span class="app-value" [attr.data-field]="s.field">{{ count(value(d.fa, s.field)) }}</span>
+              <span class="app-share">{{ share(d.fa, s.field) | number: '1.0-0' }}%</span>
             </li>
           }
         </ul>
+        }
         <a class="app-link" routerLink="/staff/financial-assistance">{{ 'Open Financial Assistance' | t: 'staff.incentivesDashboard.fa.open' }}</a>
       </div>
     </div>

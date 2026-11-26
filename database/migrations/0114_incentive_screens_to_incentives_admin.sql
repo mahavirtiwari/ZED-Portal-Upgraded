@@ -7,6 +7,7 @@
 -- Operation Admin is given (SubUsers/SubUserPermissions). This removes the keys from the stored ticks too, so the table says what
 -- the screens do:
 --
+--   dbo.V4SubUsers.ScopeAgencies of an Operation Admin of an Incentives Master Admin: cleared (2026-11-26; see below).
 --   dbo.V4SubUsers.Permissions  of an Operation Admin whose owner is a Master Admin (RoleId 7) that is not an Incentives Master
 --                               Admin: 'financial-assistance', 'incentive-upload', 'scheme-applications' and
 --                               'scheme-onsite-agencies' are taken out of the comma list; the other ticks stay as they are.
@@ -51,6 +52,19 @@ FROM dbo.V4SubUsers S
 JOIN Kept K ON K.UserId = S.UserId;
 
 PRINT CONCAT('0114: incentive screens taken from ', @@ROWCOUNT, ' Operation Admin(s) of the main Master Admin.');
+
+-- 2026-11-26 (zedv3: an Incentives Operation Admin saved with "5 assessment agencies" saw no incentive verification agency and
+-- "0 verification agencies" on its dashboard): the Incentives Master Admin's Operation Admins have no agency scope (the API
+-- ignores it since 2026-11-25; their form no longer shows it). The stored lists are cleared; the states stay.
+IF COL_LENGTH('dbo.V4SubUsers', 'ScopeAgencies') IS NOT NULL
+BEGIN
+    EXEC (N'UPDATE S SET S.ScopeAgencies = NULL, S.UpdatedBy = ''migration-0114'', S.UpdatedAt = SYSUTCDATETIME()
+        FROM dbo.V4SubUsers S
+        WHERE S.OwnerRoleId = 7 AND S.ScopeAgencies IS NOT NULL
+          AND EXISTS (SELECT 1 FROM dbo.Users U WHERE U.UserId = S.OwnerUserId AND U.RoleId = 7
+                      AND LTRIM(RTRIM(ISNULL(U.ScreenAccess, ''''))) = ''incentives'');');
+    PRINT CONCAT('0114: agency scope cleared for ', @@ROWCOUNT, ' Operation Admin(s) of the Incentives Master Admin.');
+END
 
 IF NOT EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0
                AND major_id = OBJECT_ID(N'dbo.V4SubUsers') AND name = N'V4_0114_IncentiveScreens')

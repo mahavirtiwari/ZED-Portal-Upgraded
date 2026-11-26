@@ -137,6 +137,8 @@ public sealed class IncentivesAdminTests : IDisposable
 
         var card = Assert.Single(d.GetProperty("schemes").EnumerateArray());
         Assert.Equal("Capital Subsidy", card.GetProperty("name").GetString());
+        // 2026-11-26 (the user: "dynamic as per incentive scheme"): the scheme's own flow and on/off with its card.
+        Assert.Equal(("Desktop", true), (card.GetProperty("flow").GetString(), card.GetProperty("active").GetBoolean()));
         Assert.Equal((4, 1, 1, 1, 1), (card.GetProperty("total").GetInt32(), card.GetProperty("desktop").GetInt32(), card.GetProperty("onsite").GetInt32(),
             card.GetProperty("paid").GetInt32(), card.GetProperty("onHold").GetInt32()));
 

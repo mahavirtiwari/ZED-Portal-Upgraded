@@ -57,8 +57,11 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
 
     /// <param name="Desktop">Allotment, the desktop assessor and corrections (<see cref="DesktopStatuses"/>).</param>
     /// <param name="Approved">Approved, not yet paid.</param>
+    /// <param name="Flow">2026-11-26 (the user: "hope this is dynamic as per incentive scheme"): the scheme's verification flow
+    /// (SchemeRules.Desktop / DesktopOnsite): a desktop-only scheme's card has no onsite stage.</param>
+    /// <param name="Active">Whether the scheme is switched on (Admin → Incentive Schemes).</param>
     public sealed record SchemeCard(string Code, string Name, int Total, int Desktop, int Onsite, int Qc, int Approved, int Paid, int Rejected, int OnHold,
-        decimal ClaimAmount, decimal ApprovedAmount);
+        decimal ClaimAmount, decimal ApprovedAmount, string? Flow = null, bool Active = true);
 
     /// <param name="ToAllot">New, no agency yet.</param>
     /// <param name="InVerification">New with an agency, with the assessor, the agency's QC.</param>
@@ -110,8 +113,14 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
             agencies.Count(a => Agencies.IncentiveAgencies.IsDesktop(a.AgencyKind)), agencies.Count(a => Agencies.IncentiveAgencies.IsOnsite(a.AgencyKind)));
 
         // Every scheme the Admin defined (with none yet: 0), then a code no longer defined that still has applications.
+        var defs = (await store.AllAsync(ct)).Where(d => !string.IsNullOrWhiteSpace(d.Code)).GroupBy(d => d.Code!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         var cards = all.Schemes.Where(s => filter.Scheme is null || string.Equals(s.Code, filter.Scheme, StringComparison.OrdinalIgnoreCase))
-            .Select(s => Card(s.Code, s.Name, rows.Where(r => string.Equals(r.SchemeCode, s.Code, StringComparison.OrdinalIgnoreCase)).ToList()))
+            .Select(s => Card(s.Code, s.Name, rows.Where(r => string.Equals(r.SchemeCode, s.Code, StringComparison.OrdinalIgnoreCase)).ToList()) with
+            {
+                Flow = defs.GetValueOrDefault(s.Code)?.Verification?.Flow,
+                Active = defs.GetValueOrDefault(s.Code)?.Active ?? false,
+            })
             .ToList();
 
         var today = DateTime.Today;
