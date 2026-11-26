@@ -275,10 +275,12 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // 2026-11-18 (approved design "Expenditure monitoring"): cases, payable, POs and invoices; the agencies' monthly invoices.
   { label: 'Expenditure', route: '/staff/expenditure', roles: [R.MasterAdmin, R.Admin] },
   { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
-  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
+  // 2026-11-26 (the user: "put document section", "Observation is missing"): the Incentives Master Admin has both too (Admin
+  // gives it its own documents; Quality Observations as it is). It signs in on the main portal only.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: WITH_INCENTIVES },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
-  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
+  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency], agencyKinds: WITH_INCENTIVES },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin], agencyKinds: WITH_INCENTIVES },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency], agencyKinds: ALL_KINDS },
 ];
@@ -349,10 +351,12 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Expenditure', route: '/staff/expenditure', roles: [R.MasterAdmin] },
   { label: 'Expenditure', route: '/staff/expenditure/invoices', roles: [R.Agency] },
-  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
+  // 2026-11-26 (the user: "put document section", "Observation is missing"): the Incentives Master Admin has both too (Admin
+  // gives it its own documents; Quality Observations as it is). It signs in on the main portal only.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC], agencyKinds: WITH_INCENTIVES },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   // 2026-11-16: the ZED team's quality observations, their dashboard and ranking; agencies reply there.
-  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency] },
+  { label: 'Quality Observations', route: '/staff/quality-observations', roles: [R.MasterAdmin, R.Agency], agencyKinds: WITH_INCENTIVES },
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
@@ -675,8 +679,9 @@ export function menuScreenAllows(route: string, roleId: number, subRoles: readon
 const SUB_USER_ALWAYS_OPEN = ['/staff/documents'];
 
 export function subUserAlwaysOpen(route: string | undefined, roleId: number, subRoles: readonly string[] = []): boolean {
-  // 2026-11-24: not an Incentives Master Admin's Operation Admin (its owner has no Documents page).
-  return !!route && roleId !== StaffRole.SuperAdmin && !isIncentivesAdmin({ roleId, subRoles }) && SUB_USER_ALWAYS_OPEN.includes(route);
+  // (2026-11-26: an Incentives Master Admin's Operation Admin too: its owner has a Documents page now.)
+  void subRoles;
+  return !!route && roleId !== StaffRole.SuperAdmin && SUB_USER_ALWAYS_OPEN.includes(route);
 }
 
 /**

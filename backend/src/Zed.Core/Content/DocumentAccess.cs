@@ -24,6 +24,12 @@ public static class DocumentRoles
 {
     public const string Msme = "msme";
 
+    /// <summary>
+    /// 2026-11-26 (the user: "put document section ... as per role"): the Incentives Master Admin and its Operation Admins (a Master
+    /// Admin, RoleId 7, with ScreenAccess 'incentives'; main portal only). They see these documents, not the Master Admin's.
+    /// </summary>
+    public const string IncentivesAdmin = "incentivesadmin";
+
     /// <summary>Role key of each staff role (the Admin manages the documents and sees them all).</summary>
     private static readonly (string Key, UserRole Role)[] StaffKeys =
     [
@@ -53,7 +59,8 @@ public static class DocumentRoles
         ],
         _ =>
         [
-            new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new("agency", "Assessment Agencies"), new("assessor", "Assessors"),
+            new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new(IncentivesAdmin, "Incentives Master Admin"),
+            new("agency", "Assessment Agencies"), new("assessor", "Assessors"),
             new("coordinator", "MSME DFO / NEFT Admin"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
         ],
     };

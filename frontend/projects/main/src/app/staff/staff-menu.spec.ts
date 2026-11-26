@@ -308,10 +308,10 @@ describe('staff menu', () => {
   describe('Incentives Master Admin (2026-11-24)', () => {
     const routes = (items: StaffMenuItem[]) => items.map((i) => i.route);
 
-    it('has its dashboard, the Schemes screens and its Operation Admins only', () => {
+    it('has its dashboard, the Schemes screens, Documents, Quality Observations and its Operation Admins only', () => {
       expect(routes(menuFor(StaffRole.MasterAdmin, [INCENTIVES_SUB_ROLE], 'main'))).toEqual([
         '/staff/incentives/dashboard', '/staff/financial-assistance', '/staff/incentives/upload', '/staff/schemes-verify/applications',
-        '/staff/scheme-agencies', '/staff/sub-users',
+        '/staff/scheme-agencies', '/staff/documents', '/staff/quality-observations', '/staff/sub-users',
       ]);
     });
 

@@ -87,6 +87,8 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
         if (Users.IncentivesAdmins.Is(CurrentUser))
         {
             await IncentivesAsync(items, ct);
+            // 2026-11-26: it has the Quality Observations screen too (the user: "Observation is missing").
+            await QualityOpenAsync(items, ct);
             return;
         }
         if (Opens(Allot))
@@ -112,13 +114,17 @@ public sealed class AttentionController(ISqlExecutor db, PortalHost host, IMemor
                 items.Add(new Item("nc-overdue", "NC closures overdue", nc.Count(r => ClosureDate(r) is { } d && d < now),
                     Monitoring, Query("status", "4"), "bad", "clock"));
         }
-        if (Opens(Quality))
-        {
-            var open = await Try("quality-open", async () => await ScopeFilter.ApplyAsync(HttpContext,
-                await db.QuerySqlAsync<UnitRow>(QualityOpenSql, null, ct), r => r.ZedId, r => r.Certification, ct));
-            if (open is not null)
-                items.Add(new Item("quality-open", "Quality observations open", open.Count, Quality, Query("status", "Open"), "info", "chat"));
-        }
+        await QualityOpenAsync(items, ct);
+    }
+
+    /// <summary>The ZED team's quality observations still open (the Master Admins' Quality Observations screen).</summary>
+    private async Task QualityOpenAsync(List<Item> items, CancellationToken ct)
+    {
+        if (!Opens(Quality)) return;
+        var open = await Try("quality-open", async () => await ScopeFilter.ApplyAsync(HttpContext,
+            await db.QuerySqlAsync<UnitRow>(QualityOpenSql, null, ct), r => r.ZedId, r => r.Certification, ct));
+        if (open is not null)
+            items.Add(new Item("quality-open", "Quality observations open", open.Count, Quality, Query("status", "Open"), "info", "chat"));
     }
 
     private const string SchemeApplications = "/staff/schemes-verify/applications";

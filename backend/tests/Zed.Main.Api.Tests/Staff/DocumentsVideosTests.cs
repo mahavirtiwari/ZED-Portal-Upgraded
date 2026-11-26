@@ -112,4 +112,27 @@ public sealed class DocumentsVideosTests : IDisposable
         Assert.Empty((await master.GetFromJsonAsync<JsonElement>("/api/staff/documents")).EnumerateArray());
         Assert.Equal(HttpStatusCode.Unauthorized, (await (await _host.CreateBrowserAsync()).GetAsync("/api/staff/documents")).StatusCode);
     }
+
+    /// <summary>2026-11-26 (the user: "put document section ... as per role"): the Incentives Master Admin has its own audience.</summary>
+    [Fact]
+    public async Task The_incentives_master_admin_sees_its_own_documents_not_the_master_admins()
+    {
+        Assert.Contains(DocumentRoles.For(Zed.Core.Http.PortalSystem.Main), r => r.Key == DocumentRoles.IncentivesAdmin && r.Label == "Incentives Master Admin");
+        Assert.DoesNotContain(DocumentRoles.For(Zed.Core.Http.PortalSystem.Consultancy), r => r.Key == DocumentRoles.IncentivesAdmin);
+        var setup = _host.Sql.Procs["SP_GET_USER_DETAILS"];
+        _host.Sql.Procs["SP_GET_USER_DETAILS"] = args => FakeSql.Arg(args, "UserId") is { } id && id.Equals("INC1", StringComparison.OrdinalIgnoreCase)
+            ? FakeSql.Sets([new { UserId = "INC1", UserName = "Incentives Desk", RoleId = 7, Email = "inc1@zed.test" }], [new { ERRORMSG = "SUCCESS" }])
+            : setup(args);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenAccessSql] = args =>
+            [new Zed.Portal.Features.Staff.Users.IncentivesAdmins.ScreenRow(FakeSql.Arg(args, "UserId") == "INC1" ? "incentives" : null)];
+        _documents.Add(new() { ["Id"] = 7, ["DocumentName"] = "Incentive guide", ["DocumentPath"] = null, ["OrderNo"] = 1 });
+        _documents.Add(new() { ["Id"] = 8, ["DocumentName"] = "Master Admin guide", ["DocumentPath"] = null, ["OrderNo"] = 2 });
+        _access.Add(new DocumentAccessRow(7, 1, null, "https://www.youtube.com/watch?v=i", DocumentRoles.IncentivesAdmin, "ADMIN1", null));
+        _access.Add(new DocumentAccessRow(8, 2, null, "https://www.youtube.com/watch?v=m", "masteradmin", "ADMIN1", null));
+
+        var inc = await UsersMastersLogin.SignInAsync(_host, "INC1");
+        Assert.Equal(["Incentive guide"], (await inc.GetFromJsonAsync<JsonElement>("/api/staff/documents")).EnumerateArray().Select(d => d.GetProperty("documentName").GetString()));
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(["Master Admin guide"], (await master.GetFromJsonAsync<JsonElement>("/api/staff/documents")).EnumerateArray().Select(d => d.GetProperty("documentName").GetString()));
+    }
 }

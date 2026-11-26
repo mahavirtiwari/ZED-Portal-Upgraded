@@ -154,7 +154,7 @@ public static class SubUserPermissions
             : subRoles.Contains(Incentives.Agencies.IncentiveAgencies.DesktopSubRole) ? DesktopAgencyKeys
             : null;
         // 2026-11-25: the main Master Admin's Operation Admins no longer get the incentive screens (the Incentives Master Admin's).
-        var except = roleId == (int)UserRole.MasterAdmin && only is null ? Users.IncentivesAdmins.Keys : null;
+        var except = roleId == (int)UserRole.MasterAdmin && only is null ? Users.IncentivesAdmins.IncentiveKeys : null;
         return Catalogue.Where(p => (int)p.OwnerRole == roleId && p.Systems.Contains(system)
                                     && (p.AnySubRole.Length == 0 || p.AnySubRole.Any(subRoles.Contains))
                                     && (only is null || only.Contains(p.Key))

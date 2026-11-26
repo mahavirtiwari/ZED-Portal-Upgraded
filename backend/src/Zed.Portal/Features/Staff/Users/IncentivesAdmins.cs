@@ -37,15 +37,24 @@ public static class IncentivesAdmins
     public const string SubUsersRoute = "/staff/sub-users";
     private const string SubUsersApi = "/api/staff/sub-users";
 
-    /// <summary>Its screens: the incentive screens of the Operation Admins' catalogue (SubUserPermissions).</summary>
-    public static readonly IReadOnlySet<string> Keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    /// <summary>
+    /// The incentive screens of the Operation Admins' catalogue (SubUserPermissions): the Incentives Master Admin's only since
+    /// 2026-11-25, refused to the main Master Admin and its Operation Admins (<see cref="IsIncentiveApi"/>).
+    /// </summary>
+    public static readonly IReadOnlySet<string> IncentiveKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "financial-assistance", "scheme-applications", "scheme-onsite-agencies", "incentive-upload",
     };
 
+    /// <summary>
+    /// Its screens: the incentive screens and (2026-11-26, the user: "Observation is missing", "same screen, as it is") the Quality
+    /// Observations screen, which the main Master Admin keeps too.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Keys = new HashSet<string>(IncentiveKeys, StringComparer.OrdinalIgnoreCase) { "quality-observations" };
+
     /// <summary>The incentive screens of the Master Admins' catalogue on this system (none off the main portal).</summary>
     public static IReadOnlyList<SubUserPermission> Screens(PortalSystem system) =>
-        SubUserPermissions.Catalogue.Where(p => p.OwnerRole == UserRole.MasterAdmin && p.Systems.Contains(system) && Keys.Contains(p.Key)).ToList();
+        SubUserPermissions.Catalogue.Where(p => p.OwnerRole == UserRole.MasterAdmin && p.Systems.Contains(system) && IncentiveKeys.Contains(p.Key)).ToList();
 
     /// <summary>
     /// 2026-11-25: an API of the incentive screens (the incentives dashboard among them), refused to the main Master Admin; with an
@@ -62,6 +71,8 @@ public static class IncentivesAdmins
     [
         "/api/staff/auth", "/api/staff/attention", "/api/staff/msme-profile", "/api/staff/msme-edit-history", "/api/staff/certification-documents",
         "/api/staff/submission-checklists",
+        // 2026-11-26 (the user: "put document section"): the documents Admin → Documents/Videos gives the Incentives Master Admin.
+        "/api/staff/documents",
     ];
 
     internal const string ScreenAccessSql =
@@ -97,7 +108,10 @@ public static class IncentivesAdmins
 
     /// <summary>The pages of an Incentives Master Admin's sign-in (the menu and the "no access" page use them).</summary>
     public static IReadOnlyList<string> Routes(PortalSystem system) =>
-        [DashboardRoute, .. SubUserPermissions.For((int)UserRole.MasterAdmin, [SubRole], system).SelectMany(p => p.Routes), SubUsersRoute];
+        [DashboardRoute, .. SubUserPermissions.For((int)UserRole.MasterAdmin, [SubRole], system).SelectMany(p => p.Routes), DocumentsRoute, SubUsersRoute];
+
+    /// <summary>2026-11-26: its Documents page (every Operation Admin of it has it too, as the other owners' sub-users).</summary>
+    public const string DocumentsRoute = "/staff/documents";
 
     /// <summary>Whether an Incentives Master Admin (or, <paramref name="subUser"/>, one of its Operation Admins) may call a staff API.</summary>
     public static bool Allows(string method, string path, bool subUser, PortalSystem system)

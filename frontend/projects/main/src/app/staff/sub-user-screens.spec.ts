@@ -60,11 +60,15 @@ describe('Incentives Master Admin screens (2026-11-24)', () => {
   const routes = ['/staff/incentives/dashboard', '/staff/financial-assistance', '/staff/schemes-verify/applications', '/staff/scheme-agencies',
     '/staff/scheme-onsite/agencies', '/staff/incentives/upload', '/staff/sub-users'];
 
-  it('blocks the Master Admin screens it does not have, and its Documents', () => {
+  it('blocks the Master Admin screens it does not have', () => {
     expect(blockedScreen('/staff/monitoring', 7, incentives, routes)).toBe('/staff/monitoring');
     expect(blockedScreen('/staff/users/agencies/new', 7, incentives, routes)).toBe('/staff/users/agencies');
     expect(blockedScreen('/staff/expenditure', 7, incentives, routes)).toBe('/staff/expenditure');
-    expect(blockedScreen('/staff/documents', 7, incentives, routes)).toBe('/staff/documents');
+  });
+
+  // 2026-11-26 (the user: "put document section"): every Operation Admin of it has its owner's Documents page.
+  it('opens its Documents page', () => {
+    expect(blockedScreen('/staff/documents', 7, incentives, routes)).toBeNull();
   });
 
   it('opens its incentive screens, their pages and its dashboard', () => {

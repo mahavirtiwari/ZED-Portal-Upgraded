@@ -82,8 +82,13 @@ public sealed class IncentivesAdminTests : IDisposable
         Assert.Contains("/staff/sub-users", routes);
         Assert.DoesNotContain("/staff/monitoring", routes);
 
-        foreach (var path in new[] { "/api/staff/monitoring", "/api/staff/dashboard/analytics?view=registered", "/api/staff/documents", "/api/staff/expenditure/summary",
-                     "/api/staff/assessment/allot", "/api/staff/quality-observations", "/api/staff/users/agencies" })
+        // 2026-11-26 (the user): it has Quality Observations and its own Documents too.
+        Assert.Contains("/staff/quality-observations", routes);
+        Assert.Contains("/staff/documents", routes);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await inc.GetAsync("/api/staff/documents")).StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await inc.GetAsync("/api/staff/quality-observations")).StatusCode);
+        foreach (var path in new[] { "/api/staff/monitoring", "/api/staff/dashboard/analytics?view=registered", "/api/staff/expenditure/summary",
+                     "/api/staff/assessment/allot", "/api/staff/users/agencies" })
             Assert.Equal(HttpStatusCode.Forbidden, (await inc.GetAsync(path)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await inc.GetAsync("/api/staff/incentives-dashboard")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await inc.GetAsync("/api/staff/scheme-applications")).StatusCode);
@@ -153,12 +158,13 @@ public sealed class IncentivesAdminTests : IDisposable
     }
 
     [Fact]
-    public async Task Its_bell_lists_the_incentive_work_only()
+    public async Task Its_bell_lists_the_incentive_work_and_the_open_quality_observations()
     {
         var inc = await UsersMastersLogin.SignInAsync(_host, "INC1");
         var a = await inc.GetFromJsonAsync<JsonElement>("/api/staff/attention?fresh=true");
         var items = a.GetProperty("items").EnumerateArray().ToDictionary(i => i.GetProperty("key").GetString()!, i => i.GetProperty("count").GetInt32());
-        Assert.Equal(new Dictionary<string, int> { ["scheme-allot"] = 1, ["scheme-onsite-allot"] = 1, ["scheme-hold"] = 1, ["fa-allot"] = 1 }, items);
+        // 2026-11-26: with the open quality observations (its Quality Observations screen).
+        Assert.Equal(new Dictionary<string, int> { ["scheme-allot"] = 1, ["scheme-onsite-allot"] = 1, ["scheme-hold"] = 1, ["fa-allot"] = 1, ["quality-open"] = 0 }, items);
     }
 
     [Fact]
@@ -191,11 +197,12 @@ public sealed class IncentivesAdminTests : IDisposable
     public void Its_operation_admins_get_only_the_incentive_screens()
     {
         var keys = SubUserPermissions.For((int)UserRole.MasterAdmin, [IncentivesAdmins.SubRole], PortalSystem.Main).Select(p => p.Key).Order().ToArray();
-        Assert.Equal(["financial-assistance", "incentive-upload", "scheme-applications", "scheme-onsite-agencies"], keys);
+        Assert.Equal(["financial-assistance", "incentive-upload", "quality-observations", "scheme-applications", "scheme-onsite-agencies"], keys);
         var main = SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main).Select(p => p.Key).ToList();
         Assert.Contains("monitoring", main);
         // 2026-11-25: the main Master Admin's Operation Admins no longer get the incentive screens.
-        Assert.Empty(main.Intersect(IncentivesAdmins.Keys));
+        Assert.Empty(main.Intersect(IncentivesAdmins.IncentiveKeys));
+        Assert.Contains("quality-observations", main);
 
         Assert.True(IncentivesAdmins.Allows("GET", "/api/staff/scheme-applications/4", subUser: false, PortalSystem.Main));
         Assert.True(IncentivesAdmins.Allows("POST", "/api/staff/sub-users", subUser: false, PortalSystem.Main));
