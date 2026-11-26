@@ -317,7 +317,7 @@ export function cardText(label: string): string {
     .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
     .app-stats li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 2px 8px; align-items: center; align-content: start; }
     .app-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .app-label { font-size: 11px; font-weight: 500; line-height: 14px; color: #6f8487; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .app-label { font-size: 11px; font-weight: 500; line-height: 14px; color: #6f8487; white-space: normal; overflow-wrap: break-word; }
     .app-figure { grid-column: 2; line-height: 18px; }
     .app-figure, .ms-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
     .app-value { font-size: 14.5px; font-weight: 800; color: #17373b; font-variant-numeric: tabular-nums; }

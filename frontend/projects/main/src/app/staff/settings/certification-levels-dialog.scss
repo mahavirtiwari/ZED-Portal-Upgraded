@@ -30,7 +30,7 @@
 .lv-logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .lv-logo-small { height: 40px; }
 .lv-upload { display: inline-flex; align-items: center; gap: 10px; margin: 0; cursor: pointer; min-width: 0; font-weight: 400; }
-.lv-upload-name { font-size: 13px; color: #232527; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.lv-upload-name { font-size: 13px; color: #232527; max-width: 260px; white-space: normal; overflow-wrap: break-word; }
 #lv-logo:focus-visible + .lv-upload .btn { outline: 2px solid #45a5ad; outline-offset: 2px; }
 .lv-tokens { display: flex; flex-wrap: wrap; gap: 4px; }
 .token { font-size: 12px; background: #eef6f6; color: #23474a; border-radius: 4px; padding: 1px 6px; }

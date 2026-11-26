@@ -327,20 +327,23 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     .as-list { padding: 0; overflow: hidden; }
     .as-table { margin: 0; }
     /* The assessor's name has its own width: with only the other columns sized it got what was left (64px on a laptop). */
-    .as-table.is-main { min-width: 1440px; table-layout: fixed; }
-    .as-table .c-who { width: 264px; }
-    .as-table .c-lv { width: 230px; }
-    .as-table .c-alloc { width: 190px; }
-    .as-table .c-sec { width: 140px; }
-    .as-table .c-con { width: 190px; }
-    .as-table .c-ag { width: 170px; }
-    .as-table .c-st { width: 140px; }
-    .as-table .c-act { width: 116px; }
+    /* 2026-11-26 (the user: floating text, "check View button too"): the columns share the card's width. At 1440px fixed the
+       table was wider than a laptop's card (about 1,294px): the Assessor column scrolled out on the left and View / ⋮ sat on
+       the clipped right edge. Actions keeps the room of View + ⋮; the rest are shares; a scroll only below 1180px. */
+    .as-table.is-main { min-width: 1180px; table-layout: fixed; }
+    .as-table .c-who { width: 14%; }
+    .as-table .c-lv { width: 12%; }
+    .as-table .c-alloc { width: 13%; }
+    .as-table .c-sec { width: 11.5%; }
+    .as-table .c-con { width: 14%; }
+    .as-table .c-ag { width: 12%; }
+    .as-table .c-st { width: 12.5%; }
+    .as-table .c-act { width: 144px; }
     .as-table td { vertical-align: middle; font-size: 13.5px; }
     .as-sno { color: #6f8487; }
     .as-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .as-who, div.as-agency, div.as-contact { min-width: 0; display: flex; flex-direction: column; }
-    .as-who > *, div.as-agency > *, div.as-contact > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .as-who > *, div.as-agency > *, div.as-contact > * { white-space: normal; overflow-wrap: break-word; }
     .as-avatar { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #e6f2f3; color: #24666b; font-weight: 800; font-size: 11.5px; }
     tr.is-blocked .as-avatar { background: #fbe9e7; color: #c8473c; }
     .as-name, .as-agency-name { font-size: 13.5px; font-weight: 700; color: #17373b; }

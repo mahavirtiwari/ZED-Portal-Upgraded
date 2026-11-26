@@ -359,7 +359,7 @@ type Section = 'partners' | 'apis' | 'services';
     .auth-chip.static { background: #f1f0fb; color: #3f3a7a; }
     .auth-chip.incentive { background: #fff4d6; color: #8a6100; }
     .ai-chip { display: inline-block; font-size: 12px; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
-    .ai-url { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ai-url { display: block; max-width: 260px; white-space: normal; overflow-wrap: break-word; }
     .activity { font-size: 13px; white-space: nowrap; }
     .act-label { display: inline-block; min-width: 70px; color: #5f6f70; font-size: 12px; font-weight: 600; }
     .ai-off td, .ai-off.ai-group, .ai-off.service { opacity: .6; }

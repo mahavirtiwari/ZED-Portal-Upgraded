@@ -43,7 +43,7 @@ time, .date, .num, td.num, .text-nowrap {
   .btn:not(td .btn):not(.modal-footer .btn):not(.seg .btn) { white-space: normal; text-align: center; }
 }
 // A cell meant to be one line: cut with "…" (give the element the full text as its title).
-.zed-ellipsis { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zed-ellipsis { display: block; max-width: 100%; white-space: normal; overflow-wrap: break-word; }
 // The action column takes the width of its buttons, no more: the row buttons side by side on one line (they used to stack
 // one under the other in uneven widths), the table scrolling inside its box when the buttons need the room.
 .table > tbody > tr > td > .row-actions.row-actions { flex-direction: row; flex-wrap: nowrap; }
@@ -230,6 +230,11 @@ input[type='file']::file-selector-button {
   cursor: pointer;
 }
 input[type='file']::file-selector-button:hover { background: #d9e3e3; }
+// 2026-11-26 (the user, Expenditure → GSTIN and PAN): in a .form-control box Bootstrap pulls the button out to the edges
+// (negative margins, square corners), so it covered the box's border and the first letter of "No file chosen". It sits
+// inside the box now, with the text after it.
+input[type='file'].form-control:not(.d-none):not([hidden]) { height: auto; min-height: 0; padding: 6px 8px 6px 6px; line-height: 1.4; }
+input[type='file'].form-control::file-selector-button { margin: 0 12px 0 0; margin-inline-end: 12px; padding: 6px 14px; border-radius: 7px; }
 
 // ---- Menu bar (staff-layout.ts; here for the component style budget) ------------------------------------------------
 // A long drop-down (Administration, 15 entries) uses the window's height, scrolls inside itself with a thin visible scroll bar,

@@ -74,7 +74,7 @@
               } @else { <span class="muted">—</span> }
             </td>
           }
-          <td>{{ s['UnitAddress'] }}</td>
+          <td class="rm-address">{{ s['UnitAddress'] }}</td>
           <td>{{ s['PStateName'] }}</td>
           @if (showsAgency()) {
             <td class="cell-lines">
@@ -87,7 +87,9 @@
             @if (isDisabled(s)) {
               <span class="status-badge is-inactive">{{ 'DISABLED' | t: 'staff.registeredMsme.disabledLabel' }}</span>
             } @else {
-              <div class="row-actions justify-content-center">
+              <!-- 2026-11-26 (the user: Dashboard Admin UI): the actions one under the other in a narrow column; in one row they
+                   made the column ~780px wide, the address a tall strip and the first columns scrolled out of view. -->
+              <div class="row-actions rm-actions">
                 @if (isSuperAdmin() && main) {
                   <button type="button" class="btn btn-outline-primary" (click)="resend(s)">{{ 'Resend Details' | t: 'staff.registeredMsme.resendButton' }}</button>
                 }

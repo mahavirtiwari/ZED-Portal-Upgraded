@@ -312,7 +312,7 @@ const API = '/api/staff/sub-users';
     .su-lock { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; fill: none; stroke: currentColor; stroke-width: 2.4; }
     .su-contact { min-width: 150px; font-size: 12.5px; font-weight: 500; color: #3d5559; }
     .su-contact span { display: block; line-height: 17px; overflow-wrap: anywhere; }
-    .su-contact .su-mail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+    .su-contact .su-mail { white-space: normal; overflow-wrap: break-word; }
     .su-mail, .su-never { font-size: 11.5px; font-weight: 500; color: #6f8487; }
     .no-mobile { color: #9a5f06; }
     .su-screens { min-width: 200px; max-width: 330px; }

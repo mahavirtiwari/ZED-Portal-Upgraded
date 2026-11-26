@@ -133,7 +133,7 @@ const API = '/api/staff/password-reset/';
     .prl-who-text strong { font-size: 15px; font-weight: 700; color: #17373b; }
     .prl-who-text small { font-size: 12.5px; color: #6f8487; }
     .prl-who-text b { font-weight: 600; }
-    .prl-who-text .prl-to { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+    .prl-who-text .prl-to { white-space: normal; overflow-wrap: break-word; }
     .prl-why { color: #9a5f06; font-weight: 600; }
     .prl-done { margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: #e5f5ea; color: #1e6b3c; font-size: 13px; }
     .prl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; }

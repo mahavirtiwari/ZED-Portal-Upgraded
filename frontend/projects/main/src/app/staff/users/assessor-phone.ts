@@ -115,7 +115,7 @@ export function releasePhone(http: HttpClient, userId: string, reason: string, c
     .ph-chip.is-none { background: #ecf0f0; color: #6f8487; }
     .ph-chip.is-warn { background: #fdf2dc; color: #9a5f06; }
     .ph-chip svg { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    .ph-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .ph-text { min-width: 0; white-space: normal; overflow-wrap: break-word; }
   `,
 })
 export class PhoneChip {

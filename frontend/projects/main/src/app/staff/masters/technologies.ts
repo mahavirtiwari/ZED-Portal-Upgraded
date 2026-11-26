@@ -157,7 +157,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .tech-table td { vertical-align: top; overflow-wrap: break-word; padding-top: 14px; padding-bottom: 14px; }
     .tech-table .status-cell .status-badge { white-space: nowrap; overflow-wrap: normal; }
     .tech-table .actions-cell .row-actions { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 6px; }
-    .tech-table .zed-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    .tech-table .zed-chip { max-width: 100%; vertical-align: middle; white-space: normal; overflow-wrap: break-word; }
     .tech-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .tech-table tr.is-off .tech-name, .tech-table tr.is-off .code-badge { opacity: .65; }
     .code-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 3px 10px; border-radius: 15px; background: #eef6f6;

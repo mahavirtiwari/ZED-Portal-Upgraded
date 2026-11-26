@@ -114,7 +114,7 @@ export interface LevelCardVm {
     .lv-card.panel-silver > .lv-head { background: #a5abb0; }
     .lv-card.panel-gold > .lv-head { background: #c9a23f; }
     .lv-card.panel-zedx > .lv-head { background: #3c8f99; }
-    .lv-head h5 { margin: 0; min-width: 0; font-size: 12px; font-weight: 700; letter-spacing: .5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lv-head h5 { margin: 0; min-width: 0; font-size: 12px; font-weight: 700; letter-spacing: .5px; color: #fff; white-space: normal; overflow-wrap: break-word; }
     .lv-info { background: none; border: 0; padding: 0; color: #fff; cursor: pointer; }
     .lv-body { display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 12px; flex: 1 1 auto; }
     .lv-logo { align-self: center; }

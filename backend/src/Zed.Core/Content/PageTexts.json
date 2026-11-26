@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9693,
+  "count": 9694,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -90655,6 +90655,18 @@
       "files": [
         "staff/quality/quality-observation-item.ts",
         "staff/quality/quality-observations-page.ts"
+      ]
+    },
+    {
+      "key": "staff.quality.time.underHour.label",
+      "standard": "under an hour",
+      "kind": "label",
+      "portal": "staff",
+      "page": "quality",
+      "pageName": "Quality",
+      "placeholders": [],
+      "files": [
+        "staff/quality/quality-observation-item.ts"
       ]
     },
     {

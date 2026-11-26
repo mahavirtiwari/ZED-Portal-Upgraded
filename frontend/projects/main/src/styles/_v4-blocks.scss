@@ -127,7 +127,7 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .unit-cell b { display: block; color: #23474a; }
   .unit-cell small, .sub { display: block; color: #7a8a8b; font-size: 12px; }
   // 2026-11-18 (the user: e-mail never masked): a full e-mail in a narrow list cell, cut with "…" (the full one as its title).
-  .sub.mail-cut { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub.mail-cut { max-width: 240px; white-space: normal; overflow-wrap: break-word; }
   .lv-tag { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; background: #eef6f6; color: var(--zt-dark, #23656b); white-space: nowrap; }
   .lv-tag.lv-bronze { background: #f3e3d9; color: #8a4b25; }
   .lv-tag.lv-silver { background: #e9eef0; color: #455a64; }

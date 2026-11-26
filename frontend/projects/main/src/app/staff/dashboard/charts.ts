@@ -59,7 +59,7 @@ const percent = (value: number, total: number) => (total ? `${((value / total) *
     .cc-bar { width: min(100%, 56px); min-height: 2px; border-radius: 4px 4px 0 0; transition: opacity .15s; }
     .cc-bar.is-dim { opacity: .45; }
     .cc-axis { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
-    .cc-label { font-size: 12px; color: #5f6f70; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cc-label { font-size: 12px; color: #5f6f70; text-align: center; white-space: normal; overflow-wrap: break-word; }
     .cc-tip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 3; white-space: nowrap;
       background: #23474a; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.18); pointer-events: none; }
     .cc-tip strong { display: block; font-weight: 700; }`,
@@ -207,7 +207,7 @@ export type RankSort = 'high' | 'low' | 'name';
     .rk-list { list-style: none; margin: 0; padding: 4px 24px 16px; }
     .rk-list li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; padding: 10px 0 0; line-height: 16px; }
     .rk-rank { font-size: 12px; font-weight: 700; color: #6f8487; font-variant-numeric: tabular-nums; }
-    .rk-label { font-size: 13px; font-weight: 600; color: #17373b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rk-label { font-size: 13px; font-weight: 600; color: #17373b; white-space: normal; overflow-wrap: break-word; }
     .rk-value { padding-left: 8px; font-size: 13px; font-weight: 700; color: #17373b; font-variant-numeric: tabular-nums; }
     .rk-track { grid-column: 2 / 4; display: block; height: 5px; margin-top: 4px; border-radius: 3px; background: #e9efef; }
     .rk-bar { display: block; height: 100%; border-radius: 3px; background: #3ba3ad; min-width: 2px; }
@@ -333,7 +333,7 @@ export function axisTicks(max: number): number[] {
     .gc-bar { flex: 1 1 0; max-width: 18px; min-height: 2px; border-radius: 3px 3px 0 0; transition: opacity .15s; }
     .gc-bar.is-dim { opacity: .45; }
     .gc-axis { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
-    .gc-label { font-size: 11px; font-weight: 500; color: #6f8487; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gc-label { font-size: 11px; font-weight: 500; color: #6f8487; text-align: center; white-space: normal; overflow-wrap: break-word; }
     .gc-tip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 3; white-space: nowrap;
       display: flex; flex-direction: column; gap: 2px; background: #23474a; color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,.18); pointer-events: none; }`,

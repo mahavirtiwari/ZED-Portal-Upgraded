@@ -40,9 +40,11 @@ import { TextPipe, t } from '../../content/page-text';
         ? ('Hide history ({count})' | t: 'staff.quality.item.hideHistory.button' : { count: o.history.length })
         : ('Show history ({count})' | t: 'staff.quality.item.showHistory.button' : { count: o.history.length }) }}</button>
       @if (open()) {
+        <!-- 2026-11-26 (the user: "Check the UI"): a timeline in its own box, one step per line, the times as its footer. -->
+        <div class="qo-hbox">
         <ol class="qo-history" data-qo-history>
           @for (h of o.history; track $index) {
-            <li><b>{{ stepLabel(h.kind) }}</b> · {{ h.at | date: 'd MMM yyyy, h:mm a' }} · {{ h.byName || h.by }}@if (h.text) { <span class="d-block">{{ h.text }}</span> }</li>
+            <li [attr.data-kind]="h.kind"><div class="qo-hline"><b>{{ stepLabel(h.kind) }}</b><span>{{ h.at | date: 'd MMM yyyy, h:mm a' }}</span><span>{{ h.byName || h.by }}</span></div>@if (h.text) { <div class="qo-htext">{{ h.text }}</div> }</li>
           }
         </ol>
         <div class="qo-times">
@@ -55,6 +57,7 @@ import { TextPipe, t } from '../../content/page-text';
             {{ 'Reply in {reply} · closed in {close}' | t: 'staff.quality.item.times.label' : { reply: hoursOf(o.replyHours), close: hoursOf(o.closeHours) } }}
           }
           @if (o.reopens) { {{ '· reopened {count}×' | t: 'staff.quality.item.reopens.label' : { count: o.reopens } }} }
+        </div>
         </div>
       }
       @if (canRespond() && o.status !== 'Closed') {
@@ -100,8 +103,18 @@ import { TextPipe, t } from '../../content/page-text';
     .qo-meta { font-size: 12.5px; color: #5f6f70; margin-top: 2px; }
     .qo-text { margin: 6px 0 4px; font-size: 13.5px; white-space: pre-line; overflow-wrap: anywhere; }
     .qo-toggle { font-size: 13px; font-weight: 600; color: var(--zt-dark, #1f5c61); text-decoration: none; }
-    .qo-history { font-size: 12px; margin: 6px 0 0; padding-left: 18px; color: #3f4754; }
-    .qo-times { font-size: 12px; color: #5f6f70; margin-top: 4px; }
+    .qo-hbox { margin-top: 8px; padding: 10px 14px; border: 1px solid #e3eaea; border-radius: 10px; background: #f6f9f9; max-width: 760px; }
+    .qo-history { list-style: none; margin: 0; padding: 0; font-size: 12.5px; color: #3f4754; }
+    .qo-history li { position: relative; padding: 0 0 10px 20px; }
+    .qo-history li::before { content: ''; position: absolute; left: 3px; top: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--zt-mid2, #2a8a8c); }
+    .qo-history li:not(:last-child)::after { content: ''; position: absolute; left: 7px; top: 16px; bottom: 0; width: 1px; background: #cfdcdc; }
+    .qo-history li[data-kind='Closed']::before { background: #2e9e57; }
+    .qo-history li[data-kind='Reopened']::before { background: #d97706; }
+    .qo-hline { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+    .qo-hline b { color: #17373b; }
+    .qo-hline span { color: #5f6f70; }
+    .qo-htext { margin-top: 3px; color: #17373b; white-space: pre-line; overflow-wrap: anywhere; }
+    .qo-times { font-size: 12px; color: #5f6f70; padding-top: 8px; border-top: 1px dashed #d5e0e0; }
     .qo-act { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
     .qo-act textarea { min-height: 0; height: auto; font-size: 13px; border-radius: 8px; }
     .qo-act .qo-note { height: 30px; font-size: 12.5px; border-radius: 8px; }
@@ -134,9 +147,10 @@ export class QualityObservationItem {
     return (o.about && aboutLabels(this.system)[o.about]) || t('staff.quality.item.aboutAssessment.label', 'the assessment');
   }
 
-  /** "12 h", or — when not yet. */
+  /** "12 h", "under an hour" (0; it read "0 h"), or — when not yet. */
   protected hoursOf(h: number | null | undefined): string {
-    return h != null ? t('staff.quality.time.hours.label', '{count} h', { count: h }) : '—';
+    if (h == null) return '—';
+    return h < 1 ? t('staff.quality.time.underHour.label', 'under an hour') : t('staff.quality.time.hours.label', '{count} h', { count: h });
   }
 
   protected async act(call: Observable<{ message: string }>): Promise<void> {

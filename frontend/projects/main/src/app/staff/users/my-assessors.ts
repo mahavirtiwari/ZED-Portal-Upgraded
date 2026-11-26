@@ -210,7 +210,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     .ma-name { font-weight: 700; color: var(--zt-ink, #173f44); }
     .ma-id, .ma-sub { font-size: 12.5px; color: #5f6f70; }
     .ma-contact { min-width: 150px; }
-    .ma-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ma-contact > * { max-width: 100%; white-space: normal; overflow-wrap: break-word; }
     .lv-names { display: block; font-size: 13px; font-weight: 700; color: #17373b; margin-bottom: 2px; }
     .ma-type { font-size: 13px; color: #3d5254; }
     .ma-pill { display: inline-block; padding: 3px 11px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }

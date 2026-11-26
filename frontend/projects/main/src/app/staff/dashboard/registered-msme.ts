@@ -31,6 +31,11 @@ import { TextPipe, t } from '../../content/page-text';
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
     .status-badge.wrap { white-space: normal; }
+    /* One under the other, equal widths (beats the shared one-row rule .table td > .row-actions.row-actions). */
+    .table > tbody > tr > td > .row-actions.rm-actions { display: grid; grid-template-columns: 1fr; gap: 6px; }
+    .rm-actions .btn { width: 100%; white-space: nowrap; }
+    .rm-address { min-width: 240px; }
+    .status-badge.wrap { display: inline-block; min-width: 110px; }
   `,
 })
 export class RegisteredMsmePage {

@@ -589,7 +589,7 @@ export function neftFieldErrors(f: { userName: string; email: string; mobileNo: 
     .acc-contact { min-width: 220px; }
     .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; overflow-wrap: break-word; }
     .acc-contact .acc-mail { min-width: 0; }
-    .acc-contact .acc-txt { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+    .acc-contact .acc-txt { display: block; min-width: 0; white-space: normal; overflow-wrap: break-word; }
     .acc-contact .acc-mail { font-size: 13px; color: #5f6f70; }
     .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
     /* One row of equal-height actions (Edit, Reset Password, Block). */

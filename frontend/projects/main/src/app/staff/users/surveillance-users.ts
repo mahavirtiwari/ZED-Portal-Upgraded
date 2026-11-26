@@ -295,7 +295,7 @@ interface Target {
     .sv-name, .sv-contact strong { font-weight: 700; color: var(--zt-ink, #173f44); }
     .sv-id, .sv-sub { font-size: 12.5px; color: #5f6f70; }
     .sv-contact { min-width: 150px; }
-    .sv-contact > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sv-contact > * { max-width: 100%; white-space: normal; overflow-wrap: break-word; }
     .sv-pill { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 10px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .sv-agency-line { margin-top: 3px; }
     .sv-alloc { min-width: 170px; }
