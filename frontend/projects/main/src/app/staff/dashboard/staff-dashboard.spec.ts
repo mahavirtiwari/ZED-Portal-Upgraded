@@ -289,6 +289,17 @@ describe('StaffDashboardPage', () => {
     expect(el.querySelector('[data-field="SaSilverNcRaised"]')!.textContent).toBe('1');
   });
 
+  // 2026-11-26 (the user, Ministry on the consultancy portal: "Technology should not be part of this login now").
+  it('consultancy: no Technology Intervention card for the Ministry', async () => {
+    await create('consultancy', 8);
+    for (const r of http.match((x) => x.url === '/api/staff/dashboard')) r.flush({});
+    analyticsCall().flush(analytics('registered', { totals: { registered: 1, certified: 0, bronze: 1, silver: 1, gold: 0, zedx: 0 }, statusCards: { SilverTotal: 1, FaTotal: 3 } }));
+    await settle();
+    for (const r of http.match(() => true)) r.flush({ total: 0, items: [] });
+    await settle();
+    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'ZED-X']);
+  });
+
   it('consultancy: handholding figures, Silver, Gold and ZED-X milestones and Technology Intervention', async () => {
     await create('consultancy');
     // The consultant tiles come from the summary (MasterAdmin only); the cards from the filtered figures.

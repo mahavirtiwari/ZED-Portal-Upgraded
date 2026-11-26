@@ -94,8 +94,13 @@ public sealed class RegisteredMsmeController(
         // Agency and Udyam columns: not for a Dashboard Admin set to hide agency and assessor names (the old QC login's rule).
         var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) && !DashboardScreens.HidesNames(CurrentUser, host.System)
             ? [.. baseColumns, .. AdminColumns] : baseColumns;
+        var rows = await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct);
+        // 2026-11-26 (zedv3, consultancy Ministry: "No records" under a listed unit): ZED_CONSULTANT's procedure returns every row in
+        // one set, without its count or paging (its OFFSET is commented out); the count and the page are made here then.
+        if (sets.Count < 2 || sets[1].Count == 0)
+            return new ListResponse(DashboardFilters.Pick(rows.Skip(Math.Max(0, (pageNo - 1) * pageSize)).Take(pageSize).ToList(), columns), rows.Count, pageNo, pageSize);
         var total = sets[1].FirstOrDefault();
-        return new ListResponse(DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
+        return new ListResponse(DashboardFilters.Pick(rows, columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
     }
 
     /// <summary>

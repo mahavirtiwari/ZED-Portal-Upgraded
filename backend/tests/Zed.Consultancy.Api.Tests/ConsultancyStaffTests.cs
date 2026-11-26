@@ -639,6 +639,19 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await super.PostAsync("/api/staff/dashboard/registered-msme/ZEDMSME1/resend", null)).StatusCode);
     }
 
+    /// <summary>2026-11-26 (zedv3, Ministry: "No records" under a listed unit): the procedure gives every row and no count.</summary>
+    [Fact]
+    public async Task Registered_msme_counts_and_pages_the_rows_when_the_procedure_gives_no_total()
+    {
+        _host.Sql.Procs["SP_DASHBOARD_REGISTERED_MSME"] = _ => FakeSql.Sets(
+            Enumerable.Range(1, 12).Select(i => new { ZedId = $"ZEDMSME{i}", MileStoneNo = 1 }).ToArray());
+        var master = await ConsultancyLogin.SignInAsync(_host, "MASTER1");
+        var first = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/registered-msme?pageNo=1&pageSize=10");
+        Assert.Equal((12, 10), (first.GetProperty("totalCounts").GetInt32(), first.GetProperty("rows").GetArrayLength()));
+        var second = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/registered-msme?pageNo=2&pageSize=10");
+        Assert.Equal(("ZEDMSME11", 2), (second.GetProperty("rows")[0].GetProperty("ZedId").GetString(), second.GetProperty("rows").GetArrayLength()));
+    }
+
     [Fact]
     public async Task Master_admin_may_fix_a_failed_payment_and_nothing_is_posted_to_the_erp()
     {
