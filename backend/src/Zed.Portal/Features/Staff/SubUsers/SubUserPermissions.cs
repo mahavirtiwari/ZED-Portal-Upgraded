@@ -101,8 +101,7 @@ public static class SubUserPermissions
         // 2026-11-20: the incentive verification agencies, desktop and onsite (the key stays: it is stored in dbo.V4SubUsers.Permissions).
         new("scheme-onsite-agencies", "Incentive Verification Agencies", UserRole.MasterAdmin, Main, None,
             ["/staff/scheme-agencies", "/staff/scheme-onsite/agencies"], ["/api/staff/scheme-agencies", "/api/staff/scheme-onsite/agencies", IncentivesDashboard]),
-        new("technology-upgradation", "Technology Upgradation", UserRole.MasterAdmin, Consultancy, None,
-            ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
+        // 2026-11-26: technology upgradation moved to the incentive schemes (no Operation Admin tick on the consultancy portal).
 
         // Agencies, consultant organisations and surveillance agencies
         new("monitoring", "Monitoring", UserRole.Agency, All, SiteOrDesktop,
@@ -135,8 +134,6 @@ public static class SubUserPermissions
         // 2026-11-20 (phase 2): an onsite verification agency's scheme onsite allotment and onsite QC.
         new("scheme-onsite", "Scheme onsite allotment and QC", UserRole.Agency, Main, OnsiteAgency,
             ["/staff/scheme-onsite/allotment", "/staff/scheme-onsite/qc"], ["/api/staff/scheme-onsite/agency"]),
-        new("technology-upgradation", "Technology Upgradation", UserRole.Agency, Consultancy, [SubRoles.FinancialVerification],
-            ["/staff/consultancy/technology"], ["/api/staff/consultancy/tu", "/api/staff/consultancy/technology"]),
     ];
 
     /// <summary>Roles that can have sub-users.</summary>

@@ -280,7 +280,7 @@ describe('MonitoringPage', () => {
     });
     await settle();
     // 2026-11-21 (audit item 7): each count on its own row at every width.
-    expect([...tile('Quality check').querySelectorAll('.lc-part')].map((p) => p.textContent!.trim())).toEqual(['Desktop 2', 'Site 3', '4 delayed']);
+    expect([...tile('Quality check').querySelectorAll('.lc-chip')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Desktop 2', 'Site 3', '4 delayed']);
     expect(tile('Assessment in progress').textContent).toContain('4');
     expect(tab('desktop').textContent).toContain('1');
     expect(tab('site').textContent).toContain('2');
@@ -562,7 +562,7 @@ describe('MonitoringPage per system', () => {
       stages: [{ status: 2, total: 0, delayed: 0, tracks: {} }, { status: 3, total: 2, delayed: 1, tracks: { m1: 1, m2: 1 } }, { status: 5, total: 0, delayed: 0, tracks: {} }],
     });
     await settle();
-    expect([...tile('Consultancy in progress').querySelectorAll('.lc-part')].map((p) => p.textContent!.trim())).toEqual(['M1 1', 'M2 1', 'M3 0']);
+    expect([...tile('Consultancy in progress').querySelectorAll('.lc-chip')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['M1 1', 'M2 1', 'M3 0']);
     const tabs = [...el.querySelectorAll('[data-track]')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
     expect(tabs).toEqual(['All milestones 2', 'Milestone 1 1', 'Milestone 2 1', 'Milestone 3 0']);
     expect(el.querySelectorAll('tbody tr').length).toBe(2);

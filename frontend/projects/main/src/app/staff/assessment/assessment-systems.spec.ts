@@ -228,7 +228,7 @@ describe('assessment pages per system', () => {
     expect(rows[1].textContent).not.toContain('Recommended Technologies');
   });
 
-  it('consultancy Completed: the lead consultant recommends technologies after the MSME accepted milestone 3', async () => {
+  it('consultancy Completed: no new technology recommendation (moved to the incentive schemes)', async () => {
     await setup('consultancy');
     TestBed.inject(AuthService).setUser({ userId: 'C1', userName: 'C', roleId: 3, role: 'DesktopAssessor', subRoles: ['SiteVerification'] });
     const fixture = await create(AssessmentResultsPage, 'completed');
@@ -238,7 +238,8 @@ describe('assessment pages per system', () => {
       totalCount: 1, pageNo: 1, pageSize: 20,
     });
     await settle(fixture);
-    expect(el.textContent).toContain('Recommend Technologies');
+    // 2026-11-26: technology upgradation moved to the incentive schemes: no new recommendation.
+    expect(el.textContent).not.toContain('Recommend Technologies');
     expect(el.textContent).not.toContain('MileStone 1 Report');
   });
 

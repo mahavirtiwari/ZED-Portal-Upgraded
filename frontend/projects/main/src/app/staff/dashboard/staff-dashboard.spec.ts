@@ -300,7 +300,7 @@ describe('StaffDashboardPage', () => {
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'ZED-X']);
   });
 
-  it('consultancy: handholding figures, Silver, Gold and ZED-X milestones and Technology Intervention', async () => {
+  it('consultancy: handholding figures, Silver, Gold and ZED-X milestones (no Technology Intervention)', async () => {
     await create('consultancy');
     // The consultant tiles come from the summary (MasterAdmin only); the cards from the filtered figures.
     http.expectOne('/api/staff/dashboard').flush({ AssessmentAgencies: 4, SiteAssessors: 9, SilverTotal: 99 });
@@ -314,7 +314,8 @@ describe('StaffDashboardPage', () => {
       .toEqual(['Registered units: 300', 'Handholding completed: 12', 'Applications: 80', 'Silver applications: 60', 'Gold applications: 15', 'ZED-X applications: 5']);
     expect([...(el.querySelector('#an-cert') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Silver', 'Gold', 'ZED-X']);
     expect([...el.querySelectorAll('.an-basis-tab')].map(text)).toEqual(['By registration date', 'By handholding completion date']);
-    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'ZED-X', 'Technology Intervention']);
+    // 2026-11-26: no Technology Intervention card on the consultancy portal (technology upgradation moved to the incentive schemes).
+    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'ZED-X']);
     expect(el.querySelector('[data-field="ZEDXTotal"]')!.textContent).toBe('5');
 
     // The milestones: payments received and completed, each as a share of the level's applications.
@@ -325,9 +326,6 @@ describe('StaffDashboardPage', () => {
     expect([...m1.querySelectorAll('.ms-figure')].map(text)).toEqual(['45(75%)', '30(50%)']);
     expect(silver.querySelectorAll('.ms-list li').length).toBe(3);
     expect(text(silver.querySelectorAll('.ms-list li')[2].querySelectorAll('.ms-figure')[1])).toBe('12(20%)');
-    const ti = el.querySelectorAll('.an-status .app-card')[3];
-    expect([...ti.querySelectorAll('.app-label')].map(text)).toEqual(['Approved', 'Pending']);
-    expect(text(ti.querySelector('.app-stats li .app-share'))).toBe('(25%)');
 
     await choose('#an-cert', 'Gold');
     const gold = analyticsCall();

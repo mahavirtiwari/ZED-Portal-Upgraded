@@ -502,7 +502,8 @@ export class AssessmentResultsPage {
   protected recTech(s: Row): 'recommend' | 'view' | '' {
     if (num(s, 'DisplayRecTech') !== 1 || num(s, 'NcCount') !== 3) return '';
     const tu = num(s, 'TuStatus');
-    if (this.isAssessor()) return num(s, 'CertificationStatus') === 100 && tu < 98 ? (tu === 0 ? 'recommend' : 'view') : '';
+    // 2026-11-26 (the user: Technology Upgradation "moved to incentive admin"): no new recommendation; one already made can be viewed.
+    if (this.isAssessor()) return num(s, 'CertificationStatus') === 100 && tu > 0 && tu < 98 ? 'view' : '';
     return tu === 1 ? 'view' : '';
   }
 

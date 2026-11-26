@@ -333,7 +333,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
-  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.MasterAdmin] },
+  // 2026-11-26 (the user: Technology Upgradation "moved to incentive admin"): no longer on the consultancy portal; technology
+  // upgradation applications come as the incentive scheme (Incentives Master Admin → Scheme Applications).
 
   // Consultant Organisation (Agency)
   { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Consultancy' },
@@ -341,14 +342,12 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Consultancy Monitoring', route: '/staff/monitoring', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Consultancy' },
   { label: 'Consultants/Experts', route: '/staff/users/my-assessors', roles: [R.Agency] },
   { label: 'Reports', route: '/staff/reports', roles: [R.Agency] },
-  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.Agency], subRoles: ['FinancialVerification'] },
 
   // Consultant / expert (DesktopAssessor)
   { label: 'Milestone 1', route: '/staff/site-assessment/milestones/1', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Milestone 2', route: '/staff/site-assessment/milestones/2', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Milestone 3', route: '/staff/site-assessment/milestones/3', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
-  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.DesktopAssessor], subRoles: ['FinancialVerification'] },
 
   // State coordinator: TU reimbursements
   { label: 'New Transactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },

@@ -50,18 +50,18 @@ describe('staff menu', () => {
       expect(staffRoleName({ roleId: 2, role: 'Agency', actingUserId: 'CO1S01' }, 'consultancy')).toBe('Consultant Organisation Sub-User');
     });
 
-    it('gives the master admin allotment, the CO and consultant lists and TU', () => {
+    it('gives the master admin allotment and the CO and consultant lists; no TU (moved to the incentive schemes, 2026-11-26)', () => {
       expect(c(StaffRole.MasterAdmin, [])).toEqual(expect.arrayContaining([
         'Allot Consultancy', 'Consultant Organisations', 'Consultants', 'Payment Received', 'Monitoring', 'Consultancy Completed',
-        'Technology Upgradation',
       ]));
+      expect(c(StaffRole.MasterAdmin, [])).not.toContain('Technology Upgradation');
     });
 
     it('gives a CO the handholding screens with site verification and TU with financial verification', () => {
       const site = c(StaffRole.Agency, ['SiteVerification']);
       expect(site).toEqual(expect.arrayContaining(['Allot Consultancy', 'Consultancy Monitoring', 'Consultants/Experts', 'Reports']));
       expect(site).not.toContain('Technology Upgradation');
-      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
+      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
     });
 
     it('gives consultants the milestone lists, pointing at the site-assessment routes', () => {
@@ -137,7 +137,7 @@ describe('staff menu', () => {
         'Main Dashboard Cards /staff/incentives/dashboard-cards',
         'Incentive Schemes /staff/incentives/schemes',
       ]);
-      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Expenditure', 'Documents', 'Quality Observations', 'Operation Admins']);
       expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Agencies (2)', 'Surveillance Monitoring (5)', 'Quality Observations', 'Operation Admins', 'Documents']);
     });
 
@@ -158,7 +158,7 @@ describe('staff menu', () => {
       // 2026-11-20: an assessment agency no longer verifies incentive schemes (no "Schemes" drop-down).
       expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Quality Observations', 'Sub-Users', 'Documents']);
-      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
+      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Expenditure', 'Documents', 'Quality Observations', 'Sub-Users']);
       // An agency with only desktop verification has one allotment screen: a link, not a drop-down.
       expect(menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main')).some((e) => 'item' in e && e.item.label === 'DA Allotment')).toBe(true);
       expect(menuEntries(menuFor(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'], 'main')).every((e) => 'item' in e)).toBe(true);

@@ -52,7 +52,7 @@ describe('staff pages per system', () => {
     months: [], years: [], states: [], districts: [], activities: [], districtOptions: [], boundState: null, generatedAt: '2026-10-27T10:00:00+05:30', statusCards,
   });
 
-  it('shows Consultancy MasterAdmin the organisation and consultant tiles and the TI card', async () => {
+  it('shows Consultancy MasterAdmin the organisation and consultant tiles, without the TI card', async () => {
     await create(StaffDashboardPage, 'consultancy');
     http.expectOne('/api/staff/dashboard').flush({ AssessmentAgencies: 12, SiteAssessors: 340, SilverTotal: 5, FaTotal: 2 });
     http.expectOne((r) => r.url === '/api/staff/dashboard/analytics').flush(figures({ SilverTotal: 5, FaTotal: 2 }));
@@ -60,8 +60,9 @@ describe('staff pages per system', () => {
 
     const tiles = [...el.querySelectorAll('.dash-tile')].map((t) => `${t.querySelector('h5')!.textContent!.trim()}${t.querySelector('.dash-count')!.textContent!.trim()}`);
     expect(tiles).toEqual(['Empanelled Consultant Organisations12', 'Consultants340']);
-    expect(el.querySelectorAll('.app-card').length).toBe(4);   // Silver, Gold, ZED-X (2026-11-16), Technology Intervention
-    expect(el.textContent).toContain('Technology Intervention');
+    // Silver, Gold, ZED-X (2026-11-16); 2026-11-26: no Technology Intervention (moved to the incentive schemes).
+    expect(el.querySelectorAll('.app-card').length).toBe(3);
+    expect(el.textContent).not.toContain('Technology Intervention');
     expect(el.querySelector('.registered')).toBeNull();
   });
 

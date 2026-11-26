@@ -40,7 +40,13 @@ export interface ListCount {
     </div>
     <ng-template #body let-c>
       <b [class]="c.tone ? 'is-' + c.tone : ''">{{ c.value }}</b>&ngsp;
-      <span class="lc-label">{{ c.label }}@if (c.sub) {&ngsp;<small class="lc-sub">@for (p of parts(c.sub); track $index) {<span class="lc-part">{{ p }}</span>&ngsp;}</small> }</span>
+      @if (subRows() && c.sub) {
+        <!-- 2026-11-26 (the user, Monitoring: the stacked "M1 0 / M2 0 / M3 0" lines were "not looking good"): one row of chips. -->
+        <span class="lc-label">{{ c.label }}</span>
+        <span class="lc-chips">@for (p of chips(c.sub); track $index) {<span class="lc-chip" [class.zero]="p.zero">@if (p.pre) {<span class="lc-chip-k">{{ p.pre }}</span>&ngsp;}<b>{{ p.num }}</b>@if (p.post) {&ngsp;<span class="lc-chip-k">{{ p.post }}</span>}</span>&ngsp;}</span>
+      } @else {
+        <span class="lc-label">{{ c.label }}@if (c.sub) {&ngsp;<small class="lc-sub">@for (p of parts(c.sub); track $index) {<span class="lc-part">{{ p }}</span>&ngsp;}</small> }</span>
+      }
       @if (c.delta !== null && c.delta !== undefined && c.delta !== '') {
         <span class="lc-delta" [class.down]="('' + c.delta).startsWith('-')">{{ c.delta }}</span>
       }
@@ -66,9 +72,13 @@ export interface ListCount {
     .lc-sub { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--zt-mid2, #2a8a8c); }
     /* 2026-11-21 (UI audit L2): "Desktop 1 · Site 0" breaks only between its parts, never inside "Desktop 1". */
     .lc-part { white-space: nowrap; }
-    /* 2026-11-21 (Assessment Agency UI audit, item 7): with subRows each part of the line on its own row, at every width. */
-    .lc-sub-rows .lc-sub { display: block; margin: 2px 0 0; }
-    .lc-sub-rows .lc-part { display: block; }
+    /* 2026-11-26: with subRows the line's parts as small chips on one row (they wrap only when the tile is narrow). */
+    .lc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .lc-chip { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 9px; border-radius: 999px; background: #e6f2f3; font-size: 11.5px; line-height: 18px; }
+    .lc-chip-k { font-weight: 600; color: #3d5559; }
+    .lc-item .lc-chip b { display: inline; font-size: 12.5px; font-weight: 800; line-height: 18px; color: var(--zt-dark, #24666b); }
+    .lc-chip.zero { background: #f1f4f4; }
+    .lc-item .lc-chip.zero b, .lc-chip.zero .lc-chip-k { color: #8a9a9c; }
     .lc-delta { position: absolute; right: 16px; bottom: 14px; font-size: 12px; font-weight: 700; color: #2f9e58; }
     .lc-delta.down { color: #c8473c; }
     @media (max-width: 575.98px) {
@@ -84,7 +94,18 @@ export class ListCounts {
     return sub.split(' · ').map((p, i) => (i && !this.subRows() ? '· ' + p : p));
   }
 
-  /** Each part of a tile's line on its own row ("Desktop 1" / "Site 0"), without the dots between them. */
+  /** A line's parts as chips ("M1 1 · M2 0 · 4 delayed"), each with its number in bold. */
+  protected chips(sub: string): { pre: string; num: string; post: string; zero: boolean }[] {
+    // The number in bold, the words around it as they are ("M1 1", "Desktop 2", "4 delayed").
+    return sub.split(' · ').map((p) => {
+      const words = p.trim().split(/\s+/);
+      const at = words.findIndex((w) => /^[\d,.]+$/.test(w));
+      if (at < 0) return { pre: p.trim(), num: '', post: '', zero: false };
+      return { pre: words.slice(0, at).join(' '), num: words[at], post: words.slice(at + 1).join(' '), zero: words[at] === '0' };
+    });
+  }
+
+  /** The line's parts as chips on one row ("Desktop 1", "Site 0"), without the dots between them. */
   readonly subRows = input(false);
 
   readonly counts = input.required<ListCount[]>();

@@ -1,11 +1,11 @@
 import { DecimalPipe, NgTemplateOutlet, formatDate } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { AuthService, apiErrorMessage } from '@zed/shared';
+import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DashboardApi, Row } from './dashboard.api';
 import { text } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
-import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
 import { NO_EXPORT, exportElement } from './export';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
@@ -93,11 +93,7 @@ const CONSULTANCY_CARDS: Card[] = [
       { label: 'Milestone 3 Payment Received', field: 'ZEDXM3PaymentDone' }, { label: 'Milestone 3 Completed', field: 'SaZEDXCompleted' },
     ],
   },
-  {
-    css: 'panel-finance', title: 'Technology Intervention', lines: [
-      { label: 'Total applications', field: 'FaTotal' }, { label: 'Approved', field: 'FaCompleted' }, { label: 'Pending', field: 'FaPending' },
-    ],
-  },
+  // 2026-11-26 (the user: Technology Upgradation "moved to incentive admin"): no Technology Intervention card on the consultancy portal.
 ];
 
 /**
@@ -363,12 +359,7 @@ export class StaffDashboardPage {
   protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.dashboard.crumb.dashboard', 'Dashboard') }));
   protected readonly cardText = cardText;
   protected readonly system = inject(STAFF_SYSTEM);
-  /**
-   * 2026-11-26 (the user, Ministry on the consultancy portal: "Technology should not be part of this login now"; technology
-   * upgradation is with the incentive schemes): no Technology Intervention card for the Ministry.
-   */
-  private readonly fixedCards = DASHBOARD_CARDS[this.system].filter((c) =>
-    !(c.css === 'panel-finance' && this.system === 'consultancy' && inject(AuthService).currentUser()?.roleId === StaffRole.Ministry));
+  private readonly fixedCards = DASHBOARD_CARDS[this.system];
   /** The fixed cards, then (main portal) one card per level the Admin added, as ZED-X's (2026-11-08). */
   protected readonly cardList = computed<Card[]>(() => [
     ...this.fixedCards,
