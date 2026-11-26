@@ -1,4 +1,5 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
+import { ADMIN_PORTAL } from '../admin-portal';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
@@ -164,5 +165,10 @@ export class DashboardApi {
 
   financialSupport(filter: ListFilter): Observable<Row[]> {
     return this.http.get<Row[]>(`${this.base}/financial-support`, { params: params(filter) });
+  }
+
+  /** 2026-11-26: Handholding's milestones (served by main's API, whatever the portal switch says). */
+  financialSupportHandholding(filter: ListFilter): Observable<Row[]> {
+    return this.http.get<Row[]>(`${this.base}/financial-support/handholding`, { params: params(filter), context: new HttpContext().set(ADMIN_PORTAL, 'main') });
   }
 }

@@ -93,4 +93,17 @@ public sealed class DashboardAdminTests : IDisposable
         Assert.True(DashboardScreens.Allows(all, PortalSystem.Consultancy, "/api/staff/history"));
         Assert.Null(DashboardScreens.Routes(all));
     }
+
+    [Fact]
+    public void Handholding_financial_support_follows_the_consultancy_tick_though_main_serves_it()
+    {
+        // 2026-11-26: Handholding on the Financial Support switch, served by main's API.
+        var hh = new ZedUser("D", "D", (int)UserRole.SuperAdmin, null, null, null, null, Screens: "consultancy:financial-support");
+        Assert.True(DashboardScreens.Allows(hh, PortalSystem.Main, "/api/staff/dashboard/financial-support/handholding"));
+        Assert.False(DashboardScreens.Allows(hh, PortalSystem.Main, "/api/staff/dashboard/financial-support"));
+        var mainOnly = new ZedUser("D", "D", (int)UserRole.SuperAdmin, null, null, null, null, Screens: "main:financial-support");
+        Assert.False(DashboardScreens.Allows(mainOnly, PortalSystem.Main, "/api/staff/dashboard/financial-support/handholding"));
+        Assert.True(DashboardScreens.Allows(mainOnly, PortalSystem.Main, "/api/staff/dashboard/financial-support"));
+        Assert.Contains(PortalSystem.Consultancy, DashboardScreens.Screens.Single(x => x.Key == "financial-support").Systems);
+    }
 }

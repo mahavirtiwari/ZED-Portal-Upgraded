@@ -100,7 +100,8 @@ describe('One Dashboard Admin (2026-11-07)', () => {
     expect(dashboardPortals(u, ['reports'])).toEqual(['main', 'surveillance']);
     expect(dashboardPortals(u, ['history'])).toEqual(['consultancy']);
     expect(dashboardPortals(u, ['failed-transactions'])).toEqual([]);
-    expect(dashboardPortals(user(null), ['financial-support'])).toEqual(['main', 'surveillance']);
+    // 2026-11-26: Financial Support on Handholding too (served by main's API).
+    expect(dashboardPortals(user(null), ['financial-support'])).toEqual(['main', 'consultancy', 'surveillance']);
     expect(dashboardPortals(user(null), ['incentive-submissions'])).toEqual(['main']);
   });
 

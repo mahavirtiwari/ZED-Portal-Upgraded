@@ -93,7 +93,8 @@ export const DASHBOARD_APIS: readonly { prefix: string; screens: readonly string
 
 /** The screens each portal offers (as Zed.Core DashboardScreens). */
 const SCREEN_PORTALS: Readonly<Record<string, readonly AdminPortal[]>> = {
-  'financial-support': ['main', 'surveillance'],
+  // 2026-11-26: Handholding too (main's API serves it: DashboardApi.financialSupportHandholding).
+  'financial-support': ['main', 'consultancy', 'surveillance'],
   'incentive-submissions': ['main'],
 };
 

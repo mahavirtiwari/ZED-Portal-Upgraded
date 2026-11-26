@@ -5,7 +5,8 @@ import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { ClientPager } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
-import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
 import { ListCounts } from '../list-counts';
@@ -20,12 +21,13 @@ import { formatCount } from './charts';
   selector: 'zed-staff-financial-support',
   imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
   host: { class: 'list-v2 d-block' },
+  providers: [dashboardSystemProvider(['financial-support'])],
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['financial-support']" />
     <!-- 2026-11-26 (the user: "Please enhance UI and design"): the staff list design (page head, totals, filters card, list card). -->
     <zed-page-head [crumbs]="crumbs()" [title]="'Financial Support' | t: 'staff.financialSupport.title'"
-                   [subtitle]="'Certification fee, amount paid by the unit and the financial support given, per unit.' | t: 'staff.financialSupport.sub'" />
+                   [subtitle]="handholding ? ('Handholding fee, amount paid by the unit and the financial support given, per paid milestone.' | t: 'staff.financialSupport.handholding.sub') : ('Certification fee, amount paid by the unit and the financial support given, per unit.' | t: 'staff.financialSupport.sub')" />
     <zed-list-counts [counts]="counts()" class="fs-counts" />
     <div class="zed-card">
       <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
@@ -49,9 +51,10 @@ import { formatCount } from './charts';
             <th class="text-center">{{ 'Status' | t: 'staff.financialSupport.column.status' }}</th>
             <th>{{ 'Unit Address' | t: 'staff.financialSupport.column.address' }}</th>
             <th>{{ 'State' | t: 'staff.financialSupport.column.state' }}</th>
-            <th class="text-center">{{ 'Certification Fee' | t: 'staff.financialSupport.column.fee' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
+            <th class="text-center">{{ handholding ? ('Handholding Fee' | t: 'staff.financialSupport.handholding.column.fee') : ('Certification Fee' | t: 'staff.financialSupport.column.fee') }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
             <th class="text-center">{{ 'Amount Paid by Unit' | t: 'staff.financialSupport.column.paid' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
             <th class="text-center">{{ 'Financial Support' | t: 'staff.financialSupport.column.support' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th>
+            @if (handholding) { <th class="text-center">{{ 'State Support' | t: 'staff.financialSupport.handholding.column.state' }}<br />{{ '(Amount in Rs.)' | t: 'staff.financialSupport.column.amountNote' }}</th> }
           </tr>
         </thead>
         <tbody>
@@ -67,9 +70,10 @@ import { formatCount } from './charts';
               <td class="text-end amount">{{ money(s['CertificationFee']) }}</td>
               <td class="text-end amount">{{ money(s['Amount']) }}</td>
               <td class="text-end amount"><strong>{{ money(s['FinancialSupport']) }}</strong></td>
+              @if (handholding) { <td class="text-end amount">{{ money(s['StateSupport']) }}</td> }
             </tr>
           } @empty {
-            @if (!loading()) { <tr><td colspan="9" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
+            @if (!loading()) { <tr><td [attr.colspan]="handholding ? 10 : 9" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
           }
         </tbody>
       </table>
@@ -90,6 +94,8 @@ import { formatCount } from './charts';
 })
 export class FinancialSupportPage {
   private readonly api = inject(DashboardApi);
+  /** The portal chosen on the switch: Handholding lists the paid milestones (2026-11-26). */
+  protected readonly handholding = inject(STAFF_SYSTEM) === 'consultancy';
 
   protected readonly pager = new ClientPager<Row>();
   protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.financialSupport.crumb', 'Financial Support') }));
@@ -99,7 +105,7 @@ export class FinancialSupportPage {
     const sum = (k: string) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
     return [
       { label: t('staff.financialSupport.count.rows', 'Rows'), value: rows.length },
-      { label: t('staff.financialSupport.count.fee', 'Certification fee (Rs.)'), value: formatCount(sum('CertificationFee')) },
+      { label: this.handholding ? t('staff.financialSupport.handholding.count.fee', 'Handholding fee (Rs.)') : t('staff.financialSupport.count.fee', 'Certification fee (Rs.)'), value: formatCount(sum('CertificationFee')) },
       { label: t('staff.financialSupport.count.paid', 'Paid by units (Rs.)'), value: formatCount(sum('Amount')) },
       { label: t('staff.financialSupport.count.support', 'Financial support (Rs.)'), value: formatCount(sum('FinancialSupport')) },
     ];
@@ -120,7 +126,7 @@ export class FinancialSupportPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      this.pager.set(await firstValueFrom(this.api.financialSupport(this.filter())));
+      this.pager.set(await firstValueFrom(this.handholding ? this.api.financialSupportHandholding(this.filter()) : this.api.financialSupport(this.filter())));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

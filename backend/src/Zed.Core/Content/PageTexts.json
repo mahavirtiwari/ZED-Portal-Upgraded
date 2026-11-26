@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9711,
+  "count": 9715,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -58915,6 +58915,54 @@
     {
       "key": "staff.financialSupport.empty",
       "standard": "No Data",
+      "kind": "note",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.handholding.column.fee",
+      "standard": "Handholding Fee",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.handholding.column.state",
+      "standard": "State Support",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.handholding.count.fee",
+      "standard": "Handholding fee (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.handholding.sub",
+      "standard": "Handholding fee, amount paid by the unit and the financial support given, per paid milestone.",
       "kind": "note",
       "portal": "staff",
       "page": "financialSupport",

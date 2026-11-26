@@ -160,6 +160,30 @@ public sealed class DashboardTests : IDisposable
     }
 
     [Fact]
+    public async Task Financial_support_lists_handholding_milestones_from_the_report_procedure()
+    {
+        // 2026-11-26 (the user: "Why consultancy is not here?").
+        _host.Sql.Procs[Zed.Portal.Features.Staff.Dashboard.FinancialSupportController.HandholdingProcedure] = _ => FakeSql.Sets([
+            new { ZedId = "ZEDM000005", PUnitName = "Pump Engineers", Certification = "Silver", EnterpriseType = "Micro", Gender = "male", PStateName = "DELHI",
+                  ZedIdStatus = "Milestone 1 - In Progress", UnitAddress = "C2, 44", HandholdingFee = 80000, ApplicantContributionAfterSubsidy = 8000, GoIContribution = 72000, StateGovtContribution = 0 },
+            new { ZedId = "ZEDM000009", PUnitName = "Gold Unit", Certification = "Gold", EnterpriseType = "Small", Gender = "female", PStateName = "GOA",
+                  ZedIdStatus = "Milestone 2 - Completed", UnitAddress = "Panaji", HandholdingFee = 60000, ApplicantContributionAfterSubsidy = 12000, GoIContribution = 40000, StateGovtContribution = 8000 },
+        ]);
+        var super = await _host.SignInAsync("SUPER1");
+        var rows = await super.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/financial-support/handholding?certification=Silver");
+        Assert.Equal(1, rows.GetArrayLength());
+        var r = rows[0];
+        Assert.Equal("ZEDM000005", r.GetProperty("ZedId").GetString());
+        Assert.Equal(80000, r.GetProperty("CertificationFee").GetInt32());
+        Assert.Equal(8000, r.GetProperty("Amount").GetInt32());
+        Assert.Equal(72000, r.GetProperty("FinancialSupport").GetInt32());
+        Assert.Equal("Milestone 1 - In Progress", r.GetProperty("ZedIdStatus").GetString());
+        // The procedure answers RoleId 10 / 11 only.
+        Assert.Equal("10", FakeSql.Arg(_host.LastCall(Zed.Portal.Features.Staff.Dashboard.FinancialSupportController.HandholdingProcedure).Args, "RoleId"));
+        Assert.Equal(1, (await super.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/financial-support/handholding?state=30")).GetArrayLength());
+    }
+
+    [Fact]
     public async Task Registered_msme_marks_a_unit_without_a_desktop_step_waiting_at_its_agency()
     {
         // 2026-11-26 (the user): an Onsite only Bronze unit at status 6 read "Agency Final submit done for DA".

@@ -42,7 +42,8 @@ public static class DashboardScreens
             ["/api/staff/dashboard/registered-msme", .. UnitDetailApis], ["/staff/registered-msme", "/staff/msme-profile", "/staff/assessment/da-details", "/staff/site-review", "/staff/pledge-certificate"]),
         new("failed-transactions", "Failed Transactions", "Modules", null, All,
             ["/api/staff/dashboard/failed-transactions"], ["/staff/failed-transactions"]),
-        new("financial-support", "Financial Support", "Modules", null, [PortalSystem.Main, PortalSystem.Surveillance],
+        // 2026-11-26: Handholding too (served by main's API: FinancialSupportController.Handholding).
+        new("financial-support", "Financial Support", "Modules", null, All,
             ["/api/staff/dashboard/financial-support"], ["/staff/financial-support"]),
         new("incentive-submissions", "Incentive Submissions", "Modules", null, [PortalSystem.Main],
             ["/api/staff/schemes/incentives/submissions"], ["/staff/incentives/submissions"]),
@@ -88,6 +89,9 @@ public static class DashboardScreens
         var granted = Parse(user.Screens)!;
         var portal = KeyOf(system) + ":";
         var mine = Screens.Where(s => s.Systems.Contains(system) && granted.Contains(portal + s.Key)).ToList();
+        // 2026-11-26: Handholding's Financial Support is served by main's API, for the Consultancy tick.
+        if (system == PortalSystem.Main && Under(path, "/api/staff/dashboard/financial-support/handholding"))
+            return granted.Contains(KeyOf(PortalSystem.Consultancy) + ":financial-support");
         // The dashboard's own summary (GET api/staff/dashboard) with any of its tabs.
         if (string.Equals(path.TrimEnd('/'), "/api/staff/dashboard", StringComparison.OrdinalIgnoreCase))
             return mine.Any(s => s.Key.StartsWith("dash-", StringComparison.Ordinal));
