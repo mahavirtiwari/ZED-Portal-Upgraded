@@ -14,6 +14,9 @@ import { PagerComponent, ServerPager } from '../pager';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
 import { dashboardSetting } from '../admin-portal';
 import { TextPipe, t } from '../../content/page-text';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -23,7 +26,8 @@ import { TextPipe, t } from '../../content/page-text';
 @Component({
   selector: 'zed-staff-registered-msme',
   providers: [dashboardSystemProvider(['registered-msme'])],
-  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
+  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './registered-msme.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -35,6 +39,9 @@ import { TextPipe, t } from '../../content/page-text';
     .table > tbody > tr > td > .row-actions.rm-actions { display: grid; grid-template-columns: 1fr; gap: 6px; }
     .rm-actions .btn { width: 100%; white-space: nowrap; }
     .rm-address { min-width: 240px; }
+    .rm-counts { display: block; max-width: 260px; margin-bottom: 14px; }
+    .rm-note { color: #6f8487; font-size: 12px; }
+    .zed-card { margin-bottom: 14px; }
     .status-badge.wrap { display: inline-block; min-width: 110px; }
   `,
 })
@@ -72,6 +79,9 @@ export class RegisteredMsmePage {
   /** As the old pages: main and surveillance up to 1000 per page, consultancy up to 100. */
   protected readonly pageSizes = this.consultancy ? [10, 20, 50, 100] : [10, 20, 50, 100, 200, 1000];
 
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.registeredMsme.crumb', 'Registered MSMEs') }));
+  /** The procedure's total: applications (a unit with two levels is two rows). */
+  protected readonly counts = computed(() => [{ label: t('staff.registeredMsme.count.applications', 'Applications'), value: this.pager.total() }]);
   protected readonly filter = signal<ListFilter>({});
   protected searchBy = 'Zed Id';
   protected search = '';
@@ -136,6 +146,11 @@ export class RegisteredMsmePage {
     }
   }
 
+  /** The level tag's colour class (bronze, silver, gold; others plain). */
+  protected levelClass(row: Row): string {
+    return (text(row, 'Certification') || '').toLowerCase().replace(/[^a-z]/g, '');
+  }
+
   protected status(row: Row): number {
     return Number(row['CertificationStatus'] ?? 0) || 0;
   }
@@ -152,6 +167,8 @@ export class RegisteredMsmePage {
   /** Assessment Details page (DA for status 1-6, SA for 9-16), or null; Consultancy has no assessment pages (handholding). */
   protected assessmentLink(row: Row): string[] | null {
     if (this.consultancy) return null;
+    // 2026-11-26: no desktop step (Onsite / Remote only, still at its agency): no desktop details to open yet.
+    if (text(row, 'DesktopSkipped')) return null;
     const s = this.status(row);
     const ids = [text(row, 'ZedId'), text(row, 'Certification')];
     if (s > 0 && s <= 6) return ['/staff/assessment/da-details', ...ids];

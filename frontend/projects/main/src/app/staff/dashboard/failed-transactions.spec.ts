@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -29,7 +30,7 @@ describe('FailedTransactionsPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FailedTransactionsPage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
     fixture = TestBed.createComponent(FailedTransactionsPage);
     http = TestBed.inject(HttpTestingController);

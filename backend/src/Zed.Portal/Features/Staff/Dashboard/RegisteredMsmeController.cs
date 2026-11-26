@@ -97,10 +97,12 @@ public sealed class RegisteredMsmeController(
         var rows = await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct);
         // 2026-11-26 (zedv3, consultancy Ministry: "No records" under a listed unit): ZED_CONSULTANT's procedure returns every row in
         // one set, without its count or paging (its OFFSET is commented out); the count and the page are made here then.
-        if (sets.Count < 2 || sets[1].Count == 0)
-            return new ListResponse(DashboardFilters.Pick(rows.Skip(Math.Max(0, (pageNo - 1) * pageSize)).Take(pageSize).ToList(), columns), rows.Count, pageNo, pageSize);
-        var total = sets[1].FirstOrDefault();
-        return new ListResponse(DashboardFilters.Pick(rows, columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
+        var paged = sets.Count < 2 || sets[1].Count == 0;
+        var page = DashboardFilters.Pick(paged ? rows.Skip(Math.Max(0, (pageNo - 1) * pageSize)).Take(pageSize).ToList() : rows, columns);
+        // 2026-11-26 (the user: Onsite only Bronze, allotted to its agency, read "Agency Final submit done for DA"): main's units at
+        // status 6 without a desktop step are marked (Assessment.DesktopSkip.Field), and the page says the agency allots the visit.
+        if (host.System == PortalSystem.Main) await Assessment.DesktopSkip.MarkAsync(db, page, log, ct);
+        return new ListResponse(page, paged ? rows.Count : DashboardFilters.Int(sets[1].FirstOrDefault(), "TotalCounts"), pageNo, pageSize);
     }
 
     /// <summary>

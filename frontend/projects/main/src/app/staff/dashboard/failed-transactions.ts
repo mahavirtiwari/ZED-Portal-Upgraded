@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -10,6 +10,9 @@ import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 import { AdminPortal, AdminPortalService, dashboardPortals, dashboardSetting, isDashboardAdmin } from '../admin-portal';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { TextPipe, t } from '../../content/page-text';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
 
 export const PG_TYPES: readonly { readonly value: string; readonly label: string }[] = [
   { value: 'Unified Payments', get label() { return t('staff.failedTransactions.pgType.upi', 'UPI'); } },
@@ -31,7 +34,8 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-failed-transactions',
-  imports: [FormsModule, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
+  imports: [FormsModule, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './failed-transactions.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -39,6 +43,8 @@ function today(): string {
     /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
+    .ft-counts { display: block; max-width: 260px; margin-bottom: 14px; }
+    .zed-card { margin-bottom: 14px; }
   `,
 })
 export class FailedTransactionsPage {
@@ -53,6 +59,8 @@ export class FailedTransactionsPage {
   }
 
   protected readonly pager = new ClientPager<Row>();
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.failedTransactions.crumb', 'Failed Transactions') }));
+  protected readonly counts = computed(() => [{ label: t('staff.failedTransactions.count.transactions', 'Failed transactions'), value: this.pager.total() }]);
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
   protected readonly error = signal('');

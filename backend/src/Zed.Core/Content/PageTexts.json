@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9694,
+  "count": 9711,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -27799,6 +27799,20 @@
       ]
     },
     {
+      "key": "staff.allot.status.onsiteOnlyLabel",
+      "standard": "Allotted to {party} · site assessor to be allotted",
+      "kind": "label",
+      "portal": "staff",
+      "page": "allot",
+      "pageName": "Allot",
+      "placeholders": [
+        "party"
+      ],
+      "files": [
+        "staff/assessment/allot.ts"
+      ]
+    },
+    {
       "key": "staff.allot.status.pendingLabel",
       "standard": "Allotment Pending",
       "kind": "label",
@@ -27813,6 +27827,20 @@
     {
       "key": "staff.allot.status.rejectedLabel",
       "standard": "{party} Rejected",
+      "kind": "label",
+      "portal": "staff",
+      "page": "allot",
+      "pageName": "Allot",
+      "placeholders": [
+        "party"
+      ],
+      "files": [
+        "staff/assessment/allot.ts"
+      ]
+    },
+    {
+      "key": "staff.allot.status.remoteOnlyLabel",
+      "standard": "Allotted to {party} · remote assessor to be allotted",
       "kind": "label",
       "portal": "staff",
       "page": "allot",
@@ -55788,9 +55816,45 @@
       ]
     },
     {
+      "key": "staff.failedTransactions.count.transactions",
+      "standard": "Failed transactions",
+      "kind": "label",
+      "portal": "staff",
+      "page": "failedTransactions",
+      "pageName": "Failed transactions",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/failed-transactions.ts"
+      ]
+    },
+    {
+      "key": "staff.failedTransactions.crumb",
+      "standard": "Failed Transactions",
+      "kind": "label",
+      "portal": "staff",
+      "page": "failedTransactions",
+      "pageName": "Failed transactions",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/failed-transactions.ts"
+      ]
+    },
+    {
       "key": "staff.failedTransactions.empty",
       "standard": "No Data",
       "kind": "note",
+      "portal": "staff",
+      "page": "failedTransactions",
+      "pageName": "Failed transactions",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/failed-transactions.html"
+      ]
+    },
+    {
+      "key": "staff.failedTransactions.list.title",
+      "standard": "Transactions",
+      "kind": "heading",
       "portal": "staff",
       "page": "failedTransactions",
       "pageName": "Failed transactions",
@@ -58789,9 +58853,81 @@
       ]
     },
     {
+      "key": "staff.financialSupport.count.fee",
+      "standard": "Certification fee (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.count.paid",
+      "standard": "Paid by units (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.count.rows",
+      "standard": "Rows",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.count.support",
+      "standard": "Financial support (Rs.)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.crumb",
+      "standard": "Financial Support",
+      "kind": "label",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
       "key": "staff.financialSupport.empty",
       "standard": "No Data",
       "kind": "note",
+      "portal": "staff",
+      "page": "financialSupport",
+      "pageName": "Financial support",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/financial-support.ts"
+      ]
+    },
+    {
+      "key": "staff.financialSupport.list.title",
+      "standard": "Units",
+      "kind": "heading",
       "portal": "staff",
       "page": "financialSupport",
       "pageName": "Financial support",
@@ -90934,6 +91070,30 @@
       ]
     },
     {
+      "key": "staff.registeredMsme.count.applications",
+      "standard": "Applications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.ts"
+      ]
+    },
+    {
+      "key": "staff.registeredMsme.crumb",
+      "standard": "Registered MSMEs",
+      "kind": "label",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.ts"
+      ]
+    },
+    {
       "key": "staff.registeredMsme.deactivateButton",
       "standard": "IN-ACTIVE MSME",
       "kind": "button",
@@ -91078,6 +91238,30 @@
       ]
     },
     {
+      "key": "staff.registeredMsme.list.note",
+      "standard": "One row per level applied for: a unit with Bronze and Silver is listed twice.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.html"
+      ]
+    },
+    {
+      "key": "staff.registeredMsme.list.title",
+      "standard": "Applications",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.html"
+      ]
+    },
+    {
       "key": "staff.registeredMsme.loadingText",
       "standard": "Please wait ...",
       "kind": "note",
@@ -91171,6 +91355,30 @@
       "placeholders": [],
       "files": [
         "staff/dashboard/registered-msme.ts"
+      ]
+    },
+    {
+      "key": "staff.registeredMsme.status.onsiteOnly",
+      "standard": "Allotted to agency · site assessor to be allotted (Onsite only)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.html"
+      ]
+    },
+    {
+      "key": "staff.registeredMsme.status.remoteOnly",
+      "standard": "Allotted to agency · remote assessor to be allotted (Remote only)",
+      "kind": "label",
+      "portal": "staff",
+      "page": "registeredMsme",
+      "pageName": "Registered msme",
+      "placeholders": [],
+      "files": [
+        "staff/dashboard/registered-msme.html"
       ]
     },
     {

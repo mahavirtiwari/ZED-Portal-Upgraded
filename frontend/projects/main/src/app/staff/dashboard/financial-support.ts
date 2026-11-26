@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DashboardApi, ListFilter, Row } from './dashboard.api';
@@ -6,7 +6,10 @@ import { ClientPager } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
-import { TextPipe } from '../../content/page-text';
+import { TextPipe, t } from '../../content/page-text';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCounts } from '../list-counts';
+import { staffCrumbs } from '../staff-crumbs';
 import { formatCount } from './charts';
 
 /**
@@ -15,16 +18,15 @@ import { formatCount } from './charts';
  */
 @Component({
   selector: 'zed-staff-financial-support',
-  imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, TextPipe],
+  imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent, PageHead, ListCounts, TextPipe],
+  host: { class: 'list-v2 d-block' },
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['financial-support']" />
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ 'Financial Support' | t: 'staff.financialSupport.title' }}</h3>
-        <p class="page-sub">{{ 'Certification fee, amount paid by the unit and the financial support given, per unit.' | t: 'staff.financialSupport.sub' }}</p>
-      </div>
-    </div>
+    <!-- 2026-11-26 (the user: "Please enhance UI and design"): the staff list design (page head, totals, filters card, list card). -->
+    <zed-page-head [crumbs]="crumbs()" [title]="'Financial Support' | t: 'staff.financialSupport.title'"
+                   [subtitle]="'Certification fee, amount paid by the unit and the financial support given, per unit.' | t: 'staff.financialSupport.sub'" />
+    <zed-list-counts [counts]="counts()" class="fs-counts" />
     <div class="zed-card">
       <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
         <div class="filter wide">
@@ -35,8 +37,10 @@ import { formatCount } from './charts';
       </zed-list-filters>
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+    <div class="list-card">
+    <div class="list-card-head"><b>{{ 'Units' | t: 'staff.financialSupport.list.title' }}</b></div>
     <div class="table-responsive">
-      <table class="table table-zed table-bordered">
+      <table class="table table-zed">
         <thead>
           <tr>
             <th class="text-center">{{ 'S.No.' | t: 'staff.financialSupport.column.serial' }}</th>
@@ -54,7 +58,7 @@ import { formatCount } from './charts';
           @for (s of pager.page(); track $index) {
             <tr>
               <td class="text-center">{{ pager.serial($index) }}</td>
-              <td class="text-center">{{ s['Certification'] }}</td>
+              <td class="text-center">@if (s['Certification']) { <span [class]="'lv-tag lv-' + levelClass(s['Certification'])">{{ s['Certification'] }}</span> }</td>
               <td class="cell-lines"><strong>{{ s['PUnitName'] }}</strong><span>{{ s['ZedId'] }}</span><strong>{{ s['EnterpriseType'] }}</strong></td>
               <td class="text-center">@if (s['ZedIdStatus']) { <span class="status-badge" [class.is-info]="s['ZedIdStatus'] !== 'Rejected'" [class.is-danger]="s['ZedIdStatus'] === 'Rejected'">{{ s['ZedIdStatus'] }}</span> }</td>
               <td>{{ s['UnitAddress'] }}</td>
@@ -71,6 +75,7 @@ import { formatCount } from './charts';
       </table>
     </div>
     <zed-pager [pager]="pager" />
+    </div>
     @if (loading()) { <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>{{ 'Please wait ...' | t: 'staff.financialSupport.loadingText' }}</small></div></div></div> }
   `,
   styles: `
@@ -79,12 +84,30 @@ import { formatCount } from './charts';
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
     .amount { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .fs-counts { display: block; margin-bottom: 14px; }
+    .zed-card { margin-bottom: 14px; }
   `,
 })
 export class FinancialSupportPage {
   private readonly api = inject(DashboardApi);
 
   protected readonly pager = new ClientPager<Row>();
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.financialSupport.crumb', 'Financial Support') }));
+  /** The rows listed and the totals of the amounts (of the rows matching the search). */
+  protected readonly counts = computed(() => {
+    const rows = this.pager.filtered();
+    const sum = (k: string) => rows.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+    return [
+      { label: t('staff.financialSupport.count.rows', 'Rows'), value: rows.length },
+      { label: t('staff.financialSupport.count.fee', 'Certification fee (Rs.)'), value: formatCount(sum('CertificationFee')) },
+      { label: t('staff.financialSupport.count.paid', 'Paid by units (Rs.)'), value: formatCount(sum('Amount')) },
+      { label: t('staff.financialSupport.count.support', 'Financial support (Rs.)'), value: formatCount(sum('FinancialSupport')) },
+    ];
+  });
+
+  protected levelClass(level: unknown): string {
+    return String(level ?? '').toLowerCase().replace(/[^a-z]/g, '');
+  }
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
   protected readonly error = signal('');

@@ -168,6 +168,28 @@ public sealed class SiteRejectionsAllotListTests : IDisposable
     }
 
     [Fact]
+    public async Task An_onsite_only_unit_still_with_its_agency_is_listed_and_re_allotted()
+    {
+        // 2026-11-26 (the user): Bronze set to Onsite only, auto-allotted to an agency, went to status 6 at once and reached no
+        // Master Admin list. Until its agency allots the site assessor it is a re-allotment.
+        _host.Sql.Queries[SiteRejections.Sql] = args => FakeSql.Arg(args, "ZedId") is null or "ZEDM000016"
+            ? [new { ZedId = "ZEDM000016", Certification = "Bronze", PUnitName = "Ferro Metals", CertificationBodyUserId = "ZEDV4AG01", AgencyName = "Assessment Agency",
+                     CertificationStatus = 6, DesktopSkipped = "Onsite" }]
+            : [];
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.LevelFlows.ReadSql] = _ => [new { Code = "Bronze", AssessmentFlow = "Onsite", SurveillanceMode = "Remote" }];
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+
+        var reallot = (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot?allotmentType=REALLOT")).GetProperty("rows");
+        var row = reallot.EnumerateArray().Single(r => r.GetProperty("ZedId").GetString() == "ZEDM000016");
+        Assert.Equal("Onsite", row.GetProperty("DesktopSkipped").GetString());
+        Assert.Equal("ZEDV4AG01", row.GetProperty("CertificationBodyUserId").GetString());
+
+        var r = await client.PostAsJsonAsync("/api/staff/assessment/allot", new { zedId = "ZEDM000016", certification = "Bronze", agencyUserId = "AGENCY2" });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("AGENCY2", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY").Single().Args, "CertificationBodyUserId"));
+    }
+
+    [Fact]
     public async Task A_unit_in_neither_list_still_cannot_be_allotted()
     {
         var client = await DaTestUsers.SignInAsync(_host, "MADMIN");

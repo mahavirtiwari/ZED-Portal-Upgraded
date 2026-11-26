@@ -115,10 +115,18 @@ describe('RegisteredMsmePage', () => {
 
   it('shows a dash for a unit that has not applied, and the surveillance date label only with a date', async () => {
     await render(10, { Certification: null, CertificationPhase: null, CertificationStatus: null });
-    const cells = [...el.querySelectorAll('tbody tr td')].map((c) => c.textContent!.trim());
-    expect(cells[1]).toBe('—');
-    expect(cells[2]).toBe('—');
+    const level = el.querySelectorAll('tbody tr td')[1];
+    expect(level.querySelector('span')!.textContent!.trim()).toBe('—');
+    expect(level.querySelector('[data-phase]')!.textContent!.trim()).toBe('—');
     expect(el.textContent).not.toContain('Surveillance 1 date:');
+  });
+
+  it('says an Onsite only unit is with its agency, the site assessor to be allotted, with no desktop details link (2026-11-26)', async () => {
+    await render(10, { Certification: 'Bronze', CertificationStatus: 6, AssessmentStatus: 'Agency Final submit done for DA', DesktopSkipped: 'Onsite' });
+    const badge = el.querySelector('[data-desktop-skipped]')!;
+    expect(badge.textContent!.trim()).toBe('Allotted to agency · site assessor to be allotted (Onsite only)');
+    expect(el.textContent).not.toContain('Agency Final submit done for DA');
+    expect(button('Assessment')).toBeUndefined();
   });
 
   it('searches by the chosen field from page 1', async () => {

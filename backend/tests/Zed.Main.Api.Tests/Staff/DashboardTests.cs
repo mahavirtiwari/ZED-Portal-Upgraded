@@ -159,6 +159,23 @@ public sealed class DashboardTests : IDisposable
         Assert.Equal("17", FakeSql.Arg(_host.LastCall("SP_DASHBOARD_REGISTERED_MSME").Args, "RoleId"));
     }
 
+    [Fact]
+    public async Task Registered_msme_marks_a_unit_without_a_desktop_step_waiting_at_its_agency()
+    {
+        // 2026-11-26 (the user): an Onsite only Bronze unit at status 6 read "Agency Final submit done for DA".
+        _host.Sql.Procs["SP_DASHBOARD_REGISTERED_MSME"] = _ => FakeSql.Sets([
+            new { RowNumber = 1, ZedId = "ZEDM000016", Certification = "Bronze", CertificationStatus = 6, AssessmentStatus = "Agency Final submit done for DA" },
+            new { RowNumber = 2, ZedId = "ZEDM000005", Certification = "Silver", CertificationStatus = 6, AssessmentStatus = "Agency Final submit done for DA" },
+        ], [new { TotalCounts = 2 }]);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Assessment.DesktopSkip.WaitingSql] = _ => [new { ZedId = "ZEDM000016", Certification = "Bronze", Flow = "Onsite" }];
+
+        var super = await _host.SignInAsync("SUPER1");
+        var rows = (await super.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/registered-msme")).GetProperty("rows");
+        Assert.Equal("Onsite", rows[0].GetProperty("DesktopSkipped").GetString());
+        // A unit whose desktop step was done keeps the procedure's status.
+        Assert.False(rows[1].TryGetProperty("DesktopSkipped", out _));
+    }
+
     [Theory]
     [InlineData("?pageSize=5000")]
     [InlineData("?pageNo=0")]

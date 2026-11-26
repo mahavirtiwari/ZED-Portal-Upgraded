@@ -68,6 +68,21 @@ describe('assessment pages per system', () => {
     expect(levels).toEqual(['', 'Silver', 'Gold', 'ZEDX']);
   });
 
+  it('main Allot: an Onsite only unit still with its agency is a re-allotment, the site assessor to be allotted (2026-11-26)', async () => {
+    await setup('main');
+    const fixture = await create(AllotPage);
+    const el: HTMLElement = fixture.nativeElement;
+    http.expectOne((r) => r.url === '/api/staff/assessment/allot').flush({
+      rows: [{ ZedId: 'ZEDM000016', Certification: 'Bronze', CertificationStatus: 6, CertificationBodyUserId: 'ZEDV4AG01', AgencyName: 'Assessment Agency', DesktopSkipped: 'Onsite' }],
+    });
+    await settle(fixture);
+    reallotTab(el).click();
+    await settle(fixture);
+    const row = el.querySelector('tbody tr')!;
+    expect(row.textContent).toContain('site assessor to be allotted');
+    expect(row.querySelector('.al-act.re-allot')!.textContent!.trim()).toBe('Re-allot');
+  });
+
   it('surveillance Allot: Surveillance No and auto-allotment date', async () => {
     await setup('surveillance');
     const fixture = await create(AllotPage);

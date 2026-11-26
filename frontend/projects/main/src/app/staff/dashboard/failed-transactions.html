@@ -1,11 +1,9 @@
 <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
 <zed-dashboard-portal-switch [screens]="['failed-transactions']" />
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ 'Failed Transactions' | t: 'staff.failedTransactions.title' }}</h3>
-    <p class="page-sub">{{ 'Gateway payments that did not complete; update the payment status once the bank confirms it.' | t: 'staff.failedTransactions.sub' }}</p>
-  </div>
-</div>
+<!-- 2026-11-26 (the user: "Please enhance UI and design"): the staff list design (page head, count, filters card, list card). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Failed Transactions' | t: 'staff.failedTransactions.title'"
+               [subtitle]="'Gateway payments that did not complete; update the payment status once the bank confirms it.' | t: 'staff.failedTransactions.sub'" />
+<zed-list-counts [counts]="counts()" class="ft-counts" />
 
 <div class="zed-card">
   <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
@@ -19,8 +17,10 @@
 
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 
+<div class="list-card">
+<div class="list-card-head"><b>{{ 'Transactions' | t: 'staff.failedTransactions.list.title' }}</b></div>
 <div class="table-responsive">
-  <table class="table table-zed table-bordered">
+  <table class="table table-zed">
     <thead>
       <tr>
         <th class="text-center">{{ 'S.No.' | t: 'staff.failedTransactions.column.serial' }}</th>
@@ -32,8 +32,8 @@
         <th class="text-center">{{ 'Joining Reward' | t: 'staff.failedTransactions.column.reward' }}</th>
         <th>{{ 'State' | t: 'staff.failedTransactions.column.state' }}<br />{{ 'District' | t: 'staff.failedTransactions.column.district' }}</th>
         <th class="text-center">{{ 'Amount Paid (Rs.)' | t: 'staff.failedTransactions.column.amount' }}</th>
-        <th class="text-center">{{ 'TDS (%)' | t: 'staff.failedTransactions.column.tds' }}</th>
-        <th class="text-center">{{ 'Subsidy (%)' | t: 'staff.failedTransactions.column.subsidy' }}</th>
+        <!-- 2026-11-26 (floating text on a laptop): TDS and subsidy in one column (the table was wider than the card). -->
+        <th class="text-center">{{ 'TDS (%)' | t: 'staff.failedTransactions.column.tds' }}<br />{{ 'Subsidy (%)' | t: 'staff.failedTransactions.column.subsidy' }}</th>
         <th class="text-center">{{ 'GSTIN / TAN' | t: 'staff.failedTransactions.column.tax' }}</th>
       </tr>
     </thead>
@@ -64,8 +64,7 @@
           </td>
           <td class="cell-lines"><strong>{{ s['PStateName'] }}</strong><span>{{ s['PDistrictName'] }}</span></td>
           <td class="text-center"><strong>{{ s['FinalAmountPaid'] }}</strong></td>
-          <td class="text-center">{{ s['Tds'] }}</td>
-          <td class="text-center">{{ s['SubsidyPercentage'] }}</td>
+          <td class="cell-lines text-center"><span>{{ s['Tds'] }}</span><span class="muted">{{ s['SubsidyPercentage'] }}</span></td>
           <td class="text-center">{{ s['GstinNumber'] }} {{ s['TanNumber'] }}</td>
         </tr>
       } @empty {
@@ -75,6 +74,7 @@
   </table>
 </div>
 <zed-pager [pager]="pager" />
+</div>
 
 @if (current(); as m) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pay-title">

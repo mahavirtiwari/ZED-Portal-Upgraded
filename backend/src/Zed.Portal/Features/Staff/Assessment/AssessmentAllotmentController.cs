@@ -52,7 +52,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         {
             PortalSystem.Consultancy => ["TimeDuration", "NcCount"],
             PortalSystem.Surveillance => ["TimeDuration", "SurveillanceNo", "AutoAllocationDate"],
-            _ => ["TimeDuration", "UdyamStatus"],
+            // 2026-11-26: DesktopSkipped, a unit without a desktop step waiting at its agency (SiteRejections).
+            _ => ["TimeDuration", "UdyamStatus", DesktopSkip.Field],
         };
         // 2026-11-17 (approved redesign): the unit's district, state and size (the procedure's Msme columns) for the rows.
         string[] place = ["PDistrictName", "PStateName", "EnterpriseTypee"];

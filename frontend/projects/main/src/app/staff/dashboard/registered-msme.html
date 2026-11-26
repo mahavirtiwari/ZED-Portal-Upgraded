@@ -1,11 +1,9 @@
 <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
 <zed-dashboard-portal-switch [screens]="['registered-msme']" />
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ 'Registered MSME' | t: 'staff.registeredMsme.title' }}</h3>
-    <p class="page-sub">{{ 'Units registered on the portal with their certification level and status.' | t: 'staff.registeredMsme.sub' }}</p>
-  </div>
-</div>
+<!-- 2026-11-26 (the user: "Please enhance UI and design"): the staff list design (page head, count, filters card, list card). -->
+<zed-page-head [crumbs]="crumbs()" [title]="'Registered MSME' | t: 'staff.registeredMsme.title'"
+               [subtitle]="'Units registered on the portal with their certification level and status.' | t: 'staff.registeredMsme.sub'" />
+<zed-list-counts [counts]="counts()" class="rm-counts" />
 
 <form class="zed-card" (ngSubmit)="doSearch()">
   <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
@@ -28,13 +26,17 @@
 @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
 @if (message()) { <div class="alert alert-success" role="status">{{ message() }}</div> }
 
+<div class="list-card">
+<div class="list-card-head"><b>{{ 'Applications' | t: 'staff.registeredMsme.list.title' }}</b>
+  <small class="rm-note">{{ 'One row per level applied for: a unit with Bronze and Silver is listed twice.' | t: 'staff.registeredMsme.list.note' }}</small></div>
 <div class="table-responsive">
-  <table class="table table-zed table-bordered">
+  <table class="table table-zed">
     <thead>
       <tr>
         <th class="text-center">{{ 'S.No.' | t: 'staff.registeredMsme.column.serial' }}</th>
-        <th class="text-center">{{ consultancy ? ('Level' | t: 'staff.registeredMsme.column.consultancy.level') : ('Certification Level' | t: 'staff.registeredMsme.column.level') }}</th>
-        @if (main) { <th class="text-center">{{ 'Certification Phase' | t: 'staff.registeredMsme.column.phase' }}</th> }
+        <!-- 2026-11-26 (floating text on a laptop): the level and its phase in one column (two columns made the table ~115px
+             wider than the card, so it scrolled sideways). -->
+        <th class="text-center">{{ consultancy ? ('Level' | t: 'staff.registeredMsme.column.consultancy.level') : ('Certification Level' | t: 'staff.registeredMsme.column.level') }}@if (main) {<br />{{ 'Certification Phase' | t: 'staff.registeredMsme.column.phase' }}}</th>
         @if (consultancy) { <th class="text-center">{{ 'Milestone' | t: 'staff.registeredMsme.column.milestone' }}</th> }
         @if (surveillance) { <th class="text-center">{{ 'Surveillance No.' | t: 'staff.registeredMsme.column.surveillanceNo' }}</th> }
         <th>{{ 'Unit Name' | t: 'staff.registeredMsme.column.unitName' }}<br />{{ 'ZedId' | t: 'staff.registeredMsme.column.zedId' }}<br />{{ 'Registered Date' | t: 'staff.registeredMsme.column.registeredDate' }}</th>
@@ -51,8 +53,10 @@
         <tr>
           <td class="text-center">{{ s['RowNumber'] }}</td>
           <!-- 2026-11-26 (Dashboard Admin audit): a unit that has not applied yet shows a dash, not an empty cell. -->
-          <td class="text-center">{{ s['Certification'] || '—' }}</td>
-          @if (main) { <td class="text-center">{{ s['CertificationPhase'] || '—' }}</td> }
+          <td class="cell-lines text-center">
+            @if (s['Certification']) { <span class="lv-tag" [class]="'lv-tag lv-' + levelClass(s)">{{ s['Certification'] }}</span> } @else { <span class="muted">—</span> }
+            @if (main) { <span class="muted" data-phase>{{ s['CertificationPhase'] || '—' }}</span> }
+          </td>
           @if (consultancy) { <td class="text-center">{{ s['MileStoneNo'] }}</td> }
           @if (surveillance) { <td class="text-center">{{ s['SurveillanceNo'] }}</td> }
           <td class="cell-lines">
@@ -64,7 +68,15 @@
             }
             <span class="muted">{{ $any(s['RegisteredDate']) | date: 'medium' }}</span>
           </td>
-          <td class="text-center">@if (s['AssessmentStatus']) { <span class="status-badge is-info wrap">{{ s['AssessmentStatus'] }}</span> }</td>
+          <!-- 2026-11-26 (the user): an Onsite / Remote only unit at its agency read "Agency Final submit done for DA" (the legacy
+               name of status 6) though it has no desktop step: it says the agency allots the visit (DesktopSkipped). -->
+          <td class="text-center">
+            @if (s['DesktopSkipped']) {
+              <span class="status-badge is-info wrap" data-desktop-skipped>{{ s['DesktopSkipped'] === 'Remote'
+                ? ('Allotted to agency · remote assessor to be allotted (Remote only)' | t: 'staff.registeredMsme.status.remoteOnly')
+                : ('Allotted to agency · site assessor to be allotted (Onsite only)' | t: 'staff.registeredMsme.status.onsiteOnly') }}</span>
+            } @else if (s['AssessmentStatus']) { <span class="status-badge is-info wrap">{{ s['AssessmentStatus'] }}</span> }
+          </td>
           @if (main) {
             <!-- 2026-11-26: the label only with a date (it stood alone, "Surveillance 1 date:", before certification). -->
             <td class="cell-lines text-center">
@@ -113,8 +125,8 @@
     </tbody>
   </table>
 </div>
-
 <zed-pager [pager]="pager" [sizes]="pageSizes" />
+</div>
 
 @if (disabling(); as m) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="disable-title">

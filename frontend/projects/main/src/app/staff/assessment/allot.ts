@@ -694,6 +694,11 @@ export class AllotPage {
     const party = this.party();
     if (text(s, 'DesktopAssessorId')) return { label: t('staff.allot.status.acceptedLabel', '{party} Accepted', { party }), cls: 'is-success' };
     if (text(s, 'ReasonForRejection')) return { label: t('staff.allot.status.rejectedLabel', '{party} Rejected', { party }), cls: 'is-rejected' };
+    // 2026-11-26 (the user): an Onsite / Remote only unit is with its agency, which has not yet allotted the visit's assessor.
+    if (text(s, 'DesktopSkipped') === 'Remote')
+      return { label: t('staff.allot.status.remoteOnlyLabel', 'Allotted to {party} · remote assessor to be allotted', { party }), cls: 'is-info' };
+    if (text(s, 'DesktopSkipped'))
+      return { label: t('staff.allot.status.onsiteOnlyLabel', 'Allotted to {party} · site assessor to be allotted', { party }), cls: 'is-info' };
     return { label: t('staff.allot.status.allocatedLabel', 'Allocated to {party}', { party }), cls: 'is-info' };
   }
 
