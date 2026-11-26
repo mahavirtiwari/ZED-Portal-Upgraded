@@ -17,10 +17,10 @@ The Admin chooses the flow per level in Administration → Certification Levels:
 | 1 | Payment done By MSME | Payment done, documents pending | yes | yes | yes | |
 | 2 | Evidence upload done by MSME | Desktop assessment scheduled, not started | yes | yes | for a moment only: allotted to the agency, then 6 | |
 | 3 | DA Verification in progress | Desktop assessment in progress | yes | yes | — | |
-| 4 | DA Verification done with errors | Desktop assessment non-conformance | yes | yes | — | |
+| 4 | DA Verification done with errors | Desktop assessment non-conformance | yes | — (no NC at the desktop stage: NCs only at the visit, code 14) | — | |
 | 5 | DA Verification done without errors | Desktop assessment quality check | yes | yes | — | |
 | 6 | Agency Final submit done for DA | Desktop assessment completed | **Certified** (with its desktop certificate number) | Desktop done, waiting for the site/remote assessor allotment | **No desktop step**: allotted to the agency, site / remote assessor to be allotted (since 2026-11-26 the portal shows "Allotted to agency · site assessor to be allotted (Onsite only)") | |
-| 7 | Failed in NC | Desktop assessment rejected | yes | yes | — | |
+| 7 | Failed in NC | Desktop assessment rejected | yes | — (no desktop NC, so no desktop NC rejection) | — | |
 | 8 | SA Allocation Done | Site assessment scheduled, not started | — | yes | yes | |
 | 9 | SA is ready to start | Parameters distributed (site assessment in progress) | — | yes | yes | |
 | 13 | SA Verification in progress | Assessment submitted through mobile app | — | yes | yes | |
@@ -31,6 +31,8 @@ The Admin chooses the flow per level in Administration → Certification Levels:
 | 99 | (none) | Rejected | yes | yes | yes | |
 
 Codes 10, 11 and 12 are not used.
+
+Non-conformances (NCs): Desktop only raises them at the desktop stage (code 4). Desktop + Onsite / Desktop + Remote raise none at the desktop stage: the desktop assessor's final submit goes straight to the agency's quality check (code 5), and NCs are raised only at the onsite / remote assessment (code 14). Remote only / Onsite only raise them at the visit (code 14). Rounds and days are set by the Admin.
 
 Milestones of a case's history (no status code; used by TAT and Monitoring): Registration (application received), Basic information and documents submitted, Allotted to the assessment agency, Opening meeting conducted, First non-conformance raised, Non-conformances closed.
 
