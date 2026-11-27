@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9734,
+  "count": 9737,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -82607,6 +82607,21 @@
       ]
     },
     {
+      "key": "staff.neft.approve.schemeCap",
+      "standard": "{scheme}: up to {amount}, the amount its agency approved.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "neft",
+      "pageName": "Neft",
+      "placeholders": [
+        "scheme",
+        "amount"
+      ],
+      "files": [
+        "staff/neft/neft-transactions.html"
+      ]
+    },
+    {
       "key": "staff.neft.approve.submit.button",
       "standard": "Submit",
       "kind": "button",
@@ -83327,6 +83342,20 @@
       ]
     },
     {
+      "key": "staff.neft.row.approvedAmount",
+      "standard": "Approved: {amount}",
+      "kind": "text",
+      "portal": "staff",
+      "page": "neft",
+      "pageName": "Neft",
+      "placeholders": [
+        "amount"
+      ],
+      "files": [
+        "staff/neft/neft-transactions.html"
+      ]
+    },
+    {
       "key": "staff.neft.row.coupon.chip",
       "standard": "Yes",
       "kind": "label",
@@ -83359,6 +83388,20 @@
       "pageName": "Neft",
       "placeholders": [
         "zedId"
+      ],
+      "files": [
+        "staff/neft/neft-transactions.html"
+      ]
+    },
+    {
+      "key": "staff.neft.row.transaction",
+      "standard": "Transaction {id}",
+      "kind": "note",
+      "portal": "staff",
+      "page": "neft",
+      "pageName": "Neft",
+      "placeholders": [
+        "id"
       ],
       "files": [
         "staff/neft/neft-transactions.html"

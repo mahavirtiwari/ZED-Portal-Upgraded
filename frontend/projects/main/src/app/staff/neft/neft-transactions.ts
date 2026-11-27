@@ -68,6 +68,8 @@ function today(): string {
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
     .comments { white-space: pre-wrap; min-width: 180px; }
+    /* 2026-11-27: the scheme's name wraps in the ZED ID column (the table was wider than its card). */
+    .chip.nf-scheme { white-space: normal; text-align: left; line-height: 1.25; }
   `,
 })
 export class NeftTransactionsPage {
@@ -173,6 +175,12 @@ export class NeftTransactionsPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** 2026-11-27: the payment receipt date as a date ("27-11-2026"); the database's datetime came as "2026-11-27T00:00:00". Text kept as stored. */
+  protected shownDate(value: string | null | undefined): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ]|$)/.exec(value ?? '');
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : (value ?? '');
   }
 
   protected open(t: NeftTransaction): void {

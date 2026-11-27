@@ -112,10 +112,42 @@ public sealed partial class NeftController(
             _ => SchemeRows.Int(r, "VerificationStatus") == ApprovedByAgency && SchemeRows.Int(r, "TransactionStatus") is not (TransactionApproved or TransactionRejected),
         });
         string[] columns = host.System == PortalSystem.Consultancy ? [.. Columns, .. ConsultancyColumns] : Columns;
-        var picked = selected.Select(r => SchemeRows.Pick(r, columns)).ToList();
+        var selectedRows = selected.ToList();
+        var picked = selectedRows.Select(r => SchemeRows.Pick(r, columns)).ToList();
+        if (host.System == PortalSystem.Main) await AddSchemeDetailsAsync(selectedRows, picked, ct);
         if (which == NeftList.Rejected && host.System == PortalSystem.Main && picked.Count > 0)
             await AddPaymentInfoAsync(picked, ct);
         return new TransactionsResponse(picked);
+    }
+
+    /// <summary>
+    /// 2026-11-27 (incentive workflow check): an incentive scheme's application shares dbo.FinancialAssistance, so it is listed here
+    /// too, but its claim is in FormAnswers: the certificate and invoice columns were blank, CertificationType showed the scheme's
+    /// code and two schemes of one unit could not be told apart (a payment was recorded on the wrong one). Its row now carries the
+    /// scheme (SchemeCode, SchemeName), the level it was granted for (CertificationType = SchemeLevel), the amount its agency approved
+    /// (ApprovedAmount: the most the approval accepts) and the claim's identifying answers (ClaimDetails: the form's unique fields,
+    /// e.g. invoice numbers, as a list of "Label: value").
+    /// </summary>
+    private async Task AddSchemeDetailsAsync(IReadOnlyList<IDictionary<string, object?>> source, List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        if (!source.Any(r => r.Text("SchemeCode").Trim().Length > 0)) return;
+        var store = HttpContext.RequestServices.GetService<Incentives.SchemeStore>();
+        var schemes = store is null ? [] : (await store.AllAsync(ct)).ToDictionary(d => d.Code, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var code = source[i].Text("SchemeCode").Trim();
+            if (code.Length == 0) continue;
+            var def = schemes.GetValueOrDefault(code);
+            var row = rows[i];
+            row["SchemeCode"] = code;
+            row["SchemeName"] = def?.Name is { Length: > 0 } name ? name : code;
+            if (source[i].Text("SchemeLevel").Trim() is { Length: > 0 } level) row["CertificationType"] = level;
+            row["ApprovedAmount"] = SchemeRows.Decimal(source[i], "ApprovedAmount");
+            if (def is null) continue;
+            var answers = Incentives.FormAnswers.Parse(source[i].Text("FormAnswers"));
+            var details = Incentives.Applicant.ApplicantForm.UniqueValues(def.Form, answers).Take(6).Select(u => $"{u.Field.Label}: {u.Value}").ToList();
+            row["ClaimDetails"] = details.Count == 0 ? null : details;
+        }
     }
 
     private async Task AddPaymentInfoAsync(List<Dictionary<string, object?>> rows, CancellationToken ct)

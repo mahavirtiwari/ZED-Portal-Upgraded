@@ -51,6 +51,11 @@ export interface NeftTransaction {
   GstinNumber?: string | null;
   TanNumber?: string | null;
   UtrNumber?: string | null;
+  /** 2026-11-27: an incentive scheme's application (main): its scheme, the amount its agency approved and the claim's unique answers. */
+  SchemeCode?: string | null;
+  SchemeName?: string | null;
+  ApprovedAmount?: number | string | null;
+  ClaimDetails?: string[] | null;
 }
 
 export interface NeftApproval {

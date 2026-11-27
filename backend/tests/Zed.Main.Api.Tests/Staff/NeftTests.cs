@@ -99,6 +99,27 @@ public sealed class NeftTests : IDisposable
     }
 
     [Fact]
+    public async Task A_scheme_application_shows_its_scheme_level_and_approved_amount()
+    {
+        // 2026-11-27 (incentive workflow check): a scheme's application shares FinancialAssistance; its row said "TU_DIRECT" where
+        // the level goes and two schemes of one unit could not be told apart.
+        _rows.Add(new Dictionary<string, object?>(Row(16, "ZEDMSME000016", state: 9, verification: 4, transaction: null))
+        {
+            ["SchemeCode"] = "TU_DIRECT", ["SchemeLevel"] = "Gold", ["ApprovedAmount"] = 31000m, ["FormAnswers"] = "{}",
+        });
+        var up = await SignIn("SC_UP");
+        var rows = (await up.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=new")).GetProperty("transactions").EnumerateArray().ToList();
+        var scheme = rows.Single(r => r.GetProperty("TransactionId").GetInt32() == 16);
+        Assert.Equal("TU_DIRECT", scheme.GetProperty("SchemeCode").GetString());
+        Assert.False(string.IsNullOrEmpty(scheme.GetProperty("SchemeName").GetString()));
+        Assert.Equal("Gold", scheme.GetProperty("CertificationType").GetString());
+        Assert.Equal(31000m, scheme.GetProperty("ApprovedAmount").GetDecimal());
+        var certification = rows.Single(r => r.GetProperty("TransactionId").GetInt32() == 11);
+        Assert.False(certification.TryGetProperty("SchemeCode", out _));
+        Assert.Equal("Bronze", certification.GetProperty("CertificationType").GetString());
+    }
+
+    [Fact]
     public async Task Lists_include_the_unit_columns_of_the_legacy_rejected_page()
     {
         var up = await SignIn("SC_UP");

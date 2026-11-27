@@ -86,7 +86,7 @@
             <td class="text-center">{{ t.AccountNo }} {{ t.IfscCode }}</td>
             <td>{{ t.BranchAddress }}</td>
             @if (list !== 'new') {
-              <td class="cell-lines text-center"><span>{{ t.ApproverDateOfReceiptOfPayment }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
+              <td class="cell-lines text-center"><span>{{ shownDate(t.ApproverDateOfReceiptOfPayment) }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
               <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
             }
             <td class="text-end text-nowrap">
@@ -117,17 +117,36 @@
           </tr>
         } @else {
           <tr>
-            <td><strong class="dash-text-clr">{{ t.ZedId }}</strong></td>
+            <!-- 2026-11-27: an incentive scheme's application (SchemeCode): its scheme, transaction number, level, claim and approved amount. -->
+            <td class="cell-lines">
+              <strong class="dash-text-clr">{{ t.ZedId }}</strong>
+              @if (t.SchemeCode) {
+                <span class="chip is-info nf-scheme">{{ t.SchemeName }}</span>
+                <span class="muted">{{ 'Transaction {id}' | t: 'staff.neft.row.transaction' : { id: t.TransactionId } }}</span>
+              }
+            </td>
             <td>{{ t.PUnitName || t.EnterpriseName }}</td>
-            <td>{{ t.CategoryOfCertificate }}</td>
-            <td class="cell-lines"><span>{{ t.NameOfCertficate }}</span><span>{{ t.CertificationAgency }}</span></td>
-            <td class="cell-lines text-center"><span>{{ t.CertficateNumber }}</span><span>{{ t.DateOfIssue }}</span><span>{{ t.ValidityOfCertificate }}</span></td>
-            <td class="cell-lines"><span>{{ t.ExpenditureCertficate }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
-            <td class="cell-lines text-center"><span>{{ t.InvoiceNo }}</span><span>{{ t.InvoiceBillDate }}</span><strong>{{ t.AmountPaid }}</strong></td>
+            <td>{{ t.SchemeCode ? t.CertificationType : t.CategoryOfCertificate }}</td>
+            @if (t.SchemeCode) {
+              <td class="cell-lines"><span>{{ t.SchemeName }}</span></td>
+              <td class="cell-lines text-center"><span>{{ t.CertficateNumber }}</span><span>{{ t.DateOfIssue }}</span><span>{{ t.ValidityOfCertificate }}</span></td>
+              <td class="cell-lines"><span>{{ t.ExpenditureCertficate }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
+              <td class="cell-lines text-center">
+                @for (d of t.ClaimDetails ?? []; track $index) { <span>{{ d }}</span> }
+                @if (t.ApprovedAmount !== null && t.ApprovedAmount !== undefined) {
+                  <strong>{{ 'Approved: {amount}' | t: 'staff.neft.row.approvedAmount' : { amount: t.ApprovedAmount } }}</strong>
+                }
+              </td>
+            } @else {
+              <td class="cell-lines"><span>{{ t.NameOfCertficate }}</span><span>{{ t.CertificationAgency }}</span></td>
+              <td class="cell-lines text-center"><span>{{ t.CertficateNumber }}</span><span>{{ t.DateOfIssue }}</span><span>{{ t.ValidityOfCertificate }}</span></td>
+              <td class="cell-lines"><span>{{ t.ExpenditureCertficate }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
+              <td class="cell-lines text-center"><span>{{ t.InvoiceNo }}</span><span>{{ t.InvoiceBillDate }}</span><strong>{{ t.AmountPaid }}</strong></td>
+            }
             <td class="cell-lines text-center"><span>{{ t.AccountNo }}</span><span>{{ t.IfscCode }}</span></td>
             <td>{{ t.BranchAddress }}</td>
             @if (list === 'approved') {
-              <td class="cell-lines text-center"><span>{{ t.ApproverDateOfReceiptOfPayment }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
+              <td class="cell-lines text-center"><span>{{ shownDate(t.ApproverDateOfReceiptOfPayment) }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
             }
             @if (list !== 'new') {
               <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
@@ -166,7 +185,7 @@
           <div class="modal-header justify-content-between">
             <div>
               <h3 class="nf-pop-title" id="neftTitle">{{ 'Approve NEFT transaction' | t: 'staff.neft.approve.title' }}</h3>
-              <p class="nf-pop-sub">{{ f.transaction.ZedId }}@if (f.transaction.PUnitName || f.transaction.EnterpriseName) { · {{ f.transaction.PUnitName || f.transaction.EnterpriseName }} }</p>
+              <p class="nf-pop-sub">{{ f.transaction.ZedId }}@if (f.transaction.PUnitName || f.transaction.EnterpriseName) { · {{ f.transaction.PUnitName || f.transaction.EnterpriseName }} }@if (f.transaction.SchemeCode) { · {{ f.transaction.SchemeName }} · {{ 'Transaction {id}' | t: 'staff.neft.row.transaction' : { id: f.transaction.TransactionId } }} }</p>
             </div>
             <button type="button" class="btn-close" [attr.aria-label]="'Close' | t: 'staff.neft.approve.close.aria'" (click)="close()"></button>
           </div>
@@ -198,6 +217,9 @@
               <label class="form-label" for="neftAmount">{{ 'Amount' | t: 'staff.neft.approve.amount.label' }}<span class="req">*</span></label>
               <input id="neftAmount" name="amount" type="text" inputmode="decimal" class="form-control" maxlength="15" required
                      [ngModel]="f.amount" (ngModelChange)="update({ amount: $event })" />
+              @if (f.transaction.SchemeCode && f.transaction.ApprovedAmount !== null && f.transaction.ApprovedAmount !== undefined) {
+                <span class="form-text">{{ '{scheme}: up to {amount}, the amount its agency approved.' | t: 'staff.neft.approve.schemeCap' : { scheme: f.transaction.SchemeName ?? '', amount: f.transaction.ApprovedAmount } }}</span>
+              }
               @if (f.submitted && !f.amount) {
                 <span class="help-block">{{ 'This is required.' | t: 'staff.neft.approve.required.label' }}</span>
               }

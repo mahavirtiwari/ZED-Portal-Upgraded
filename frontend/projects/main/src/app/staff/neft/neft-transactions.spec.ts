@@ -84,6 +84,29 @@ describe('NeftTransactionsPage', () => {
     expect(el.querySelectorAll('tbody tr').length).toBe(1);
   });
 
+  it('tells two scheme claims of one unit apart: scheme, transaction, level, claim and approved amount', async () => {
+    await create('new');
+    http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({ transactions: [
+      tx(2, { ZedId: 'ZEDMSME998201', SchemeCode: 'TU_DIRECT', SchemeName: 'Technology Upgradation', CertificationType: 'Gold',
+        ApprovedAmount: 31000, ClaimDetails: ['Invoice number: INV-77'], CategoryOfCertificate: null, AmountPaid: null }),
+      tx(3, { ZedId: 'ZEDMSME998201', SchemeCode: 'FA', SchemeName: 'Financial Assistance', CertificationType: 'Gold', ApprovedAmount: 12000 }),
+    ] });
+    await settle();
+    const rows = [...el.querySelectorAll('tbody tr')];
+    expect(rows[0].textContent).toContain('Technology Upgradation');
+    expect(rows[0].textContent).toContain('Transaction 2');
+    expect(rows[0].textContent).toContain('Gold');
+    expect(rows[0].textContent).toContain('Invoice number: INV-77');
+    expect(rows[0].textContent).toContain('Approved: 31000');
+    expect(rows[1].textContent).toContain('Financial Assistance');
+    expect(rows[1].textContent).toContain('Transaction 3');
+
+    (rows[0].querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.nf-pop-sub')!.textContent).toContain('Technology Upgradation · Transaction 2');
+    expect(el.textContent).toContain('Technology Upgradation: up to 31000, the amount its agency approved.');
+  });
+
   it('keeps the dialog open with the API message when the approval is refused', async () => {
     await create('new');
     http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({ transactions: [tx(11)] });
@@ -107,11 +130,16 @@ describe('NeftTransactionsPage', () => {
     await create('approved');
     const req = http.expectOne((r) => r.url === '/api/staff/neft/transactions');
     expect(req.request.params.get('list')).toBe('approved');
-    req.flush({ transactions: [tx(14, { ApproverReferenceNo: 'UTR9', ApproverAmount: 40000, ApproverDateOfReceiptOfPayment: '05 Jan 2026' })] });
+    req.flush({ transactions: [tx(14, { ApproverReferenceNo: 'UTR9', ApproverAmount: 40000, ApproverDateOfReceiptOfPayment: '05 Jan 2026' }),
+      tx(15, { ApproverReferenceNo: 'UTR10', ApproverAmount: 1000, ApproverDateOfReceiptOfPayment: '2026-11-27T00:00:00' })] });
     await settle();
 
     expect(el.querySelector('h2')!.textContent).toContain('Approved Transactions');
     expect(el.querySelector('tbody')!.textContent).toContain('UTR9');
+    expect(el.querySelector('tbody')!.textContent).toContain('05 Jan 2026');
+    // 2026-11-27: a database datetime shows as a date.
+    expect(el.querySelector('tbody')!.textContent).toContain('27-11-2026');
+    expect(el.querySelector('tbody')!.textContent).not.toContain('T00:00:00');
     expect(button('Approve')).toBeUndefined();
   });
 
