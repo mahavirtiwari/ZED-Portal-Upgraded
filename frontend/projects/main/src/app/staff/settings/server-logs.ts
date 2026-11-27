@@ -1,9 +1,9 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { PortalSwitchComponent } from '../admin-portal';
+import { ADMIN_PORTAL, PortalSwitchComponent } from '../admin-portal';
 import { ClientPager, PagerComponent } from '../pager';
 import { indianTime } from '../utc-time';
 import { TextPipe, t } from '../../content/page-text';
@@ -55,6 +55,42 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
       </div>
     </div>
     <zed-portal-switch [reload]="false" (changed)="load()" />
+
+    <!-- 2026-11-27 (the owner: prepare the MSME app token enforcement): calls each app made without a valid sign-in token. -->
+    @if (tokenApps().length) {
+      <section class="zed-card sl-tokens" aria-labelledby="sl-tokens-h">
+        <h4 id="sl-tokens-h">{{ 'Mobile app sign-in tokens' | t: 'staff.serverLogs.tokens.title' }}</h4>
+        <p class="page-sub">{{ 'Units and users whose app called without a valid sign-in token (the old installed apps never send one). When an app shows none for some weeks, its token can be enforced (Mobile__AppTokens__Apps__{APP} = Enforce in the Main and MobileMain settings) without refusing anyone.' | t: 'staff.serverLogs.tokens.sub' }}</p>
+        <div class="table-responsive">
+          <table class="table table-zed sl-tok-table">
+            <thead><tr>
+              <th>{{ 'App' | t: 'staff.serverLogs.tokens.column.app' }}</th>
+              <th class="text-center">{{ 'Mode' | t: 'staff.serverLogs.tokens.column.mode' }}</th>
+              <th class="text-center">{{ 'Without a token, 7 days' | t: 'staff.serverLogs.tokens.column.week' }}</th>
+              <th class="text-center">{{ 'Without a token, 30 days' | t: 'staff.serverLogs.tokens.column.month' }}</th>
+              <th>{{ 'Last seen' | t: 'staff.serverLogs.tokens.column.last' }}</th>
+              <th>{{ 'Ready to enforce' | t: 'staff.serverLogs.tokens.column.ready' }}</th>
+            </tr></thead>
+            <tbody>
+              @for (a of tokenApps(); track a.app) {
+                <tr>
+                  <td><strong>{{ appName(a.app) }}</strong> <span class="muted">({{ a.app }})</span></td>
+                  <td class="text-center"><span class="status-badge" [class.is-active]="a.mode === 'Enforce'" [class.is-pending]="a.mode === 'Monitor'">{{ a.mode }}</span></td>
+                  <td class="text-center">{{ '{users} units / users' | t: 'staff.serverLogs.tokens.count' : { users: a.users7 } }}</td>
+                  <td class="text-center">{{ '{users} units / users' | t: 'staff.serverLogs.tokens.count' : { users: a.users30 } }}</td>
+                  <td>{{ a.lastAt ? shown(a.lastAt) : '—' }}</td>
+                  <td>
+                    @if (a.mode === 'Enforce') { {{ 'Enforced' | t: 'staff.serverLogs.tokens.enforced' }} }
+                    @else if (a.ready) { <span class="status-badge is-success">{{ 'Yes: none in 30 days' | t: 'staff.serverLogs.tokens.readyYes' }}</span> }
+                    @else { <span class="status-badge is-pending">{{ 'Not yet' | t: 'staff.serverLogs.tokens.readyNo' }}</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
 
     <div class="zed-card sl-filters">
       @if (sources().length > 1) {
@@ -171,6 +207,9 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
     }
   `,
   styles: `
+    .sl-tokens { padding: 14px 16px; margin-bottom: 12px; }
+    .sl-tokens h4 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+    .sl-tok-table { margin: 8px 0 0; }
     .sl-filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; padding: 14px 16px; margin-bottom: 12px; }
     /* 2026-11-27 (UI review: "ZED Certification portal" was cut in its box): wide enough for the longest choice. */
     .sl-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 0 1 220px; font-size: 12px; font-weight: 700; color: #5f6f70; }
@@ -233,8 +272,38 @@ export class ServerLogsPage {
   protected readonly errors = computed(() => this.entries().filter((e) => this.isError(e)).length);
   protected readonly warnings = computed(() => this.entries().length - this.errors());
 
+  /** 2026-11-27: the apps' readiness for Mobile:AppTokens = Enforce (main's records; empty elsewhere or when not readable). */
+  protected readonly tokenApps = signal<{ app: string; mode: string; users7: number; users30: number; lastAt: string | null; ready: boolean }[]>([]);
+
   constructor() {
     void this.load();
+    void this.loadTokens();
+  }
+
+  private async loadTokens(): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.http.get<{ apps: { app: string; mode: string; users7: number; users30: number; lastAt: string | null; ready: boolean }[] }>(
+        '/api/staff/settings/app-tokens', { context: new HttpContext().set(ADMIN_PORTAL, 'main') }));
+      this.tokenApps.set(r.apps ?? []);
+    } catch {
+      this.tokenApps.set([]);
+    }
+  }
+
+  protected appName(app: string): string {
+    switch (app) {
+      case 'MSME': return t('staff.serverLogs.tokens.app.msme', 'ZED MSME app');
+      case 'RA': return t('staff.serverLogs.tokens.app.ra', 'Remote assessment app');
+      case 'SA': return t('staff.serverLogs.tokens.app.sa', 'Site assessor / consultant app');
+      case 'SURV': return t('staff.serverLogs.tokens.app.surv', 'Bronze surveillance app');
+      default: return app;
+    }
+  }
+
+  /** MobileDeviceEvents.At is the server's local (India) time: shown as stored, "27-11-2026 14:05". */
+  protected shown(at: string): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(at);
+    return m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}:${m[5]}` : at;
   }
 
   @HostListener('document:keydown.escape')

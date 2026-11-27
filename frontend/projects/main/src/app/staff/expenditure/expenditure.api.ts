@@ -87,6 +87,20 @@ export interface ExpenditureFilter {
   to?: string;
 }
 
+/** 2026-11-27: a case counted 'Completed' before it was certified and already in a monthly invoice (api/staff/expenditure/review). */
+export interface EarlyCount {
+  zedId: string;
+  unitName: string | null;
+  level: string;
+  partyId: string;
+  partyName: string;
+  countedOn: string | null;
+  rate: number | null;
+  status: number | null;
+  invoiceNo: string | null;
+  invoiceStatus: string | null;
+}
+
 export interface ExpenditureCase {
   zedId: string;
   unitName: string | null;
@@ -286,6 +300,11 @@ export class ExpenditureApi {
 
   summary(f: ExpenditureFilter, portal?: AdminPortal | null): Observable<ExpenditureSummary> {
     return this.http.get<ExpenditureSummary>(`${BASE}/summary`, { params: params(f), ...this.ctx(portal) });
+  }
+
+  /** Main only: the cases counted before their visit that are already invoiced (empty elsewhere). */
+  review(): Observable<EarlyCount[]> {
+    return this.http.get<EarlyCount[]>(`${BASE}/review`);
   }
 
   cases(f: ExpenditureFilter, portal?: AdminPortal | null): Observable<ExpenditureCase[]> {

@@ -102,4 +102,20 @@ public sealed class MsmeAccountFinderTests : IDisposable
         Assert.Equal("0", none.GetProperty("status").GetString());
         Assert.Equal(MsmeAccountFinder.NotFound, none.GetProperty("errorMessage").GetString());
     }
+
+    [Fact]
+    public async Task App_search_of_one_value_is_capped_per_day()
+    {
+        // 2026-11-27 (permissions review): the app has no captcha; one PAN / e-mail can be searched FindDailyPerValue times a day.
+        var cache = new Microsoft.Extensions.Caching.Distributed.MemoryDistributedCache(
+            Microsoft.Extensions.Options.Options.Create(new Microsoft.Extensions.Caching.Memory.MemoryDistributedCacheOptions()));
+        for (var i = 0; i < Zed.Portal.Features.Msme.MsmeAppRegistrationController.FindDailyPerValue; i++)
+            Assert.False(await Zed.Portal.Features.Msme.MsmeAppRegistrationController.OverDailyFindLimitAsync(cache, "10.0.0." + i, "pan", "ABCDE1234F", default));
+        Assert.True(await Zed.Portal.Features.Msme.MsmeAppRegistrationController.OverDailyFindLimitAsync(cache, "10.0.0.99", "pan", "abcde1234f", default));
+        // Another value from a fresh address is not affected; one address is capped across values.
+        Assert.False(await Zed.Portal.Features.Msme.MsmeAppRegistrationController.OverDailyFindLimitAsync(cache, "10.0.1.1", "pan", "ZZZZZ9999Z", default));
+        for (var i = 0; i < Zed.Portal.Features.Msme.MsmeAppRegistrationController.FindDailyPerAddress; i++)
+            Assert.False(await Zed.Portal.Features.Msme.MsmeAppRegistrationController.OverDailyFindLimitAsync(cache, "10.0.2.2", "email", $"u{i}@acme.test", default));
+        Assert.True(await Zed.Portal.Features.Msme.MsmeAppRegistrationController.OverDailyFindLimitAsync(cache, "10.0.2.2", "email", "last@acme.test", default));
+    }
 }

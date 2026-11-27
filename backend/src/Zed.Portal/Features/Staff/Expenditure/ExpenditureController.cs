@@ -96,6 +96,46 @@ public sealed class ExpenditureController(
                 c.CountedOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), c.Rate)).ToList();
     }
 
+    /// <summary>
+    /// 2026-11-27 (the owner): the cases counted 'Completed' before they were certified (the sweep counted any status 6 until that day's
+    /// fix). Migration 0118 un-counted the ones not yet invoiced; the ones in a submitted / approved invoice stay and are listed here for
+    /// the Master Admin to settle with the agency. Main only (Consultancy counts milestones).
+    /// </summary>
+    internal const string EarlyCountsSql =
+        "SELECT C.ZedId, M.PUnitName AS UnitName, C.Certification AS Level, LTRIM(RTRIM(C.ExpAgencyId)) AS PartyId, C.ExpCountedOn AS CountedOn, " +
+        "C.ExpRate AS Rate, C.CertificationStatus AS Status, I.InvoiceNo, I.Status AS InvoiceStatus " +
+        "FROM dbo.MsmeCertifications C OUTER APPLY (SELECT TOP (1) PUnitName FROM dbo.Msme WHERE ZedId = C.ZedId) M " +
+        "LEFT JOIN dbo.ExpenditureInvoices I ON I.PartyId = C.ExpAgencyId AND I.InvoiceMonth = DATEFROMPARTS(YEAR(C.ExpCountedOn), MONTH(C.ExpCountedOn), 1) " +
+        "AND I.Status IN ('Submitted', 'Approved') " +
+        "WHERE C.ExpCaseKind = 'Completed' AND NOT " + ExpenditureSweep.MainCertified + " ORDER BY C.ExpCountedOn;";
+
+    public sealed record EarlyCountRow(string? ZedId, string? UnitName, string? Level, string? PartyId, DateTime? CountedOn, decimal? Rate, int? Status,
+        string? InvoiceNo, string? InvoiceStatus);
+
+    public sealed record EarlyCountView(string ZedId, string? UnitName, string Level, string PartyId, string PartyName, string? CountedOn, decimal? Rate,
+        int? Status, string? InvoiceNo, string? InvoiceStatus);
+
+    [HttpGet("review")]
+    [StaffRoles(UserRole.Admin, UserRole.MasterAdmin)]
+    public async Task<ActionResult<IReadOnlyList<EarlyCountView>>> Review(CancellationToken ct)
+    {
+        if (host.System != PortalSystem.Main) return Array.Empty<EarlyCountView>();
+        var visible = (await ExpenditureParties.ForAsync(db, CurrentUser, ct)).ToDictionary(p => p.Id, StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<EarlyCountRow> rows;
+        try
+        {
+            rows = await db.QuerySqlAsync<EarlyCountRow>(EarlyCountsSql, null, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Cases counted before their visit not read");
+            return Array.Empty<EarlyCountView>();
+        }
+        return rows.Where(r => r.PartyId is not null && visible.ContainsKey(r.PartyId))
+            .Select(r => new EarlyCountView(r.ZedId?.Trim() ?? "", r.UnitName, r.Level ?? "", r.PartyId!, visible[r.PartyId!].Name,
+                r.CountedOn?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), r.Rate, r.Status, r.InvoiceNo, r.InvoiceStatus)).ToList();
+    }
+
     public sealed record RateLineView(string Kind, string Level, string LevelName, int? Milestone, decimal? Rate, string? RateFrom, int Cases, decimal Amount);
 
     /// <param name="Live">For a submitted invoice: the month's figures now (they become the invoice's at approval).</param>

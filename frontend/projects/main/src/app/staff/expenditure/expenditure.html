@@ -83,6 +83,35 @@
   <zed-pager [pager]="rowsView" />
 </div>
 
+@if (early().length) {
+  <!-- 2026-11-27: counted as completed before the visit (the old sweep) and already invoiced; the others were counted again. -->
+  <div class="zed-card xp-card xp-early" role="region" aria-labelledby="xp-early-h">
+    <h2 id="xp-early-h">{{ 'Counted before the visit' | t: 'staff.expenditure.early.title' }}</h2>
+    <p class="text-muted">{{ 'Until 27-11-2026 a case waiting for its site or remote visit was counted as completed. These ones are already in a monthly invoice: settle them with the agency. The others were counted again and count when certified or rejected.' | t: 'staff.expenditure.early.note' }}</p>
+    <div class="table-responsive">
+      <table class="table table-zed xp-table">
+        <thead><tr>
+          <th>{{ word() }}</th><th>{{ 'Unit' | t: 'staff.expenditure.early.column.unit' }}</th><th>{{ 'Level' | t: 'staff.expenditure.early.column.level' }}</th>
+          <th>{{ 'Counted on' | t: 'staff.expenditure.early.column.countedOn' }}</th><th class="num">{{ 'Rate' | t: 'staff.expenditure.early.column.rate' }}</th>
+          <th>{{ 'Invoice' | t: 'staff.expenditure.early.column.invoice' }}</th>
+        </tr></thead>
+        <tbody>
+          @for (c of early(); track c.zedId + c.level) {
+            <tr>
+              <td>{{ c.partyName }}</td>
+              <td class="cell-lines"><strong>{{ c.zedId }}</strong><span>{{ c.unitName }}</span></td>
+              <td>{{ c.level }}</td>
+              <td>{{ c.countedOn ? date(c.countedOn) : '' }}</td>
+              <td class="num">{{ c.rate !== null ? money(c.rate) : '' }}</td>
+              <td>{{ c.invoiceNo }} @if (c.invoiceStatus) { <span class="status-badge is-info">{{ c.invoiceStatus }}</span> }</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+}
+
 <div class="zed-card xp-card">
   <h2>{{ 'Monthly invoices' | t: 'staff.expenditure.invoices.title' }}</h2>
   <div class="table-responsive">

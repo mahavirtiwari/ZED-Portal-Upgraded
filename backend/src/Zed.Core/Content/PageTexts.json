@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9737,
+  "count": 9760,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -50478,6 +50478,90 @@
       "placeholders": [],
       "files": [
         "staff/expenditure/expenditure.ts"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.column.countedOn",
+      "standard": "Counted on",
+      "kind": "label",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.column.invoice",
+      "standard": "Invoice",
+      "kind": "label",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.column.level",
+      "standard": "Level",
+      "kind": "label",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.column.rate",
+      "standard": "Rate",
+      "kind": "label",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.column.unit",
+      "standard": "Unit",
+      "kind": "label",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.note",
+      "standard": "Until 27-11-2026 a case waiting for its site or remote visit was counted as completed. These ones are already in a monthly invoice: settle them with the agency. The others were counted again and count when certified or rejected.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
+      ]
+    },
+    {
+      "key": "staff.expenditure.early.title",
+      "standard": "Counted before the visit",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "expenditure",
+      "pageName": "Expenditure",
+      "placeholders": [],
+      "files": [
+        "staff/expenditure/expenditure.html"
       ]
     },
     {
@@ -106950,6 +107034,202 @@
     {
       "key": "staff.serverLogs.title",
       "standard": "Server Logs",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.app.msme",
+      "standard": "ZED MSME app",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.app.ra",
+      "standard": "Remote assessment app",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.app.sa",
+      "standard": "Site assessor / consultant app",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.app.surv",
+      "standard": "Bronze surveillance app",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.app",
+      "standard": "App",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.last",
+      "standard": "Last seen",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.mode",
+      "standard": "Mode",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.month",
+      "standard": "Without a token, 30 days",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.ready",
+      "standard": "Ready to enforce",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.column.week",
+      "standard": "Without a token, 7 days",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.count",
+      "standard": "{users} units / users",
+      "kind": "label",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "users"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.enforced",
+      "standard": "Enforced",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.readyNo",
+      "standard": "Not yet",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.readyYes",
+      "standard": "Yes: none in 30 days",
+      "kind": "text",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.sub",
+      "standard": "Units and users whose app called without a valid sign-in token (the old installed apps never send one). When an app shows none for some weeks, its token can be enforced (Mobile__AppTokens__Apps__{APP} = Enforce in the Main and MobileMain settings) without refusing anyone.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "serverLogs",
+      "pageName": "Server logs",
+      "placeholders": [
+        "APP"
+      ],
+      "files": [
+        "staff/settings/server-logs.ts"
+      ]
+    },
+    {
+      "key": "staff.serverLogs.tokens.title",
+      "standard": "Mobile app sign-in tokens",
       "kind": "heading",
       "portal": "staff",
       "page": "serverLogs",

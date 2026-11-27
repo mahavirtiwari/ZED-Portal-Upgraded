@@ -270,6 +270,24 @@ public sealed class ExpenditureTests : IDisposable
     // ------------------------------------------------------------------ the Expenditure tab
 
     [Fact]
+    public async Task Cases_counted_before_their_visit_and_invoiced_are_listed_for_the_master_admin()
+    {
+        // 2026-11-27: 0118 counted the others again; the invoiced ones are listed (only for the agencies the login sees).
+        Assert.Contains("C.ExpCaseKind = 'Completed' AND NOT " + ExpenditureSweep.MainCertified, ExpenditureController.EarlyCountsSql);
+        _host.Sql.Queries[ExpenditureController.EarlyCountsSql] = _ =>
+        [
+            new { ZedId = "ZEDM000401", UnitName = "Acme", Level = "Silver", PartyId = "AGENCY1", CountedOn = (DateTime?)new DateTime(2026, 10, 12), Rate = 5000m,
+                Status = 8, InvoiceNo = "INV-T1", InvoiceStatus = "Approved" },
+            new { ZedId = "ZEDM000402", UnitName = "Other", Level = "Gold", PartyId = "AGENCY9", CountedOn = (DateTime?)new DateTime(2026, 10, 15), Rate = 9000m,
+                Status = 6, InvoiceNo = "INV-T9", InvoiceStatus = "Submitted" },
+        ];
+        var master = await SignIn("MASTER1");
+        var rows = await master.GetFromJsonAsync<List<ExpenditureController.EarlyCountView>>("/api/staff/expenditure/review", Web);
+        var row = Assert.Single(rows!);   // AGENCY9 is not one of its agencies
+        Assert.Equal(("ZEDM000401", "AGENCY1", "2026-10-12", "INV-T1"), (row.ZedId, row.PartyId, row.CountedOn, row.InvoiceNo));
+    }
+
+    [Fact]
     public async Task A_master_admin_sees_the_agencies_it_created()
     {
         _host.Sql.Queries[ExpenditureQueries.MainCountSql] = _ =>

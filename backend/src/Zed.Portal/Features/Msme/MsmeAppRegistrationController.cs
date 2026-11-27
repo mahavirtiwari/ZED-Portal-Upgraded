@@ -317,11 +317,43 @@ public sealed class MsmeAppRegistrationController(
     /// </summary>
     [HttpPost("/Msme/FindAccounts")]
     [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
-    public async Task<IActionResult> FindAccounts(string? by, string? value, [FromServices] MsmeAccountFinder finder, CancellationToken ct)
+    public async Task<IActionResult> FindAccounts(string? by, string? value, [FromServices] MsmeAccountFinder finder,
+        [FromServices] Microsoft.Extensions.Caching.Distributed.IDistributedCache cache, CancellationToken ct)
     {
+        // 2026-11-27 (permissions review): the web search asks a captcha because the list shows which PANs and e-mails are registered;
+        // the rebuilt app has none (no SafetyNet), so besides the per-address window (5 in 15 minutes) a day allows at most
+        // FindDailyPerAddress searches from one address and FindDailyPerValue of one PAN / e-mail / ZED ID, whatever the address.
+        if (await OverDailyFindLimitAsync(cache, ClientIp, by, value, ct))
+        {
+            Audit("forgot password: daily search limit", by);
+            return Fail(FindLimitReached);
+        }
         var (units, error) = await finder.FindAsync(by, value, ct);
         Audit(error is null ? $"forgot password: {units.Count} unit(s) found by {by}" : $"forgot password: {error}", by);
         return error is null ? LegacyJson(new { status = "1", Units = units }) : Fail(error);
+    }
+
+    public const int FindDailyPerAddress = 20;
+    public const int FindDailyPerValue = 5;
+    public const string FindLimitReached = "Too many searches today. Please try again tomorrow, or use Forgot Password on the website.";
+
+    /// <summary>Counts this search (per address and per searched value, for the day) and says whether a limit is passed.</summary>
+    internal static async Task<bool> OverDailyFindLimitAsync(Microsoft.Extensions.Caching.Distributed.IDistributedCache cache, string? ip, string? by,
+        string? value, CancellationToken ct)
+    {
+        var day = DateTime.UtcNow.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var normalized = $"{by?.Trim().ToLowerInvariant()}|{value?.Trim().ToUpperInvariant()}";
+        var valueKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(normalized)))[..32];
+        var options = new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1) };
+        async Task<int> CountAsync(string key)
+        {
+            var current = int.TryParse(await cache.GetStringAsync(key, ct), out var n) ? n : 0;
+            await cache.SetStringAsync(key, (current + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), options, ct);
+            return current + 1;
+        }
+        var byAddress = await CountAsync($"msme-find:ip:{ip}:{day}");
+        var byValue = await CountAsync($"msme-find:value:{valueKey}:{day}");
+        return byAddress > FindDailyPerAddress || byValue > FindDailyPerValue;
     }
 
     /// <summary>The reset link for the unit picked from <see cref="FindAccounts"/>: <c>{status, MaskedEmail}</c>.</summary>

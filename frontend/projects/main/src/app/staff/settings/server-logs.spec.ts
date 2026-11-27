@@ -39,6 +39,9 @@ describe('ServerLogsPage', () => {
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
     await settle();
+    // 2026-11-27: the app token readiness card (none here: no card).
+    for (const r of http.match((r) => r.url === '/api/staff/settings/app-tokens')) r.flush({ apps: [], recorded: true });
+    await settle();
   });
 
   afterEach(() => http.verify());
@@ -139,5 +142,31 @@ describe('ServerLogsPage', () => {
     expect(createUrl).toHaveBeenCalled();
     vi.restoreAllMocks();
     expect(el.querySelector('.alert-danger')).toBeNull();
+  });
+});
+
+describe('ServerLogsPage app token readiness (2026-11-27)', () => {
+  it('shows the mode of each app and the units that called without a token, and which can be enforced', async () => {
+    await TestBed.configureTestingModule({ imports: [ServerLogsPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    const fixture = TestBed.createComponent(ServerLogsPage);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url === '/api/staff/settings/app-tokens').flush({ recorded: true, apps: [
+      { app: 'MSME', mode: 'Monitor', users7: 12, users30: 40, lastAt: '2026-11-27T10:05:00', ready: false },
+      { app: 'SA', mode: 'Enforce', users7: 0, users30: 0, lastAt: null, ready: true },
+      { app: 'RA', mode: 'Monitor', users7: 0, users30: 0, lastAt: null, ready: true },
+    ] });
+    for (const r of http.match((r) => r.url === '/api/staff/settings/server-logs')) r.flush({ source: 'main', more: false, from: '', to: '', sources: [], entries: [] });
+    await new Promise((r) => setTimeout(r));
+    fixture.detectChanges();
+    const card = (fixture.nativeElement as HTMLElement).querySelector('.sl-tokens')!;
+    const rows = [...card.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
+    expect(rows[0]).toContain('ZED MSME app');
+    expect(rows[0]).toContain('12 units / users');
+    expect(rows[0]).toContain('27-11-2026 10:05');
+    expect(rows[0]).toContain('Not yet');
+    expect(rows[1]).toContain('Enforced');
+    expect(rows[2]).toContain('Yes: none in 30 days');
+    http.verify();
   });
 });

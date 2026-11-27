@@ -67,7 +67,26 @@ describe('ExpenditurePage', () => {
     http.expectOne((r) => r.url === '/api/staff/expenditure/invoices').flush(invoices);
   }
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // 2026-11-27: the cases counted before their visit (Admin / Master Admin on main), answered with none unless a test did.
+    for (const r of http.match((r) => r.url === '/api/staff/expenditure/review')) r.flush([]);
+    http.verify();
+  });
+
+  it('lists the cases counted before their visit that are already invoiced, for the master admin', async () => {
+    await create(7);
+    flushLoad();
+    http.expectOne((r) => r.url === '/api/staff/expenditure/review').flush([
+      { zedId: 'ZEDMSME992401', unitName: 'Acme', level: 'Silver', partyId: 'AG1', partyName: 'Agency One', countedOn: '2026-10-12', rate: 5000,
+        status: 8, invoiceNo: 'INV-T1', invoiceStatus: 'Approved' },
+    ]);
+    await settle();
+    const card = el.querySelector('.xp-early')!;
+    expect(card.textContent).toContain('Counted before the visit');
+    expect(card.textContent).toContain('ZEDMSME992401');
+    expect(card.textContent).toContain('Agency One');
+    expect(card.textContent).toContain('INV-T1');
+  });
 
   it('shows the cards, a row per agency and level with its PO balance, and the invoices', async () => {
     await create(7);

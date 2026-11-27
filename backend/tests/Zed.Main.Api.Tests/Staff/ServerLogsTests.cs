@@ -187,4 +187,21 @@ public sealed class ServerLogsTests : IDisposable
         var anonymous = _host.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(Url)).StatusCode);
     }
+
+    [Fact]
+    public async Task The_admin_sees_how_ready_each_app_is_for_the_token()
+    {
+        // 2026-11-27 (prepare the MSME app token enforcement): the units recorded without a valid token, per app.
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Settings.AppTokenReadinessController.MissesSql] = _ =>
+            [new { AppKind = "MSME", Users7 = 12, Calls7 = 30, Users30 = 40, Calls30 = 95, LastAt = (DateTime?)new DateTime(2026, 11, 27, 10, 5, 0) }];
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/staff/settings/app-tokens");
+        var apps = r.GetProperty("apps").EnumerateArray().ToList();
+        var msme = apps.Single(a => a.GetProperty("app").GetString() == "MSME");
+        Assert.Equal(12, msme.GetProperty("users7").GetInt32());
+        Assert.False(msme.GetProperty("ready").GetBoolean());
+        Assert.True(apps.Single(a => a.GetProperty("app").GetString() == "SA").GetProperty("ready").GetBoolean());
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await master.GetAsync("/api/staff/settings/app-tokens")).StatusCode);
+    }
 }

@@ -12,7 +12,7 @@ import { TableExport } from '../table-export';
 import { ToastService } from '../toast';
 import { ExpenditureCasesDialog } from './cases-dialog';
 import {
-  ExpenditureApi, ExpenditureFilter, ExpenditureRow, ExpenditureSummary, Invoice, Option, PayeeKind, poPill, rupees, rupeesShort, shownDate, statusTone,
+  EarlyCount, ExpenditureApi, ExpenditureFilter, ExpenditureRow, ExpenditureSummary, Invoice, Option, PayeeKind, poPill, rupees, rupeesShort, shownDate, statusTone,
 } from './expenditure.api';
 import { InvoiceReviewDialog } from './invoice-review';
 import { TaxDetailsCard } from './tax-details';
@@ -143,9 +143,22 @@ export class ExpenditurePage {
     return { partyId: this.partyId(), level: this.level(), state: this.state(), from: this.from(), to: this.to() };
   }
 
+  /** 2026-11-27: cases counted as completed before their visit and already in an invoice (Admin / Master Admin, assessment agencies). */
+  protected readonly early = signal<EarlyCount[]>([]);
+
+  private async loadEarly(): Promise<void> {
+    if (this.system !== 'main' || this.view() === 'organisations' || !([StaffRole.Admin, StaffRole.MasterAdmin] as number[]).includes(this.user()?.roleId ?? 0)) { this.early.set([]); return; }
+    try {
+      this.early.set(await firstValueFrom(this.api.review()));
+    } catch {
+      this.early.set([]);
+    }
+  }
+
   async load(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
+    void this.loadEarly();
     try {
       const [summary, invoices] = await Promise.all([
         firstValueFrom(this.api.summary(this.filter(), this.portal())),
