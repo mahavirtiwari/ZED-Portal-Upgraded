@@ -186,7 +186,7 @@ public sealed partial class NeftController(
             amount <= 0 || amount > 100_000_000m || decimal.Round(amount, 2) != amount)
             return this.Problem400("Please enter a valid amount (up to 2 decimals).");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             // Re-read the list inside the lock: the row, its unit and its current status come from the database.
             var row = (await LoadAsync("0", ct)).FirstOrDefault(r => SchemeRows.Int(r, "TransactionId") == id);

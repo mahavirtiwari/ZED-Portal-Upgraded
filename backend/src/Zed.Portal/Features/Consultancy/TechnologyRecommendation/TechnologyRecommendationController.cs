@@ -80,7 +80,7 @@ public sealed class TechnologyRecommendationController(ISqlExecutor db, ILogger<
         var codes = (req.Codes ?? []).Select(c => c?.Trim() ?? "").Where(c => c.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (codes.Count is 0 or > MaxSelection) return this.Problem400("Select minimum 1 and maximum 10 technologies for recommendation.");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (m, refused) = await MilestoneAsync(zedId, level, ct);
             if (m is null) return refused!;

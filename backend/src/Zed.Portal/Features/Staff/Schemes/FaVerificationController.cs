@@ -143,7 +143,7 @@ public sealed partial class FaVerificationController(
             upload = ext;
         }
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await Viewable(zedId, certification, ct);
             if (app is null) return NotFound();
@@ -222,7 +222,7 @@ public sealed partial class FaVerificationController(
 
         var user = CurrentUser;
         FaApplication? app;
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             app = await Viewable(zedId, certification, ct);
             if (app is null) return NotFound();
@@ -303,7 +303,7 @@ public sealed partial class FaVerificationController(
         if (!Ifsc().IsMatch(ifsc)) return this.Problem400("Please enter a valid IFSC code.");
         if (branch is null || bank is null) return this.Problem400("All fields are mandatory");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await Viewable(zedId, certification, ct);
             if (app is null) return NotFound();

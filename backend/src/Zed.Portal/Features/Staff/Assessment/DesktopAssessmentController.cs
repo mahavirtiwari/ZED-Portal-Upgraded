@@ -602,7 +602,7 @@ public sealed partial class DesktopAssessmentController(
     /// "No" in that fresh round and certified with the NC open. The record is read and checked again inside the lock
     /// (<see cref="StillSubmittable"/>), as <see cref="Monitoring.MonitoringReviewController"/> does for its decisions.
     /// </summary>
-    private static readonly SemaphoreSlim FinalSubmits = new(1, 1);
+    private const string FinalSubmitLock = "desktop-final-submit";
 
     /// <summary>The answer to a final submit whose record moved on while it waited (a second click, a retry).</summary>
     public const string AlreadySubmitted = "This assessment has already been submitted. Please reload the page.";
@@ -624,8 +624,7 @@ public sealed partial class DesktopAssessmentController(
         if (unticked is not null) return this.Problem400(unticked);
 
         FinalSubmitCheck check;
-        await FinalSubmits.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(FinalSubmitLock, ct))
         {
             if (await StillSubmittable(zedId, certification, record, ct) is { } submitted) return submitted;
             // The old page sent "isNcRaised" from the browser; the procedure's own answer is used instead.
@@ -633,10 +632,6 @@ public sealed partial class DesktopAssessmentController(
             if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
 
             await db.ExecuteProcAsync("SP_ASSESSMENT_DA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = remarks }, ct);
-        }
-        finally
-        {
-            FinalSubmits.Release();
         }
         log.LogInformation("Assessor {UserId} final-submitted {ZedId} {Certification} (NC raised: {Nc})", UserId, zedId, level, check.RaisesNc);
         await SubmissionChecklists.TryRecordAsync(db, log, zedId, level!, SubmissionChecklists.AssessorSubmitKind, SubmissionChecklists.Desktop, record.Nc,
@@ -671,7 +666,7 @@ public sealed partial class DesktopAssessmentController(
     }
 
     /// <summary>
-    /// Inside <see cref="FinalSubmits"/>: the record read again is still open for this assessor's final submit, in the
+    /// Inside <see cref="FinalSubmitLock"/>: the record read again is still open for this assessor's final submit, in the
     /// state (status and NC round) checked before waiting. Null when it is; otherwise 409 <see cref="AlreadySubmitted"/>,
     /// so the procedure does not run a second time.
     /// </summary>

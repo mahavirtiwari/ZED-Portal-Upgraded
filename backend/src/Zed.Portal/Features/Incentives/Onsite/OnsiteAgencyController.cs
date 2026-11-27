@@ -87,7 +87,7 @@ public sealed class OnsiteAgencyController(
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<MessageResponse>> Accept(int id, AcceptRequest req, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             var renaming = c.Status == OnsiteWithAssessor && c.Row.VisitStartedOn is null;
@@ -115,7 +115,7 @@ public sealed class OnsiteAgencyController(
         var reason = RejectionReasons.Find(await RejectionReasons.LoadAsync(settings, ct), req.ReasonId);
         if (reason is null) return this.Problem400("Please select the reason for rejection.");
         if (!RejectionReasons.TryRemarks(req.Remarks, out var remarks, out var error)) return this.Problem400(error!);
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != OnsiteWithAgency) return this.Problem400("This application has already been processed.");
@@ -149,7 +149,7 @@ public sealed class OnsiteAgencyController(
     [HttpPost("{id:int}/approve")]
     public async Task<ActionResult<MessageResponse>> Approve(int id, ApproveRequest req, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != Qc) return this.Problem400("This application is not waiting for QC.");
@@ -179,7 +179,7 @@ public sealed class OnsiteAgencyController(
     {
         if (SchemeReview.Text(req.Remarks, SchemeReview.MaxRemarks) is not { } remarks)
             return this.Problem400($"Please enter the remarks for the verification officer (up to {SchemeReview.MaxRemarks} characters).");
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != Qc) return this.Problem400("This application is not waiting for QC.");

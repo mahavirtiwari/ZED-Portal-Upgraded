@@ -50,4 +50,6 @@ public sealed class ReadOnlySqlExecutor(ISqlExecutor inner) : ISqlExecutor
 
     public Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default) =>
         throw new InvalidOperationException("Statements cannot run on a read-only connection.");
+
+    public Task<IAsyncDisposable> LockAsync(string resource, CancellationToken ct = default) => inner.LockAsync(resource, ct);
 }

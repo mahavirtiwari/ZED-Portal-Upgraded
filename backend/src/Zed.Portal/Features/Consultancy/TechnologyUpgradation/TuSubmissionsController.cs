@@ -129,7 +129,7 @@ public sealed class TuSubmissionsController(
             return this.Problem400("Invalid application.");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await TuApplications.FindAsync(db, zedId, cert, ct);
             if (app is null) return NotFound();
@@ -185,7 +185,7 @@ public sealed class TuSubmissionsController(
             return this.Problem400("Invalid application.");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await TuApplications.FindAsync(db, zedId, cert, ct);
             if (app is null || !SchemeRows.Same(app.AgencyUserId, UserId)) return NotFound();
@@ -243,7 +243,7 @@ public sealed class TuSubmissionsController(
             return this.Problem400("Please enter the reason for rejection (up to 2000 characters).");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await TuApplications.FindAsync(db, zedId, cert, ct);
             if (app is null || !SchemeRows.Same(app.AgencyUserId, UserId)) return NotFound();

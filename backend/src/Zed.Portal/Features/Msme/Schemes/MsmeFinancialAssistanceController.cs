@@ -145,7 +145,7 @@ public sealed class MsmeFinancialAssistanceController(
         var a = req.Account!;
         string certification;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var state = await StateAsync(ct);
             if (state is null) return NotFound();
@@ -203,7 +203,7 @@ public sealed class MsmeFinancialAssistanceController(
             }, ct);
 
         // 2026-11-08: allotted to an agency by round robin at once (none eligible = the Master Admin allots it).
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
             await HttpContext.RequestServices.GetRequiredService<Staff.Schemes.FaAutoAllotment>().AllotAsync(ZedId, certification, ct);
 
         return new SubmitResponse("Application for Financial Assistance submitted successfully!", amount, eligible);

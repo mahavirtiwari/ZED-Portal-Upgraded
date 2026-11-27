@@ -68,7 +68,7 @@ public sealed class SchemeApplicationsController(
     [HttpPost("{id:int}/onsite-allot")]
     public async Task<ActionResult<MessageResponse>> AllotOnsite(int id, AllotRequest req, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Find(id, ct) is not { } c) return NotFound();
             if (c.Status is not (SchemeApplications.OnsiteAllot or OnsiteWithAgency)) return this.Problem400("This application can no longer be allotted for onsite verification.");
@@ -98,7 +98,7 @@ public sealed class SchemeApplicationsController(
     [HttpPost("{id:int}/allot")]
     public async Task<ActionResult<MessageResponse>> Allot(int id, AllotRequest req, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Find(id, ct) is not { } c) return NotFound();
             if (c.Status is not (Submitted or WithAgency)) return this.Problem400("This application can no longer be allotted.");
@@ -124,7 +124,7 @@ public sealed class SchemeApplicationsController(
     [HttpPost("{id:int}/resume")]
     public async Task<ActionResult<MessageResponse>> Resume(int id, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Find(id, ct) is not { } c) return NotFound();
             if (c.Status != OnHold) return this.Problem400("This application is not on hold.");
@@ -167,7 +167,7 @@ public sealed class SchemeApplicationsController(
     {
         if (SchemeReview.Text(req.Reason, SchemeReview.MaxRemarks) is not { } reason)
             return this.Problem400($"Please enter the reason for rejection (up to {SchemeReview.MaxRemarks} characters).");
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Find(id, ct) is not { } c) return NotFound();
             if (c.Status != OnHold) return this.Problem400("Only an application on hold can be rejected here.");

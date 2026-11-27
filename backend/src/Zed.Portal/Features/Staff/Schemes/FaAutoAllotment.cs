@@ -142,7 +142,7 @@ public sealed class FaAutoAllotment(
         foreach (var w in waiting)
         {
             if (string.IsNullOrWhiteSpace(w.ZedId) || FaApplications.Canonical(w.CertificationType) is not { } cert) continue;
-            using (await SchemeLocks.EnterAsync(ct))
+            await using (await SchemeLocks.EnterAsync(db, ct))
                 if (await AllotAsync(w.ZedId.Trim(), cert, ct) is not null) done++;
         }
         if (done > 0) log.LogInformation("FA round robin: {Count} waiting application(s) allotted", done);

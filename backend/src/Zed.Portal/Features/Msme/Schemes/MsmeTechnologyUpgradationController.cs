@@ -129,7 +129,7 @@ public sealed class MsmeTechnologyUpgradationController(
     [MsmeEditAudit("Technology upgradation: technology details saved")]
     public async Task<ActionResult<MessageResponse>> SubmitTechnology(string code, TechnologyRequest req, CancellationToken ct)
     {
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var s = await StateAsync(ct);
             if (s is null) return NotFound();
@@ -206,7 +206,7 @@ public sealed class MsmeTechnologyUpgradationController(
         var a = req.Account!;
         string certification;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var s = await StateAsync(ct);
             if (s is null) return NotFound();

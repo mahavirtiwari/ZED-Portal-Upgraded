@@ -107,7 +107,7 @@ public sealed class TuOpenMeetingController(
         if (participants.Count > 50 || participants.Any(p => p.name?.Length > 500 || p.designation?.Length > 500)) return Fail("Invalid Data.");
         if (request.inputComment?.Length > 5000) return Fail("Invalid Data.");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await TuApplications.FindAsync(db, zedId!, cert, ct);
             if (app is null || !SchemeRows.Same(app.AssessorUserId, saId) || app.Status != FaStatus.InProgress)

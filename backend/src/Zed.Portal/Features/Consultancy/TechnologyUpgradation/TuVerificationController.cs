@@ -202,7 +202,7 @@ public sealed partial class TuVerificationController(
         if (file is not null && (upload = await FaVerificationController.UploadKind(file, ct)) is null)
             return this.Problem400("Please upload valid document (PDF / JPG / PNG, less than 2 MB).");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (app, _) = await ViewableAsync(zedId, certification, ct);
             if (app?.Fa.Photo(id) is not { } photo) return NotFound();
@@ -268,7 +268,7 @@ public sealed partial class TuVerificationController(
             amount < 0 || amount > MaxAmount || decimal.Round(amount, 2) != amount)
             return this.Problem400("Please enter a valid amount (up to 2 decimals).");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (app, scope) = await ViewableAsync(zedId, certification, ct);
             if (app?.Technology(id) is not { } tech) return NotFound();
@@ -317,7 +317,7 @@ public sealed partial class TuVerificationController(
 
         var user = CurrentUser;
         TuApplication? app;
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             (app, _) = await ViewableAsync(zedId, certification, ct);
             if (app is null) return NotFound();
@@ -368,7 +368,7 @@ public sealed partial class TuVerificationController(
         if (!Ifsc().IsMatch(ifsc)) return this.Problem400("Please enter a valid IFSC code.");
         if (branch is null || bank is null) return this.Problem400("All fields are mandatory");
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (app, scope) = await ViewableAsync(zedId, certification, ct);
             if (app is null) return NotFound();

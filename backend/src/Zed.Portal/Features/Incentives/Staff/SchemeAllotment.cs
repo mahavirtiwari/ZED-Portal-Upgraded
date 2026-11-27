@@ -83,7 +83,7 @@ public sealed class SchemeAllotment(ISqlExecutor db, SchemeStore store, IService
     /// </summary>
     public async Task<string?> AutoAllotAsync(int id, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             var c = await SchemeCases.LoadAsync(db, id, ct);
             if (c is null || c.Status != SchemeApplications.Submitted || c.Agency is not null) return null;

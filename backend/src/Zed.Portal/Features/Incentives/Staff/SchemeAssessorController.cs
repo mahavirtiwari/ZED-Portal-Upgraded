@@ -53,7 +53,7 @@ public sealed class SchemeAssessorController(
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<MessageResponse>> Accept(int id, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != WithAssessor) return this.Problem400("This application has already been processed.");
@@ -73,7 +73,7 @@ public sealed class SchemeAssessorController(
     {
         if (SchemeReview.Text(req.Reason, SchemeReview.MaxRemarks) is not { } reason)
             return this.Problem400($"Please enter the reason (up to {SchemeReview.MaxRemarks} characters).");
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != WithAssessor) return this.Problem400("This application has already been processed.");
@@ -96,7 +96,7 @@ public sealed class SchemeAssessorController(
     public async Task<ActionResult<MessageResponse>> SaveChecks(int id, ChecksRequest req, CancellationToken ct)
     {
         if (req.Checks is not { Count: > 0 and <= 2000 } input) return this.Problem400("Please mark at least one answer or document.");
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != Verifying || c.AssessorAcceptedOn is null) return this.Problem400("The application is not open for verification.");
@@ -125,7 +125,7 @@ public sealed class SchemeAssessorController(
     [HttpPost("{id:int}/decision")]
     public async Task<ActionResult<MessageResponse>> Decide(int id, DecisionRequest req, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             if (await Mine(id, ct) is not { } c) return NotFound();
             if (c.Status != Verifying || c.AssessorAcceptedOn is null) return this.Problem400("The application is not open for verification.");

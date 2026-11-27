@@ -81,7 +81,7 @@ public sealed class OnsiteAllotment(ISqlExecutor db, SchemeStore store, IService
     /// <summary>Round robin for an <see cref="OnsiteAllot"/> application (no onsite agency); returns the agency or null.</summary>
     public async Task<string?> AutoAllotAsync(int id, CancellationToken ct)
     {
-        using (await SchemeCaseLock.EnterAsync(ct))
+        await using (await SchemeCaseLock.EnterAsync(db, ct))
         {
             var c = await SchemeCases.LoadAsync(db, id, ct);
             if (c is null || c.Status != OnsiteAllot || c.OnsiteAgency is not null) return null;

@@ -195,7 +195,7 @@ public sealed class FinancialAssistanceController(
             return this.Problem400("Invalid application.");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var app = await FaApplications.FindAsync(db, zedId, cert, ct);
             if (app is null) return NotFound();
@@ -241,7 +241,7 @@ public sealed class FinancialAssistanceController(
             return this.Problem400("Invalid application.");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             if (await PendingForThisAgency(zedId, cert, ct) is { } refused) return refused;
             var assessor = (await AssessorOptions(ct)).FirstOrDefault(a => SchemeRows.Same(a.UserId, req.AssessorUserId));
@@ -282,7 +282,7 @@ public sealed class FinancialAssistanceController(
             return this.Problem400("Please enter the reason for rejection (up to 100 characters).");
         var zedId = req.ZedId!;
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             if (await PendingForThisAgency(zedId, cert, ct) is { } refused) return refused;
             if (await Exec("SP_FINANCIAL_ASSESSMENT_REJECT_UNIT_FOR_VERIFICATION",

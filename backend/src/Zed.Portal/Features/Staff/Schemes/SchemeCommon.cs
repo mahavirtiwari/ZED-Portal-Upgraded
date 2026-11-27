@@ -10,24 +10,14 @@ namespace Zed.Portal.Features.Staff.Schemes;
 /// <summary>
 /// Serialises the state changes of the financial assistance (FA) and NEFT reimbursement workflow, so a
 /// double click or two reviewers acting at once cannot both pass the "current status" check before
-/// either procedure has run (the legacy procedures update unconditionally). Single API server; for a
-/// web farm the checks would need a conditional UPDATE in the procedures.
+/// either procedure has run (the legacy procedures update unconditionally). 2026-11-27: a database lock
+/// (<see cref="ISqlExecutor.LockAsync"/>) of the database written, so it holds across the web, the mobile API and the jobs too.
 /// </summary>
 internal static class SchemeLocks
 {
-    public static readonly SemaphoreSlim Workflow = new(1, 1);
+    public const string Name = "scheme-workflow";
 
-    public static async Task<IDisposable> EnterAsync(CancellationToken ct)
-    {
-        await Workflow.WaitAsync(ct);
-        return new Releaser();
-    }
-
-    private sealed class Releaser : IDisposable
-    {
-        private int _done;
-        public void Dispose() { if (Interlocked.Exchange(ref _done, 1) == 0) Workflow.Release(); }
-    }
+    public static Task<IAsyncDisposable> EnterAsync(ISqlExecutor db, CancellationToken ct) => db.LockAsync(Name, ct);
 }
 
 /// <summary>Small helpers shared by the scheme and NEFT staff endpoints.</summary>

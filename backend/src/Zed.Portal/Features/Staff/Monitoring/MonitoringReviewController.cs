@@ -45,7 +45,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     /// One decision (final submit, send back, reject) at a time: the procedures read and write the status without locks, so
     /// a double click certified twice (a second QR code after the first mail). The status is checked again inside the lock.
     /// </summary>
-    private static readonly SemaphoreSlim Decisions = new(1, 1);
+    private const string DecisionLock = "monitoring-decision";
 
     /// <summary>The answer to a decision whose record moved on while it waited (a second click, or another user).</summary>
     public const string AlreadyDecided = "This assessment has already been decided. Please reload the page.";
@@ -174,8 +174,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
             if (notValid > 0) return this.Problem400(Zed.Core.Forms.AppFormChecks.SentBackMessage(notValid));
         }
 
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             if (await StillOpen(zedId, certification, a => a.FinalSubmit, stage, ct) is { } decided) return decided;
             var qr = RandomNumberGenerator.GetString(QrChars, 4);
@@ -197,10 +196,6 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
                 await db.ExecuteProcAsync(desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT", args, ct);
             }
             log.LogInformation("Agency {UserId} final-submitted the {Stage} review of {ZedId} {Certification}", UserId, stage, zedId, level);
-        }
-        finally
-        {
-            Decisions.Release();
         }
         await SubmissionChecklists.TryRecordAsync(db, log, zedId, level!, checklist, checkStage, record!.Nc, asked, "Agency", UserId, ActorId, ActorName, ct);
 
@@ -239,8 +234,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         if (remarks is null) return this.Problem400("Please enter the send back remarks.");
         if (remarks.Length > MaxText) return this.Problem400($"Remarks must be at most {MaxText} characters.");
 
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             if (await StillOpen(zedId, certification, a => a.SendBack, stage, ct) is { } decided) return decided;
             await db.ExecuteProcAsync("SP_MONITORING_SEND_BACK_TO_ASSESSOR", new
@@ -253,10 +247,6 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
             }, ct);
             log.LogInformation("{UserId} sent {ZedId} {Certification} back to the assessor", UserId, zedId, level);
             return new MessageResponse("Sent back to the assessor.");
-        }
-        finally
-        {
-            Decisions.Release();
         }
     }
 
@@ -275,8 +265,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         var completion = CertificationCompletion.Create(HttpContext.RequestServices);
         IDictionary<string, object?>? details;
         var archived = true;
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             if (await StillOpen(zedId, certification, a => a.Reject, stage, ct) is { } decided) return decided;
             await db.ExecuteProcAsync("SP_MONITORING_REJECT_FINAL_SUBMIT", new { UserId, ZedId = zedId, CertificationType = level }, ct);
@@ -294,10 +283,6 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
                 log.LogError(ex, "{ZedId} {Certification} rejected but its records could not be archived", zedId, level);
                 archived = false;
             }
-        }
-        finally
-        {
-            Decisions.Release();
         }
         var mailed = await completion.SendRejectionAsync(zedId, level!, details, ct);
 

@@ -44,7 +44,7 @@ public sealed class MilestoneReviewController(
     private const long PlaceholderBulletId = 999999999;
 
     /// <summary>One decision at a time: the procedures read and write the status without locks.</summary>
-    private static readonly SemaphoreSlim Decisions = new(1, 1);
+    private const string DecisionLock = "milestone-decision";
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
     private static readonly string[] Levels = [.. Zed.Core.Data.LevelRegistry.Handholding];
 
@@ -528,8 +528,7 @@ public sealed class MilestoneReviewController(
         if (remarks.Length > MaxRemarks) return this.Problem400($"Comments must be at most {MaxRemarks} characters.");
         var kind = SubmissionChecklists.ConsultantSubmitKind;
 
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             var (ctx, error) = await Context(zedId, certification, ct);
             if (error is not null) return error;
@@ -553,10 +552,6 @@ public sealed class MilestoneReviewController(
                 ? "Milestone submitted to the Consultant Organisation."
                 : "Your part of the milestone is submitted. The lead consultant submits the milestone.");
         }
-        finally
-        {
-            Decisions.Release();
-        }
     }
 
     // ================================================================== CO decisions (Monitoring/RaFinalSubmit, SendBackToAssessor, RejectFinalSubmit)
@@ -573,8 +568,7 @@ public sealed class MilestoneReviewController(
             return this.Problem400(Staff.Quality.QualityObservations.BlockingMessage(open));
         MilestoneContext ctx;
         IReadOnlyList<ChecklistItem> asked;
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             var (c, error) = await ForDecision(zedId, certification, ct);
             if (error is not null) return error;
@@ -590,10 +584,6 @@ public sealed class MilestoneReviewController(
                 QrCodeSeqNo = AssessmentInput.Ansi(RandomNumberGenerator.GetString(QrChars, 4)),
             }, ct);
             log.LogInformation("CO {UserId} completed milestone {Milestone} of {ZedId} {Level}", UserId, ctx.Milestone, ctx.ZedId, ctx.Level);
-        }
-        finally
-        {
-            Decisions.Release();
         }
         await SubmissionChecklists.TryRecordAsync(db, log, ctx.ZedId, ctx.Level, kind, $"Milestone {ctx.Milestone}", ctx.Milestone, asked,
             "Consultant organisation", UserId, ActorId, ActorName, ct);
@@ -613,8 +603,7 @@ public sealed class MilestoneReviewController(
         var remarks = AssessmentInput.Text(req.Remarks);
         if (remarks is null) return this.Problem400("Please enter the send back remarks.");
         if (remarks.Length > MaxRemarks) return this.Problem400($"Remarks must be at most {MaxRemarks} characters.");
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             var (ctx, error) = await ForDecision(zedId, certification, ct);
             if (error is not null) return error;
@@ -632,10 +621,6 @@ public sealed class MilestoneReviewController(
                 [ctx.Record.SiteAssessorId, .. ctx.CoConsultants.Select(c => c.CoAssessorId)], ctx.ZedId, ctx.Level, ctx.Milestone, remarks, log, ct);
             return new MessageResponse(mailed ? "Sent back to the consultant. The consultants have been mailed the remarks." : "Sent back to the consultant.");
         }
-        finally
-        {
-            Decisions.Release();
-        }
     }
 
     /// <summary>
@@ -647,8 +632,7 @@ public sealed class MilestoneReviewController(
     public async Task<ActionResult<MessageResponse>> Reject(string zedId, string certification, ConfirmRequest req, CancellationToken ct)
     {
         if (!req.Confirmed) return this.Problem400("Please confirm the rejection.");
-        await Decisions.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(DecisionLock, ct))
         {
             var (ctx, error) = await ForDecision(zedId, certification, ct);
             if (error is not null) return error;
@@ -679,10 +663,6 @@ public sealed class MilestoneReviewController(
             var mailed = await completion.RejectedAsync(ctx.ZedId, ctx.Level, ctx.Milestone, details, report, ct);
             if (!archived) return this.Problem400("The handholding was rejected, but its records could not be archived. Please contact the ZED team.");
             return new MessageResponse(mailed ? "Handholding rejected. The MSME has been informed." : "Handholding rejected. The mail to the MSME could not be sent.");
-        }
-        finally
-        {
-            Decisions.Release();
         }
     }
 

@@ -119,7 +119,7 @@ public sealed class TuAppController(
             kinds.Add(kind);
         }
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (app, refusal) = await WithDfoAsync(ZedId, CertificationType, ct);
             if (app is null) return refusal!;
@@ -179,7 +179,7 @@ public sealed class TuAppController(
             return Fail("Please enter a valid amount.");
         if (!SchemeRows.IsZedId(zedId)) return Fail(NotAvailable);
 
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             // The app sends no level: the technology row names the application.
             var app = (await TuApplications.LoadAsync(db, zedId!, ct)).FirstOrDefault(a => a.Technology(id) is not null);
@@ -220,7 +220,7 @@ public sealed class TuAppController(
         if (approve == false && comments is null) return Fail("Please enter the comments.");
 
         TuApplication? app;
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             IActionResult? refusal;
             (app, refusal) = await WithDfoAsync(Field(body, "ZedId"), Field(body, "CertificationType"), ct);

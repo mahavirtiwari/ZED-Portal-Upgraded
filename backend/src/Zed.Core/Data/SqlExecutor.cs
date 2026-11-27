@@ -25,7 +25,72 @@ public interface ISqlExecutor
     Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// An exclusive lock named <paramref name="resource"/>, held until the result is disposed: one holder at a time across every
+    /// process and server on this database (<see cref="SqlExecutor"/>: sp_getapplock), so a double click, a retry, or the web and
+    /// the mobile API acting on one case together cannot both pass a "current status" check before either has written. The
+    /// default (test doubles) is a lock of this process only.
+    /// </summary>
+    Task<IAsyncDisposable> LockAsync(string resource, CancellationToken ct = default) => ProcessLocks.TakeAsync(resource, ct);
 }
+
+/// <summary>Named exclusive locks of this process (<see cref="ISqlExecutor.LockAsync"/> without a database).</summary>
+public static class ProcessLocks
+{
+    private sealed class Entry
+    {
+        public readonly SemaphoreSlim Gate = new(1, 1);
+        public int Users;
+    }
+
+    private static readonly Dictionary<string, Entry> Entries = new(StringComparer.OrdinalIgnoreCase);
+
+    public static async Task<IAsyncDisposable> TakeAsync(string resource, CancellationToken ct = default)
+    {
+        Entry entry;
+        lock (Entries)
+        {
+            if (!Entries.TryGetValue(resource, out entry!)) Entries[resource] = entry = new Entry();
+            entry.Users++;
+        }
+        try
+        {
+            await entry.Gate.WaitAsync(ct);
+        }
+        catch
+        {
+            Leave(resource, entry);
+            throw;
+        }
+        return new Held(resource, entry);
+    }
+
+    private static void Leave(string resource, Entry entry)
+    {
+        lock (Entries)
+            if (--entry.Users == 0) Entries.Remove(resource);
+    }
+
+    private sealed class Held(string resource, Entry entry) : IAsyncDisposable
+    {
+        private int _done;
+
+        public ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _done, 1) == 0)
+            {
+                entry.Gate.Release();
+                Leave(resource, entry);
+            }
+            return ValueTask.CompletedTask;
+        }
+    }
+}
+
+/// <summary>A database lock (<see cref="ISqlExecutor.LockAsync"/>) not granted within <see cref="SqlExecutor.LockWait"/>.</summary>
+public sealed class DbLockTimeoutException(string resource)
+    : TimeoutException($"Another request is still working on this ({resource}). Please try again in a minute.");
 
 public sealed class SqlExecutor(string connectionString, int commandTimeoutSeconds = 120) : ISqlExecutor
 {
@@ -79,6 +144,61 @@ public sealed class SqlExecutor(string connectionString, int commandTimeoutSecon
 
     private CommandDefinition Command(string text, object? parameters, CommandType type, CancellationToken ct) =>
         new(text, parameters, commandType: type, commandTimeout: commandTimeoutSeconds, cancellationToken: ct);
+
+    /// <summary>How long <see cref="LockAsync"/> waits for another holder (a final submit runs in seconds).</summary>
+    public static readonly TimeSpan LockWait = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// 2026-11-27: sp_getapplock owned by the session of a connection of its own, kept open while the lock is held. The connection
+    /// is not pooled, so closing it (dispose, or the process ending) always frees the lock. The process's own lock is taken first,
+    /// so requests of one process queue there instead of each opening a connection.
+    /// </summary>
+    public async Task<IAsyncDisposable> LockAsync(string resource, CancellationToken ct = default)
+    {
+        var local = await ProcessLocks.TakeAsync(resource, ct);
+        var conn = new SqlConnection(new SqlConnectionStringBuilder(connectionString) { Pooling = false }.ConnectionString);
+        try
+        {
+            await conn.OpenAsync(ct);
+            var p = new DynamicParameters();
+            p.Add("@Resource", LockName(resource));
+            p.Add("@LockMode", "Exclusive");
+            p.Add("@LockOwner", "Session");
+            p.Add("@LockTimeout", (int)LockWait.TotalMilliseconds);
+            p.Add("@Result", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+            await conn.ExecuteAsync(new CommandDefinition("sp_getapplock", p, commandType: CommandType.StoredProcedure,
+                commandTimeout: (int)LockWait.TotalSeconds + 30, cancellationToken: ct));
+            if (p.Get<int>("@Result") < 0) throw new DbLockTimeoutException(resource);
+            return new DbLock(conn, local);
+        }
+        catch
+        {
+            await conn.DisposeAsync();
+            await local.DisposeAsync();
+            throw;
+        }
+    }
+
+    /// <summary>The applock resource (at most 255 characters).</summary>
+    internal static string LockName(string resource) => ("ZEDV4:" + resource) is var n && n.Length > 255 ? n[..255] : n;
+
+    private sealed class DbLock(SqlConnection conn, IAsyncDisposable local) : IAsyncDisposable
+    {
+        private int _done;
+
+        public async ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _done, 1) != 0) return;
+            try
+            {
+                await conn.DisposeAsync();   // not pooled: the session ends and its lock with it
+            }
+            finally
+            {
+                await local.DisposeAsync();
+            }
+        }
+    }
 }
 
 /// <summary>Result sets returned by a multi-select procedure, read by index like the old DataSet.Tables[n].</summary>

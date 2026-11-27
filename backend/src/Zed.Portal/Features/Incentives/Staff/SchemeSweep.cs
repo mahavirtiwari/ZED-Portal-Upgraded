@@ -104,7 +104,7 @@ public sealed partial class SchemeSweep(ISqlExecutor db, IServiceProvider servic
             var overdue = await db.QuerySqlAsync<Row>(OverdueSql, new { Today = DateTime.Today }, ct);
             foreach (var r in overdue)
             {
-                using (await SchemeCaseLock.EnterAsync(ct))
+                await using (await SchemeCaseLock.EnterAsync(db, ct))
                 {
                     var c = await SchemeCases.LoadAsync(db, r.Id, ct);
                     if (c is null || c.Status != Correction || c.CorrectionDueOn is not { } due || due >= DateTime.Today) continue;
@@ -154,7 +154,7 @@ public sealed partial class SchemeSweep(ISqlExecutor db, IServiceProvider servic
 
             foreach (var (r, cert) in toHold)
             {
-                using (await SchemeCaseLock.EnterAsync(ct))
+                await using (await SchemeCaseLock.EnterAsync(db, ct))
                 {
                     var c = await SchemeCases.LoadAsync(db, r.Id, ct);
                     // An approved application is held only while not paid (the save also refuses VerificationStatus 6).

@@ -9,23 +9,13 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// Serialises the staff side's changes of scheme applications (allotment, accept, checks, decisions, the sweep), so a double
 /// click or two people acting at once cannot both pass the "current status" check. Every save is also conditional on the status
 /// read (<see cref="SchemeCases.SaveSql"/>), so a change made elsewhere (the applicant answering a correction) is never
-/// overwritten. Single API server, as <see cref="SchemeLocks"/>.
+/// overwritten. A database lock, as <see cref="SchemeLocks"/>.
 /// </summary>
 internal static class SchemeCaseLock
 {
-    private static readonly SemaphoreSlim Gate = new(1, 1);
+    public const string Name = "scheme-case";
 
-    public static async Task<IDisposable> EnterAsync(CancellationToken ct)
-    {
-        await Gate.WaitAsync(ct);
-        return new Releaser();
-    }
-
-    private sealed class Releaser : IDisposable
-    {
-        private int _done;
-        public void Dispose() { if (Interlocked.Exchange(ref _done, 1) == 0) Gate.Release(); }
-    }
+    public static Task<IAsyncDisposable> EnterAsync(ISqlExecutor db, CancellationToken ct) => db.LockAsync(Name, ct);
 }
 
 /// <summary>

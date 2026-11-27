@@ -210,7 +210,7 @@ public sealed class SchemeApplicantService(
     /// <summary>Starts (or returns) the application of the open claim window.</summary>
     public async Task<Outcome<PageDto>> DraftAsync(string zedId, string code, CancellationToken ct)
     {
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (c, error) = await LoadAsync(zedId, code, ct);
             if (c is null) return error!.Value;
@@ -241,7 +241,7 @@ public sealed class SchemeApplicantService(
 
     private async Task<Outcome<PageDto>> SaveItemAsync(string zedId, string code, string sectionKey, int index, ItemRequest req, bool repeating, CancellationToken ct)
     {
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (c, error) = await LoadAsync(zedId, code, ct);
             if (c is null) return error!.Value;
@@ -285,7 +285,7 @@ public sealed class SchemeApplicantService(
     /// <summary>Removes an "Add more" item of the draft.</summary>
     public async Task<Outcome<PageDto>> RemoveItemAsync(string zedId, string code, string section, int index, CancellationToken ct)
     {
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (c, error) = await LoadAsync(zedId, code, ct);
             if (c is null) return error!.Value;
@@ -350,7 +350,7 @@ public sealed class SchemeApplicantService(
     public async Task<Outcome<PageDto>> SubmitAsync(string zedId, string code, SubmitRequest req, CancellationToken ct)
     {
         int id;
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (c, error) = await LoadAsync(zedId, code, ct);
             if (c is null) return error!.Value;
@@ -412,7 +412,7 @@ public sealed class SchemeApplicantService(
     public async Task<Outcome<PageDto>> CorrectionAsync(string zedId, string code, CorrectionRequest req, CancellationToken ct)
     {
         int id;
-        using (await SchemeLocks.EnterAsync(ct))
+        await using (await SchemeLocks.EnterAsync(db, ct))
         {
             var (c, error) = await LoadAsync(zedId, code, ct);
             if (c is null) return error!.Value;

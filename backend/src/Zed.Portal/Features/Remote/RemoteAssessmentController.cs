@@ -46,7 +46,7 @@ namespace Zed.Portal.Features.Remote;
 /// Nc{n}Status 2) the lead assessor reviews that round's products, site exterior photos and requirements here and
 /// final-submits again: all conforming closes the NCs (status 15), anything not conforming raises the next round
 /// (SP_ASSESSMENT_RA_FINAL_SUBMIT). Only the round's own rows can be changed then (<see cref="InCurrentRound"/>), nothing of
-/// the first assessment. One final submit at a time (<see cref="FinalSubmits"/>): a second click must not run the procedure
+/// the first assessment. One final submit at a time (<see cref="FinalSubmitLock"/>): a second click must not run the procedure
 /// on the round the first one just raised.
 /// </para>
 /// <para>
@@ -103,7 +103,7 @@ public sealed partial class RemoteAssessmentController(
     /// raised NC n and then, on the fresh round with nothing answered "No", closed it and issued the certification number.
     /// The record is checked again inside the lock.
     /// </summary>
-    private static readonly SemaphoreSlim FinalSubmits = new(1, 1);
+    private const string FinalSubmitLock = "remote-final-submit";
     public static string[] Levels => Staff.SiteAssessment.AssessmentInputs.SiteLevels;
 
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -844,8 +844,7 @@ public sealed partial class RemoteAssessmentController(
 
         FinalSubmitCheck check;
         RemoteRecord? after;
-        await FinalSubmits.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(FinalSubmitLock, ct))
         {
             // Still the same open assessment or NC round as checked before waiting (a second click finds it submitted).
             var now = await RecordAsync(zedId, level!, ct);
@@ -858,10 +857,6 @@ public sealed partial class RemoteAssessmentController(
 
             await db.ExecuteProcAsync("SP_ASSESSMENT_RA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = comments }, ct);
             after = await RecordAsync(zedId, level!, ct);
-        }
-        finally
-        {
-            FinalSubmits.Release();
         }
         log.LogInformation("Assessor {UserId} final-submitted the site assessment of {ZedId} {Certification} (NC round {Round}, now status {Status}, NC {Nc})",
             UserId, zedId, level, record!.NcCount ?? 0, after?.CertificationStatus, after?.NcCount);

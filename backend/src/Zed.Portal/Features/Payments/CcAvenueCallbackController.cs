@@ -175,11 +175,11 @@ public sealed record CcAvenueOutcome(CcAvenueResult Result, string? Certificatio
 public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
 {
     /// <summary>
-    /// One response is recorded at a time in this process. Each path (web, app, reconciliation) reads the order, records the
+    /// One response is recorded at a time, across the web and the mobile API too (a database lock, ISqlExecutor.LockAsync). Each path (web, app, reconciliation) reads the order, records the
     /// response and decides from what it read whether it is the one that marked the order paid; serialised, two responses for
     /// one order (a browser callback and the reconciliation push arriving together) never both complete it.
     /// </summary>
-    private static readonly SemaphoreSlim Recording = new(1, 1);
+    private const string RecordingLock = "ccavenue-recording";
 
     public async Task<CcAvenueOutcome> ProcessAsync(string? encResp, string workingKey, CcAvenueGatewayModule module, string? ip, CancellationToken ct)
     {
@@ -187,14 +187,9 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
             return new(CcAvenueResult.Invalid, null, "Invalid response from the payment gateway.", r);
 
         (CcAvenueOutcome Outcome, string? PaidBy) recorded;
-        await Recording.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(RecordingLock, ct))
         {
             recorded = await RecordAsync(decrypted, r, module, ip, ct);
-        }
-        finally
-        {
-            Recording.Release();
         }
 
         // Receipt, mail and ERP outside the lock; only the response that recorded the payment gets here.
@@ -305,8 +300,7 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
         CcAvenueGatewayModule? module = null;
         PendingOrder? order = null;
         string? certification = null, paidBy = null;
-        await Recording.WaitAsync(ct);
-        try
+        await using (await db.LockAsync(RecordingLock, ct))
         {
             foreach (var m in modules)
             {
@@ -364,10 +358,6 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
                 if (IsPaid((await OrderAsync(module, orderId, ct))?.PaymentStatus)) paidBy = order.ZedId;
                 else log.LogWarning("Reconciliation success for order {OrderId} ({ZedId}/{Certification}) was not recorded as paid", orderId, order.ZedId, certification);
             }
-        }
-        finally
-        {
-            Recording.Release();
         }
 
         if (paidBy is not null) await module!.Complete(paidBy, certification!, ct);
