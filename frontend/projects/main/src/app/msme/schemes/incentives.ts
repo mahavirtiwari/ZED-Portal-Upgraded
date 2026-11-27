@@ -189,7 +189,7 @@ export class PublicIncentivesPage {
   protected readonly data = signal<IncentiveDetails | null>(null);
   /** The section titles and "none" lines (the financial sections are titled by their department, from the server). */
   protected readonly texts = computed(() => ({
-    commonTitle: t('public.incentives.common.title', 'Incentives (Ministry Of MSME)'),
+    commonTitle: t('public.incentives.common.title', 'Incentives (Ministry of MSME)'),
     commonEmpty: t('public.incentives.common.empty', 'No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.'),
     financialEmpty: t('public.incentives.financial.empty', 'No Financial Incentives available currently, please check again as Government may introduce incentives soon.'),
     otherTitle: t('public.incentives.other.title', 'Other Incentives'),

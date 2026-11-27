@@ -11,6 +11,7 @@ export const INCENTIVE_SCHEME_ROUTES: Routes = [
   {
     path: ':code',
     title: 'ZED | Incentive Scheme',
-    loadComponent: () => import('./incentive-scheme').then((m) => m.IncentiveSchemePage),
+    // 2026-11-27: a fresh page per scheme code (IncentiveSchemeHost), also when moving between schemes without a reload.
+    loadComponent: () => import('./incentive-scheme-host').then((m) => m.IncentiveSchemeHost),
   },
 ];
