@@ -258,7 +258,7 @@ export interface IncentiveApplied {
     .iu-tiles .ok b { color: #2f9e58; }
     .iu-tiles .bad b { color: #c8473c; }
     .iu-tiles span { font-size: 12.5px; font-weight: 500; color: #3d5559; }
-    .iu-errhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin: 4px 0 8px; font-size: 10.5px;
+    .iu-errhead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin: 4px 0 8px; font-size: 11px;
       font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #6f8487; }
     .iu-errhead .btn-link { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 0; font-size: 12.5px; font-weight: 700; color: #24666b;
       text-transform: none; letter-spacing: 0; text-decoration: none; }

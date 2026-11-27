@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Route, Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
-import { STAFF_ROLE_IDS, homeFor } from './staff-menu';
+import { DASHBOARD_ROLE_IDS, INCENTIVES_DASHBOARD_ROUTE, STAFF_ROLE_IDS, homeFor } from './staff-menu';
 
 /** MSME role id (Users.RoleId 5). */
 const MSME_ROLE = 5;
@@ -11,6 +11,19 @@ export const staffHomeRedirect: CanActivateFn = () => {
   const user = inject(AuthService).currentUser();
   const home = user ? homeFor(user.roleId, undefined, user.subRoles ?? []) : null;
   return home ? inject(Router).parseUrl(home) : true;
+};
+
+/**
+ * 2026-11-27 (UI review: an MSME DFO opening /staff/dashboard saw a bare "Forbidden"): a role without the staff dashboard goes to its
+ * own home (its landing page or the card home) instead.
+ */
+export const staffDashboardGuard: CanActivateFn = () => {
+  const user = inject(AuthService).currentUser();
+  if (!user) return true;
+  // The incentive logins (Incentives Master Admin, incentive verification agencies) have the incentives dashboard instead.
+  const home = homeFor(user.roleId, undefined, user.subRoles ?? []);
+  if (home === INCENTIVES_DASHBOARD_ROUTE) return inject(Router).parseUrl(home);
+  return DASHBOARD_ROLE_IDS.includes(user.roleId) ? true : inject(Router).parseUrl(home ?? '/staff');
 };
 
 /**

@@ -27,8 +27,8 @@
 .ov-link small.warn { color: #c8473c; }
 .ov-link small.muted { color: #6f8487; }
 .ov-track { width: 100%; font-size: 13.5px; }
-.ov-track th { padding: 10px 14px; background: #f3f8f8; font-size: 10.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #1b4f53; border-bottom: 1px solid #dde7e8; }
-.ov-track th small { display: block; font-size: 9.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #6f8487; }
+.ov-track th { padding: 10px 14px; background: #f3f8f8; font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #1b4f53; border-bottom: 1px solid #dde7e8; }
+.ov-track th small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #6f8487; }
 .ov-track td { padding: 10px 14px; border-bottom: 1px solid #edf2f2; }
 .ov-track td b, .bi-raw b { display: block; font-weight: 700; color: #17373b; }
 .ov-track td small { font-size: 11.5px; color: #6f8487; }

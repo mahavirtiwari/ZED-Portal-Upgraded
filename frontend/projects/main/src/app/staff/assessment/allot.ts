@@ -209,7 +209,7 @@ export const BULK_LIMIT = 100;
     .ad-pick { padding: 18px 22px; }
     .ad-list { display: grid; gap: 10px; margin-top: 12px; max-height: 340px; overflow: auto; }
     .ad-opt { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea; border-radius: 12px; cursor: pointer; font-weight: 400; }
-    .ad-opt .chip { flex: none; padding: 3px 10px; border-radius: 11px; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+    .ad-opt .chip { flex: none; padding: 3px 10px; border-radius: 11px; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
     .ad-opt .chip.is-good { background: #e5f5ea; color: #2f9e58; }
     .ad-opt .chip.is-warn { background: #fdf2dc; color: #9a5f06; }
     .ad-opt.on { border: 2px solid var(--zt-dark, #1f5c61); padding: 11px 13px; background: #f4faf9; }

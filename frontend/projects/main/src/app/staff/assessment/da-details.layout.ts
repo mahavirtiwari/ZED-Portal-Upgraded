@@ -129,7 +129,7 @@ export const UNIT_VIEW_STYLES = `
   .zed-tabs .uv-tabs.nav.nav-tabs > li > .nav-link:hover { background: #f2f8f7; color: #17373b; }
   .zed-tabs .uv-tabs.nav.nav-tabs > li > .nav-link.active { background: #24666b !important; color: #fff !important; font-weight: 700; }
   .zed-tabs .uv-tabs .nav-link::after { display: none !important; }
-  .uv-tab-n { display: inline-block; padding: 2px 9px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; line-height: 18px; }
+  .uv-tab-n { display: inline-block; padding: 2px 9px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 11px; font-weight: 700; line-height: 18px; }
   .nav-link.active .uv-tab-n { background: #3f8a90; color: #fff; }
   .uv-tabs .uv-meta { margin-left: auto; padding: 0 8px; font-size: 12.5px; font-weight: 500; color: #6f8487; }
   /* 2026-11-22 (the product owner): the observations button at the end of the tab bar (opens the History-style side panel). */
@@ -151,7 +151,7 @@ export const UNIT_VIEW_STYLES = `
   .uv-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 0; padding: 18px 24px; }
   .uv-facts .fact { min-width: 0; }
   .uv-facts .fact.wide { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 28px; border-top: 1px solid #edf2f2; padding-top: 14px; }
-  .uv-facts dt { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6f8487; margin: 0 0 6px; }
+  .uv-facts dt { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6f8487; margin: 0 0 6px; }
   .uv-facts dd { margin: 0; font-size: 14px; font-weight: 500; color: #17373b; overflow-wrap: anywhere; }
   .uv-facts dd small { margin-left: 14px; font-size: 12px; color: #6f8487; }
   .uv-facts .loc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
@@ -162,7 +162,7 @@ export const UNIT_VIEW_STYLES = `
   .uv-ncs li + li { border-top: 1px solid #f1f5f5; }
   .uv-ncs b { min-width: 44px; color: #17373b; }
   .uv-ncs .d { flex: 1; min-width: 0; font-size: 12.5px; color: #3d5559; }
-  .uv-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; border-radius: 11px;
+  .uv-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; border-radius: 11px;
     padding: 3px 10px; background: #ecf0f0; color: #6f8487; white-space: nowrap; }
   .uv-chip.good { background: #e5f5ea; color: #2f9e58; }
   .uv-chip.warn { background: #fdf2dc; color: #9a5f06; }

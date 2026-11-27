@@ -353,7 +353,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     .as-under { margin: 6px 0 0 44px; }
     .lv-names { display: block; font-size: 13px; font-weight: 700; color: #17373b; margin-bottom: 2px; }
     .as-type { font-size: 12.5px; color: #3d5559; }
-    .as-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
+    .as-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; white-space: nowrap; }
     .no-mobile { color: #9a5f06; }
     .as-phone { display: block; margin-top: 6px; }
     .as-block-note { display: block; margin-top: 4px; font-size: 11.5px; color: #6f8487; overflow-wrap: anywhere; }

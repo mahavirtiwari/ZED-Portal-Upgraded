@@ -534,7 +534,7 @@ const TYPE_GLYPHS: Record<string, string> = {
     .field-note, .field-help { display: block; font-size: 12.5px; margin-top: 2px; }
     .field-note { color: #5f6f70; }
     .field-help { color: #3b4b4c; }
-    .cond { font-size: 10px; font-weight: 700; background: #fff4d6; color: #8a6100; border-radius: 4px; padding: 0 4px; margin-right: 2px; }
+    .cond { font-size: 11px; font-weight: 700; background: #fff4d6; color: #8a6100; border-radius: 4px; padding: 0 4px; margin-right: 2px; }
     .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin-top: 6px; }
     .scope .zed-chip { font-size: 11px; padding: 1px 8px; }
     .scope .zed-chip.sector { background: #f1f0fb; color: #3f3a7a; }

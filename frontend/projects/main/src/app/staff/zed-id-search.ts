@@ -40,7 +40,7 @@ export const ZED_ID_PATTERN = /^ZED[A-Z0-9_]{2,47}$/;
     .zs-input::placeholder { color: #bcd8da; opacity: 1; }
     .zs-input::-webkit-search-cancel-button { display: none; }
     .zs-key { flex: none; display: grid; place-items: center; height: 20px; padding: 0 5px; border-radius: 5px;
-      background: color-mix(in srgb, var(--zt-mid, #45a5ad) 30%, var(--zt-dark, #24666b)); color: #d3e6e8; font-family: inherit; font-size: 9px; font-weight: 700; box-shadow: none; }
+      background: color-mix(in srgb, var(--zt-mid, #45a5ad) 30%, var(--zt-dark, #24666b)); color: #d3e6e8; font-family: inherit; font-size: 11px; font-weight: 700; box-shadow: none; }
     .zs-note { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1050; width: max-content; max-width: 260px; padding: 6px 10px; border-radius: 6px;
       background: #fff; color: #b03a2e; font-size: 12.5px; font-weight: 600; box-shadow: 0 6px 18px rgba(16, 61, 64, 0.18); }
     @media (max-width: 991.98px) {

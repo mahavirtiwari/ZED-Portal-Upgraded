@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9728,
+  "count": 9731,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -62378,6 +62378,18 @@
       ]
     },
     {
+      "key": "staff.incentiveSubmissions.noMatch",
+      "standard": "No submission matches the search.",
+      "kind": "text",
+      "portal": "staff",
+      "page": "incentiveSubmissions",
+      "pageName": "Incentive submissions",
+      "placeholders": [],
+      "files": [
+        "staff/schemes/incentive-submissions.ts"
+      ]
+    },
+    {
       "key": "staff.incentiveSubmissions.refreshButton",
       "standard": "Refresh",
       "kind": "button",
@@ -68535,6 +68547,18 @@
       "key": "staff.layout.menu.aria",
       "standard": "Staff menu",
       "kind": "tooltip",
+      "portal": "staff",
+      "page": "layout",
+      "pageName": "Layout",
+      "placeholders": [],
+      "files": [
+        "staff/staff-layout.ts"
+      ]
+    },
+    {
+      "key": "staff.layout.menu.dashboardLink",
+      "standard": "Dashboard",
+      "kind": "label",
       "portal": "staff",
       "page": "layout",
       "pageName": "Layout",
@@ -109307,6 +109331,18 @@
     {
       "key": "staff.subUsers.screen.siteAllotment",
       "standard": "Site assessment allotment",
+      "kind": "text",
+      "portal": "staff",
+      "page": "subUsers",
+      "pageName": "Sub users",
+      "placeholders": [],
+      "files": [
+        "staff/user-management/sub-users.ts"
+      ]
+    },
+    {
+      "key": "staff.subUsers.screen.verificationOfficers",
+      "standard": "Verification Officers",
       "kind": "text",
       "portal": "staff",
       "page": "subUsers",

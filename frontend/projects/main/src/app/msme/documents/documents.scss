@@ -31,7 +31,7 @@
   &:hover { border-color: var(--zt-mid2, #2a8a8c); }
   &.on { background: var(--dk); border-color: var(--dk); color: #fff; font-weight: 700; }
 }
-.dcount { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #ecf0f0; font-size: 10.5px; font-weight: 700; color: var(--mut); }
+.dcount { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #ecf0f0; font-size: 11px; font-weight: 700; color: var(--mut); }
 .on .dcount { background: #3f8a90; color: #fff; }
 
 .dhead { margin: 28px 0 14px; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--mut); }
@@ -52,11 +52,11 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; flex: none; width: 50px; height: 60px;
   border: 1px solid var(--ln); border-radius: 8px; background: #f4f7f7; color: var(--lv);
   svg { width: 24px; height: 24px; stroke-width: 2; }
-  b { font-size: 9.5px; font-weight: 800; letter-spacing: .02em; }
+  b { font-size: 11px; font-weight: 800; letter-spacing: .02em; }
 }
 .dvalid {
   position: absolute; top: 18px; right: 20px; display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 10px 0 8px; border-radius: 11px;
-  background: #e5f5ea; color: #2f9e58; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  background: #e5f5ea; color: #2f9e58; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
   svg { width: 12px; height: 12px; stroke-width: 2.4; }
 }
 .dcard:has(.dvalid) .dtext { padding-right: 76px; }
@@ -87,7 +87,7 @@
 .dlist .dtext { flex: 1 1 260px; }
 .dlist h4 { font-size: 15px; }
 .dlist .dtext p { font-size: 13px; }
-.dtag { flex: none; display: grid; place-items: center; width: 58px; height: 36px; border-radius: 8px; background: #e6f2f3; color: var(--dk); font-size: 10.5px; font-weight: 800; }
+.dtag { flex: none; display: grid; place-items: center; width: 58px; height: 36px; border-radius: 8px; background: #e6f2f3; color: var(--dk); font-size: 11px; font-weight: 800; }
 .dtag-video { background: #fdf2dc; color: #9a5f06; }
 
 .not-available { display: inline-block; margin-left: auto; font-size: 12px; font-weight: 600; color: #9a6a12; background: #fdf1dc; border-radius: 4px; padding: 3px 9px; }

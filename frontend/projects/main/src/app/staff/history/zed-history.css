@@ -47,7 +47,7 @@
 .tl-item[data-actor='ZED'] .tl-dot, .tl-done .tl-dot { background: #2e9e57; }
 .tl-label { margin: 0; font-size: 13.5px; font-weight: 500; color: #17373b; }
 .tl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 3px; }
-.tl-actor { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 10px; padding: 2px 9px; background: #eef2f2; color: #4c5a5c; }
+.tl-actor { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 10px; padding: 2px 9px; background: #eef2f2; color: #4c5a5c; }
 .tl-actor[data-actor='Agency'] { background: #e6f2f3; color: var(--zt-dark, #1f5c61); }
 .tl-actor[data-actor='Assessor'] { background: #fdf0d8; color: #8a5a00; }
 .tl-actor[data-actor='ZED'] { background: #e3f4e8; color: #1e7d43; }

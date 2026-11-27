@@ -388,7 +388,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .tag { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12.5px; margin: 0 6px 6px 0; overflow-wrap: break-word; max-width: 100%; }
     .tag-ev { background: #e6f6ec; color: #17602f; }
     .tag-ac { background: #fdeef0; color: #8a2630; }
-    .m { font-size: 10px; font-weight: 700; color: var(--zt-mid2, #2f7c83); background: #fff; border-radius: 4px; padding: 0 5px; }
+    .m { font-size: 11px; font-weight: 700; color: var(--zt-mid2, #2f7c83); background: #fff; border-radius: 4px; padding: 0 5px; }
     .samp { font-size: 11.5px; font-weight: 700; color: var(--zt-mid2, #2f7c83); }
 
     /* The editor. */

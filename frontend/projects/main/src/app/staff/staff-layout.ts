@@ -113,7 +113,8 @@ export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement)
               <!-- 2026-11-25: not for the Incentives Master Admin, whose home is its Dashboard entry (both opened the same page). -->
               @if (!incentivesAdmin()) {
                 <li class="nav-item tag">
-                  <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" [attr.aria-label]="'Home' | t: 'staff.layout.menu.homeLink'">{{ 'Home' | t: 'staff.layout.menu.homeLink' }}</a>
+                  <!-- 2026-11-27 (UI review): named "Dashboard" when the login's home is the dashboard (as the incentive logins' entry), else "Home". -->
+                  <a class="nav-link" [routerLink]="homeRoute()" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active">{{ homeIsDashboard() ? ('Dashboard' | t: 'staff.layout.menu.dashboardLink') : ('Home' | t: 'staff.layout.menu.homeLink') }}</a>
                 </li>
               }
               @for (entry of entries(); track $index) {
@@ -252,8 +253,9 @@ export function escapeIsForDropDown(target: Element | null, dialog: HTMLElement)
     .zed-navbar .avatar { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: #cdeccf;
       color: var(--zt-dark, #24666b); font-size: 13px; font-weight: 800; }
     .zed-navbar .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; text-align: left; }
-    .zed-navbar .who b { max-width: 170px; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; font-weight: 700; color: #fff; }
-    .zed-navbar .who small { font-size: 10.5px; font-weight: 500; color: #bcd8da; }
+    /* 2026-11-27 (UI review: "Master Admin (walkthrou…"): a long name wraps onto a second line instead of being cut. */
+    .zed-navbar .who b { max-width: 200px; white-space: normal; overflow-wrap: anywhere; font-size: 12.5px; font-weight: 700; color: #fff; }
+    .zed-navbar .who small { font-size: 11px; font-weight: 500; color: #bcd8da; white-space: normal; }
     .zed-navbar .nav-tools { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
     /* Footer (#1c2e30): copyright on the left, the logo on the right. */
     .sfoot { background: #1c2e30; color: #c9d6d7; }
@@ -330,6 +332,12 @@ export class StaffLayout {
     const u = this.user();
     return !!u && (isIncentivesAdmin(u) || homeFor(u.roleId, undefined, u.subRoles ?? []) === '/staff/incentives/dashboard');
   });
+  /** 2026-11-27 (UI review): the first menu entry opens the login's home; "Dashboard" when that is the dashboard. */
+  protected readonly homeRoute = computed(() => {
+    const u = this.user();
+    return (u && homeFor(u.roleId, undefined, u.subRoles ?? [])) || '/staff';
+  });
+  protected readonly homeIsDashboard = computed(() => this.homeRoute() === '/staff/dashboard');
   /** The wording shown for the menu's labels and drop-downs (Admin → Texts → Page wording). */
   protected readonly menuText = menuText;
   protected readonly menuGroupText = menuGroupText;

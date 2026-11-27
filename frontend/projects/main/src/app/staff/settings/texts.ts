@@ -255,7 +255,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     .tx-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; white-space: nowrap; }
     .tx-actions > * { flex: none; }
     .tx { display: flex; gap: 12px; align-items: center; }
-    .tx-icon { flex: 0 0 38px; height: 34px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .tx-icon { flex: 0 0 38px; height: 34px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
     .tx-icon.app { background: #f1f0fb; color: #3f3a7a; }
     .tx-text { min-width: 0; }
     .tx-text strong { color: #232527; }

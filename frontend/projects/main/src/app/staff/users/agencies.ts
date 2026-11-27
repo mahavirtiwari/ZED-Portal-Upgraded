@@ -84,7 +84,7 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
     .ag-name, .spoc strong { font-size: 13.5px; font-weight: 700; line-height: 18px; color: #17373b; }
     .ag-id { font-weight: 600; }
     .chips { display: flex; flex-wrap: wrap; gap: 4px 6px; }
-    .chips span { padding: 4px 11px; border-radius: 11px; background: #e6f2f3; color: #24666b; font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; line-height: 14px; white-space: nowrap; }
+    .chips span { padding: 4px 11px; border-radius: 11px; background: #e6f2f3; color: #24666b; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; line-height: 14px; white-space: nowrap; }
     .chips .is-sector { background: #ecf0f0; color: #6f8487; }
     .chips .is-unset { background: #fdf2dc; color: #9a5f06; }
     .count { font-size: 16px; font-weight: 800; color: #17373b; }

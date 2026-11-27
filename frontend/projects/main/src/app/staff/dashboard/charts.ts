@@ -323,7 +323,7 @@ export function axisTicks(max: number): number[] {
     .gc-legend .gc-swatch { margin-right: 0; }
     .gc-frame { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; padding-top: 8px; }
     .gc-ticks { position: relative; height: var(--h, 200px); min-width: 28px; }
-    .gc-ticks span { position: absolute; right: 0; transform: translateY(50%); font-size: 10.5px; font-weight: 500; color: #6f8487; font-variant-numeric: tabular-nums; }
+    .gc-ticks span { position: absolute; right: 0; transform: translateY(50%); font-size: 11px; font-weight: 500; color: #6f8487; font-variant-numeric: tabular-nums; }
     .gc-area { position: relative; min-width: 0; }
     .gc-grid { position: absolute; left: 0; right: 0; border-top: 1px solid #edf2f2; }
     .gc-grid:first-child { border-color: #cbd9da; }

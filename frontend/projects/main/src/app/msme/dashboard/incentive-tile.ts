@@ -70,7 +70,7 @@ function chipOf(state: IncentiveState): string {
       padding: 16px 16px 0; box-shadow: 0 3px 10px rgba(16, 61, 64, .09); }
     .inc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .inc-ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; background: #e6f2f3; color: var(--zt-dark, #24666b); }
-    .inc-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700; line-height: 14px; letter-spacing: .4px;
+    .inc-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; line-height: 14px; letter-spacing: .4px;
       text-transform: uppercase; border-radius: 11px; padding: 4px 12px; }
     .inc-chip.is-availed { color: #2f9e58; background: #e5f5ea; }
     .inc-chip.is-open { color: var(--zt-dark, #24666b); background: #e6f2f3; }

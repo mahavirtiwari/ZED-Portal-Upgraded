@@ -172,7 +172,7 @@ export const QO_POINTS: Record<QoSeverity, number> = { Minor: 1, Major: 3, Criti
     .qo-panel { border: 1px solid #dde7e8; background: #fff; border-radius: 14px; margin: 12px 0; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.09); }
     .qo-chips { display: flex; gap: 8px; padding: 10px 18px 0; }
     .qo-chips button { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 1px solid #dde7e8; border-radius: 16px; background: #fff; font-size: 13px; color: #17373b; }
-    .qo-chips span { min-width: 26px; border-radius: 10px; background: #ecf0f0; font-size: 10.5px; font-weight: 700; line-height: 20px; color: #6f8487; }
+    .qo-chips span { min-width: 26px; border-radius: 10px; background: #ecf0f0; font-size: 11px; font-weight: 700; line-height: 20px; color: #6f8487; }
     .qo-chips .on { background: #24666b; border-color: #24666b; color: #fff; font-weight: 700; }
     .qo-chips .on span { background: #3f8a90; color: #fff; }
     .qo-rail { margin: 0 0 16px; }

@@ -100,7 +100,7 @@ const VIDEO_URL = /youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|\.(mp4|web
     .sd-list { background: #fff; border: 1px solid #dde7e8; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.05); overflow: hidden; }
     .sd-item { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; min-height: 78px; padding: 12px 24px; }
     .sd-item + .sd-item { border-top: 1px solid #dde7e8; }
-    .sd-kind { flex: none; width: 58px; height: 38px; display: grid; place-items: center; border-radius: 8px; font-size: 10.5px; font-weight: 800;
+    .sd-kind { flex: none; width: 58px; height: 38px; display: grid; place-items: center; border-radius: 8px; font-size: 11px; font-weight: 800;
       text-transform: uppercase; background: #e6f2f3; color: #24666b; }
     .sd-kind.is-video { background: #fdf2dc; color: #9a5f06; }
     .sd-kind.is-link { background: #ecf0f0; color: #6f8487; }

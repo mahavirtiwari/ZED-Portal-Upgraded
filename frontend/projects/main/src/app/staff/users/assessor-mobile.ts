@@ -182,7 +182,7 @@ const SHOWN = 5;
     .am-facts > div { min-width: 0; }
     @media (max-width: 420px) { .am-facts { grid-template-columns: minmax(0, 1fr); } .am-release { margin-left: 0; } }
     .am-facts .am-wide { grid-column: 1 / -1; }
-    .am-facts dt { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6f8487; }
+    .am-facts dt { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6f8487; }
     .am-facts dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; color: #17373b; overflow-wrap: anywhere; }
     .am-facts small { font-weight: 500; color: #6f8487; }
     .am-note { margin: 0 0 12px; padding: 9px 12px; border-radius: 9px; background: #f2f6f6; font-size: 13px; color: #3d5559; }
@@ -192,7 +192,7 @@ const SHOWN = 5;
     .am-list { list-style: none; margin: 0; padding: 0; }
     .am-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 7px 0; border-top: 1px solid #edf2f2; font-size: 12.5px; }
     .am-when { font-weight: 600; color: #17373b; white-space: nowrap; }
-    .am-list .status-badge { font-size: 10.5px; }
+    .am-list .status-badge { font-size: 11px; }
     .am-line { flex-basis: 100%; color: #3d5559; overflow-wrap: anywhere; }
     .am-reason, .am-why { flex-basis: 100%; font-size: 12px; overflow-wrap: anywhere; }
     .am-reason { color: #a8303a; }

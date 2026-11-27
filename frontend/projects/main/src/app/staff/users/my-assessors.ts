@@ -4,6 +4,7 @@ import { STAFF_SYSTEM, agencyKindOf } from '../staff-menu';
 import { FormsModule } from '@angular/forms';
 import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { RouterLink } from '@angular/router';
+import { Title } from '@angular/platform-browser';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { assessorBlockAsk, assessorBlockNote, assessorTypeLabel, initialsOf, levelMedals } from './assessor-list';
@@ -96,9 +97,12 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   <th class="text-end">{{ 'Action(s)' | t: 'staff.myAssessors.column.consultancyActions' }}</th>
                 } @else {
                   <th>{{ incentiveAgency ? labels.assessor : ('Assessor' | t: 'staff.myAssessors.column.assessor') }}</th>
-                  <th>{{ 'Levels and modes' | t: 'staff.myAssessors.column.levels' }}</th>
-                  <th>{{ 'Allocated' | t: 'staff.myAssessors.column.allocated' }}</th>
-                  <th>{{ 'Sector' | t: 'staff.myAssessors.column.sector' }}</th>
+                  <!-- 2026-11-27 (UI review): certification levels, allocations per level and sector are not an incentive agency's. -->
+                  @if (!incentiveAgency) {
+                    <th>{{ 'Levels and modes' | t: 'staff.myAssessors.column.levels' }}</th>
+                    <th>{{ 'Allocated' | t: 'staff.myAssessors.column.allocated' }}</th>
+                    <th>{{ 'Sector' | t: 'staff.myAssessors.column.sector' }}</th>
+                  }
                   <th>{{ 'Contact' | t: 'staff.myAssessors.column.contact' }}</th>
                   <th class="text-center">{{ 'Status' | t: 'staff.myAssessors.column.status' }}</th>
                   <th class="text-end">{{ 'Actions' | t: 'staff.myAssessors.column.actions' }}</th>
@@ -120,7 +124,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   </td>
                   @if (consultancy) {
                     <td [attr.data-label]="'User Type' | t: 'staff.myAssessors.column.userType'"><span class="ma-type">{{ typeLabel(u.UserType) }}</span></td>
-                  } @else {
+                  } @else if (!incentiveAgency) {
                     <td class="ma-levels" [attr.data-label]="'Levels and modes' | t: 'staff.myAssessors.column.levels'">
                       @let m = medals(u.Assessments);
                       @if (m.items.length) {
@@ -154,7 +158,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                 </tr>
               } @empty {
                 <tr class="empty-row">
-                  <td [attr.colspan]="consultancy ? 5 : 7" style="padding: 0">
+                  <td [attr.colspan]="consultancy ? 5 : incentiveAgency ? 4 : 7" style="padding: 0">
                     <div class="no-data">
                       {{ 'No {assessor} matches the search.' | t: 'staff.myAssessors.noMatch' : { assessor: labels.assessor.toLowerCase() } }}
                       <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">{{ 'Show all' | t: 'staff.myAssessors.showAllButton' }}</button>
@@ -317,11 +321,13 @@ export class MyAssessorsPage {
   protected readonly view = new PagedView(() => this.filtered());
 
   constructor() {
+    // 2026-11-27 (UI review): the tab names the page as its heading does ("ZED | Verification Officers", not "Assessors").
+    if (this.incentiveAgency) inject(Title).setTitle(`ZED | ${this.labels.assessors}`);
     // The Add form's answer (e.g. "Assessor added …") arrives in the navigation state.
     const message = (globalThis.history?.state as { message?: unknown } | null)?.message;
     if (typeof message === 'string' && message) this.toast.success(t('staff.myAssessors.toast.added', '{assessor} added', { assessor: this.labels.assessor }), message);
     void this.load();
-    if (!this.consultancy) void this.loadTotals();
+    if (!this.consultancy && !this.incentiveAgency) void this.loadTotals();
   }
 
   /** The agency's totals per level; a failure leaves the tiles out (the list works without them). */

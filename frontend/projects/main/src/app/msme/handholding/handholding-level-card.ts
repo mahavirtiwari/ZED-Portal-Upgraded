@@ -74,7 +74,7 @@ export interface LevelCardVm {
     .hh-pick { display: flex; align-items: center; gap: 16px; min-width: 0; padding: 0; background: none; border: 0; text-align: left; cursor: pointer; }
     .hh-badge img { width: 48px; height: 48px; object-fit: contain; }
     .hh-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding-top: 6px; }
-    .hh-id small { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6f8487; line-height: 1.2; }
+    .hh-id small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6f8487; line-height: 1.2; }
     .hh-name { font-size: 17px; font-weight: 700; color: #17373b; line-height: 1.25; overflow-wrap: anywhere; }
     .hh-side { display: flex; align-items: center; gap: 6px; flex: none; padding-top: 6px; }
     .hh-apply { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; font-size: 13px; font-weight: 700; border-radius: 9px; background: #fff;
@@ -85,7 +85,7 @@ export interface LevelCardVm {
     .hh-link { background: none; border: 0; padding: 0; font-size: 11.5px; font-weight: 600; color: #24666b; cursor: pointer; }
     .hh-info { background: none; border: 0; padding: 0 0 0 2px; cursor: pointer; }
     .hh-info img { width: 16px; }
-    .hh-chip { align-self: flex-start; margin: 4px 0 0 64px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 22px;
+    .hh-chip { align-self: flex-start; margin: 4px 0 0 64px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 22px;
       border-radius: 11px; padding: 0 14px; color: #6f8487; background: #ecf0f0; }
     .hh-chip.is-prog { color: #9a5f06; background: #fdf2dc; }
     .hh-chip.is-done { color: #1e7a3c; background: #e3f4e8; }

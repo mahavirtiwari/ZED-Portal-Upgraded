@@ -309,7 +309,7 @@ interface ServerForm {
     .dp-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
     .dp-side .uses { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
     .dp-form { grid-column: 1 / -1; margin-top: 10px; padding-top: 12px; border-top: 1px solid #dfe9ea; }
-    .tls { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; color: #3f3a7a; background: #f1f0fb; border-radius: 4px; padding: 0 6px; margin-left: 4px; vertical-align: 1px; }
+    .tls { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; color: #3f3a7a; background: #f1f0fb; border-radius: 4px; padding: 0 6px; margin-left: 4px; vertical-align: 1px; }
 
     .mods-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
     .mods-title { font-weight: 700; color: #23474a; font-size: 15px; }

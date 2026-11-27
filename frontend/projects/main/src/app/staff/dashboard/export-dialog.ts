@@ -60,7 +60,7 @@ import { TextPipe, t } from '../../content/page-text';
     .xd-close { flex: none; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #eef3f3; display: grid; place-items: center; }
     .xd-close svg { width: 16px; height: 16px; stroke: #17373b; }
     .xd-body { padding: 8px 28px 26px; }
-    h3 { margin: 22px 0 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #6f8487; }
+    h3 { margin: 22px 0 10px; font-size: 11px; font-weight: 800; letter-spacing: .9px; text-transform: uppercase; color: #6f8487; }
     .xd-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
     .xd-chips li { display: inline-flex; align-items: center; height: 26px; background: #eef3f3; border-radius: 13px; padding: 0 12px; font-size: 12px; font-weight: 600; color: #17373b; }
     .xd-checks { display: grid; gap: 18px; padding-top: 4px; }

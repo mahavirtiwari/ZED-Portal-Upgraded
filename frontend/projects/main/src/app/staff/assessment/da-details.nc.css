@@ -21,7 +21,7 @@
 .nc-card-head { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #edf2f2; }
 .nc-no { font-weight: 800; color: #17373b; }
 .nc-card-title { flex: 1; min-width: 0; }
-.nc-card-title small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #3d5559; }
+.nc-card-title small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #3d5559; }
 .nc-card-title b { font-size: 14.5px; color: #17373b; }
 .nc-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 16px 20px; list-style: none; }
 .nc-track li > *, .nc-track button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 8px; width: 100%; min-height: 48px; padding: 6px 10px;
@@ -34,7 +34,7 @@
 .nc-track b { font-size: 13px; color: #17373b; }
 .nc-track small { grid-column: 2; color: #6f8487; }
 .nc-thread { padding: 0 20px 16px; }
-.nc-thread h6 { margin: 0 0 8px; font-size: 10.5px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #3d5559; }
+.nc-thread h6 { margin: 0 0 8px; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: #3d5559; }
 .nc-step { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 14px; margin-bottom: 8px; border: 1px solid #dde7e8; border-radius: 12px; background: #fbfcfc; }
 .nc-step[data-from='msme'] { background: #fffaf0; border-color: #f0d9a0; }
 .nc-step-who { font-size: 12.5px; font-weight: 700; color: #17373b; }

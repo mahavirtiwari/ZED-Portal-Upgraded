@@ -154,7 +154,7 @@ export function submittedValues(data: string | null): string[] {
     .eh-round .eh-chip.active { background: #24666b; border-color: #24666b; color: #fff; font-weight: 700; }
     .eh-row { display: grid; grid-template-columns: 166px 150px minmax(0, 1fr) auto; align-items: center; gap: 4px 0; padding: 14px 24px; border-bottom: 1px solid #edf2f2; }
     .eh-at { font-size: 12.5px; color: #6f8487; }
-    .eh-pill { display: inline-block; padding: 3px 16px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+    .eh-pill { display: inline-block; padding: 3px 16px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
     .eh-pill[data-type='Profile'] { background: #e6f2f3; color: #24666b; }
     .eh-pill[data-type='Certification'] { background: #e5f5ea; color: #2f9e58; }
     .eh-pill[data-type='Payments'] { background: #fdf2dc; color: #9a5f06; }

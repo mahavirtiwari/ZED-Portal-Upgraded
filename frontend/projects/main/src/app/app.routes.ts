@@ -1,8 +1,8 @@
 import { Route, Routes, UrlMatcher } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { STAFF_ROLE_IDS, StaffRole as R } from './staff/staff-menu';
-import { staffScreenGuard } from './staff/assessment/assessment-shared';
-import { STAFF_UNKNOWN_ROUTE, staffHomeRedirect, unknownAddressRedirect } from './staff/staff-home.guard';
+import { staffMenuGuard, staffScreenGuard } from './staff/assessment/assessment-shared';
+import { STAFF_UNKNOWN_ROUTE, staffDashboardGuard, staffHomeRedirect, unknownAddressRedirect } from './staff/staff-home.guard';
 import { subUserScreenGuard } from './staff/sub-user-screens';
 import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessment/assessment.routes';
 import { VERIFY_ROUTES } from './verify/verify.routes';
@@ -77,7 +77,7 @@ const MAIN_STAFF_CHILDREN: Routes = [
     canActivate: [staffHomeRedirect],
     loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
   },
-  { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  { path: 'dashboard', title: 'ZED | Dashboard', canActivate: [staffDashboardGuard], loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
   // 2026-11-14: the Admin's hub of every screen (the staff home page, without the landing redirect).
   { path: 'administration', title: 'ZED | All settings', loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage) },
   { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
@@ -169,7 +169,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   {
     path: 'incentives/dashboard',
     title: 'ZED | Incentives Dashboard',
-    canActivate: [staffScreenGuard([R.MasterAdmin])],
+    // 2026-11-27 (UI review): the logins its menu entry is for (the Incentives Master Admin and the incentive verification agencies).
+    canActivate: [staffMenuGuard('/staff/incentives/dashboard')],
     loadComponent: () => import('./staff/incentives-dashboard/incentives-dashboard').then((m) => m.IncentivesDashboardPage),
   },
   // New in V4: the cards of "My Incentives" on the MSME dashboard (before :group, which would take the name).
@@ -439,7 +440,7 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
     canActivate: [staffHomeRedirect],
     loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
   },
-  { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  { path: 'dashboard', title: 'ZED | Dashboard', canActivate: [staffDashboardGuard], loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
   // 2026-11-14: the Admin's hub of every screen (the staff home page, without the landing redirect).
   { path: 'administration', title: 'ZED | All settings', loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage) },
   { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },

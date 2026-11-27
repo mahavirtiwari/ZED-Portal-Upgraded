@@ -126,7 +126,7 @@ export interface LevelCardVm {
     .lv-facts dd b { font-weight: 600; }
     .lv-facts .lv-fee dd b { font-size: 16px; font-weight: 800; }
     .lv-facts dd small { display: block; font-size: 11px; font-weight: 500; color: #6f8487; }
-    .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; line-height: 14px;
+    .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; line-height: 14px;
       letter-spacing: .4px; text-transform: uppercase; border-radius: 11px; padding: 4px 12px; color: #9a5f06; background: #fdf2dc; }
     .lv-status.is-done { color: #2f9e58; background: #e5f5ea; }
     .lv-status.is-ready { color: var(--zt-dark, #24666b); background: #e6f2f3; }
@@ -144,7 +144,7 @@ export interface LevelCardVm {
     .lv-steps .dot { display: block; width: 14px; height: 14px; border-radius: 7px; background: #fff; border: 2px solid #c3d0d2; }
     .lv-steps li.completed .dot { background: #2f9e58; border-color: #2f9e58; }
     .lv-steps li.current .dot { border: 4px solid #2f9e58; }
-    .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; font-weight: 600; color: #6f8487; }
+    .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; font-weight: 600; color: #6f8487; }
     .lv-steps-labels span { flex: 1 1 0; text-align: center; }
     .lv-steps-labels span:first-child { text-align: left; }
     .lv-steps-labels span:last-child { text-align: right; }

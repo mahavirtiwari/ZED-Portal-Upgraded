@@ -16,7 +16,7 @@
   flex: 0 0 72px; height: 72px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   line-height: 1; background: #eef6f6; color: var(--zt-ink, #173f44);
   b { font-size: 28px; font-weight: 800; }
-  small { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; margin-top: 4px; }
+  small { font-size: 11px; font-weight: 800; letter-spacing: .08em; margin-top: 4px; }
 }
 // The enterprise type's colours of the live page (Micro / Small / Medium).
 .ent-micro { background: #f7c873; color: #7a4b00; }
@@ -28,7 +28,7 @@
 .id-tag {
   display: inline-flex; align-items: center; gap: 7px; min-height: 30px; border: 1px solid #dde7e8; border-radius: 8px; padding: 4px 10px 4px 5px;
   font-size: 13px; font-weight: 600; color: #17373b; overflow-wrap: anywhere;
-  i { flex: none; white-space: nowrap; font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--zt-dark, #24666b); background: #e6f2f3; border-radius: 5px; padding: 3px 6px; }
+  i { flex: none; white-space: nowrap; font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--zt-dark, #24666b); background: #e6f2f3; border-radius: 5px; padding: 3px 6px; }
 }
 .pledge {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 13px; font-weight: 500; color: #3d5559;
@@ -39,7 +39,7 @@
   flex: none; display: flex; margin: 0;
   > div { padding: 4px 20px; border-left: 1px solid #dde7e8; min-width: 152px; }
   > div:last-child { padding-right: 0; }
-  dt { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; margin-bottom: 10px; }
+  dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; margin-bottom: 10px; }
   dd { margin: 0; }
   b, .uc-level { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; color: #17373b; line-height: 1.3; }
   small, a { display: block; margin-top: 5px; font-size: 11.5px; font-weight: 500; color: #6f8487; }

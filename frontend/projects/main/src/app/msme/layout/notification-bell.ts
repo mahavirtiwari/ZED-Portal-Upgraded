@@ -59,7 +59,7 @@ export const NOTIFICATIONS_API = '/api/msme/notifications';
     .nb-btn:hover, .nb-btn:focus-visible { background: rgb(255 255 255 / 10%); }
     .nb-btn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .nb-count { position: absolute; top: 4px; right: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #e5484d;
-      color: #fff; font-size: 10.5px; font-weight: 800; line-height: 17px; text-align: center; }
+      color: #fff; font-size: 11px; font-weight: 800; line-height: 17px; text-align: center; }
     .nb-panel { position: absolute; top: calc(100% + 8px); right: -8px; z-index: 1050; width: min(360px, 92vw); max-height: 70vh; overflow: auto;
       background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; box-shadow: 0 12px 32px rgb(16 61 64 / 18%); color: #24393b; text-align: left; }
     .nb-head { padding: 12px 14px; font-weight: 800; font-size: 14.5px; border-bottom: 1px solid #edf2f2; }

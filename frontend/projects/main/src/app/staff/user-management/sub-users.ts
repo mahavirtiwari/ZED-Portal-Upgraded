@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
-import { MessageResponse, apiErrorMessage } from '@zed/shared';
+import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { TextPipe, t } from '../../content/page-text';
 import { PageHead } from '../../msme/shared/page-head';
@@ -16,7 +16,7 @@ import { staffCrumbs } from '../staff-crumbs';
 import { ToastService } from '../toast';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { plain } from '../users/user-display';
-import { STAFF_SYSTEM } from '../staff-menu';
+import { STAFF_SYSTEM, agencyKindOf } from '../staff-menu';
 
 interface PermissionOption {
   key: string;
@@ -317,7 +317,7 @@ const API = '/api/staff/sub-users';
     .no-mobile { color: #9a5f06; }
     .su-screens { min-width: 200px; max-width: 330px; }
     .su-screens .zed-chip { display: inline-block; margin: 2px 4px 2px 0; }
-    .su-scope-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 10.5px; font-weight: 700;
+    .su-scope-pill { display: inline-block; padding: 4px 11px; border-radius: 11px; background: #ecf0f0; color: #6f8487; font-size: 11px; font-weight: 700;
       letter-spacing: .4px; line-height: 14px; text-transform: uppercase; white-space: nowrap; }
     .su-login { white-space: nowrap; font-size: 12.5px; font-weight: 500; color: #3d5559; }
     .su-login small { font-size: 11.5px; color: #6f8487; }
@@ -416,6 +416,8 @@ export class SubUsersPage {
    */
   protected readonly fieldErrors = signal<Partial<Record<'userName' | 'email' | 'mobileNo' | 'permissions', string>>>({});
   protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
+  /** 2026-11-27 (UI review): an incentive verification agency (desktop / onsite) calls its staff Verification Officers. */
+  private readonly incentiveAgency = ['desktop', 'onsite'].includes(agencyKindOf(inject(AuthService).currentUser()?.subRoles ?? []));
   /** The row menu action waiting for its confirmation, and the server's refusal shown in it. */
   protected readonly pending = signal<PendingAction | null>(null);
   protected readonly pendingError = signal('');
@@ -439,7 +441,8 @@ export class SubUsersPage {
   protected screenName(p: PermissionOption): string {
     const c = this.consultancy;
     switch (p.key) {
-      case 'assessors': return c ? t('staff.subUsers.screen.consultants', 'Consultants') : t('staff.subUsers.screen.assessors', 'Assessors');
+      case 'assessors': return this.incentiveAgency ? t('staff.subUsers.screen.verificationOfficers', 'Verification Officers')
+        : c ? t('staff.subUsers.screen.consultants', 'Consultants') : t('staff.subUsers.screen.assessors', 'Assessors');
       case 'sa-allotment': return c ? t('staff.subUsers.screen.consultancyAllotment', 'Consultancy allotment') : t('staff.subUsers.screen.siteAllotment', 'Site assessment allotment');
       case 'da-allotment': return t('staff.subUsers.screen.desktopAllotment', 'Desktop allotment');
       case 'users': return c ? t('staff.subUsers.screen.consultantOrganisations', 'Consultant organisations and their consultants') : t('staff.subUsers.screen.agencies', 'Agencies and their assessors');

@@ -47,7 +47,7 @@
 .pv-steps { display: flex; gap: 14px; margin-top: 10px; }
 .pv-steps i { width: 10px; height: 10px; border-radius: 5px; background: #dfe5e6; }
 .pv-logo { height: 52px; max-width: 90px; object-fit: contain; }
-.pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 10px; font-weight: 800;
+.pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 11px; font-weight: 800;
   background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; overflow: hidden; }
 .pv-desc { font-size: 12px; color: #3b4b4c; margin: 0; padding: 0 12px 10px; }
 .lv-fees { font-size: 13px; }
@@ -59,7 +59,7 @@
 .pv-timeline { position: relative; height: 46px; margin: 4px 12px 2px 4px; }
 .tl-bar { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #cfe5e6, #45a5ad); }
 .tl-mark, .tl-end { position: absolute; top: 2px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
-.tl-mark b { width: 22px; height: 22px; border-radius: 11px; background: #fff; border: 2px solid #23474a; font-size: 10px; display: grid; place-items: center; color: #23474a; }
+.tl-mark b { width: 22px; height: 22px; border-radius: 11px; background: #fff; border: 2px solid #23474a; font-size: 11px; display: grid; place-items: center; color: #23474a; }
 .tl-mark small, .tl-end small { font-size: 11px; color: #5f6f70; margin-top: 2px; }
 .tl-end { left: 100%; top: 26px; }
 @media (max-width: 991.98px) {

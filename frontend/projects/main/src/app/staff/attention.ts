@@ -112,7 +112,7 @@ export class AttentionService {
     .ab-btn:hover, .ab-btn:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
     .ab-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .ab-count { position: absolute; top: 0; right: 1px; min-width: 16px; height: 16px; padding: 0 3px; border: 2px solid var(--zt-dark, #24666b); border-radius: 8px;
-      background: #e5654b; color: #fff; font-size: 9.5px; font-weight: 800; line-height: 12px; text-align: center; }
+      background: #e5654b; color: #fff; font-size: 11px; font-weight: 800; line-height: 12px; text-align: center; }
     .ab-panel { position: absolute; top: calc(100% + 8px); right: -8px; z-index: 1050; width: min(340px, 92vw); max-height: 70vh; overflow: auto;
       background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; box-shadow: 0 12px 32px rgba(16, 61, 64, 0.18); color: #24393b; text-align: left; }
     .ab-head { padding: 12px 14px; font-size: 14.5px; font-weight: 800; border-bottom: 1px solid #edf2f2; }

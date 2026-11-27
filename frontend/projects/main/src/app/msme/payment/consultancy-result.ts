@@ -125,7 +125,7 @@ import { ConsultancyConfirmation, ConsultancyPaymentApi, milestoneTitle } from '
     .pr-mark { flex: none; width: 52px; height: 52px; margin: 12px; border-radius: 50%; display: grid; place-items: center; background: #2f9e58; box-shadow: 0 0 0 12px #e5f5ea; }
     .pr-mark svg { width: 28px; height: 28px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
     .pr-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 24px; margin: 0; padding: 18px 0 16px; border-bottom: 1px solid #dde7e8; }
-    .pr-facts dt { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; font-weight: 700; }
+    .pr-facts dt { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6f8487; font-weight: 700; }
     .pr-facts dd { margin: 6px 0 0; font-size: 14px; font-weight: 600; color: #17373b; overflow-wrap: anywhere; }
     .pr-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
     .pr-i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -151,7 +151,7 @@ import { ConsultancyConfirmation, ConsultancyPaymentApi, milestoneTitle } from '
     .pr-level img { width: 48px; height: 48px; object-fit: contain; }
     .pr-level b { display: block; font-size: 16px; font-weight: 700; color: #17373b; }
     .pr-level small { display: block; font-size: 12.5px; color: #6f8487; }
-    .pr-chip { display: inline-block; margin-top: 4px; padding: 0 12px; border-radius: 11px; background: #e5f5ea; color: #2f9e58; font-size: 10.5px; font-weight: 700;
+    .pr-chip { display: inline-block; margin-top: 4px; padding: 0 12px; border-radius: 11px; background: #e5f5ea; color: #2f9e58; font-size: 11px; font-weight: 700;
       line-height: 22px; letter-spacing: .04em; }
     .pr-paid { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 0 12px; font-size: 12.5px; font-weight: 500; color: #6f8487; }
     .pr-paid b { font-size: 13.5px; font-weight: 700; color: #17373b; }

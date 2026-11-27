@@ -2,7 +2,7 @@
 // activities as selectable cards and the summary grid. The pledge and success steps are in register-done.scss.
 .reg-chip {
   display: inline-block; height: 22px; line-height: 22px; padding: 0 10px; margin-right: 6px; border-radius: 11px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap;
+  font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; white-space: nowrap;
   background: #e6f2f3; color: var(--zt-dark, #24666b);
 }
 .reg-chip-size { background: #fdf0d5; color: #8a5a00; }
@@ -26,7 +26,7 @@
 .reg-ent-text { min-width: 0; h4 { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #17373b; overflow-wrap: anywhere; } }
 .reg-kv {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0 24px 20px;
-  dt { font-size: 10px; font-weight: 700; letter-spacing: .6px; color: #6f8487; text-transform: uppercase; }
+  dt { font-size: 11px; font-weight: 700; letter-spacing: .6px; color: #6f8487; text-transform: uppercase; }
   dd { margin: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 }
 :host ::ng-deep .reg-ent-note { margin: 0 24px 20px; padding: 10px 14px; font-size: 13px; p { margin: 0; } }

@@ -146,7 +146,7 @@ const API = '/api/staff/password-reset/';
     .prl-title { margin: 0; padding: 13px 20px; border-bottom: 1px solid #dde7e8; font-size: 16px; font-weight: 700; color: #17373b; display: flex; align-items: center; gap: 12px; }
     .prl-tile { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: #e6f2f3; color: #24666b; }
     .prl-tile svg { width: 16px; height: 16px; }
-    .prl-count { margin-left: auto; min-width: 26px; padding: 2px 9px; border-radius: 10px; background: #e6f2f3; color: #24666b; font-size: 10.5px; text-align: center; }
+    .prl-count { margin-left: auto; min-width: 26px; padding: 2px 9px; border-radius: 10px; background: #e6f2f3; color: #24666b; font-size: 11px; text-align: center; }
     .prl-points { margin: 0; padding: 18px 24px 18px 42px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; font-weight: 500; color: #17373b; }
     .prl-points li::marker { color: #24666b; }
     .prl-points li.is-amber::marker { color: #d98a12; }

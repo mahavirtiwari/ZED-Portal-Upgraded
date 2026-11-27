@@ -310,7 +310,7 @@ export function cardText(label: string): string {
     .app-level { font-size: 14px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
     .app-total { flex: none; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
     .app-total-value { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    .app-total-label { font-size: 10.5px; font-weight: 500; white-space: nowrap; }
+    .app-total-label { font-size: 11px; font-weight: 500; white-space: nowrap; }
     .app-body { padding: 16px 18px 10px; }
     .app-bar { display: flex; height: 10px; border-radius: 2px; overflow: hidden; background: #eef3f3; margin-bottom: 18px; }
     .app-seg { height: 100%; min-width: 0; border-radius: 2px; }

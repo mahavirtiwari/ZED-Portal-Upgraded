@@ -35,7 +35,7 @@ export interface FilterChip {
     .cf-chip:hover:not(.on) { background: #f2f8f7; border-color: #c9dadb; }
     .cf-chip:focus-visible { outline: 2px solid var(--zt-mid2, #2a8a8c); outline-offset: 2px; }
     .cf-chip.on { background: var(--zt-dark, #24666b); border-color: var(--zt-dark, #24666b); color: #fff; font-weight: 700; }
-    .cf-n { min-width: 26px; height: 20px; margin-right: -6px; padding: 0 7px; border-radius: 10px; background: #ecf0f0; color: #6f8487; font-size: 10.5px;
+    .cf-n { min-width: 26px; height: 20px; margin-right: -6px; padding: 0 7px; border-radius: 10px; background: #ecf0f0; color: #6f8487; font-size: 11px;
       font-weight: 700; line-height: 20px; text-align: center; }
     .cf-chip.on .cf-n { background: rgba(255, 255, 255, 0.14); color: #fff; }
   `,

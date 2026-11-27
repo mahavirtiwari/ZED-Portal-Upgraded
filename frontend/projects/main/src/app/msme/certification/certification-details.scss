@@ -9,7 +9,7 @@
 // 2026-11-18 (design): unit name 20px/700, chips 22px high, the ids 12.5px grey.
 .cd-unit h3 { margin: 0 0 6px; font-size: 20px; font-weight: 700; line-height: 1.3; color: #17373b; overflow-wrap: anywhere; }
 .cd-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.chip { display: inline-block; padding: 0 12px; border-radius: 11px; font-size: 10.5px; font-weight: 700; line-height: 22px; letter-spacing: .04em; }
+.chip { display: inline-block; padding: 0 12px; border-radius: 11px; font-size: 11px; font-weight: 700; line-height: 22px; letter-spacing: .04em; }
 .chip-status { color: #24666b; background: #e6f2f3; }
 .chip-done { color: #2f9e58; background: #e5f5ea; }
 .chip-size { color: #8a5a00; background: #fdeccd; }
@@ -18,7 +18,7 @@
 // Certified on / Valid till / Next surveillance: 148px columns with a rule on the left.
 .cd-facts { display: flex; margin: 0; }
 .cd-facts > div { min-width: 148px; padding: 4px 18px 6px; border-left: 1px solid #dde7e8; }
-.cd-facts dt { font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #6f8487; text-transform: uppercase; }
+.cd-facts dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #6f8487; text-transform: uppercase; }
 .cd-facts dd { margin: 6px 0 0; font-size: 17px; font-weight: 600; color: #17373b; white-space: nowrap; }
 .cd-btns { display: flex; flex-direction: column; gap: 10px; }
 

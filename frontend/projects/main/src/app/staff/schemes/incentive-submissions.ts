@@ -80,6 +80,9 @@ import { staffCrumbs } from '../staff-crumbs';
                 <td class="cell-lines text-center"><span>{{ r['Certification'] }}</span><span>{{ r['EnterpriseTypee'] }}</span><span>{{ r['Gender'] }}</span></td>
                 <td class="cell-lines text-center"><span>{{ date(r['DisbursedDate'] ?? r['ApprovedDate']) }}</span><strong>{{ r['DisbursedAmount'] }}</strong></td>
               </tr>
+            } @empty {
+              <!-- 2026-11-27 (UI review): a search that matches nothing says so. -->
+              <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ 'No submission matches the search.' | t: 'staff.incentiveSubmissions.noMatch' }}</div></td></tr>
             }
           </tbody>
         </table>

@@ -47,9 +47,19 @@ describe('StaffLayout (2026-11-18 designs)', () => {
     expect(el.querySelector('.user-menu .who small')!.textContent!.trim()).toBe('Master Admin');
     expect(el.querySelector('.nav-tools zed-zed-id-search .zs-key')!.textContent!.trim()).toBe('Ctrl K');
     expect(el.querySelector('.nav-tools zed-attention-bell [data-total]')!.textContent!.trim()).toBe('4');
-    // The menu starts with Home; no "|" separators are written in the markup.
-    expect(el.querySelector('#staff-menu .nav > li:first-child')!.textContent!.trim()).toBe('Home');
+    // The menu starts with the login's home, named "Dashboard" when that is the dashboard (2026-11-27); no "|" separators.
+    const first = el.querySelector('#staff-menu .nav > li:first-child a') as HTMLAnchorElement;
+    expect(first.textContent!.trim()).toBe('Dashboard');
+    expect(first.getAttribute('href')).toBe('/staff/dashboard');
     expect(el.querySelector('#staff-menu')!.textContent).not.toContain('|');
+  });
+
+  // 2026-11-27 (UI review): a login whose home is the card home (the MSME DFO on main) keeps "Home".
+  it('names the first entry Home when the login has no dashboard', async () => {
+    const el = await render({}, { userId: 'DFO1', userName: 'DFO', roleId: 6, role: 'StateCoordinator', subRoles: [] });
+    const first = el.querySelector('#staff-menu .nav > li:first-child a') as HTMLAnchorElement;
+    expect(first.textContent!.trim()).toBe('Home');
+    expect(first.getAttribute('href')).toBe('/staff');
   });
 
   // 2026-11-25: the Incentives Master Admin's home is its Dashboard entry; "Home" opened the same page beside it.
