@@ -267,6 +267,16 @@ public sealed class AgencyRejectionReallotTests : IDisposable
     }
 
     [Fact]
+    public async Task An_agency_whose_states_or_sectors_leave_the_unit_out_is_not_offered()
+    {
+        // 2026-11-27 (the owner): the Master Admin's list (and this round robin) as the automatic allotment, at every level.
+        _host.Sql.Queries[AllotmentAgencies.OutsideAreaSql] = _ => [new { UserId = "AGENCY3 " }];
+        await Reject();
+        Assert.Equal("AGENCY2", FakeSql.Arg(Assert.Single(Allotments()), "CertificationBodyUserId"));
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == AllotmentAgencies.OutsideAreaSql).Args, "ZedId"));
+    }
+
+    [Fact]
     public async Task With_no_other_agency_the_unit_waits_for_the_master_admin()
     {
         _agencies = [new { UserId = "AGENCY1", UserName = "Agency One", SiteVerification = true }, new { UserId = "AGENCYX", UserName = "Rejected before", SiteVerification = true }];

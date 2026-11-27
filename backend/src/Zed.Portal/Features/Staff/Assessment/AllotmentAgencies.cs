@@ -47,6 +47,11 @@ internal static class AllotmentAgencies
         // (the automatic allotment leaves it out too: ZED_SURVEILLANCE SP_V4_SURVEILLANCE_NEXT_AGENCY, migration 0102).
         if (host.System == PortalSystem.Surveillance)
             disabled.UnionWith(await CertifyingAgenciesAsync(db, zedId, level, ct));
+        // 2026-11-27 (the owner: the manual list as the automatic allotment): on main, not an agency whose states or NIC sectors leave the
+        // unit out (AgencyUserStates / UserNicSectors; none listed = every one), at every level. The procedure's Bronze list skipped
+        // this check (its other levels already had it).
+        if (host.System == PortalSystem.Main)
+            disabled.UnionWith(await OutsideAreaAsync(db, zedId, log, ct));
         // 2026-11-18 (expenditure monitoring): each agency's PO for the level; a used-up PO stops its allotment (main, Consultancy).
         var po = (await Expenditure.PoLimits.StatusAsync(db, host, null, level, log, ct))
             .ToDictionary(s => s.PartyId, StringComparer.OrdinalIgnoreCase);
@@ -62,6 +67,31 @@ internal static class AllotmentAgencies
             })
             .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category))
             .ToList();
+    }
+
+    /// <summary>The agencies with states or NIC sectors set that do not cover the unit's plant state or sector (as FN_V4_AGENCY_ELIGIBLE).</summary>
+    internal const string OutsideAreaSql = """
+        SELECT LTRIM(RTRIM(U.UserId)) AS UserId FROM dbo.Users U
+        CROSS APPLY (SELECT TOP (1) PStateName, SUBSTRING(LTRIM(TwoDigitActivity), 1, 2) AS Sector FROM dbo.Msme WHERE ZedId = @ZedId) M
+        WHERE U.RoleId = 2
+          AND ((EXISTS (SELECT 1 FROM dbo.AgencyUserStates A WHERE A.UserId = U.UserId AND A.RoleId = 2)
+                AND NOT EXISTS (SELECT 1 FROM dbo.AgencyUserStates A WHERE A.UserId = U.UserId AND A.RoleId = 2 AND LTRIM(RTRIM(A.States)) = LTRIM(RTRIM(M.PStateName))))
+            OR (EXISTS (SELECT 1 FROM dbo.UserNicSectors S WHERE S.UserId = U.UserId AND S.RoleId = 2)
+                AND NOT EXISTS (SELECT 1 FROM dbo.UserNicSectors S WHERE S.UserId = U.UserId AND S.RoleId = 2 AND LTRIM(RTRIM(S.NicSectorCode)) = M.Sector)));
+        """;
+
+    private static async Task<HashSet<string>> OutsideAreaAsync(ISqlExecutor db, string zedId, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            return (await db.QuerySqlAsync<AgencyIdRow>(OutsideAreaSql, new { ZedId = zedId }, ct))
+                .Select(r => r.UserId?.Trim() ?? "").Where(u => u.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Agency states / sectors of {ZedId} not read: no agency left out for them", zedId);
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     /// <summary>The agency permission a level of this flow needs: SiteVerification when it has a visit, else DesktopVerification.</summary>
