@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9731,
+  "count": 9732,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -20817,6 +20817,18 @@
     {
       "key": "public.incentives.other.title",
       "standard": "Other Incentives",
+      "kind": "heading",
+      "portal": "public",
+      "page": "incentives",
+      "pageName": "Incentives",
+      "placeholders": [],
+      "files": [
+        "msme/schemes/incentives.ts"
+      ]
+    },
+    {
+      "key": "public.incentives.pageTitle",
+      "standard": "Incentives for ZED certified units",
       "kind": "heading",
       "portal": "public",
       "page": "incentives",
@@ -64081,18 +64093,6 @@
       ]
     },
     {
-      "key": "staff.incentivesAdmin.cards.tuChoose",
-      "standard": "Choose the scheme…",
-      "kind": "label",
-      "portal": "staff",
-      "page": "incentivesAdmin",
-      "pageName": "Incentives admin",
-      "placeholders": [],
-      "files": [
-        "staff/incentives-admin/card-settings.ts"
-      ]
-    },
-    {
       "key": "staff.incentivesAdmin.cards.tuDirectAria",
       "standard": "Direct scheme",
       "kind": "tooltip",
@@ -64105,9 +64105,21 @@
       ]
     },
     {
+      "key": "staff.incentivesAdmin.cards.tuNoScheme",
+      "standard": "No scheme to choose yet: add one in Incentive Schemes.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "incentivesAdmin",
+      "pageName": "Incentives admin",
+      "placeholders": [],
+      "files": [
+        "staff/incentives-admin/card-settings.ts"
+      ]
+    },
+    {
       "key": "staff.incentivesAdmin.cards.tuOff",
       "standard": " (off)",
-      "kind": "label",
+      "kind": "text",
       "portal": "staff",
       "page": "incentivesAdmin",
       "pageName": "Incentives admin",

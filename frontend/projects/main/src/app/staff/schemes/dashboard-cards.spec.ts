@@ -145,8 +145,9 @@ describe('DashboardCardsPage', () => {
     await settle();
     expect(tu.textContent).toContain('apply directly');
     // 2026-11-20: the built-in direct scheme is chosen, and the Admin is told the save switches it on.
-    const select = tu.querySelector('#cs-direct') as HTMLSelectElement;
-    expect(select.value).toBe(select.options[1].value);
+    // 2026-11-27: the schemes are options that wrap (a drop-down cut the name in the narrow card).
+    const chosen = tu.querySelector('#cs-direct input:checked') as HTMLInputElement;
+    expect(chosen.value).toBe('TU_DIRECT');
     expect(tu.querySelector('#cs-direct-off')!.textContent).toContain('saving switches it on');
     button(tu, 'Save setting').click();
     await settle();

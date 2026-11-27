@@ -90,12 +90,16 @@ export class CardSettingsState {
             ? ('On: units apply after the consultant recommends technologies in Handholding (as today).' | t: 'staff.incentivesAdmin.cards.tuOnHelp')
             : ('Off: units apply directly through the scheme chosen here.' | t: 'staff.incentivesAdmin.cards.tuOffHelp') }}</small>
           @if (!s.technologyUpgradation.recommendationRequired) {
-            <select class="form-select form-select-sm mt-1" id="cs-direct" [attr.aria-label]="'Direct scheme' | t: 'staff.incentivesAdmin.cards.tuDirectAria'" [(ngModel)]="s.technologyUpgradation.directSchemeCode">
-              <option [ngValue]="null">{{ 'Choose the scheme…' | t: 'staff.incentivesAdmin.cards.tuChoose' }}</option>
+            <!-- 2026-11-27 (UI review: a drop-down cut "Technology Upgradation (direct)" in the narrow card): the schemes as options that wrap. -->
+            <div class="cs-direct mt-1" id="cs-direct" role="radiogroup" [attr.aria-label]="'Direct scheme' | t: 'staff.incentivesAdmin.cards.tuDirectAria'">
               @for (o of s.technologyUpgradation.schemes ?? []; track o.code) {
-                <option [ngValue]="o.code">{{ o.name }}{{ o.active ? '' : (' (off)' | t: 'staff.incentivesAdmin.cards.tuOff') }}</option>
+                <label><input type="radio" name="cs-direct" [value]="o.code" [checked]="s.technologyUpgradation.directSchemeCode === o.code"
+                              (change)="s.technologyUpgradation.directSchemeCode = o.code" />
+                  <span>{{ o.name }}{{ o.active ? '' : (' (off)' | t: 'staff.incentivesAdmin.cards.tuOff') }}</span></label>
+              } @empty {
+                <small class="muted">{{ 'No scheme to choose yet: add one in Incentive Schemes.' | t: 'staff.incentivesAdmin.cards.tuNoScheme' }}</small>
               }
-            </select>
+            </div>
             @if (chosenOff()) {
               <small class="d-block cs-note" id="cs-direct-off">{{ 'This scheme is off: saving switches it on, so units can apply.' | t: 'staff.incentivesAdmin.cards.tuSwitchOn' }}</small>
             }
@@ -116,6 +120,9 @@ export class CardSettingsState {
     .cs-box .af-track { flex: none; }
     .cs-levels { display: flex; flex-wrap: wrap; gap: 4px 14px; }
     .cs-levels label { display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; }
+    .cs-direct { display: flex; flex-direction: column; gap: 4px; }
+    .cs-direct label { display: flex; align-items: flex-start; gap: 6px; margin: 0; cursor: pointer; white-space: normal; }
+    .cs-direct input { flex: none; margin-top: 3px; }
     .cs-save { align-self: flex-start; }
     .cs-note { color: #8a5a00; }
     .cs-ok { color: #1e7a3c; }

@@ -2,7 +2,7 @@
 <div class="container fa-page is-page" id="zed_user_form">
   @if (page(); as p) {
     @let s = p.scheme;
-    <zed-page-head [crumbs]="crumbs" [title]="title()" [subtitle]="s.card.highlight ?? ''">
+    <zed-page-head [crumbs]="crumbs" [title]="title()" [subtitle]="s.card.highlight ?? ''" [level]="1">
       <a class="btn btn-ph" routerLink="/msme/dashboard"><span aria-hidden="true">&larr;</span> {{ 'Back' | t: 'msme.incentiveScheme.backButton' }}</a>
       <button type="button" class="btn btn-ph refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> {{ 'Refresh' | t: 'msme.incentiveScheme.refreshButton' }}</button>
     </zed-page-head>

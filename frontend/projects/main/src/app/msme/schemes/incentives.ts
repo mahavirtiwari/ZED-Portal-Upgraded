@@ -64,6 +64,8 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
   template: `
     <zed-public-frame>
       <div class="container form-page" id="zed_user_form">
+        <!-- 2026-11-27 (UI review: the page had no heading; the first one was the translation widget's). -->
+        <h1 class="incentive-title inc-page-title">{{ 'Incentives for ZED certified units' | t: 'public.incentives.pageTitle' }}</h1>
         <div class="row incentive-page">
           <div class="col-sm-12 mb-4">
             <div class="panel panel-default panel-grey m-t-2">
@@ -126,7 +128,7 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
 
       <ng-template #incSection let-title="title" let-items="items" let-none="none" let-id="id">
         <div class="col-sm-12" [attr.id]="id">
-          <div class="panel panel-default panel-incentive m-b-2"><h4 class="incentive-title">{{ title }}</h4></div>
+          <div class="panel panel-default panel-incentive m-b-2"><h2 class="incentive-title">{{ title }}</h2></div>
           @if (items.length) {
             <div class="panel panel-default panel-grey">
               @for (row of items; track row.id; let i = $index) {
@@ -164,6 +166,10 @@ type Section = 'Common' | 'States' | 'Financial' | 'Other';
         </div>
       </ng-template>
     </zed-public-frame>
+  `,
+  styles: `
+    .inc-page-title { margin: 16px 0 0 10px; font-size: 24px; font-weight: 700; line-height: 1.3; }
+    h2.incentive-title { margin-top: 0; margin-bottom: 0; }
   `,
 })
 export class PublicIncentivesPage {

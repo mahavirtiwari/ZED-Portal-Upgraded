@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -143,6 +144,9 @@ export class IncentiveSchemePage {
   protected readonly eligible = computed(() => eligibleOf(this.claim(), this.grade()));
 
   constructor() {
+    // 2026-11-27 (UI review): the tab names the scheme ("ZED | Technology Upgradation"), not "Incentive Scheme".
+    const tab = inject(Title);
+    effect(() => { if (this.scheme()) tab.setTitle(`ZED | ${this.title()}`); });
     void this.load();
   }
 
