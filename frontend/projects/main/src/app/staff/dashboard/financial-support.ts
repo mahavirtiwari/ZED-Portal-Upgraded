@@ -47,7 +47,7 @@ import { formatCount } from './charts';
           <tr>
             <th class="text-center">{{ 'S.No.' | t: 'staff.financialSupport.column.serial' }}</th>
             <th class="text-center">{{ 'Certification Level' | t: 'staff.financialSupport.column.level' }}</th>
-            <th>{{ 'Unit Name' | t: 'staff.financialSupport.column.unitName' }}<br />{{ 'ZedId' | t: 'staff.financialSupport.column.zedId' }}<br />{{ 'Enterprise Size' | t: 'staff.financialSupport.column.size' }}</th>
+            <th>{{ 'Unit Name' | t: 'staff.financialSupport.column.unitName' }}<br />{{ 'ZED ID' | t: 'staff.financialSupport.column.zedId' }}<br />{{ 'Enterprise Size' | t: 'staff.financialSupport.column.size' }}</th>
             <th class="text-center">{{ 'Status' | t: 'staff.financialSupport.column.status' }}</th>
             <th>{{ 'Unit Address' | t: 'staff.financialSupport.column.address' }}</th>
             <th>{{ 'State' | t: 'staff.financialSupport.column.state' }}</th>
@@ -73,7 +73,7 @@ import { formatCount } from './charts';
               @if (handholding) { <td class="text-end amount">{{ money(s['StateSupport']) }}</td> }
             </tr>
           } @empty {
-            @if (!loading()) { <tr><td [attr.colspan]="handholding ? 10 : 9" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
+            @if (!loading()) { <tr><td [attr.colspan]="handholding ? 10 : 9" style="padding: 0"><div class="no-data">{{ 'No unit to show for these filters.' | t: 'staff.financialSupport.empty' }}</div></td></tr> }
           }
         </tbody>
       </table>

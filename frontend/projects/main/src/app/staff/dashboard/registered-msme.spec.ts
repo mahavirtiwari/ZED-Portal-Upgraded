@@ -144,6 +144,6 @@ describe('RegisteredMsmePage', () => {
     expect(req.request.params.get('search')).toBe('Acme');
     req.flush({ rows: [], totalCounts: 0, pageNo: 1, pageSize: 10 });
     await settle();
-    expect(el.textContent).toContain('No Data');
+    expect(el.textContent).toContain('No unit to show for these filters.');
   });
 });

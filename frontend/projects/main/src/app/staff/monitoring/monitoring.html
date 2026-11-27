@@ -28,7 +28,7 @@
   <div class="mo-q">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
     <input type="search" id="monitoringSearch" class="form-control" maxlength="50" [attr.aria-label]="consultancy ? ('Search ZED ID, unit, consultant organisation or consultant' | t: 'staff.monitoring.search.consultancy.aria') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.aria')"
-           [placeholder]="consultancy ? ('Search ZED ID, unit, consultant organisation or consultant' | t: 'staff.monitoring.search.consultancy.placeholderFull') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.placeholder')"
+           [placeholder]="consultancy ? ('Search ZED ID, unit, organisation or consultant' | t: 'staff.monitoring.search.consultancy.placeholderFull') : ('Search ZED ID, unit, agency or assessor' | t: 'staff.monitoring.search.placeholder')"
            [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
   <select id="certification" class="form-select mo-lv" [attr.aria-label]="consultancy ? ('Level' | t: 'staff.monitoring.level.consultancy.aria') : ('Certification level' | t: 'staff.monitoring.level.aria')"

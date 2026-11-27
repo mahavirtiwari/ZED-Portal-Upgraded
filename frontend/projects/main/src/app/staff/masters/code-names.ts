@@ -402,7 +402,7 @@ export class CodeNamesPage {
   protected emptyText(): string {
     const l = this.labels();
     if (this.pager.search() || this.filter() !== 'all') return t('staff.sectorsAndCategories.noMatch.empty', 'No {word} matches the search', { word: l.one.toLowerCase() });
-    return this.rows().length ? t('staff.sectorsAndCategories.noData.empty', 'No Data')
+    return this.rows().length ? t('staff.sectorsAndCategories.noData.empty', 'Nothing to show on this page.')
       : t('staff.sectorsAndCategories.empty', 'No {list} yet. Use + Add {word} to add the first one.', { list: l.title.toLowerCase(), word: l.one });
   }
 

@@ -115,7 +115,7 @@ export function stageLabel(milestone: number): string {
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.coAllotment.loading.text') : ('No Data' | t: 'staff.coAllotment.empty') }}</div></td>
+              <td colspan="7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.coAllotment.loading.text') : ('No unit to show. Units waiting for consultants, and those you have allotted, are listed here.' | t: 'staff.coAllotment.empty') }}</div></td>
             </tr>
           }
         </tbody>

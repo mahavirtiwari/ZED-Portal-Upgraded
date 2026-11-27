@@ -35321,7 +35321,7 @@
     },
     {
       "key": "staff.assessors.column.completed",
-      "standard": "No. Of Consulting Completed",
+      "standard": "Consultancies Completed",
       "kind": "label",
       "portal": "staff",
       "page": "assessors",
@@ -37621,7 +37621,7 @@
     },
     {
       "key": "staff.coAllotment.empty",
-      "standard": "No Data",
+      "standard": "No unit to show. Units waiting for consultants, and those you have allotted, are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "coAllotment",
@@ -38655,7 +38655,7 @@
     },
     {
       "key": "staff.daAllotment.empty",
-      "standard": "No Data",
+      "standard": "No unit to show. Units waiting for a desktop assessor, and those you have allotted, are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "daAllotment",
@@ -42354,7 +42354,7 @@
     },
     {
       "key": "staff.daDetails.surveillance.silverUpgrade.label",
-      "standard": "Suitable For Silver Upgrade?",
+      "standard": "Suitable for Silver Upgrade?",
       "kind": "label",
       "portal": "staff",
       "page": "daDetails",
@@ -43268,7 +43268,7 @@
     },
     {
       "key": "staff.daVerification.empty",
-      "standard": "No Data",
+      "standard": "No unit to show. Units allotted to you for desktop verification are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "daVerification",
@@ -55841,7 +55841,7 @@
     },
     {
       "key": "staff.failedTransactions.empty",
-      "standard": "No Data",
+      "standard": "No failed transaction to show.",
       "kind": "note",
       "portal": "staff",
       "page": "failedTransactions",
@@ -58842,7 +58842,7 @@
     },
     {
       "key": "staff.financialSupport.column.zedId",
-      "standard": "ZedId",
+      "standard": "ZED ID",
       "kind": "label",
       "portal": "staff",
       "page": "financialSupport",
@@ -58914,7 +58914,7 @@
     },
     {
       "key": "staff.financialSupport.empty",
-      "standard": "No Data",
+      "standard": "No unit to show for these filters.",
       "kind": "note",
       "portal": "staff",
       "page": "financialSupport",
@@ -75153,7 +75153,7 @@
     },
     {
       "key": "staff.milestoneDetails.attendance.column.milestone",
-      "standard": "MileStone",
+      "standard": "Milestone",
       "kind": "label",
       "portal": "staff",
       "page": "milestoneDetails",
@@ -79119,7 +79119,7 @@
     },
     {
       "key": "staff.monitoring.search.consultancy.placeholderFull",
-      "standard": "Search ZED ID, unit, consultant organisation or consultant",
+      "standard": "Search ZED ID, unit, organisation or consultant",
       "kind": "text",
       "portal": "staff",
       "page": "monitoring",
@@ -82740,7 +82740,7 @@
     },
     {
       "key": "staff.neft.column.certificateCategory",
-      "standard": "Category Of Certificate",
+      "standard": "Certificate Category",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82824,7 +82824,7 @@
     },
     {
       "key": "staff.neft.column.employees",
-      "standard": "TotalEmp",
+      "standard": "Total Employees",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82872,7 +82872,7 @@
     },
     {
       "key": "staff.neft.column.gstin",
-      "standard": "GSTIN/ TAN Number",
+      "standard": "GSTIN / TAN",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82896,7 +82896,7 @@
     },
     {
       "key": "staff.neft.column.invoiceDate",
-      "standard": "Invoice Bill date",
+      "standard": "Invoice Date",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82920,7 +82920,7 @@
     },
     {
       "key": "staff.neft.column.issueDate",
-      "standard": "Date Of Issue",
+      "standard": "Date of Issue",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82932,7 +82932,7 @@
     },
     {
       "key": "staff.neft.column.manufacturer",
-      "standard": "Name Of The Manufacturer",
+      "standard": "Name of the Manufacturer",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82944,7 +82944,7 @@
     },
     {
       "key": "staff.neft.column.model",
-      "standard": "Make Or Model Name",
+      "standard": "Make or Model",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -82980,7 +82980,7 @@
     },
     {
       "key": "staff.neft.column.receiptDate",
-      "standard": "Payment receipt Date",
+      "standard": "Payment Receipt Date",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -83004,7 +83004,7 @@
     },
     {
       "key": "staff.neft.column.technology",
-      "standard": "TechnologyName",
+      "standard": "Technology",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -83016,7 +83016,7 @@
     },
     {
       "key": "staff.neft.column.udyam",
-      "standard": "UAM/ Udyam Number",
+      "standard": "UAM / Udyam Number",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -83160,7 +83160,7 @@
     },
     {
       "key": "staff.neft.empty",
-      "standard": "No Data",
+      "standard": "No transaction to show.",
       "kind": "note",
       "portal": "staff",
       "page": "neft",
@@ -83256,7 +83256,7 @@
     },
     {
       "key": "staff.neft.rejected.column.enterprise",
-      "standard": "EnterpriseName",
+      "standard": "Enterprise Name",
       "kind": "label",
       "portal": "staff",
       "page": "neft",
@@ -84128,7 +84128,7 @@
     },
     {
       "key": "staff.nonConformances.empty",
-      "standard": "No Data",
+      "standard": "No unit to show. Units with an open non-conformance round are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "nonConformances",
@@ -91131,7 +91131,7 @@
     },
     {
       "key": "staff.registeredMsme.column.zedId",
-      "standard": "ZedId",
+      "standard": "ZED ID",
       "kind": "label",
       "portal": "staff",
       "page": "registeredMsme",
@@ -91275,7 +91275,7 @@
     },
     {
       "key": "staff.registeredMsme.empty",
-      "standard": "No Data",
+      "standard": "No unit to show for these filters.",
       "kind": "note",
       "portal": "staff",
       "page": "registeredMsme",
@@ -91419,7 +91419,7 @@
     },
     {
       "key": "staff.registeredMsme.searchBy.zedId",
-      "standard": "Zed Id",
+      "standard": "ZED ID",
       "kind": "text",
       "portal": "staff",
       "page": "registeredMsme",
@@ -95397,7 +95397,7 @@
     },
     {
       "key": "staff.remoteAssessments.empty",
-      "standard": "No Data",
+      "standard": "No assessment to show. Remote and onsite assessments allotted to you are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "remoteAssessments",
@@ -98336,7 +98336,7 @@
     },
     {
       "key": "staff.saAllotment.empty",
-      "standard": "No Data",
+      "standard": "No unit to show. Units waiting for site assessors, and those you have allotted, are listed here.",
       "kind": "note",
       "portal": "staff",
       "page": "saAllotment",
@@ -105933,7 +105933,7 @@
     },
     {
       "key": "staff.sectorsAndCategories.noData.empty",
-      "standard": "No Data",
+      "standard": "Nothing to show on this page.",
       "kind": "note",
       "portal": "staff",
       "page": "sectorsAndCategories",
@@ -107990,7 +107990,7 @@
     },
     {
       "key": "staff.siteVerification.column.reason",
-      "standard": "Reason For Rejection",
+      "standard": "Reason for Rejection",
       "kind": "label",
       "portal": "staff",
       "page": "siteVerification",
@@ -108038,7 +108038,7 @@
     },
     {
       "key": "staff.siteVerification.column.zedId",
-      "standard": "ZedId",
+      "standard": "ZED ID",
       "kind": "label",
       "portal": "staff",
       "page": "siteVerification",

@@ -69,10 +69,11 @@ const DEFAULT_STATUS = 3;
       border: solid #9aadaf; border-width: 1.6px 1.6px 0 0; transform: rotate(45deg); }
     .mo-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; }
     .mo-filters > * { flex: 0 1 170px; min-width: 0; }
-    .mo-filters .mo-q { flex: 0 1 320px; position: relative; }
+    /* 2026-11-27 (UI review: the consultancy placeholder was cut): the search takes the room left in the row. */
+    .mo-filters .mo-q { flex: 1 1 320px; position: relative; }
     .mo-q svg { position: absolute; left: 12px; top: 50%; width: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
     .mo-q input { padding-left: 36px; background-image: none !important; }
-    .mo-filters .mo-ag { flex-basis: 230px; }
+    .mo-filters .mo-ag { flex-basis: 250px; }
     .mo-filters .mo-md { flex-basis: 160px; }
     .mo-nc { display: flex; gap: 6px; flex: 0 1 260px; }
     .mo-filters .mo-sort { flex: 0 0 auto; margin-left: auto; font-size: 13px; font-weight: 500; color: #24666b; }

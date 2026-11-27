@@ -139,7 +139,7 @@ export class RegisteredMsmePage {
   /** A searchBy value as shown. */
   protected searchText(field: string): string {
     switch (field) {
-      case 'Zed Id': return t('staff.registeredMsme.searchBy.zedId', 'Zed Id');
+      case 'Zed Id': return t('staff.registeredMsme.searchBy.zedId', 'ZED ID');
       case 'Udyam Number': return t('staff.registeredMsme.searchBy.udyam', 'Udyam Number');
       case 'Unit Name': return t('staff.registeredMsme.searchBy.unitName', 'Unit Name');
       default: return field;

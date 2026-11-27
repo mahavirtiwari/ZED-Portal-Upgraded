@@ -39,7 +39,7 @@
         <th class="text-center">{{ consultancy ? ('Level' | t: 'staff.registeredMsme.column.consultancy.level') : ('Certification Level' | t: 'staff.registeredMsme.column.level') }}@if (main) {<br />{{ 'Certification Phase' | t: 'staff.registeredMsme.column.phase' }}}</th>
         @if (consultancy) { <th class="text-center">{{ 'Milestone' | t: 'staff.registeredMsme.column.milestone' }}</th> }
         @if (surveillance) { <th class="text-center">{{ 'Surveillance No.' | t: 'staff.registeredMsme.column.surveillanceNo' }}</th> }
-        <th>{{ 'Unit Name' | t: 'staff.registeredMsme.column.unitName' }}<br />{{ 'ZedId' | t: 'staff.registeredMsme.column.zedId' }}<br />{{ 'Registered Date' | t: 'staff.registeredMsme.column.registeredDate' }}</th>
+        <th>{{ 'Unit Name' | t: 'staff.registeredMsme.column.unitName' }}<br />{{ 'ZED ID' | t: 'staff.registeredMsme.column.zedId' }}<br />{{ 'Registered Date' | t: 'staff.registeredMsme.column.registeredDate' }}</th>
         <th class="text-center">{{ 'Status' | t: 'staff.registeredMsme.column.status' }}</th>
         @if (main) { <th class="text-center">{{ 'First Surveillance Due Date' | t: 'staff.registeredMsme.column.surveillanceDue' }}</th> }
         <th>{{ 'Unit Address' | t: 'staff.registeredMsme.column.address' }}</th>
@@ -120,7 +120,7 @@
           </td>
         </tr>
       } @empty {
-        @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.registeredMsme.empty' }}</div></td></tr> }
+        @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ 'No unit to show for these filters.' | t: 'staff.registeredMsme.empty' }}</div></td></tr> }
       }
     </tbody>
   </table>

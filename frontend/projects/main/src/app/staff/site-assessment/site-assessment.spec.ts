@@ -227,10 +227,10 @@ describe('RemoteAssessmentsPage', () => {
     expect(rows[2].textContent).toContain('Desktop');
   });
 
-  it('shows "No Data" for an empty list', async () => {
+  it('says what the list holds when it is empty', async () => {
     http.expectOne('/api/config').flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '' });
     http.expectOne('/api/staff/site-assessment/remote-assessments').flush([]);
     await settle(fixture);
-    expect(el.querySelector('.no-data')!.textContent).toContain('No Data');
+    expect(el.querySelector('.no-data')!.textContent).toContain('No assessment to show');
   });
 });

@@ -26,13 +26,13 @@
         <tr>
           <th>{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
           <th>{{ 'Plant Name' | t: 'staff.neft.column.plantName' }}</th>
-          <th>{{ 'TechnologyName' | t: 'staff.neft.column.technology' }}</th>
-          <th>{{ 'Name Of The Manufacturer' | t: 'staff.neft.column.manufacturer' }}<br />{{ 'Make Or Model Name' | t: 'staff.neft.column.model' }}<br />{{ 'Agency or Supplier' | t: 'staff.neft.column.supplier' }}</th>
+          <th>{{ 'Technology' | t: 'staff.neft.column.technology' }}</th>
+          <th>{{ 'Name of the Manufacturer' | t: 'staff.neft.column.manufacturer' }}<br />{{ 'Make or Model' | t: 'staff.neft.column.model' }}<br />{{ 'Agency or Supplier' | t: 'staff.neft.column.supplier' }}</th>
           <th class="text-center">{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}<br />{{ 'Eligible Amount' | t: 'staff.neft.column.eligibleAmount' }}</th>
           <th class="text-center">{{ 'Account No.' | t: 'staff.neft.column.accountNo' }}<br />{{ 'IFSC Code' | t: 'staff.neft.column.ifsc' }}</th>
           <th>{{ 'Branch Address' | t: 'staff.neft.column.branch' }}</th>
           @if (list !== 'new') {
-            <th class="text-center">{{ 'Payment receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
+            <th class="text-center">{{ 'Payment Receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
             <th>{{ 'Comments' | t: 'staff.neft.column.comments' }}</th>
           }
           <th class="text-end">{{ 'Actions' | t: 'staff.neft.column.actions' }}</th>
@@ -41,12 +41,12 @@
         <!-- Frontend/Neft/RejectedTransactions.cshtml -->
         <tr>
           <th class="text-center">{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
-          <th>{{ 'EnterpriseName' | t: 'staff.neft.rejected.column.enterprise' }}</th>
-          <th class="text-center">{{ 'UAM/ Udyam Number' | t: 'staff.neft.column.udyam' }}</th>
-          <th class="text-center">{{ 'TotalEmp' | t: 'staff.neft.column.employees' }}</th>
+          <th>{{ 'Enterprise Name' | t: 'staff.neft.rejected.column.enterprise' }}</th>
+          <th class="text-center">{{ 'UAM / Udyam Number' | t: 'staff.neft.column.udyam' }}</th>
+          <th class="text-center">{{ 'Total Employees' | t: 'staff.neft.column.employees' }}</th>
           <th class="text-center">{{ 'Gender and Social category' | t: 'staff.neft.column.gender' }}</th>
           <th class="text-center">{{ 'Coupon' | t: 'staff.neft.column.coupon' }}</th>
-          <th class="text-center">{{ 'GSTIN/ TAN Number' | t: 'staff.neft.column.gstin' }}</th>
+          <th class="text-center">{{ 'GSTIN / TAN' | t: 'staff.neft.column.gstin' }}</th>
           <th class="text-center">{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}</th>
           <th class="text-center">{{ 'UTR Number' | t: 'staff.neft.column.utr' }}</th>
           <th>{{ 'Reason for Rejection' | t: 'staff.neft.column.reason' }}</th>
@@ -55,15 +55,15 @@
         <tr>
           <th>{{ 'ZED ID' | t: 'staff.neft.column.zedId' }}</th>
           <th>{{ 'Enterprise Name' | t: 'staff.neft.column.enterprise' }}</th>
-          <th>{{ 'Category Of Certificate' | t: 'staff.neft.column.certificateCategory' }}</th>
+          <th>{{ 'Certificate Category' | t: 'staff.neft.column.certificateCategory' }}</th>
           <th>{{ 'Name of the Certificate' | t: 'staff.neft.column.certificateName' }}<br />{{ 'Certification Agency' | t: 'staff.neft.column.certificationAgency' }}</th>
-          <th class="text-center">{{ 'Certificate Number' | t: 'staff.neft.column.certificateNumber' }}<br />{{ 'Date Of Issue' | t: 'staff.neft.column.issueDate' }}<br />{{ 'Validity' | t: 'staff.neft.column.validity' }}</th>
+          <th class="text-center">{{ 'Certificate Number' | t: 'staff.neft.column.certificateNumber' }}<br />{{ 'Date of Issue' | t: 'staff.neft.column.issueDate' }}<br />{{ 'Validity' | t: 'staff.neft.column.validity' }}</th>
           <th>{{ 'Expenditure Certificate' | t: 'staff.neft.column.expenditureCertificate' }}<br />{{ 'Agency or Supplier' | t: 'staff.neft.column.supplier' }}</th>
-          <th class="text-center">{{ 'Invoice No.' | t: 'staff.neft.column.invoiceNo' }}<br />{{ 'Invoice Bill date' | t: 'staff.neft.column.invoiceDate' }}<br />{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}</th>
+          <th class="text-center">{{ 'Invoice No.' | t: 'staff.neft.column.invoiceNo' }}<br />{{ 'Invoice Date' | t: 'staff.neft.column.invoiceDate' }}<br />{{ 'Amount Paid' | t: 'staff.neft.column.amountPaid' }}</th>
           <th class="text-center">{{ 'Account No.' | t: 'staff.neft.column.accountNo' }}<br />{{ 'IFSC Code' | t: 'staff.neft.column.ifsc' }}</th>
           <th>{{ 'Branch Address' | t: 'staff.neft.column.branch' }}</th>
           @if (list === 'approved') {
-            <th class="text-center">{{ 'Payment receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
+            <th class="text-center">{{ 'Payment Receipt Date' | t: 'staff.neft.column.receiptDate' }}<br />{{ 'Approver Ref No.' | t: 'staff.neft.column.approverRef' }}<br />{{ 'Approver Amount' | t: 'staff.neft.column.approverAmount' }}</th>
           }
           @if (list !== 'new') {
             <th>{{ 'Comments' | t: 'staff.neft.column.comments' }}</th>
@@ -139,7 +139,7 @@
         }
       } @empty {
         <tr>
-          <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.neft.loading.text') : ('No Data' | t: 'staff.neft.empty') }}</div></td>
+          <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.neft.loading.text') : ('No transaction to show.' | t: 'staff.neft.empty') }}</div></td>
         </tr>
       }
     </tbody>

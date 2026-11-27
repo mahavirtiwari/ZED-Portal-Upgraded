@@ -172,7 +172,8 @@ const isoDay = (d: Date): string => d.toISOString().slice(0, 10);
   `,
   styles: `
     .sl-filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; padding: 14px 16px; margin-bottom: 12px; }
-    .sl-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 0 1 170px; font-size: 12px; font-weight: 700; color: #5f6f70; }
+    /* 2026-11-27 (UI review: "ZED Certification portal" was cut in its box): wide enough for the longest choice. */
+    .sl-field { display: flex; flex-direction: column; gap: 4px; min-width: 150px; flex: 0 1 220px; font-size: 12px; font-weight: 700; color: #5f6f70; }
     .sl-search { flex: 1 1 240px; }
     .sl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
     .sl-folder { overflow-wrap: anywhere; font-size: 12px; }

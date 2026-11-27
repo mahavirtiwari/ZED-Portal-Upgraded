@@ -29,8 +29,8 @@ import { TextPipe } from '../../content/page-text';
       <table class="table table-zed table-bordered">
         <thead>
           <tr>
-            <th class="text-center" style="width: 60px">{{ 'S.No.' | t: 'staff.siteVerification.column.serial' }}</th><th class="text-center" style="width: 110px"></th><th class="text-center">{{ 'ZedId' | t: 'staff.siteVerification.column.zedId' }}</th><th class="text-center">{{ 'Certification Level' | t: 'staff.siteVerification.column.level' }}</th>
-            <th>{{ 'Assessment Agency' | t: 'staff.siteVerification.column.agency' }}</th><th>{{ 'Unit Name' | t: 'staff.siteVerification.column.unitName' }}</th><th>{{ 'Unit Address' | t: 'staff.siteVerification.column.address' }}</th><th class="text-center">{{ 'State' | t: 'staff.siteVerification.column.state' }}</th><th>{{ 'Reason For Rejection' | t: 'staff.siteVerification.column.reason' }}</th>
+            <th class="text-center" style="width: 60px">{{ 'S.No.' | t: 'staff.siteVerification.column.serial' }}</th><th class="text-center" style="width: 110px"></th><th class="text-center">{{ 'ZED ID' | t: 'staff.siteVerification.column.zedId' }}</th><th class="text-center">{{ 'Certification Level' | t: 'staff.siteVerification.column.level' }}</th>
+            <th>{{ 'Assessment Agency' | t: 'staff.siteVerification.column.agency' }}</th><th>{{ 'Unit Name' | t: 'staff.siteVerification.column.unitName' }}</th><th>{{ 'Unit Address' | t: 'staff.siteVerification.column.address' }}</th><th class="text-center">{{ 'State' | t: 'staff.siteVerification.column.state' }}</th><th>{{ 'Reason for Rejection' | t: 'staff.siteVerification.column.reason' }}</th>
           </tr>
         </thead>
         <tbody>

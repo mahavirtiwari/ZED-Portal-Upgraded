@@ -109,7 +109,7 @@ describe('staff pages per system', () => {
     await settle();
     expect(el.querySelector('h2')!.textContent).toBe('Consultants');
     // V4 layout: the consultant's ID under the name, the status after the counts.
-    expect(headers()).toEqual(['S.No', 'Consultant Details', 'Consultant Organisation Details', 'No. Of Consulting Completed', 'Status', 'Action(s)']);
+    expect(headers()).toEqual(['S.No', 'Consultant Details', 'Consultant Organisation Details', 'Consultancies Completed', 'Status', 'Action(s)']);
     const body = el.querySelector('tbody')!.textContent!;
     for (const value of ['ZEDCC0001', 'Lead', 'CO One', 'Milestone 1: 0', 'Active']) expect(body).toContain(value);
   });
@@ -145,7 +145,7 @@ describe('staff pages per system', () => {
     });
     await settle();
     expect(headers()).toEqual([
-      'ZED ID', 'Plant Name', 'TechnologyName', 'Name Of The ManufacturerMake Or Model NameAgency or Supplier', 'Amount PaidEligible Amount',
+      'ZED ID', 'Plant Name', 'Technology', 'Name of the ManufacturerMake or ModelAgency or Supplier', 'Amount PaidEligible Amount',
       'Account No.IFSC Code', 'Branch Address', 'Actions',
     ]);
     const links = [...el.querySelectorAll('tbody a')].map((a) => [a.textContent!.trim(), a.getAttribute('href')]);
@@ -165,7 +165,7 @@ describe('staff pages per system', () => {
     http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({ transactions: [] });
     await settle();
     expect(el.querySelector('h2')!.textContent).toBe('Approved Transaction');
-    expect(headers()).toContain('Payment receipt DateApprover Ref No.Approver Amount');
+    expect(headers()).toContain('Payment Receipt DateApprover Ref No.Approver Amount');
     expect(el.querySelector('.no-data')).toBeTruthy();
   });
 });

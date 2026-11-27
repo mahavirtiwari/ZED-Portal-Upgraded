@@ -107,7 +107,7 @@ type Stage = 'pending' | 'allotted' | 'rejected';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.daAllotment.loading.text') : ('No Data' | t: 'staff.daAllotment.empty') }}</div></td></tr>
+            <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.daAllotment.loading.text') : ('No unit to show. Units waiting for a desktop assessor, and those you have allotted, are listed here.' | t: 'staff.daAllotment.empty') }}</div></td></tr>
           }
         </tbody>
       </table>

@@ -186,7 +186,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 <th class="text-center" style="width: 56px">{{ 'S.No' | t: 'staff.assessors.column.sno' }}</th>
                 <th>{{ 'Consultant Details' | t: 'staff.assessors.column.consultant' }}</th>
                 <th>{{ 'Consultant Organisation Details' | t: 'staff.assessors.column.organisation' }}</th>
-                <th class="text-center">{{ 'No. Of Consulting Completed' | t: 'staff.assessors.column.completed' }}</th>
+                <th class="text-center">{{ 'Consultancies Completed' | t: 'staff.assessors.column.completed' }}</th>
                 <th class="text-center">{{ 'Status' | t: 'staff.assessors.column.status' }}</th>
                 <th class="text-end">{{ 'Action(s)' | t: 'staff.assessors.column.consultancyActions' }}</th>
               } @else {
@@ -247,7 +247,7 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
                 </td>
                 @if (consultancy) {
                   <!-- 2026-11-21 (UI audit): the consultant's milestones completed (the live page printed a fixed 0), and those in progress. -->
-                  <td class="text-center as-milestones" [attr.data-label]="'No. Of Consulting Completed' | t: 'staff.assessors.column.completed'">
+                  <td class="text-center as-milestones" [attr.data-label]="'Consultancies Completed' | t: 'staff.assessors.column.completed'">
                     @let mc = milestonesOf(s);
                     <div>{{ 'Milestone 1:' | t: 'staff.assessors.row.milestone1' }} <strong>{{ mc.m1 }}</strong></div><div>{{ 'Milestone 2:' | t: 'staff.assessors.row.milestone2' }} <strong>{{ mc.m2 }}</strong></div><div>{{ 'Milestone 3:' | t: 'staff.assessors.row.milestone3' }} <strong>{{ mc.m3 }}</strong></div>
                     @if (mc.inProgress) { <small class="as-sub" data-in-progress>{{ '{count} in progress' | t: 'staff.assessors.row.milestonesInProgress' : { count: mc.inProgress } }}</small> }

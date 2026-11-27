@@ -68,7 +68,7 @@
           <td class="text-center">{{ s['GstinNumber'] }} {{ s['TanNumber'] }}</td>
         </tr>
       } @empty {
-        @if (!loading()) { <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ 'No Data' | t: 'staff.failedTransactions.empty' }}</div></td></tr> }
+        @if (!loading()) { <tr><td colspan="12" style="padding: 0"><div class="no-data">{{ 'No failed transaction to show.' | t: 'staff.failedTransactions.empty' }}</div></td></tr> }
       }
     </tbody>
   </table>

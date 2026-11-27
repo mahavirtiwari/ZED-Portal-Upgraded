@@ -108,7 +108,7 @@ type Mode = 'Desktop' | 'Remote' | 'Onsite';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.nonConformances.loading') : ('No Data' | t: 'staff.nonConformances.empty') }}</div></td></tr>
+            <tr><td colspan="8" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.nonConformances.loading') : ('No unit to show. Units with an open non-conformance round are listed here.' | t: 'staff.nonConformances.empty') }}</div></td></tr>
           }
         </tbody>
       </table>

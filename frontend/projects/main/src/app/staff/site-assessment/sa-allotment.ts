@@ -111,7 +111,7 @@ import { TextPipe, t } from '../../content/page-text';
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.saAllotment.loading.text') : ('No Data' | t: 'staff.saAllotment.empty') }}</div></td>
+              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">{{ busy() ? ('Loading…' | t: 'staff.saAllotment.loading.text') : ('No unit to show. Units waiting for site assessors, and those you have allotted, are listed here.' | t: 'staff.saAllotment.empty') }}</div></td>
             </tr>
           }
         </tbody>

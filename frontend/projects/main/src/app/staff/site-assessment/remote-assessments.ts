@@ -92,7 +92,7 @@ import { RemoteAllotments } from '../remote-allotments';
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No Data' | t: 'staff.remoteAssessments.empty') }}</div></td>
+                <td colspan="7" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No assessment to show. Remote and onsite assessments allotted to you are listed here.' | t: 'staff.remoteAssessments.empty') }}</div></td>
               </tr>
             }
           </tbody>
@@ -160,7 +160,7 @@ import { RemoteAllotments } from '../remote-allotments';
               </tr>
             } @empty {
               <tr>
-                <td colspan="8" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No Data' | t: 'staff.remoteAssessments.empty') }}</div></td>
+                <td colspan="8" style="padding: 0px"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.remoteAssessments.loading.text') : ('No assessment to show. Remote and onsite assessments allotted to you are listed here.' | t: 'staff.remoteAssessments.empty') }}</div></td>
               </tr>
             }
           </tbody>

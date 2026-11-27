@@ -80,7 +80,7 @@ import { TextPipe, t } from '../../content/page-text';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.daVerification.loading.text') : ('No Data' | t: 'staff.daVerification.empty') }}</div></td></tr>
+            <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ loading() ? ('Loading…' | t: 'staff.daVerification.loading.text') : ('No unit to show. Units allotted to you for desktop verification are listed here.' | t: 'staff.daVerification.empty') }}</div></td></tr>
           }
         </tbody>
       </table>

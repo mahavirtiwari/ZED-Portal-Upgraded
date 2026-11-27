@@ -43,6 +43,7 @@ const NEW = '';
     .xr-head h3 { flex: 1 1 0; min-width: 0; }
     .xr-head .xr-from { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12.5px; color: #6f8487; }
     .xr-head .form-select, .xr-head .form-control { width: auto; height: 36px; }
+    .xr-head .xr-from .form-select { min-width: 200px; padding-right: 2.5rem; }
     .xr-card table { margin: 0; table-layout: fixed; min-width: 560px; }
     .xr-c-level { width: 130px; }
     .xr-c-flow { width: 140px; }

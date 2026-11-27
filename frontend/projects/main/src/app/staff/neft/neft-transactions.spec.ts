@@ -125,7 +125,7 @@ describe('NeftTransactionsPage', () => {
     });
     await settle();
     expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual([
-      'ZED ID', 'EnterpriseName', 'UAM/ Udyam Number', 'TotalEmp', 'Gender and Social category', 'Coupon', 'GSTIN/ TAN Number', 'Amount Paid',
+      'ZED ID', 'Enterprise Name', 'UAM / Udyam Number', 'Total Employees', 'Gender and Social category', 'Coupon', 'GSTIN / TAN', 'Amount Paid',
       'UTR Number', 'Reason for Rejection',
     ]);
     const cells = [...el.querySelectorAll('tbody td')].map((td) => td.textContent!.replace(/\s+/g, ' ').trim());
