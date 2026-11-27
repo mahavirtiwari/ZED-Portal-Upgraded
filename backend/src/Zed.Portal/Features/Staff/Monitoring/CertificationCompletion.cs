@@ -49,8 +49,7 @@ public sealed class CertificationCompletion(
     /// 2026-11-08: a V4 level assessed at the desktop only is certified by the desktop assessment too.</summary>
     private static bool IsSiteLevel(string certification) => !Zed.Core.Data.LevelRegistry.IsDesktop(certification);
 
-    private static string DetailsProcedure(string certification) =>
-        IsSiteLevel(certification) ? "SP_RA_GET_CERTIFICATE_DETAILS" : "SP_DA_GET_CERTIFICATE_DETAILS";
+    private static string DetailsProcedure(bool site) => site ? "SP_RA_GET_CERTIFICATE_DETAILS" : "SP_DA_GET_CERTIFICATE_DETAILS";
 
     /// <summary>Legacy location of the certificate: Certificates/DA/{ZedId}/Bronze.pdf, Certificates/SA/{ZedId}/{Level}.pdf.</summary>
     public static string CertificatePath(string zedId, string certification) =>
@@ -98,7 +97,9 @@ public sealed class CertificationCompletion(
 
         try
         {
-            var row = (await db.QueryProcMultipleAsync(DetailsProcedure(certification), new { ZedId = zedId, CertificationType = certification }, ct))[0].FirstOrDefault();
+            // 2026-11-27: on main the case's own flow (migration 0117), else its level's; surveillance rounds keep the level's rule.
+            var site = Surveillance ? IsSiteLevel(certification) : !await CertLevels.CaseFlows.IsDesktopAsync(db, zedId, certification, log, ct);
+            var row = (await db.QueryProcMultipleAsync(DetailsProcedure(site), new { ZedId = zedId, CertificationType = certification }, ct))[0].FirstOrDefault();
             var to = row?.Text("EmailId").Trim() ?? "";
             if (to.Length == 0)
             {
@@ -112,7 +113,7 @@ public sealed class CertificationCompletion(
             var html = await templates.RenderAsync<StaffMonitoringCertificateEmail>(new Dictionary<string, object?>
             {
                 [nameof(StaffMonitoringCertificateEmail.Surveillance)] = Surveillance,
-                [nameof(StaffMonitoringCertificateEmail.SiteAssessment)] = IsSiteLevel(certification),
+                [nameof(StaffMonitoringCertificateEmail.SiteAssessment)] = site,
                 [nameof(StaffMonitoringCertificateEmail.ReportAttached)] = false,
                 [nameof(StaffMonitoringCertificateEmail.ReportUrl)] = MsmeReportUrl(portal.Value, host, ReportKind, certification),
                 [nameof(StaffMonitoringCertificateEmail.ZedId)] = zedId,

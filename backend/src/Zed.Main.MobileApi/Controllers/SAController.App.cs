@@ -252,6 +252,9 @@ public static class SaAppData
     /// 2026-11-08: every site level of Administration → Certification Levels (codes are letters and digits).
     public static string SiteLevels => string.Join(", ", LevelRegistry.Codes.Where(c => !LevelRegistry.IsDesktop(c)).Select(c => $"'{c}'"));
 
+    /// <summary>2026-11-27: a case that keeps a flow with a visit (migration 0117), though its level's flow is now Desktop only.</summary>
+    public const string VisitCase = "C.AssessmentFlow IN ('Remote', 'Onsite', 'DesktopRemote', 'DesktopOnsite')";
+
     /// <summary>
     /// One row per certification of the assessor (lead or co-assessor), with the unit, the team, the unit's representative and
     /// location, and whether the open meeting is in. The two allotment columns are searched separately (UNION), so each can use
@@ -292,8 +295,8 @@ public static class SaAppData
     /// </summary>
     public static string AssessmentsSql => "SELECT TOP (500)" + Select + """
 
-        WHERE C.Certification IN (
-        """ + SiteLevels + """
+        WHERE (C.Certification IN (
+        """ + SiteLevels + ") OR " + VisitCase + """
         ) AND C.CertificationStatus >= 8 AND CHARINDEX('_', C.ZedId) = 0
           AND (C.CertificationStatus <= 15 OR ISNULL(C.CertificationStatusDate, C.AssessmentDate) >= @Since)
         ORDER BY C.AssessmentDate DESC;
@@ -302,8 +305,8 @@ public static class SaAppData
     /// <summary>Reports: every record from the closing meeting (status 13) on, rejected and reset copies included, newest first.</summary>
     public static string ReportsSql => "SELECT TOP (200)" + Select + """
 
-        WHERE C.Certification IN (
-        """ + SiteLevels + """
+        WHERE (C.Certification IN (
+        """ + SiteLevels + ") OR " + VisitCase + """
         ) AND C.CertificationStatus >= 13
         ORDER BY ISNULL(C.CertificationStatusDate, C.AssessmentDate) DESC;
         """;

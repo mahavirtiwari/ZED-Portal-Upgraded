@@ -69,15 +69,16 @@ internal static class ZedXAppStatus
     /// </summary>
     internal static string LevelSql(string level)
     {
-        var desktop = LevelRegistry.IsDesktop(level);
         string NcTextOf(int n) =>
             $"(SELECT TOP 1 h.Descrip FROM dbo.MsmeHistory h WHERE h.ZedId = m.ZedId AND h.StatusType IN ('Nc{n}Raised', 'Nc{n}Submitted') " +
             $"AND h.CertificationType = @Level ORDER BY h.Id DESC) AS Nc{n}StatusText";
         return "SELECT @Level AS Code, " +
-            (desktop
-                ? "CASE WHEN c.CertificationStatus >= 6 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 "
-                : "CASE WHEN c.CertificationStatus > 15 THEN 4 WHEN c.CertificationStatus > 8 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 ") +
-            $"WHEN m.[Is{level}PaymentDone] = 1 THEN 1 ELSE 0 END AS Status, ISNULL(c.NcCount, 0) AS StatusOfNc, " +
+            // 2026-11-27: the case's own flow (migration 0117), else the level's (dbo.FN_V4_FLOW_DESKTOP).
+            "CASE WHEN dbo.FN_V4_FLOW_DESKTOP(c.AssessmentFlow, @Level) = 1 THEN " +
+            "CASE WHEN c.CertificationStatus >= 6 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 " +
+            $"WHEN m.[Is{level}PaymentDone] = 1 THEN 1 ELSE 0 END ELSE " +
+            "CASE WHEN c.CertificationStatus > 15 THEN 4 WHEN c.CertificationStatus > 8 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 " +
+            $"WHEN m.[Is{level}PaymentDone] = 1 THEN 1 ELSE 0 END END AS Status, ISNULL(c.NcCount, 0) AS StatusOfNc, " +
             "ISNULL(c.Nc1Status, 0) AS StatusOfNc1, ISNULL(c.Nc2Status, 0) AS StatusOfNc2, ISNULL(c.Nc3Status, 0) AS StatusOfNc3, " +
             "ISNULL(c.Nc4Status, 0) AS StatusOfNc4, ISNULL(c.Nc5Status, 0) AS StatusOfNc5, ISNULL(c.IsSaSelfieSubmitted, 0) AS SelfieStatus, " +
             string.Join(", ", Enumerable.Range(1, 5).Select(NcTextOf)) + ", " +

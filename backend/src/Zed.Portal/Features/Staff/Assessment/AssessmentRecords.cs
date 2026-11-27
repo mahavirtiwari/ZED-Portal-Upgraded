@@ -95,6 +95,11 @@ public sealed class CertificationRecord
     public string? SaCertificateNo { get; init; }
     /// <summary>ACTIVE, UPGRADED, EXPIRED ...: set by certification only (NULL while waiting).</summary>
     public string? CertificationPhase { get; init; }
+    /// <summary>2026-11-27: the flow the case started with (main only, migration 0117; NULL = the level's flow).</summary>
+    public string? AssessmentFlow { get; init; }
+
+    /// <summary>The case is certified at the desktop: its own flow is Desktop only (else its level's, <see cref="CertLevels.CaseFlows"/>).</summary>
+    public bool DesktopOnly => CertLevels.CaseFlows.IsDesktop(AssessmentFlow, Certification);
 
     /// <summary>2026-11-15: certified, whatever the level's flow (status 6 with its desktop number, or 16 with its site number).</summary>
     public bool IsCertified => Documents.DocumentLevels.IsCertifiedRecord(CertificationStatus, DaCertificateNo, CertificationPhase);
@@ -153,8 +158,11 @@ public static class AssessmentRecords
     public const string CertificationSql =
         "SELECT TOP 1 ZedId, Certification, CertificationStatus, NcCount, NcStatus, Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status, " +
         "DesktopAssessorId, DesktopAccepted, DesktopReasonForRejection, CertificationBodyUserId, SiteAssessorId, CoAssessorId, IsAutoReject, " +
-        "DaCertificateNo, SaCertificateNo, CertificationPhase " +
+        "DaCertificateNo, SaCertificateNo, CertificationPhase, AssessmentFlow " +
         "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
+
+    /// <summary><see cref="CertificationSql"/> before migration 0117 (no MsmeCertifications.AssessmentFlow: the level's flow applies).</summary>
+    internal static readonly string CertificationSqlWithoutFlow = CertificationSql.Replace(", AssessmentFlow ", " ");
 
     /// <summary>
     /// <see cref="CertificationSql"/> for ZED_CONSULTANT and ZED_SURVEILLANCE, whose MsmeCertifications has no
@@ -210,8 +218,16 @@ public static class AssessmentRecords
             }
             catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 207)
             {
-                // Invalid column: ZED_CONSULTANT / ZED_SURVEILLANCE have no CertificationPhase (2026-11-15).
-                NoPhase.AddOrUpdate(db, new object());
+                // Invalid column: ZED_CONSULTANT / ZED_SURVEILLANCE have no CertificationPhase (2026-11-15), nor AssessmentFlow;
+                // main before migration 0117 has no AssessmentFlow.
+                try
+                {
+                    return (await db.QuerySqlAsync<CertificationRecord>(CertificationSqlWithoutFlow, args, ct)).FirstOrDefault();
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex2) when (ex2.Number == 207)
+                {
+                    NoPhase.AddOrUpdate(db, new object());
+                }
             }
         }
         return (await db.QuerySqlAsync<CertificationRecord>(CertificationSqlWithoutPhase, args, ct)).FirstOrDefault();

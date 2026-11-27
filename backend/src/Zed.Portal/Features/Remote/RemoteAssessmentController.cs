@@ -344,7 +344,7 @@ public sealed partial class RemoteAssessmentController(
     public async Task<IActionResult> File(string zedId, string certification, string? path, CancellationToken ct)
     {
         // Malformed, foreign and missing files all answer 404 so file existence is not revealed.
-        var level = Level(certification);
+        var level = await Staff.SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         var requested = RemoteFiles.Normalise(path);
         if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !RemoteFiles.BelongsTo(requested, zedId, level, MeetingMode))
             return NotFound();
@@ -979,7 +979,7 @@ public sealed partial class RemoteAssessmentController(
     /// <summary>404 unless the unit is allotted in remote mode with the caller as lead or co-assessor.</summary>
     private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForViewer(string zedId, string certification, CancellationToken ct)
     {
-        var level = Level(certification);
+        var level = await Staff.SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         if (!AssessmentInput.IsId(zedId) || level is null) return (null, null, this.Problem400("Invalid request."));
         var record = await RecordAsync(zedId, level, ct);
         if (record is null || !ModeAllowed(record) ||
@@ -1044,7 +1044,8 @@ public sealed partial class RemoteAssessmentController(
     public static async Task<string?> LeadOfOpenAssessmentAsync(
         ISqlExecutor db, PortalSystem system, string userId, string zedId, string certification, CancellationToken ct)
     {
-        var level = Level(certification);
+        var level = await Staff.SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, ct);   // 2026-11-27: or the case's flow (0117)
         if (!AssessmentInput.IsId(zedId) || level is null) return null;
         var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();

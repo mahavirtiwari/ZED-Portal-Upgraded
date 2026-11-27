@@ -57,7 +57,8 @@ public static class ReviewRules
     {
         var bronze = string.Equals(r.Certification, "Bronze", StringComparison.OrdinalIgnoreCase);
         // 2026-11-08: a V4 level assessed at the desktop only has no site stage either.
-        var desktopOnly = Zed.Core.Data.LevelRegistry.IsDesktop(r.Certification);
+        // 2026-11-27: the case's own flow (taken at its final submit, migration 0117), else its level's.
+        var desktopOnly = r.DesktopOnly;
         var auto = r.IsAutoReject == true;
         var agency = IsAllottedAgency(user, r) &&
                      user.HasSubRole(stage == ReviewStage.Desktop ? SubRoles.DesktopVerification : SubRoles.SiteVerification);

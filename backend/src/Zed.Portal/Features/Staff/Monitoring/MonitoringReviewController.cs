@@ -208,7 +208,8 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         // 2026-11-08: a V4 level assessed at the desktop only is certified here, as Bronze (fix main/14 SP_MONITORING_DA_FINAL_SUBMIT).
         // 2026-11-15: every level by its flow (LevelRegistry.IsDesktop), as SP_V4_DA_FINAL_SUBMIT routes it.
         var surveillanceHost = HttpContext.RequestServices.GetService<PortalHost>()?.System == PortalSystem.Surveillance;
-        if (desktop && !(surveillanceHost ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level!) : Documents.DocumentLevels.IsDesktop(level!)))
+        // 2026-11-27: the case's own flow (migration 0117), else its level's, as SP_V4_DA_FINAL_SUBMIT routes it.
+        if (desktop && !(surveillanceHost ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level!) : record!.DesktopOnly))
             return new MessageResponse("Desktop verification completed.");
         // V4 levels (ZED-X): the certificate number and first surveillance date from Administration → Certification Levels.
         // 2026-11-08: also a V4 level completed at the desktop (ApplyAsync leaves Bronze, Silver and Gold alone).
@@ -343,7 +344,7 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
-        if (!AgencyChecks || Zed.Core.Data.LevelRegistry.IsDesktop(level)) return new FormChecksResponse(false, false, 0, false, []);
+        if (!AgencyChecks || record.DesktopOnly) return new FormChecksResponse(false, false, 0, false, []);   // 2026-11-27: the case's flow (0117)
         var can = ReviewRules.StageOf(record) == ReviewStage.Site && ReviewRules.For(CurrentUser, record, ReviewStage.Site).FinalSubmit;
         return new FormChecksResponse(true, can, 0, false, await Checks.ItemsAsync(PortalSystem.Main, zedId, level, AgencyRound(), ct));
     }

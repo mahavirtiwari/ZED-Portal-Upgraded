@@ -186,7 +186,7 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     public async Task<ActionResult<MessageResponse>> Allot(AllotRequest req, CancellationToken ct)
     {
         var zedId = req.ZedId?.Trim();
-        var certification = Level(req.Certification, SiteLevels);
+        var certification = await CaseSiteLevelAsync(db, zedId, req.Certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         var lead = req.SiteAssessorId?.Trim();
         var co = string.IsNullOrWhiteSpace(req.CoAssessorId) ? null : req.CoAssessorId.Trim();
         var date = IsoDate(req.AssessmentDate);
@@ -194,7 +194,8 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
 
         // 2026-11-14: on main the level's flow decides the mode (Desktop + Remote / Remote only: a remote assessment with a
         // meeting link; the others onsite). Surveillance stays the meeting-link flow of its procedure.
-        var remote = !Surveillance && certification is not null && IsRemoteFlow(await CertLevels.LevelFlows.FlowAsync(db, certification, log, ct));
+        // 2026-11-27: the case's own flow (migration 0117), else its level's.
+        var remote = !Surveillance && certification is not null && IsId(zedId) && IsRemoteFlow(await CertLevels.CaseFlows.FlowAsync(db, zedId!, certification, log, ct));
         // 2026-11-14 (Onsite surveillance): the level's surveillance Mode of assessment is Onsite: an onsite visit, no link.
         var onsiteVisit = Surveillance && certification is not null && await SurveillanceOnsiteAsync(certification, ct);
         var mode = remote ? Remote.RemoteAssessmentController.RemoteMode : Onsite;
@@ -317,7 +318,7 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         [FromServices] Assessment.AgencyRejections rejections, CancellationToken ct)
     {
         var zedId = req.ZedId?.Trim();
-        var certification = Level(req.Certification, SiteLevels);
+        var certification = await CaseSiteLevelAsync(db, zedId, req.Certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         if (!IsId(zedId) || certification is null) return this.Problem400("Please select valid data.");
         // 2026-11-19 (approved): a reason from Admin → Rejection Reasons and optional remarks (Assessment.AgencyRejections).
         if (Assessment.RejectionReasons.Find(await rejections.ReasonsAsync(ct), req.ReasonId) is not { } picked)

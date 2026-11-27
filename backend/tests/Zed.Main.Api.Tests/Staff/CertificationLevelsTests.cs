@@ -256,6 +256,39 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal("Remote", levels[1].GetProperty("surveillanceMode").GetString());
     }
 
+    /// <summary>
+    /// 2026-11-27 (migration 0117): a level's flow may change while units are being assessed; they keep the flow they started with
+    /// (pinned before the new one is saved), and the message says so. (Earlier that day the change was refused.)
+    /// </summary>
+    [Fact]
+    public async Task A_flow_change_pins_the_units_in_progress_and_says_so()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        _host.Sql.Queries[CertificationLevelsController.InProgressCountSql] = _ => [3];
+        Dictionary<string, object?> Body(string flow) => new()
+        {
+            ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
+            ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["assessmentFlow"] = flow, ["surveillanceMode"] = "Remote",
+        };
+
+        // ZED-X is Desktop + Onsite (nothing stored): changed to Desktop only, its 3 units in progress keep Desktop + Onsite.
+        var saved = await admin.PutAsJsonAsync($"{Url}/zedx", Body("Desktop"));
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        var message = (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString();
+        Assert.Contains("3 units being assessed keep Desktop + Onsite; new applications follow Desktop only.", message);
+        var pin = Assert.Single(_host.Sql.Calls, c => c.Name == CertificationLevelsController.PinInProgressSql).Args;
+        Assert.Equal(("ZEDX", "DesktopOnsite"), (FakeSql.Arg(pin, "Code"), FakeSql.Arg(pin, "Flow")));
+        // The units are pinned before the new flow is saved.
+        var calls = _host.Sql.Calls.Select(c => c.Name).ToList();
+        Assert.True(calls.IndexOf(CertificationLevelsController.PinInProgressSql) < calls.IndexOf(LevelFlows.SaveSql));
+
+        // The flow unchanged: nothing pinned, no note.
+        _host.Sql.Queries[LevelFlows.ReadSql] = _ => [new { Code = "ZEDX", AssessmentFlow = "Desktop", SurveillanceMode = "Remote" }];
+        var again = await admin.PutAsJsonAsync($"{Url}/zedx", Body("Desktop"));
+        Assert.DoesNotContain("being assessed", (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Single(_host.Sql.Calls, c => c.Name == CertificationLevelsController.PinInProgressSql);
+    }
+
     /// <summary>2026-11-16 (approved): the Admin sets each level's NC rounds (1-5) and days to close them (migration 0086).</summary>
     [Fact]
     public async Task A_level_saves_its_NC_rounds_and_days_and_the_list_shows_the_defaults_of_its_flow()

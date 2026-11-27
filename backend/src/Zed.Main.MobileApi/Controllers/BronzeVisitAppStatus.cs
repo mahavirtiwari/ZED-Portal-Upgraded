@@ -25,7 +25,7 @@ internal static class BronzeVisitAppStatus
     internal const string Sql = """
         SELECT TOP (1) ISNULL(c.CertificationStatus, 0) AS CertificationStatus, c.ModeOfAssessment,
                CAST(CASE WHEN c.DaCertificateNo IS NOT NULL OR (c.CertificationStatus = 6 AND ISNULL(c.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED'))
-                          OR (dbo.FN_V4_LEVEL_DESKTOP(c.Certification) = 1 AND (c.CertificationStatus < 6 OR c.CertificationStatus IN (7, 99)))
+                          OR (dbo.FN_V4_FLOW_DESKTOP(c.AssessmentFlow, c.Certification) = 1 AND (c.CertificationStatus < 6 OR c.CertificationStatus IN (7, 99)))
                          THEN 1 ELSE 0 END AS bit) AS DesktopPath
         FROM dbo.MsmeCertifications c
         WHERE c.ZedId = @ZedId AND c.Certification = 'Bronze'

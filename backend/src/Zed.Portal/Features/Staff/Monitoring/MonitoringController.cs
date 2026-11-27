@@ -279,7 +279,7 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
     {
         // SP_MONITORING_SEND_BACK_TO_AGENCY_FOR_REALLOCATION exists only in the main database.
         if (host.System != PortalSystem.Main) return NotFound();
-        if (Level(req.Certification, SiteLevels) is null)
+        if (await CaseSiteLevelAsync(db, req.ZedId, req.Certification, log, ct) is null)   // 2026-11-27: or the case's flow (0117)
             return this.Problem400("Please select valid data.");
         // The page offered this on "Scheduled but not started" (status 8) and "In progress" (status 9).
         var (unit, problem) = await FindAsync(req.ZedId, req.Certification, [2, 3], ct,

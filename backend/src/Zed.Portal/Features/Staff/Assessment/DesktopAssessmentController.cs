@@ -202,7 +202,7 @@ public sealed partial class DesktopAssessmentController(
         var surveillance = system == PortalSystem.Surveillance;
         // 2026-11-15: a level certified at the desktop (Bronze by default; any level whose flow is Desktop only). Bronze, Silver
         // and Gold may now have any flow (migration 0078); on the surveillance portal the levels keep their old rule.
-        var desktopOnly = surveillance ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level) : Zed.Core.Data.LevelRegistry.IsDesktop(level);
+        var desktopOnly = surveillance ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level) : record.DesktopOnly;   // 2026-11-27: the case's flow (0117)
         var evidences = Evidences(da[7], zedId, level, moved, system);
         // The procedure sends Silver's result sets for every level but Bronze, and (2026-11-15, migration 0079) for a Bronze
         // with a visit too: the screenshots are set 21 then, else set 10 (Bronze's sets).

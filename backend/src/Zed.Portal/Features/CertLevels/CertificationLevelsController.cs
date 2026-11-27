@@ -245,35 +245,45 @@ public sealed partial class CertificationLevelsController(
          LevelManDays.Problem(NotSet(req.ManDays), NotSet(req.SurveillanceManDays)));
 
     /// <summary>
-    /// 2026-11-27 (the owner, workflow review: "block while in progress"): the units of a level between the documents' submission and
-    /// their certification or rejection. Every step reads the level's flow when it runs, so a flow changed under them would route them
-    /// by the new one from their next step (a Desktop only case with an open desktop NC would go on to the visit without it).
+    /// 2026-11-27 (the owner): each case keeps the flow it started with (CaseFlows, migration 0117), so a level's flow may be changed at
+    /// any time; only applications submitted afterwards follow the new one. (Earlier the same day the change was refused while units
+    /// were being assessed.) Before the new flow is saved, every unit of the level being assessed (documents submitted, not certified
+    /// or rejected) that has no flow of its own yet takes the level's current one, so none is re-routed.
     /// </summary>
-    internal const string InProgressUnitsSql =
-        "SELECT TOP (6) ZedId FROM dbo.MsmeCertifications C WHERE C.Certification = @Code AND C.CertificationStatus BETWEEN 2 AND 98 " +
-        "AND C.CertificationStatus <> 16 AND NOT (C.CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(C.DaCertificateNo)), '') IS NOT NULL " +
-        "OR ISNULL(C.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED'))) ORDER BY C.CertificationStatusDate;";
+    internal const string PinInProgressSql =
+        "UPDATE dbo.MsmeCertifications SET AssessmentFlow = @Flow WHERE Certification = @Code AND AssessmentFlow IS NULL " +
+        "AND CertificationStatus BETWEEN 2 AND 98 AND CertificationStatus <> 16 AND NOT (CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(DaCertificateNo)), '') IS NOT NULL " +
+        "OR ISNULL(CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED')));";
 
-    /// <summary>Why the flow cannot be changed now (null: unchanged, or no unit of the level is being assessed).</summary>
-    private async Task<string?> FlowLockedAsync(CertificationLevel level, LevelRequest req, CancellationToken ct)
+    /// <summary>The units of the level being assessed (as <see cref="PinInProgressSql"/>).</summary>
+    internal const string InProgressCountSql =
+        "SELECT COUNT(*) FROM dbo.MsmeCertifications C WHERE C.Certification = @Code AND C.CertificationStatus BETWEEN 2 AND 98 " +
+        "AND C.CertificationStatus <> 16 AND NOT (C.CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(C.DaCertificateNo)), '') IS NOT NULL " +
+        "OR ISNULL(C.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED')));";
+
+    /// <summary>
+    /// When the flow changes: pins the units in progress to the current flow and says so (the message's tail); null when the flow
+    /// is unchanged. Problem: the units could not be pinned (migration 0117 not applied, or the database failed): the change is refused.
+    /// </summary>
+    private async Task<(string? Note, string? Problem)> FlowChangeAsync(CertificationLevel level, LevelRequest req, CancellationToken ct)
     {
-        if (req.AssessmentFlow is not { } wanted || host.System != PortalSystem.Main) return null;
+        if (req.AssessmentFlow is not { } wanted || host.System != PortalSystem.Main) return (null, null);
         var current = await LevelFlows.FlowAsync(db, level.Code, log, ct);
-        if (string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase)) return null;
-        IReadOnlyList<string> units;
+        if (string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase)) return (null, null);
+        int units;
         try
         {
-            units = await db.QuerySqlAsync<string>(InProgressUnitsSql, new { Code = level.Code }, ct);
+            await db.ExecuteSqlAsync(PinInProgressSql, new { Code = level.Code, Flow = current }, ct);
+            units = (await db.QuerySqlAsync<int>(InProgressCountSql, new { Code = level.Code }, ct)).FirstOrDefault();
         }
         catch (System.Data.Common.DbException ex)
         {
-            log.LogWarning(ex, "Units in progress of {Code} not read: the flow change is refused", level.Code);
-            return "The assessment flow cannot be changed right now. Please try again later.";
+            log.LogWarning(ex, "Units in progress of {Code} not pinned to their flow (is migration 0117 applied?): the flow change is refused", level.Code);
+            return (null, "The assessment flow cannot be changed right now. Please try again later.");
         }
-        if (units.Count == 0) return null;
-        var shown = string.Join(", ", units.Take(5)) + (units.Count > 5 ? " and more" : "");
-        return $"The assessment flow of {level.Name} cannot be changed while units are being assessed at this level ({shown}). " +
-               "Change it once they are certified or rejected; the other settings can be saved with the flow unchanged.";
+        log.LogInformation("Flow of {Code}: {From} to {To}; {Units} unit(s) in progress keep {From}", level.Code, current, wanted, units, current);
+        return (units == 0 ? $" New applications follow {LevelFlows.Label(wanted)}."
+            : $" {units} unit{(units == 1 ? "" : "s")} being assessed keep{(units == 1 ? "s" : "")} {LevelFlows.Label(current)}; new applications follow {LevelFlows.Label(wanted)}.", null);
     }
 
     /// <summary>0 = not set (the page sends 0 to clear a value; null = left out).</summary>
@@ -330,9 +340,11 @@ public sealed partial class CertificationLevelsController(
         if (flowProblem is not null) return this.Problem400(flowProblem);
         if (Validate(req, level.Code) is { } problem) return this.Problem400(problem);
         if (req.IsEnabled && !level.IsEnabled && await NotReadyAsync(level, ct) is { } notReady) return this.Problem400(notReady);
-        if (await FlowLockedAsync(level, req, ct) is { } locked) return this.Problem400(locked);
+        var (changeNote, changeProblem) = await FlowChangeAsync(level, req, ct);
+        if (changeProblem is not null) return this.Problem400(changeProblem);
         if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
         var flowNote = await SaveFlowAsync(level.Code, req, ct);
+        if (flowNote.Length == 0) flowNote = changeNote ?? "";   // the units' note only when the new flow was saved
         await RefreshRegistryAsync(ct);
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
         return new MessageResponse($"{req.Name!.Trim()} saved." + flowNote);

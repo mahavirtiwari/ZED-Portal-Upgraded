@@ -83,7 +83,8 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         if (row is null) return this.Problem400("This assessment is not allotted to your agency or can no longer be allotted.");
         // 2026-11-27 (workflow review): a Remote only / Onsite only level has no desktop step (a failed desktop skip left such a unit
         // at 2, where it could be given a desktop assessor); it waits for its site / remote assessor instead.
-        if (!Surveillance && !CertLevels.LevelFlows.ModesOf(await CertLevels.LevelFlows.FlowAsync(db, level, log, ct)).Contains('D'))
+        // 2026-11-27: the case's own flow (migration 0117), else its level's.
+        if (!Surveillance && !CertLevels.LevelFlows.ModesOf(await CertLevels.CaseFlows.FlowAsync(db, req.ZedId!, level, log, ct)).Contains('D'))
             return this.Problem400($"{Zed.Core.Data.LevelRegistry.NameOf(level)} has no desktop assessment: allot its site / remote assessor instead.");
 
         // Main (2026-11-14): any of the agency's assessors ticked for the level at the desktop (Users.AssessmentModes; the old

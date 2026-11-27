@@ -47,7 +47,8 @@ public static partial class LevelCertification
     public static async Task<string?> ApplyAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)
     {
         if (DocumentLevels.IsBuiltIn(level)) return null;
-        var desktop = DocumentLevels.IsDesktop(level);
+        // 2026-11-27: the case's own flow (migration 0117), else its level's.
+        var desktop = await CertLevels.CaseFlows.IsDesktopAsync(db, zedId, level, log, ct);
         var row = (await db.QuerySqlAsync<Row>(desktop ? DesktopRowSql : RowSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault();
         if (row?.SaCertificateNo is not { Length: > 0 } current || !ProcedureNumber().IsMatch(current)) return row?.SaCertificateNo;
         var settings = await CertificationLevels.FindAsync(db, level, log, ct);

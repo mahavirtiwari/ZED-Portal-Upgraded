@@ -33,6 +33,12 @@ What the single Admin (main portal) sets, and where it shows. See also `USER-MAN
 - **Assessment** (Certificate tab): Desktop only · Remote only · Onsite only · Desktop + Remote · Desktop + Onsite
   (`dbo.SectionTypes.AssessmentFlow`, migration 0072; the old `AssessmentMode` stays in step: Desktop only = 'Desktop',
   the others 'Site'). Not set = as before (Bronze Desktop only, the others Desktop + Onsite).
+  **Each case keeps the flow it started with** (2026-11-27, migration 0117): the level's flow is copied into
+  `MsmeCertifications.AssessmentFlow` at the documents' final submit, and every later step of that case reads the case's
+  copy (`FN_V4_CASE_FLOW` / `FN_V4_CASE_DESKTOP`; C# `CaseFlows`). The Admin may change a level's flow at any time: the units
+  being assessed keep their flow (any still without a copy get the current one before the change is saved, and the save
+  message says how many), and only applications submitted afterwards follow the new flow. Payment, eligibility and the
+  applicant's level cards stay on the level's flow.
 - **Mode of assessment** (Surveillance tab): Remote (today's flow with a meeting link) or Onsite (as an onsite assessment
   on the parameters marked "In surveillance") (`dbo.SectionTypes.SurveillanceMode`; not set = Remote). Both are saved on main and on the same level's row of the ZED_SURVEILLANCE copy, which the surveillance portal reads.
 - What each choice does (all built since 2026-11-14 step 2; Bronze stays Desktop only and Silver / Gold keep a site step):

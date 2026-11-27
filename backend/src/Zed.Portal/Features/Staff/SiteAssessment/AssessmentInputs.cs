@@ -18,6 +18,19 @@ internal static partial class AssessmentInputs
     /// <summary>Certification levels with a site assessment (the SA branch of SP_ASSESSMENT_ALLOT_LIST excludes Bronze).</summary>
     public static string[] SiteLevels => [.. Zed.Core.Data.LevelRegistry.Codes.Where(c => !Zed.Core.Data.LevelRegistry.IsDesktop(c))];
 
+    /// <summary>
+    /// 2026-11-27: the level of a unit's case with a site assessment: a site level (<see cref="SiteLevels"/>), or on main a level
+    /// whose flow is now Desktop only while the unit's case keeps the flow with a visit it started with (migration 0117). Elsewhere
+    /// (no MsmeCertifications.AssessmentFlow) only the site levels.
+    /// </summary>
+    public static async Task<string?> CaseSiteLevelAsync(Zed.Core.Data.ISqlExecutor db, string? zedId, string? value, ILogger log, CancellationToken ct)
+    {
+        if (Level(value, SiteLevels) is { } site) return site;
+        if (!IsId(zedId) || Level(value, Levels) is not { } level) return null;
+        var flow = await CertLevels.CaseFlows.StoredAsync(db, zedId!.Trim(), level, log, ct);
+        return flow is not null && flow != CertLevels.LevelFlows.Desktop ? level : null;
+    }
+
     /// <summary>Levels on the monitoring screen.</summary>
     public static string[] Levels => [.. Zed.Core.Data.LevelRegistry.Codes];
 

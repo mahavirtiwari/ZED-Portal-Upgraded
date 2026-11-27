@@ -74,6 +74,9 @@ public sealed partial class MsmeController
 
     /// <summary>2026-11-27 (permissions review): the NC answers' last day (MsmeCertifications.NcFinalClosureDt, the Admin's days from
     /// the first NC); past it the answers are refused, as the expiry job rejects the application.</summary>
+    /// <summary>2026-11-27: the case is certified at the desktop by the flow it started with (dbo.FN_V4_CASE_DESKTOP, migration 0117).</summary>
+    internal const string CaseDesktopSql = "SELECT CAST(dbo.FN_V4_CASE_DESKTOP(@ZedId, @Level) AS bit);";
+
     internal const string NcClosesSql = "SELECT TOP (1) NcFinalClosureDt FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Level;";
 
     /// <summary>Null when the level is not Bronze/Silver/Gold/ZED-X or the ZED ID is unknown.</summary>
@@ -94,7 +97,14 @@ public sealed partial class MsmeController
             var c = (await db.QuerySqlAsync<DateTime?>(NcClosesSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault();
             closes = c;
         }
-        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, LevelRegistry.IsDesktop(level), closes);
+        // 2026-11-27: the case keeps the flow it started with (migration 0117): desktop by its own flow, else by its level's.
+        var desktop = LevelRegistry.IsDesktop(level);
+        try
+        {
+            if ((await db.QuerySqlAsync<bool?>(CaseDesktopSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault() is { } d) desktop = d;
+        }
+        catch (System.Data.Common.DbException ex) { log.LogDebug(ex, "Case flow of {ZedId} {Level} not read (migration 0117?)", zedId, level); }
+        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, desktop, closes);
     }
 
     private ContentResult StageRefused(string action, string? zedId, string? certificationType, LevelStage? stage)

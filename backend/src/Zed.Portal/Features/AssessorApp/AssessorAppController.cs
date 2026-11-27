@@ -54,10 +54,10 @@ public sealed class AssessorAppController(
         if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
             return Unauthorized();
 
-        // Site levels only: Bronze has no site assessor.
-        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not { } level || DocumentLevels.IsDesktop(level)) return NotFound();
+        // Site levels only: Bronze has no site assessor. 2026-11-27: by the case's own flow (migration 0117), else its level's.
+        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not { } level) return NotFound();
         var record = await AssessmentRecords.CertificationAsync(db, zedId!, level, ct);
-        if (record is null || !(Is(record.SiteAssessorId, t.User) || Is(record.CoAssessorId, t.User)))
+        if (record is null || record.DesktopOnly || !(Is(record.SiteAssessorId, t.User) || Is(record.CoAssessorId, t.User)))
         {
             log.LogWarning("SA app report of {ZedId} {Level} refused to {UserId}: not the record's assessor", zedId, level, t.User);
             return NotFound();
@@ -78,9 +78,9 @@ public sealed class AssessorAppController(
         if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
             return Unauthorized();
 
-        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not { } level || DocumentLevels.IsDesktop(level)) return NotFound();
+        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not { } level) return NotFound();
         var record = await AssessmentRecords.CertificationAsync(db, zedId!, level, ct);
-        if (record is null || !(Is(record.SiteAssessorId, t.User) || Is(record.CoAssessorId, t.User)))
+        if (record is null || record.DesktopOnly || !(Is(record.SiteAssessorId, t.User) || Is(record.CoAssessorId, t.User)))
         {
             log.LogWarning("SA app report link of {ZedId} {Level} refused to {UserId}: not the record's assessor", zedId, level, t.User);
             return NotFound();

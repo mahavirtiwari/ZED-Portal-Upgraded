@@ -17,10 +17,10 @@ public static class DesktopSkip
 
     /// <summary>
     /// The units of these ZED IDs waiting at status 6 with no desktop step: no desktop assessor and no desktop certificate
-    /// (SP_V4_SKIP_DESKTOP leaves exactly that), with their level's flow.
+    /// (SP_V4_SKIP_DESKTOP leaves exactly that), with the case's flow (2026-11-27, migration 0117), else their level's.
     /// </summary>
     internal const string WaitingSql =
-        "SELECT P.ZedId, P.Certification, ST.AssessmentFlow AS Flow FROM dbo.MsmeCertifications P " +
+        "SELECT P.ZedId, P.Certification, COALESCE(NULLIF(LTRIM(RTRIM(P.AssessmentFlow)), ''), ST.AssessmentFlow) AS Flow FROM dbo.MsmeCertifications P " +
         "LEFT JOIN dbo.SectionTypes ST ON ST.SectionType = P.Certification AND ST.IsCertificationLevel = 1 " +
         "WHERE P.ZedId IN @ZedIds AND P.CertificationStatus = 6 AND NULLIF(P.DesktopAssessorId, '') IS NULL AND P.DaCertificateNo IS NULL;";
 

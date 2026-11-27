@@ -35,7 +35,8 @@ internal static class AllotmentAgencies
         // 2026-11-25 (the user: Bronze set to Onsite only, no agency has onsite permission, yet every agency was offered): on main
         // the level's flow (Admin → Certification Levels) decides: a flow with a visit (Remote or Onsite, alone or after the desktop
         // step) needs Remote/Onsite (SiteVerification), as Silver and Gold always did; Desktop only needs Desktop verification.
-        if (host.System == PortalSystem.Main) columns = FlowColumns(await CertLevels.LevelFlows.FlowAsync(db, level, log, ct));
+        // 2026-11-27: the unit's case keeps the flow it started with (migration 0117): a re-allotment follows the case's flow.
+        if (host.System == PortalSystem.Main) columns = FlowColumns(await CertLevels.CaseFlows.FlowAsync(db, zedId, level, log, ct));
         // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
         var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);

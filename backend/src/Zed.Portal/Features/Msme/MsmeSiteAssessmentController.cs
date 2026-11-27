@@ -153,10 +153,15 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
     [HttpGet("{certification}")]
     public async Task<ActionResult<SiteAssessmentResponse>> Get(string certification, CancellationToken ct)
     {
-        if (!CertificationTypes.TryGetValue(certification ?? "", out var type))
-            return this.Problem400("Invalid certification.");
-
         var zedId = ZedId;
+        if (!CertificationTypes.TryGetValue(certification ?? "", out var type))
+        {
+            // 2026-11-27: a level now Desktop only whose case keeps the flow with a visit it started with (migration 0117).
+            if (await Staff.SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification,
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance, ct) is not { } caseLevel)
+                return this.Problem400("Invalid certification.");
+            type = caseLevel;
+        }
         var args = new { UserId = zedId, RoleId, ZedId = zedId, Certification = type };
         var msmeTask = db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = type }, ct);
         var daTask = db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS", args, ct);

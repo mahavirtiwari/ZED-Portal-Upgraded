@@ -233,7 +233,7 @@ public sealed class SiteReviewController(
     [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
     public async Task<ActionResult<SaDetailsResponse>> Get(string zedId, string certification, CancellationToken ct)
     {
-        var level = SiteLevel(certification);
+        var level = await SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
 
         var user = CurrentUser;
@@ -513,7 +513,7 @@ public sealed class SiteReviewController(
     public async Task<IActionResult> File(string zedId, string certification, string? path, CancellationToken ct)
     {
         // Malformed, foreign and missing files all answer 404 so file existence is not revealed.
-        var level = SiteLevel(certification);
+        var level = await SiteAssessment.AssessmentInputs.CaseSiteLevelAsync(db, zedId, certification, log, ct);   // 2026-11-27: or the case's flow (0117)
         var requested = SiteReviewFiles.Normalise(path);
         if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !SiteReviewFiles.BelongsTo(requested, zedId))
             return NotFound();
