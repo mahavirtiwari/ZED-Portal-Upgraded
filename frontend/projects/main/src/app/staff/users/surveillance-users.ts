@@ -84,9 +84,9 @@ interface Target {
     <div class="zed-card sv-list">
       <div class="table-responsive">
         @if (kind === 'agencies') {
-          <table class="table table-zed sv-table">
+          <table class="table table-zed sv-table sv-agencies">
             <thead>
-              <tr><th>{{ 'Agency' | t: 'staff.surveillanceUsers.column.agency' }}</th><th>{{ 'SPOC' | t: 'staff.surveillanceUsers.column.spoc' }}</th><th>{{ 'Verification' | t: 'staff.surveillanceUsers.column.verification' }}</th><th class="text-center">{{ 'Assessors' | t: 'staff.surveillanceUsers.column.assessors' }}</th><th class="sv-alloc">{{ 'Allocated' | t: 'staff.surveillanceUsers.column.allocated' }}</th><th>{{ 'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze' }}</th><th class="text-center">{{ 'Status' | t: 'staff.surveillanceUsers.column.status' }}</th><th class="text-end">{{ 'Actions' | t: 'staff.surveillanceUsers.column.actions' }}</th></tr>
+              <tr><th>{{ 'Agency' | t: 'staff.surveillanceUsers.column.agency' }}</th><th class="c-spoc">{{ 'SPOC' | t: 'staff.surveillanceUsers.column.spoc' }}</th><th class="c-ver">{{ 'Verification' | t: 'staff.surveillanceUsers.column.verification' }}</th><th class="text-center c-n">{{ 'Assessors' | t: 'staff.surveillanceUsers.column.assessors' }}</th><th class="sv-alloc">{{ 'Allocated' | t: 'staff.surveillanceUsers.column.allocated' }}</th><th class="c-bz">{{ 'Bronze surveillance' | t: 'staff.surveillanceUsers.column.bronze' }}</th><th class="text-center c-st">{{ 'Status' | t: 'staff.surveillanceUsers.column.status' }}</th><th class="text-end c-act">{{ 'Actions' | t: 'staff.surveillanceUsers.column.actions' }}</th></tr>
             </thead>
             <tbody>
               @for (a of agenciesView.page(); track a.userId) {
@@ -299,6 +299,18 @@ interface Target {
     .sv-pill { display: inline-block; margin: 2px 4px 2px 0; padding: 3px 10px; border-radius: 12px; background: #eef2f2; color: #4d6062; font-size: 12px; font-weight: 600; white-space: nowrap; }
     .sv-agency-line { margin-top: 3px; }
     .sv-alloc { min-width: 170px; }
+    /* 2026-11-27 (UI review: the agencies table was 1332px in its 1294px card): fixed columns sharing the card from 1000px;
+       the Bronze surveillance button's label may take two lines. */
+    .sv-agencies { min-width: 1000px; table-layout: fixed; }
+    .sv-agencies .c-spoc { width: 15%; }
+    .sv-agencies .c-ver { width: 13%; }
+    .sv-agencies .c-n { width: 96px; }
+    .sv-agencies .sv-alloc { width: 14%; min-width: 0; }
+    .sv-agencies .c-bz { width: 11%; }
+    .sv-agencies .c-st { width: 96px; }
+    .sv-agencies .c-act { width: 176px; }
+    .sv-agencies .bronze-status { min-width: 0; }
+    .sv-agencies .sv-btns .btn { white-space: normal; line-height: 1.2; }
     .sv-cap { margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: var(--zt-ink, #173f44); }
     .no-mobile { color: #8a6100; }
     .sv-phone { display: block; margin-top: 6px; }
@@ -327,6 +339,7 @@ interface Target {
       .sv-showing { margin-left: 0; }
       .sv-list { background: none; border: 0; box-shadow: none; }
       .sv-table thead { display: none; }
+      .sv-agencies { min-width: 0; table-layout: auto; }
       .sv-table, .sv-table tbody, .sv-table tr, .sv-table td { display: block; width: 100%; }
       .sv-table tr { position: relative; background: #fff; border: 1px solid #e1eaea; border-radius: 12px; margin-bottom: 12px; padding: 8px 14px; }
       .sv-table tr.empty-row { border: 0; padding: 0; }

@@ -330,11 +330,13 @@ export function assessorBlockAsk(name: string, userId: string, open: number | nu
     /* 2026-11-26 (the user: floating text, "check View button too"): the columns share the card's width. At 1440px fixed the
        table was wider than a laptop's card (about 1,294px): the Assessor column scrolled out on the left and View / ⋮ sat on
        the clipped right edge. Actions keeps the room of View + ⋮; the rest are shares; a scroll only below 1180px. */
-    .as-table.is-main { min-width: 1180px; table-layout: fixed; }
-    .as-table .c-who { width: 14%; }
-    .as-table .c-lv { width: 12%; }
+    /* 2026-11-27 (UI review: the table scrolled inside its card on a 1366px screen): fits from 1000px; the name column is
+       wider and the sector chip column narrower. */
+    .as-table.is-main { min-width: 1000px; table-layout: fixed; }
+    .as-table .c-who { width: 16%; }
+    .as-table .c-lv { width: 11.5%; }
     .as-table .c-alloc { width: 13%; }
-    .as-table .c-sec { width: 11.5%; }
+    .as-table .c-sec { width: 10%; }
     .as-table .c-con { width: 14%; }
     .as-table .c-ag { width: 12%; }
     .as-table .c-st { width: 12.5%; }

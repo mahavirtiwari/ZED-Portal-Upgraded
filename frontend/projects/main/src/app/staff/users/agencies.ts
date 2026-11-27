@@ -62,15 +62,16 @@ const DISABLE_NOTE_KEY = 'staff.users.agencyLevel.disableNote';
     .ag-search svg { position: absolute; left: 12px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); fill: none; stroke: #6f8487; stroke-width: 2; }
     .ag-search input { padding-left: 36px; height: 38px; border-radius: 9px; background-image: none; }
     .ag-card { padding: 0; overflow: hidden; }
-    .ag-table { min-width: 1060px; margin: 0; table-layout: fixed; }
+    /* 2026-11-27 (UI review: on a 1366px screen the 1250px table scrolled inside its 1114px card, and the agency column had
+       94px): the columns share the card's width, so the table fits from 1000px and the agency name keeps about 200px. */
+    .ag-table { min-width: 1000px; margin: 0; table-layout: fixed; }
     /* 2026-11-18: the Allocated column (level chips, two per line at most) beside the category. */
-    .ag-table.has-alloc { min-width: 1250px; }
-    .ag-table th.c-alloc { width: 200px; }
-    .ag-table th.c-spoc { width: 240px; }
-    .ag-table th.c-cat { width: 270px; }
+    .ag-table th.c-alloc { width: 13%; }
+    .ag-table th.c-spoc { width: 15%; }
+    .ag-table th.c-cat { width: 15%; }
     /* 2026-11-21 (UI audit L4): room for "ASSESSORS" on one line (headings no longer break inside a word). */
     .ag-table th.c-n { width: 116px; }
-    .ag-table th.c-st { width: 110px; }
+    .ag-table th.c-st { width: 96px; }
     .ag-table th.c-act { width: 220px; }
     .ag-table.is-levels th.c-cat { width: 280px; }
     .ag-table th.c-lv { width: 150px; }
