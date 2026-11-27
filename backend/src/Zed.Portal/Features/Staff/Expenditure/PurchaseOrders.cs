@@ -71,7 +71,9 @@ public static class PoLimits
     /// </summary>
     internal static readonly string MainInProgressSql = InProgressSql(
         "C.CertificationStatus BETWEEN 2 AND 98 AND C.CertificationStatus <> 16 " +
-        "AND NOT (C.CertificationStatus = 6 AND (C.DaCertificateNo IS NOT NULL OR C.CertificationPhase IS NOT NULL))", " AND C.ExpCountedOn IS NULL");
+        // 2026-11-27 (workflow review): a 6 is done only when certified (ExpenditureSweep.MainCertified); the phase PENDING of a case
+        // waiting for its site / remote assessor counted it as done.
+        "AND NOT " + ExpenditureSweep.MainCertified, " AND C.ExpCountedOn IS NULL");
     /// <summary>
     /// Consultancy: every milestone started (paid, 1..NcCount) and not counted yet. A milestone counts only when the next one
     /// is paid (the last: when the unit is certified), so a finished one waiting for that stays committed to the PO.

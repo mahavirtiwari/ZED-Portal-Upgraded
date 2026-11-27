@@ -74,7 +74,9 @@ public sealed partial class MsmeProfileEmailTests : IDisposable
         Assert.Contains(_host.Email.Sent, m => m.To == "old@acme.test" && m.Subject.Contains("changed"));
         var recorded = _host.Sql.Calls.First(c => c.Name.Contains("V4MsmeEditHistory") && c.Name.StartsWith("INSERT"));
         Assert.Equal("Profile: e-mail changed", FakeSql.Arg(recorded.Args, "Action"));
-        Assert.DoesNotContain("new@acme.test", FakeSql.Arg(recorded.Args, "Data"));
+        // 2026-11-27: in full, as every signed-in screen shows contacts (the edit history is read by the unit and the staff only).
+        Assert.Contains("new@acme.test", FakeSql.Arg(recorded.Args, "Data"));
+        Assert.Contains("old@acme.test", FakeSql.Arg(recorded.Args, "Data"));
 
         // The OTP works once.
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/profile/email/verify", new { otp })).StatusCode);

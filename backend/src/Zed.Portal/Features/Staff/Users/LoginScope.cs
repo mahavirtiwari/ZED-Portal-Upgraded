@@ -170,6 +170,14 @@ public static class LoginScopeExtensions
         var user = Zed.Core.Security.ZedUser.FromPrincipal(http.User);
         if (user is null) return LoginScope.None;
         var scope = await http.RequestServices.GetRequiredService<LoginScopes>().ForAsync(user.UserId, user.RoleId, ct);
+        // 2026-11-27 (permissions review): a state-bound Ministry login (Users.StateCode) sees its own state's units only, on the unit
+        // pages too (profile, desktop and site details, certificates, milestones), as Registered MSMEs already forces it; a ZED ID of
+        // another state answered with the unit's PAN, mobile and e-mail.
+        if (user.RoleId == (int)Zed.Core.Security.UserRole.Ministry && user.StateCode?.Trim() is { Length: > 0 } own)
+            scope = scope with
+            {
+                StateCodes = scope.StateCodes.Count == 0 ? [own] : scope.StateCodes.Where(s => string.Equals(s, own, StringComparison.OrdinalIgnoreCase)).DefaultIfEmpty("-").ToList(),
+            };
         if (!user.IsSubUser) return scope;
         var sub = await http.RequestServices.GetRequiredService<SubUsers.SubUserStore>().FindCachedAsync(user.ActingUserId!, ct);
         return sub is null || (sub.ScopeStates is null && sub.ScopeAgencies is null)

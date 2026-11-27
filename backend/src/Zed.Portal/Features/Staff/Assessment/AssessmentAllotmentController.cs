@@ -58,7 +58,7 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         // 2026-11-17 (approved redesign): the unit's district, state and size (the procedure's Msme columns) for the rows.
         string[] place = ["PDistrictName", "PStateName", "EnterpriseTypee"];
         // 2026-11-18: main adds the units an agency rejected at the site allotment (SiteRejections), to re-allot.
-        IEnumerable<IDictionary<string, object?>> listed = sets[0];
+        IEnumerable<IDictionary<string, object?>> listed = host.System == PortalSystem.Main ? sets[0].Where(Allottable) : sets[0];
         if (host.System == PortalSystem.Main)
             listed = listed.Concat(await SiteRejections.ListAsync(db, null, type, f, log, ct));
         // A Master Admin with a scope sees only its units and levels (migration 0057).
@@ -255,6 +255,19 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
     }
 
     /// <summary>
+    /// 2026-11-27 (the owner, workflow review: "only stuck cases"): main's allot list row the Master Admin may act on. A unit without an
+    /// agency, always; one with an agency only when it is stuck: rejected by the agency or its desktop assessor, or flagged by the
+    /// procedure (TimeDuration 'Reallot': no desktop assessor accepted it within 72 hours). A desktop assessment in progress and on time
+    /// is no longer listed nor re-allotted (re-allotting sent it back to 2 and removed its assessor). The units waiting at their agency
+    /// after the desktop stage come from SiteRejections, as before.
+    /// </summary>
+    internal static bool Allottable(IDictionary<string, object?> r) =>
+        string.IsNullOrWhiteSpace(r.Text("CertificationBodyUserId"))
+        || string.Equals(r.Text("TimeDuration"), "Reallot", StringComparison.OrdinalIgnoreCase)
+        || !string.IsNullOrWhiteSpace(r.Text("ReasonForRejection"))
+        || !string.IsNullOrWhiteSpace(r.Text("DesktopReasonForRejection"));
+
+    /// <summary>
     /// One allotment: the record must be in the master admin's allot list and the agency among those offered for it. Null when
     /// allotted, else the reason it was refused (nothing changed then).
     /// </summary>
@@ -265,7 +278,7 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         if (!AssessmentInput.IsId(agencyUserId)) return "Please select valid data.";
 
         var listed = (await AllotmentLists.List(db, UserId, RoleId, null, zedId, AllotmentLists.Filter.None with { Certification = level }, ct))[0]
-            .Any(r => AllotmentLists.Same(r, "ZedId", zedId!) && AllotmentLists.Same(r, "Certification", level));
+            .Any(r => AllotmentLists.Same(r, "ZedId", zedId!) && AllotmentLists.Same(r, "Certification", level) && (host.System != PortalSystem.Main || Allottable(r)));
         // 2026-11-18: or (main) rejected by its agency at the site allotment (SiteRejections).
         if (!listed && host.System == PortalSystem.Main)
             listed = (await SiteRejections.ListAsync(db, zedId, null, AllotmentLists.Filter.None with { Certification = level }, log, ct))

@@ -244,6 +244,38 @@ public sealed partial class CertificationLevelsController(
          LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code) ?? LevelNcRules.Problem(req.NcRounds, req.NcDays) ??
          LevelManDays.Problem(NotSet(req.ManDays), NotSet(req.SurveillanceManDays)));
 
+    /// <summary>
+    /// 2026-11-27 (the owner, workflow review: "block while in progress"): the units of a level between the documents' submission and
+    /// their certification or rejection. Every step reads the level's flow when it runs, so a flow changed under them would route them
+    /// by the new one from their next step (a Desktop only case with an open desktop NC would go on to the visit without it).
+    /// </summary>
+    internal const string InProgressUnitsSql =
+        "SELECT TOP (6) ZedId FROM dbo.MsmeCertifications C WHERE C.Certification = @Code AND C.CertificationStatus BETWEEN 2 AND 98 " +
+        "AND C.CertificationStatus <> 16 AND NOT (C.CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(C.DaCertificateNo)), '') IS NOT NULL " +
+        "OR ISNULL(C.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED'))) ORDER BY C.CertificationStatusDate;";
+
+    /// <summary>Why the flow cannot be changed now (null: unchanged, or no unit of the level is being assessed).</summary>
+    private async Task<string?> FlowLockedAsync(CertificationLevel level, LevelRequest req, CancellationToken ct)
+    {
+        if (req.AssessmentFlow is not { } wanted || host.System != PortalSystem.Main) return null;
+        var current = await LevelFlows.FlowAsync(db, level.Code, log, ct);
+        if (string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase)) return null;
+        IReadOnlyList<string> units;
+        try
+        {
+            units = await db.QuerySqlAsync<string>(InProgressUnitsSql, new { Code = level.Code }, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Units in progress of {Code} not read: the flow change is refused", level.Code);
+            return "The assessment flow cannot be changed right now. Please try again later.";
+        }
+        if (units.Count == 0) return null;
+        var shown = string.Join(", ", units.Take(5)) + (units.Count > 5 ? " and more" : "");
+        return $"The assessment flow of {level.Name} cannot be changed while units are being assessed at this level ({shown}). " +
+               "Change it once they are certified or rejected; the other settings can be saved with the flow unchanged.";
+    }
+
     /// <summary>0 = not set (the page sends 0 to clear a value; null = left out).</summary>
     private static int? NotSet(int? days) => days is 0 ? null : days;
 
@@ -298,6 +330,7 @@ public sealed partial class CertificationLevelsController(
         if (flowProblem is not null) return this.Problem400(flowProblem);
         if (Validate(req, level.Code) is { } problem) return this.Problem400(problem);
         if (req.IsEnabled && !level.IsEnabled && await NotReadyAsync(level, ct) is { } notReady) return this.Problem400(notReady);
+        if (await FlowLockedAsync(level, req, ct) is { } locked) return this.Problem400(locked);
         if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
         var flowNote = await SaveFlowAsync(level.Code, req, ct);
         await RefreshRegistryAsync(ct);

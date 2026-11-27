@@ -134,16 +134,26 @@ public static class ExpenditureSweep
 
     private static readonly ConditionalWeakTable<ISqlExecutor, Gate> Gates = new();
 
+    /// <summary>
+    /// A main case certified: 16, or 6 with its desktop certificate (Desktop only), as Documents.DocumentLevels.IsCertifiedRecord.
+    /// 2026-11-27 (workflow review): 6 alone was counted "Completed", but a Desktop + Onsite / Remote case is at 6 after the desktop
+    /// quality check and an Onsite / Remote only case right after its allotment, before the visit; the agency was paid then and the
+    /// case never counted again (nor the next agency's after a re-allotment), and its PO's Used grew too early.
+    /// </summary>
+    internal const string MainCertified =
+        "(C.CertificationStatus = 16 OR (C.CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(C.DaCertificateNo)), '') IS NOT NULL " +
+        "OR ISNULL(C.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED'))))";
+
     /// <summary>Main: an assessment case (one row per unit and level).</summary>
     internal const string MainSql =
         "UPDATE C SET ExpCountedOn = ISNULL(C.CertificationStatusDate, GETDATE()), " +
-        "ExpCaseKind = CASE WHEN C.CertificationStatus IN (6, 16) THEN 'Completed' ELSE 'Rejected' END, " +
+        "ExpCaseKind = CASE WHEN " + MainCertified + " THEN 'Completed' ELSE 'Rejected' END, " +
         "ExpAgencyId = LTRIM(RTRIM(C.CertificationBodyUserId)), " +
-        "ExpRate = (SELECT TOP (1) CASE WHEN C.CertificationStatus IN (6, 16) THEN R.RateCompleted ELSE R.RateRejected END " +
+        "ExpRate = (SELECT TOP (1) CASE WHEN " + MainCertified + " THEN R.RateCompleted ELSE R.RateRejected END " +
         "FROM dbo.ExpenditureRates R WHERE R.Kind = 'Agency' AND R.SupersededOn IS NULL AND R.Level = C.Certification " +
         "AND R.EffectiveFrom <= CAST(ISNULL(C.CertificationStatusDate, GETDATE()) AS date) ORDER BY R.EffectiveFrom DESC) " +
         "FROM dbo.MsmeCertifications C WHERE C.ExpCountedOn IS NULL AND ISNULL(C.CertificationBodyUserId, '') <> '' " +
-        "AND (C.CertificationStatus IN (6, 16) OR (C.CertificationStatus = 99 AND " +
+        "AND (" + MainCertified + " OR (C.CertificationStatus = 99 AND " +
         "(CASE WHEN C.Certification IN @DesktopLevels THEN C.DesktopAssessorId ELSE C.SiteAssessorId END) IS NOT NULL));";
 
     /// <summary>Main, ZED_SURVEILLANCE's rows: one per surveillance visit.</summary>

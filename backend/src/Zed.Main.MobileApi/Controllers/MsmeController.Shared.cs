@@ -57,7 +57,7 @@ public sealed partial class MsmeController
     /// app's buttons): Status 0 = not paid, 1 = paid and not yet final-submitted, 2+ = submitted;
     /// NcCount and the current NC's status (1 = raised, 2 = response submitted).
     /// </summary>
-    internal sealed record LevelStage(int Status, int NcCount, int CurrentNcStatus, bool Bronze = false)
+    internal sealed record LevelStage(int Status, int NcCount, int CurrentNcStatus, bool Bronze = false, DateTime? NcClosesOn = null)
     {
         public bool Paid => Status > 0;
         public bool BeforeFinalSubmit => Status == 1;
@@ -68,8 +68,13 @@ public sealed partial class MsmeController
         /// assessment, the desktop NC at status 4) or, for Silver, Gold and ZED-X, 3 (site assessment, the site NC at 14).
         /// Bronze's 3 is certified or rejected.
         /// </summary>
-        public bool NcOpen => NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && (Status == 2 || (Status == 3 && !Bronze));
+        public bool NcOpen => NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && (Status == 2 || (Status == 3 && !Bronze))
+            && !(NcClosesOn is { } closes && DateTime.Now > closes);
     }
+
+    /// <summary>2026-11-27 (permissions review): the NC answers' last day (MsmeCertifications.NcFinalClosureDt, the Admin's days from
+    /// the first NC); past it the answers are refused, as the expiry job rejects the application.</summary>
+    internal const string NcClosesSql = "SELECT TOP (1) NcFinalClosureDt FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Level;";
 
     /// <summary>Null when the level is not Bronze/Silver/Gold/ZED-X or the ZED ID is unknown.</summary>
     private async Task<LevelStage?> StageAsync(string? zedId, string? certificationType, CancellationToken ct)
@@ -83,7 +88,13 @@ public sealed partial class MsmeController
         // The status columns are NULL when there is no Msme row for the ZED ID.
         if (!row.TryGetValue(level + "Status", out var status) || status is null or DBNull) return null;
         var nc = row.Int(level + "StatusOfNc");
-        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, LevelRegistry.IsDesktop(level));
+        DateTime? closes = null;
+        if (nc is >= 1 and <= 5)
+        {
+            var c = (await db.QuerySqlAsync<DateTime?>(NcClosesSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault();
+            closes = c;
+        }
+        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, LevelRegistry.IsDesktop(level), closes);
     }
 
     private ContentResult StageRefused(string action, string? zedId, string? certificationType, LevelStage? stage)

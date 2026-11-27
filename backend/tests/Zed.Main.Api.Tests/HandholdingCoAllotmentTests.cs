@@ -294,6 +294,30 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
         });
     });
 
+    /// <summary>2026-11-27 (permissions review): the handholding calls new in the app need its token for the unit (TokenRequired).</summary>
+    private async Task<HttpClient> AppClientAsync()
+    {
+        var factory = App();
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(AppTokens.Header, await factory.Services.GetRequiredService<AppTokens>().IssueAsync(MobileApps.Msme, Me, Me));
+        return client;
+    }
+
+    [Fact]
+    public async Task The_apps_handholding_calls_need_its_token_for_the_unit()
+    {
+        var anonymous = App().CreateClient();
+        foreach (var path in new[] { "/ConsultancyPay/GetHandholdingStatus", "/ConsultancyPay/AcceptMilestone", "/ConsultancyPay/GetConsultantOrganisations" })
+        {
+            var r = await Json(await anonymous.PostAsync(path, new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["zedId"] = Me, ["certification"] = "Silver", ["milestone"] = "1", ["deviceInfo.deviceId"] = "device-1",
+            })));
+            Assert.Equal("0", r.GetProperty("status").GetString());
+        }
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("UPDATE") && c.Name.Contains("CertificationStatus = 100"));
+    }
+
     private static Dictionary<string, string> AppRequest(string? assisted, string? co) => new()
     {
         ["ZedId"] = Me, ["Certification"] = "Silver", ["UseCoupon"] = "No", ["UnitGstin"] = "No", ["TdsDeductible"] = "No",
@@ -305,7 +329,7 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
     [Fact]
     public async Task The_app_gets_the_same_list_and_its_payment_request_must_carry_a_valid_answer()
     {
-        var app = App().CreateClient();
+        var app = await AppClientAsync();
         var list = await Json(await app.PostAsync("/ConsultancyPay/GetConsultantOrganisations",
             new FormUrlEncodedContent(new Dictionary<string, string> { ["zedId"] = Me, ["certification"] = "Silver", ["deviceInfo.deviceId"] = "device-1" })));
         Assert.Equal("1", list.GetProperty("status").GetString());
@@ -334,7 +358,7 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
     [Fact]
     public async Task The_app_reads_the_handholding_levels_and_the_milestone_due()
     {
-        var app = App().CreateClient();
+        var app = await AppClientAsync();
         async Task<JsonElement> Silver()
         {
             var r = await Json(await app.PostAsync("/ConsultancyPay/GetHandholdingStatus",
@@ -366,7 +390,7 @@ public sealed class HandholdingCoAllotmentTests : IDisposable
     [Fact]
     public async Task The_app_accepts_a_milestone_and_is_told_to_pay_the_next_one()
     {
-        var app = App().CreateClient();
+        var app = await AppClientAsync();
         Task<JsonElement> Accept(int milestone) => app.PostAsync("/ConsultancyPay/AcceptMilestone", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["zedId"] = Me, ["certification"] = "Silver", ["milestone"] = milestone.ToString(System.Globalization.CultureInfo.InvariantCulture), ["deviceInfo.deviceId"] = "device-1",

@@ -43,7 +43,9 @@ public static class MsmeEntry
     /// 1 until the final submit (2).
     /// </summary>
     /// <param name="CurrentNcStatus">The current NC's status (Nc{NcCount}Status): 1 raised, 2 answered.</param>
-    public sealed record Stage(bool Paid, int? CertificationStatus, int NcCount, bool HasRow, int CurrentNcStatus = 0)
+    /// <param name="NcClosesOn">NcFinalClosureDt: the last day for the NC answers (Admin's days from the first NC); past it the
+    /// answers are refused, as the expiry job rejects the application (2026-11-27, permissions review).</param>
+    public sealed record Stage(bool Paid, int? CertificationStatus, int NcCount, bool HasRow, int CurrentNcStatus = 0, DateTime? NcClosesOn = null)
     {
         public bool Editable => Paid && NcCount == 0 && (CertificationStatus is null or <= 1);
         public bool Submitted => CertificationStatus is >= 2;
@@ -52,20 +54,23 @@ public static class MsmeEntry
         /// An NC raised and not yet answered: status 4 (desktop NC) or 14 (site NC), as SP_APP_CHECK_DATA_SYNC_FINAL_SUBMIT
         /// allows the NC submit, NC 1 to 5.
         /// </summary>
-        public bool NcOpen => Paid && NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && CertificationStatus is 4 or 14;
+        public bool NcOpen => Paid && NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && CertificationStatus is 4 or 14 && !NcTimeOver;
+
+        /// <summary>The NC answers' last day has passed (the expiry job rejects the application on its next run).</summary>
+        public bool NcTimeOver => NcClosesOn is { } closes && DateTime.Now > closes;
     }
 
-    public sealed record StageRow(bool? Paid, int? CertificationStatus, int? NcCount, int? CertificationId, int? CurrentNcStatus = null);
+    public sealed record StageRow(bool? Paid, int? CertificationStatus, int? NcCount, int? CertificationId, int? CurrentNcStatus = null, DateTime? NcFinalClosureDt = null);
 
     /// <summary>The level comes from <see cref="Levels"/> only, so it can name the payment column.</summary>
     public static string StageSql(string level) =>
         $"SELECT CAST(ISNULL(m.Is{level}PaymentDone, 0) AS bit) AS Paid, c.CertificationStatus, c.NcCount, c.Id AS CertificationId, " +
-        "CASE c.NcCount WHEN 1 THEN c.Nc1Status WHEN 2 THEN c.Nc2Status WHEN 3 THEN c.Nc3Status WHEN 4 THEN c.Nc4Status WHEN 5 THEN c.Nc5Status END AS CurrentNcStatus " +
+        "CASE c.NcCount WHEN 1 THEN c.Nc1Status WHEN 2 THEN c.Nc2Status WHEN 3 THEN c.Nc3Status WHEN 4 THEN c.Nc4Status WHEN 5 THEN c.Nc5Status END AS CurrentNcStatus, c.NcFinalClosureDt " +
         "FROM dbo.Msme m LEFT JOIN dbo.MsmeCertifications c ON c.ZedId = m.ZedId AND c.Certification = @Level WHERE m.ZedId = @ZedId;";
 
     public static Stage ToStage(StageRow? r) =>
         r is null ? new Stage(false, null, 0, false)
-            : new Stage(r.Paid == true, r.CertificationStatus, r.NcCount ?? 0, r.CertificationId is not null, r.CurrentNcStatus ?? 0);
+            : new Stage(r.Paid == true, r.CertificationStatus, r.NcCount ?? 0, r.CertificationId is not null, r.CurrentNcStatus ?? 0, r.NcFinalClosureDt);
 
     /// <summary>The folder that holds the app's <c>mobileapi\Photos</c> (Portal:AssessmentStorageRoot, else Portal:StorageRoot).</summary>
     public static string StorageRoot(IWebHostEnvironment env, IOptions<PortalOptions> portal, IConfiguration config)

@@ -238,6 +238,15 @@ public sealed class PaymentTests : IDisposable
     [InlineData("Gold", 0, 0, 0, 16, "ZEDX")]   // ZED-X certified: the highest level
     [InlineData("Bronze", 0, 0, 0, 17, "ZEDX")]
     [InlineData("Bronze", 0, 0, 0, 0, null)]
+    // 2026-11-27: Bronze/Silver/Gold among themselves, as the dashboard (was checked in the browser only).
+    [InlineData("Bronze", 0, 5, 0, 0, "Silver")]
+    [InlineData("Bronze", 0, 0, 16, 0, "Gold")]
+    [InlineData("Silver", 3, 0, 0, 0, "Bronze")]
+    [InlineData("Silver", 6, 0, 0, 0, null)]
+    [InlineData("Silver", 6, 0, 2, 0, "Gold")]
+    [InlineData("Gold", 0, 5, 0, 0, "Silver")]
+    [InlineData("Gold", 3, 0, 0, 0, "Bronze")]
+    [InlineData("Gold", 6, 16, 0, 0, null)]
     public void A_level_is_blocked_by_another_in_progress(string cert, int bronze, int silver, int gold, int zedx, string? expected) =>
         Assert.Equal(expected, Zed.Portal.Features.Payments.Certifications.BlockedBy(cert,
             new Dictionary<string, int> { ["Bronze"] = bronze, ["Silver"] = silver, ["Gold"] = gold, ["ZEDX"] = zedx }));

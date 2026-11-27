@@ -21,7 +21,7 @@ public sealed partial class MsmeController
 
     /// <summary>The agencies the applicant may choose for the level.</summary>
     [HttpPost]
-    [DeviceBound(MobileApps.Msme, "userName")]
+    [DeviceBound(MobileApps.Msme, "userName", TokenRequired = true)]
     public async Task<IActionResult> GetFacilitatorAgencies(BaseServiceRequest request, CancellationToken ct)
     {
         var zedId = request.userName ?? "";

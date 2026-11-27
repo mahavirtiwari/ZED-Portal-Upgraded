@@ -61,7 +61,7 @@ public sealed class DashboardScreenFilter(PortalHost host, ILogger<DashboardScre
         var http = context.HttpContext;
         var path = http.Request.Path.Value ?? "";
         if (ZedUser.FromPrincipal(http.User) is { } user && DashboardScreens.IsLimited(user)
-            && path.StartsWith("/api/staff/", StringComparison.OrdinalIgnoreCase)
+            && ScopeAccessFilter.ScopedPath(path)
             && !DashboardScreens.Allows(user, host.System, path))
         {
             log.LogInformation("Dashboard Admin {UserId}: {Path} is not one of its screens", user.UserId, path);

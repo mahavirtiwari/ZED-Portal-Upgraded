@@ -87,7 +87,19 @@ public static partial class Certifications
             return Paid.FirstOrDefault(l => InProgress(l, S(l), certified))
                 ?? statuses.Keys.Where(l => IsV4(l) && !string.Equals(l, cert, StringComparison.OrdinalIgnoreCase)).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1)
                     .FirstOrDefault(l => InProgress(l, S(l), certified));
-        return statuses.Keys.Where(IsV4).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1).FirstOrDefault(l => S(l) > 0);
+        if (statuses.Keys.Where(IsV4).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1).FirstOrDefault(l => S(l) > 0) is { } v4) return v4;
+        // 2026-11-27 (permissions review): Bronze/Silver/Gold among themselves, the dashboard's rules (levelDisabled), now also
+        // on the server so a checkout or app payment cannot start a level the card keeps closed. Bronze: closed once Silver or
+        // Gold has been applied for (1-17). Silver: while Bronze is in progress, or once Gold has been applied for. Gold: while
+        // Bronze or Silver is in progress.
+        bool Applied(string l) => S(l) is >= 1 and <= 17;
+        return Canonical(cert) switch
+        {
+            "Bronze" => Applied("Silver") ? "Silver" : Applied("Gold") ? "Gold" : null,
+            "Silver" => InProgress("Bronze", S("Bronze"), certified) ? "Bronze" : Applied("Gold") ? "Gold" : null,
+            "Gold" => InProgress("Silver", S("Silver"), certified) ? "Silver" : InProgress("Bronze", S("Bronze"), certified) ? "Bronze" : null,
+            _ => null,
+        };
     }
 
     /// <summary>
@@ -112,7 +124,10 @@ public static partial class Certifications
             var other when InProgress(other, statuses[other], certified) =>
                 $"{LevelName(cert)} certification cannot be applied for while your {LevelName(other)} certification is in progress.",
             LevelRegistry.ZedX => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at ZED-X, the highest level.",
-            var other => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at {LevelName(other)}.",
+            var other when statuses[other] == 16 || certified?.Contains(other) == true =>
+                $"{LevelName(cert)} certification cannot be applied for: your unit is certified at {LevelName(other)}.",
+            // 2026-11-27: Bronze once Silver or Gold has been applied for, Silver once Gold has (dashboard rules).
+            var other => $"{LevelName(cert)} certification cannot be applied for once {LevelName(other)} certification has been applied for.",
         };
     }
 

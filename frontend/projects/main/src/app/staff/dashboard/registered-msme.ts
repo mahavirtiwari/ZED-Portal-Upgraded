@@ -62,8 +62,13 @@ export class RegisteredMsmePage {
    * The customer (ZED ID) history merged in (V4, 2026-10-27): each ZED ID links to its history, for the logins that see
    * it (api/staff/history: SuperAdmin, Citizen Feedback, QC; MasterAdmin has no list here).
    */
-  protected readonly seesHistory = computed(() =>
-    ([StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC] as number[]).includes(this.user()?.roleId ?? 0));
+  protected readonly seesHistory = computed(() => {
+    const u = this.user();
+    if (!([StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC] as number[]).includes(u?.roleId ?? 0)) return false;
+    // 2026-11-27 (permissions review): a Dashboard Admin with ticked screens gets the links only with "MSME / Customer History"
+    // ticked on this portal (the History page answered 403 otherwise).
+    return u?.roleId !== StaffRole.SuperAdmin || !u.screens || u.screens.includes(`${this.system}:history`);
+  });
   /** Agency / Udyam column: SuperAdmin, and MasterAdmin on Consultancy and Surveillance (the API sends it to both). */
   protected readonly showsAgency = computed(() =>
     (this.user()?.roleId === StaffRole.SuperAdmin && !this.hidesNames()) || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));

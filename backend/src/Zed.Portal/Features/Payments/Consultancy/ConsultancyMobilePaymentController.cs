@@ -192,7 +192,7 @@ public sealed partial class ConsultancyMobilePaymentController(
     /// unit's acceptance. The payment itself checks the same again.
     /// </summary>
     [HttpPost("/ConsultancyPay/GetHandholdingStatus")]
-    [DeviceBound(MobileApps.Msme, "zedId")]
+    [DeviceBound(MobileApps.Msme, "zedId", TokenRequired = true)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> GetHandholdingStatus(string? zedId, CancellationToken ct)
     {
@@ -222,7 +222,7 @@ public sealed partial class ConsultancyMobilePaymentController(
     /// (NextMilestone); "Completed": the level's three milestones are done.
     /// </summary>
     [HttpPost("/ConsultancyPay/AcceptMilestone")]
-    [DeviceBound(MobileApps.Msme, "zedId")]
+    [DeviceBound(MobileApps.Msme, "zedId", TokenRequired = true)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> AcceptMilestone(string? certification, int? milestone, string? zedId, CancellationToken ct)
     {
@@ -243,7 +243,7 @@ public sealed partial class ConsultancyMobilePaymentController(
     /// for the level is not used up, by name. Only while milestone 1 is the milestone due.
     /// </summary>
     [HttpPost("/ConsultancyPay/GetConsultantOrganisations")]
-    [DeviceBound(MobileApps.Msme, "zedId")]
+    [DeviceBound(MobileApps.Msme, "zedId", TokenRequired = true)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> GetConsultantOrganisations(string? certification, string? zedId, CancellationToken ct)
     {

@@ -114,6 +114,10 @@ public sealed partial class MsmeController
     public async Task<IActionResult> SubmitEsgChecklist(EsgChecklistRequest request, CancellationToken ct)
     {
         if (request.esgChecklist is null || request.socialOhsChecklist is null) return Fail(NoDataFound);
+        // 2026-11-27 (permissions review): part of the basic information, so only before the final submit, as SubmitBasicInformation
+        // (the procedure replaced the answers at any stage, also after the assessor had reviewed them).
+        var esgStage = await StageAsync(request.userName, request.certificationType, ct);
+        if (esgStage is not { BeforeFinalSubmit: true }) return StageRefused(nameof(SubmitEsgChecklist), request.userName, request.certificationType, esgStage);
 
         static System.Data.DataTable Checklist(IEnumerable<EsgChecklist?> items)
         {
@@ -339,6 +343,10 @@ public sealed partial class MsmeController
         FacilitatorAgency? chosen = null;
         if (!string.IsNullOrWhiteSpace(request.facilitatorAgencyId))
         {
+            // 2026-11-27 (permissions review): only the rebuilt app names an agency, and it sends its token: a call naming one needs
+            // a valid token for this unit whatever the MSME app's token mode (Monitor would let anyone pick another unit's agency).
+            if (HttpContext.RequestServices.GetService<AppTokens>() is not { } tokens) return Fail(AppTokens.ExpiredMessage);
+            if (await tokens.RequiredRefusalAsync(HttpContext, MobileApps.Msme, null, request.userName, ct) is { } refused) return refused;
             if (LevelRegistry.Canonical(request.certificationType?.Trim()) is not { } chosenLevel) return Fail(InvalidDetails);
             chosen = (await FacilitatorAgenciesAsync(request.userName ?? "", chosenLevel, ct))
                 .FirstOrDefault(a => string.Equals(a.userId, request.facilitatorAgencyId.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -465,7 +473,8 @@ public sealed partial class MsmeController
     {
         var zedId = request.userName ?? "";
         var stage = await StageAsync(zedId, request.certificationType, ct);
-        if (stage is not { Paid: true }) return StageRefused(nameof(SubmitFacilitatorDetails), zedId, request.certificationType, stage);
+        // 2026-11-27 (permissions review): who helped with the application is given before the final submit, not after it.
+        if (stage is not { BeforeFinalSubmit: true }) return StageRefused(nameof(SubmitFacilitatorDetails), zedId, request.certificationType, stage);
 
         if (files is not { Length: > 0 })
             request.selfieMetadataObj = new PhotoInformation();

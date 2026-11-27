@@ -40,6 +40,7 @@ public sealed class MsmeAppNcFormFieldTests : MsmeAppTestBase
     [Fact]
     public async Task The_answer_is_checked_and_stored_while_the_nc_is_open()
     {
+        await UseAppTokenAsync();   // 2026-11-27: a call new in V4 (TokenRequired)
         Stage("Bronze", 2, ncCount: 1, ncStatus: 1);
         AssertFail(await Post("/Msme/SubmitNcFormField", Json(Body("cf_staff", "\"forty\""))), "Number of staff: please enter a whole number.");
         AssertOk(await Post("/Msme/SubmitNcFormField", Json(Body("cf_staff", "40"))));
@@ -53,6 +54,7 @@ public sealed class MsmeAppNcFormFieldTests : MsmeAppTestBase
     [Fact]
     public async Task The_answer_is_refused_when_the_nc_is_not_open()
     {
+        await UseAppTokenAsync();   // 2026-11-27: a call new in V4 (TokenRequired)
         Stage("Bronze", 2, ncCount: 1, ncStatus: 2);
         AssertFail(await Post("/Msme/SubmitNcFormField", Json(Body("cf_staff", "40"))), "Invalid Details.");
         Assert.DoesNotContain(Host.Sql.Calls, c => c.Name == AppFormChecks.AnswerSql);

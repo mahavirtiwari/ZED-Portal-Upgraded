@@ -386,7 +386,8 @@ const MAIN_ROUTES: Routes = [
   { path: 'Msme/ViewStatus', redirectTo: ({ queryParams }) => `/msme/status/${encodeURIComponent(queryParams['certification'] ?? '')}` },
   { path: 'SurveillancePay/Index/:certification', redirectTo: 'msme/surveillance-payment/:certification' },
   // Links of the legacy reset (?code=…) no longer work: the page explains and offers a new link; the code is dropped.
-  { path: 'Msme/ChangePassword', redirectTo: '/msme/reset-password' },
+  // 2026-11-27 (permissions review): without a code it was the old portal's own Change Password page (signed in).
+  { path: 'Msme/ChangePassword', redirectTo: ({ queryParams }) => (queryParams['code'] ? '/msme/reset-password' : '/msme/change-password') },
 
   { path: 'Neft/Index', redirectTo: 'staff/neft/new' },
   { path: 'Neft/NewTransactions', redirectTo: 'staff/neft/new' },

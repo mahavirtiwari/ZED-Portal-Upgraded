@@ -28,6 +28,11 @@ public abstract class MsmeAppTestBase : IDisposable
 
     protected static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
 
+    /// <summary>2026-11-27: the rebuilt app's token for the unit, sent with every call (the calls new in V4 need it: TokenRequired).</summary>
+    protected async Task UseAppTokenAsync() =>
+        Client.DefaultRequestHeaders.Add(AppTokens.Header,
+            await Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<AppTokens>(Host.Services).IssueAsync(MobileApps.Msme, ZedId, ZedId));
+
     protected async Task<JsonElement> Post(string url, HttpContent content)
     {
         var r = await Client.PostAsync(url, content);

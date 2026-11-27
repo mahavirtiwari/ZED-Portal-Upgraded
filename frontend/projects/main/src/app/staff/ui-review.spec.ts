@@ -7,7 +7,7 @@ import { menuScreenAllows } from './staff-menu';
 
 /** 2026-11-27 (UI review of every login): the screens a login is sent to are the ones it may open. */
 describe('UI review (2026-11-27)', () => {
-  function run(guard: CanActivateFn, url: string, user: { roleId: number; subRoles?: string[] } | null) {
+  function run(guard: CanActivateFn, url: string, user: { roleId: number; subRoles?: string[]; screens?: string[] } | null) {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [provideRouter([]), { provide: AuthService, useValue: { ensureLoaded: () => Promise.resolve(), currentUser: () => user } }],
@@ -35,5 +35,12 @@ describe('UI review (2026-11-27)', () => {
     expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 2, subRoles: ['SchemeOnsite'] }))).toBe('/staff/incentives/dashboard');
     expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 7, subRoles: ['IncentivesOnly'] }))).toBe('/staff/incentives/dashboard');
     expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 2, subRoles: ['DesktopVerification'] }))).toBe(true);
+  });
+
+  it('opens a Dashboard Admin without a dashboard tab on its first ticked screen (permissions review)', async () => {
+    expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 10, screens: ['main:reports', 'main:hide-names'] }))).toBe('/staff/reports');
+    expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 10, screens: ['main:history', 'main:reports'] }))).toBe('/staff/reports');
+    expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 10, screens: ['main:dash-registered', 'main:reports'] }))).toBe(true);
+    expect(show(await run(staffDashboardGuard, '/staff/dashboard', { roleId: 10 }))).toBe(true);   // every screen
   });
 });

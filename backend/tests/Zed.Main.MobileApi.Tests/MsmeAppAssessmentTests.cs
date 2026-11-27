@@ -103,6 +103,7 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
     [Fact]
     public async Task SubmitEsgChecklist_passes_both_lists_and_returns_the_procedures_answer()
     {
+        Stage("Silver", 1);   // 2026-11-27: before the final submit only
         Host.Sql.Procs["SP_APP_MSME_INSERT_ESG_CHECKLIST"] = _ => FakeSql.Sets([new { Status = 1, ErrorMessage = "Data submitted Successfully." }]);
         var e = await Post("/Msme/SubmitEsgChecklist", Json($$"""
             {"userName":"{{ZedId}}","certificationType":"Silver",
@@ -116,6 +117,17 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         Assert.Equal("r", Tvp(args, "SocialOhsChecklist")!.Rows[0]["ifNoAnswer"]);
 
         AssertFail(await Post("/Msme/SubmitEsgChecklist", Json("""{"userName":"x","esgChecklist":[]}""")), "No data found.");
+    }
+
+    [Fact]
+    public async Task SubmitEsgChecklist_is_refused_after_the_final_submit()
+    {
+        // 2026-11-27 (permissions review): the procedure replaced the answers at any stage, also after the assessor reviewed them.
+        Stage("Silver", 2);
+        AssertFail(await Post("/Msme/SubmitEsgChecklist", Json($$"""
+            {"userName":"{{ZedId}}","certificationType":"Silver","esgChecklist":[{"code":"1","question":"Q1","answer":"Yes"}],"socialOhsChecklist":[]}
+            """)), "Invalid Details.");
+        Assert.Empty(CallsTo("SP_APP_MSME_INSERT_ESG_CHECKLIST"));
     }
 
     [Fact]
@@ -314,6 +326,7 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
     [Fact]
     public async Task A_facilitator_assisted_applicant_picks_an_allowed_agency_and_the_final_submit_allots_it()
     {
+        await UseAppTokenAsync();   // 2026-11-27: GetFacilitatorAgencies and a FinalSubmit naming an agency need the app token
         // 2026-11-14: Yes = the applicant chooses the agency (desktop verification for Bronze); No keeps the automatic allotment.
         Host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets([
             new { UserId = "AGENCY2", UserName = "Zeta Assessors", DesktopVerification = true, SiteVerification = false },
@@ -395,7 +408,7 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
     [Fact]
     public async Task SubmitFacilitatorDetails_saves_the_selfie_and_returns_the_procedures_answer()
     {
-        Stage("Silver", 2);
+        Stage("Silver", 1);   // 2026-11-27: before the final submit only (was any paid stage)
         Host.Sql.Procs["SP_INSERT_FACILITATOR_DETAILS"] = _ => FakeSql.Sets([new { Status = 1, Message = "FACILITATOR DETAILS ADDED SUCCESSFULLY" }]);
         var e = await Post("/Msme/SubmitFacilitatorDetails", FacilitatorForm("fs1"));
         Assert.Equal("1", e.GetProperty("status").GetString());
@@ -409,11 +422,13 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
     [Fact]
     public async Task SubmitFacilitatorDetails_refuses_traversal_non_images_and_unpaid_levels()
     {
-        Stage("Silver", 2);
+        Stage("Silver", 1);   // 2026-11-27: before the final submit only (was any paid stage)
         AssertFail(await Post("/Msme/SubmitFacilitatorDetails", FacilitatorForm("../../../../evil-fs")), "Invalid Data.");
         AssertFail(await Post("/Msme/SubmitFacilitatorDetails", FacilitatorForm("fs1", "selfie.pdf")), "Invalid Data.");
         AssertNothingOutside("evil-fs.jpg");
         Stage("Silver", 0);
+        AssertFail(await Post("/Msme/SubmitFacilitatorDetails", FacilitatorForm("fs1")), "Invalid Details.");
+        Stage("Silver", 2);   // 2026-11-27: not after the final submit
         AssertFail(await Post("/Msme/SubmitFacilitatorDetails", FacilitatorForm("fs1")), "Invalid Details.");
         Assert.Empty(CallsTo("SP_INSERT_FACILITATOR_DETAILS"));
     }

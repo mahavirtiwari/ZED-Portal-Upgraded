@@ -17,7 +17,7 @@ public sealed class ScopeAccessFilter(ILogger<ScopeAccessFilter> log) : IAsyncAc
         var http = context.HttpContext;
         // 2026-11-16: an agency's or operation admin's sub-user with its own states / agencies (migration 0087) too.
         if (ZedUser.FromPrincipal(http.User) is { } user && (LoginScopes.CanHaveScope(user.RoleId) || user.IsSubUser)
-            && (http.Request.Path.Value ?? "").StartsWith("/api/staff/", StringComparison.OrdinalIgnoreCase)
+            && ScopedPath(http.Request.Path.Value ?? "")
             && Unit(context) is ({ Length: > 0 } zedId, var level))
         {
             if (!await ScopeFilter.AllowsAsync(http, zedId, level, http.RequestAborted))
@@ -29,6 +29,11 @@ public sealed class ScopeAccessFilter(ILogger<ScopeAccessFilter> log) : IAsyncAc
         }
         await next();
     }
+
+    /// <summary>The staff APIs, and the consultancy milestone pages (api/consultancy/milestones/{zedId}/{certification}, with their files)
+    /// that Master Admins, Dashboard Admins and Ministry open too (2026-11-27, permissions review: they were outside the scope).</summary>
+    internal static bool ScopedPath(string path) =>
+        path.StartsWith("/api/staff/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("/api/consultancy/milestones/", StringComparison.OrdinalIgnoreCase);
 
     private static readonly string[] LevelNames = ["certification", "level", "certificationType"];
 

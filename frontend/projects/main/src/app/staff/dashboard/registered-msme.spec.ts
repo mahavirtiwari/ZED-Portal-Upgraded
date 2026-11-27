@@ -24,8 +24,8 @@ describe('RegisteredMsmePage', () => {
     fixture.detectChanges();
   }
 
-  async function render(roleId: number, extra: Record<string, unknown> = {}) {
-    TestBed.inject(AuthService).setUser({ userId: 'U1', userName: 'U1', roleId, role: 'x', subRoles: [] });
+  async function render(roleId: number, extra: Record<string, unknown> = {}, screens?: string[]) {
+    TestBed.inject(AuthService).setUser({ userId: 'U1', userName: 'U1', roleId, role: 'x', subRoles: [], ...(screens ? { screens } : {}) });
     fixture = TestBed.createComponent(RegisteredMsmePage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -66,6 +66,17 @@ describe('RegisteredMsmePage', () => {
     await render(10);
     const zed = [...el.querySelectorAll('td a')].find((a) => a.textContent!.trim() === 'ZEDMSME000001')!;
     expect(zed.getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
+    expect(button('History')!.getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
+  });
+
+  it('shows no history link to a Dashboard Admin whose ticked screens leave out History', async () => {
+    await render(10, {}, ['main:registered-msme']);
+    expect([...el.querySelectorAll('td a')].some((a) => a.textContent!.trim() === 'ZEDMSME000001')).toBe(false);
+    expect(button('History')).toBeUndefined();
+  });
+
+  it('keeps the history links for a Dashboard Admin with History ticked', async () => {
+    await render(10, {}, ['main:registered-msme', 'main:history']);
     expect(button('History')!.getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
   });
 

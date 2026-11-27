@@ -262,7 +262,8 @@ public sealed class MsmeProfileService(
         await history.RecordAsync(new MsmeEdit
         {
             Channel = channel, ZedId = zedId, Action = "Profile: e-mail changed", Path = "/profile/email", Success = true,
-            Data = JsonSerializer.Serialize(new { email = new { from = old is null ? "(none)" : MsmeAccountFinder.MaskEmail(old), to = MsmeAccountFinder.MaskEmail(state.NewEmail) } }),
+            // 2026-11-27: in full, as every signed-in screen shows contacts (the edit history is read by the unit and the staff only).
+            Data = JsonSerializer.Serialize(new { email = new { from = old ?? "(none)", to = state.NewEmail } }),
             IpAddress = ip,
         }, ct);
 

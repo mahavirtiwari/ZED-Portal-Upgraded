@@ -45,6 +45,12 @@ public static class SubUserPermissions
 
     /// <summary>The Desktop Assessment details page, opened from monitoring, allotment and the result lists.</summary>
     private const string DaDetails = "/api/staff/assessment/da/";
+    /// <summary>2026-11-27 (permissions review): the site assessment details page (sa-details: the review, the agency's final submit and
+    /// send back) and the App Forms panel of the unit's pages, which Monitoring and Completed/Rejected open (they answered 403).</summary>
+    private const string SiteReview = "/api/staff/site-review";
+    private const string AppFormValues = "/api/staff/app-form-values";
+    /// <summary>2026-11-27: the reasons the agency's Reject pop-up lists before it opens (Reject answered 403 for a sub-user).</summary>
+    private const string RejectionReasons = "/api/staff/assessment/rejection-reasons";
 
     /// <summary>2026-11-24: the incentives dashboard (the Incentives Master Admin's home; Users/IncentivesAdmins), with any incentive screen.</summary>
     private const string IncentivesDashboard = Users.IncentivesAdmins.DashboardApi;
@@ -78,9 +84,9 @@ public static class SubUserPermissions
         new("allot", "Allotment", UserRole.MasterAdmin, All, None,
             ["/staff/assessment/allot"], ["/api/staff/assessment/allot"]),
         new("monitoring", "Monitoring", UserRole.MasterAdmin, All, None,
-            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails, Milestones]),
+            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails, SiteReview, AppFormValues, Milestones]),
         new("results", "Completed and rejected", UserRole.MasterAdmin, All, None,
-            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones]),
+            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, SiteReview, AppFormValues, Milestones]),
         new("password-reset", "Password Reset Link", UserRole.MasterAdmin, All, None,
             ["/staff/users/password-reset"], ["/api/staff/password-reset"]),
         new("history", "ZED ID History", UserRole.MasterAdmin, Main, None,
@@ -105,18 +111,18 @@ public static class SubUserPermissions
 
         // Agencies, consultant organisations and surveillance agencies
         new("monitoring", "Monitoring", UserRole.Agency, All, SiteOrDesktop,
-            ["/staff/monitoring", "/staff/quality-observations"], ["/api/staff/monitoring", DaDetails, Milestones, QualityObservations]),
+            ["/staff/monitoring", "/staff/quality-observations"], ["/api/staff/monitoring", DaDetails, SiteReview, AppFormValues, Milestones, QualityObservations]),
         new("assessors", "Assessors", UserRole.Agency, All, None,
             ["/staff/users/my-assessors", "/staff/users/assessors", "/staff/users/surveillance-assessors"],
-            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors", ConsultantMilestones], ConsultancyLabel: "Consultants"),
+            ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors", "/api/staff/surveillance-users/level-counts", ConsultantMilestones], ConsultancyLabel: "Consultants"),
         new("da-allotment", "Desktop allotment", UserRole.Agency, [PortalSystem.Main, PortalSystem.Surveillance], [SubRoles.DesktopVerification],
-            ["/staff/assessment/da-allotment"], ["/api/staff/assessment/da-allotment", DaDetails]),
+            ["/staff/assessment/da-allotment"], ["/api/staff/assessment/da-allotment", DaDetails, RejectionReasons]),
         new("sa-allotment", "Site assessment allotment", UserRole.Agency, All, [SubRoles.SiteVerification],
             ["/staff/sa-allotment", "/staff/site-assessment/co-allotment"],
-            ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments"], ConsultancyLabel: "Consultancy allotment"),
+            ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments", RejectionReasons], ConsultancyLabel: "Consultancy allotment"),
         new("results", "Completed and rejected", UserRole.Agency, All, SiteOrDesktop,
             ["/staff/assessment/completed", "/staff/assessment/rejected", "/staff/quality-observations"],
-            ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones, QualityObservations]),
+            ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, SiteReview, AppFormValues, Milestones, QualityObservations]),
         new("reports", "Reports", UserRole.Agency, All, None,
             ["/staff/reports"], ["/api/staff/reports"]),
         new("financial-assistance", "Financial Assistance verification", UserRole.Agency, Main, [SubRoles.FinancialVerification],

@@ -2,6 +2,18 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Route, Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { DASHBOARD_ROLE_IDS, INCENTIVES_DASHBOARD_ROUTE, STAFF_ROLE_IDS, homeFor } from './staff-menu';
+import { dashboardPortals } from './admin-portal';
+
+/**
+ * 2026-11-27 (permissions review): a Dashboard Admin's screens in the menu's order, with their pages. One whose ticks leave out both
+ * dashboard tabs opened /staff/dashboard after signing in and got "You do not have access to this screen": it opens its first
+ * ticked screen instead.
+ */
+const DASHBOARD_ADMIN_SCREENS: readonly (readonly [string, string])[] = [
+  ['registered-msme', '/staff/registered-msme'], ['failed-transactions', '/staff/failed-transactions'],
+  ['financial-support', '/staff/financial-support'], ['incentive-submissions', '/staff/incentives/submissions'],
+  ['reports', '/staff/reports'], ['history', '/staff/history'], ['documents', '/staff/documents'],
+];
 
 /** MSME role id (Users.RoleId 5). */
 const MSME_ROLE = 5;
@@ -23,6 +35,10 @@ export const staffDashboardGuard: CanActivateFn = () => {
   // The incentive logins (Incentives Master Admin, incentive verification agencies) have the incentives dashboard instead.
   const home = homeFor(user.roleId, undefined, user.subRoles ?? []);
   if (home === INCENTIVES_DASHBOARD_ROUTE) return inject(Router).parseUrl(home);
+  if (user.roleId === 10 && user.screens && dashboardPortals(user, ['dash-registered', 'dash-certified']).length === 0) {
+    const first = DASHBOARD_ADMIN_SCREENS.find(([key]) => dashboardPortals(user, [key]).length > 0);
+    if (first) return inject(Router).parseUrl(first[1]);
+  }
   return DASHBOARD_ROLE_IDS.includes(user.roleId) ? true : inject(Router).parseUrl(home ?? '/staff');
 };
 

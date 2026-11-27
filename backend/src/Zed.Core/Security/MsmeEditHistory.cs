@@ -159,7 +159,9 @@ public sealed class MsmeEditAuditAttribute(string action, params string[] idFiel
         return json.Length <= MaxData ? json : json[..MaxData];
     }
 
-    private static readonly string[] Secret = ["password", "otp", "token", "captcha", "secret", "pin"];
+    // 2026-11-27 (permissions review): "pin" removed: it hid the PIN codes (PPin, Pincode); no secret field of the MSME edits is
+    // named so (the app's passwords and OTPs are matched by the other words).
+    private static readonly string[] Secret = ["password", "otp", "token", "captcha", "secret"];
 
     private static JsonNode? Node(object? value, string name, int depth)
     {

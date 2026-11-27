@@ -81,6 +81,10 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         var sets = await List(db, UserId, RoleId, "DA", req.ZedId, Filter.None with { Certification = level }, ct);
         var row = sets[0].FirstOrDefault(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
         if (row is null) return this.Problem400("This assessment is not allotted to your agency or can no longer be allotted.");
+        // 2026-11-27 (workflow review): a Remote only / Onsite only level has no desktop step (a failed desktop skip left such a unit
+        // at 2, where it could be given a desktop assessor); it waits for its site / remote assessor instead.
+        if (!Surveillance && !CertLevels.LevelFlows.ModesOf(await CertLevels.LevelFlows.FlowAsync(db, level, log, ct)).Contains('D'))
+            return this.Problem400($"{Zed.Core.Data.LevelRegistry.NameOf(level)} has no desktop assessment: allot its site / remote assessor instead.");
 
         // Main (2026-11-14): any of the agency's assessors ticked for the level at the desktop (Users.AssessmentModes; the old
         // Bronze Assessor / Assessor lists together). Surveillance: one list, the agency's assessors allowed for Bronze surveillance.

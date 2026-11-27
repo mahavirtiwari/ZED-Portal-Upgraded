@@ -873,7 +873,7 @@ public sealed partial class RemoteAssessmentController(
         {
             14 => $"Assessment submitted. NC {after.NcCount} was raised to the MSME.",
             15 => InNcRound(record) ? "Assessment submitted. The NCs are closed and the assessment goes to the agency." : "Assessment submitted.",
-            17 => "Assessment submitted. The NCs were not closed after NC 5: the certification is rejected.",
+            17 => "Assessment submitted. The NCs were not closed in the last NC round: the certification is rejected.",
             _ => "Assessment submitted.",
         });
     }

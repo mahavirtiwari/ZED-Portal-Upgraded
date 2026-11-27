@@ -30,6 +30,8 @@ public static class DashboardScreens
     [
         "/api/staff/msme-profile", "/api/staff/msme-edit-history", "/api/staff/assessment/da", "/api/staff/site-review",
         "/api/staff/app-form-values", "/api/staff/certification-documents", "/api/staff/pledge-certificate",
+        // 2026-11-27 (permissions review): the consultancy milestone pages the unit's details open (now checked by the filter).
+        "/api/consultancy/milestones",
     ];
 
     public static readonly IReadOnlyList<DashboardScreen> Screens =

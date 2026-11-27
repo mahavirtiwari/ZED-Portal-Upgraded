@@ -47,7 +47,12 @@ public sealed class ExpenditureTests : IDisposable
     public void A_case_counts_once_the_last_step_of_its_flow_is_done()
     {
         // Completed: certified (6 / 16); rejected only with the assessor of the flow's last step on the record.
-        Assert.Contains("C.CertificationStatus IN (6, 16)", ExpenditureSweep.MainSql);
+        // 2026-11-27 (workflow review): a 6 counts as completed only when certified (desktop certificate or a certified phase): a
+        // Desktop + Onsite / Remote case passes 6 before its visit, an Onsite / Remote only case right after its allotment.
+        Assert.Contains(ExpenditureSweep.MainCertified, ExpenditureSweep.MainSql);
+        Assert.DoesNotContain("C.CertificationStatus IN (6, 16)", ExpenditureSweep.MainSql);
+        Assert.Contains("C.CertificationStatus = 6 AND (NULLIF(LTRIM(RTRIM(C.DaCertificateNo)), '') IS NOT NULL", ExpenditureSweep.MainCertified);
+        Assert.Contains("ISNULL(C.CertificationPhase, 'PENDING') NOT IN ('PENDING', 'REJECTED')", ExpenditureSweep.MainCertified);
         Assert.Contains("C.CertificationStatus = 99 AND (CASE WHEN C.Certification IN @DesktopLevels THEN C.DesktopAssessorId ELSE C.SiteAssessorId END) IS NOT NULL",
             ExpenditureSweep.MainSql);
         Assert.Contains("WHERE C.ExpCountedOn IS NULL", ExpenditureSweep.MainSql);
@@ -626,7 +631,8 @@ public sealed class ExpenditureTests : IDisposable
         // visit) are in progress; 16 and 6 with a certificate are completed (counted, not in progress).
         Assert.DoesNotContain("NOT IN (3, 6, 16)", PoLimits.MainInProgressSql);
         Assert.Contains("C.CertificationStatus <> 16", PoLimits.MainInProgressSql);
-        Assert.Contains("NOT (C.CertificationStatus = 6 AND (C.DaCertificateNo IS NOT NULL OR C.CertificationPhase IS NOT NULL))", PoLimits.MainInProgressSql);
+        // 2026-11-27: a 6 waiting for its visit has the phase PENDING: in progress, not done (ExpenditureSweep.MainCertified).
+        Assert.Contains("AND NOT " + ExpenditureSweep.MainCertified, PoLimits.MainInProgressSql);
         Assert.Contains("C.ExpCountedOn IS NULL", PoLimits.MainInProgressSql);
     }
 }

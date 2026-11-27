@@ -64,7 +64,7 @@ public sealed partial class MsmeController
     /// against the field's type and choices. The assessor checks it again in the next round.
     /// </summary>
     [HttpPost]
-    [DeviceBound(MobileApps.Msme, "userName")]
+    [DeviceBound(MobileApps.Msme, "userName", TokenRequired = true)]
     [MsmeEditAudit("App: non-conformance answer to a Basic Information field submitted")]
     public async Task<IActionResult> SubmitNcFormField(NcFormFieldSubmitRequest request, CancellationToken ct)
     {

@@ -25,11 +25,11 @@ public sealed record ReviewActions(
 /// for which the page showed its button:
 /// <list type="bullet">
 /// <item>Desktop (DaDetails): the allotted agency (DesktopVerification) at status 5 (quality check):
-/// edit remarks, final submit, send back. At status 7 (failed NCs, NcCount 6, Bronze): reject, and send
+/// edit remarks, final submit, send back. At status 7 (failed NCs, NcCount rounds + 1, Bronze): reject, and send
 /// back when the rejection was not automatic. The master admin: send back at status 7 when the NC closure
 /// job rejected the unit (IsAutoReject).</item>
 /// <item>Site (SaDetails, Silver/Gold): the allotted agency (SiteVerification) at status 15: edit remarks
-/// and OFI comments, final submit, send back. At status 17 (NcCount 6): send back and reject. The master
+/// and OFI comments, final submit, send back. At status 17 (NcCount rounds + 1): send back and reject. The master
 /// admin: send back at status 17 when the rejection was automatic.</item>
 /// </list>
 /// ZED_SURVEILLANCE uses the same status numbers (its send-back procedure accepts 5/15 and 7/17 with NcCount 6, the
@@ -43,8 +43,15 @@ public static class ReviewRules
     public const int SiteQualityCheck = 15;
     public const int SiteRejected = 17;
 
-    /// <summary>NcCount of a unit the NC procedures or the closure job moved to rejection.</summary>
+    /// <summary>NcCount of a unit the NC closure job moved to rejection (and of a rejection after 5 rounds).</summary>
     public const int RejectedNcCount = 6;
+
+    /// <summary>
+    /// 2026-11-27 (workflow review): a rejection after the NC rounds. The final submits set NcCount to the level's rounds + 1
+    /// (Admin → Certification Levels, 1-5 rounds: 2 to 6; migration 0086) and the closure job to 6, so a level with fewer than 5
+    /// rounds was never offered Reject or Send back (both refused) and waited for the 15-day automatic rejection.
+    /// </summary>
+    public static bool IsRejectedRound(int? nc) => nc is >= 2 and <= RejectedNcCount;
 
     public static ReviewActions For(ZedUser user, CertificationRecord r, ReviewStage stage)
     {
@@ -61,7 +68,7 @@ public static class ReviewRules
             if (r.Status == DesktopQualityCheck)
                 return agency ? new ReviewActions(true, true, true, false) : ReviewActions.None;
             // 2026-11-15: every desktop-only level (Silver / Gold too) can be rejected at the desktop, as Bronze always could.
-            if (r.Status == DesktopRejected && (bronze || desktopOnly) && r.Nc == RejectedNcCount)
+            if (r.Status == DesktopRejected && (bronze || desktopOnly) && IsRejectedRound(r.Nc))
                 return new ReviewActions(false, false, (agency && !auto) || (master && auto), agency);
             return ReviewActions.None;
         }
@@ -69,7 +76,7 @@ public static class ReviewRules
         if (desktopOnly) return ReviewActions.None;
         if (r.Status == SiteQualityCheck)
             return agency ? new ReviewActions(true, true, true, false) : ReviewActions.None;
-        if (r.Status == SiteRejected && r.Nc == RejectedNcCount)
+        if (r.Status == SiteRejected && IsRejectedRound(r.Nc))
             return new ReviewActions(false, false, agency || (master && auto), agency);
         return ReviewActions.None;
     }

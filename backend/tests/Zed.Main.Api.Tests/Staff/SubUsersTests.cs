@@ -66,6 +66,27 @@ public sealed class SubUsersTests : IDisposable
     }
 
     [Fact]
+    public void Monitoring_results_and_allotment_screens_cover_the_calls_their_pages_make()
+    {
+        // 2026-11-27 (permissions review): sa-details (site review), the App Forms panel, the Reject pop-up's reasons and the
+        // surveillance assessors' level counts answered 403 to a sub-user who had the screen.
+        var both = new[] { SubRoles.DesktopVerification, SubRoles.SiteVerification };
+        var agency = SubUserPermissions.For((int)UserRole.Agency, both, PortalSystem.Main);
+        foreach (var key in new[] { "monitoring", "results" })
+        {
+            Assert.True(SubUserPermissions.Covers(agency.Where(p => p.Key == key), "/api/staff/site-review/ZEDM1/Silver"));
+            Assert.True(SubUserPermissions.Covers(agency.Where(p => p.Key == key), "/api/staff/app-form-values/ZEDM1/Silver"));
+        }
+        Assert.True(SubUserPermissions.Covers(agency.Where(p => p.Key == "da-allotment"), "/api/staff/assessment/rejection-reasons"));
+        Assert.True(SubUserPermissions.Covers(agency.Where(p => p.Key == "sa-allotment"), "/api/staff/assessment/rejection-reasons"));
+        Assert.False(SubUserPermissions.Covers(agency.Where(p => p.Key == "reports"), "/api/staff/site-review/ZEDM1/Silver"));
+        var surveillance = SubUserPermissions.For((int)UserRole.Agency, both, PortalSystem.Surveillance);
+        Assert.True(SubUserPermissions.Covers(surveillance.Where(p => p.Key == "assessors"), "/api/staff/surveillance-users/level-counts"));
+        var operationAdmin = SubUserPermissions.For((int)UserRole.MasterAdmin, [], PortalSystem.Main);
+        Assert.True(SubUserPermissions.Covers(operationAdmin.Where(p => p.Key == "monitoring"), "/api/staff/site-review/ZEDM1/Gold"));
+    }
+
+    [Fact]
     public void Screen_names_are_worded_for_each_portal()
     {
         // 2026-11-21 (Assessment Agency UI audit, item 6): "Assessors / consultants" and "Site / consultancy allotment" on every portal.

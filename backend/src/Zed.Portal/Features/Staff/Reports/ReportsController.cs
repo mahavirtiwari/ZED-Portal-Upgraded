@@ -47,7 +47,7 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
     {
         // An MSME DFO without this portal's NEFT list has none of its reports (2026-11-08).
         if (!MayUseReports()) return [];
-        var reports = ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).ToList();
+        var reports = ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).Where(r => !HiddenForNames(r.Procedure)).ToList();
         // 2026-11-22 (database check): a report whose procedure is not in this portal's database is not offered (it could only
         // answer "This report is not available"); when the catalogue cannot be read, every report is offered as before.
         var present = await PresentAsync(reports.Select(r => r.Procedure).Distinct().ToList(), ct);
@@ -70,6 +70,23 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
         }
     }
 
+    /// <summary>
+    /// 2026-11-27 (permissions review): a Dashboard Admin with "Hide agency and assessor names" on this portal gets neither the
+    /// reports that list agencies and assessors (or their remarks) nor the agency / assessor columns of the other reports, as the
+    /// list pages hide them (<see cref="DashboardScreens.HidesNames"/>).
+    /// </summary>
+    internal static readonly HashSet<string> NameReports = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS", "SP_DYNAMIC_REPORT_ASSESSOR_COMMENTS",
+    };
+
+    private static readonly System.Text.RegularExpressions.Regex NameColumn =
+        new("agency|assessor|consultant|certificationbody", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    private bool HidesNames => DashboardScreens.HidesNames(CurrentUser, host.System);
+
+    private bool HiddenForNames(string procedure) => HidesNames && NameReports.Contains(procedure);
+
     private bool MayUseReports() => RoleId != (int)UserRole.StateCoordinator || Neft.CoordinatorAreas.HasList(CurrentUser, host.System);
 
     /// <summary>Runs an allow-listed report with the signed-in user's RoleId/UserId and returns it as .xlsx.</summary>
@@ -78,7 +95,8 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
     public async Task<IActionResult> Download(string id, CancellationToken ct, string? state = null, string? certification = null, string? size = null,
         string? gender = null, string? status = null, string? from = null, string? to = null, string? dateOf = null)
     {
-        if (!MayUseReports() || ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report) return NotFound();
+        if (!MayUseReports() || ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report || HiddenForNames(report.Procedure))
+            return NotFound();
         // 2026-11-26: the page's filters (ReportFilters), checked as the list pages check theirs.
         var invalid = false;
         var stateCode = Dashboard.DashboardFilters.Pick(state, Dashboard.DashboardFilters.States.Keys, ref invalid);
@@ -127,7 +145,8 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
                 : sets[i].Where(r => r.TryGetValue("ZedId", out var z) && z is not null && units.Contains(z.ToString()!.Trim())).ToList();
             // A Ministry login with a scope (migration 0057): its units and levels only.
             rows = await ScopeFilter.ApplyAsync(HttpContext, rows, ct, "ZedId", "Certification", "CertificationType", "CertificationLevel");
-            var columns = rows.FirstOrDefault()?.Keys.Where(k => !ResultSets.SensitiveColumns.Contains(k)).ToList() ?? [];
+            var hideNames = HidesNames;
+            var columns = rows.FirstOrDefault()?.Keys.Where(k => !ResultSets.SensitiveColumns.Contains(k) && !(hideNames && NameColumn.IsMatch(k))).ToList() ?? [];
             var sheetName = i == 0 ? "Table" : "Table" + i;
             if (filter.Any)
             {

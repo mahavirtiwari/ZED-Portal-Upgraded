@@ -118,6 +118,8 @@ public sealed class QualityObservationsController(
         var (row, error) = await ObservationAsync(id, ct);
         if (error is not null) return error;
         if (!Same(row!.QoAgencyId, UserId)) return NotFound();
+        // 2026-11-27 (permissions review): an agency sub-user with its own states replies only on its units, as Close / Reopen check.
+        if (!await ScopeFilter.AllowsAsync(HttpContext, row.ZedId, row.Certification, ct)) return NotFound();
         if (row.QoStatus == QualityObservations.Closed) return this.Problem400("This observation is closed.");
         var text = AssessmentInput.Text(req.Text);
         if (text is null) return this.Problem400("Please write your reply.");
