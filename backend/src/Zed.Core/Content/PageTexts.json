@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9732,
+  "count": 9734,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -74502,6 +74502,18 @@
       ]
     },
     {
+      "key": "staff.menu.item.oldTuApplicationsLabel",
+      "standard": "Old TU Applications",
+      "kind": "label",
+      "portal": "staff",
+      "page": "menu",
+      "pageName": "Menu",
+      "placeholders": [],
+      "files": [
+        "staff/staff-menu.ts"
+      ]
+    },
+    {
       "key": "staff.menu.item.operationAdminsLabel",
       "standard": "Operation Admins",
       "kind": "label",
@@ -115115,18 +115127,6 @@
       ]
     },
     {
-      "key": "staff.tuSubmissions.crumb",
-      "standard": "Technology Upgradation",
-      "kind": "label",
-      "portal": "staff",
-      "page": "tuSubmissions",
-      "pageName": "Tu submissions",
-      "placeholders": [],
-      "files": [
-        "staff/consultancy/technology/tu-submissions.ts"
-      ]
-    },
-    {
       "key": "staff.tuSubmissions.dialog.acceptButton",
       "standard": "Accept",
       "kind": "button",
@@ -115328,6 +115328,42 @@
       "placeholders": [],
       "files": [
         "staff/consultancy/technology/tu-submissions.ts"
+      ]
+    },
+    {
+      "key": "staff.tuSubmissions.oldCrumb",
+      "standard": "Old TU Applications",
+      "kind": "text",
+      "portal": "staff",
+      "page": "tuSubmissions",
+      "pageName": "Tu submissions",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/technology/tu-submissions.ts"
+      ]
+    },
+    {
+      "key": "staff.tuSubmissions.oldNote",
+      "standard": "These are Technology Upgradation applications made before it moved to the incentive schemes. Finish them here; nothing new starts here. New applications come through the Technology Upgradation incentive scheme.",
+      "kind": "note",
+      "portal": "staff",
+      "page": "tuSubmissions",
+      "pageName": "Tu submissions",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/technology/tu-submissions.html"
+      ]
+    },
+    {
+      "key": "staff.tuSubmissions.oldTitle",
+      "standard": "Old TU Applications",
+      "kind": "heading",
+      "portal": "staff",
+      "page": "tuSubmissions",
+      "pageName": "Tu submissions",
+      "placeholders": [],
+      "files": [
+        "staff/consultancy/technology/tu-submissions.html"
       ]
     },
     {
@@ -115610,18 +115646,6 @@
       "placeholders": [],
       "files": [
         "staff/consultancy/technology/tu-submissions.ts"
-      ]
-    },
-    {
-      "key": "staff.tuSubmissions.title",
-      "standard": "Technology Upgradation",
-      "kind": "heading",
-      "portal": "staff",
-      "page": "tuSubmissions",
-      "pageName": "Tu submissions",
-      "placeholders": [],
-      "files": [
-        "staff/consultancy/technology/tu-submissions.html"
       ]
     },
     {

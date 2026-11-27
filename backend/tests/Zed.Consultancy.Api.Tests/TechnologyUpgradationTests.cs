@@ -142,6 +142,24 @@ public sealed class TechnologyUpgradationTests : IDisposable
     }
 
     [Fact]
+    public async Task Open_counts_the_old_applications_still_to_finish_in_the_users_scope()
+    {
+        // 2026-11-27 (the product owner: "finish old ones only"): the "Old TU Applications" menu entry follows this count.
+        _host.Sql.Queries[global::Zed.Portal.Features.Consultancy.TechnologyUpgradation.TuSubmissionsController.OpenSql] = args =>
+            FakeSql.Arg(args, "Scope") switch
+            {
+                "all" => [new { ZedId = "ZEDMSME000500", CertificationType = "Silver" }, new { ZedId = "ZEDMSME000501", CertificationType = "Gold" }],
+                "agency" when FakeSql.Arg(args, "UserId") == "CO1" => [new { ZedId = "ZEDMSME000500", CertificationType = "Silver" }],
+                _ => [],
+            };
+        Assert.Equal(2, (await (await SignIn("MADMIN")).GetFromJsonAsync<JsonElement>($"{Base}/open")).GetProperty("open").GetInt32());
+        Assert.Equal(1, (await (await SignIn("CO1")).GetFromJsonAsync<JsonElement>($"{Base}/open")).GetProperty("open").GetInt32());
+        Assert.Equal(0, (await (await SignIn("DFO1")).GetFromJsonAsync<JsonElement>($"{Base}/open")).GetProperty("open").GetInt32());
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn("CONOFV")).GetAsync($"{Base}/open")).StatusCode);
+        Assert.Contains("ISNULL(TransactionStatus, 0) <> 1", global::Zed.Portal.Features.Consultancy.TechnologyUpgradation.TuSubmissionsController.OpenSql);
+    }
+
+    [Fact]
     public async Task Submissions_use_the_tu_tabs_and_return_only_list_columns()
     {
         var admin = await SignIn("MADMIN");

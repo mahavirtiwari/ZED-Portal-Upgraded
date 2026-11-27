@@ -95,6 +95,11 @@ export interface StaffMenuItem {
    * agencies only. The incentive verification agencies (desktop, onsite) see only the entries listing their kind.
    */
   agencyKinds?: readonly AgencyKind[];
+  /**
+   * 2026-11-27 (the product owner: "finish old ones only"): shown only while the login has old Technology Upgradation applications to
+   * finish (api/staff/consultancy/tu/open, OldTuApplications); new ones go through the incentive scheme.
+   */
+  whileOldTu?: true;
 }
 
 /** A heading (or none) inside a drop-down, with its links. */
@@ -335,6 +340,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   // 2026-11-26 (the user: Technology Upgradation "moved to incentive admin"): no longer on the consultancy portal; technology
   // upgradation applications come as the incentive scheme (Incentives Master Admin → Scheme Applications).
+  // 2026-11-27 (the product owner: "finish old ones only"): the old applications are finished here; the entry shows only while some are open.
+  { label: 'Old TU Applications', route: '/staff/consultancy/technology', roles: [R.MasterAdmin], whileOldTu: true },
 
   // Consultant Organisation (Agency)
   { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Consultancy' },
@@ -342,12 +349,14 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Consultancy Monitoring', route: '/staff/monitoring', roles: [R.Agency], subRoles: ['SiteVerification'], group: 'Consultancy' },
   { label: 'Consultants/Experts', route: '/staff/users/my-assessors', roles: [R.Agency] },
   { label: 'Reports', route: '/staff/reports', roles: [R.Agency] },
+  { label: 'Old TU Applications', route: '/staff/consultancy/technology', roles: [R.Agency], subRoles: ['FinancialVerification'], whileOldTu: true },
 
   // Consultant / expert (DesktopAssessor)
   { label: 'Milestone 1', route: '/staff/site-assessment/milestones/1', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Milestone 2', route: '/staff/site-assessment/milestones/2', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Milestone 3', route: '/staff/site-assessment/milestones/3', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Old TU Applications', route: '/staff/consultancy/technology', roles: [R.DesktopAssessor], subRoles: ['FinancialVerification'], whileOldTu: true },
 
   // State coordinator: TU reimbursements
   { label: 'New Transactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
@@ -531,6 +540,7 @@ const MENU_TEXTS: Readonly<Record<string, () => string>> = {
   'Consultants': () => t('staff.menu.item.consultantsLabel', 'Consultants'),
   'Consultancy Completed': () => t('staff.menu.item.consultancyCompletedLabel', 'Consultancy Completed'),
   'Technology Upgradation': () => t('staff.menu.item.technologyUpgradationLabel', 'Technology Upgradation'),
+  'Old TU Applications': () => t('staff.menu.item.oldTuApplicationsLabel', 'Old TU Applications'),
   'Consultancy Monitoring': () => t('staff.menu.item.consultancyMonitoringLabel', 'Consultancy Monitoring'),
   'Consultants/Experts': () => t('staff.menu.item.consultantsExpertsLabel', 'Consultants/Experts'),
   'Milestone 1': () => t('staff.menu.item.milestone1Label', 'Milestone 1'),

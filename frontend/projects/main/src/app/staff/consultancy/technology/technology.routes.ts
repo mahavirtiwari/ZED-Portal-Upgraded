@@ -8,7 +8,7 @@ export const TECHNOLOGY_ROUTES: Routes = [
   {
     path: '',
     pathMatch: 'full',
-    title: 'ZED | Technology Upgradation',
+    title: 'ZED | Old TU Applications',
     loadComponent: () => import('./tu-submissions').then((m) => m.TuSubmissionsPage),
   },
   {

@@ -4,6 +4,7 @@ import { AuthService, ClientConfigService } from '@zed/shared';
 import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
 import { TextPipe } from '../content/page-text';
 import { RemoteAllotments } from './remote-allotments';
+import { OldTuApplications } from './old-tu-applications';
 
 /** A heading with more screens than this is a chooser (e.g. the incentives of every state), not a list. */
 const LIST_LIMIT = 8;
@@ -165,6 +166,8 @@ export class StaffHomePage {
   private readonly router = inject(Router);
   protected readonly user = inject(AuthService).currentUser;
   private readonly remote = inject(RemoteAllotments);
+  /** 2026-11-27: the "Old TU Applications" entries show only while old applications are open. */
+  private readonly oldTu = inject(OldTuApplications);
   protected readonly legacyUrl = signal('');
   protected readonly listLimit = LIST_LIMIT;
   protected readonly icon = iconFor;
@@ -173,7 +176,7 @@ export class StaffHomePage {
   protected readonly menuGroupText = menuGroupText;
   private readonly entries = computed(() => {
     const u = this.user();
-    return menuEntries(u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : []);
+    return menuEntries(u ? this.oldTu.filter(this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes))) : []);
   });
   /** 2026-11-14: the search box: only the screens whose label (or menu) has the words typed. */
   protected readonly query = signal('');

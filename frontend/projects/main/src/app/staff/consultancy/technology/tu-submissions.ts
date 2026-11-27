@@ -65,7 +65,7 @@ export class TuSubmissionsPage {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly user = inject(AuthService).currentUser;
-  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.tuSubmissions.crumb', 'Technology Upgradation') }));
+  protected readonly crumbs = computed(() => staffCrumbs({ label: t('staff.tuSubmissions.oldCrumb', 'Old TU Applications') }));
   protected readonly landing = TU_LANDING;
 
   protected readonly isAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);

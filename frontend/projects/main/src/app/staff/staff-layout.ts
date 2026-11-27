@@ -4,6 +4,7 @@ import { AuthService, ClientConfigService, PortalLinksService } from '@zed/share
 import { BrandingService } from '../branding';
 import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, isIncentivesAdmin, menuEntries, menuFor, menuGroupText, menuText, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
+import { OldTuApplications } from './old-tu-applications';
 import { ZedIdSearch, MSME_PROFILE_ROLES } from './zed-id-search';
 import { ATTENTION_ROLES, AttentionBell } from './attention';
 import { ToastHost } from './toast';
@@ -305,9 +306,11 @@ export class StaffLayout {
 
   protected readonly user = this.auth.currentUser;
   private readonly remote = inject(RemoteAllotments);
+  /** 2026-11-27: the "Old TU Applications" entries show only while old applications are open. */
+  private readonly oldTu = inject(OldTuApplications);
   protected readonly menu = computed(() => {
     const u = this.user();
-    return u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : [];
+    return u ? this.oldTu.filter(this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes))) : [];
   });
   /** The menu bar: long menus fold into drop-downs as in the old layout (StaffMenuItem.group). */
   protected readonly entries = computed(() => menuEntries(this.menu()));

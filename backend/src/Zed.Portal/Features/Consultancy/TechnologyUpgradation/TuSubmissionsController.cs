@@ -70,6 +70,43 @@ public sealed class TuSubmissionsController(
     public sealed record Option(string UserId, string UserName);
 
     /// <summary>
+    /// 2026-11-27 (the product owner, on Technology Upgradation moved to the incentive schemes: "finish old ones only"): the old
+    /// applications still to finish in the signed-in user's scope: waiting for a CO, with the consultant, in the CO's QC, or approved
+    /// and not yet paid. Nothing new starts here (the unit's legacy page refuses new applications), so the "Old TU Applications"
+    /// menu entry shows only while this is above 0.
+    /// </summary>
+    internal const string OpenSql =
+        "SELECT ZedId, CertificationType FROM dbo.FinancialAssistance " +
+        "WHERE (ISNULL(VerificationStatus, 0) IN (1, 2, 3) OR (VerificationStatus = 4 AND ISNULL(TransactionStatus, 0) <> 1)) " +
+        "AND (@Scope = 'all' OR (@Scope = 'agency' AND CertificationBodyUserId = @UserId) OR (@Scope = 'assessor' AND FinancialAssessorId = @UserId));";
+
+    public sealed class OpenRow
+    {
+        public string? ZedId { get; init; }
+        public string? CertificationType { get; init; }
+    }
+
+    public sealed record OpenResponse(int Open);
+
+    /// <summary>GET api/staff/consultancy/tu/open — how many old applications are still to finish for this user.</summary>
+    [HttpGet("open")]
+    public async Task<ActionResult<OpenResponse>> Open(CancellationToken ct)
+    {
+        if (NeedsFinancialVerification()) return Forbid();
+        var scope = RoleId switch { (int)UserRole.Agency => "agency", (int)UserRole.DesktopAssessor => "assessor", _ => "all" };
+        try
+        {
+            var rows = await db.QuerySqlAsync<OpenRow>(OpenSql, new { Scope = scope, UserId }, ct);
+            return new OpenResponse((await ScopeFilter.ApplyAsync(HttpContext, rows, r => r.ZedId, r => r.CertificationType, ct)).Count);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Old technology upgradation applications not counted");
+            return new OpenResponse(0);
+        }
+    }
+
+    /// <summary>
     /// GET api/staff/consultancy/tu/agencies?zedId= — COs the unit can be allotted to: SP_ASSESSMENT_AGENCIES_TO_ALLOT,
     /// whose FinancialVerification column is 1 here when the CO's TuPreferredState is the unit's state (as the legacy filter).
     /// </summary>

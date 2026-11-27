@@ -1,9 +1,11 @@
 <!-- 2026-11-17 (approved staff redesign, "same look"): the page head, the status lists as clickable tiles with their counts, the
      search, the list with one main button, View details and a row menu (profile, Reject), the reason in the confirmation pop-up. -->
 <!-- 2026-11-19 ("All page wording"): every wording through the t pipe (Admin → Texts → Page wording, staff.tuSubmissions.*). -->
-<zed-page-head [crumbs]="crumbs()" [title]="'Technology Upgradation' | t: 'staff.tuSubmissions.title'" [subtitle]="subtitle()">
+<zed-page-head [crumbs]="crumbs()" [title]="'Old TU Applications' | t: 'staff.tuSubmissions.oldTitle'" [subtitle]="subtitle()">
   <button type="button" class="btn btn-ph" (click)="load(status())">{{ 'Refresh' | t: 'staff.tuSubmissions.refreshButton' }}</button>
 </zed-page-head>
+<!-- 2026-11-27 (the product owner: "finish old ones only"): Technology Upgradation moved to the incentive schemes. -->
+<div class="alert alert-info tu-old-note" role="note">{{ 'These are Technology Upgradation applications made before it moved to the incentive schemes. Finish them here; nothing new starts here. New applications come through the Technology Upgradation incentive scheme.' | t: 'staff.tuSubmissions.oldNote' }}</div>
 <!-- No tab bar for the MSME-DFO officer, as on the old page. -->
 @if (!isDfo()) {
   <zed-list-counts [counts]="tiles()" [selected]="'' + status()" [label]="'Application status' | t: 'staff.tuSubmissions.countsLabel'" (pick)="load(+($event.key ?? status()))" />
