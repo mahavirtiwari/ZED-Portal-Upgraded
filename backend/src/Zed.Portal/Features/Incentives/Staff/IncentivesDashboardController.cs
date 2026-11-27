@@ -109,7 +109,7 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
 
         var headline = new Headline(rows.Count, rows.Count(r => InVerification(r.Status)), rows.Count(r => r.Status == Approved), rows.Count(r => r.Status == Paid),
             rows.Count(r => r.Status == Rejected), rows.Count(r => r.Status == OnHold), rows.Sum(r => r.ClaimAmount ?? 0),
-            rows.Where(r => r.Status is Approved or Paid).Sum(r => r.ApprovedAmount ?? 0), rows.Where(r => r.Status == Paid).Sum(r => r.ApprovedAmount ?? 0),
+            rows.Where(r => r.Status is Approved or Paid).Sum(r => r.ApprovedAmount ?? 0), rows.Where(r => r.Status == Paid).Sum(PaidOf),
             agencies.Count(a => Agencies.IncentiveAgencies.IsDesktop(a.AgencyKind)), agencies.Count(a => Agencies.IncentiveAgencies.IsOnsite(a.AgencyKind)));
 
         // Every scheme the Admin defined (with none yet: 0), then a code no longer defined that still has applications.
@@ -145,6 +145,12 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
         return new DashboardResponse(DateTime.Now, headline, cards, faCard, months, states,
             all.Schemes.Select(s => new Option(s.Code, s.Name)).ToList(), stateOptions, kind);
     }
+
+    /// <summary>
+    /// 2026-11-27 (incentive workflow check: a DFO paid Rs. 31,000 on Rs. 2,50,000 approved and the dashboard showed 2,50,000 paid): the
+    /// amount the MSME DFO recorded (NEFT approval), else the approved amount (an application marked paid before the NEFT step).
+    /// </summary>
+    internal static decimal PaidOf(SchemeReview.ListItem r) => r.PaidAmount ?? r.ApprovedAmount ?? 0;
 
     private static bool InVerification(string status) => DesktopStatuses.Contains(status) || OnsiteStatuses.Contains(status) || status == Qc;
 
@@ -202,7 +208,9 @@ public sealed class IncentivesDashboardController(ISqlExecutor db, SchemeStore s
         var fa = await ScopeFilter.ApplyAsync(http, await db.QuerySqlAsync<FaRow>(FaSql, null, ct), r => r.ZedId, r => r.CertificationType, ct);
         return new AttentionCounts(
             list.Rows.Count(r => r.Status == Submitted),
-            list.Rows.Count(r => r.Status == OnsiteAllot && string.Equals(r.OnsiteAllotmentType, Onsite.OnsiteAllotment.WaitsForMasterAdmin, StringComparison.OrdinalIgnoreCase)),
+            // 2026-11-27 (incentive workflow check): every application waiting for an onsite agency (sent back by one, auto-allot off,
+            // or no onsite agency of its area), not only the sent-back ones: the Incentives Master Admin allots them all.
+            list.Rows.Count(r => r.Status == OnsiteAllot && string.IsNullOrWhiteSpace(r.OnsiteAgency)),
             list.Rows.Count(r => r.Status == OnHold),
             fa.Count(r => r.VerificationStatus == FaStatus.New && string.IsNullOrWhiteSpace(r.CertificationBodyUserId)));
     }

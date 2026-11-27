@@ -101,7 +101,7 @@ public sealed class SchemeOnsiteTests : IDisposable
             ["Id"] = 900, ["ZedId"] = Zed, ["SchemeCode"] = Code, ["SchemeLevel"] = "Bronze", ["SchemeCertNo"] = "B-1", ["SchemeStatus"] = "Verifying",
             ["VerificationStatus"] = 2, ["FormAnswers"] = Answers(), ["FormChecks"] = null, ["ClaimAmount"] = 70000m, ["SharePercent"] = 75m,
             ["MaxAmount"] = 50000m, ["EligibleAmount"] = null, ["ApprovedAmount"] = null, ["CorrectionRound"] = 0, ["SubmittedOn"] = new DateTime(2026, 11, 18),
-            ["CertificationBodyUserId"] = "AGENCY1", ["FinancialAssessorId"] = "DA1", ["AssessorAcceptedOn"] = new DateTime(2026, 11, 19),
+            ["CertificationBodyUserId"] = "DESK1", ["FinancialAssessorId"] = "DSA1", ["AssessorAcceptedOn"] = new DateTime(2026, 11, 19),
             ["OnsiteAgencyId"] = null, ["OnsiteAssessorId"] = null, ["OnsiteAllotmentType"] = null, ["OnsiteRejectedAgencies"] = null,
             ["VisitStartedOn"] = null, ["OnsiteVerifiedClaim"] = null,
         };
@@ -276,13 +276,13 @@ public sealed class SchemeOnsiteTests : IDisposable
     }
 
     private void AllDesktopChecksValid() =>
-        _app["FormChecks"] = FieldCheck.Serialize(DesktopPaths.ToDictionary(p => p, _ => new FieldCheck("Yes", null, 0, "DA1", DateTime.Now)));
+        _app["FormChecks"] = FieldCheck.Serialize(DesktopPaths.ToDictionary(p => p, _ => new FieldCheck("Yes", null, 0, "DSA1", DateTime.Now)));
 
     [Fact]
     public async Task Desktop_recommend_of_a_desktop_onsite_scheme_goes_to_the_onsite_round_robin_without_agency_qc()
     {
         AllDesktopChecksValid();
-        var da = await SignIn("DA1");
+        var da = await SignIn("DSA1");
         var r = await da.PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" });
         r.EnsureSuccessStatusCode();
         Assert.Contains("onsite", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
@@ -295,12 +295,12 @@ public sealed class SchemeOnsiteTests : IDisposable
     {
         _flow = SchemeRules.Desktop;
         _app["FormChecks"] = FieldCheck.Serialize(DesktopPaths.Concat(["items/0/installed", "items/1/installed"])
-            .ToDictionary(p => p, _ => new FieldCheck("Yes", null, 0, "DA1", DateTime.Now)));
-        (await (await SignIn("DA1")).PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" })).EnsureSuccessStatusCode();
+            .ToDictionary(p => p, _ => new FieldCheck("Yes", null, 0, "DSA1", DateTime.Now)));
+        (await (await SignIn("DSA1")).PostAsJsonAsync("/api/staff/scheme-verification/assessor/900/decision", new { decision = "recommend" })).EnsureSuccessStatusCode();
         Assert.Equal("Qc", Status);
         Assert.Null(_app["OnsiteAgencyId"]);
         // The agency is told its QC is due (its own Incentive mail).
-        Assert.Contains(_host.Email.Sent, m => m.To == "agency1@x.test" && m.Subject.StartsWith("Application recommended for QC"));
+        Assert.Contains(_host.Email.Sent, m => m.To == "desk1@x.test" && m.Subject.StartsWith("Application recommended for QC"));
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public sealed class SchemeOnsiteTests : IDisposable
     {
         At("Qc", "ONSITE1", "OSA1");
         _app["OnsiteVerifiedClaim"] = 60000m;
-        var agency = await SignIn("AGENCY1");
+        var agency = await SignIn("DESK1");
         Assert.Equal(HttpStatusCode.BadRequest, (await agency.PostAsJsonAsync("/api/staff/scheme-verification/agency/900/approve", new { amount = 1000 })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await agency.PostAsJsonAsync("/api/staff/scheme-verification/agency/900/back", new { remarks = "x" })).StatusCode);
         var d = await agency.GetFromJsonAsync<JsonElement>("/api/staff/scheme-verification/agency/900");
@@ -334,7 +334,7 @@ public sealed class SchemeOnsiteTests : IDisposable
         // The unit is told a visit is due, with the assessor's name.
         Assert.Contains(_host.Email.Sent, m => m.To == "msme@acme.test" && m.Subject.StartsWith("Onsite verification of your application") && m.HtmlBody.Contains("OSA1 name"));
         // The desktop assessor and agency stay as they were.
-        Assert.Equal(("AGENCY1", "DA1"), (_app["CertificationBodyUserId"], _app["FinancialAssessorId"]));
+        Assert.Equal(("DESK1", "DSA1"), (_app["CertificationBodyUserId"], _app["FinancialAssessorId"]));
 
         // Another assessor may be named while the visit has not started; not once it has.
         (await onsite.PostAsJsonAsync("/api/staff/scheme-onsite/agency/900/accept", new { assessorUserId = "OSA1" })).EnsureSuccessStatusCode();
@@ -411,8 +411,8 @@ public sealed class SchemeOnsiteTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await (await SignIn("ONSITE1")).GetAsync("/api/staff/scheme-onsite/agency")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await (await SignIn("ONSITE2")).GetAsync("/api/staff/scheme-onsite/agency/900")).StatusCode);
         var normal = await SignIn("AGENCY1");
-        Assert.Equal(HttpStatusCode.NotFound, (await normal.GetAsync("/api/staff/scheme-onsite/agency")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await normal.GetAsync("/api/staff/scheme-onsite/agency/900")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await normal.GetAsync("/api/staff/scheme-onsite/agency")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await normal.GetAsync("/api/staff/scheme-onsite/agency/900")).StatusCode);
     }
 
     // ----- sign-in, menu kind, sub-users -----

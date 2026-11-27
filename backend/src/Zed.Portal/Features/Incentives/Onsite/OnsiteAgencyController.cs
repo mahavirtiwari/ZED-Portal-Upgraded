@@ -23,6 +23,7 @@ namespace Zed.Portal.Features.Incentives.Onsite;
 /// </summary>
 [Route("api/staff/scheme-onsite/agency")]
 [StaffRoles(UserRole.Agency)]
+[Agencies.IncentiveKind(Agencies.IncentiveAgencies.OnsiteSubRole)]
 [PortalSystems(PortalSystem.Main)]
 public sealed class OnsiteAgencyController(
     ISqlExecutor db, SchemeStore store, IPortalSettings settings, IWebHostEnvironment env, IOptions<PortalOptions> portal,

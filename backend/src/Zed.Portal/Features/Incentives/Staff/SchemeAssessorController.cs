@@ -18,6 +18,7 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// </summary>
 [Route("api/staff/scheme-verification/assessor")]
 [StaffRoles(UserRole.DesktopAssessor)]
+[Agencies.IncentiveKind(Agencies.IncentiveAgencies.DesktopSubRole)]
 [PortalSystems(PortalSystem.Main)]
 public sealed class SchemeAssessorController(
     ISqlExecutor db, SchemeStore store, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<SchemeAssessorController> log) : StaffApiController

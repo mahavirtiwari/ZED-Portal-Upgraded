@@ -29,7 +29,7 @@ public static class SchemeReview
         SELECT F.Id, F.ZedId, F.SchemeCode, F.SchemeLevel, F.SchemeStatus, F.VerificationStatus, F.ClaimAmount, F.EligibleAmount, F.ApprovedAmount,
             F.SubmittedOn, F.DecidedOn, F.CorrectionRound, F.CorrectionDueOn, F.HoldReason, F.CertificationBodyUserId, F.FinancialAssessorId,
             F.AllotmentType, F.ReasonForRejection, F.ReasonForRejectionAgency, F.AssessorAcceptedOn,
-            F.OnsiteAgencyId, F.OnsiteAssessorId, F.OnsiteAllotmentType, F.VisitStartedOn,
+            F.OnsiteAgencyId, F.OnsiteAssessorId, F.OnsiteAllotmentType, F.VisitStartedOn, F.ApproverAmount,
             M.EnterpriseName, M.PStateName, M.PDistrictName, A.UserName AS AgencyName, S.UserName AS AssessorName,
             OA.UserName AS OnsiteAgencyName, OS.UserName AS OnsiteAssessorName
         FROM dbo.FinancialAssistance F
@@ -81,6 +81,8 @@ public static class SchemeReview
         public string? OnsiteAssessorId { get; init; }
         public string? OnsiteAllotmentType { get; init; }
         public DateTime? VisitStartedOn { get; init; }
+        /// <summary>2026-11-27: the amount the MSME DFO recorded as paid (NEFT approval).</summary>
+        public decimal? ApproverAmount { get; init; }
         public string? OnsiteAgencyName { get; init; }
         public string? OnsiteAssessorName { get; init; }
 
@@ -93,7 +95,7 @@ public static class SchemeReview
         DateTime? CorrectionDueOn, string? HoldReason, string? Agency, string? AgencyName, string? Assessor, string? AssessorName, string? AllotmentType,
         string? ReasonForRejection, string? AgencyRemarks, DateTime? AssessorAcceptedOn,
         string? District = null, string? OnsiteAgency = null, string? OnsiteAgencyName = null, string? OnsiteAssessor = null, string? OnsiteAssessorName = null,
-        string? OnsiteAllotmentType = null, DateTime? VisitStartedOn = null);
+        string? OnsiteAllotmentType = null, DateTime? VisitStartedOn = null, decimal? PaidAmount = null);
 
     public sealed record Option(string Code, string Name);
 
@@ -122,7 +124,7 @@ public static class SchemeReview
                 r.HoldReason, SchemeCase.Blank(r.CertificationBodyUserId), r.AgencyName?.Trim(), SchemeCase.Blank(r.FinancialAssessorId), r.AssessorName?.Trim(),
                 r.AllotmentType, r.ReasonForRejection, r.ReasonForRejectionAgency, r.AssessorAcceptedOn,
                 r.PDistrictName?.Trim(), SchemeCase.Blank(r.OnsiteAgencyId), r.OnsiteAgencyName?.Trim(), SchemeCase.Blank(r.OnsiteAssessorId), r.OnsiteAssessorName?.Trim(),
-                r.OnsiteAllotmentType, r.VisitStartedOn))
+                r.OnsiteAllotmentType, r.VisitStartedOn, r.ApproverAmount))
             .ToList();
         if (scope is not null) rows = await scope(rows);
         var states = rows.Select(r => r.State).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s!).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();

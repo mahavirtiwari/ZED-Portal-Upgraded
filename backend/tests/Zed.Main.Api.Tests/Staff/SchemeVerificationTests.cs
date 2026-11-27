@@ -104,6 +104,12 @@ public sealed class SchemeVerificationTests : IDisposable
                 CreatedBy = id.StartsWith("DA") ? "AGENCY1" : "MADMIN", SchemeVerification = id is "AGENCY1" or "AGENCYNOFV" ? Code + ":D" : null,
                 AgencyKind = id is "AGENCY1" or "AGENCY2" ? IncentiveAgencies.DesktopKind : null }]
             : [];
+        // 2026-11-27: the sign-in's kind (IncentiveKind on the agency and assessor controllers): AGENCY1, AGENCY2 and AGENCY6 are desktop
+        // verification agencies, the DA* assessors are AGENCY1's; AGENCYNOFV is an assessment agency.
+        q[IncentiveAgencies.KindOfSql] = args => FakeSql.Arg(args, "UserId") is { } who
+            ? [new { RoleId = who.StartsWith("DA") ? 3 : 2, AgencyKind = who is "AGENCY1" or "AGENCY2" or "AGENCY6" ? IncentiveAgencies.DesktopKind : null,
+                CreatorKind = who.StartsWith("DA") ? IncentiveAgencies.DesktopKind : null }]
+            : [];
 
         // Desktop verification agencies (the query itself keeps to AgencyKind = 'SchemeDesktop'): AGENCY1 (the whole of UP), AGENCY2 (two
         // districts of UP, the unit's among them) and AGENCY6 (the whole of UP) are eligible; the others are not: AGENCYX (not ticked),

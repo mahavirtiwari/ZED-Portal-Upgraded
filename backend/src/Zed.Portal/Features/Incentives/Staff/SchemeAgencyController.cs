@@ -19,6 +19,7 @@ namespace Zed.Portal.Features.Incentives.Staff;
 /// </summary>
 [Route("api/staff/scheme-verification/agency")]
 [StaffRoles(UserRole.Agency)]
+[Agencies.IncentiveKind(Agencies.IncentiveAgencies.DesktopSubRole)]
 [PortalSystems(PortalSystem.Main)]
 public sealed class SchemeAgencyController(
     ISqlExecutor db, SchemeStore store, IPortalSettings settings, IWebHostEnvironment env, IOptions<PortalOptions> portal,

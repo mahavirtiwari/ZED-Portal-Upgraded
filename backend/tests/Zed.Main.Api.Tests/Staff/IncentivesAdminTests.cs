@@ -50,8 +50,8 @@ public sealed class IncentivesAdminTests : IDisposable
         _host.Sql.Queries[SchemeReview.ListAllSql] = _ =>
         [
             new { Id = 1, ZedId = "ZEDM1", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Submitted", VerificationStatus = 1, PStateName = "GOA", ClaimAmount = 1000m, SubmittedOn = DateTime.Today },
-            new { Id = 2, ZedId = "ZEDM2", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "OnsiteAllot", VerificationStatus = 2, PStateName = "GOA", OnsiteAllotmentType = "MasterAdmin", ClaimAmount = 2000m, SubmittedOn = DateTime.Today },
-            new { Id = 3, ZedId = "ZEDM3", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Approved", VerificationStatus = 6, PStateName = "KERALA", ClaimAmount = 3000m, ApprovedAmount = 2500m, SubmittedOn = DateTime.Today.AddMonths(-1), DecidedOn = DateTime.Today },
+            new { Id = 2, ZedId = "ZEDM2", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "OnsiteAllot", VerificationStatus = 2, PStateName = "GOA", OnsiteAllotmentType = (string?)null, ClaimAmount = 2000m, SubmittedOn = DateTime.Today },
+            new { Id = 3, ZedId = "ZEDM3", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "Approved", VerificationStatus = 6, PStateName = "KERALA", ClaimAmount = 3000m, ApprovedAmount = 2500m, ApproverAmount = 2000m, SubmittedOn = DateTime.Today.AddMonths(-1), DecidedOn = DateTime.Today },
             new { Id = 4, ZedId = "ZEDM4", SchemeCode = Code, SchemeLevel = "Bronze", SchemeStatus = "OnHold", VerificationStatus = 2, PStateName = "GOA", ClaimAmount = 500m, SubmittedOn = DateTime.Today },
         ];
         _host.Sql.Queries[IncentivesDashboardController.FaSql] = _ =>
@@ -131,7 +131,9 @@ public sealed class IncentivesAdminTests : IDisposable
         Assert.Equal(1, h.GetProperty("paid").GetInt32());
         Assert.Equal(1, h.GetProperty("onHold").GetInt32());
         Assert.Equal(6500m, h.GetProperty("claimAmount").GetDecimal());
-        Assert.Equal(2500m, h.GetProperty("paidAmount").GetDecimal());
+        // 2026-11-27: what the MSME DFO recorded as paid (Rs. 2,000 of Rs. 2,500 approved), not the approved amount.
+        Assert.Equal(2000m, h.GetProperty("paidAmount").GetDecimal());
+        Assert.Equal(2500m, h.GetProperty("approvedAmount").GetDecimal());
         Assert.Equal(2, h.GetProperty("desktopAgencies").GetInt32());
         Assert.Equal(1, h.GetProperty("onsiteAgencies").GetInt32());
 
@@ -165,8 +167,20 @@ public sealed class IncentivesAdminTests : IDisposable
         var inc = await UsersMastersLogin.SignInAsync(_host, "INC1");
         var a = await inc.GetFromJsonAsync<JsonElement>("/api/staff/attention?fresh=true");
         var items = a.GetProperty("items").EnumerateArray().ToDictionary(i => i.GetProperty("key").GetString()!, i => i.GetProperty("count").GetInt32());
-        // 2026-11-26: with the open quality observations (its Quality Observations screen).
+        // 2026-11-26: with the open quality observations (its Quality Observations screen). 2026-11-27: the onsite allotment counts
+        // although no onsite agency sent it back (auto-allot off, or no onsite agency of its area).
         Assert.Equal(new Dictionary<string, int> { ["scheme-allot"] = 1, ["scheme-onsite-allot"] = 1, ["scheme-hold"] = 1, ["fa-allot"] = 1, ["quality-open"] = 0 }, items);
+    }
+
+    [Fact]
+    public async Task Only_the_incentive_agencies_and_their_officers_reach_the_scheme_verification_pages()
+    {
+        // 2026-11-27: an assessment agency and a certification assessor (no incentive kind at sign-in) are refused outright.
+        var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/scheme-verification/agency")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/scheme-onsite/agency")).StatusCode);
+        var assessor = await UsersMastersLogin.SignInAsync(_host, "ASSESSOR1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await assessor.GetAsync("/api/staff/scheme-verification/assessor")).StatusCode);
     }
 
     [Fact]
