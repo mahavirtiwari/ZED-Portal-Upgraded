@@ -334,8 +334,9 @@ public sealed class ConsultancyAppDashboardTests : IDisposable
         _t.Fake.Procs["SP_SA_APP_CHECK_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?>(_flags)]);
         var token = await TokenAsync();
         var photo = new { photoId = "t1", photo = AssessorTestHost.JpegBase64, comment = "gate", timeStamp = "t", latitude = "1", longitude = "2" };
+        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => SaWriteTests.FullTour();
 
-        Assert.Equal("1", (await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { photo } }, token))
+        Assert.Equal("1", (await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { photo }, siteTour = Array.Empty<object>() }, token))
             .GetProperty("status").GetString());
         AssertFail(await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = "ZEDMSME000099", certificationType = "Silver", siteTourPhotos = new[] { photo } }, token),
             ConsultancySAController.NotAllocated + "ZEDMSME000099");
@@ -556,15 +557,55 @@ public sealed class ConsultancyAppDashboardTests : IDisposable
         Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
         Assert.Empty(_t.AllFiles());
 
-        // Unit Entrance & Signage takes 2: one stored by the co-consultant, one resent (counted once), one new is too many.
-        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => [new { PhotoId = "co1", Name = "1. Unit Entrance & Signage - gate" }, new { PhotoId = "t1", Name = "1. Unit Entrance & Signage - board" }];
-        Assert.Equal("1", (await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board") } }))
+        // Unit Entrance & Signage takes 2: one stored by the lead, one resent (counted once), one new is too many.
+        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => [new { PhotoId = "l1", Name = "1. Unit Entrance & Signage - gate" }, new { PhotoId = "t1", Name = "1. Unit Entrance & Signage - board" }];
+        Assert.Equal("1", (await _t.Json("/SA/SubmitSiteTour", new { saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board") } }))
             .GetProperty("status").GetString());
         AssertFail(await _t.Json("/SA/SubmitSiteTour", new
         {
-            saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board"), TourPhoto("t2", "1", "name board") },
+            saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board"), TourPhoto("t2", "1", "name board") },
         }), "Site Tour: \"Unit Entrance & Signage\" takes at most 2 photos. Please remove the extra photos.");
         Assert.Single(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+    }
+
+    [Fact]
+    public async Task The_lead_consultants_milestone_1_site_tour_needs_every_section_before_it_is_submitted()
+    {
+        OpenSiteTour();
+        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => [];
+        var twoSections = new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver",
+            siteTourPhotos = new[] { TourPhoto("t1", "entrance", "gate"), TourPhoto("t2", "inward", "GRN"), TourPhoto("t3", "inward", "racks") },
+            siteTour = new[] { new { photoId = "t1", section = "entrance" }, new { photoId = "t2", section = "inward" }, new { photoId = "t3", section = "inward" } },
+        };
+        var e = await _t.Json("/SA/SubmitSiteTour", twoSections);
+        Assert.Equal("0", e.GetProperty("status").GetString());
+        var message = e.GetProperty("errorMessage").GetString()!;
+        Assert.StartsWith("Site Tour cannot be submitted yet: every section needs its photos. Please capture: \"Production / Machine Shop\" (0 of 3 photos), ", message);
+        Assert.EndsWith("\"Environment & Housekeeping\" (0 of 2 photos).", message);
+        Assert.DoesNotContain("Unit Entrance", message);
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+        Assert.Empty(_t.AllFiles());
+
+        // An older app of the lead is asked to update.
+        AssertFail(await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "gate") } }),
+            ConsultancySAController.SiteTourNeedsUpdate);
+
+        // With the co-consultant's photos stored for the other sections, the same tour is accepted.
+        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => SiteTourSections.Defaults
+            .SelectMany((s, i) => Enumerable.Range(0, s.Id is "entrance" or "inward" ? 0 : s.Min).Select(n => (object?)new { PhotoId = $"{s.Id}{n}", Name = $"{i + 1}. {s.Title}" })).ToList();
+        Assert.Equal("1", (await _t.Json("/SA/SubmitSiteTour", twoSections)).GetProperty("status").GetString());
+
+        // The co-consultant's own photos are not held to it.
+        _t.Fake.Queries[ConsultancySAController.SiteTourPhotosSql] = _ => [];
+        Assert.Equal("1", (await _t.Json("/SA/SubmitSiteTour", new { saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("c1", "entrance", "gate") } }))
+            .GetProperty("status").GetString());
+
+        // Milestones 2 and 3 have no site tour to complete.
+        _milestone = 2;
+        Assert.Equal("1", (await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("m2", null, "photo") } }))
+            .GetProperty("status").GetString());
     }
 
     [Fact]

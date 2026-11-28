@@ -3,6 +3,10 @@
 export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   // Site tour: capture photos (Consultancy)
   "app.consultant.siteTour.tourInstruction": "Here you can capture Site Photos which can later be used as evidences",
+  // Site tour: sync stopped, sections without their photos (Consultancy)
+  "app.consultant.siteTour.missing": "Site Tour cannot be submitted yet: every section needs its photos. Please capture: {{Sections}}.",
+  // Site tour: one section without its photos (in the list above) (Consultancy)
+  "app.consultant.siteTour.missingSection": "\"{{Section}}\" ({{Captured}} of {{Required}} photos)",
   // Login: two days before the site assessment (Consultancy)
   "app.consultant.login.windowNote": "You can only login 2 days prior to your allocated Site Assessment date",
   // Technology Upgradation: data is correct (checkbox) (Consultancy)

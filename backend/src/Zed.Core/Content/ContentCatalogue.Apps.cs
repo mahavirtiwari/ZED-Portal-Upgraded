@@ -379,6 +379,11 @@ public static partial class ContentCatalogue
             "Simply tap on any photo from the list to pick as evidence"),
         App("app.assessor.siteTour.tourInstruction", "Site tour: capture photos", AssessorApp, Main,
             "Here you can capture Site Photos which can later be used as evidences"),
+        // 2026-11-28: the lead's site tour is synced only once every section has its photos (the server refuses it otherwise).
+        App("app.assessor.siteTour.missing", "Site tour: sync stopped, sections without their photos", AssessorApp, Main,
+            "Site Tour cannot be submitted yet: every section needs its photos. Please capture: {{Sections}}.", "Sections"),
+        App("app.assessor.siteTour.missingSection", "Site tour: one section without its photos (in the list above)", AssessorApp, Main,
+            "\"{{Section}}\" ({{Captured}} of {{Required}} photos)", "Section", "Captured", "Required"),
         App("app.assessor.login.windowNote", "Login: two days before the site assessment", AssessorApp, Main,
             "You can only login 2 days prior to your allocated Site Assessment date"),
 
@@ -509,6 +514,11 @@ public static partial class ContentCatalogue
         // Consultant app (ZEDConsultant)
         App("app.consultant.siteTour.tourInstruction", "Site tour: capture photos", ConsultantApp, Consultancy,
             "Here you can capture Site Photos which can later be used as evidences"),
+        // 2026-11-28: the lead's milestone 1 site tour is synced only once every section has its photos (the server refuses it otherwise).
+        App("app.consultant.siteTour.missing", "Site tour: sync stopped, sections without their photos", ConsultantApp, Consultancy,
+            "Site Tour cannot be submitted yet: every section needs its photos. Please capture: {{Sections}}.", "Sections"),
+        App("app.consultant.siteTour.missingSection", "Site tour: one section without its photos (in the list above)", ConsultantApp, Consultancy,
+            "\"{{Section}}\" ({{Captured}} of {{Required}} photos)", "Section", "Captured", "Required"),
         App("app.consultant.login.windowNote", "Login: two days before the site assessment", ConsultantApp, Consultancy,
             "You can only login 2 days prior to your allocated Site Assessment date"),
         App("app.consultant.tu.dataCorrect.checkbox", "Technology Upgradation: data is correct (checkbox)", ConsultantApp, Consultancy,

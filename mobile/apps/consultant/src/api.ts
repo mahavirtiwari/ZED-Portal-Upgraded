@@ -160,7 +160,7 @@ export class SaApi {
     return this.retrofit.postJson<BaseServiceResponse>(this.base + 'SubmitSelfie', this.body(req));
   }
 
-  submitSiteTour(req: BaseServiceRequest & { siteTourPhotos: PhotoInformation[] }) {
+  submitSiteTour(req: BaseServiceRequest & { siteTourPhotos: PhotoInformation[]; siteTour?: { photoId: string; section: string | null }[] }) {
     return this.rest.postJson<ServiceResponse>(this.base + 'SubmitSiteTour', this.body(req));
   }
 

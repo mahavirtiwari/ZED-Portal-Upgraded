@@ -723,6 +723,13 @@ sections of the redesigned app (19 photos at least, 30 at most) — `Zed.Core.As
   app."}`. A section over its maximum (the team's stored photos and the call's, a photo sent again counted once) refuses
   the call: `Site Tour: "Unit Entrance & Signage" takes at most 2 photos. Please remove the extra photos.` Without
   `section` (the installed app) the comment is stored as before and counts for no section.
+- 2026-11-28: `SA/SubmitSiteTour` also takes `"siteTour": [{ "photoId", "section" }]`, the whole tour the phone submits
+  (every chunk of three carries it). The lead assessor's site tour is refused before anything is stored unless every
+  section reaches its minimum with the team's stored photos (those not in the list) and the list's:
+  `Site Tour cannot be submitted yet: every section needs its photos. Please capture: "Production / Machine Shop" (2 of 3
+  photos), "Utilities" (0 of 2 photos).` A lead's call without `siteTour` (an older app): `Please update the ZED SA app to
+  submit the site tour.` The co-assessor's photos join the team's tour without that rule (the maximum still applies). The
+  app stops the Site Tour sync with the same list first (`app.assessor.siteTour.missing` / `missingSection`).
 - `SA/SubmitEndAssessment` of the lead (the closing meeting) is refused until every section of the unit has its minimum:
   `Site Tour: "Production / Machine Shop" needs at least 3 photos (2 uploaded). Please capture and sync them before the
   closing meeting.` Photos are counted by section name, so a section the Admin moves keeps its photos; a renamed section
@@ -873,6 +880,9 @@ ZED_CONSULTANT's `V4Settings` (`SiteTour.Sections`, migration 0011); the levels 
 - `SA/SubmitSiteTour` takes `"section"` (key, name or number) per photo, stores `"3. Production / Machine Shop - remark"`
   (200 characters) and refuses an unknown section or one over its maximum with the SA app's texts ("Unknown site tour
   section. Please update the ZED SA app.", `Site Tour: "…" takes at most 2 photos. Please remove the extra photos.`).
+  2026-11-28: with `siteTour` (the whole tour, as on Main) the lead consultant's site tour of milestone 1 is refused unless
+  every section reaches its minimum (`Site Tour cannot be submitted yet: …`); without it: `Please update the ZED Consultant
+  app to submit the site tour.` The co-consultant and milestones 2 and 3 are not held to it.
 - `SA/SubmitEndAssessment` of the lead (closing meeting) when the current milestone is 1 is refused until every section has
   its minimum (`Site Tour: "…" needs at least 3 photos (2 uploaded). Please capture and sync them before the closing
   meeting.`); the co-consultant's final submit and milestones 2 and 3 are not checked.

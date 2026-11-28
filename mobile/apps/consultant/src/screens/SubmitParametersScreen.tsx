@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isSuccess, useNavigation, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { baseRequest, selfieSyncAllowed, siteTourSubmitted, submitEndAssessment, submitSiteTour, syncOpenMeeting, syncSelfie } from '../flows/submissions';
-import { allowCloseMeetingSubmission, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, isLead, SUBMITTED, type AllottedParameters, type ServiceResponse } from '../models';
+import { allowCloseMeetingSubmission, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, isFirstMilestone, isLead, SUBMITTED, type AllottedParameters, type ServiceResponse } from '../models';
+import { sectionsOf, tourCounts, tourMissingMessage } from '../siteTour';
 import { C, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName } from '../ui/zed';
 import { ASSESSMENT_COMPLETED, useSubmissionSuccess } from './FinalCommentsScreen';
 
@@ -78,6 +79,13 @@ export function SubmitParametersScreen() {
       const allowed = !isLead(d) || ((await app.store.meeting(app.userId, true)) == null && d.isOpenMeetingSubmitted);
       if (!allowed) return ui.toast('Please sync Opening Meeting data to sync Site Tour photos', { long: true });
       const photos = await app.store.evidencesOfType(app.userId, EVIDENCE_SITE_TOUR);
+      // 2026-11-28: the lead's milestone 1 site tour goes only once every section has its photos (the team's uploaded ones
+      // counted); the server refuses it otherwise. The co-consultant's photos join the team's tour.
+      if (isLead(d) && isFirstMilestone(d)) {
+        const sections = sectionsOf(d);
+        const missing = tourMissingMessage(app.texts, sections, tourCounts(sections, photos, false));
+        if (missing) return ui.showAlert(missing);
+      }
       const send = async () => {
         ui.showLoading('Please Wait...');
         const r = await submitSiteTour(app, photos).catch(() => null);

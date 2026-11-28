@@ -69,23 +69,36 @@ public sealed partial class ConsultancySAController
         // Site Tour Sections of the Consultancy system, the unit's level and NIC sector); the name stored (SaPhotos.Name) is
         // then "3. Production / Machine Shop - remark", cut to 200 characters. Without one, the comment as before. A section
         // takes at most its maximum of photos, the team's photos of the milestone already stored included.
+        // 2026-11-28: at milestone 1 (the site tour's), the lead consultant's site tour is refused unless, with the team's photos
+        // of the milestone already stored, every section has its minimum (as SA/SubmitSiteTour; the whole tour comes with every
+        // chunk). The co-consultant's photos join the team's without that rule.
         var zedId = request.zedId!.Trim();
         var sent = (request.siteTourPhotos ?? []).Where(p => !string.IsNullOrEmpty(p.photo)).ToList();
-        var sections = sent.Any(p => !string.IsNullOrWhiteSpace(p.section)) ? await UnitSiteTourSectionsAsync(zedId, certification, ct) : [];
-        foreach (var p in sent)
-            if (!string.IsNullOrWhiteSpace(p.section) && SiteTourSections.Find(sections, p.section) is null)
+        var tour = SAController.SiteTourOf(sent.Select(p => (p.photoId, p.section)), request.siteTour?.Select(p => (p.photoId, p.section)));
+        var lead = await IsAllottedAsync(request.saId, zedId, certification, Role.Lead, ct)
+                   && await CurrentMilestoneAsync(zedId, certification, ct) == SiteTourMilestone;
+        var sections = lead || tour.Any(p => !string.IsNullOrWhiteSpace(p.Section)) ? await UnitSiteTourSectionsAsync(zedId, certification, ct) : [];
+        foreach (var p in tour)
+            if (!string.IsNullOrWhiteSpace(p.Section) && SiteTourSections.Find(sections, p.Section) is null)
                 return Fail(SAController.UnknownSiteTourSection);
+        if (lead && request.siteTour is null)
+        {
+            log.LogInformation("Consultancy SA/SubmitSiteTour: {ZedId} lead {SaId} sent the site tour without its photo list (older app)", zedId, request.saId);
+            return Fail(SiteTourNeedsUpdate);
+        }
         if (sections.Count > 0)
         {
-            var resent = sent.Select(p => p.photoId).ToHashSet(StringComparer.Ordinal);
-            var stored = (await SiteTourPhotosAsync(zedId, certification, ct)).Where(r => !resent.Contains(r.PhotoId ?? ""));
-            var counts = SiteTourSections.Count(sections, stored.Select(r => (r.PhotoId, r.Name)));
-            foreach (var p in sent)
-                if (SiteTourSections.Find(sections, p.section) is { } section) counts[section.Id]++;
+            var counts = SiteTourSections.CountSubmitted(sections, await SiteTourPhotosAsync(zedId, certification, ct), tour);
             if (sections.FirstOrDefault(t => counts[t.Id] > t.Max) is { } over)
             {
                 log.LogInformation("Consultancy SA/SubmitSiteTour: {ZedId} section {Section} over its maximum of {Max}", zedId, over.Id, over.Max);
                 return Fail(SAController.TooManySiteTourPhotos(over));
+            }
+            if (lead && SiteTourSections.SubmitShortfall(sections, counts) is { } shortfall)
+            {
+                log.LogInformation("Consultancy SA/SubmitSiteTour: {ZedId} refused, sections short of their photos: {Sections}", zedId,
+                    string.Join(", ", SiteTourSections.Missing(sections, counts).Select(s => s.Id)));
+                return Fail(shortfall);
             }
         }
 

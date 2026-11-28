@@ -63,6 +63,9 @@ public sealed partial class ConsultancySAController(
     /// <summary>Replaces the exception text the old actions returned.</summary>
     public const string ErrorText = "An error has occurred, please try again later.";
 
+    /// <summary>SubmitSiteTour: the lead's app sent the site tour without the whole tour's photo list (an older app).</summary>
+    public const string SiteTourNeedsUpdate = "Please update the ZED Consultant app to submit the site tour.";
+
     /// <summary>
     /// Everyone allotted to the unit's current milestone of a certification, one row per person and role. The current
     /// milestone is the MsmeCertifications row the procedures use (SiteAssessorId set, SaCertificateNo empty); a

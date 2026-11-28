@@ -84,6 +84,8 @@ Files under `app/src/main/java/com/geostat/assessment/activities/`.
 |---|---|---|---|---|
 | `app.assessor.siteTour.pickInstruction` | Site tour: pick a photo | `SiteTourActivity.java:71` (alert, built in code) | | Main |
 | `app.assessor.siteTour.tourInstruction` | Site tour: capture photos | `SiteTourActivity.java:85` (alert) | | Main |
+| `app.assessor.siteTour.missing` | Site tour: sync stopped, sections without their photos | new (2026-11-28, Sync Assessment → Site Tour, the lead) | Sections | Main |
+| `app.assessor.siteTour.missingSection` | Site tour: one section without its photos (in the list above) | new | Section, Captured, Required | Main |
 | `app.assessor.login.windowNote` | Login: two days before the site assessment | `LoginActivity.java:109` (alert) | | Main |
 | `app.assessor.bronze.home.title` | Bronze surveillance: Home and list: section heading | new (2026-11-21, `src/bronze/BronzeSurveillance.tsx`) | | Main |
 | `app.assessor.bronze.home.subtitle` | Bronze surveillance: Home and list: section note | new | | Main |
@@ -107,6 +109,8 @@ Files under `app/src/main/java/com/geostat/assessment/activities/`.
 |---|---|---|---|---|
 | `app.consultant.siteTour.pickInstruction` | Site tour: pick a photo | `SiteTourActivity.java:76` (alert) | | Consultancy |
 | `app.consultant.siteTour.tourInstruction` | Site tour: capture photos | `SiteTourActivity.java:90` (alert) | | Consultancy |
+| `app.consultant.siteTour.missing` | Site tour: sync stopped, sections without their photos | new (2026-11-28, Sync → Site Tour, the lead at milestone 1) | Sections | Consultancy |
+| `app.consultant.siteTour.missingSection` | Site tour: one section without its photos (in the list above) | new | Section, Captured, Required | Consultancy |
 | `app.consultant.login.windowNote` | Login: two days before the site assessment | `LoginActivity.java:111` (alert) | | Consultancy |
 | `app.consultant.tu.dataCorrect.checkbox` | Technology Upgradation: data is correct (checkbox) | `technologyupgradation/RejectCommentFragment.kt:65` ("Confirm Final Submit" dialog) | | Consultancy |
 

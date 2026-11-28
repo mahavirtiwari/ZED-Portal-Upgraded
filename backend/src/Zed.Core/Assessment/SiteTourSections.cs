@@ -169,6 +169,37 @@ public static partial class SiteTourSections
         return null;
     }
 
+    /// <summary>
+    /// 2026-11-28: the photos per section once a site tour is submitted: those stored (the team's) that are not among the
+    /// submitted ones, then every submitted photo under its section (the whole tour the phone submits, whichever chunk
+    /// carries its image). Photos without a known section count nowhere.
+    /// </summary>
+    public static Dictionary<string, int> CountSubmitted(IReadOnlyList<SiteTourSection> unitSections, IEnumerable<PhotoRow> stored,
+        IReadOnlyCollection<(string? PhotoId, string? Section)> submitted)
+    {
+        var ids = submitted.Select(p => p.PhotoId).Where(id => !string.IsNullOrEmpty(id)).ToHashSet(StringComparer.Ordinal);
+        var counts = Count(unitSections, stored.Where(r => !ids.Contains(r.PhotoId ?? "")).Select(r => (r.PhotoId, r.Name)));
+        foreach (var p in submitted.DistinctBy(p => string.IsNullOrEmpty(p.PhotoId) ? Guid.NewGuid().ToString() : p.PhotoId))
+            if (Find(unitSections, p.Section) is { } section) counts[section.Id]++;
+        return counts;
+    }
+
+    /// <summary>Every section short of its minimum, in the unit's order.</summary>
+    public static IReadOnlyList<SiteTourSection> Missing(IReadOnlyList<SiteTourSection> unitSections, IReadOnlyDictionary<string, int> counts) =>
+        unitSections.Where(s => counts.GetValueOrDefault(s.Id) < s.Min).ToList();
+
+    /// <summary>
+    /// 2026-11-28: the refusal of a site tour submitted before every section has its minimum of photos, naming each section
+    /// that is short ("Utilities" (1 of 2 photos)); null when none is.
+    /// </summary>
+    public static string? SubmitShortfall(IReadOnlyList<SiteTourSection> unitSections, IReadOnlyDictionary<string, int> counts)
+    {
+        var missing = Missing(unitSections, counts);
+        if (missing.Count == 0) return null;
+        var list = string.Join(", ", missing.Select(s => $"\"{s.Title}\" ({counts.GetValueOrDefault(s.Id)} of {s.Min} photo{(s.Min == 1 ? "" : "s")})"));
+        return $"Site Tour cannot be submitted yet: every section needs its photos. Please capture: {list}.";
+    }
+
     private static int IndexOf(IReadOnlyList<SiteTourSection> list, SiteTourSection s)
     {
         for (var i = 0; i < list.Count; i++)

@@ -3,6 +3,7 @@ using SaNotification = Zed.Main.MobileApi.Models.Assessor.SaNotification;
 using SaSpoc = Zed.Main.MobileApi.Models.Assessor.SaSpoc;
 using SaTeamMember = Zed.Main.MobileApi.Models.Assessor.SaTeamMember;
 using SiteTourSectionInfo = Zed.Main.MobileApi.Models.Assessor.SiteTourSectionInfo;
+using SiteTourPhotoRef = Zed.Main.MobileApi.Models.Assessor.SiteTourPhotoRef;
 
 // Field-for-field copies of the classes the consultant app (and the TU verifier / DFO app) exchange with the old
 // ZEDCS_CONSULTANCY SwachhSurvekshanServices SAController (DataModels.Requests / Responses / DataModel and
@@ -518,6 +519,9 @@ public sealed class SubmitSiteTourRequest
     public string? zedId { get; set; }
     public string? certificationType { get; set; }
     public List<PhotoInformation>? siteTourPhotos { get; set; }
+
+    /// <summary>2026-11-28: the whole site tour the phone is submitting, as the site assessor app's (<see cref="SiteTourPhotoRef"/>).</summary>
+    public List<SiteTourPhotoRef>? siteTour { get; set; }
 }
 
 public sealed class SubmitAssessmentRequest

@@ -503,22 +503,36 @@ public sealed partial class SAController(
         // sector); the name stored (SaPhotos.Name, which the web's site review and remote assessment pages show) is then
         // "3. Production / Machine Shop - remark", cut to 200 characters. Without one, the comment as before. A section takes
         // at most its maximum of photos, the team's photos already stored included.
+        // 2026-11-28: the lead assessor's site tour is the unit's: refused unless, with the team's photos already stored, every
+        // section has its minimum. The app sends the whole tour (siteTour) with every chunk, so the first chunk is refused
+        // before anything is stored. The co-assessor's photos join the team's without that rule (the lead's tour, or the
+        // closing meeting, holds the team to it).
         var sections = await UnitSiteTourSectionsAsync(request.zedId!, request.certificationType!, ct);
         var sent = (request.siteTourPhotos ?? []).Where(p => !string.IsNullOrEmpty(p.photo)).ToList();
-        foreach (var p in sent)
-            if (!string.IsNullOrWhiteSpace(p.section) && SiteTourSections.Find(sections, p.section) is null)
+        var tour = SiteTourOf(sent.Select(p => (p.photoId, p.section)), request.siteTour?.Select(p => (p.photoId, p.section)));
+        foreach (var p in tour)
+            if (!string.IsNullOrWhiteSpace(p.Section) && SiteTourSections.Find(sections, p.Section) is null)
                 return Fail(UnknownSiteTourSection);
-        if (sent.Any(p => !string.IsNullOrWhiteSpace(p.section)))
+        var lead = await IsAllottedAsync(request.saId, request.zedId, request.certificationType, Role.Lead, ct);
+        if (lead && request.siteTour is null)
         {
-            var resent = sent.Select(p => p.photoId).ToHashSet(StringComparer.Ordinal);
-            var stored = (await SiteTourSections.PhotosAsync(db, request.zedId!, request.certificationType!, ct)).Where(r => !resent.Contains(r.PhotoId ?? ""));
-            var counts = SiteTourSections.Count(sections, stored.Select(r => (r.PhotoId, r.Name)));
-            foreach (var p in sent)
-                if (SiteTourSections.Find(sections, p.section) is { } section) counts[section.Id]++;
+            log.LogInformation("SA/SubmitSiteTour: {ZedId} lead {SaId} sent the site tour without its photo list (older app)", request.zedId, request.saId);
+            return Fail(SiteTourNeedsUpdate);
+        }
+        if (lead || tour.Any(p => !string.IsNullOrWhiteSpace(p.Section)))
+        {
+            var stored = await SiteTourSections.PhotosAsync(db, request.zedId!, request.certificationType!, ct);
+            var counts = SiteTourSections.CountSubmitted(sections, stored, tour);
             if (sections.FirstOrDefault(t => counts[t.Id] > t.Max) is { } over)
             {
                 log.LogInformation("SA/SubmitSiteTour: {ZedId} section {Section} over its maximum of {Max}", request.zedId, over.Id, over.Max);
                 return Fail(TooManySiteTourPhotos(over));
+            }
+            if (lead && SiteTourSections.SubmitShortfall(sections, counts) is { } shortfall)
+            {
+                log.LogInformation("SA/SubmitSiteTour: {ZedId} refused, sections short of their photos: {Sections}", request.zedId,
+                    string.Join(", ", SiteTourSections.Missing(sections, counts).Select(s => s.Id)));
+                return Fail(shortfall);
             }
         }
 
@@ -640,6 +654,23 @@ public sealed partial class SAController(
     /// <summary>SA/SubmitSiteTour: the section would have more photos than its maximum.</summary>
     public static string TooManySiteTourPhotos(SiteTourSection s) =>
         $"Site Tour: \"{s.Title}\" takes at most {s.Max} photo{(s.Max == 1 ? "" : "s")}. Please remove the extra photos.";
+
+    /// <summary>SA/SubmitSiteTour: the lead's app sent the site tour without the whole tour's photo list (an older app).</summary>
+    public const string SiteTourNeedsUpdate = "Please update the ZED SA app to submit the site tour.";
+
+    /// <summary>
+    /// The whole site tour being submitted: the photo list the app sent (<c>siteTour</c>) and this chunk's photos, one entry
+    /// per photo id (a chunk's photo not in the list is added).
+    /// </summary>
+    internal static IReadOnlyList<(string? PhotoId, string? Section)> SiteTourOf(IEnumerable<(string? PhotoId, string? Section)> chunk,
+        IEnumerable<(string? PhotoId, string? Section)>? list)
+    {
+        var all = new List<(string? PhotoId, string? Section)>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var p in (list ?? []).Concat(chunk))
+            if (string.IsNullOrEmpty(p.PhotoId) || ids.Add(p.PhotoId)) all.Add(p);
+        return all;
+    }
 
     /// <summary>The site tour sections asked of the unit (Admin → Site Tour Sections; its level and NIC sector).</summary>
     private async Task<IReadOnlyList<SiteTourSection>> UnitSiteTourSectionsAsync(string zedId, string certificationType, CancellationToken ct) =>

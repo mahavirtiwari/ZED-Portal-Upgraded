@@ -5,6 +5,10 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.assessor.siteTour.pickInstruction": "Simply tap on any photo from the list to pick as evidence",
   // Site tour: capture photos (Main)
   "app.assessor.siteTour.tourInstruction": "Here you can capture Site Photos which can later be used as evidences",
+  // Site tour: sync stopped, sections without their photos (Main)
+  "app.assessor.siteTour.missing": "Site Tour cannot be submitted yet: every section needs its photos. Please capture: {{Sections}}.",
+  // Site tour: one section without its photos (in the list above) (Main)
+  "app.assessor.siteTour.missingSection": "\"{{Section}}\" ({{Captured}} of {{Required}} photos)",
   // Login: two days before the site assessment (Main)
   "app.assessor.login.windowNote": "You can only login 2 days prior to your allocated Site Assessment date",
   // Bronze surveillance: Home and list: section heading (Main)

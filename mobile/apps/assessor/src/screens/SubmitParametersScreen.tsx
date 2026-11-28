@@ -17,6 +17,7 @@ import {
   syncSelfie,
 } from '../flows/submissions';
 import { areAllParametersSubmitted, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, SUBMITTED, UNKNOWN_ERROR, type AllottedParameters, type ServiceResponse } from '../models';
+import { sectionsOf, tourCounts, tourMissingMessage } from '../siteTour';
 import { C, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 import { useSubmissionSuccess } from './FinalCommentsScreen';
 import { TickBox } from './ParametersScreens';
@@ -83,6 +84,13 @@ export function SubmitParametersScreen() {
       const allowed = d.userType === 2 || ((await app.store.meeting(app.userId, true)) == null && d.isOpenMeetingSubmitted);
       if (!allowed) return ui.toast('Please sync Opening Meeting data to sync Site Tour photos', { long: true });
       const photos = await app.store.evidencesOfType(app.userId, EVIDENCE_SITE_TOUR);
+      // 2026-11-28: the lead's site tour goes only once every section has its photos (the team's uploaded ones counted);
+      // the server refuses it otherwise. The co-assessor's photos join the team's tour.
+      if (d.userType !== 2) {
+        const sections = sectionsOf(d);
+        const missing = tourMissingMessage(app.texts, sections, tourCounts(sections, photos, false));
+        if (missing) return ui.showAlert(missing);
+      }
       const send = async () => {
         ui.showLoading('Please Wait...');
         const r = await submitSiteTour(app, photos).catch(() => null);

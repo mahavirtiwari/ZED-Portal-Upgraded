@@ -305,8 +305,9 @@ public sealed class SaAppTests : IDisposable
         _t.Fake.Procs["SP_SA_APP_CHECK_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?> { ["OpenMeetingSubmitted"] = true }]);
         var token = await TokenAsync();
         var photo = new { photoId = "t1", photo = AssessorTestHost.JpegBase64, comment = "gate", timeStamp = "t", latitude = "1", longitude = "2" };
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => SaWriteTests.FullTour();
 
-        Assert.Equal("1", (await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { photo } }, token))
+        Assert.Equal("1", (await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { photo }, siteTour = Array.Empty<object>() }, token))
             .GetProperty("status").GetString());
         // Another unit: the call's own allotment check.
         var other = await Call("/SA/SubmitSiteTour", new { saId = Lead, zedId = "ZEDMSME000099", certificationType = "Silver", siteTourPhotos = new[] { photo } }, token);
@@ -490,6 +491,8 @@ public sealed class SaAppTests : IDisposable
     {
         _t.Sql.Allot(Zed, "Silver", Lead, Co);
         _t.Fake.Procs["SP_SA_APP_CHECK_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?> { ["OpenMeetingSubmitted"] = true }]);
+        // The team's photos stored so far: every standard section has its minimum (the lead's site tour needs them all).
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => SaWriteTests.FullTour();
     }
 
     private static object TourPhoto(string photoId, string? section, string? comment) => new
@@ -509,6 +512,7 @@ public sealed class SaAppTests : IDisposable
                 TourPhoto("t1", "3", "CNC line"), TourPhoto("t2", "safety & fire", null), TourPhoto("t3", null, "old app"),
                 TourPhoto("t4", "10", new string('x', 300)),
             },
+            siteTour = Array.Empty<object>(),
         });
         Assert.Equal("1", e.GetProperty("status").GetString());
         var rows = AssessorTestHost.Tvp(_t.LastArgs("SP_APP_SA_SAVE_PHOTOS"), "PhotoList")!;
@@ -542,18 +546,97 @@ public sealed class SaAppTests : IDisposable
     public async Task A_section_takes_at_most_its_maximum_counting_the_team_photos()
     {
         OpenSiteTour();
-        // Unit Entrance & Signage takes 2: one stored (by the co-assessor), one resent (counted once), one new is too many.
-        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => [new { PhotoId = "co1", Name = "1. Unit Entrance & Signage - gate" }, new { PhotoId = "t1", Name = "1. Unit Entrance & Signage - board" }];
-        var ok = await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board") } });
+        // Unit Entrance & Signage takes 2: one stored (by the lead), one resent (counted once), one new is too many.
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => [new { PhotoId = "l1", Name = "1. Unit Entrance & Signage - gate" }, new { PhotoId = "t1", Name = "1. Unit Entrance & Signage - board" }];
+        var ok = await _t.Json("/SA/SubmitSiteTour", new { saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board") } });
         Assert.Equal("1", ok.GetProperty("status").GetString());
 
         var e = await _t.Json("/SA/SubmitSiteTour", new
         {
-            saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board"), TourPhoto("t2", "1", "name board") },
+            saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "board"), TourPhoto("t2", "1", "name board") },
         });
         Assert.Equal("0", e.GetProperty("status").GetString());
         Assert.Equal("Site Tour: \"Unit Entrance & Signage\" takes at most 2 photos. Please remove the extra photos.", e.GetProperty("errorMessage").GetString());
         Assert.Single(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+    }
+
+    private static object Ref(string photoId, string section) => new { photoId, section };
+
+    /// <summary>The team's photos stored: the minimum of every standard section but <paramref name="shortId"/>, which has <paramref name="shortBy"/> fewer.</summary>
+    private static List<object> StoredTour(string shortId, int shortBy) => SiteTourSections.Defaults
+        .SelectMany((s, i) => Enumerable.Range(1, s.Id == shortId ? s.Min - shortBy : s.Min)
+            .Select(n => (object)new { PhotoId = $"{s.Id}-{n}", Name = $"{i + 1}. {s.Title} - co {n}" }))
+        .ToList();
+
+    [Fact]
+    public async Task The_lead_site_tour_leaving_out_sections_is_refused_naming_each_of_them_before_anything_is_stored()
+    {
+        OpenSiteTour();
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => [];
+        // The owner's case: photos of two sections only; the whole tour comes with the first chunk of three.
+        var e = await _t.Json("/SA/SubmitSiteTour", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver",
+            siteTourPhotos = new[] { TourPhoto("t1", "entrance", "gate"), TourPhoto("t2", "inward", "GRN"), TourPhoto("t3", "inward", "racks") },
+            siteTour = new[] { Ref("t1", "entrance"), Ref("t2", "inward"), Ref("t3", "inward") },
+        });
+        Assert.Equal("0", e.GetProperty("status").GetString());
+        var message = e.GetProperty("errorMessage").GetString()!;
+        Assert.StartsWith(
+            "Site Tour cannot be submitted yet: every section needs its photos. Please capture: \"Production / Machine Shop\" (0 of 3 photos), \"In-process Inspection\" (0 of 2 photos), ",
+            message);
+        Assert.EndsWith("\"Environment & Housekeeping\" (0 of 2 photos).", message);
+        Assert.DoesNotContain("Unit Entrance", message);
+        Assert.DoesNotContain("Raw Material", message);
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+        Assert.Empty(_t.AllFiles());
+    }
+
+    [Fact]
+    public async Task The_lead_site_tour_counts_the_team_photos_and_the_whole_tour_whichever_chunk_carries_the_image()
+    {
+        OpenSiteTour();
+        // The co-assessor has sent every section's minimum but Production (2 of 3).
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => StoredTour("production", 1);
+
+        // The lead's tour has a third Production photo in a later chunk: the first chunk (a Utilities photo) is accepted.
+        var tour = new[] { Ref("u3", "utilities"), Ref("p3", "production") };
+        var first = await _t.Json("/SA/SubmitSiteTour", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("u3", "utilities", "compressor") }, siteTour = tour,
+        });
+        Assert.Equal("1", first.GetProperty("status").GetString());
+        Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "SiteTour", "u3.jpg")));
+
+        // Without that photo the section is named with what it has.
+        var short_ = await _t.Json("/SA/SubmitSiteTour", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("u3", "utilities", "compressor") },
+            siteTour = new[] { Ref("u3", "utilities") },
+        });
+        Assert.Equal(
+            "Site Tour cannot be submitted yet: every section needs its photos. Please capture: \"Production / Machine Shop\" (2 of 3 photos).",
+            short_.GetProperty("errorMessage").GetString());
+        Assert.Single(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+    }
+
+    [Fact]
+    public async Task An_older_app_of_the_lead_is_asked_to_update_and_the_co_assessor_adds_photos_to_the_team_tour()
+    {
+        OpenSiteTour();
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => [];
+        var older = await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("t1", "entrance", "gate") } });
+        Assert.Equal("0", older.GetProperty("status").GetString());
+        Assert.Equal(SAController.SiteTourNeedsUpdate, older.GetProperty("errorMessage").GetString());
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+
+        // The co-assessor's photos join the team's tour; the lead's tour (and the closing meeting) needs every section.
+        var co = await _t.Json("/SA/SubmitSiteTour", new
+        {
+            saId = Co, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { TourPhoto("c1", "entrance", "gate") }, siteTour = new[] { Ref("c1", "entrance") },
+        });
+        Assert.Equal("1", co.GetProperty("status").GetString());
+        Assert.Equal("1. Unit Entrance & Signage - gate", AssessorTestHost.Tvp(_t.LastArgs("SP_APP_SA_SAVE_PHOTOS"), "PhotoList")!.Rows[0]["Name"]);
     }
 
     [Fact]

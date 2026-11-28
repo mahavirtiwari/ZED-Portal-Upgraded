@@ -1,3 +1,5 @@
+import { fillPlaceholders, htmlToPlain, type AppTexts } from '@zed/shared';
+import { BUILT_IN_TEXTS } from './content/builtInTexts';
 import type { AssessmentDetails, PhotoInformation } from './models';
 
 /**
@@ -84,4 +86,31 @@ export function tourShortfall(sections: readonly TourSection[], counts: Record<s
       return `Site Tour: "${s.title}" needs at least ${s.min} photo${s.min === 1 ? '' : 's'} (${n} captured). Please capture and sync them before the closing meeting.`;
   }
   return null;
+}
+
+/** 2026-11-28: every section short of its minimum, with the photos it has, in the unit's order. */
+export function tourMissing(sections: readonly TourSection[], counts: Record<string, number>): { section: TourSection; count: number }[] {
+  return sections.map(section => ({ section, count: counts[section.key] ?? 0 })).filter(m => m.count < m.section.min);
+}
+
+/**
+ * 2026-11-28: the site tour is submitted (Sync) only once every section has its minimum of photos, the team's uploaded
+ * ones and this phone's counted (SA/SubmitSiteTour refuses the lead's tour otherwise). The message names each section that
+ * is short; null when none is. Wording: Admin → Texts (app.assessor.siteTour.missing / missingSection), the standard wording when
+ * the Admin switched it off.
+ */
+export function tourMissingMessage(texts: AppTexts, sections: readonly TourSection[], counts: Record<string, number>): string | null {
+  const missing = tourMissing(sections, counts);
+  if (missing.length === 0) return null;
+  const text = (key: string, fields: Record<string, string | number>) => {
+    const r = texts.get(key, fields);
+    return (r ? htmlToPlain(r.html).trim() : '') || htmlToPlain(fillPlaceholders(BUILT_IN_TEXTS[key] ?? '', fields)).trim();
+  };
+  const list = missing.map(m => text('app.assessor.siteTour.missingSection', { Section: m.section.title, Captured: m.count, Required: m.section.min })).join(', ');
+  return text('app.assessor.siteTour.missing', { Sections: list });
+}
+
+/** 2026-11-28: the whole site tour being submitted (every photo's id and section), sent with every chunk (SA/SubmitSiteTour). */
+export function tourList(photos: readonly PhotoInformation[], sections: readonly TourSection[]): { photoId: string; section: string | null }[] {
+  return photos.map(p => ({ photoId: p.photoId, section: decodeTourComment(sections, p.comment).section }));
 }

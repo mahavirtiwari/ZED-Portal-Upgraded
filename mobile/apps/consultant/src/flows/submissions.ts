@@ -25,7 +25,7 @@ import {
   type SubmitAssessmentRequest,
   type ZedTrainingInfo,
 } from '../models';
-import { sectionsOf, withSection } from '../siteTour';
+import { sectionsOf, tourList, withSection } from '../siteTour';
 import { randomUuid } from '../util/uuid';
 
 export function baseRequest(app: SaApp): BaseServiceRequest {
@@ -138,13 +138,17 @@ export async function syncSelfie(app: SaApp): Promise<ServiceResponse | null> {
 
 // ------------------------------------------------------------------ Site tour
 
-/** SubmitParametersActivity.submitSitetourData: chunks of 3, stopping at the first refusal. */
+/**
+ * SubmitParametersActivity.submitSitetourData: chunks of 3, stopping at the first refusal. 2026-11-28: every chunk carries
+ * the whole tour (`siteTour`: each photo's id and section), so the server can refuse a tour short of a section at once.
+ */
 export async function submitSiteTour(app: SaApp, photos: PhotoInformation[]): Promise<ServiceResponse | null> {
   // V4: each photo's section goes as `section`, its remark alone as `comment`.
   const sections = sectionsOf(app.details);
+  const siteTour = tourList(photos, sections);
   let response: ServiceResponse | null = null;
   for (let i = 0; i < photos.length; i += 3) {
-    response = await app.api.submitSiteTour({ ...baseRequest(app), siteTourPhotos: photos.slice(i, i + 3).map(p => withSection(p, sections)) });
+    response = await app.api.submitSiteTour({ ...baseRequest(app), siteTourPhotos: photos.slice(i, i + 3).map(p => withSection(p, sections)), siteTour });
     if (!isSuccess(response)) break;
   }
   return response;

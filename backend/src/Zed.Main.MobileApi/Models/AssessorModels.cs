@@ -327,6 +327,20 @@ public sealed class SubmitSiteTourRequest
     public string? zedId { get; set; }
     public string? certificationType { get; set; }
     public List<PhotoInformation>? siteTourPhotos { get; set; }
+
+    /// <summary>
+    /// 2026-11-28: the whole site tour the phone is submitting (every photo's id and section, without the images), sent with
+    /// every chunk of <see cref="siteTourPhotos"/>: the lead's site tour is refused before anything is stored when a section
+    /// would be short of its minimum. Absent: an app from before, which the lead must update.
+    /// </summary>
+    public List<SiteTourPhotoRef>? siteTour { get; set; }
+}
+
+/// <summary>A photo of the site tour being submitted: its id and section (<see cref="PhotoInformation.section"/>).</summary>
+public sealed class SiteTourPhotoRef
+{
+    public string? photoId { get; set; }
+    public string? section { get; set; }
 }
 
 public sealed class SubmitAssessmentRequest

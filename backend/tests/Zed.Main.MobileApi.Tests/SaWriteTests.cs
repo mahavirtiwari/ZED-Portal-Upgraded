@@ -242,7 +242,7 @@ public sealed class SaWriteTests : IDisposable
     {
         var e = await _t.Json("/SA/SubmitSiteTour", new
         {
-            saId = Lead, zedId = Zed, certificationType = "silver", siteTourPhotos = new[] { Photo("t1"), Photo("t2", data: "") },
+            saId = Lead, zedId = Zed, certificationType = "silver", siteTourPhotos = new[] { Photo("t1"), Photo("t2", data: "") }, siteTour = Array.Empty<object>(),
         });
         AssertOk(e);
         Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "silver", "SiteTour", "t1.jpg")));
@@ -257,7 +257,7 @@ public sealed class SaWriteTests : IDisposable
     {
         AssertNotAllotted(await _t.Json("/SA/SubmitSiteTour", new { saId = Other, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { Photo("t1") } }),
             "SP_APP_SA_SAVE_PHOTOS");
-        var e = await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { Photo("..\\..\\..\\evil") } });
+        var e = await _t.Json("/SA/SubmitSiteTour", new { saId = Lead, zedId = Zed, certificationType = "Silver", siteTourPhotos = new[] { Photo("..\\..\\..\\evil") }, siteTour = Array.Empty<object>() });
         AssertFail(e, "Invalid Data.");
         Assert.Empty(_t.AllFiles());
     }
