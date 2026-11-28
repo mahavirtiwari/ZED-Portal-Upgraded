@@ -125,13 +125,16 @@ try {
     # ---------------------------------------------------------------- 4. Update
     Step '4. Update (build, backup, migrations, install, smoke test)'
     $updateOk = $true
+    $updateError = $null
+    $updateStarted = Get-Date
     try {
         $global:LASTEXITCODE = 0
         & $update @common -Apply
         if (-not $? -or $LASTEXITCODE -ne 0) { $updateOk = $false }
     } catch {
         $updateOk = $false
-        Bad "Update-ZedFromGit stopped: $($_.Exception.Message)"
+        $updateError = $_.Exception.Message
+        Bad "Update-ZedFromGit stopped: $updateError"
     }
     if (-not $updateOk) { Bad "Update-ZedFromGit reported a failure: see its log in $logDir (the checks below still run)" }
 
@@ -226,6 +229,29 @@ try {
     if ($updateOk -and $failed -eq 0) {
         Write-Host 'Deployment finished: migrations in place and the portals answer.' -ForegroundColor Green
     } else {
+        # 2026-11-28: the reason at the bottom of the window, so one screenshot shows it (the step that stopped the update and,
+        # for a migration, the SQL Server message from its log in the package's database\logs\cutover-<time>\migrations).
+        if (-not $updateOk) {
+            Write-Host ''
+            Write-Host 'Why the update stopped:' -ForegroundColor Red
+            if ($updateError) { Write-Host "  $updateError" -ForegroundColor Red }
+            $summary = Get-ChildItem (Join-Path (Split-Path -Parent $repo) 'zed-*\database\logs\cutover-*\summary.txt') -ErrorAction SilentlyContinue |
+                Where-Object { $_.LastWriteTime -ge $updateStarted } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($summary) {
+                Get-Content -LiteralPath $summary.FullName | Where-Object { $_ -cmatch 'FAILED|ran, but|MISSING' } | Select-Object -First 5 |
+                    ForEach-Object { Write-Host "  $($_.Trim())" -ForegroundColor Red }
+                $migLogs = Join-Path $summary.DirectoryName 'migrations'
+                Get-ChildItem $migLogs -Filter '*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object {
+                    $lines = @(Get-Content -LiteralPath $_.FullName -Encoding UTF8 | Where-Object { $_ -ne '' })
+                    $msg = for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^Msg \d+') { $lines[$i]; if ($i + 1 -lt $lines.Count) { $lines[$i + 1] } } }
+                    Write-Host "  Last migration log: $($_.FullName)" -ForegroundColor Red
+                    @($msg | Select-Object -First 6) | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+                }
+            } elseif (-not $updateError) {
+                Write-Host '  (no migration summary from this run: the update stopped before the migrations; see the log above)' -ForegroundColor Red
+            }
+            Write-Host ''
+        }
         Write-Host "Deployment finished with $failed failed check(s). Read the log: $log" -ForegroundColor Red
         Write-Host 'Files are rolled back automatically when the install or smoke test fails; the database backups are in' -ForegroundColor Red
         Write-Host "$InstallRoot\backups\<time>\database (RESTORE DATABASE ... WITH REPLACE, portals stopped)." -ForegroundColor Red
