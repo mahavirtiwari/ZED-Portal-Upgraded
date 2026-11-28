@@ -73,6 +73,34 @@ export const BUILT_IN_BASIC_INFO: FormDefinition = {
 /** The standard keys (request properties of `basicInformation`) the form can show. */
 export const STANDARD_KEYS = BUILT_IN_BASIC_INFO.fields.map(f => f.key);
 
+/**
+ * 2026-11-28 (the owner: the representative selfie belongs to App Forms): the Remote Assessment screen
+ * (RemoteAssessmentDetailsActivity) as an Admin form, sent with RA/SubmitSelfie (AppFormCatalogue.MsmeRemoteAssessment).
+ */
+export const MSME_REMOTE_ASSESSMENT = 'msme.remoteAssessment';
+
+const remoteField = (key: string, label: string, type: string, order: number, extra: Partial<FormField> = {}): FormField =>
+  field(key, label, type, order, { section: 'remote', ...extra });
+
+/** The screen's legacy fields, used until the server's definition arrives (same keys and rules as the server's). */
+export const BUILT_IN_REMOTE_ASSESSMENT: FormDefinition = {
+  form: MSME_REMOTE_ASSESSMENT,
+  name: 'Remote Assessment',
+  numbered: false,
+  sections: [{ key: 'remote', label: 'Remote Assessment' }],
+  fields: [
+    remoteField('representativeName', 'Representative Name', 'text', 10, { maxLength: 200 }),
+    remoteField('representativeDesignation', 'Representative Designation', 'text', 20, { maxLength: 200 }),
+    remoteField('representativeSelfie', 'Representative Selfie', 'photo', 30, { maxItems: 1 }),
+    remoteField('siteExteriorPhoto', 'Site Exterior Photo', 'photo', 40, { maxItems: 1 }),
+  ],
+  version: BUILT_IN_FORM_VERSION,
+  updatedOn: null,
+};
+
+/** The Remote Assessment form's standard keys. */
+export const REMOTE_STANDARD_KEYS = BUILT_IN_REMOTE_ASSESSMENT.fields.map(f => f.key);
+
 export { basicInfoValue, LOCAL_FORM_PROPERTIES, rowErrors, validateBasicInformation } from '@zed/shared';
 
 export function isShown(def: FormDefinition, info: BasicInformation, f: FormField): boolean {

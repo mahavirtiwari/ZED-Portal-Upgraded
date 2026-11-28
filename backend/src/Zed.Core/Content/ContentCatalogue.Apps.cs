@@ -177,6 +177,13 @@ public static partial class ContentCatalogue
         // 2026-11-08: the applicant's facilitator question on Documents Upload (Yes opens Facilitator Details).
         App("app.msme.evidences.facilitator.question", "Evidences: ZED Facilitator question", MsmeApp, Main,
             "Were you assisted by a ZED Facilitator?"),
+        // 2026-11-28: the Remote Assessment screen, now the App Forms form msme.remoteAssessment (its fields are edited there).
+        App("app.msme.remote.submit", "Remote assessment: submit button", MsmeApp, Main, "Submit"),
+        App("app.msme.remote.submitted", "Remote assessment: submitted message", MsmeApp, Main, "Remote assessment details submitted."),
+        // 2026-11-28: Basic Information messages that were fixed in the app.
+        App("app.msme.basicInfo.utilizationNote", "Basic Information: utilization unit note", MsmeApp, MainAndSurveillance,
+            "The utilization is in the same unit as the manufacturing capacity."),
+        App("app.msme.basicInfo.updated", "Basic Information: updated message", MsmeApp, MainAndSurveillance, "Basic Information updated."),
         // 2026-11-21 (the product owner's rule): the handholding milestone 1 payment asks who assisted the unit (Yes = pick the organisation).
         App("app.msme.handholding.payment.coQuestion", "Handholding payment: Consultant Organisation question (milestone 1)", MsmeApp, Main,
             "Did any Consultant Organisation assist you?"),

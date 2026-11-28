@@ -6,6 +6,7 @@ import {
   DATA_ERROR,
   dimens,
   FieldHelp,
+  htmlToPlain,
   isFormChangedRefusal,
   isNetworkAvailable,
   isNetworkError,
@@ -18,6 +19,7 @@ import {
   SelectionPicker,
   TextField,
   textStyles,
+  useAppText,
   useNavigation,
   useRoute,
   useUi,
@@ -70,7 +72,12 @@ export function BasicInformationScreen() {
   const ui = useUi();
   const { certificationType: type, edit } = useRoute<{ certificationType: CertificationType; edit?: boolean }>().params;
   // Opened from Documents Upload to change it (2026-11-07): back there afterwards; the ESG checklist is already answered.
-  const next = () => (edit ? (nav.pop(), ui.toast('Basic Information updated.', { long: true })) : nav.replace('EsgChecklist', { certificationType: type }));
+  const updatedText = useAppText('app.msme.basicInfo.updated');
+  const utilizationNote = useAppText('app.msme.basicInfo.utilizationNote');
+  const next = () =>
+    edit
+      ? (nav.pop(), ui.toast(updatedText ? htmlToPlain(updatedText.html) : 'Basic Information updated.', { long: true }))
+      : nav.replace('EsgChecklist', { certificationType: type });
   const capturer = useScreenCapture('toast');
   const def = useBasicInfoForm(app);
 
@@ -283,7 +290,7 @@ export function BasicInformationScreen() {
               if (!utilization) setValue('monthlyUtilizationUnits', v);
             }}
             locked={utilization}
-            lockedNote="The utilization is in the same unit as the manufacturing capacity."
+            lockedNote={utilizationNote ? htmlToPlain(utilizationNote.html) : 'The utilization is in the same unit as the manufacturing capacity.'}
             error={error}
             testID={utilization ? 'util-units' : 'capacity-units'}
           />

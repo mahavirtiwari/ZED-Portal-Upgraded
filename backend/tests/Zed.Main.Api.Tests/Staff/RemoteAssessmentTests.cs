@@ -211,7 +211,10 @@ public sealed class RemoteAssessmentTests : IDisposable
     public async Task Details_return_shown_columns_and_checked_photo_addresses()
     {
         var lead = await As("ASSESSOR1");
+        // 2026-11-28 (migration 0120): the Remote Assessment form's site photo, stored as RA/SubmitSelfie writes it.
+        _host.Sql.Queries[RemoteAssessmentController.SitePhotoSql] = _ => [new { SitePhotoPath = @"/Photos\ZEDMSME000001\Silver\RA\SiteExterior.jpg" }];
         var body = await lead.GetFromJsonAsync<JsonElement>(Base);
+        Assert.Equal(Base + "/files/mobileapi/Photos/ZEDMSME000001/Silver/RA/SiteExterior.jpg", body.GetProperty("selfies")[0].GetProperty("sitePhotoUrl").GetString());
         var msme = body.GetProperty("msme");
         Assert.Equal("Acme", msme.GetProperty("EnterpriseName").GetString());
         Assert.False(msme.TryGetProperty("SiteAssessorId", out _));

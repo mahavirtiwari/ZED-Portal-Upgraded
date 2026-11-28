@@ -72,7 +72,8 @@ public sealed class AppFormsTests : IDisposable
         var admin = await Admin();
 
         var forms = (await admin.GetFromJsonAsync<List<AppFormsController.FormItem>>(Url))!;
-        Assert.Equal([Msme, AppFormCatalogue.AssessorBasicInfo], forms.Select(f => f.Key));
+        // 2026-11-28: the ZED MSME app's Remote Assessment screen is a form too.
+        Assert.Equal([Msme, AppFormCatalogue.AssessorBasicInfo, AppFormCatalogue.MsmeRemoteAssessment], forms.Select(f => f.Key));
         Assert.Equal((1, 1), (forms[0].CustomFields, forms[0].Disabled));
 
         var form = (await admin.GetFromJsonAsync<AppFormsController.FormDetails>($"{Url}/{Msme}"))!;

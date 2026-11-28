@@ -21,7 +21,7 @@ import {
 import { MsmeApi, type PublicIncentiveCards, type PublicLevel } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import type { SchemesDashboard } from '../incentiveSchemes';
-import { BUILT_IN_BASIC_INFO, MSME_BASIC_INFO } from '../forms';
+import { BUILT_IN_BASIC_INFO, BUILT_IN_REMOTE_ASSESSMENT, MSME_BASIC_INFO, MSME_REMOTE_ASSESSMENT } from '../forms';
 import { associatedIdOf, normalizeLoginResponse, type LoginResponse } from '../models';
 
 /** Legacy database names (database/DBHelper.java, database/AppDatabase.java). */
@@ -104,7 +104,7 @@ export class MsmeApp {
     this.queue = new SyncQueue(deps.loginDb);
     this.cache = new KeyValueStore(deps.loginDb);
     this.texts = new AppTexts(this.cache, BUILT_IN_TEXTS);
-    this.forms = new AppForms(this.cache, { [MSME_BASIC_INFO]: BUILT_IN_BASIC_INFO });
+    this.forms = new AppForms(this.cache, { [MSME_BASIC_INFO]: BUILT_IN_BASIC_INFO, [MSME_REMOTE_ASSESSMENT]: BUILT_IN_REMOTE_ASSESSMENT });
     this.branding = new AppBranding(this.cache, 'msme');
     this.environment = deps.environment;
     this.versionName = deps.versionName;
@@ -133,7 +133,7 @@ export class MsmeApp {
     await this.cache.ensureSchema();
     await this.tokens.ensureSchema();
     await this.texts.load();
-    await this.forms.load([MSME_BASIC_INFO]);
+    await this.forms.load([MSME_BASIC_INFO, MSME_REMOTE_ASSESSMENT]);
     // Before the first screen: an offline start shows the Admin's last logo and colours at once.
     await this.branding.load();
     this._levels = await this.cache.get<PublicLevel[]>(LEVELS_KEY).catch(() => null);
@@ -207,6 +207,7 @@ export class MsmeApp {
     await Promise.all([
       this.texts.refresh(() => this.api.getTexts()),
       this.forms.refresh(MSME_BASIC_INFO, () => this.api.getFormDefinition(MSME_BASIC_INFO)),
+      this.forms.refresh(MSME_REMOTE_ASSESSMENT, () => this.api.getFormDefinition(MSME_REMOTE_ASSESSMENT)),
       this.refreshLevels(),
     ]);
   }

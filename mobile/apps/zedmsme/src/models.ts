@@ -245,8 +245,6 @@ export function normalizeBasicInformation(b: BasicInformation): BasicInformation
   return b;
 }
 
-const blank = (s?: string | null) => s == null || s.trim() === '';
-
 /** BasicInformation.isValid of the legacy app: the rules of the app's own form. */
 export function basicInformationIsValid(b: BasicInformation): boolean {
   return validateBasicInformation(BUILT_IN_BASIC_INFO, b).size === 0;
@@ -304,10 +302,9 @@ export type RemoteAssessmentData = {
   selfie?: PhotoData | null;
   siteExteriorPhoto?: PhotoData | null;
   isSelfieSubmitted: boolean;
+  /** 2026-11-28 (Admin → App Forms, msme.remoteAssessment): answers to the Admin's own fields, by key. */
+  customAnswers?: Record<string, unknown> | null;
 };
-
-export const remoteAssessmentIsValid = (r: RemoteAssessmentData) =>
-  !blank(r.representativeName) && !blank(r.representativeDesignation) && r.selfie != null && r.siteExteriorPhoto != null;
 
 export type FacilitatorAssistanceData = {
   mobileNumber?: string | null;

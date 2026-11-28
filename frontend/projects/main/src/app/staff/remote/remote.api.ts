@@ -25,6 +25,8 @@ export interface Selfie {
   url: string | null;
   representativeName: string | null;
   designation: string | null;
+  /** 2026-11-28: the site exterior photo the ZED MSME app's Remote Assessment form sent with the selfie. */
+  sitePhotoUrl?: string | null;
 }
 
 export interface RemoteDetails {

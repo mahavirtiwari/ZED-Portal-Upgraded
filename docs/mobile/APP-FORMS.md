@@ -14,6 +14,7 @@ on the portal of the same system. The standard form is the legacy app's own
 | `msme.basicInfo` | MSME app (`ZED_MSME_Bronze`) on Main; its Bronze surveillance build on Surveillance (the desktop assessor fills it in for the unit) | Main, Surveillance | `Msme/SubmitBasicInformation` (Main), `Surveillance/SubmitBasicInformation` (Surveillance) |
 | `assessor.basicInfo` | Site assessment app (`ZED_SA_Studio`) | Main, Surveillance (the SA app's surveillance site assessments use the same `SA/SubmitBasicInformation`) | `SA/SubmitBasicInformation` |
 | `consultant.basicInfo` | Handholding consultant app (`ZEDConsultant`) | Consultancy | `SA/SubmitBasicInformation` (consultancy mobile host) |
+| `msme.remoteAssessment` | ZED MSME app, Remote Assessment screen (2026-11-28): `representativeName`, `representativeDesignation`, `representativeSelfie`, `siteExteriorPhoto` (all required as standard), plus the Admin's own fields | Main | `RA/SubmitSelfie` (`photo`, `siteExteriorPhoto`, `customFields`, `formVersion`, `customPhotos` for the photos of the Admin's repeating entries, saved under `Photos/{ZedId}/{level}/BasicInfo`). The site photo is saved as `RA/SiteExterior.jpg` and recorded in `MsmeSelfies.SitePhotoPath` (migration 0120); the remote assessor sees it with the selfie and the Admin's answers under the basic information |
 
 Each system has its own copy (its own database): a change on the Main portal does not change the Surveillance form.
 

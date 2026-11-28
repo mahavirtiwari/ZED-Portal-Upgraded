@@ -754,18 +754,25 @@ export class MsmeApi {
 
   // ----- Remote assessment (mobileapi/RA/) -----
 
+  /**
+   * RA/SubmitSelfie. 2026-11-28: the Remote Assessment form of Admin → App Forms (msme.remoteAssessment): fields the Admin
+   * left out are not sent, the Admin's own answers go in `customFields` with `formVersion`, and the photos of the Admin's
+   * repeating entries in `customPhotos`.
+   */
   submitSelfie(
     username: string,
     certificationType: string,
-    photo: PhotoData,
-    representativeName: string,
-    representativeDesignation: string,
-    siteExteriorPhoto: PhotoData,
+    body: {
+      photo?: PhotoData | null;
+      representativeName?: string | null;
+      representativeDesignation?: string | null;
+      siteExteriorPhoto?: PhotoData | null;
+      customFields?: Record<string, unknown>;
+      formVersion?: string;
+      customPhotos?: PhotoData[];
+    },
   ) {
-    return this.http.postJson<BaseServiceResponse>(
-      this.remote + 'SubmitSelfie',
-      this.req(username, { certificationType, photo, representativeName, representativeDesignation, siteExteriorPhoto }),
-    );
+    return this.http.postJson<BaseServiceResponse>(this.remote + 'SubmitSelfie', this.req(username, { certificationType, ...body }));
   }
 
   checkAssessment(username: string, certificationType: string) {

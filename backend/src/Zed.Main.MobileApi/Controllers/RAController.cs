@@ -1,8 +1,9 @@
-using System.Data.Common;
+﻿using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
+using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
@@ -188,27 +189,97 @@ public sealed class RAController(
     [DeviceBound(MobileApps.RemoteAssessor, "userName", AlsoApp = MobileApps.Msme)]
     public async Task<IActionResult> SubmitSelfie(SubmitSelfieRequest request, CancellationToken ct)
     {
-        if (request.photo is not { photo: { Length: > 0 } data } photo)
+        var selfie = request.photo is { photo: { Length: > 0 } } p ? p : null;
+        var site = request.siteExteriorPhoto is { photo: { Length: > 0 } } s ? s : null;
+        // 2026-11-28 (Admin → App Forms, msme.remoteAssessment): a build that names its formVersion (the rebuilt ZED MSME app)
+        // is held to the Admin's form, which may leave the selfie out or make it optional; the old RA app still needs one.
+        var strict = !string.IsNullOrWhiteSpace(request.formVersion);
+        if (selfie is null && !strict)
             return Fail("Selfie not received for the ZED ID: " + request.userName);
 
         RequireCertification(request.certificationType);
-        var folder = storage.Folder("Photos", request.userName, request.certificationType, "RA");
-        // The old code stored Path.Combine("/Photos", ...) as built on the Windows server.
-        photo.photoPath = string.Join('\\', "/Photos", request.userName!.Trim(), request.certificationType!.Trim(), "RA", "Selfe.jpg");
-        await storage.SaveBase64Async(data, folder, "Selfe.jpg", ct);
-
-        return LegacyJson(await ExecAsync("SP_APP_MSME_REMOTE_INSERT_SELFIE", new
+        var zedId = request.userName!.Trim();
+        var cert = request.certificationType!.Trim();
+        AppFormSubmission? form = null;
+        // The form is the main system's (the ZED MSME app); another host keeps the old behaviour.
+        if ((HttpContext.RequestServices.GetService<PortalHost>()?.System ?? PortalSystem.Main) == PortalSystem.Main)
         {
-            ZedId = request.userName,
-            CertificationType = request.certificationType,
-            RepresentativeName = request.representativeName,
-            Designation = request.representativeDesignation,
-            Timestamp = photo.timeStamp,
-            PhotoPath = photo.photoPath,
-            Latitude = photo.latitude,
-            Longitude = photo.longitude,
-        }, ct));
+            form = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.MsmeRemoteAssessment, PortalSystem.Main,
+                request.customFields, request.formVersion, RemoteAnswers(request, selfie, site), ct, zedId, cert);
+            if (form.Error is { } formError) return Fail(formError);
+        }
+
+        var folder = storage.Folder("Photos", zedId, cert, "RA");
+        // The old code stored Path.Combine("/Photos", ...) as built on the Windows server.
+        string? selfiePath = null, sitePath = null;
+        if (selfie is not null)
+        {
+            selfiePath = string.Join('\\', "/Photos", zedId, cert, "RA", "Selfe.jpg");
+            selfie.photoPath = selfiePath;
+            await storage.SaveBase64Async(selfie.photo!, folder, "Selfe.jpg", ct);
+        }
+        if (site is not null)
+        {
+            sitePath = string.Join('\\', "/Photos", zedId, cert, "RA", SitePhotoFile);
+            await storage.SaveBase64Async(site.photo!, folder, SitePhotoFile, ct);
+        }
+        // The photos of the Admin's repeating entries: where staff read every MSME-app form photo (Photos/{ZedId}/{level}/BasicInfo).
+        var basicInfo = storage.Folder("Photos", zedId, cert, "BasicInfo");
+        foreach (var photo in (request.customPhotos ?? []).Take(MaxCustomPhotos))
+            if (photo is { photo: { Length: > 0 } data, photoId: { } id } && AppFormRules.PhotoId().IsMatch(id))
+                await storage.SaveBase64Async(data, basicInfo, MobileStorage.FileName(id, ".jpg"), ct);
+
+        var located = selfie ?? site;
+        var result = await ExecAsync("SP_APP_MSME_REMOTE_INSERT_SELFIE", new
+        {
+            ZedId = zedId,
+            CertificationType = cert,
+            RepresentativeName = NullIfBlank(request.representativeName),
+            Designation = NullIfBlank(request.representativeDesignation),
+            Timestamp = located?.timeStamp,
+            PhotoPath = selfiePath,
+            Latitude = located?.latitude,
+            Longitude = located?.longitude,
+        }, ct);
+        if (result.status != "1") return LegacyJson(result);
+
+        if (sitePath is not null)
+        {
+            try
+            {
+                await db.ExecuteSqlAsync(SitePhotoSql, new { ZedId = zedId, Certification = cert, SitePhotoPath = sitePath }, ct);
+            }
+            catch (DbException ex)
+            {
+                // Before migration 0120 (no MsmeSelfies.SitePhotoPath): the file is kept, the selfie row stands.
+                log.LogWarning(ex, "Remote assessment site photo of {ZedId} {Level} not recorded", zedId, cert);
+            }
+        }
+        if (form is not null && !await form.SaveAsync(zedId, cert, zedId, log, ct)) return LegacyJson(ServiceResponse.Fail(ErrorText));
+        return LegacyJson(result);
     }
+
+    /// <summary>The site photo's file next to the selfie (RA folder).</summary>
+    public const string SitePhotoFile = "SiteExterior.jpg";
+
+    /// <summary>At most this many photos of the Admin's repeating entries in one submit.</summary>
+    internal const int MaxCustomPhotos = 100;
+
+    /// <summary>2026-11-28 (migration 0120): the site photo on the unit's latest selfie row, the one the procedure just wrote.</summary>
+    public const string SitePhotoSql =
+        "UPDATE dbo.MsmeSelfies SET SitePhotoPath = @SitePhotoPath WHERE Id = (SELECT TOP (1) Id FROM dbo.MsmeSelfies " +
+        "WHERE ZedId = @ZedId AND Certification = @Certification ORDER BY Id DESC);";
+
+    /// <summary>The standard answers of the Remote Assessment form (Zed.Core.Forms.AppFormCatalogue.MsmeRemoteAssessment).</summary>
+    private static AppFormAnswers RemoteAnswers(SubmitSelfieRequest r, PhotoInformation? selfie, PhotoInformation? site) => new()
+    {
+        ["representativeName"] = AppFormAnswers.One(r.representativeName),
+        ["representativeDesignation"] = AppFormAnswers.One(r.representativeDesignation),
+        ["representativeSelfie"] = AppFormAnswers.One(selfie is null ? null : selfie.photoId ?? "selfie"),
+        ["siteExteriorPhoto"] = AppFormAnswers.One(site is null ? null : site.photoId ?? "site"),
+    };
+
+    private static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     [HttpPost]
     [DeviceBound(MobileApps.RemoteAssessor, "userName")]

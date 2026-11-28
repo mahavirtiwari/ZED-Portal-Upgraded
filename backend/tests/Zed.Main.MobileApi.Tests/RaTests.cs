@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using Zed.Core.Mobile;
 
@@ -126,6 +126,42 @@ public sealed class RaTests : IDisposable
         var args = _t.LastArgs("SP_APP_MSME_REMOTE_INSERT_SELFIE");
         Assert.Equal("/Photos\\" + Zed + "\\Silver\\RA\\Selfe.jpg", AssessorTestHost.Arg(args, "PhotoPath"));
         Assert.Equal("CEO", AssessorTestHost.Arg(args, "Designation"));
+    }
+
+    /// <summary>
+    /// 2026-11-28 (Admin → App Forms, msme.remoteAssessment): the rebuilt ZED MSME app names its formVersion; the site photo it
+    /// always took (and the old server dropped) is saved next to the selfie and recorded on the selfie row.
+    /// </summary>
+    [Fact]
+    public async Task The_remote_assessment_form_saves_the_site_photo_with_the_selfie()
+    {
+        var e = await _t.Json("/RA/SubmitSelfie", new
+        {
+            userName = Zed, certificationType = "Silver", representativeName = "Owner", representativeDesignation = "CEO", formVersion = "built-in",
+            photo = new { photoId = "S1", photo = AssessorTestHost.JpegBase64, timeStamp = "t", latitude = "1", longitude = "2" },
+            siteExteriorPhoto = new { photoId = "S2", photo = AssessorTestHost.JpegBase64 },
+            customPhotos = new object[] { new { photoId = "..\\bad", photo = AssessorTestHost.JpegBase64 } },
+        });
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("Photos", Zed, "Silver", "RA", Controllers.RAController.SitePhotoFile)));
+        Assert.Equal("/Photos\\" + Zed + "\\Silver\\RA\\Selfe.jpg", AssessorTestHost.Arg(_t.LastArgs("SP_APP_MSME_REMOTE_INSERT_SELFIE"), "PhotoPath"));
+        Assert.Equal("/Photos\\" + Zed + "\\Silver\\RA\\" + Controllers.RAController.SitePhotoFile,
+            AssessorTestHost.Arg(_t.LastArgs(Controllers.RAController.SitePhotoSql), "SitePhotoPath"));
+        // A photo id that is not a plain name is never written.
+        Assert.DoesNotContain(_t.AllFiles(), f => f.Contains("bad", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task The_remote_assessment_form_requires_its_fields()
+    {
+        var e = await _t.Json("/RA/SubmitSelfie", new
+        {
+            userName = Zed, certificationType = "Silver", representativeName = "Owner", representativeDesignation = "CEO", formVersion = "built-in",
+            siteExteriorPhoto = new { photoId = "S2", photo = AssessorTestHost.JpegBase64 },
+        });
+        Assert.StartsWith("Please fill in: Representative Selfie.", e.GetProperty("errorMessage").GetString());
+        Assert.Empty(_t.CallsTo("SP_APP_MSME_REMOTE_INSERT_SELFIE"));
+        Assert.Empty(_t.AllFiles());
     }
 
     [Fact]

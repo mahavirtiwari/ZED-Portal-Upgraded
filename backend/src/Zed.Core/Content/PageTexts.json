@@ -1,6 +1,6 @@
 {
   "about": "Page wording the Admin can change (Administration → Texts → Page wording). Written by frontend/tools/extract-texts.mjs (npm run texts): do not edit by hand.",
-  "count": 9760,
+  "count": 9762,
   "texts": [
     {
       "key": "common.alert.errorTitle",
@@ -92644,6 +92644,30 @@
     {
       "key": "staff.remote.basic.selfie.name.label",
       "standard": "Name:",
+      "kind": "label",
+      "portal": "staff",
+      "page": "remote",
+      "pageName": "Remote",
+      "placeholders": [],
+      "files": [
+        "staff/remote/remote-assessment.html"
+      ]
+    },
+    {
+      "key": "staff.remote.basic.selfie.sitePhoto.alt",
+      "standard": "Site exterior photo taken with the selfie",
+      "kind": "tooltip",
+      "portal": "staff",
+      "page": "remote",
+      "pageName": "Remote",
+      "placeholders": [],
+      "files": [
+        "staff/remote/remote-assessment.html"
+      ]
+    },
+    {
+      "key": "staff.remote.basic.selfie.sitePhoto.label",
+      "standard": "Site exterior photo:",
       "kind": "label",
       "portal": "staff",
       "page": "remote",

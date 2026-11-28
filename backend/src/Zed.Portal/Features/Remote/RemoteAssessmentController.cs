@@ -98,6 +98,23 @@ public sealed partial class RemoteAssessmentController(
         }
     }
 
+    public sealed record SitePhotoRow(string? SitePhotoPath);
+
+    /// <summary>The address of the Remote Assessment form's site photo (stored as the selfie: <c>/Photos\{ZedId}\{level}\RA\…</c>).</summary>
+    private async Task<string?> SitePhotoUrlAsync(string zedId, string level, CancellationToken ct)
+    {
+        try
+        {
+            var path = (await db.QuerySqlAsync<SitePhotoRow>(SitePhotoSql, new { ZedId = zedId, Certification = level }, ct)).FirstOrDefault()?.SitePhotoPath;
+            return string.IsNullOrWhiteSpace(path) ? null : RemoteFiles.Url(zedId, level, "/mobileapi/" + path.TrimStart('/', '\\'));
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Remote site photo of {ZedId} {Level} not read (is migration 0120 applied?)", zedId, level);
+            return null;
+        }
+    }
+
     /// <summary>
     /// One final submit at a time: the procedure reads NcCount and the round's answers without locks, so two submits in a row
     /// raised NC n and then, on the fresh round with nothing answered "No", closed it and issued the certification number.
@@ -150,7 +167,15 @@ public sealed partial class RemoteAssessmentController(
 
     public sealed record RemotePhoto(long Id, string? Name, string? Url, bool Deletable);
     public sealed record Meeting(long Id, string? Comments, IReadOnlyList<Dictionary<string, object?>> Participants, IReadOnlyList<RemotePhoto> Photos);
-    public sealed record Selfie(string? Url, string? RepresentativeName, string? Designation);
+    public sealed record Selfie(string? Url, string? RepresentativeName, string? Designation)
+    {
+        /// <summary>2026-11-28 (migration 0120): the site exterior photo the ZED MSME app's Remote Assessment form sent with the selfie.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? SitePhotoUrl { get; init; }
+    }
+
+    /// <summary>The site photo on the unit's latest selfie row (MsmeSelfies.SitePhotoPath, migration 0120).</summary>
+    internal const string SitePhotoSql =
+        "SELECT TOP (1) SitePhotoPath FROM dbo.MsmeSelfies WHERE ZedId = @ZedId AND Certification = @Certification ORDER BY Id DESC;";
     public sealed record Permissions(bool IsLeadAssessor, bool CanAssess);
 
     public sealed record RecordingLink(long Id, string Url);
@@ -290,6 +315,7 @@ public sealed partial class RemoteAssessmentController(
         }).ToList();
 
         var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, null, "dbo", log, ct);
+        var sitePhotoUrl = MeetingMode || sa[12].Count == 0 ? null : await SitePhotoUrlAsync(zedId, level!, ct);
         // Main's level settings, also on Surveillance (as its certificates read them).
         var settings = await CertLevels.CertificationLevels.FindAsync(db, level, log, ct, fromOtherDatabase: host.System == PortalSystem.Surveillance);
         Meeting? MeetingOf(int meetingSet, int participantSet, int photoSet) =>
@@ -313,7 +339,8 @@ public sealed partial class RemoteAssessmentController(
             Photos(sa[6]),
             MeetingOf(1, 2, 5),
             MeetingOf(3, 4, 8),
-            sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath"), MeetingMode), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))).ToList(),
+            sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath"), MeetingMode), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))
+                { SitePhotoUrl = sitePhotoUrl }).ToList(),
             new Permissions(IsLead(record!), canAssess))
         {
             UsesMeetingLink = MeetingMode && !record!.OnsiteVisit ? true : null,

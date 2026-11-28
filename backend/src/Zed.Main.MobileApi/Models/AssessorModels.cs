@@ -400,6 +400,17 @@ public sealed class SubmitSelfieRequest
     public string? representativeDesignation { get; set; }
     public string? certificationType { get; set; }
     public PhotoInformation? photo { get; set; }
+
+    /// <summary>2026-11-28: the Remote Assessment screen's site photo (the old server dropped it).</summary>
+    public PhotoInformation? siteExteriorPhoto { get; set; }
+
+    /// <summary>
+    /// 2026-11-28 (Admin → App Forms, msme.remoteAssessment): the answers to the Admin's own fields, the form version the app
+    /// filled in (absent: an old build, held to nothing new), and the photos of the Admin's repeating entries (base64).
+    /// </summary>
+    public Dictionary<string, System.Text.Json.JsonElement>? customFields { get; set; }
+    public string? formVersion { get; set; }
+    public List<PhotoInformation>? customPhotos { get; set; }
 }
 
 public sealed class SubmitGeoLocationRequest

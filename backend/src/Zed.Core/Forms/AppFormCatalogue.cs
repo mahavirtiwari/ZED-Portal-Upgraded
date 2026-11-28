@@ -90,10 +90,16 @@ public static class AppFormCatalogue
     public const string AssessorBasicInfo = "assessor.basicInfo";
     public const string ConsultantBasicInfo = "consultant.basicInfo";
 
+    /// <summary>
+    /// 2026-11-28 (the owner: the representative selfie belongs to App Forms): the ZED MSME app's Remote Assessment screen
+    /// (RemoteAssessmentDetailsActivity), filled in on the assessment day and sent with RA/SubmitSelfie.
+    /// </summary>
+    public const string MsmeRemoteAssessment = "msme.remoteAssessment";
+
     /// <summary>Separator of a column key: <c>productDetailsList/productName</c>.</summary>
     public const char ColumnSeparator = '/';
 
-    private const string Basic = "basic";
+    private const string Basic = "basic", Remote = "remote";
     private static readonly string[] CapacityUnits = ["Metric Ton", "Litre", "Meter", "Number"];
     private static readonly string[] EnergySources = ["Electricity", "Petrol", "Diesel", "Coal", "Solar", "Wood", "Natural Gas", "Other"];
 
@@ -125,6 +131,15 @@ public static class AppFormCatalogue
                 new("financialPerformance", "Financial Performance (Previous Financial Year)"),
             ],
             [.. ConsultantFields()]),
+        // ZED MSME app, Remote Assessment (2026-11-28): the representative, the selfie and a site photo, then the assessor's call.
+        new(MsmeRemoteAssessment, "Remote Assessment", "MSME app (remote assessment day)", [PortalSystem.Main], false,
+            [new(Remote, "Remote Assessment")],
+            [
+                new("representativeName", "Representative Name", AppFieldTypes.Text, true, Remote, 10) { MaxLength = 200 },
+                new("representativeDesignation", "Representative Designation", AppFieldTypes.Text, true, Remote, 20) { MaxLength = 200 },
+                new("representativeSelfie", "Representative Selfie", AppFieldTypes.Photo, true, Remote, 30) { MaxItems = 1 },
+                new("siteExteriorPhoto", "Site Exterior Photo", AppFieldTypes.Photo, true, Remote, 40) { MaxItems = 1 },
+            ]),
     ];
 
     /// <summary>The forms served by a system's hosts.</summary>

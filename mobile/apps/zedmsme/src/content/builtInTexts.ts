@@ -59,6 +59,14 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.assessment.requirementsAccepted.checkbox": "I have read the certification requirements and are following all the requirements to the fullest extent possible.",
   // Evidences: ZED Facilitator question (Main)
   "app.msme.evidences.facilitator.question": "Were you assisted by a ZED Facilitator?",
+  // Remote assessment: submit button (Main)
+  "app.msme.remote.submit": "Submit",
+  // Remote assessment: submitted message (Main)
+  "app.msme.remote.submitted": "Remote assessment details submitted.",
+  // Basic Information: utilization unit note (MainAndSurveillance)
+  "app.msme.basicInfo.utilizationNote": "The utilization is in the same unit as the manufacturing capacity.",
+  // Basic Information: updated message (MainAndSurveillance)
+  "app.msme.basicInfo.updated": "Basic Information updated.",
   // Handholding payment: Consultant Organisation question (milestone 1) (Main)
   "app.msme.handholding.payment.coQuestion": "Did any Consultant Organisation assist you?",
   // Handholding payment: disclaimer (Main)

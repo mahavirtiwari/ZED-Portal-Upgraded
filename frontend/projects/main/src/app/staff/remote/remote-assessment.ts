@@ -9,6 +9,7 @@ import { ContentService, ContentTextComponent, fillText, textParts } from '../..
 import { DETAILS_STYLES, num, reportPageHref, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { FormChecksPanel } from '../assessment/form-checks';
+import { AppFormValuesPanel } from '../assessment/app-form-values';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
 import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
@@ -121,7 +122,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, SamePanUnits, ConfirmDialog, TextPipe],
+  imports: [QualityObservationsPanel, QoButton, ChecklistRecords, SubmitChecklist, FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts, FormChecksPanel, AppFormValuesPanel, SamePanUnits, ConfirmDialog, TextPipe],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',

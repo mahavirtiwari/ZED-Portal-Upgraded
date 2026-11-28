@@ -276,6 +276,10 @@
                                 <p class="sub-heading"><strong>{{ 'Name:' | t: 'staff.remote.basic.selfie.name.label' }}</strong> {{ s.representativeName }}</p>
                                 <p class="sub-heading"><strong>{{ 'Designation:' | t: 'staff.remote.basic.selfie.designation.label' }}</strong> {{ s.designation }}</p>
                               }
+                              @if (s.sitePhotoUrl) {
+                                <p class="sub-heading mb-1"><strong>{{ 'Site exterior photo:' | t: 'staff.remote.basic.selfie.sitePhoto.label' }}</strong></p>
+                                <button type="button" class="btn btn-link p-0" (click)="preview.set(s.sitePhotoUrl)"><img [src]="s.sitePhotoUrl" [alt]="'Site exterior photo taken with the selfie' | t: 'staff.remote.basic.selfie.sitePhoto.alt'" /></button>
+                              }
                             </div>
                           }
                           @if (meetingMode() && canAssess()) {
@@ -481,6 +485,8 @@
             </tbody>
           </table>
           </div>
+          <!-- 2026-11-28: answers to the Admin's own App Forms fields (Basic Information and the Remote Assessment form). -->
+          @if (!meetingMode()) { <zed-app-form-values [zedId]="zedId" [certification]="certification" /> }
         }
 
         <!-- ===================================================== site tour -->

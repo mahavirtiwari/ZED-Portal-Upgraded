@@ -78,6 +78,8 @@ describe('RemoteAssessmentPage', () => {
     // The "to validate" panel (App Forms, migration 0080) asks for its checks.
     for (const r of http.match((req) => req.url.endsWith('/form-checks'))) r.flush({ applies: false, canCheck: false, round: 0, ncRound: false, items: [] });
     for (const r of http.match((req) => req.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
+    // 2026-11-28: the App Forms answers (Basic Information and the Remote Assessment form) under the basic information.
+    for (const r of http.match((req) => req.url.startsWith('/api/staff/app-form-values/'))) r.flush([]);
     http.verify();
     vi.restoreAllMocks();
   });

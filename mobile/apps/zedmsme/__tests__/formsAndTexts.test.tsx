@@ -85,6 +85,8 @@ describe('server content (Content/Texts, Forms/Definition)', () => {
       'http://10.0.2.2:5106/api/public/levels',
       'http://10.0.2.2:5106/mobileapi/Content/Texts',
       'http://10.0.2.2:5106/mobileapi/Forms/Definition?form=msme.basicInfo',
+      // 2026-11-28: the Remote Assessment form (Admin → App Forms).
+      'http://10.0.2.2:5106/mobileapi/Forms/Definition?form=msme.remoteAssessment',
     ]);
     expect(app.texts.get('app.msme.offline.note')!.html).toBe('Admin: you are offline.');
     expect(app.forms.get('msme.basicInfo').version).toBe('3f9c0a1b2d4e5f60');
