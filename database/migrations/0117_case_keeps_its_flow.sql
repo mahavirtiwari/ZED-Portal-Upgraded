@@ -156,7 +156,7 @@ BEGIN
         SET @msg = CONCAT(DB_NAME(), N'.', @Object, N': not found.');
         THROW 50040, @msg, 1;
     END
-    DECLARE @def nvarchar(max) = OBJECT_DEFINITION(@id);
+    DECLARE @def nvarchar(max) = OBJECT_DEFINITION(@id), @before nvarchar(max);
     IF CHARINDEX(@Marker, @def) > 0
     BEGIN
         PRINT CONCAT(DB_NAME(), N'.', @Object, N': already edited.');
@@ -164,13 +164,15 @@ BEGIN
     END
 
     DECLARE @seq int, @find nvarchar(max), @rep nvarchar(max), @expect int, @count int;
+    SET @before = @def;
     DECLARE e CURSOR LOCAL FAST_FORWARD FOR SELECT Seq, Find, Replacement, Expect FROM #V4_EDITS WHERE Obj = @Object ORDER BY Seq;
     OPEN e;
     FETCH NEXT FROM e INTO @seq, @find, @rep, @expect;
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @count = (DATALENGTH(@def) - DATALENGTH(REPLACE(@def, @find, N''))) / DATALENGTH(@find);
-        IF (@expect IS NULL AND @count = 0) OR (@expect IS NOT NULL AND @count <> @expect)
+        -- Expect -1 (2026-11-28): optional, for text an optional fix script adds (database\fixes, not run by the deploy).
+        IF ISNULL(@expect, 0) <> -1 AND ((@expect IS NULL AND @count = 0) OR (@expect IS NOT NULL AND @count <> @expect))
         BEGIN
             SET @msg = CONCAT(DB_NAME(), N'.', @Object, N': replacement ', @seq, N' found ', @count, N' time(s), expected ',
                 ISNULL(CAST(@expect AS nvarchar(10)), N'at least 1'), N'. The live definition differs from the reviewed one: nothing was changed.');
@@ -181,6 +183,12 @@ BEGIN
     END
     CLOSE e;
     DEALLOCATE e;
+    IF @def = @before
+    BEGIN
+        -- Only optional replacements, none found: the procedure has nothing this migration changes.
+        PRINT CONCAT(DB_NAME(), N'.', @Object, N': nothing to edit here (its optional text is not in this database), left as it is.');
+        RETURN;
+    END
 
     -- CREATE -> ALTER: the first word outside comments.
     DECLARE @i int = 1, @j int, @len int = LEN(@def + N'x') - 1;
@@ -245,7 +253,7 @@ INSERT #V4_EDITS (Obj, Seq, Find, Replacement, Expect) VALUES
  N'DECLARE @desktop bit = dbo.FN_V4_CASE_DESKTOP(@ZedId, @CertificationType);   -- V4 0117: the case''s flow', 1),
 (N'dbo.SP_MONITORING_DA_FINAL_SUBMIT', 1,
  N'ELSE IF dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Desktop''',
- N'ELSE IF dbo.FN_V4_LEVEL_MODE(@CertificationType) IS NOT NULL AND dbo.FN_V4_CASE_DESKTOP(@ZedId, @CertificationType) = 1   -- V4 0117: the case''s flow', 1),
+ N'ELSE IF dbo.FN_V4_LEVEL_MODE(@CertificationType) IS NOT NULL AND dbo.FN_V4_CASE_DESKTOP(@ZedId, @CertificationType) = 1   -- V4 0117: the case''s flow', -1),   -- only where fix main/14 added the desktop-level branch
 -- No desktop step for a Remote only / Onsite only case.
 (N'dbo.SP_V4_SKIP_DESKTOP', 1,
  N'DECLARE @flow varchar(20) = (SELECT TOP 1 AssessmentFlow FROM dbo.SectionTypes WHERE SectionType = @Certification AND IsCertificationLevel = 1);',

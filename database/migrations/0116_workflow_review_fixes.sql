@@ -302,7 +302,7 @@ BEGIN
         SET @msg = CONCAT(DB_NAME(), N'.', @Object, N': not found.');
         THROW 50040, @msg, 1;
     END
-    DECLARE @def nvarchar(max) = OBJECT_DEFINITION(@id);
+    DECLARE @def nvarchar(max) = OBJECT_DEFINITION(@id), @before nvarchar(max);
     IF CHARINDEX(@Marker, @def) > 0
     BEGIN
         PRINT CONCAT(DB_NAME(), N'.', @Object, N': already edited.');
@@ -310,13 +310,15 @@ BEGIN
     END
 
     DECLARE @seq int, @find nvarchar(max), @rep nvarchar(max), @expect int, @count int;
+    SET @before = @def;
     DECLARE e CURSOR LOCAL FAST_FORWARD FOR SELECT Seq, Find, Replacement, Expect FROM #V4_EDITS WHERE Obj = @Object ORDER BY Seq;
     OPEN e;
     FETCH NEXT FROM e INTO @seq, @find, @rep, @expect;
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @count = (DATALENGTH(@def) - DATALENGTH(REPLACE(@def, @find, N''))) / DATALENGTH(@find);
-        IF (@expect IS NULL AND @count = 0) OR (@expect IS NOT NULL AND @count <> @expect)
+        -- Expect -1 (2026-11-28): optional, for text an optional fix script adds (database\fixes, not run by the deploy).
+        IF ISNULL(@expect, 0) <> -1 AND ((@expect IS NULL AND @count = 0) OR (@expect IS NOT NULL AND @count <> @expect))
         BEGIN
             SET @msg = CONCAT(DB_NAME(), N'.', @Object, N': replacement ', @seq, N' found ', @count, N' time(s), expected ',
                 ISNULL(CAST(@expect AS nvarchar(10)), N'at least 1'), N'. The live definition differs from the reviewed one: nothing was changed.');
@@ -327,6 +329,12 @@ BEGIN
     END
     CLOSE e;
     DEALLOCATE e;
+    IF @def = @before
+    BEGIN
+        -- Only optional replacements, none found: the procedure has nothing this migration changes.
+        PRINT CONCAT(DB_NAME(), N'.', @Object, N': nothing to edit here (its optional text is not in this database), left as it is.');
+        RETURN;
+    END
 
     -- CREATE -> ALTER: the first word outside comments.
     DECLARE @i int = 1, @j int, @len int = LEN(@def + N'x') - 1;
@@ -392,7 +400,7 @@ INSERT #V4_EDITS (Obj, Seq, Find, Replacement, Expect) VALUES
 -- Send back from a rejection after the NC rounds at any number of rounds (NcCount = rounds + 1, 2 to 6), into the last round.
 (N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', 1,
  N'WHEN @NcNumber=6 AND @CertiStatus IN (7, 17) THEN 1',
- N'WHEN @NcNumber BETWEEN 2 AND 6 AND @CertiStatus IN (7, 17) THEN 1', 1),
+ N'WHEN @NcNumber BETWEEN 2 AND 6 AND @CertiStatus IN (7, 17) THEN 1', -1),   -- only where fix main/07 added the state check
 (N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', 2,
  N'SELECT @Nc5Status=Nc5Status, @ExactNcStatus= CASE',
  N'SELECT @Nc5Status=CASE WHEN Nc5Status <> 0 THEN Nc5Status WHEN Nc4Status <> 0 THEN Nc4Status WHEN Nc3Status <> 0 THEN Nc3Status WHEN Nc2Status <> 0 THEN Nc2Status ELSE Nc1Status END,   -- V4 0116: the last round''s status
@@ -406,7 +414,7 @@ INSERT #V4_EDITS (Obj, Seq, Find, Replacement, Expect) VALUES
 GO
 EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MSME_AUTO_ALLOT_AGENCY_ROUND_ROBIN', @Marker = N'FN_V4_AGENCY_ELIGIBLE';
 EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_APP_MSME_FINAL_SUBMIT', @Marker = N'ISNULL(CertificationStatus, 1) <= 1';
-EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', @Marker = N'@NcNumber BETWEEN 2 AND 6';
+EXEC #V4_EDIT_PROCEDURE @Object = N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', @Marker = N'V4 0116: the last round';
 GO
 DROP PROCEDURE #V4_EDIT_PROCEDURE;
 DROP TABLE #V4_EDITS;
