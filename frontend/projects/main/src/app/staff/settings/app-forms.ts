@@ -199,7 +199,7 @@ const TYPE_GLYPHS: Record<string, string> = {
             <colgroup>
               <col style="width: 52px" />
               <col />
-              <col style="width: 140px" />
+              <col style="width: 215px" />
               <col style="width: 92px" />
               <col style="width: 280px" />
             </colgroup>
@@ -519,6 +519,8 @@ const TYPE_GLYPHS: Record<string, string> = {
     zed-collapse-card .table-responsive { margin-bottom: 0; }
     .fields-table { table-layout: fixed; width: 100%; min-width: 820px; }
     .fields-table td { overflow-wrap: break-word; }
+    /* 2026-11-28: a long type name (List (several choices)) wraps between words inside its cell, never under the next column. */
+    .fields-table .type-name { white-space: normal; max-width: 100%; }
     .changed-on { display: block; font-size: 11.5px; color: #8a9899; margin-top: 4px; }
         .fields-table td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
     .fields-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
