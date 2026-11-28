@@ -152,6 +152,22 @@ describe('Clear data sections (store and app)', () => {
     expect(await app.store.meeting(ID, true)).not.toBeNull();
   });
 
+  it('2026-11-28: the site tour takes its photos and files with it (they no longer show again under Other photos)', async () => {
+    const { app } = await makeApp(server());
+    await withWork(app);
+    const tour = stored('tour-2', 4000);
+    await app.photos.insert(tour);
+    await app.store.saveEvidence(ID, { ...ref(tour), evidenceId: 'T2', type: EVIDENCE_SITE_TOUR });
+    deletedFiles.length = 0;
+    await app.clearSections(ZED_ID, ['site-tour']);
+    expect(await app.photos.get('tour-2')).toBeNull();
+    expect(deletedFiles).toEqual(['/files/tour-2.jpg']);
+    const left = (await app.dataSections(ZED_ID)).map(s => s.id);
+    expect(left).not.toContain('site-tour');
+    expect(left).not.toContain('other-photos');
+    expect(await app.photos.get('plan-1')).not.toBeNull();
+  });
+
   it('a sent deliverable keeps its answers and status; only the photo copies go', async () => {
     const { app } = await makeApp(server());
     await withWork(app);

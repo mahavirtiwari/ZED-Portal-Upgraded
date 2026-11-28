@@ -199,6 +199,27 @@ describe('Clear data sections (store and app)', () => {
     expect(deletedFiles).toEqual([]);
   });
 
+  it('2026-11-28: a cleared section takes its photos and files with it (they no longer show again under Other photos)', async () => {
+    const { app } = await makeApp(server());
+    await withWork(app);
+    const tour = stored('tour-2', 4000);
+    await app.photos.insert(tour);
+    await app.store.saveEvidence(app.userId, { ...ref(tour), evidenceId: 'T2', type: EVIDENCE_SITE_TOUR });
+    const meeting = stored('site-1', 400);
+    await app.photos.insert(meeting);
+    deletedFiles.length = 0;
+    await app.clearSections(ZED_ID, ['site-tour', 'open-meeting']);
+    expect(await app.photos.get('tour-2')).toBeNull();
+    expect(await app.photos.get('site-1')).toBeNull();
+    expect(deletedFiles.sort()).toEqual(['/files/site-1.jpg', '/files/tour-2.jpg']);
+    const left = (await app.dataSections(ZED_ID)).map(s => s.id);
+    expect(left).not.toContain('site-tour');
+    expect(left).not.toContain('open-meeting');
+    expect(left).not.toContain('other-photos');
+    // Another step's photo stays.
+    expect(await app.photos.get('prod-1')).not.toBeNull();
+  });
+
   it('site tour and selfie: only their rows go', async () => {
     const { app } = await makeApp(server());
     await withWork(app);

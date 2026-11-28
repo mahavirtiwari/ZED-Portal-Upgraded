@@ -361,9 +361,15 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
       delete x.openMeetingParticipants;
     });
   }
-  if (want.has(SITE_TOUR)) plan.evidenceTypes.push(EVIDENCE_SITE_TOUR);
+  // 2026-11-28 (the owner: a cleared section's data stayed): the photos of the site tour, the selfie and the added evidence go with
+  // their records; before, they stayed on the phone and showed again under "Other photos".
+  if (want.has(SITE_TOUR)) {
+    plan.evidenceTypes.push(EVIDENCE_SITE_TOUR);
+    plan.photos.push(...photosIn(c.siteTour));
+  }
   if (want.has(SELFIE) && c.selfie) {
     plan.selfie = true;
+    plan.photos.push(...photosIn(c.selfie));
     steps.push(x => {
       x.isSelfieSubmitted = false;
     });
@@ -405,7 +411,10 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
       x.isCloseMeetingSubmitted = false;
     });
   }
-  if (want.has(ADDED_EVIDENCE)) plan.evidenceTypes.push(EVIDENCE_ADDED);
+  if (want.has(ADDED_EVIDENCE)) {
+    plan.evidenceTypes.push(EVIDENCE_ADDED);
+    plan.photos.push(...photosIn(c.added));
+  }
   if (want.has(OTHER_PHOTOS)) {
     const known = photosInUse(c);
     plan.photos.push(...c.stored.filter(p => !known.has(p.photoId)));

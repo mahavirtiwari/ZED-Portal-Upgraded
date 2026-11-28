@@ -305,7 +305,12 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
   };
   if (!d) return plan;
   const params = (d.allottedParameters ?? []).filter(Boolean);
-  const evidences = (list: PhotoInformation[]) => plan.evidenceIds.push(...list.map(e => e.evidenceId).filter((e): e is string => !!e));
+  // 2026-11-28 (the owner: a cleared section's data stayed): an evidence's photos go with it; before, only the record went and its
+  // photos stayed on the phone, shown again under "Other photos".
+  const evidences = (list: PhotoInformation[]) => {
+    plan.evidenceIds.push(...list.map(e => e.evidenceId).filter((e): e is string => !!e));
+    plan.photos.push(...photosIn(list));
+  };
 
   if (want.has(ALLOCATION)) {
     plan.photos.push(...photosIn(params));
@@ -326,6 +331,7 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
   if (want.has(OPEN_MEETING)) {
     plan.openMeeting = true;
     plan.meetingDraft = !!c.meetingDraft;
+    plan.photos.push(...photosIn(c.openMeeting, c.meetingDraft));
     plan.jobKinds.push('openMeeting');
     // A meeting saved offline was marked held on the phone only: it is to be held again.
     const unsent = !!c.openMeeting;
@@ -334,9 +340,13 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
       delete x.openMeetingParticipants;
     });
   }
-  if (want.has(SITE_TOUR)) plan.evidenceTypes.push(EVIDENCE_SITE_TOUR);
+  if (want.has(SITE_TOUR)) {
+    plan.evidenceTypes.push(EVIDENCE_SITE_TOUR);
+    plan.photos.push(...photosIn(c.siteTour));
+  }
   if (want.has(SELFIE) && c.selfie) {
     plan.selfie = true;
+    plan.photos.push(...photosIn(c.selfie));
     plan.jobKinds.push('selfie');
     steps.push(x => {
       x.isSelfieSubmitted = false;
@@ -370,6 +380,7 @@ export function planClear(c: CaseData, ids: string[]): ClearPlan {
   });
   if (want.has(CLOSE_MEETING) && c.closeMeeting) {
     plan.closeMeeting = true;
+    plan.photos.push(...photosIn(c.closeMeeting));
     steps.push(x => {
       x.isCloseMeetingSubmitted = false;
     });
